@@ -91,11 +91,6 @@
         <Field name="barSeries"/>
     </Match>
     <Match>
-        <Bug pattern="DM_GC"/>
-        <Class name="org.ta4j.core.backtest.BacktestExecutor"/>
-        <Method name="executeBatched"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
         <Method name="strategy"/>
@@ -1256,16 +1251,6 @@
         <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
         <Method name="&lt;init&gt;"/>
         <Field name="swingCount"/>
-    </Match>
-    <Match>
-        <Bug pattern="DM_GC"/>
-        <Class name="ta4jexamples.backtesting.BacktestPerformanceTuningHarness"/>
-        <Method name="runTuneInProcess"/>
-    </Match>
-    <Match>
-        <Bug pattern="DM_GC"/>
-        <Class name="ta4jexamples.backtesting.BacktestPerformanceTuningHarness"/>
-        <Method name="warmupOnce"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>

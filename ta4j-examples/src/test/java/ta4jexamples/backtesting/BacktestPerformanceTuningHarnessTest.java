@@ -180,13 +180,19 @@ class BacktestPerformanceTuningHarnessTest {
                 "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1" });
         HarnessCli withProgress = HarnessCli.parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2",
                 "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--progress" });
-        HarnessCli withoutGc = HarnessCli.parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2",
-                "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--noGcBetweenRuns" });
+        HarnessCli withoutPause = HarnessCli
+                .parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2", "--matrixBarCounts", "5",
+                        "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--noPauseBetweenRuns" });
+        HarnessCli legacyWithoutPause = HarnessCli
+                .parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2", "--matrixBarCounts", "5",
+                        "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--noGcBetweenRuns" });
 
         ThroughputControlPlan basePlan = ThroughputControlPlan.fromCli(base, 10);
 
         assertNotEquals(basePlan.specFingerprint(), ThroughputControlPlan.fromCli(withProgress, 10).specFingerprint());
-        assertNotEquals(basePlan.specFingerprint(), ThroughputControlPlan.fromCli(withoutGc, 10).specFingerprint());
+        assertNotEquals(basePlan.specFingerprint(), ThroughputControlPlan.fromCli(withoutPause, 10).specFingerprint());
+        assertEquals(ThroughputControlPlan.fromCli(withoutPause, 10).specFingerprint(),
+                ThroughputControlPlan.fromCli(legacyWithoutPause, 10).specFingerprint());
     }
 
     @Test
@@ -216,7 +222,7 @@ class BacktestPerformanceTuningHarnessTest {
         assertTrue(telemetry.getAsJsonObject("host").get("hostId").getAsString().equals("unknown")
                 || telemetry.getAsJsonObject("host").get("hostId").getAsString().startsWith("sha256:"));
         assertFalse(telemetry.get("progress").getAsBoolean());
-        assertTrue(telemetry.get("gcBetweenRuns").getAsBoolean());
+        assertTrue(telemetry.get("pauseBetweenRuns").getAsBoolean());
         assertEquals(4.0d, telemetry.get("cellsPerMinute").getAsDouble());
         assertEquals(5, telemetry.get("hypothesisCount").getAsInt());
         assertEquals(10.0d, telemetry.get("hypothesesPerMinute").getAsDouble());
