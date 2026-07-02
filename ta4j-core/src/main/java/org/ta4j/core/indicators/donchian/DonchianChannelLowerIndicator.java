@@ -41,6 +41,10 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
         return lowestPrice.getCountOfUnstableBars();
     }
 
+    DonchianChannelLowerIndicator copy() {
+        return new DonchianChannelLowerIndicator(getBarSeries(), barCount);
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + "barCount: " + barCount;

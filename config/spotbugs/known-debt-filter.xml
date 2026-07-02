@@ -330,51 +330,9 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="bbl"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="bbm"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="bbu"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="bbm"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="bbm"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.candles.AbstractMarubozuIndicator"/>
         <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.donchian.DonchianChannelMiddleIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="lower"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.donchian.DonchianChannelMiddleIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="upper"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
