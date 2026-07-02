@@ -63,6 +63,9 @@ public final class BarSeriesUtils {
      * @param newBar    the bar which has precedence over the same existing bar
      * @return the previous bar replaced by newBar, or null if there was no
      *         replacement.
+     * @throws UnsupportedOperationException if a matching bar needs replacement but
+     *                                       the series implementation does not
+     *                                       expose a supported replacement path
      */
     public static Bar replaceBarIfChanged(BarSeries barSeries, Bar newBar) {
         List<Bar> bars = barSeries.getBarData();
@@ -74,11 +77,12 @@ public final class BarSeriesUtils {
                     && bar.getEndTime().equals(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
             if (isSameBar && !bar.equals(newBar)) {
-                if (barSeries instanceof BaseBarSeries baseBarSeries) {
-                    baseBarSeries.replaceBar(barSeries.getBeginIndex() + i, newBar);
-                    return bar;
+                if (!(barSeries instanceof BaseBarSeries baseBarSeries)) {
+                    throw new UnsupportedOperationException("Cannot replace bars for " + barSeries.getClass().getName()
+                            + "; use a BaseBarSeries-backed implementation");
                 }
-                return null;
+                baseBarSeries.replaceBar(barSeries.getBeginIndex() + i, newBar);
+                return bar;
             }
         }
         return null;

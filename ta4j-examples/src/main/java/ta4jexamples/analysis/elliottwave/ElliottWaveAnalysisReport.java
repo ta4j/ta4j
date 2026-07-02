@@ -99,8 +99,8 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     private static final double CALIBRATION_EPSILON = 1.0e-12;
 
     public ElliottWaveAnalysisReport {
-        alternatives = alternatives == null ? List.of() : List.copyOf(alternatives);
-        alternativeChartImages = alternativeChartImages == null ? List.of() : List.copyOf(alternativeChartImages);
+        alternatives = copyOrEmpty(alternatives);
+        alternativeChartImages = copyOrEmpty(alternativeChartImages);
     }
 
     public List<AlternativeScenario> alternatives() {
@@ -109,6 +109,10 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
 
     public List<String> alternativeChartImages() {
         return List.copyOf(alternativeChartImages);
+    }
+
+    private static <T> List<T> copyOrEmpty(List<T> source) {
+        return source == null ? List.of() : List.copyOf(source);
     }
 
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
@@ -464,7 +468,7 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             double completenessScore, String primaryReason, String weakestFactor, String direction,
             double invalidationPrice, double primaryTarget, List<SwingData> swings) {
         public BaseCaseScenario {
-            swings = swings == null ? List.of() : List.copyOf(swings);
+            swings = copyOrEmpty(swings);
         }
 
         public List<SwingData> swings() {
@@ -513,7 +517,7 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability,
             @JsonAdapter(ScenarioProbabilityAdapter.class) double calibratedProbability, List<SwingData> swings) {
         public AlternativeScenario {
-            swings = swings == null ? List.of() : List.copyOf(swings);
+            swings = copyOrEmpty(swings);
         }
 
         public List<SwingData> swings() {
