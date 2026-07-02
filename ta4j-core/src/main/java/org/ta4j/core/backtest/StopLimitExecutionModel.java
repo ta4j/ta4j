@@ -369,6 +369,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     public record PendingOrderSnapshot(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
             Num filledAmount, Num stopPrice, Num limitPrice, int expiryIndex, boolean triggered,
             List<TradeFill> fills) {
+        public PendingOrderSnapshot {
+            fills = List.copyOf(Objects.requireNonNull(fills, "fills must not be null"));
+        }
+
+        public List<TradeFill> fills() {
+            return List.copyOf(fills);
+        }
     }
 
     private static final class PendingOrder {

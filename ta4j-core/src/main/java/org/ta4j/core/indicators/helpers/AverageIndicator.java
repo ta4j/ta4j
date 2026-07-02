@@ -25,7 +25,7 @@ public class AverageIndicator extends CachedIndicator<Num> {
     public AverageIndicator(List<Indicator<Num>> indicators) {
         super(validateAndGetFirst(indicators));
 
-        this.indicators = indicators;
+        this.indicators = List.copyOf(indicators);
         this.unstableBars = indicators.stream().mapToInt(Indicator::getCountOfUnstableBars).max().orElse(0);
     }
 

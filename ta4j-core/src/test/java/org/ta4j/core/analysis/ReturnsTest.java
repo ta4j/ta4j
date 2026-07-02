@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
@@ -14,6 +15,7 @@ import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
@@ -156,6 +158,17 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0, returns.getValue(4));
         assertNumEquals(0, returns.getValue(7));
         assertNumEquals(0, returns.getValue(9));
+    }
+
+    @Test
+    public void returnListsAreImmutableSnapshots() {
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
+                Trade.sellAt(1, sampleBarSeries));
+        Returns returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertThrows(UnsupportedOperationException.class, () -> returns.getValues().add(numFactory.one()));
+        assertThrows(UnsupportedOperationException.class, () -> returns.getRawValues().add(numFactory.one()));
     }
 
     @Test

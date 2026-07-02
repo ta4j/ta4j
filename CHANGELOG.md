@@ -12,6 +12,7 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
+- **CF-208 representation exposure cleanup**: Core bar-series, return, backtest, Elliott, confidence, and walk-forward DTO accessors now return immutable snapshots or own defensive copies while preserving their existing public method signatures.
 - **CF-157 constructor and serialization cleanup**: Constructor validation paths now avoid SpotBugs unsafe-initialization patterns while indicator serialization handles null descriptors, boolean parameters, and cached indicator type registration through explicit guard paths.
 
 ## 0.22.8 (2026-06-29)

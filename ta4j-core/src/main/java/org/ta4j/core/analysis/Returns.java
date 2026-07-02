@@ -237,7 +237,7 @@ public class Returns implements PerformanceIndicator {
      *         representation)
      */
     public List<Num> getValues() {
-        return values;
+        return List.copyOf(values);
     }
 
     /**
@@ -254,7 +254,7 @@ public class Returns implements PerformanceIndicator {
      * @return the raw return rates (before formatting)
      */
     public List<Num> getRawValues() {
-        return rawValues;
+        return List.copyOf(rawValues);
     }
 
     @Override
