@@ -14,6 +14,7 @@
 ### Fixed
 - **CF-208 representation exposure cleanup**: Core bar-series, return, backtest, Elliott, confidence, and walk-forward DTO accessors now return immutable snapshots or own defensive copies while preserving their existing public method signatures.
 - **CF-210 examples SpotBugs cleanup**: Examples now use UTF-8 file IO, close HTTP cache directory streams, guard nullable output paths, avoid floating-point loop counters in the backtest tuning harness, and defensively own chart/report list snapshots.
+- **CF-211 coverage refresh**: JaCoCo CSVs were refreshed after the SpotBugs slices, examples Elliott report ownership now has default-suite coverage, and VaR/expected-shortfall plus bar-series replacement utilities now work with immutable snapshot accessors.
 - **CF-157 constructor and serialization cleanup**: Constructor validation paths now avoid SpotBugs unsafe-initialization patterns while indicator serialization handles null descriptors, boolean parameters, and cached indicator type registration through explicit guard paths.
 
 ## 0.22.8 (2026-06-29)

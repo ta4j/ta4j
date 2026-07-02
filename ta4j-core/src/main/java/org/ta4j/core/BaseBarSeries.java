@@ -301,7 +301,7 @@ public class BaseBarSeries implements BarSeries {
      * @throws IndexOutOfBoundsException if the index is outside the current series
      *                                   window
      */
-    protected void replaceBar(final int index, final Bar bar) {
+    public void replaceBar(final int index, final Bar bar) {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!numFactory.produces(bar.getClosePrice())) {
             throw new IllegalArgumentException(

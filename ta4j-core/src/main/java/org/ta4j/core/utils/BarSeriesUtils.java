@@ -13,6 +13,7 @@ import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.aggregator.BarAggregator;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BarSeries;
@@ -72,8 +73,13 @@ public final class BarSeriesUtils {
             boolean isSameBar = bar.getBeginTime().equals(newBar.getBeginTime())
                     && bar.getEndTime().equals(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
-            if (isSameBar && !bar.equals(newBar))
-                return bars.set(i, newBar);
+            if (isSameBar && !bar.equals(newBar)) {
+                if (barSeries instanceof BaseBarSeries baseBarSeries) {
+                    baseBarSeries.replaceBar(barSeries.getBeginIndex() + i, newBar);
+                    return bar;
+                }
+                return null;
+            }
         }
         return null;
     }
