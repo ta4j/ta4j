@@ -73,7 +73,7 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  *
  * @since 0.22.2
  */
-public class HighRewardElliottWaveStrategy extends NamedStrategy {
+public final class HighRewardElliottWaveStrategy extends NamedStrategy {
 
     static {
         registerImplementation(HighRewardElliottWaveStrategy.class);

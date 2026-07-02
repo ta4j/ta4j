@@ -1078,27 +1078,7 @@
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="ta4jexamples.charting.workflow.ChartWorkflow"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="ta4jexamples.datasources.http.AbstractHttpBarSeriesDataSource"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="ta4jexamples.strategies.HighRewardElliottWaveStrategy"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="ta4jexamples.strategies.HourOfDayStrategy"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="ta4jexamples.strategies.MinuteOfHourStrategy"/>
         <Method name="&lt;init&gt;"/>
     </Match>
 </FindBugsFilter>

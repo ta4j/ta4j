@@ -52,7 +52,7 @@ import ta4jexamples.charting.storage.FileSystemChartStorage;
  *
  * @since 0.19
  */
-public class ChartWorkflow {
+public final class ChartWorkflow {
 
     /**
      * Default saved chart image width.
