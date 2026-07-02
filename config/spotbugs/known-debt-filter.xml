@@ -829,10 +829,6 @@
         <Field name="NaN"/>
     </Match>
     <Match>
-        <Bug pattern="SING_SINGLETON_IMPLEMENTS_SERIALIZABLE"/>
-        <Class name="org.ta4j.core.num.DoubleNumFactory"/>
-    </Match>
-    <Match>
         <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
         <Class name="org.ta4j.core.num.NaN"/>
         <Method name="compareTo"/>
