@@ -11,6 +11,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.utils.DeprecationNotifier;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * @deprecated
@@ -38,22 +41,11 @@ public class JsonBarsSerializer {
         warnDeprecatedUse();
         LegacyJsonBarSeriesPayload exportableSeries = LegacyJsonBarSeriesPayload.from(series);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        FileWriter writer = null;
-        try {
-            writer = new FileWriter(filename);
+        try (Writer writer = Files.newBufferedWriter(Path.of(filename), StandardCharsets.UTF_8)) {
             gson.toJson(exportableSeries, writer);
             LOG.debug("Bar series '{}' successfully saved to '{}'", series.getName(), filename);
         } catch (IOException e) {
             LOG.error("Unable to store bars in JSON", e);
-        } finally {
-            if (writer != null) {
-                try {
-                    writer.flush();
-                    writer.close();
-                } catch (IOException e) {
-                    LOG.warn("Unable to flush and/or close file writer", e);
-                }
-            }
         }
     }
 
@@ -61,10 +53,8 @@ public class JsonBarsSerializer {
     public static BarSeries loadSeries(String filename) {
         warnDeprecatedUse();
         Gson gson = new Gson();
-        FileReader reader = null;
         BarSeries result = null;
-        try {
-            reader = new FileReader(filename);
+        try (Reader reader = Files.newBufferedReader(Path.of(filename), StandardCharsets.UTF_8)) {
             LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
             result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
@@ -73,15 +63,8 @@ public class JsonBarsSerializer {
                 return null;
             }
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             LOG.error("Unable to load bars from JSON", e);
-        } finally {
-            try {
-                if (reader != null)
-                    reader.close();
-            } catch (IOException e) {
-                LOG.warn("Unable to close file reader", e);
-            }
         }
         return result;
     }
@@ -111,10 +94,8 @@ public class JsonBarsSerializer {
         }
 
         Gson gson = new Gson();
-        InputStreamReader reader = null;
         BarSeries result = null;
-        try {
-            reader = new InputStreamReader(inputStream);
+        try (Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
             LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
             result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
@@ -126,13 +107,6 @@ public class JsonBarsSerializer {
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (Exception e) {
             LOG.error("Unable to load bars from JSON", e);
-        } finally {
-            try {
-                if (reader != null)
-                    reader.close();
-            } catch (IOException e) {
-                LOG.warn("Error closing input stream reader", e);
-            }
         }
         return result;
     }
