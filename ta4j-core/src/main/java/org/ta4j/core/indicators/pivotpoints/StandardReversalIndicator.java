@@ -33,8 +33,8 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
      * @param level               the {@link PivotLevel} for this reversal
      */
     public StandardReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
-        super(pivotPointIndicator);
-        this.pivotPointIndicator = pivotPointIndicator;
+        super(pivotPointIndicator.copy());
+        this.pivotPointIndicator = pivotPointIndicator.copy();
         this.level = level;
         this.two = pivotPointIndicator.getBarSeries().numFactory().numOf(2);
     }
