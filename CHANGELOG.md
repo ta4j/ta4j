@@ -11,6 +11,9 @@
 - **Quiet Maven verify stays focused on failures**: `ta4j-core` test logging now keeps intentional `TimeBarBuilder` missing-bar warnings and invalid `ReturnRepresentation` parse warnings out of `mvn verify -q` output while preserving explicit log-capture assertions for those expected paths.
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
+### Fixed
+- **CF-157 constructor and serialization cleanup**: Constructor validation paths now avoid SpotBugs unsafe-initialization patterns while indicator serialization handles null descriptors, boolean parameters, and cached indicator type registration through explicit guard paths.
+
 ## 0.22.8 (2026-06-29)
 
 ### Changed
