@@ -7,16 +7,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="NP_LOAD_OF_KNOWN_NULL_VALUE"/>
-        <Class name="org.ta4j.core.BaseBar"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="NP_NONNULL_PARAM_VIOLATION"/>
-        <Class name="org.ta4j.core.BaseBar"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.BaseBarSeries"/>
         <Method name="&lt;init&gt;"/>
