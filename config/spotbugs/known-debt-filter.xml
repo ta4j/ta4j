@@ -813,16 +813,6 @@
         <Field name="stateIndicator"/>
     </Match>
     <Match>
-        <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
-        <Class name="org.ta4j.core.num.NaN"/>
-        <Method name="compareTo"/>
-    </Match>
-    <Match>
-        <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
-        <Class name="org.ta4j.core.reports.BasePerformanceReport"/>
-        <Method name="compareTo"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.AndRule"/>
         <Method name="getRule1"/>
