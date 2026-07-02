@@ -809,11 +809,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.VoteRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.XorRule"/>
         <Method name="getRule1"/>
