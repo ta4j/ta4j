@@ -1136,11 +1136,6 @@
         <Field name="rule"/>
     </Match>
     <Match>
-        <Bug pattern="SE_BAD_FIELD"/>
-        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
-        <Field name="rule"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
         <Method name="channelIndicator"/>

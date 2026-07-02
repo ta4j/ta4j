@@ -7,6 +7,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.Serializable;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,6 +56,11 @@ public class ChainRuleTest {
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, chainRule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, chainRule);
+    }
+
+    @Test
+    public void chainLinkUsesDescriptorSerializationOnly() {
+        assertFalse(new ChainLink(new FixedRule(1), 2) instanceof Serializable);
     }
 
     @Test
