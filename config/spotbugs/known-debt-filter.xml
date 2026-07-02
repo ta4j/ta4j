@@ -823,12 +823,6 @@
         <Field name="stateIndicator"/>
     </Match>
     <Match>
-        <Bug pattern="EC_UNRELATED_TYPES_USING_POINTER_EQUALITY"/>
-        <Class name="org.ta4j.core.num.DoubleNum"/>
-        <Method name="compareTo"/>
-        <Field name="NaN"/>
-    </Match>
-    <Match>
         <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
         <Class name="org.ta4j.core.num.NaN"/>
         <Method name="compareTo"/>
