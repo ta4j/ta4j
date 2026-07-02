@@ -19,14 +19,17 @@ public class AverageIndicator extends CachedIndicator<Num> {
 
     @SafeVarargs
     public AverageIndicator(Indicator<Num>... indicators) {
-        this(Arrays.asList(indicators));
+        this(validatedConfig(indicators));
     }
 
     public AverageIndicator(List<Indicator<Num>> indicators) {
-        super(validateAndGetFirst(indicators));
+        this(validatedConfig(indicators));
+    }
 
-        this.indicators = List.copyOf(indicators);
-        this.unstableBars = indicators.stream().mapToInt(Indicator::getCountOfUnstableBars).max().orElse(0);
+    private AverageIndicator(Config config) {
+        super(config.firstIndicator());
+        this.indicators = config.indicators();
+        this.unstableBars = config.unstableBars();
     }
 
     /**
@@ -44,6 +47,17 @@ public class AverageIndicator extends CachedIndicator<Num> {
         return indicators.getFirst();
     }
 
+    private static Config validatedConfig(Indicator<Num>[] indicators) {
+        return validatedConfig(Arrays.asList(indicators));
+    }
+
+    private static Config validatedConfig(List<Indicator<Num>> indicators) {
+        Indicator<Num> firstIndicator = validateAndGetFirst(indicators);
+        List<Indicator<Num>> indicatorSnapshot = List.copyOf(indicators);
+        int unstableBars = indicatorSnapshot.stream().mapToInt(Indicator::getCountOfUnstableBars).max().orElse(0);
+        return new Config(firstIndicator, indicatorSnapshot, unstableBars);
+    }
+
     @Override
     protected Num calculate(int index) {
         Num value = getBarSeries().numFactory().zero();
@@ -58,5 +72,8 @@ public class AverageIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    private record Config(Indicator<Num> firstIndicator, List<Indicator<Num>> indicators, int unstableBars) {
     }
 }

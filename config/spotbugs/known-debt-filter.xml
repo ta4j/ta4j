@@ -511,26 +511,6 @@
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.helpers.AverageIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.helpers.BandIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.helpers.PercentRankIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.helpers.PreviousValueIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.renko.RenkoDownIndicator"/>
         <Method name="&lt;init&gt;"/>
     </Match>
