@@ -530,18 +530,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.ichimoku.IchimokuSenkouSpanAIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="baseLine"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.ichimoku.IchimokuSenkouSpanAIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="conversionLine"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.numeric.BinaryOperationIndicator"/>
         <Method name="&lt;init&gt;"/>
