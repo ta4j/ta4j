@@ -10,6 +10,8 @@ import org.ta4j.core.BarSeries;
 
 public class TickBarBuilderFactory implements BarBuilderFactory {
 
+    private static final long serialVersionUID = 1L;
+
     private final boolean realtimeBars;
     private final int tickCount;
     private transient TickBarBuilder barBuilder;

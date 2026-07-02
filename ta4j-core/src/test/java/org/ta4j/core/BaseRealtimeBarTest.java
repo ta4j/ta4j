@@ -92,6 +92,41 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void equalsAndHashCodeIncludeRealtimeFields() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Duration period = Duration.ofMinutes(1);
+        BaseRealtimeBar bar = createRealtimeBar(period, start, numOf(6), numOf(4), true);
+        BaseRealtimeBar sameBar = createRealtimeBar(period, start, numOf(6), numOf(4), true);
+        BaseRealtimeBar differentBuyVolume = createRealtimeBar(period, start, numOf(7), numOf(4), true);
+        BaseRealtimeBar differentSideFlag = createRealtimeBar(period, start, numOf(6), numOf(4), false);
+
+        assertEquals(bar, sameBar);
+        assertEquals(bar.hashCode(), sameBar.hashCode());
+        assertFalse(bar.equals(differentBuyVolume));
+        assertFalse(bar.equals(differentSideFlag));
+    }
+
+    @Test
+    public void equalsRejectsPlainBaseBarWithSameOhlcvFields() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Duration period = Duration.ofMinutes(1);
+        Num openPrice = numOf(100);
+        Num highPrice = numOf(110);
+        Num lowPrice = numOf(90);
+        Num closePrice = numOf(105);
+        Num volume = numOf(1000);
+        Num amount = numOf(105000);
+        BaseBar baseBar = new BaseBar(period, start, start.plus(period), openPrice, highPrice, lowPrice, closePrice,
+                volume, amount, 100);
+        BaseRealtimeBar realtimeBar = new BaseRealtimeBar(period, start, start.plus(period), openPrice, highPrice,
+                lowPrice, closePrice, volume, amount, 100, numOf(600), numOf(400), numOf(63000), numOf(42000), 60, 40,
+                numOf(700), numOf(300), numOf(73500), numOf(31500), 70, 30, true, true, numFactory);
+
+        assertFalse(baseBar.equals(realtimeBar));
+        assertFalse(realtimeBar.equals(baseBar));
+    }
+
+    @Test
     public void testConstructorWithAllParameters() {
         final var start = Instant.parse("2024-01-01T00:00:00Z");
         final var period = Duration.ofMinutes(1);
@@ -135,6 +170,13 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(takerAmount, bar.getTakerAmount());
         assertEquals(70, bar.getMakerTrades());
         assertEquals(30, bar.getTakerTrades());
+    }
+
+    private BaseRealtimeBar createRealtimeBar(final Duration period, final Instant start, final Num buyVolume,
+            final Num sellVolume, final boolean hasSideData) {
+        return new BaseRealtimeBar(period, start, start.plus(period), numOf(100), numOf(110), numOf(90), numOf(105),
+                numOf(1000), numOf(105000), 100, buyVolume, sellVolume, numOf(63000), numOf(42000), 60, 40, numOf(700),
+                numOf(300), numOf(73500), numOf(31500), 70, 30, hasSideData, true, numFactory);
     }
 
     @Test

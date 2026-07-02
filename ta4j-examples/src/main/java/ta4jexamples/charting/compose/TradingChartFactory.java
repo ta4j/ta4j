@@ -1137,7 +1137,7 @@ public final class TradingChartFactory {
 
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
                 Bar bar = series.getBar(i);
-                Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? new Date((long) i)
+                Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? Date.from(Instant.EPOCH.plusMillis(i))
                         : Date.from(bar.getEndTime());
                 OHLCDataItem item = new OHLCDataItem(barDate, bar.getOpenPrice().doubleValue(),
                         bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),

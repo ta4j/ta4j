@@ -22,11 +22,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS"/>
-        <Class name="org.ta4j.core.BaseRealtimeBar"/>
-        <Method name="equals"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.BaseStrategy"/>
         <Method name="getEntryRule"/>
@@ -183,10 +178,6 @@
         <Field name="barBuilder"/>
     </Match>
     <Match>
-        <Bug pattern="SE_NO_SERIALVERSIONID"/>
-        <Class name="org.ta4j.core.bars.AmountBarBuilderFactory"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.bars.TickBarBuilder"/>
         <Method name="bindTo"/>
@@ -197,10 +188,6 @@
         <Class name="org.ta4j.core.bars.TickBarBuilderFactory"/>
         <Method name="createBarBuilder"/>
         <Field name="barBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="SE_NO_SERIALVERSIONID"/>
-        <Class name="org.ta4j.core.bars.TickBarBuilderFactory"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
@@ -219,10 +206,6 @@
         <Class name="org.ta4j.core.bars.VolumeBarBuilderFactory"/>
         <Method name="createBarBuilder"/>
         <Field name="barBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="SE_NO_SERIALVERSIONID"/>
-        <Class name="org.ta4j.core.bars.VolumeBarBuilderFactory"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -1167,11 +1150,6 @@
         <Field name="rule"/>
     </Match>
     <Match>
-        <Bug pattern="WMI_WRONG_MAP_ITERATOR"/>
-        <Class name="org.ta4j.core.walkforward.WalkForwardTuner$CalibrationScores"/>
-        <Method name="from"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
         <Method name="channelIndicator"/>
@@ -1280,21 +1258,6 @@
         <Field name="swingCount"/>
     </Match>
     <Match>
-        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
-        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
-        <Method name="buildAnchorLabels"/>
-    </Match>
-    <Match>
-        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
-        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
-        <Method name="evaluateCanonicalProfile"/>
-    </Match>
-    <Match>
-        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
-        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
-        <Method name="latestBottomAnchorIndex"/>
-    </Match>
-    <Match>
         <Bug pattern="DM_GC"/>
         <Class name="ta4jexamples.backtesting.BacktestPerformanceTuningHarness"/>
         <Method name="runTuneInProcess"/>
@@ -1335,35 +1298,9 @@
         <Field name="series"/>
     </Match>
     <Match>
-        <Bug pattern="ICAST_INT_2_LONG_AS_INSTANT"/>
-        <Class name="ta4jexamples.charting.compose.TradingChartFactory$DatasetFactory"/>
-        <Method name="createChartDataset"/>
-    </Match>
-    <Match>
-        <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"/>
-        <Class name="ta4jexamples.charting.display.SwingChartDisplayer"/>
-        <Method name="display"/>
-        <Field name="windowCounter"/>
-    </Match>
-    <Match>
-        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
-        <Class name="ta4jexamples.charting.storage.FileSystemChartStorage"/>
-        <Method name="save"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="ta4jexamples.charting.workflow.ChartWorkflow"/>
         <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
-        <Class name="ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource"/>
-        <Method name="loadSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
-        <Class name="ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource"/>
-        <Method name="loadSeries"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>

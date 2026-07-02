@@ -210,7 +210,7 @@ public class BaseBar implements Bar {
     public boolean equals(Object obj) {
         if (this == obj)
             return true;
-        if (!(obj instanceof BaseBar))
+        if (obj == null || getClass() != obj.getClass())
             return false;
         final BaseBar other = (BaseBar) obj;
         return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)

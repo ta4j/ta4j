@@ -10,6 +10,8 @@ import org.ta4j.core.BarSeries;
 
 public class VolumeBarBuilderFactory implements BarBuilderFactory {
 
+    private static final long serialVersionUID = 1L;
+
     private final int volumeThreshold;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
