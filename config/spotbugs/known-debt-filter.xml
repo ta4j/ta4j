@@ -1076,9 +1076,4 @@
         <Method name="series"/>
         <Field name="series"/>
     </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="ta4jexamples.datasources.http.AbstractHttpBarSeriesDataSource"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
 </FindBugsFilter>

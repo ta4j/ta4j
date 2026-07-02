@@ -105,7 +105,8 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      *                              faster subsequent requests
      */
     protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
-        this(defaultHttpClientWrapper(httpClient), enableResponseCaching);
+        this(new DataSourceConfig(new DefaultHttpClientWrapper(javaHttpClient(httpClient)), enableResponseCaching,
+                DEFAULT_RESPONSE_CACHE_DIR));
     }
 
     /**
@@ -119,7 +120,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      *                         relative or absolute)
      */
     protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
-        this(defaultHttpClientWrapper(httpClient), responseCacheDir);
+        this(dataSourceConfig(httpClient, responseCacheDir));
     }
 
     private AbstractHttpBarSeriesDataSource(DataSourceConfig config) {
@@ -145,15 +146,16 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
         return httpClient;
     }
 
-    private static HttpClientWrapper defaultHttpClientWrapper(HttpClient httpClient) {
-        return new DefaultHttpClientWrapper(javaHttpClient(httpClient));
-    }
-
     private static String validatedCacheDir(String responseCacheDir) {
         if (responseCacheDir == null || responseCacheDir.trim().isEmpty()) {
             throw new IllegalArgumentException("Response cache directory cannot be null or empty");
         }
         return responseCacheDir.trim();
+    }
+
+    private static DataSourceConfig dataSourceConfig(HttpClient httpClient, String responseCacheDir) {
+        return new DataSourceConfig(new DefaultHttpClientWrapper(javaHttpClient(httpClient)), true,
+                validatedCacheDir(responseCacheDir));
     }
 
     private record DataSourceConfig(HttpClientWrapper httpClient, boolean enableResponseCaching,
