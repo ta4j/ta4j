@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -15,6 +16,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -142,5 +144,18 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertNumEquals(indicator.getValue(i), restored.getValue(i));
         }
+    }
+
+    @Test
+    public void getTRIndicatorReturnsIndependentHelper() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        ATRIndicator indicator = new ATRIndicator(series, 3);
+
+        TRIndicator first = indicator.getTRIndicator();
+        TRIndicator second = indicator.getTRIndicator();
+
+        assertNotSame(first, second);
+        assertEquals(series, first.getBarSeries());
+        assertNumEquals(first.getValue(series.getEndIndex()), second.getValue(series.getEndIndex()));
     }
 }

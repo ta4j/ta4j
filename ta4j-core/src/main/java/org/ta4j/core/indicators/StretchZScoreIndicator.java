@@ -137,7 +137,8 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public StandardDeviationIndicator getStandardDeviationIndicator() {
-        return standardDeviationIndicator;
+        Indicator<Num> deviation = NumericIndicator.of(sourceIndicator).minus(referenceIndicator);
+        return new StandardDeviationIndicator(deviation, barCount);
     }
 
     /**

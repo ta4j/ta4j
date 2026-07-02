@@ -55,9 +55,9 @@ public class ATRIndicator extends AbstractIndicator<Num> {
         return trIndicator.getCountOfUnstableBars() + getBarCount();
     }
 
-    /** @return the {@link #trIndicator} */
+    /** @return a true range indicator for this indicator's bar series */
     public TRIndicator getTRIndicator() {
-        return trIndicator;
+        return new TRIndicator(getBarSeries());
     }
 
     /** @return the bar count of {@link #averageTrueRangeIndicator} */

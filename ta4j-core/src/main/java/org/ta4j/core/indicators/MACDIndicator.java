@@ -21,6 +21,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final transient EMAIndicator shortTermEma;
     private final transient EMAIndicator longTermEma;
+    private final int shortBarCount;
+    private final int longBarCount;
 
     /**
      * Constructor with:
@@ -49,6 +51,8 @@ public class MACDIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
         this.indicator = indicator;
+        this.shortBarCount = shortBarCount;
+        this.longBarCount = longBarCount;
         this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
         this.longTermEma = new EMAIndicator(indicator, longBarCount);
     }
@@ -57,14 +61,14 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @return the Short term EMA indicator
      */
     public EMAIndicator getShortTermEma() {
-        return shortTermEma;
+        return new EMAIndicator(indicator, shortBarCount);
     }
 
     /**
      * @return the Long term EMA indicator
      */
     public EMAIndicator getLongTermEma() {
-        return longTermEma;
+        return new EMAIndicator(indicator, longBarCount);
     }
 
     /**

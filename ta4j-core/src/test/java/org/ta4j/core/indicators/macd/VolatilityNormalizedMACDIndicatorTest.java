@@ -125,9 +125,22 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
         assertThat(indicator.getAtrBarCount()).isEqualTo(34);
         assertThat(indicator.getDefaultSignalBarCount()).isEqualTo(5);
         assertThat(indicator.getScaleFactor()).isEqualByComparingTo(numFactory.numOf(200));
-        assertThat(indicator.getFastEma().getBarCount()).isEqualTo(8);
-        assertThat(indicator.getSlowEma().getBarCount()).isEqualTo(21);
-        assertThat(indicator.getAtrIndicator().getBarCount()).isEqualTo(34);
+        EMAIndicator firstFastEma = indicator.getFastEma();
+        EMAIndicator secondFastEma = indicator.getFastEma();
+        EMAIndicator firstSlowEma = indicator.getSlowEma();
+        EMAIndicator secondSlowEma = indicator.getSlowEma();
+        ATRIndicator firstAtr = indicator.getAtrIndicator();
+        ATRIndicator secondAtr = indicator.getAtrIndicator();
+
+        assertThat(firstFastEma).isNotSameAs(secondFastEma);
+        assertThat(firstSlowEma).isNotSameAs(secondSlowEma);
+        assertThat(firstAtr).isNotSameAs(secondAtr);
+        assertThat(firstFastEma.getBarCount()).isEqualTo(8);
+        assertThat(firstSlowEma.getBarCount()).isEqualTo(21);
+        assertThat(firstFastEma.getValue(34)).isEqualByComparingTo(secondFastEma.getValue(34));
+        assertThat(firstSlowEma.getValue(34)).isEqualByComparingTo(secondSlowEma.getValue(34));
+        assertThat(firstAtr.getBarCount()).isEqualTo(34);
+        assertThat(firstAtr.getValue(34)).isEqualByComparingTo(secondAtr.getValue(34));
     }
 
     @Test

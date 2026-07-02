@@ -208,12 +208,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.ATRIndicator"/>
-        <Method name="getTRIndicator"/>
-        <Field name="trIndicator"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.indicators.ATRIndicator"/>
         <Method name="&lt;init&gt;"/>
@@ -271,18 +265,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.MACDIndicator"/>
-        <Method name="getLongTermEma"/>
-        <Field name="longTermEma"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.MACDIndicator"/>
-        <Method name="getShortTermEma"/>
-        <Field name="shortTermEma"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.NetMomentumIndicator"/>
         <Method name="&lt;init&gt;"/>
@@ -306,12 +288,6 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.StretchZScoreIndicator"/>
         <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.StretchZScoreIndicator"/>
-        <Method name="getStandardDeviationIndicator"/>
-        <Field name="standardDeviationIndicator"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -342,18 +318,6 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.VortexIndicator"/>
         <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.aroon.AroonOscillatorIndicator"/>
-        <Method name="getAroonDownIndicator"/>
-        <Field name="aroonDownIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.aroon.AroonOscillatorIndicator"/>
-        <Method name="getAroonUpIndicator"/>
-        <Field name="aroonUpIndicator"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -620,18 +584,6 @@
         <Field name="conversionLine"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator"/>
-        <Method name="getFastEma"/>
-        <Field name="fastEma"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator"/>
-        <Method name="getSlowEma"/>
-        <Field name="slowEma"/>
-    </Match>
-    <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.numeric.BinaryOperationIndicator"/>
         <Method name="&lt;init&gt;"/>
@@ -673,18 +625,6 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.renko.RenkoXIndicator"/>
         <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.supertrend.SuperTrendIndicator"/>
-        <Method name="getSuperTrendLowerBandIndicator"/>
-        <Field name="superTrendLowerBandIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.supertrend.SuperTrendIndicator"/>
-        <Method name="getSuperTrendUpperBandIndicator"/>
-        <Field name="superTrendUpperBandIndicator"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>

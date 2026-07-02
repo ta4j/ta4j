@@ -285,10 +285,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public EMAIndicator getFastEma() {
-        if (fastEma == null) {
-            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
-        }
-        return fastEma;
+        return new EMAIndicator(priceIndicator, fastBarCount);
     }
 
     /**
@@ -296,10 +293,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public EMAIndicator getSlowEma() {
-        if (slowEma == null) {
-            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
-        }
-        return slowEma;
+        return new EMAIndicator(priceIndicator, slowBarCount);
     }
 
     /**
@@ -307,6 +301,24 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public ATRIndicator getAtrIndicator() {
+        return new ATRIndicator(getBarSeries(), atrBarCount);
+    }
+
+    private EMAIndicator getCachedFastEma() {
+        if (fastEma == null) {
+            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
+        }
+        return fastEma;
+    }
+
+    private EMAIndicator getCachedSlowEma() {
+        if (slowEma == null) {
+            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
+        }
+        return slowEma;
+    }
+
+    private ATRIndicator getCachedAtrIndicator() {
         if (averageTrueRange == null) {
             averageTrueRange = new ATRIndicator(getBarSeries(), atrBarCount);
         }
@@ -637,9 +649,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num fastValue = getFastEma().getValue(index);
-        Num slowValue = getSlowEma().getValue(index);
-        Num atrValue = getAtrIndicator().getValue(index);
+        Num fastValue = getCachedFastEma().getValue(index);
+        Num slowValue = getCachedSlowEma().getValue(index);
+        Num atrValue = getCachedAtrIndicator().getValue(index);
         if (Num.isNaNOrNull(fastValue) || Num.isNaNOrNull(slowValue) || Num.isNaNOrNull(atrValue)) {
             return NaN.NaN;
         }
@@ -658,14 +670,15 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        int emaUnstableBars = Math.max(getFastEma().getCountOfUnstableBars(), getSlowEma().getCountOfUnstableBars());
+        int emaUnstableBars = Math.max(getCachedFastEma().getCountOfUnstableBars(),
+                getCachedSlowEma().getCountOfUnstableBars());
         int spreadUnstableBars = priceIndicator.getCountOfUnstableBars() + emaUnstableBars;
-        return Math.max(spreadUnstableBars, getAtrIndicator().getCountOfUnstableBars());
+        return Math.max(spreadUnstableBars, getCachedAtrIndicator().getCountOfUnstableBars());
     }
 
     private void ensureSubIndicatorsInitialized() {
-        getFastEma();
-        getSlowEma();
-        getAtrIndicator();
+        getCachedFastEma();
+        getCachedSlowEma();
+        getCachedAtrIndicator();
     }
 }
