@@ -545,11 +545,6 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.volume.VWAPBandIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.indicators.volume.VWAPBandIndicator"/>
         <Method name="&lt;init&gt;"/>
@@ -560,11 +555,6 @@
         <Class name="org.ta4j.core.indicators.volume.VWAPDeviationIndicator"/>
         <Method name="&lt;init&gt;"/>
         <Field name="vwapIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.volume.VWAPIndicator"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
