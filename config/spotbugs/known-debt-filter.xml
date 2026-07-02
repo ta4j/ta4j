@@ -745,11 +745,6 @@
         <Field name="ruleToNegate"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.OpenedPositionMinimumBarCountRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.OrRule"/>
         <Method name="getRule1"/>
@@ -772,11 +767,6 @@
         <Class name="org.ta4j.core.rules.OrWithThresholdRule"/>
         <Method name="getRule2"/>
         <Field name="rule2"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.TimeRangeRule"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -821,11 +811,6 @@
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.rules.VoteRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.WaitForRule"/>
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
