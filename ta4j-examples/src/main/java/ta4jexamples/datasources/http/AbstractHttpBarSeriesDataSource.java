@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.stream.Stream;
 
 /**
  * Abstract base class for HTTP-based BarSeries data sources.
@@ -75,15 +76,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * @throws IllegalArgumentException if httpClient is null
      */
     protected AbstractHttpBarSeriesDataSource(HttpClientWrapper httpClient, boolean enableResponseCaching) {
-        if (httpClient == null) {
-            throw new IllegalArgumentException("HttpClientWrapper cannot be null");
-        }
-        this.httpClient = httpClient;
-        this.enableResponseCaching = enableResponseCaching;
-        this.responseCacheDir = DEFAULT_RESPONSE_CACHE_DIR;
-        if (enableResponseCaching) {
-            ensureCacheDirectoryExists();
-        }
+        this(new DataSourceConfig(httpClientWrapper(httpClient), enableResponseCaching, DEFAULT_RESPONSE_CACHE_DIR));
     }
 
     /**
@@ -99,16 +92,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      *                                  null or empty
      */
     protected AbstractHttpBarSeriesDataSource(HttpClientWrapper httpClient, String responseCacheDir) {
-        if (httpClient == null) {
-            throw new IllegalArgumentException("HttpClientWrapper cannot be null");
-        }
-        if (responseCacheDir == null || responseCacheDir.trim().isEmpty()) {
-            throw new IllegalArgumentException("Response cache directory cannot be null or empty");
-        }
-        this.httpClient = httpClient;
-        this.enableResponseCaching = true;
-        this.responseCacheDir = responseCacheDir.trim();
-        ensureCacheDirectoryExists();
+        this(new DataSourceConfig(httpClientWrapper(httpClient), true, validatedCacheDir(responseCacheDir)));
     }
 
     /**
@@ -121,7 +105,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      *                              faster subsequent requests
      */
     protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, boolean enableResponseCaching) {
-        this(new DefaultHttpClientWrapper(httpClient), enableResponseCaching);
+        this(defaultHttpClientWrapper(httpClient), enableResponseCaching);
     }
 
     /**
@@ -135,7 +119,45 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      *                         relative or absolute)
      */
     protected AbstractHttpBarSeriesDataSource(HttpClient httpClient, String responseCacheDir) {
-        this(new DefaultHttpClientWrapper(httpClient), responseCacheDir);
+        this(defaultHttpClientWrapper(httpClient), responseCacheDir);
+    }
+
+    private AbstractHttpBarSeriesDataSource(DataSourceConfig config) {
+        this.httpClient = config.httpClient();
+        this.enableResponseCaching = config.enableResponseCaching();
+        this.responseCacheDir = config.responseCacheDir();
+        if (enableResponseCaching) {
+            ensureCacheDirectoryExists();
+        }
+    }
+
+    private static HttpClientWrapper httpClientWrapper(HttpClientWrapper httpClient) {
+        if (httpClient == null) {
+            throw new IllegalArgumentException("HttpClientWrapper cannot be null");
+        }
+        return httpClient;
+    }
+
+    private static HttpClient javaHttpClient(HttpClient httpClient) {
+        if (httpClient == null) {
+            throw new IllegalArgumentException("HttpClient cannot be null");
+        }
+        return httpClient;
+    }
+
+    private static HttpClientWrapper defaultHttpClientWrapper(HttpClient httpClient) {
+        return new DefaultHttpClientWrapper(javaHttpClient(httpClient));
+    }
+
+    private static String validatedCacheDir(String responseCacheDir) {
+        if (responseCacheDir == null || responseCacheDir.trim().isEmpty()) {
+            throw new IllegalArgumentException("Response cache directory cannot be null or empty");
+        }
+        return responseCacheDir.trim();
+    }
+
+    private record DataSourceConfig(HttpClientWrapper httpClient, boolean enableResponseCaching,
+            String responseCacheDir) {
     }
 
     @Override
@@ -369,20 +391,27 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
 
         try {
             Path cacheDir = Paths.get(responseCacheDir);
-            for (Path path : Files.list(cacheDir).toList()) {
-                if (Files.isRegularFile(path)) {
-                    String filename = path.getFileName().toString();
-                    // Check if file belongs to this data source
-                    if (sourcePrefix.isEmpty() || filename.startsWith(sourcePrefix)) {
-                        try {
-                            // If maxAge is ZERO, delete all files regardless of age
-                            if (maxAge.isZero() || Files.getLastModifiedTime(path).toInstant().isBefore(cutoffTime)) {
-                                Files.delete(path);
-                                deletedCount++;
-                                LOG.debug("Deleted cache file: {}", filename);
+            try (Stream<Path> paths = Files.list(cacheDir)) {
+                for (Path path : paths.toList()) {
+                    if (Files.isRegularFile(path)) {
+                        Path fileNamePath = path.getFileName();
+                        if (fileNamePath == null) {
+                            continue;
+                        }
+                        String filename = fileNamePath.toString();
+                        // Check if file belongs to this data source
+                        if (sourcePrefix.isEmpty() || filename.startsWith(sourcePrefix)) {
+                            try {
+                                // If maxAge is ZERO, delete all files regardless of age
+                                if (maxAge.isZero()
+                                        || Files.getLastModifiedTime(path).toInstant().isBefore(cutoffTime)) {
+                                    Files.delete(path);
+                                    deletedCount++;
+                                    LOG.debug("Deleted cache file: {}", filename);
+                                }
+                            } catch (IOException e) {
+                                LOG.warn("Failed to delete cache file {}: {}", filename, e.getMessage());
                             }
-                        } catch (IOException e) {
-                            LOG.warn("Failed to delete cache file {}: {}", filename, e.getMessage());
                         }
                     }
                 }

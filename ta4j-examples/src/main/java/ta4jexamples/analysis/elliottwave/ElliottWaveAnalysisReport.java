@@ -98,6 +98,19 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     private static final double OUTLOOK_MIN_TREND_STRENGTH = 0.15;
     private static final double CALIBRATION_EPSILON = 1.0e-12;
 
+    public ElliottWaveAnalysisReport {
+        alternatives = alternatives == null ? List.of() : List.copyOf(alternatives);
+        alternativeChartImages = alternativeChartImages == null ? List.of() : List.copyOf(alternativeChartImages);
+    }
+
+    public List<AlternativeScenario> alternatives() {
+        return List.copyOf(alternatives);
+    }
+
+    public List<String> alternativeChartImages() {
+        return List.copyOf(alternativeChartImages);
+    }
+
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
         @Override
         public void write(JsonWriter out, Double value) throws IOException {
@@ -450,6 +463,14 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             double fibonacciScore, double timeScore, double alternationScore, double channelScore,
             double completenessScore, String primaryReason, String weakestFactor, String direction,
             double invalidationPrice, double primaryTarget, List<SwingData> swings) {
+        public BaseCaseScenario {
+            swings = swings == null ? List.of() : List.copyOf(swings);
+        }
+
+        public List<SwingData> swings() {
+            return List.copyOf(swings);
+        }
+
         static BaseCaseScenario from(ElliottScenario scenario, double scenarioProbability,
                 double calibratedProbability) {
             ElliottConfidence confidence = scenario.confidence();
@@ -491,6 +512,14 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     public record AlternativeScenario(ElliottPhase currentPhase, ScenarioType type, double confidencePercent,
             @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability,
             @JsonAdapter(ScenarioProbabilityAdapter.class) double calibratedProbability, List<SwingData> swings) {
+        public AlternativeScenario {
+            swings = swings == null ? List.of() : List.copyOf(swings);
+        }
+
+        public List<SwingData> swings() {
+            return List.copyOf(swings);
+        }
+
         static AlternativeScenario from(ElliottScenario scenario, double scenarioProbability,
                 double calibratedProbability) {
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();

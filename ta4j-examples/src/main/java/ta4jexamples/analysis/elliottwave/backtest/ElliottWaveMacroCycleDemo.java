@@ -1424,7 +1424,11 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static String fileName(final Path path) {
-        return path == null || path.getFileName() == null ? "" : path.getFileName().toString();
+        if (path == null) {
+            return "";
+        }
+        Path fileName = path.getFileName();
+        return fileName == null ? "" : fileName.toString();
     }
 
     private static String fileName(final String path) {
@@ -2483,7 +2487,10 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static void saveSummary(final String json, final Path summaryPath, final String description) {
         try {
-            Files.createDirectories(summaryPath.getParent());
+            Path parent = summaryPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Files.writeString(summaryPath, json);
         } catch (final IOException exception) {
             throw new IllegalStateException("Unable to write " + description + " " + summaryPath, exception);

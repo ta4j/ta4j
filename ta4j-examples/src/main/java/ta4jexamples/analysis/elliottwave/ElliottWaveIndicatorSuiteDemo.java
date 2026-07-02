@@ -1369,6 +1369,13 @@ public class ElliottWaveIndicatorSuiteDemo {
             Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
             Optional<ChartPlan> baseCaseChartPlan, List<ChartPlan> alternativeChartPlans,
             ElliottWaveAnalysisReport structuredResult) {
+        public AnalysisResult {
+            alternativeChartPlans = alternativeChartPlans == null ? List.of() : List.copyOf(alternativeChartPlans);
+        }
+
+        public List<ChartPlan> alternativeChartPlans() {
+            return List.copyOf(alternativeChartPlans);
+        }
     }
 
 }

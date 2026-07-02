@@ -1053,7 +1053,7 @@ public final class ChartBuilder {
 
         ChartDefinition(PlotDefinition basePlot, List<PlotDefinition> subplots, ChartDefinitionMetadata metadata) {
             this.basePlot = basePlot;
-            this.subplots = subplots;
+            this.subplots = List.copyOf(subplots);
             this.metadata = Objects.requireNonNull(metadata, "Chart metadata cannot be null");
         }
 
@@ -1072,7 +1072,7 @@ public final class ChartBuilder {
          * @return the list of subplot definitions
          */
         public List<PlotDefinition> subplots() {
-            return subplots;
+            return List.copyOf(subplots);
         }
 
         /**
@@ -1166,9 +1166,9 @@ public final class ChartBuilder {
             this.series = series;
             this.baseIndicator = baseIndicator;
             this.tradingRecord = tradingRecord;
-            this.overlays = overlays;
-            this.channelOverlays = channelOverlays;
-            this.horizontalMarkers = horizontalMarkers;
+            this.overlays = List.copyOf(overlays);
+            this.channelOverlays = List.copyOf(channelOverlays);
+            this.horizontalMarkers = List.copyOf(horizontalMarkers);
         }
 
         static PlotDefinition fromContext(PlotContext context) {
@@ -1233,7 +1233,7 @@ public final class ChartBuilder {
          * @return the list of overlay definitions
          */
         public List<OverlayDefinition> overlays() {
-            return overlays;
+            return List.copyOf(overlays);
         }
 
         /**
@@ -1242,7 +1242,7 @@ public final class ChartBuilder {
          * @return the list of channel overlay definitions
          */
         public List<ChannelOverlayDefinition> channelOverlays() {
-            return channelOverlays;
+            return List.copyOf(channelOverlays);
         }
 
         /**
@@ -1251,7 +1251,7 @@ public final class ChartBuilder {
          * @return the list of horizontal marker definitions
          */
         public List<HorizontalMarkerDefinition> horizontalMarkers() {
-            return horizontalMarkers;
+            return List.copyOf(horizontalMarkers);
         }
     }
 
