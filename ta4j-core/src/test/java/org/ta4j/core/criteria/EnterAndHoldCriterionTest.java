@@ -33,6 +33,13 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void enterAndHoldReturnFactoryUsesMultiplicativeNetReturn() {
+        var criterion = EnterAndHoldCriterion.enterAndHoldReturnCriterion();
+
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, criterion.getReturnRepresentation().orElseThrow());
+    }
+
+    @Test
     public void calculateWithOnePosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));

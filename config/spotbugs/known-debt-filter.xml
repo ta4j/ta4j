@@ -203,23 +203,8 @@
         <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
-        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
-        <Class name="org.ta4j.core.criteria.EnterAndHoldCriterion"/>
-        <Method name="EnterAndHoldReturnCriterion"/>
-    </Match>
-    <Match>
         <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
         <Class name="org.ta4j.core.criteria.MaximumDrawdownCriterion"/>
-    </Match>
-    <Match>
-        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
-        <Class name="org.ta4j.core.criteria.PositionsRatioCriterion"/>
-        <Method name="LosingPositionsRatioCriterion"/>
-    </Match>
-    <Match>
-        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
-        <Class name="org.ta4j.core.criteria.PositionsRatioCriterion"/>
-        <Method name="WinningPositionsRatioCriterion"/>
     </Match>
     <Match>
         <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>

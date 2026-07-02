@@ -49,8 +49,10 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     /**
      * The {@link NetReturnCriterion} (with base) from a buy-and-hold strategy with
      * an {@link #amount} of {@code 1}.
+     *
+     * @return enter-and-hold return criterion
      */
-    public static EnterAndHoldCriterion EnterAndHoldReturnCriterion() {
+    public static EnterAndHoldCriterion enterAndHoldReturnCriterion() {
         return new EnterAndHoldCriterion(TradeType.BUY, new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE));
     }
 

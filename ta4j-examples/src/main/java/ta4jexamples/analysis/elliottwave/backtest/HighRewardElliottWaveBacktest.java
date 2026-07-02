@@ -71,7 +71,7 @@ public class HighRewardElliottWaveBacktest {
         Num grossReturn = new GrossReturnCriterion().calculate(series, record);
         Num profitFactor = new GrossProfitLossRatioCriterion().calculate(series, record);
         Num maxDrawdown = new MaximumDrawdownCriterion().calculate(series, record);
-        Num winRate = PositionsRatioCriterion.WinningPositionsRatioCriterion().calculate(series, record);
+        Num winRate = PositionsRatioCriterion.winningPositionsRatioCriterion().calculate(series, record);
         Num expectancy = new ExpectancyCriterion().calculate(series, record);
 
         LOG.info("Spec: {}", spec.label());
