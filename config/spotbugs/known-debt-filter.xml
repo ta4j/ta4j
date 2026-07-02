@@ -511,21 +511,6 @@
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.renko.RenkoDownIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.renko.RenkoUpIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.renko.RenkoXIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.supportresistance.AbstractBounceCountIndicator"/>
         <Method name="&lt;init&gt;"/>
     </Match>
