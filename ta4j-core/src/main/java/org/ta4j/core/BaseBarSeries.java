@@ -214,7 +214,7 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public List<Bar> getBarData() {
-        return this.bars;
+        return List.copyOf(this.bars);
     }
 
     @Override

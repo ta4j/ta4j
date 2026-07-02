@@ -36,8 +36,14 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      */
     public BacktestExecutionResult {
         barSeries = Objects.requireNonNull(barSeries, "barSeries must not be null");
-        tradingStatements = Objects.requireNonNull(tradingStatements, "tradingStatements must not be null");
+        tradingStatements = List
+                .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
+    }
+
+    @Override
+    public List<TradingStatement> tradingStatements() {
+        return List.copyOf(tradingStatements);
     }
 
     /**
