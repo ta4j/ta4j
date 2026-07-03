@@ -92,7 +92,7 @@ manual-only, runs on hosted Ubuntu, accepts `instrument`, `exchange`, and
 charts, scenario-outlook JSON, cached provider responses, and full demo log.
 Long-form BTC anchor calibration is not a JUnit lane. Run
 `ElliottWaveAnchorCalibrationHarness` as an explicit examples job when you need
-the multi-hour replay artifacts instead of a live monitoring snapshot.
+the multi-hour calibration artifacts instead of a live monitoring snapshot.
 
 The `analysis-demo` tag is for examples that produce analysis reports and must
 be the only JUnit tag on each tagged test or class.
