@@ -72,7 +72,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series) {
-        this(series, DEFAULT_BAR_COUNT, DEFAULT_VOLUME_DIVISOR);
+        this(validatedConfig(series, DEFAULT_BAR_COUNT, DEFAULT_VOLUME_DIVISOR));
     }
 
     /**
@@ -83,7 +83,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series, final int barCount) {
-        this(series, barCount, DEFAULT_VOLUME_DIVISOR);
+        this(validatedConfig(series, barCount, DEFAULT_VOLUME_DIVISOR));
     }
 
     /**
@@ -96,8 +96,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series, final int barCount, final Number volumeDivisor) {
-        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new VolumeIndicator(series), barCount,
-                volumeDivisor);
+        this(validatedConfig(series, barCount, volumeDivisor));
     }
 
     /**
@@ -111,7 +110,8 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator) {
-        this(highPriceIndicator, lowPriceIndicator, volumeIndicator, DEFAULT_BAR_COUNT, DEFAULT_VOLUME_DIVISOR);
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, volumeIndicator, DEFAULT_BAR_COUNT,
+                DEFAULT_VOLUME_DIVISOR));
     }
 
     /**
@@ -125,7 +125,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator, final int barCount) {
-        this(highPriceIndicator, lowPriceIndicator, volumeIndicator, barCount, DEFAULT_VOLUME_DIVISOR);
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, volumeIndicator, barCount, DEFAULT_VOLUME_DIVISOR));
     }
 
     /**
@@ -141,25 +141,42 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator, final int barCount, final Number volumeDivisor) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, volumeIndicator));
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, volumeIndicator, barCount, volumeDivisor));
+    }
+
+    private EaseOfMovementIndicator(Config config) {
+        super(config.series());
+        this.barCount = config.barCount();
+        this.volumeDivisor = config.volumeDivisor();
+        this.highPriceIndicator = config.highPriceIndicator();
+        this.lowPriceIndicator = config.lowPriceIndicator();
+        this.volumeIndicator = config.volumeIndicator();
+        this.rawEaseOfMovementIndicator = config.rawEaseOfMovementIndicator();
+    }
+
+    private static Config validatedConfig(final BarSeries series, final int barCount, final Number volumeDivisor) {
+        return validatedConfig(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new VolumeIndicator(series), barCount, volumeDivisor);
+    }
+
+    private static Config validatedConfig(final Indicator<Num> highPriceIndicator,
+            final Indicator<Num> lowPriceIndicator, final Indicator<Num> volumeIndicator, final int barCount,
+            final Number volumeDivisor) {
+        BarSeries series = IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, volumeIndicator);
         validateBarCount(barCount);
 
-        this.barCount = barCount;
-        final Number validatedDivisor = Objects.requireNonNull(volumeDivisor, "volumeDivisor must not be null");
+        Number validatedDivisor = Objects.requireNonNull(volumeDivisor, "volumeDivisor must not be null");
         if (!Double.isFinite(validatedDivisor.doubleValue())) {
             throw new IllegalArgumentException("Ease of Movement volumeDivisor must be finite and greater than 0");
         }
-        this.volumeDivisor = getBarSeries().numFactory().numOf(validatedDivisor);
-        if (this.volumeDivisor.isLessThanOrEqual(getBarSeries().numFactory().zero())) {
+        Num resolvedVolumeDivisor = series.numFactory().numOf(validatedDivisor);
+        if (resolvedVolumeDivisor.isLessThanOrEqual(series.numFactory().zero())) {
             throw new IllegalArgumentException("Ease of Movement volumeDivisor must be finite and greater than 0");
         }
-
-        this.highPriceIndicator = highPriceIndicator;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.volumeIndicator = volumeIndicator;
-
-        this.rawEaseOfMovementIndicator = new RawEaseOfMovementIndicator(this.highPriceIndicator,
-                this.lowPriceIndicator, this.volumeIndicator, this.volumeDivisor);
+        RawEaseOfMovementIndicator rawEaseOfMovementIndicator = new RawEaseOfMovementIndicator(highPriceIndicator,
+                lowPriceIndicator, volumeIndicator, resolvedVolumeDivisor);
+        return new Config(series, highPriceIndicator, lowPriceIndicator, volumeIndicator, barCount,
+                resolvedVolumeDivisor, rawEaseOfMovementIndicator);
     }
 
     @Override
@@ -209,6 +226,11 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
 
     private static boolean isInvalid(final Num value) {
         return Num.isNaNOrNull(value);
+    }
+
+    private record Config(BarSeries series, Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> volumeIndicator, int barCount, Num volumeDivisor,
+            RawEaseOfMovementIndicator rawEaseOfMovementIndicator) {
     }
 
     private static final class RawEaseOfMovementIndicator extends CachedIndicator<Num> {
