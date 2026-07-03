@@ -94,7 +94,7 @@ public class BaseTrade implements Trade {
      * @param type   the trade type
      */
     protected BaseTrade(int index, BarSeries series, Trade.TradeType type) {
-        this(index, series, type, series.numFactory().one());
+        this(seriesConfig(index, series, type));
     }
 
     /**
@@ -106,7 +106,7 @@ public class BaseTrade implements Trade {
      * @param amount the trade amount
      */
     protected BaseTrade(int index, BarSeries series, Trade.TradeType type, Num amount) {
-        this(index, series, type, amount, new ZeroCostModel());
+        this(seriesConfig(index, series, type, amount));
     }
 
     /**
@@ -119,17 +119,7 @@ public class BaseTrade implements Trade {
      * @param transactionCostModel the cost model for trade execution cost
      */
     protected BaseTrade(int index, BarSeries series, Trade.TradeType type, Num amount, CostModel transactionCostModel) {
-        Num executionPrice = series.getBar(index).getClosePrice();
-        Instant executionTime = series.getBar(index).getEndTime();
-        this.type = type;
-        this.index = index;
-        this.amount = amount;
-        this.time = executionTime;
-        this.side = executionSide(type);
-        this.orderId = null;
-        this.correlationId = null;
-        this.fills = List.of(new TradeFill(index, executionTime, executionPrice, amount, side));
-        setPricesAndCost(executionPrice, amount, transactionCostModel, this.fills);
+        this(seriesConfig(index, series, type, amount, transactionCostModel));
     }
 
     /**
@@ -140,7 +130,7 @@ public class BaseTrade implements Trade {
      * @param pricePerAsset the trade price per asset
      */
     protected BaseTrade(int index, Trade.TradeType type, Num pricePerAsset) {
-        this(index, type, pricePerAsset, pricePerAsset.getNumFactory().one());
+        this(priceConfig(index, type, pricePerAsset));
     }
 
     /**
@@ -152,7 +142,7 @@ public class BaseTrade implements Trade {
      * @param amount        the trade amount
      */
     protected BaseTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount) {
-        this(index, type, pricePerAsset, amount, new ZeroCostModel());
+        this(priceConfig(index, type, pricePerAsset, amount));
     }
 
     /**
@@ -166,15 +156,7 @@ public class BaseTrade implements Trade {
      */
     protected BaseTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount,
             CostModel transactionCostModel) {
-        this.type = type;
-        this.index = index;
-        this.amount = amount;
-        this.time = null;
-        this.side = executionSide(type);
-        this.orderId = null;
-        this.correlationId = null;
-        this.fills = List.of(new TradeFill(index, null, pricePerAsset, amount, side));
-        setPricesAndCost(pricePerAsset, amount, transactionCostModel, this.fills);
+        this(priceConfig(index, type, pricePerAsset, amount, transactionCostModel));
     }
 
     /**
@@ -186,20 +168,65 @@ public class BaseTrade implements Trade {
      * @since 0.22.4
      */
     protected BaseTrade(Trade.TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
+        this(fillConfig(type, fills, transactionCostModel));
+    }
+
+    private BaseTrade(TradeConfig config) {
+        this.type = config.type();
+        this.index = config.index();
+        this.pricePerAsset = config.pricePerAsset();
+        this.netPrice = config.netPrice();
+        this.amount = config.amount();
+        this.fills = config.fills();
+        this.time = config.time();
+        this.side = config.side();
+        this.orderId = config.orderId();
+        this.correlationId = config.correlationId();
+        this.cost = config.cost();
+        this.costModel = config.costModel();
+    }
+
+    private static TradeConfig seriesConfig(int index, BarSeries series, Trade.TradeType type) {
+        return seriesConfig(index, series, type, series.numFactory().one());
+    }
+
+    private static TradeConfig seriesConfig(int index, BarSeries series, Trade.TradeType type, Num amount) {
+        return seriesConfig(index, series, type, amount, new ZeroCostModel());
+    }
+
+    private static TradeConfig seriesConfig(int index, BarSeries series, Trade.TradeType type, Num amount,
+            CostModel transactionCostModel) {
+        Num executionPrice = series.getBar(index).getClosePrice();
+        Instant executionTime = series.getBar(index).getEndTime();
+        ExecutionSide side = executionSide(type);
+        List<TradeFill> fills = List.of(new TradeFill(index, executionTime, executionPrice, amount, side));
+        return config(type, index, executionTime, executionPrice, amount, side, null, null, fills,
+                transactionCostModel);
+    }
+
+    private static TradeConfig priceConfig(int index, Trade.TradeType type, Num pricePerAsset) {
+        return priceConfig(index, type, pricePerAsset, pricePerAsset.getNumFactory().one());
+    }
+
+    private static TradeConfig priceConfig(int index, Trade.TradeType type, Num pricePerAsset, Num amount) {
+        return priceConfig(index, type, pricePerAsset, amount, new ZeroCostModel());
+    }
+
+    private static TradeConfig priceConfig(int index, Trade.TradeType type, Num pricePerAsset, Num amount,
+            CostModel transactionCostModel) {
+        ExecutionSide side = executionSide(type);
+        List<TradeFill> fills = List.of(new TradeFill(index, null, pricePerAsset, amount, side));
+        return config(type, index, null, pricePerAsset, amount, side, null, null, fills, transactionCostModel);
+    }
+
+    private static TradeConfig fillConfig(Trade.TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
         Objects.requireNonNull(type, "type");
-        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        CostModel validatedCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         FillSummary fillSummary = summarizeFills(type, fills);
         FillMetadata metadata = summarizeMetadata(type, fillSummary.firstFill());
-        this.type = type;
-        this.index = fillSummary.firstFill().index();
-        this.amount = fillSummary.totalAmount();
-        this.time = metadata.time();
-        this.side = metadata.side();
-        this.orderId = metadata.orderId();
-        this.correlationId = metadata.correlationId();
-        this.fills = fillSummary.fills();
-        setPricesAndCost(fillSummary.weightedAveragePrice(), fillSummary.totalAmount(), transactionCostModel,
-                this.fills);
+        return config(type, fillSummary.firstFill().index(), metadata.time(), fillSummary.weightedAveragePrice(),
+                fillSummary.totalAmount(), metadata.side(), metadata.orderId(), metadata.correlationId(),
+                fillSummary.fills(), validatedCostModel);
     }
 
     /**
@@ -217,6 +244,11 @@ public class BaseTrade implements Trade {
      */
     public BaseTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee, ExecutionSide side,
             String orderId, String correlationId) {
+        this(liveConfig(index, time, pricePerAsset, amount, fee, side, orderId, correlationId));
+    }
+
+    private static TradeConfig liveConfig(int index, Instant time, Num pricePerAsset, Num amount, Num fee,
+            ExecutionSide side, String orderId, String correlationId) {
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
@@ -225,16 +257,10 @@ public class BaseTrade implements Trade {
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(side, "side");
         Num normalizedFee = fee == null ? pricePerAsset.getNumFactory().zero() : fee;
-        this.type = side.toTradeType();
-        this.index = index;
-        this.amount = amount;
-        this.time = time;
-        this.side = side;
-        this.orderId = orderId;
-        this.correlationId = correlationId;
-        this.fills = List
+        List<TradeFill> fills = List
                 .of(new TradeFill(index, time, pricePerAsset, amount, normalizedFee, side, orderId, correlationId));
-        setPricesAndCost(pricePerAsset, amount, RecordedTradeCostModel.INSTANCE, this.fills);
+        return config(side.toTradeType(), index, time, pricePerAsset, amount, side, orderId, correlationId, fills,
+                RecordedTradeCostModel.INSTANCE);
     }
 
     @Override
@@ -362,31 +388,32 @@ public class BaseTrade implements Trade {
         return costModel == null ? DEFAULT_COST_MODEL : costModel;
     }
 
-    /**
-     * Sets the raw and net prices of the trade.
-     *
-     * @param pricePerAsset        the raw price of the asset
-     * @param amount               the amount of assets ordered
-     * @param transactionCostModel the cost model for trade execution
-     */
-    private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel,
-            List<TradeFill> fills) {
-        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
-        this.costModel = transactionCostModel;
-        this.pricePerAsset = pricePerAsset;
-        this.cost = resolveCost(transactionCostModel, this.pricePerAsset, amount, fills);
+    private static TradeConfig config(Trade.TradeType type, int index, Instant time, Num pricePerAsset, Num amount,
+            ExecutionSide side, String orderId, String correlationId, List<TradeFill> fills,
+            CostModel transactionCostModel) {
+        CostModel validatedCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        PriceCost priceCost = priceCost(type, pricePerAsset, amount, fills, validatedCostModel);
+        return new TradeConfig(type, index, pricePerAsset, priceCost.netPrice(), amount, List.copyOf(fills), time, side,
+                orderId, correlationId, priceCost.cost(), validatedCostModel);
+    }
 
+    private static PriceCost priceCost(Trade.TradeType type, Num pricePerAsset, Num amount, List<TradeFill> fills,
+            CostModel transactionCostModel) {
+        Num cost = resolveCost(transactionCostModel, pricePerAsset, amount, fills);
+
+        final Num netPrice;
         if (amount.isZero()) {
-            this.netPrice = this.pricePerAsset;
-            return;
-        }
-        Num costPerAsset = cost.dividedBy(amount);
-        // add transaction costs to the pricePerAsset at the trade
-        if (type.equals(Trade.TradeType.BUY)) {
-            this.netPrice = this.pricePerAsset.plus(costPerAsset);
+            netPrice = pricePerAsset;
         } else {
-            this.netPrice = this.pricePerAsset.minus(costPerAsset);
+            Num costPerAsset = cost.dividedBy(amount);
+            // add transaction costs to the pricePerAsset at the trade
+            if (type.equals(Trade.TradeType.BUY)) {
+                netPrice = pricePerAsset.plus(costPerAsset);
+            } else {
+                netPrice = pricePerAsset.minus(costPerAsset);
+            }
         }
+        return new PriceCost(cost, netPrice);
     }
 
     private static Num resolveCost(CostModel transactionCostModel, Num pricePerAsset, Num amount,
@@ -583,6 +610,14 @@ public class BaseTrade implements Trade {
     }
 
     private record FillMetadata(Instant time, ExecutionSide side, String orderId, String correlationId) {
+    }
+
+    private record PriceCost(Num cost, Num netPrice) {
+    }
+
+    private record TradeConfig(Trade.TradeType type, int index, Num pricePerAsset, Num netPrice, Num amount,
+            List<TradeFill> fills, Instant time, ExecutionSide side, String orderId, String correlationId, Num cost,
+            CostModel costModel) {
     }
 
     private static final class PreservedTradeCostModel implements CostModel {
