@@ -296,16 +296,6 @@
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.averages.SGMAIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.averages.VWMAIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.candles.AbstractMarubozuIndicator"/>
         <Method name="&lt;init&gt;"/>
     </Match>

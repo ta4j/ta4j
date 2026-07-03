@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.averages;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -40,7 +41,7 @@ public class VWMAIndicator extends CachedIndicator<Num> {
      * @param barCount       the time frame
      */
     public VWMAIndicator(Indicator<Num> priceIndicator, int barCount) {
-        this(priceIndicator, new VolumeIndicator(priceIndicator.getBarSeries()), barCount, SMAIndicator::new);
+        this(defaultConfig(priceIndicator, barCount));
     }
 
     /**
@@ -55,23 +56,50 @@ public class VWMAIndicator extends CachedIndicator<Num> {
      */
     public VWMAIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> averageFactory) {
-        super(priceIndicator.getBarSeries());
-        Objects.requireNonNull(volumeIndicator, "volumeIndicator must not be null");
-        Objects.requireNonNull(averageFactory, "averageFactory must not be null");
-        if (priceIndicator.getBarSeries() != volumeIndicator.getBarSeries()) {
+        this(validatedConfig(priceIndicator, volumeIndicator, barCount, averageFactory));
+    }
+
+    private VWMAIndicator(Config config) {
+        super(config.series());
+        this.priceIndicator = config.priceIndicator();
+        this.volumeIndicator = config.volumeIndicator();
+        this.volumeWeightedIndicator = config.volumeWeightedIndicator();
+        this.barCount = config.barCount();
+    }
+
+    private static Config defaultConfig(Indicator<Num> priceIndicator, int barCount) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
+                "priceIndicator must reference a bar series");
+        return validatedConfig(validatedPriceIndicator, new VolumeIndicator(series), barCount, SMAIndicator::new);
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> averageFactory) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        Indicator<Num> validatedVolumeIndicator = Objects.requireNonNull(volumeIndicator,
+                "volumeIndicator must not be null");
+        BiFunction<Indicator<Num>, Integer, Indicator<Num>> validatedAverageFactory = Objects
+                .requireNonNull(averageFactory, "averageFactory must not be null");
+        BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
+                "priceIndicator must reference a bar series");
+        if (series != validatedVolumeIndicator.getBarSeries()) {
             throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
         }
 
-        this.priceIndicator = priceIndicator;
-        this.volumeIndicator = volumeIndicator;
-        final var weightedPriceSum = BinaryOperationIndicator.product(priceIndicator, volumeIndicator);
-        final var weightedPriceAverage = Objects.requireNonNull(averageFactory.apply(weightedPriceSum, barCount),
+        Indicator<Num> weightedPriceSum = BinaryOperationIndicator.product(validatedPriceIndicator,
+                validatedVolumeIndicator);
+        Indicator<Num> weightedPriceAverage = Objects.requireNonNull(
+                validatedAverageFactory.apply(weightedPriceSum, barCount),
                 "averageFactory must return a price-volume average");
-        final var volumeAverage = Objects.requireNonNull(averageFactory.apply(volumeIndicator, barCount),
+        Indicator<Num> volumeAverage = Objects.requireNonNull(
+                validatedAverageFactory.apply(validatedVolumeIndicator, barCount),
                 "averageFactory must return a volume average");
 
-        this.volumeWeightedIndicator = BinaryOperationIndicator.quotient(weightedPriceAverage, volumeAverage);
-        this.barCount = barCount;
+        Indicator<Num> volumeWeightedIndicator = BinaryOperationIndicator.quotient(weightedPriceAverage, volumeAverage);
+        return new Config(series, validatedPriceIndicator, validatedVolumeIndicator, volumeWeightedIndicator, barCount);
     }
 
     @Override
@@ -92,5 +120,9 @@ public class VWMAIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
+    private record Config(BarSeries series, Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator,
+            Indicator<Num> volumeWeightedIndicator, int barCount) {
     }
 }
