@@ -41,6 +41,6 @@ public class NotRule extends AbstractRule {
 
     /** @return {@link #ruleToNegate} */
     public Rule getRuleToNegate() {
-        return ruleToNegate;
+        return RuleCopies.copy(ruleToNegate);
     }
 }

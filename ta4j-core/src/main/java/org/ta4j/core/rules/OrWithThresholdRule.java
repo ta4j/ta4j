@@ -93,12 +93,12 @@ public class OrWithThresholdRule extends AbstractRule {
 
     /** @return the first rule */
     public Rule getRule1() {
-        return rule1;
+        return RuleCopies.copy(rule1);
     }
 
     /** @return the second rule */
     public Rule getRule2() {
-        return rule2;
+        return RuleCopies.copy(rule2);
     }
 
     private record Config(Rule rule1, Rule rule2, int threshold) {
