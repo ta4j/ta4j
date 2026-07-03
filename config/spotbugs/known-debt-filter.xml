@@ -92,12 +92,6 @@
         <Field name="ruleToNegate"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.NotRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="ruleToNegate"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.OrRule"/>
         <Method name="getRule1"/>
