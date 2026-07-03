@@ -21,12 +21,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.BacktestExecutionResult"/>
-        <Method name="barSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
         <Method name="strategy"/>
         <Field name="strategy"/>
@@ -72,12 +66,6 @@
         <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
         <Method name="&lt;init&gt;"/>
         <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.StrategyWalkForwardExecutionResult"/>
-        <Method name="barSeries"/>
-        <Field name="barSeries"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>

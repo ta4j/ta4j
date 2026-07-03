@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
@@ -35,10 +36,15 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @param runtimeReport     runtime statistics for the execution
      */
     public BacktestExecutionResult {
-        barSeries = Objects.requireNonNull(barSeries, "barSeries must not be null");
+        barSeries = snapshotSeries(barSeries);
         tradingStatements = List
                 .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
+    }
+
+    @Override
+    public BarSeries barSeries() {
+        return snapshotSeries(barSeries);
     }
 
     @Override
@@ -319,5 +325,14 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         json.addProperty("tradingStatementsCount", tradingStatements.size());
         json.add("runtimeReport", JsonParser.parseString(runtimeReport.toString()).getAsJsonObject());
         return gson.toJson(json);
+    }
+
+    private static BarSeries snapshotSeries(BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries, "barSeries must not be null");
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 }

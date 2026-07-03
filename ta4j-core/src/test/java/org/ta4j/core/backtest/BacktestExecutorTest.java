@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -471,7 +472,9 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, numOf(1), Trade.TradeType.BUY,
                 config);
 
-        assertSame(series, result.barSeries());
+        BarSeries resultSeries = result.barSeries();
+        assertNotSame(series, resultSeries);
+        assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
     }
@@ -527,7 +530,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(1, result.backtest().tradingStatements().size());
         assertFalse(result.walkForward().folds().isEmpty());
-        assertSame(result.backtest().barSeries(), result.walkForward().barSeries());
+        BarSeries backtestSeries = result.backtest().barSeries();
+        BarSeries walkForwardSeries = result.walkForward().barSeries();
+        assertNotSame(backtestSeries, walkForwardSeries);
+        assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
+        assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }
 
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {

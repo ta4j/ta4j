@@ -109,6 +109,23 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
+        BarSeries firstSnapshot = result.barSeries();
+        BarSeries secondSnapshot = result.barSeries();
+        series.barBuilder().closePrice(8).add();
+
+        assertNotSame(series, firstSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
+        assertEquals(3, firstSnapshot.getBarCount());
+        assertEquals(3, secondSnapshot.getBarCount());
+        assertEquals(3, result.barSeries().getBarCount());
+        assertEquals(series.getName(), firstSnapshot.getName());
+    }
+
+    @Test
     public void getTopStrategiesWithSingleCriterionSortsCorrectly() {
         // Create a bar series with price movement
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
