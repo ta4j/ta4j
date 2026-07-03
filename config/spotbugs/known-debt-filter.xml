@@ -15,12 +15,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.ConcurrentBarSeries"/>
-        <Method name="tradeBarBuilder"/>
-        <Field name="tradeBarBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
         <Method name="strategy"/>
         <Field name="strategy"/>

@@ -1161,6 +1161,28 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void tradeBarBuilderFacadeSharesInternalTradeState() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("tradeBarBuilderReturnsFacadeSharingInternalTradeStateSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        Duration period = Duration.ofSeconds(60);
+        Instant start = Instant.parse("2024-01-01T00:00:30Z");
+
+        BarBuilder first = series.tradeBarBuilder();
+        BarBuilder second = series.tradeBarBuilder();
+
+        assertNotSame(first, second);
+        first.timePeriod(period);
+        second.addTrade(start, numOf(1), numOf(100));
+
+        assertEquals(1, series.getBarCount());
+        assertEquals(Instant.parse("2024-01-01T00:00:00Z"), series.getLastBar().getBeginTime());
+        assertEquals(numOf(100), series.getLastBar().getClosePrice());
+    }
+
+    @Test
     public void ingestTradeRollsOverTimePeriods() {
         var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRollsOverTimePeriodsSeries")
                 .withNumFactory(numFactory)
@@ -1859,16 +1881,19 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     public void testTradeBarBuilderLazyInitialization() {
         var series = new ConcurrentBarSeriesBuilder().withName("testTradeBarBuilderLazyInitializationSeries")
                 .withNumFactory(numFactory)
-                .withBarBuilderFactory(barBuilderFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
+        Duration period = Duration.ofSeconds(60);
+        Instant start = Instant.parse("2024-01-01T00:00:30Z");
 
-        // First call should initialize
         BarBuilder builder1 = series.tradeBarBuilder();
         assertNotNull(builder1);
-
-        // Second call should return same instance
         BarBuilder builder2 = series.tradeBarBuilder();
-        assertSame(builder1, builder2);
+
+        assertNotSame(builder1, builder2);
+        builder1.timePeriod(period);
+        builder2.addTrade(start, numOf(1), numOf(100));
+        assertEquals(1, series.getBarCount());
     }
 
     @Test
@@ -1902,11 +1927,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue("All tradeBarBuilder() calls should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(threadCount, builders.size());
 
-        // All builders should be the same instance (lazy initialization with
-        // double-check)
-        BarBuilder firstBuilder = builders.get(0);
         for (BarBuilder builder : builders) {
-            assertSame(firstBuilder, builder);
+            assertNotNull(builder);
         }
     }
 
