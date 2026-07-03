@@ -69,8 +69,9 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
     private static Config validatedConfig(final ElliottScenarioIndicator scenarioIndicator,
             final InvalidationMode mode) {
         final BarSeries series = requireSeries(scenarioIndicator);
-        final ElliottScenarioIndicator validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
-                "scenarioIndicator");
+        final ElliottScenarioIndicator validatedScenarioIndicator = Objects
+                .requireNonNull(scenarioIndicator, "scenarioIndicator")
+                .copy();
         final InvalidationMode validatedMode = Objects.requireNonNull(mode, "mode");
         return new Config(series, validatedScenarioIndicator, validatedMode);
     }
@@ -253,6 +254,10 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
          * scenarios.
          */
         AGGRESSIVE
+    }
+
+    ElliottInvalidationLevelIndicator copy() {
+        return new ElliottInvalidationLevelIndicator(new Config(getBarSeries(), scenarioIndicator.copy(), mode));
     }
 
     private record Config(BarSeries series, ElliottScenarioIndicator scenarioIndicator, InvalidationMode mode) {

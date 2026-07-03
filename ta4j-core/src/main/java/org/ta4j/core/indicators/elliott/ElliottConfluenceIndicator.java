@@ -204,6 +204,12 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
                 channelIndicator.getCountOfUnstableBars());
     }
 
+    ElliottConfluenceIndicator copy() {
+        return new ElliottConfluenceIndicator(
+                new Config(getBarSeries(), priceIndicator, ratioIndicator.copy(), channelIndicator.copy(),
+                        retracementLevels, extensionLevels, ratioTolerance, channelTolerance, minimumScore));
+    }
+
     private record Config(BarSeries series, Indicator<Num> priceIndicator, ElliottRatioIndicator ratioIndicator,
             ElliottChannelIndicator channelIndicator, List<Num> retracementLevels, List<Num> extensionLevels,
             Num ratioTolerance, Num channelTolerance, Num minimumScore) {
