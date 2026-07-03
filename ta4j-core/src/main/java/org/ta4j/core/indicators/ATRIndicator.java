@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
@@ -15,7 +17,7 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ATRIndicator extends AbstractIndicator<Num> {
 
-    private final TRIndicator trIndicator;
+    private final int trueRangeUnstableBars;
     private final transient MMAIndicator averageTrueRangeIndicator;
     private final int barCount;
 
@@ -36,10 +38,19 @@ public class ATRIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public ATRIndicator(TRIndicator tr, int barCount) {
-        super(tr.getBarSeries());
-        this.trIndicator = tr;
-        this.barCount = barCount;
-        this.averageTrueRangeIndicator = new MMAIndicator(tr, barCount);
+        this(validatedConfig(tr, barCount));
+    }
+
+    private ATRIndicator(Config config) {
+        super(config.trueRangeIndicator().getBarSeries());
+        this.trueRangeUnstableBars = config.trueRangeUnstableBars();
+        this.barCount = config.barCount();
+        this.averageTrueRangeIndicator = new MMAIndicator(config.trueRangeIndicator(), config.barCount());
+    }
+
+    private static Config validatedConfig(TRIndicator tr, int barCount) {
+        TRIndicator validatedTrueRange = Objects.requireNonNull(tr, "tr");
+        return new Config(validatedTrueRange, validatedTrueRange.getCountOfUnstableBars(), barCount);
     }
 
     @Override
@@ -52,7 +63,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return trIndicator.getCountOfUnstableBars() + getBarCount();
+        return trueRangeUnstableBars + getBarCount();
     }
 
     /** @return a true range indicator for this indicator's bar series */
@@ -68,5 +79,8 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + getBarCount();
+    }
+
+    private record Config(TRIndicator trueRangeIndicator, int trueRangeUnstableBars, int barCount) {
     }
 }
