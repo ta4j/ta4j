@@ -85,12 +85,12 @@ class ElliottWaveFacadeTest {
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
         var swing = suite.swing();
 
-        // All indicators should use the same swing source
-        assertThat(suite.phase().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.ratio().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.channel().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.waveCount().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.scenarios().getSwingIndicator()).isSameAs(swing);
+        // Accessors return owned copies that preserve the same swing values.
+        assertEquivalentSwingCopy(suite.phase().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.ratio().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.channel().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.waveCount().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.scenarios().getSwingIndicator(), swing, series.getEndIndex());
     }
 
     @Test
@@ -213,5 +213,11 @@ class ElliottWaveFacadeTest {
                 .filter(scenario -> scenario.type() == ScenarioType.IMPULSE
                         && scenario.currentPhase() == ElliottPhase.WAVE2 && scenario.startIndex() == 0)
                 .toList();
+    }
+
+    private static void assertEquivalentSwingCopy(final ElliottSwingIndicator exposedSwing,
+            final ElliottSwingIndicator internalSwing, final int index) {
+        assertThat(exposedSwing).isNotSameAs(internalSwing);
+        assertThat(exposedSwing.getValue(index)).isEqualTo(internalSwing.getValue(index));
     }
 }

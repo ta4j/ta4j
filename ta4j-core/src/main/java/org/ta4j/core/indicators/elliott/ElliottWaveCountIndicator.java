@@ -38,9 +38,18 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
      */
     public ElliottWaveCountIndicator(final ElliottSwingIndicator swingIndicator,
             final ElliottSwingCompressor compressor) {
-        super(Objects.requireNonNull(swingIndicator, "swingIndicator"));
-        this.swingIndicator = swingIndicator;
-        this.compressor = compressor;
+        this(validatedConfig(swingIndicator, compressor));
+    }
+
+    private ElliottWaveCountIndicator(final Config config) {
+        super(config.swingIndicator());
+        this.swingIndicator = config.swingIndicator();
+        this.compressor = config.compressor();
+    }
+
+    private static Config validatedConfig(final ElliottSwingIndicator swingIndicator,
+            final ElliottSwingCompressor compressor) {
+        return new Config(Objects.requireNonNull(swingIndicator, "swingIndicator").copy(), compressor);
     }
 
     @Override
@@ -58,7 +67,7 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
      * @since 0.22.0
      */
     public ElliottSwingIndicator getSwingIndicator() {
-        return swingIndicator;
+        return swingIndicator.copy();
     }
 
     /**
@@ -72,5 +81,12 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
             return swings;
         }
         return compressor.compress(swings);
+    }
+
+    ElliottWaveCountIndicator copy() {
+        return new ElliottWaveCountIndicator(new Config(swingIndicator.copy(), compressor));
+    }
+
+    private record Config(ElliottSwingIndicator swingIndicator, ElliottSwingCompressor compressor) {
     }
 }

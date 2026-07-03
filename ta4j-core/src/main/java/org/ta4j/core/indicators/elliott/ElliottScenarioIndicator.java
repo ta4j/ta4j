@@ -79,7 +79,9 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     }
 
     private static Config defaultConfig(final ElliottSwingIndicator swingIndicator) {
-        return defaultConfig(swingIndicator, new ElliottChannelIndicator(swingIndicator));
+        final ElliottSwingIndicator ownedSwingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator")
+                .copy();
+        return defaultConfig(ownedSwingIndicator, new ElliottChannelIndicator(ownedSwingIndicator));
     }
 
     private static Config defaultConfig(final ElliottSwingIndicator swingIndicator,
@@ -91,10 +93,12 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     private static Config validatedConfig(final ElliottSwingIndicator swingIndicator,
             final ElliottChannelIndicator channelIndicator, final ElliottScenarioGenerator generator) {
         final BarSeries series = requireSeries(swingIndicator);
-        final ElliottSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-        final ElliottChannelIndicator validatedChannelIndicator = Objects.requireNonNull(channelIndicator,
-                "channelIndicator");
-        final ElliottScenarioGenerator validatedGenerator = Objects.requireNonNull(generator, "generator");
+        final ElliottSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator")
+                .copy();
+        final ElliottChannelIndicator validatedChannelIndicator = Objects
+                .requireNonNull(channelIndicator, "channelIndicator")
+                .copy();
+        final ElliottScenarioGenerator validatedGenerator = Objects.requireNonNull(generator, "generator").copy();
         return new Config(series, validatedSwingIndicator, validatedChannelIndicator, validatedGenerator,
                 validatedSwingIndicator.getDegree());
     }
@@ -208,7 +212,7 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
      * @since 0.22.0
      */
     public ElliottSwingIndicator getSwingIndicator() {
-        return swingIndicator;
+        return swingIndicator.copy();
     }
 
     /**
@@ -216,7 +220,12 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
      * @since 0.22.0
      */
     public ElliottChannelIndicator getChannelIndicator() {
-        return channelIndicator;
+        return channelIndicator.copy();
+    }
+
+    ElliottScenarioIndicator copy() {
+        return new ElliottScenarioIndicator(
+                new Config(getBarSeries(), swingIndicator.copy(), channelIndicator.copy(), generator.copy(), degree));
     }
 
     private record Config(BarSeries series, ElliottSwingIndicator swingIndicator,

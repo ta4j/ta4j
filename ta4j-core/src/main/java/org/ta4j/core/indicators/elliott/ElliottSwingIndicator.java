@@ -298,6 +298,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         return degree;
     }
 
+    ElliottSwingIndicator copy() {
+        return new ElliottSwingIndicator(swingHighIndicator, swingLowIndicator, degree);
+    }
+
     private List<Pivot> pivots(final int index) {
         final List<Integer> highs = swingHighIndicator.getSwingPointIndexesUpTo(index);
         final List<Integer> lows = swingLowIndicator.getSwingPointIndexesUpTo(index);

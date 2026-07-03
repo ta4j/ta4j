@@ -75,66 +75,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottChannelIndicator"/>
-        <Method name="getSwingIndicator"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="phaseIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottPhaseIndicator"/>
-        <Method name="getSwingIndicator"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottPhaseIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottRatioIndicator"/>
-        <Method name="getSwingIndicator"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
-        <Method name="getChannelIndicator"/>
-        <Field name="channelIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
-        <Method name="getSwingIndicator"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator"/>
-        <Method name="getScenarioIndicator"/>
-        <Field name="scenarioIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator"/>
-        <Method name="getSwingIndicator"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
         <Method name="channel"/>
         <Field name="channelIndicator"/>
