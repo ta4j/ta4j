@@ -51,7 +51,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public StretchZScoreIndicator(BarSeries series, int barCount) {
-        this(new ClosePriceIndicator(series), barCount);
+        this(validatedConfig(series, barCount));
     }
 
     /**
@@ -63,8 +63,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public StretchZScoreIndicator(Indicator<Num> sourceIndicator, int barCount) {
-        this(sourceIndicator, new SMAIndicator(Objects.requireNonNull(sourceIndicator, "sourceIndicator"), barCount),
-                barCount);
+        this(validatedConfig(sourceIndicator, barCount));
     }
 
     /**
@@ -76,16 +75,44 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public StretchZScoreIndicator(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator, int barCount) {
-        super(IndicatorUtils.requireSameSeries(sourceIndicator, referenceIndicator));
+        this(validatedConfig(sourceIndicator, referenceIndicator, barCount));
+    }
+
+    private StretchZScoreIndicator(Config config) {
+        super(config.series());
+        this.sourceIndicator = config.sourceIndicator();
+        this.referenceIndicator = config.referenceIndicator();
+        this.barCount = config.barCount();
+        this.deviationIndicator = config.deviationIndicator();
+        this.standardDeviationIndicator = config.standardDeviationIndicator();
+        this.zScoreIndicator = config.zScoreIndicator();
+    }
+
+    private static Config validatedConfig(BarSeries series, int barCount) {
+        return validatedConfig(new ClosePriceIndicator(series), barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> sourceIndicator, int barCount) {
+        Indicator<Num> validatedSourceIndicator = Objects.requireNonNull(sourceIndicator, "sourceIndicator");
+        return validatedConfig(validatedSourceIndicator, new SMAIndicator(validatedSourceIndicator, barCount),
+                barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator,
+            int barCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(sourceIndicator, referenceIndicator);
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than zero");
         }
-        this.sourceIndicator = Objects.requireNonNull(sourceIndicator, "sourceIndicator");
-        this.referenceIndicator = Objects.requireNonNull(referenceIndicator, "referenceIndicator");
-        this.barCount = barCount;
-        this.deviationIndicator = NumericIndicator.of(sourceIndicator).minus(referenceIndicator);
-        this.standardDeviationIndicator = new StandardDeviationIndicator(deviationIndicator, barCount);
-        this.zScoreIndicator = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);
+        Indicator<Num> validatedSourceIndicator = Objects.requireNonNull(sourceIndicator, "sourceIndicator");
+        Indicator<Num> validatedReferenceIndicator = Objects.requireNonNull(referenceIndicator, "referenceIndicator");
+        Indicator<Num> deviationIndicator = NumericIndicator.of(validatedSourceIndicator)
+                .minus(validatedReferenceIndicator);
+        StandardDeviationIndicator standardDeviationIndicator = new StandardDeviationIndicator(deviationIndicator,
+                barCount);
+        ZScoreIndicator zScoreIndicator = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);
+        return new Config(series, validatedSourceIndicator, validatedReferenceIndicator, deviationIndicator,
+                standardDeviationIndicator, zScoreIndicator, barCount);
     }
 
     /**
@@ -159,4 +186,8 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
+    private record Config(BarSeries series, Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator,
+            Indicator<Num> deviationIndicator, StandardDeviationIndicator standardDeviationIndicator,
+            ZScoreIndicator zScoreIndicator, int barCount) {
+    }
 }

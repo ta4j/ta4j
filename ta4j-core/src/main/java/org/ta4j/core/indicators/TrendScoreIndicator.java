@@ -59,9 +59,8 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
      */
     public TrendScoreIndicator(BarSeries series, int fastEmaBarCount, int slowEmaBarCount, int signalBarCount,
             int adxBarCount, int normalizationBarCount) {
-        this(buildEmaAlignment(series, fastEmaBarCount, slowEmaBarCount),
-                buildMacdHistogram(series, fastEmaBarCount, slowEmaBarCount, signalBarCount),
-                new ADXIndicator(series, adxBarCount), normalizationBarCount);
+        this(validatedConfig(series, fastEmaBarCount, slowEmaBarCount, signalBarCount, adxBarCount,
+                normalizationBarCount));
     }
 
     /**
@@ -75,25 +74,46 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
      */
     public TrendScoreIndicator(Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
             Indicator<Num> adxIndicator, int normalizationBarCount) {
-        super(IndicatorUtils.requireSameSeries(emaAlignmentIndicator, macdHistogramIndicator, adxIndicator));
+        this(validatedConfig(emaAlignmentIndicator, macdHistogramIndicator, adxIndicator, normalizationBarCount));
+    }
+
+    private TrendScoreIndicator(Config config) {
+        super(config.series());
+        this.normalizationBarCount = config.normalizationBarCount();
+        this.emaAlignmentComponent = config.emaAlignmentComponent();
+        this.macdHistogramComponent = config.macdHistogramComponent();
+        this.adxStrengthComponent = config.adxStrengthComponent();
+        this.adxChangeComponent = config.adxChangeComponent();
+        this.compositeIndicator = config.compositeIndicator();
+    }
+
+    private static Config validatedConfig(BarSeries series, int fastEmaBarCount, int slowEmaBarCount,
+            int signalBarCount, int adxBarCount, int normalizationBarCount) {
+        return validatedConfig(buildEmaAlignment(series, fastEmaBarCount, slowEmaBarCount),
+                buildMacdHistogram(series, fastEmaBarCount, slowEmaBarCount, signalBarCount),
+                new ADXIndicator(series, adxBarCount), normalizationBarCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
+            Indicator<Num> adxIndicator, int normalizationBarCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(emaAlignmentIndicator, macdHistogramIndicator,
+                adxIndicator);
         if (normalizationBarCount < 1) {
             throw new IllegalArgumentException("normalizationBarCount must be greater than zero");
         }
-        this.normalizationBarCount = normalizationBarCount;
-        this.emaAlignmentComponent = centeredPercentRank(emaAlignmentIndicator, normalizationBarCount);
-        this.macdHistogramComponent = centeredPercentRank(macdHistogramIndicator, normalizationBarCount);
-        Indicator<Num> directionBias = NumericIndicator.of(this.emaAlignmentComponent)
-                .plus(this.macdHistogramComponent)
+        Indicator<Num> emaAlignmentComponent = centeredPercentRank(emaAlignmentIndicator, normalizationBarCount);
+        Indicator<Num> macdHistogramComponent = centeredPercentRank(macdHistogramIndicator, normalizationBarCount);
+        Indicator<Num> directionBias = NumericIndicator.of(emaAlignmentComponent)
+                .plus(macdHistogramComponent)
                 .dividedBy(2);
-        this.adxStrengthComponent = signedMagnitude(centeredPercentRank(adxIndicator, normalizationBarCount),
+        Indicator<Num> adxStrengthComponent = signedMagnitude(centeredPercentRank(adxIndicator, normalizationBarCount),
                 directionBias);
-        this.adxChangeComponent = signedMagnitude(
+        Indicator<Num> adxChangeComponent = signedMagnitude(
                 centeredPercentRank(new DifferenceIndicator(adxIndicator), normalizationBarCount), directionBias);
-        this.compositeIndicator = NumericIndicator
-                .of(new SumIndicator(this.emaAlignmentComponent, this.macdHistogramComponent, this.adxStrengthComponent,
-                        this.adxChangeComponent))
-                .dividedBy(4)
-                .multipliedBy(100);
+        Indicator<Num> compositeIndicator = NumericIndicator.of(new SumIndicator(emaAlignmentComponent,
+                macdHistogramComponent, adxStrengthComponent, adxChangeComponent)).dividedBy(4).multipliedBy(100);
+        return new Config(series, emaAlignmentComponent, macdHistogramComponent, adxStrengthComponent,
+                adxChangeComponent, compositeIndicator, normalizationBarCount);
     }
 
     /**
@@ -195,4 +215,8 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
         };
     }
 
+    private record Config(BarSeries series, Indicator<Num> emaAlignmentComponent, Indicator<Num> macdHistogramComponent,
+            Indicator<Num> adxStrengthComponent, Indicator<Num> adxChangeComponent, Indicator<Num> compositeIndicator,
+            int normalizationBarCount) {
+    }
 }

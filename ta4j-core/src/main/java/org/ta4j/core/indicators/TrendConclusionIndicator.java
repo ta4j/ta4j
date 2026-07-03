@@ -59,11 +59,8 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
      */
     public TrendConclusionIndicator(BarSeries series, int mediumEmaBarCount, int macdFastBarCount, int macdSlowBarCount,
             int macdSignalBarCount, int adxBarCount, int compressionBarCount, int normalizationBarCount) {
-        this(buildAdxFade(series, adxBarCount),
-                buildHistogramReversion(series, macdFastBarCount, macdSlowBarCount, macdSignalBarCount,
-                        normalizationBarCount),
-                buildPriceRecenter(series, mediumEmaBarCount, normalizationBarCount),
-                new CompressionIndicator(series, compressionBarCount, normalizationBarCount), normalizationBarCount);
+        this(validatedConfig(series, mediumEmaBarCount, macdFastBarCount, macdSlowBarCount, macdSignalBarCount,
+                adxBarCount, compressionBarCount, normalizationBarCount));
     }
 
     /**
@@ -83,19 +80,43 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
      */
     public TrendConclusionIndicator(Indicator<Num> adxFadeIndicator, Indicator<Num> histogramMeanReversionIndicator,
             Indicator<Num> priceRecenterIndicator, Indicator<Num> compressionIndicator, int normalizationBarCount) {
-        super(IndicatorUtils.requireSameSeries(adxFadeIndicator, histogramMeanReversionIndicator,
-                priceRecenterIndicator, compressionIndicator));
+        this(validatedConfig(adxFadeIndicator, histogramMeanReversionIndicator, priceRecenterIndicator,
+                compressionIndicator, normalizationBarCount));
+    }
+
+    private TrendConclusionIndicator(Config config) {
+        super(config.series());
+        this.normalizationBarCount = config.normalizationBarCount();
+        this.adxFadeComponent = config.adxFadeComponent();
+        this.histogramMeanReversionComponent = config.histogramMeanReversionComponent();
+        this.priceRecenterComponent = config.priceRecenterComponent();
+        this.compressionComponent = config.compressionComponent();
+        this.compositeIndicator = config.compositeIndicator();
+    }
+
+    private static Config validatedConfig(BarSeries series, int mediumEmaBarCount, int macdFastBarCount,
+            int macdSlowBarCount, int macdSignalBarCount, int adxBarCount, int compressionBarCount,
+            int normalizationBarCount) {
+        return validatedConfig(buildAdxFade(series, adxBarCount),
+                buildHistogramReversion(series, macdFastBarCount, macdSlowBarCount, macdSignalBarCount,
+                        normalizationBarCount),
+                buildPriceRecenter(series, mediumEmaBarCount, normalizationBarCount),
+                new CompressionIndicator(series, compressionBarCount, normalizationBarCount), normalizationBarCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> adxFadeIndicator,
+            Indicator<Num> histogramMeanReversionIndicator, Indicator<Num> priceRecenterIndicator,
+            Indicator<Num> compressionIndicator, int normalizationBarCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(adxFadeIndicator, histogramMeanReversionIndicator,
+                priceRecenterIndicator, compressionIndicator);
         if (normalizationBarCount < 1) {
             throw new IllegalArgumentException("normalizationBarCount must be greater than zero");
         }
-        this.normalizationBarCount = normalizationBarCount;
-        this.adxFadeComponent = oneSidedPercentRank(adxFadeIndicator, normalizationBarCount);
-        this.histogramMeanReversionComponent = histogramMeanReversionIndicator;
-        this.priceRecenterComponent = priceRecenterIndicator;
-        this.compressionComponent = compressionIndicator;
-        this.compositeIndicator = NumericIndicator.of(new SumIndicator(this.adxFadeComponent,
-                this.histogramMeanReversionComponent, this.priceRecenterComponent, this.compressionComponent))
-                .dividedBy(4);
+        Indicator<Num> adxFadeComponent = oneSidedPercentRank(adxFadeIndicator, normalizationBarCount);
+        Indicator<Num> compositeIndicator = NumericIndicator.of(new SumIndicator(adxFadeComponent,
+                histogramMeanReversionIndicator, priceRecenterIndicator, compressionIndicator)).dividedBy(4);
+        return new Config(series, adxFadeComponent, histogramMeanReversionIndicator, priceRecenterIndicator,
+                compressionIndicator, compositeIndicator, normalizationBarCount);
     }
 
     /**
@@ -189,5 +210,10 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
         return NumericIndicator.of(new PercentRankIndicator(indicator, normalizationBarCount))
                 .multipliedBy(-1)
                 .plus(100);
+    }
+
+    private record Config(BarSeries series, Indicator<Num> adxFadeComponent,
+            Indicator<Num> histogramMeanReversionComponent, Indicator<Num> priceRecenterComponent,
+            Indicator<Num> compressionComponent, Indicator<Num> compositeIndicator, int normalizationBarCount) {
     }
 }
