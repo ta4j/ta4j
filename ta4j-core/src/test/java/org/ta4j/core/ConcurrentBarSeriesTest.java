@@ -28,6 +28,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
@@ -44,6 +45,7 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
  * Comprehensive unit tests for {@link ConcurrentBarSeries} focusing on the
@@ -145,6 +147,28 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertThrows(NullPointerException.class, () -> {
             new ConcurrentBarSeries("TestName", testBars, 0, 4, false, numFactory, barBuilderFactory, null);
         });
+    }
+
+    @Test
+    public void replaceBarIfChangedAcquiresWriteLockForRestatement() {
+        RecordingReadWriteLock lock = new RecordingReadWriteLock();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("TestName", new ArrayList<>(testBars), 0, 4, false,
+                numFactory, barBuilderFactory, lock);
+        Bar previousBar = series.getBar(2);
+        Bar replacementBar = replacementBarObservingWriteLock(previousBar, lock);
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        int barCount = series.getBarCount();
+
+        Bar returnedBar = BarSeriesUtils.replaceBarIfChanged(series, replacementBar);
+
+        assertSame(previousBar, returnedBar);
+        assertSame(replacementBar, series.getBar(2));
+        assertEquals(barCount, series.getBarCount());
+        assertEquals(beginIndex, series.getBeginIndex());
+        assertEquals(endIndex, series.getEndIndex());
+        assertTrue("Concurrent replacement should validate the new bar while holding the write lock",
+                lock.wasWriteLockHeldDuringReplacement());
     }
 
     // ==================== getName() and numFactory() Tests ====================
@@ -2293,5 +2317,63 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .closePrice(close)
                 .volume(volume)
                 .build();
+    }
+
+    private Bar replacementBarObservingWriteLock(final Bar sourceBar, final RecordingReadWriteLock lock) {
+        Bar replacementBar = new TimeBarBuilder(numFactory).timePeriod(sourceBar.getTimePeriod())
+                .endTime(sourceBar.getEndTime())
+                .openPrice(numOf(100))
+                .highPrice(numOf(101))
+                .lowPrice(numOf(99))
+                .closePrice(numOf(100))
+                .volume(numOf(10))
+                .amount(numOf(1000))
+                .trades(1)
+                .build();
+        return new WriteLockObservingBar(replacementBar, lock);
+    }
+
+    private static final class RecordingReadWriteLock implements ReadWriteLock {
+
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final AtomicBoolean writeLockHeldDuringReplacement = new AtomicBoolean();
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return delegate.writeLock();
+        }
+
+        private void recordReplacementValidation() {
+            writeLockHeldDuringReplacement.set(delegate.isWriteLockedByCurrentThread());
+        }
+
+        private boolean wasWriteLockHeldDuringReplacement() {
+            return writeLockHeldDuringReplacement.get();
+        }
+    }
+
+    private static final class WriteLockObservingBar extends BaseBar {
+
+        private static final long serialVersionUID = 750820333207416582L;
+
+        private final RecordingReadWriteLock lock;
+
+        private WriteLockObservingBar(final Bar source, final RecordingReadWriteLock lock) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            this.lock = lock;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            lock.recordReplacementValidation();
+            return super.getClosePrice();
+        }
     }
 }

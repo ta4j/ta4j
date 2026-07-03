@@ -374,6 +374,24 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Acquires the write lock so live bar restatements cannot interleave with
+     * concurrent series access.
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void replaceBar(final int index, final Bar bar) {
+        this.writeLock.lock();
+        try {
+            super.replaceBar(index, bar);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
     @Override
     public void addBar(final Bar bar, final boolean replace) {
         this.writeLock.lock();
