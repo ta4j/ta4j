@@ -74,12 +74,6 @@
         <Field name="rule2"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.JustOnceRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="rule"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.LossTriggeredCooldownRule"/>
         <Method name="getResetRule"/>
