@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -74,6 +75,19 @@ public class ChainRuleTest {
         assertThrows(NullPointerException.class, () -> new ChainRule(initial, link, null));
         assertThrows(NullPointerException.class, () -> new ChainLink(null, 1));
         assertThrows(NullPointerException.class, () -> link.setRule(null));
+    }
+
+    @Test
+    public void chainLinkGetRuleReturnsCopies() {
+        FixedRule rule = new FixedRule(2);
+        ChainLink link = new ChainLink(rule, 1);
+
+        Rule firstRule = link.getRule();
+        Rule secondRule = link.getRule();
+
+        assertNotSame(rule, firstRule);
+        assertNotSame(firstRule, secondRule);
+        assertTrue(firstRule.isSatisfied(2));
     }
 
     @Test

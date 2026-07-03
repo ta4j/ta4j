@@ -18,12 +18,27 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.RuleSerialization;
 
-final class RuleCopies {
+/**
+ * Creates serialization-backed rule copies for accessors that must not expose
+ * owned mutable rule instances.
+ *
+ * @since 0.22.9
+ */
+public final class RuleCopies {
 
     private RuleCopies() {
     }
 
-    static Rule copy(Rule rule) {
+    /**
+     * Returns a reconstructed copy of {@code rule} when the rule supports ta4j rule
+     * serialization. Unsupported custom rules are returned unchanged so existing
+     * strategies remain compatible.
+     *
+     * @param rule rule to copy
+     * @return copied rule, or {@code rule} when serialization does not support it
+     * @since 0.22.9
+     */
+    public static Rule copy(Rule rule) {
         Rule source = Objects.requireNonNull(rule, "rule");
         try {
             ComponentDescriptor descriptor = RuleSerialization.describe(source);

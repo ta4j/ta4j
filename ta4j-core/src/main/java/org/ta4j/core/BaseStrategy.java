@@ -6,6 +6,7 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.rules.RuleCopies;
 
 /**
  * Base implementation of a {@link Strategy}.
@@ -154,12 +155,12 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public Rule getEntryRule() {
-        return entryRule;
+        return RuleCopies.copy(entryRule);
     }
 
     @Override
     public Rule getExitRule() {
-        return exitRule;
+        return RuleCopies.copy(exitRule);
     }
 
     @Override
@@ -204,9 +205,8 @@ public class BaseStrategy implements Strategy {
             traceShouldEnter(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
             return false;
         }
-        boolean enter = traceLoggingEnabled
-                ? getEntryRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
-                : getEntryRule().isSatisfied(index, tradingRecord);
+        boolean enter = traceLoggingEnabled ? entryRule.isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : entryRule.isSatisfied(index, tradingRecord);
         traceShouldEnter(index, enter, traceLoggingEnabled, activeTraceMode, enter ? null : "entryRule");
         return enter;
     }
@@ -233,9 +233,8 @@ public class BaseStrategy implements Strategy {
             traceShouldExit(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
             return false;
         }
-        boolean exit = traceLoggingEnabled
-                ? getExitRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
-                : getExitRule().isSatisfied(index, tradingRecord);
+        boolean exit = traceLoggingEnabled ? exitRule.isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : exitRule.isSatisfied(index, tradingRecord);
         traceShouldExit(index, exit, traceLoggingEnabled, activeTraceMode, exit ? null : "exitRule");
         return exit;
     }

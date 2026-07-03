@@ -6,6 +6,7 @@ package org.ta4j.core.rules.helper;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
+import org.ta4j.core.rules.RuleCopies;
 
 /**
  * A {@code ChainLink} is part of a {@link org.ta4j.core.rules.ChainRule
@@ -42,7 +43,7 @@ public class ChainLink {
      * @return {@link #rule}
      */
     public Rule getRule() {
-        return rule;
+        return RuleCopies.copy(rule);
     }
 
     /**
@@ -73,12 +74,12 @@ public class ChainLink {
         if (!(o instanceof ChainLink))
             return false;
         ChainLink chainLink = (ChainLink) o;
-        return getThreshold() == chainLink.getThreshold() && Objects.equals(getRule(), chainLink.getRule());
+        return getThreshold() == chainLink.getThreshold() && Objects.equals(rule, chainLink.rule);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getRule(), getThreshold());
+        return Objects.hash(rule, getThreshold());
     }
 
     @Override
