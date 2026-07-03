@@ -117,48 +117,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.bars.AmountBarBuilder"/>
-        <Method name="bindTo"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.bars.AmountBarBuilderFactory"/>
-        <Method name="createBarBuilder"/>
-        <Field name="barBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.bars.TickBarBuilder"/>
-        <Method name="bindTo"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.bars.TickBarBuilderFactory"/>
-        <Method name="createBarBuilder"/>
-        <Field name="barBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.bars.TimeBarBuilder"/>
-        <Method name="bindTo"/>
-        <Field name="baseBarSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.bars.VolumeBarBuilder"/>
-        <Method name="bindTo"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.bars.VolumeBarBuilderFactory"/>
-        <Method name="createBarBuilder"/>
-        <Field name="barBuilder"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.indicators.ATRIndicator"/>
         <Method name="&lt;init&gt;"/>
         <Field name="trIndicator"/>

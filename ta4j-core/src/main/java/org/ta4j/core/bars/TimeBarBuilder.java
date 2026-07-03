@@ -6,6 +6,9 @@ package org.ta4j.core.bars;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +47,11 @@ public class TimeBarBuilder implements BarBuilder {
     Num volume;
     Num amount;
     long trades;
-    private BarSeries baseBarSeries;
+    private Consumer<Bar> barAppender;
+    private BiConsumer<Bar, Boolean> replacingBarAppender;
+    private Supplier<Boolean> seriesEmpty;
+    private Supplier<Bar> lastBar;
+    private Supplier<String> seriesName;
     private Num buyVolume;
     private Num sellVolume;
     private Num buyAmount;
@@ -227,7 +234,12 @@ public class TimeBarBuilder implements BarBuilder {
 
     @Override
     public BarBuilder bindTo(final BarSeries barSeries) {
-        this.baseBarSeries = Objects.requireNonNull(barSeries);
+        final BarSeries series = Objects.requireNonNull(barSeries);
+        this.barAppender = series::addBar;
+        this.replacingBarAppender = series::addBar;
+        this.seriesEmpty = series::isEmpty;
+        this.lastBar = series::getLastBar;
+        this.seriesName = series::getName;
         return this;
     }
 
@@ -272,7 +284,7 @@ public class TimeBarBuilder implements BarBuilder {
         if (timePeriod == null) {
             throw new IllegalStateException("Time period must be set before ingesting trades");
         }
-        Objects.requireNonNull(baseBarSeries, "barSeries");
+        ensureBoundSeries();
         ensureTimeRange(time);
         if (time.isBefore(beginTime)) {
             throw new IllegalArgumentException(
@@ -290,10 +302,10 @@ public class TimeBarBuilder implements BarBuilder {
         if (skippedPeriods > 1) {
             long missingPeriods = skippedPeriods - 1;
             LOG.warn("Detected {} missing bar period(s) between {} and {} for series {}", missingPeriods,
-                    previousEndTime, beginTime, baseBarSeries.getName());
+                    previousEndTime, beginTime, seriesName.get());
         }
         recordTrade(tradeVolume, tradePrice, side, liquidity);
-        baseBarSeries.addBar(build(), shouldReplaceCurrentBar());
+        appendBar(build(), shouldReplaceCurrentBar());
     }
 
     @Override
@@ -314,7 +326,7 @@ public class TimeBarBuilder implements BarBuilder {
             amount = closePrice.multipliedBy(volume);
         }
 
-        this.baseBarSeries.addBar(build());
+        appendBar(build());
     }
 
     private void ensureTimeRange(final Instant time) {
@@ -397,14 +409,14 @@ public class TimeBarBuilder implements BarBuilder {
         if (amount == null && closePrice != null && volume != null) {
             amount = closePrice.multipliedBy(volume);
         }
-        baseBarSeries.addBar(build(), shouldReplaceCurrentBar());
+        appendBar(build(), shouldReplaceCurrentBar());
     }
 
     private boolean shouldReplaceCurrentBar() {
-        if (baseBarSeries == null || baseBarSeries.isEmpty()) {
+        if (barAppender == null || seriesEmpty.get()) {
             return false;
         }
-        return baseBarSeries.getLastBar().getEndTime().equals(endTime);
+        return lastBar.get().getEndTime().equals(endTime);
     }
 
     private boolean hasBarData() {
@@ -443,6 +455,22 @@ public class TimeBarBuilder implements BarBuilder {
         if (!realtimeBars && (side != null || liquidity != null)) {
             throw new IllegalStateException("Realtime trade data requires a realtime bar builder");
         }
+    }
+
+    private void appendBar(final Bar bar) {
+        Objects.requireNonNull(barAppender, "barSeries").accept(bar);
+    }
+
+    private void appendBar(final Bar bar, final boolean replace) {
+        Objects.requireNonNull(replacingBarAppender, "barSeries").accept(bar, replace);
+    }
+
+    private void ensureBoundSeries() {
+        Objects.requireNonNull(barAppender, "barSeries");
+        Objects.requireNonNull(replacingBarAppender, "barSeries");
+        Objects.requireNonNull(seriesEmpty, "barSeries");
+        Objects.requireNonNull(lastBar, "barSeries");
+        Objects.requireNonNull(seriesName, "barSeries");
     }
 
 }

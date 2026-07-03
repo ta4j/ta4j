@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.bars;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Objects;
+
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BarBuilder;
@@ -15,7 +19,7 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     private final int volumeThreshold;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private transient VolumeBarBuilder barBuilder;
+    private transient Map<BarSeries, VolumeBarBuilder> barBuilders;
 
     /**
      * Constructor.
@@ -69,12 +73,20 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     }
 
     @Override
-    public BarBuilder createBarBuilder(final BarSeries series) {
-        if (this.barBuilder == null) {
-            this.barBuilder = new VolumeBarBuilder(series.numFactory(), this.volumeThreshold, this.realtimeBars,
-                    this.carryOverPolicy).bindTo(series);
-        }
+    public synchronized BarBuilder createBarBuilder(final BarSeries series) {
+        final BarSeries requestedSeries = Objects.requireNonNull(series);
+        return builders().computeIfAbsent(requestedSeries, this::createBoundBuilder);
+    }
 
-        return this.barBuilder;
+    private Map<BarSeries, VolumeBarBuilder> builders() {
+        if (barBuilders == null) {
+            barBuilders = new IdentityHashMap<>();
+        }
+        return barBuilders;
+    }
+
+    private VolumeBarBuilder createBoundBuilder(final BarSeries series) {
+        return new VolumeBarBuilder(series.numFactory(), this.volumeThreshold, this.realtimeBars, this.carryOverPolicy)
+                .bindTo(series);
     }
 }
