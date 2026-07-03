@@ -72,25 +72,83 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
             ScoringWeights scoringWeights) {
-        this(swingIndicator, barCount, side, resolve(scoringWeights).touchCountWeight,
-                resolve(scoringWeights).touchesExtremeWeight, resolve(scoringWeights).outsideCountWeight,
-                resolve(scoringWeights).averageDeviationWeight, resolve(scoringWeights).anchorRecencyWeight,
-                ToleranceSettings.defaultSettings());
+        this(validatedConfig(swingIndicator, barCount, side, resolve(scoringWeights),
+                ToleranceSettings.defaultSettings(), DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
+                DEFAULT_MAX_CANDIDATE_PAIRS));
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
             double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings) {
-        this(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+        this(validatedConfig(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
                 averageDeviationWeight, anchorRecencyWeight, toleranceSettings, DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
-                DEFAULT_MAX_CANDIDATE_PAIRS);
+                DEFAULT_MAX_CANDIDATE_PAIRS));
     }
 
     protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
             double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
             double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
             int maxSwingPointsForTrendline, int maxCandidatePairs) {
-        super(swingIndicator.getPriceIndicator());
+        this(validatedConfig(swingIndicator, barCount, side, touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight, toleranceSettings, maxSwingPointsForTrendline,
+                maxCandidatePairs));
+    }
+
+    private AbstractTrendLineIndicator(Config config) {
+        super(config.priceIndicator());
+        this.swingIndicator = config.swingIndicator();
+        this.priceIndicator = config.priceIndicator();
+        this.barCount = config.barCount();
+        this.side = config.side();
+        this.scoringWeights = config.scoringWeights();
+        this.toleranceSettings = config.toleranceSettings();
+        this.maxSwingPointsForTrendline = config.maxSwingPointsForTrendline();
+        this.maxCandidatePairs = config.maxCandidatePairs();
+    }
+
+    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, TrendLineSide side,
+            ScoringWeights scoringWeights) {
+        this(validatedConfig(swingIndicator, maximumBarCount(swingIndicator), side, resolve(scoringWeights),
+                ToleranceSettings.defaultSettings(), DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE,
+                DEFAULT_MAX_CANDIDATE_PAIRS));
+    }
+
+    private static Config validatedConfig(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            double touchCountWeight, double touchesExtremeWeight, double outsideCountWeight,
+            double averageDeviationWeight, double anchorRecencyWeight, ToleranceSettings toleranceSettings,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
+        RecentSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator,
+                "swingIndicator must not be null");
+        Indicator<Num> priceIndicator = Objects.requireNonNull(validatedSwingIndicator.getPriceIndicator(),
+                "swingIndicator must reference a price indicator");
+        TrendLineSide validatedSide = Objects.requireNonNull(side, "side must not be null");
+        validateWindowConfiguration(barCount, maxSwingPointsForTrendline, maxCandidatePairs);
+        ScoringWeights weights = new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
+                averageDeviationWeight, anchorRecencyWeight);
+        ToleranceSettings resolvedTolerance = toleranceSettings == null ? ToleranceSettings.defaultSettings()
+                : toleranceSettings;
+        return new Config(validatedSwingIndicator, priceIndicator, barCount, validatedSide, weights, resolvedTolerance,
+                maxSwingPointsForTrendline, maxCandidatePairs);
+    }
+
+    private static Config validatedConfig(RecentSwingIndicator swingIndicator, int barCount, TrendLineSide side,
+            ScoringWeights scoringWeights, ToleranceSettings toleranceSettings, int maxSwingPointsForTrendline,
+            int maxCandidatePairs) {
+        RecentSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator,
+                "swingIndicator must not be null");
+        Indicator<Num> priceIndicator = Objects.requireNonNull(validatedSwingIndicator.getPriceIndicator(),
+                "swingIndicator must reference a price indicator");
+        TrendLineSide validatedSide = Objects.requireNonNull(side, "side must not be null");
+        validateWindowConfiguration(barCount, maxSwingPointsForTrendline, maxCandidatePairs);
+        ScoringWeights resolvedWeights = resolve(scoringWeights);
+        ToleranceSettings resolvedTolerance = toleranceSettings == null ? ToleranceSettings.defaultSettings()
+                : toleranceSettings;
+        return new Config(validatedSwingIndicator, priceIndicator, barCount, validatedSide, resolvedWeights,
+                resolvedTolerance, maxSwingPointsForTrendline, maxCandidatePairs);
+    }
+
+    private static void validateWindowConfiguration(int barCount, int maxSwingPointsForTrendline,
+            int maxCandidatePairs) {
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least 2 to build a trend line");
         }
@@ -100,20 +158,17 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
         if (maxCandidatePairs < 1) {
             throw new IllegalArgumentException("maxCandidatePairs must be at least 1");
         }
-        this.swingIndicator = swingIndicator;
-        this.priceIndicator = swingIndicator.getPriceIndicator();
-        this.barCount = barCount;
-        this.side = side;
-        this.scoringWeights = new ScoringWeights(touchCountWeight, touchesExtremeWeight, outsideCountWeight,
-                averageDeviationWeight, anchorRecencyWeight);
-        this.toleranceSettings = toleranceSettings == null ? ToleranceSettings.defaultSettings() : toleranceSettings;
-        this.maxSwingPointsForTrendline = maxSwingPointsForTrendline;
-        this.maxCandidatePairs = maxCandidatePairs;
     }
 
-    protected AbstractTrendLineIndicator(RecentSwingIndicator swingIndicator, TrendLineSide side,
-            ScoringWeights scoringWeights) {
-        this(swingIndicator, swingIndicator.getBarSeries().getMaximumBarCount(), side, scoringWeights);
+    private static int maximumBarCount(RecentSwingIndicator swingIndicator) {
+        RecentSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator,
+                "swingIndicator must not be null");
+        return validatedSwingIndicator.getBarSeries().getMaximumBarCount();
+    }
+
+    private record Config(RecentSwingIndicator swingIndicator, Indicator<Num> priceIndicator, int barCount,
+            TrendLineSide side, ScoringWeights scoringWeights, ToleranceSettings toleranceSettings,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
     }
 
     @Override

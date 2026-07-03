@@ -53,7 +53,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VolumeProfileKDEIndicator(BarSeries series, Num bandwidth) {
-        this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), 0, bandwidth);
+        this(validatedSeriesConfig(series, bandwidth));
     }
 
     /**
@@ -68,23 +68,43 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      */
     public VolumeProfileKDEIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int lookbackLength,
             Num bandwidth) {
-        super(priceIndicator);
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
-        this.volumeIndicator = Objects.requireNonNull(volumeIndicator, "volumeIndicator must not be null");
-        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
-                "priceIndicator must reference a bar series");
-        if (!Objects.equals(volumeIndicator.getBarSeries(), series)) {
-            throw new IllegalArgumentException("volumeIndicator must share the same bar series as priceIndicator");
-        }
-        this.lookbackLength = lookbackLength;
-        this.bandwidth = Objects.requireNonNull(bandwidth, "bandwidth must not be null");
-        if (isInvalid(bandwidth) || bandwidth.isLessThan(series.numFactory().zero())) {
-            throw new IllegalArgumentException("bandwidth must be greater than or equal to zero");
-        }
+        this(validatedConfig(priceIndicator, volumeIndicator, lookbackLength, bandwidth));
+    }
+
+    private VolumeProfileKDEIndicator(Config config) {
+        super(config.priceIndicator());
+        this.priceIndicator = config.priceIndicator();
+        this.volumeIndicator = config.volumeIndicator();
+        this.lookbackLength = config.lookbackLength();
+        this.bandwidth = config.bandwidth();
         this.gaussianBandwidth = NaN;
         this.gaussianCoefficient = NaN;
         this.gaussianNegativeHalf = NaN;
         ensureGaussianConstants();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator,
+            int lookbackLength, Num bandwidth) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        Indicator<Num> validatedVolumeIndicator = Objects.requireNonNull(volumeIndicator,
+                "volumeIndicator must not be null");
+        BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
+                "priceIndicator must reference a bar series");
+        if (!Objects.equals(validatedVolumeIndicator.getBarSeries(), series)) {
+            throw new IllegalArgumentException("volumeIndicator must share the same bar series as priceIndicator");
+        }
+        Num validatedBandwidth = Objects.requireNonNull(bandwidth, "bandwidth must not be null");
+        if (isInvalid(validatedBandwidth) || validatedBandwidth.isLessThan(series.numFactory().zero())) {
+            throw new IllegalArgumentException("bandwidth must be greater than or equal to zero");
+        }
+        return new Config(validatedPriceIndicator, validatedVolumeIndicator, lookbackLength, validatedBandwidth);
+    }
+
+    private static Config validatedSeriesConfig(BarSeries series, Num bandwidth) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        return validatedConfig(new ClosePriceIndicator(validatedSeries), new VolumeIndicator(validatedSeries, 1), 0,
+                bandwidth);
     }
 
     /**
@@ -272,5 +292,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         gaussianBandwidth = bandwidth;
         gaussianCoefficient = factory.one().dividedBy(gaussianBandwidth.multipliedBy(twoPi.sqrt()));
         gaussianNegativeHalf = factory.numOf("-0.5");
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int lookbackLength,
+            Num bandwidth) {
     }
 }
