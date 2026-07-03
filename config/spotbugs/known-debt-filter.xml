@@ -27,33 +27,9 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.BarSeriesManager"/>
-        <Method name="getBarSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.backtest.BarSeriesManager"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
-        <Method name="barSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
         <Method name="strategy"/>
         <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="barSeries"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
