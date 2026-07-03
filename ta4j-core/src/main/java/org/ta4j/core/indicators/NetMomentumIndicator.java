@@ -141,7 +141,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
      *                                  is null
      */
     public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue) {
-        this(oscillatingIndicator, timeFrame, neutralPivotValue, DEFAULT_DECAY_FACTOR);
+        this(validatedConfig(oscillatingIndicator, timeFrame, neutralPivotValue, DEFAULT_DECAY_FACTOR));
     }
 
     /**
@@ -164,8 +164,26 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
      */
     public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue,
             Number decayFactor) {
-        super(Objects.requireNonNull(oscillatingIndicator, "Oscillating indicator must not be null"));
+        this(validatedConfig(oscillatingIndicator, timeFrame, neutralPivotValue, decayFactor));
+    }
 
+    private NetMomentumIndicator(Config config) {
+        super(config.oscillatingIndicator());
+        this.oscillatingIndicator = config.oscillatingIndicator();
+        this.timeFrame = config.timeFrame();
+        this.smoothedIndicator = config.smoothedIndicator();
+        this.deltaFromNeutralIndicator = config.deltaFromNeutralIndicator();
+        this.decayFactor = config.decayFactor();
+        this.decayFactorAtWindowLimit = config.decayFactorAtWindowLimit();
+        this.convexityScale = config.convexityScale();
+        this.zero = config.zero();
+        this.unstableBars = config.unstableBars();
+    }
+
+    private static Config validatedConfig(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue,
+            Number decayFactor) {
+        Indicator<Num> validatedOscillatingIndicator = Objects.requireNonNull(oscillatingIndicator,
+                "Oscillating indicator must not be null");
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
         Objects.requireNonNull(decayFactor, "Decay factor must not be null");
 
@@ -173,30 +191,31 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException("Time frame must be greater than 0");
         }
 
-        this.oscillatingIndicator = oscillatingIndicator;
-        this.timeFrame = timeFrame;
-        this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        this.deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator, neutralPivotValue);
+        KalmanFilterIndicator smoothedIndicator = new KalmanFilterIndicator(validatedOscillatingIndicator);
+        Indicator<Num> deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator,
+                neutralPivotValue);
 
         double rawDecay = decayFactor.doubleValue();
         if (Double.isNaN(rawDecay) || Double.isInfinite(rawDecay) || rawDecay < 0.0 || rawDecay > 1.0) {
             throw new IllegalArgumentException("Decay factor must be between 0 and 1 inclusive");
         }
 
-        NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
+        NumFactory numFactory = validatedOscillatingIndicator.getBarSeries().numFactory();
         Num neutralPivot = numFactory.numOf(neutralPivotValue);
         double rawPivot = neutralPivot.doubleValue();
         if (Num.isNaNOrNull(neutralPivot) || Double.isInfinite(rawPivot)) {
             throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
         }
-        this.decayFactor = numFactory.numOf(decayFactor);
-        this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
-        this.convexityScale = neutralPivot.abs().max(numFactory.one());
-        this.zero = numFactory.zero();
-        int smoothingUnstable = Math.max(oscillatingIndicator.getCountOfUnstableBars(),
+        Num validatedDecayFactor = numFactory.numOf(decayFactor);
+        Num decayFactorAtWindowLimit = validatedDecayFactor.pow(timeFrame);
+        Num convexityScale = neutralPivot.abs().max(numFactory.one());
+        Num zero = numFactory.zero();
+        int smoothingUnstable = Math.max(validatedOscillatingIndicator.getCountOfUnstableBars(),
                 smoothedIndicator.getCountOfUnstableBars());
         int windowUnstable = Math.max(0, timeFrame - 1);
-        this.unstableBars = smoothingUnstable + windowUnstable;
+        int unstableBars = smoothingUnstable + windowUnstable;
+        return new Config(validatedOscillatingIndicator, smoothedIndicator, deltaFromNeutralIndicator, timeFrame,
+                validatedDecayFactor, decayFactorAtWindowLimit, convexityScale, zero, unstableBars);
     }
 
     /**
@@ -281,5 +300,10 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    private record Config(Indicator<Num> oscillatingIndicator, KalmanFilterIndicator smoothedIndicator,
+            Indicator<Num> deltaFromNeutralIndicator, int timeFrame, Num decayFactor, Num decayFactorAtWindowLimit,
+            Num convexityScale, Num zero, int unstableBars) {
     }
 }

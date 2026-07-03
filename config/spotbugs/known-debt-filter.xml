@@ -221,26 +221,6 @@
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.DistanceFromMAIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.EdgeDecaySlopeIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.EntryEdgeIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.NetMomentumIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
         <Class name="org.ta4j.core.indicators.SchaffTrendCycleIndicator"/>
         <Method name="&lt;init&gt;"/>
     </Match>
