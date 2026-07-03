@@ -493,22 +493,4 @@
         <Method name="setRule"/>
         <Field name="rule"/>
     </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="ta4jexamples.charting.builder.ChartBuilder"/>
-        <Method name="withSeries"/>
-        <Field name="domainSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="ta4jexamples.charting.builder.ChartBuilder$ChartDefinitionMetadata"/>
-        <Method name="domainSeries"/>
-        <Field name="domainSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="ta4jexamples.charting.builder.ChartBuilder$PlotDefinition"/>
-        <Method name="series"/>
-        <Field name="series"/>
-    </Match>
 </FindBugsFilter>

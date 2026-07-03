@@ -19,6 +19,7 @@ import org.ta4j.core.indicators.PriceChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.TradingRecord;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
@@ -65,7 +66,6 @@ public final class ChartBuilder {
 
     private boolean consumed;
     private String customTitle;
-    private BarSeries domainSeries;
     private TimeAxisMode timeAxisMode = TimeAxisMode.REAL_TIME;
 
     public ChartBuilder(ChartWorkflow chartWorkflow, TradingChartFactory chartFactory) {
@@ -108,7 +108,6 @@ public final class ChartBuilder {
         ensureBaseNotConfigured();
         PlotContext context = PlotContext.candlestick(series);
         plots.add(context);
-        domainSeries = series;
         return new PlotStageImpl(context);
     }
 
@@ -124,7 +123,6 @@ public final class ChartBuilder {
         ensureBaseNotConfigured();
         PlotContext context = PlotContext.indicator(series, indicator);
         plots.add(context);
-        domainSeries = series;
         return new PlotStageImpl(context);
     }
 
@@ -161,6 +159,15 @@ public final class ChartBuilder {
         }
         validateSeriesHasBars(series);
         return series;
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries series) {
+        BarSeries resolvedSeries = Objects.requireNonNull(series, "Series cannot be null");
+        return new BaseBarSeriesBuilder().withName(resolvedSeries.getName())
+                .withNumFactory(resolvedSeries.numFactory())
+                .withBars(resolvedSeries.getBarData())
+                .withMaxBarCount(resolvedSeries.getMaximumBarCount())
+                .build();
     }
 
     private void validateChannelOverlays() {
@@ -335,11 +342,11 @@ public final class ChartBuilder {
     }
 
     private BarSeries ensureDomainSeries() {
-        if (domainSeries == null) {
+        if (plots.isEmpty()) {
             throw new IllegalStateException(
                     "No shared BarSeries available. Configure a base chart with a BarSeries before adding this element.");
         }
-        return domainSeries;
+        return plots.get(0).series;
     }
 
     private ChartDefinition buildDefinition() {
@@ -354,8 +361,7 @@ public final class ChartBuilder {
         } else {
             subplots = Collections.emptyList();
         }
-        ChartDefinitionMetadata metadata = new ChartDefinitionMetadata(
-                Objects.requireNonNull(domainSeries, "Domain series cannot be null"), customTitle, timeAxisMode);
+        ChartDefinitionMetadata metadata = new ChartDefinitionMetadata(ensureDomainSeries(), customTitle, timeAxisMode);
         return new ChartDefinition(base, subplots, metadata);
     }
 
@@ -1127,13 +1133,13 @@ public final class ChartBuilder {
         private final TimeAxisMode timeAxisMode;
 
         ChartDefinitionMetadata(BarSeries domainSeries, String title, TimeAxisMode timeAxisMode) {
-            this.domainSeries = Objects.requireNonNull(domainSeries, "Domain series cannot be null");
+            this.domainSeries = snapshotSeries(Objects.requireNonNull(domainSeries, "Domain series cannot be null"));
             this.title = title;
             this.timeAxisMode = Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
         }
 
         public BarSeries domainSeries() {
-            return domainSeries;
+            return snapshotSeries(domainSeries);
         }
 
         public String title() {
@@ -1163,7 +1169,7 @@ public final class ChartBuilder {
                 TradingRecord tradingRecord, List<OverlayDefinition> overlays,
                 List<ChannelOverlayDefinition> channelOverlays, List<HorizontalMarkerDefinition> horizontalMarkers) {
             this.type = type;
-            this.series = series;
+            this.series = snapshotSeries(Objects.requireNonNull(series, "Plot series cannot be null"));
             this.baseIndicator = baseIndicator;
             this.tradingRecord = tradingRecord;
             this.overlays = List.copyOf(overlays);
@@ -1204,7 +1210,7 @@ public final class ChartBuilder {
          * @return the bar series
          */
         public BarSeries series() {
-            return series;
+            return snapshotSeries(series);
         }
 
         /**
