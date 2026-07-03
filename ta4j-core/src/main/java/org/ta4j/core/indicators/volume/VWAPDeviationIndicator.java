@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -33,10 +34,22 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public VWAPDeviationIndicator(Indicator<Num> priceIndicator, AbstractVWAPIndicator vwapIndicator) {
-        super(IndicatorUtils.requireSameSeries(priceIndicator, vwapIndicator));
-        this.priceIndicator = priceIndicator;
-        this.difference = BinaryOperationIndicator.difference(priceIndicator, vwapIndicator);
-        this.vwapIndicator = vwapIndicator;
+        this(validatedConfig(priceIndicator, vwapIndicator));
+    }
+
+    private VWAPDeviationIndicator(Config config) {
+        super(config.series());
+        this.priceIndicator = config.priceIndicator();
+        this.difference = config.difference();
+        this.vwapIndicator = config.vwapIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, AbstractVWAPIndicator vwapIndicator) {
+        BarSeries series = IndicatorUtils.requireSameSeries(priceIndicator, vwapIndicator);
+        AbstractVWAPIndicator ownedVwapIndicator = vwapIndicator.copy();
+        IndicatorUtils.requireSameSeries(priceIndicator, ownedVwapIndicator);
+        Indicator<Num> difference = BinaryOperationIndicator.difference(priceIndicator, ownedVwapIndicator);
+        return new Config(series, priceIndicator, ownedVwapIndicator, difference);
     }
 
     /**
@@ -58,5 +71,9 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), vwapIndicator.getCountOfUnstableBars());
+    }
+
+    private record Config(BarSeries series, Indicator<Num> priceIndicator, AbstractVWAPIndicator vwapIndicator,
+            Indicator<Num> difference) {
     }
 }

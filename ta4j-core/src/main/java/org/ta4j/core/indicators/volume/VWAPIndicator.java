@@ -68,6 +68,11 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
         return new Config(priceIndicator, volumeIndicator, barCount);
     }
 
+    @Override
+    AbstractVWAPIndicator copy() {
+        return new VWAPIndicator(priceIndicator, volumeIndicator, barCount);
+    }
+
     /**
      * Resolves window start index.
      */

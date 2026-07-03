@@ -71,16 +71,26 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
     private static Config validatedConfig(AbstractVWAPIndicator vwapIndicator,
             Indicator<Num> standardDeviationIndicator, Number multiplier, BandType bandType) {
         BarSeries series = IndicatorUtils.requireSameSeries(vwapIndicator, standardDeviationIndicator);
+        AbstractVWAPIndicator ownedVwapIndicator = vwapIndicator.copy();
+        Indicator<Num> ownedStandardDeviationIndicator = copyIfVwapIndicator(standardDeviationIndicator);
+        IndicatorUtils.requireSameSeries(ownedVwapIndicator, ownedStandardDeviationIndicator);
         BandType validatedBandType = Objects.requireNonNull(bandType, "bandType must not be null");
         Num validatedMultiplier = series.numFactory()
                 .numOf(Objects.requireNonNull(multiplier, "multiplier must not be null"));
         if (Num.isNaNOrNull(validatedMultiplier)) {
             throw new IllegalArgumentException("multiplier must be a valid number");
         }
-        BandIndicator band = new BandIndicator(vwapIndicator, standardDeviationIndicator,
+        BandIndicator band = new BandIndicator(ownedVwapIndicator, ownedStandardDeviationIndicator,
                 validatedMultiplier.getDelegate(), BandIndicator.BandType.valueOf(validatedBandType.name()));
-        return new Config(series, vwapIndicator, standardDeviationIndicator, validatedMultiplier, band,
+        return new Config(series, ownedVwapIndicator, ownedStandardDeviationIndicator, validatedMultiplier, band,
                 validatedBandType);
+    }
+
+    private static Indicator<Num> copyIfVwapIndicator(Indicator<Num> indicator) {
+        if (indicator instanceof AbstractVWAPIndicator vwapIndicator) {
+            return vwapIndicator.copy();
+        }
+        return indicator;
     }
 
     /**

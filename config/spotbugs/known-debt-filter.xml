@@ -236,24 +236,6 @@
         <Field name="runner"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.volume.VWAPBandIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="vwapIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.volume.VWAPDeviationIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="vwapIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.volume.VWAPStandardDeviationIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="reference"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.AndRule"/>
         <Method name="getRule1"/>

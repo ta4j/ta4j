@@ -35,6 +35,8 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         this.volumeIndicator = volumeIndicator;
     }
 
+    abstract AbstractVWAPIndicator copy();
+
     /**
      * Calculates the indicator value at the requested index.
      */
