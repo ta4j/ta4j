@@ -69,6 +69,32 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     /**
+     * Verifies that facade accessors do not expose internal mutable references.
+     */
+    @Test
+    public void shouldReturnDefensiveSeriesAndPhaseSnapshots() {
+        WyckoffCycleFacade facade = WyckoffCycleFacade.builder(series)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+        BarSeries firstSeriesSnapshot = facade.series();
+        BarSeries secondSeriesSnapshot = facade.series();
+        WyckoffPhaseIndicator firstPhaseSnapshot = facade.phase();
+        WyckoffPhaseIndicator secondPhaseSnapshot = facade.phase();
+
+        addBar(series, 120, 125, 119, 123, 700);
+
+        assertThat(firstSeriesSnapshot).isNotSameAs(series);
+        assertThat(firstSeriesSnapshot).isNotSameAs(secondSeriesSnapshot);
+        assertThat(firstSeriesSnapshot.getBarCount()).isEqualTo(9);
+        assertThat(secondSeriesSnapshot.getBarCount()).isEqualTo(9);
+        assertThat(facade.series().getBarCount()).isEqualTo(9);
+        assertThat(firstPhaseSnapshot).isNotSameAs(secondPhaseSnapshot);
+        assertThat(firstPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
+        assertThat(secondPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
+    }
+
+    /**
      * Verifies that reject invalid swing configuration.
      */
     @Test
