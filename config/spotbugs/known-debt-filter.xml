@@ -21,36 +21,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.analysis.CashFlow"/>
-        <Method name="getBarSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.analysis.CumulativePnL"/>
-        <Method name="getBarSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.analysis.CumulativePnL"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.analysis.Returns"/>
-        <Method name="getBarSeries"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.analysis.Returns"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="barSeries"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.BacktestExecutionResult"/>
         <Method name="barSeries"/>
         <Field name="barSeries"/>

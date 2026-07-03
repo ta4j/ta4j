@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -79,13 +80,13 @@ public class Returns implements PerformanceIndicator {
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this.barSeries = snapshotSeries(barSeries);
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = barSeries.getEndIndex();
+        int seriesEnd = this.barSeries.getEndIndex();
         int size = Math.max(seriesEnd + 1, 0);
-        Num one = barSeries.numFactory().one();
-        Num zero = barSeries.numFactory().zero();
+        Num one = this.barSeries.numFactory().one();
+        Num zero = this.barSeries.numFactory().zero();
         Num initial = representation == ReturnRepresentation.LOG ? zero : one;
         returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
         rawValues = new ArrayList<>(Collections.nCopies(size, zero));
@@ -264,7 +265,7 @@ public class Returns implements PerformanceIndicator {
 
     @Override
     public BarSeries getBarSeries() {
-        return barSeries;
+        return snapshotSeries(barSeries);
     }
 
     /**
@@ -394,5 +395,14 @@ public class Returns implements PerformanceIndicator {
                 values.set(i, representation.toRepresentationFromRateOfReturn(rawReturn));
             }
         }
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 }

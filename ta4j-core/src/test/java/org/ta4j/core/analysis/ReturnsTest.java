@@ -5,11 +5,13 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
@@ -52,6 +54,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             var returns = new Returns(sampleBarSeries, new BaseTradingRecord(), representation);
             assertEquals(4, returns.getSize());
         }
+    }
+
+    @Test
+    public void getBarSeriesReturnsDefensiveSnapshots() {
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+        int originalSeriesCount = returns.getBarSeries().getBarCount();
+        int originalSize = returns.getSize();
+        BarSeries firstReturnedSeries = returns.getBarSeries();
+
+        appendOneBar(sampleBarSeries, 4);
+        appendOneBar(firstReturnedSeries, 5);
+
+        assertEquals(originalSize, returns.getSize());
+        assertEquals(originalSeriesCount, returns.getBarSeries().getBarCount());
+        assertNotSame(sampleBarSeries, returns.getBarSeries());
+        assertNotSame(firstReturnedSeries, returns.getBarSeries());
     }
 
     @Test
@@ -376,5 +395,18 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(expectedAt1, returns.getValue(1));
         assertNumEquals(expectedAt2, returns.getValue(2));
+    }
+
+    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
+        Duration period = targetSeries.getLastBar().getTimePeriod();
+        targetSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
+                .openPrice(closePrice)
+                .highPrice(closePrice)
+                .lowPrice(closePrice)
+                .closePrice(closePrice)
+                .volume(1)
+                .add();
     }
 }
