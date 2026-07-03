@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.ta4j.core.TradingRecord;
@@ -38,8 +39,23 @@ public class DayOfWeekRule extends AbstractRule {
      * @param daysOfWeek    the days of the week
      */
     public DayOfWeekRule(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
-        this.timeIndicator = timeIndicator;
-        this.daysOfWeekSet = new HashSet<>(Arrays.asList(daysOfWeek));
+        this(validatedConfig(timeIndicator, daysOfWeek));
+    }
+
+    private DayOfWeekRule(Config config) {
+        this.timeIndicator = config.timeIndicator();
+        this.daysOfWeekSet = config.daysOfWeekSet();
+    }
+
+    private static Config validatedConfig(DateTimeIndicator timeIndicator, DayOfWeek... daysOfWeek) {
+        DateTimeIndicator validatedTimeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
+        Objects.requireNonNull(daysOfWeek, "daysOfWeek");
+        DayOfWeek[] copiedDays = Arrays.copyOf(daysOfWeek, daysOfWeek.length);
+        Set<DayOfWeek> copiedDaySet = new HashSet<>(copiedDays.length);
+        for (DayOfWeek day : copiedDays) {
+            copiedDaySet.add(Objects.requireNonNull(day, "dayOfWeek"));
+        }
+        return new Config(validatedTimeIndicator, Set.copyOf(copiedDaySet));
     }
 
     /** This rule does not use the {@code tradingRecord}. */
@@ -49,5 +65,8 @@ public class DayOfWeekRule extends AbstractRule {
         final boolean satisfied = daysOfWeekSet.contains(dateTime.atZone(ZoneOffset.UTC).getDayOfWeek());
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(DateTimeIndicator timeIndicator, Set<DayOfWeek> daysOfWeekSet) {
     }
 }

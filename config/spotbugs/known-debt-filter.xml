@@ -267,12 +267,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.DayOfWeekRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="timeIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.rules.JustOnceRule"/>
         <Method name="&lt;init&gt;"/>
         <Field name="rule"/>
