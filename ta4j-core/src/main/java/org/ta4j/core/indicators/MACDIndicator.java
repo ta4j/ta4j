@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -35,7 +37,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public MACDIndicator(Indicator<Num> indicator) {
-        this(indicator, 12, 26);
+        this(validatedConfig(indicator, 12, 26));
     }
 
     /**
@@ -46,15 +48,26 @@ public class MACDIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the long time frame (normally 26)
      */
     public MACDIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-        super(indicator);
+        this(validatedConfig(indicator, shortBarCount, longBarCount));
+    }
+
+    private MACDIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.shortBarCount = config.shortBarCount();
+        this.longBarCount = config.longBarCount();
+        this.shortTermEma = config.shortTermEma();
+        this.longTermEma = config.longTermEma();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
-        this.indicator = indicator;
-        this.shortBarCount = shortBarCount;
-        this.longBarCount = longBarCount;
-        this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
-        this.longTermEma = new EMAIndicator(indicator, longBarCount);
+        EMAIndicator shortTermEma = new EMAIndicator(validatedIndicator, shortBarCount);
+        EMAIndicator longTermEma = new EMAIndicator(validatedIndicator, longBarCount);
+        return new Config(validatedIndicator, shortTermEma, longTermEma, shortBarCount, longBarCount);
     }
 
     /**
@@ -96,5 +109,9 @@ public class MACDIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         int emaUnstableBars = Math.max(shortTermEma.getCountOfUnstableBars(), longTermEma.getCountOfUnstableBars());
         return indicator.getCountOfUnstableBars() + emaUnstableBars;
+    }
+
+    private record Config(Indicator<Num> indicator, EMAIndicator shortTermEma, EMAIndicator longTermEma,
+            int shortBarCount, int longBarCount) {
     }
 }
