@@ -3,10 +3,13 @@
  */
 package org.ta4j.core.indicators.zigzag;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -60,9 +63,13 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
      *                       {@code ClosePriceIndicator})
      */
     public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
-        super(price, 0);
-        this.stateIndicator = stateIndicator;
-        this.price = price;
+        this(validatedConfig(stateIndicator, price));
+    }
+
+    private RecentZigZagSwingLowIndicator(Config config) {
+        super(config.price(), 0);
+        this.stateIndicator = config.stateIndicator();
+        this.price = config.price();
     }
 
     public RecentZigZagSwingLowIndicator(BarSeries series) {
@@ -91,5 +98,15 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
     protected int detectLatestSwingIndex(int index) {
         final ZigZagState state = stateIndicator.getValue(index);
         return state.getLastLowIndex();
+    }
+
+    private static Config validatedConfig(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
+        ZigZagStateIndicator safeStateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator");
+        Indicator<Num> safePrice = Objects.requireNonNull(price, "price");
+        IndicatorUtils.requireSameSeries(safeStateIndicator, safePrice);
+        return new Config(safeStateIndicator.copy(), safePrice);
+    }
+
+    private record Config(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
     }
 }

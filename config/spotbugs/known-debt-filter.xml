@@ -254,30 +254,6 @@
         <Field name="reference"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="stateIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="stateIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.zigzag.ZigZagPivotHighIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="stateIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.zigzag.ZigZagPivotLowIndicator"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="stateIndicator"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.AndRule"/>
         <Method name="getRule1"/>

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.zigzag;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 
@@ -40,8 +42,12 @@ public class ZigZagPivotLowIndicator extends CachedIndicator<Boolean> {
      *                       state
      */
     public ZigZagPivotLowIndicator(ZigZagStateIndicator stateIndicator) {
-        super(stateIndicator.getBarSeries());
-        this.stateIndicator = stateIndicator;
+        this(validatedConfig(stateIndicator));
+    }
+
+    private ZigZagPivotLowIndicator(Config config) {
+        super(config.stateIndicator().getBarSeries());
+        this.stateIndicator = config.stateIndicator();
     }
 
     @Override
@@ -73,5 +79,12 @@ public class ZigZagPivotLowIndicator extends CachedIndicator<Boolean> {
     @Override
     public int getCountOfUnstableBars() {
         return 0;
+    }
+
+    private static Config validatedConfig(ZigZagStateIndicator stateIndicator) {
+        return new Config(Objects.requireNonNull(stateIndicator, "stateIndicator").copy());
+    }
+
+    private record Config(ZigZagStateIndicator stateIndicator) {
     }
 }

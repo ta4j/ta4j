@@ -80,6 +80,10 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         this(new ClosePriceIndicator(series), new ATRIndicator(series, 14));
     }
 
+    ZigZagStateIndicator copy() {
+        return new ZigZagStateIndicator(price, reversalAmount);
+    }
+
     @Override
     protected ZigZagState calculate(int index) {
         final BarSeries series = getBarSeries();
