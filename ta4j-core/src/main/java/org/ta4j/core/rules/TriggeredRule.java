@@ -120,12 +120,20 @@ public class TriggeredRule extends AbstractRule {
          * @since 0.22.7
          */
         public Stage {
-            Objects.requireNonNull(triggerRule, "triggerRule");
-            Objects.requireNonNull(delegateRule, "delegateRule");
-            Objects.requireNonNull(resetPolicy, "resetPolicy");
+            triggerRule = RuleCopies.copy(Objects.requireNonNull(triggerRule, "triggerRule"));
+            delegateRule = RuleCopies.copy(Objects.requireNonNull(delegateRule, "delegateRule"));
+            resetPolicy = Objects.requireNonNull(resetPolicy, "resetPolicy");
             if (activationWindowBars < 0) {
                 throw new IllegalArgumentException("activationWindowBars must be >= 0");
             }
+        }
+
+        public Rule triggerRule() {
+            return RuleCopies.copy(triggerRule);
+        }
+
+        public Rule delegateRule() {
+            return RuleCopies.copy(delegateRule);
         }
     }
 
@@ -435,7 +443,8 @@ public class TriggeredRule extends AbstractRule {
         validateStageArrays(triggerRules, delegateRules, activationWindowBars, primeDelegateWhileInactive,
                 resetPolicies);
         Rule resolvedAlwaysActiveRule = alwaysActiveRule != null ? alwaysActiveRule : BooleanRule.FALSE;
-        return new Config(resolvedAlwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction,
+        Rule resolvedExplicitResetRule = explicitResetRule == null ? null : RuleCopies.copy(explicitResetRule);
+        return new Config(resolvedAlwaysActiveRule, resolvedExplicitResetRule, resetAllStagesOnSatisfaction,
                 triggerRules.clone(), delegateRules.clone(), activationWindowBars.clone(),
                 primeDelegateWhileInactive.clone(), resetPolicies.clone());
     }

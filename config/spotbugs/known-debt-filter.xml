@@ -51,48 +51,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.rules.LossTriggeredCooldownRule"/>
-        <Method name="getResetRule"/>
-        <Field name="resetRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.LossTriggeredCooldownRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="resetRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.TriggeredRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="explicitResetRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
-        <Method name="delegateRule"/>
-        <Field name="delegateRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
-        <Method name="triggerRule"/>
-        <Field name="triggerRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="delegateRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="triggerRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.helper.ChainLink"/>
         <Method name="getRule"/>
         <Field name="rule"/>

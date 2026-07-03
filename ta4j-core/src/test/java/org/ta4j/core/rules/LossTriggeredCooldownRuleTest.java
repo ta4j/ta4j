@@ -4,12 +4,14 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -50,6 +52,21 @@ public class LossTriggeredCooldownRuleTest {
                 new ConstantIndicator<Num>(series, series.numFactory().three()), new FixedRule(3), null);
 
         assertTrue(subject.isSatisfied(3, record));
+    }
+
+    @Test
+    public void getResetRuleReturnsCopies() {
+        Rule resetRule = new FixedRule(3);
+        LossTriggeredCooldownRule subject = new LossTriggeredCooldownRule(
+                new ConstantIndicator<Num>(series, series.numFactory().three()), resetRule, null);
+
+        Rule firstReturnedRule = subject.getResetRule();
+        Rule secondReturnedRule = subject.getResetRule();
+
+        assertNotSame(resetRule, firstReturnedRule);
+        assertNotSame(firstReturnedRule, secondReturnedRule);
+        assertTrue(firstReturnedRule.isSatisfied(3));
+        assertFalse(firstReturnedRule.isSatisfied(2));
     }
 
     @Test
