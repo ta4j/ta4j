@@ -226,20 +226,10 @@
         <Field name="swingIndicator"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator"/>
         <Method name="&lt;init&gt;"/>
         <Field name="phaseIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottInvalidationLevelIndicator"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
@@ -260,11 +250,6 @@
         <Field name="swingIndicator"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
         <Method name="getChannelIndicator"/>
@@ -275,16 +260,6 @@
         <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
         <Method name="getSwingIndicator"/>
         <Field name="swingIndicator"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottSwingCompressor"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>

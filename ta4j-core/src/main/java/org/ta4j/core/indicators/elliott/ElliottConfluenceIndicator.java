@@ -54,11 +54,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
      */
     public ElliottConfluenceIndicator(final Indicator<Num> priceIndicator, final ElliottRatioIndicator ratioIndicator,
             final ElliottChannelIndicator channelIndicator) {
-        this(priceIndicator, ratioIndicator, channelIndicator, toList(priceIndicator, DEFAULT_RETRACEMENT_LEVELS),
-                toList(priceIndicator, DEFAULT_EXTENSION_LEVELS),
-                priceIndicator.getBarSeries().numFactory().numOf(0.05),
-                priceIndicator.getBarSeries().numFactory().numOf(0.5),
-                priceIndicator.getBarSeries().numFactory().numOf(2));
+        this(defaultConfig(priceIndicator, ratioIndicator, channelIndicator));
     }
 
     /**
@@ -78,15 +74,46 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
             final ElliottChannelIndicator channelIndicator, final Collection<Num> retracementLevels,
             final Collection<Num> extensionLevels, final Num ratioTolerance, final Num channelTolerance,
             final Num minimumScore) {
-        super(requireSeries(priceIndicator));
-        this.priceIndicator = requireNonNull(priceIndicator, "priceIndicator");
-        this.ratioIndicator = requireNonNull(ratioIndicator, "ratioIndicator");
-        this.channelIndicator = requireNonNull(channelIndicator, "channelIndicator");
-        this.retracementLevels = toImmutableList(retracementLevels);
-        this.extensionLevels = toImmutableList(extensionLevels);
-        this.ratioTolerance = requireNonNull(ratioTolerance, "ratioTolerance");
-        this.channelTolerance = requireNonNull(channelTolerance, "channelTolerance");
-        this.minimumScore = requireNonNull(minimumScore, "minimumScore");
+        this(validatedConfig(priceIndicator, ratioIndicator, channelIndicator, retracementLevels, extensionLevels,
+                ratioTolerance, channelTolerance, minimumScore));
+    }
+
+    private ElliottConfluenceIndicator(final Config config) {
+        super(config.series());
+        this.priceIndicator = config.priceIndicator();
+        this.ratioIndicator = config.ratioIndicator();
+        this.channelIndicator = config.channelIndicator();
+        this.retracementLevels = config.retracementLevels();
+        this.extensionLevels = config.extensionLevels();
+        this.ratioTolerance = config.ratioTolerance();
+        this.channelTolerance = config.channelTolerance();
+        this.minimumScore = config.minimumScore();
+    }
+
+    private static Config defaultConfig(final Indicator<Num> priceIndicator, final ElliottRatioIndicator ratioIndicator,
+            final ElliottChannelIndicator channelIndicator) {
+        final BarSeries series = requireSeries(priceIndicator);
+        return validatedConfig(priceIndicator, ratioIndicator, channelIndicator,
+                toList(priceIndicator, DEFAULT_RETRACEMENT_LEVELS), toList(priceIndicator, DEFAULT_EXTENSION_LEVELS),
+                series.numFactory().numOf(0.05), series.numFactory().numOf(0.5), series.numFactory().numOf(2));
+    }
+
+    private static Config validatedConfig(final Indicator<Num> priceIndicator,
+            final ElliottRatioIndicator ratioIndicator, final ElliottChannelIndicator channelIndicator,
+            final Collection<Num> retracementLevels, final Collection<Num> extensionLevels, final Num ratioTolerance,
+            final Num channelTolerance, final Num minimumScore) {
+        final BarSeries series = requireSeries(priceIndicator);
+        final Indicator<Num> validatedPriceIndicator = requireNonNull(priceIndicator, "priceIndicator");
+        final ElliottRatioIndicator validatedRatioIndicator = requireNonNull(ratioIndicator, "ratioIndicator");
+        final ElliottChannelIndicator validatedChannelIndicator = requireNonNull(channelIndicator, "channelIndicator");
+        final List<Num> retracementSnapshot = toImmutableList(retracementLevels);
+        final List<Num> extensionSnapshot = toImmutableList(extensionLevels);
+        final Num validatedRatioTolerance = requireNonNull(ratioTolerance, "ratioTolerance");
+        final Num validatedChannelTolerance = requireNonNull(channelTolerance, "channelTolerance");
+        final Num validatedMinimumScore = requireNonNull(minimumScore, "minimumScore");
+        return new Config(series, validatedPriceIndicator, validatedRatioIndicator, validatedChannelIndicator,
+                retracementSnapshot, extensionSnapshot, validatedRatioTolerance, validatedChannelTolerance,
+                validatedMinimumScore);
     }
 
     private static BarSeries requireSeries(final Indicator<Num> priceIndicator) {
@@ -175,5 +202,10 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return Math.max(Math.max(priceIndicator.getCountOfUnstableBars(), ratioIndicator.getCountOfUnstableBars()),
                 channelIndicator.getCountOfUnstableBars());
+    }
+
+    private record Config(BarSeries series, Indicator<Num> priceIndicator, ElliottRatioIndicator ratioIndicator,
+            ElliottChannelIndicator channelIndicator, List<Num> retracementLevels, List<Num> extensionLevels,
+            Num ratioTolerance, Num channelTolerance, Num minimumScore) {
     }
 }

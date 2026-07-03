@@ -30,7 +30,7 @@ public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias>
      * @since 0.22.2
      */
     public ElliottTrendBiasIndicator(final ElliottScenarioIndicator scenarioIndicator) {
-        this(scenarioIndicator, ElliottTrendBias.DEFAULT_NEUTRAL_THRESHOLD);
+        this(validatedConfig(scenarioIndicator, ElliottTrendBias.DEFAULT_NEUTRAL_THRESHOLD));
     }
 
     /**
@@ -41,9 +41,21 @@ public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias>
      * @since 0.22.2
      */
     public ElliottTrendBiasIndicator(final ElliottScenarioIndicator scenarioIndicator, final double neutralThreshold) {
-        super(requireSeries(scenarioIndicator));
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        this.neutralThreshold = neutralThreshold;
+        this(validatedConfig(scenarioIndicator, neutralThreshold));
+    }
+
+    private ElliottTrendBiasIndicator(final Config config) {
+        super(config.series());
+        this.scenarioIndicator = config.scenarioIndicator();
+        this.neutralThreshold = config.neutralThreshold();
+    }
+
+    private static Config validatedConfig(final ElliottScenarioIndicator scenarioIndicator,
+            final double neutralThreshold) {
+        final BarSeries series = requireSeries(scenarioIndicator);
+        final ElliottScenarioIndicator validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
+        return new Config(series, validatedScenarioIndicator, neutralThreshold);
     }
 
     private static BarSeries requireSeries(final ElliottScenarioIndicator scenarioIndicator) {
@@ -79,5 +91,8 @@ public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias>
      */
     public double getNeutralThreshold() {
         return neutralThreshold;
+    }
+
+    private record Config(BarSeries series, ElliottScenarioIndicator scenarioIndicator, double neutralThreshold) {
     }
 }

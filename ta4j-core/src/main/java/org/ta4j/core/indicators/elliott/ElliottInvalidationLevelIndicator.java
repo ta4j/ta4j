@@ -45,7 +45,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      * @since 0.22.0
      */
     public ElliottInvalidationLevelIndicator(final ElliottScenarioIndicator scenarioIndicator) {
-        this(scenarioIndicator, InvalidationMode.PRIMARY);
+        this(validatedConfig(scenarioIndicator, InvalidationMode.PRIMARY));
     }
 
     /**
@@ -57,9 +57,22 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      */
     public ElliottInvalidationLevelIndicator(final ElliottScenarioIndicator scenarioIndicator,
             final InvalidationMode mode) {
-        super(requireSeries(scenarioIndicator));
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        this.mode = Objects.requireNonNull(mode, "mode");
+        this(validatedConfig(scenarioIndicator, mode));
+    }
+
+    private ElliottInvalidationLevelIndicator(final Config config) {
+        super(config.series());
+        this.scenarioIndicator = config.scenarioIndicator();
+        this.mode = config.mode();
+    }
+
+    private static Config validatedConfig(final ElliottScenarioIndicator scenarioIndicator,
+            final InvalidationMode mode) {
+        final BarSeries series = requireSeries(scenarioIndicator);
+        final ElliottScenarioIndicator validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
+        final InvalidationMode validatedMode = Objects.requireNonNull(mode, "mode");
+        return new Config(series, validatedScenarioIndicator, validatedMode);
     }
 
     private static BarSeries requireSeries(final ElliottScenarioIndicator scenarioIndicator) {
@@ -240,5 +253,8 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
          * scenarios.
          */
         AGGRESSIVE
+    }
+
+    private record Config(BarSeries series, ElliottScenarioIndicator scenarioIndicator, InvalidationMode mode) {
     }
 }
