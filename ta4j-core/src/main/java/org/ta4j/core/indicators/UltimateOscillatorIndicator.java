@@ -81,7 +81,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public UltimateOscillatorIndicator(BarSeries series) {
-        this(series, DEFAULT_SHORT_PERIOD, DEFAULT_MIDDLE_PERIOD, DEFAULT_LONG_PERIOD);
+        this(validatedConfig(series, DEFAULT_SHORT_PERIOD, DEFAULT_MIDDLE_PERIOD, DEFAULT_LONG_PERIOD));
     }
 
     /**
@@ -94,8 +94,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public UltimateOscillatorIndicator(BarSeries series, int shortPeriod, int middlePeriod, int longPeriod) {
-        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
-                shortPeriod, middlePeriod, longPeriod);
+        this(validatedConfig(series, shortPeriod, middlePeriod, longPeriod));
     }
 
     /**
@@ -108,8 +107,8 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      */
     public UltimateOscillatorIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
-        this(highPriceIndicator, lowPriceIndicator, closePriceIndicator, DEFAULT_SHORT_PERIOD, DEFAULT_MIDDLE_PERIOD,
-                DEFAULT_LONG_PERIOD);
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, DEFAULT_SHORT_PERIOD,
+                DEFAULT_MIDDLE_PERIOD, DEFAULT_LONG_PERIOD));
     }
 
     /**
@@ -127,35 +126,65 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      */
     public UltimateOscillatorIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator, int shortPeriod, int middlePeriod, int longPeriod) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
-        this.highPriceIndicator = highPriceIndicator;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.closePriceIndicator = closePriceIndicator;
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, shortPeriod, middlePeriod,
+                longPeriod));
+    }
 
+    private UltimateOscillatorIndicator(Config config) {
+        super(config.series());
+        this.highPriceIndicator = config.highPriceIndicator();
+        this.lowPriceIndicator = config.lowPriceIndicator();
+        this.closePriceIndicator = config.closePriceIndicator();
+        this.shortPeriod = config.shortPeriod();
+        this.middlePeriod = config.middlePeriod();
+        this.longPeriod = config.longPeriod();
+        this.shortBuyingPressureSumIndicator = config.shortBuyingPressureSumIndicator();
+        this.middleBuyingPressureSumIndicator = config.middleBuyingPressureSumIndicator();
+        this.longBuyingPressureSumIndicator = config.longBuyingPressureSumIndicator();
+        this.shortTrueRangeSumIndicator = config.shortTrueRangeSumIndicator();
+        this.middleTrueRangeSumIndicator = config.middleTrueRangeSumIndicator();
+        this.longTrueRangeSumIndicator = config.longTrueRangeSumIndicator();
+        this.shortWeight = config.shortWeight();
+        this.middleWeight = config.middleWeight();
+        this.longWeight = config.longWeight();
+        this.totalWeight = config.totalWeight();
+        this.hundred = config.hundred();
+    }
+
+    private static Config validatedConfig(BarSeries series, int shortPeriod, int middlePeriod, int longPeriod) {
+        return validatedConfig(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ClosePriceIndicator(series), shortPeriod, middlePeriod, longPeriod);
+    }
+
+    private static Config validatedConfig(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator, int shortPeriod, int middlePeriod, int longPeriod) {
+        BarSeries series = IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
         validatePeriods(shortPeriod, middlePeriod, longPeriod);
 
-        this.shortPeriod = shortPeriod;
-        this.middlePeriod = middlePeriod;
-        this.longPeriod = longPeriod;
+        BuyingPressureIndicator buyingPressureIndicator = new BuyingPressureIndicator(lowPriceIndicator,
+                closePriceIndicator);
+        TRIndicator trueRangeIndicator = new TRIndicator(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
 
-        BuyingPressureIndicator buyingPressureIndicator = new BuyingPressureIndicator(this.lowPriceIndicator,
-                this.closePriceIndicator);
-        TRIndicator trueRangeIndicator = new TRIndicator(this.highPriceIndicator, this.lowPriceIndicator,
-                this.closePriceIndicator);
+        RunningTotalIndicator shortBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator,
+                shortPeriod);
+        RunningTotalIndicator middleBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator,
+                middlePeriod);
+        RunningTotalIndicator longBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator,
+                longPeriod);
 
-        this.shortBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator, shortPeriod);
-        this.middleBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator, middlePeriod);
-        this.longBuyingPressureSumIndicator = new RunningTotalIndicator(buyingPressureIndicator, longPeriod);
+        RunningTotalIndicator shortTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, shortPeriod);
+        RunningTotalIndicator middleTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, middlePeriod);
+        RunningTotalIndicator longTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, longPeriod);
 
-        this.shortTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, shortPeriod);
-        this.middleTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, middlePeriod);
-        this.longTrueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, longPeriod);
-
-        this.shortWeight = getBarSeries().numFactory().numOf(4);
-        this.middleWeight = getBarSeries().numFactory().numOf(2);
-        this.longWeight = getBarSeries().numFactory().one();
-        this.totalWeight = shortWeight.plus(middleWeight).plus(longWeight);
-        this.hundred = getBarSeries().numFactory().hundred();
+        Num shortWeight = series.numFactory().numOf(4);
+        Num middleWeight = series.numFactory().numOf(2);
+        Num longWeight = series.numFactory().one();
+        Num totalWeight = shortWeight.plus(middleWeight).plus(longWeight);
+        Num hundred = series.numFactory().hundred();
+        return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator, shortPeriod, middlePeriod,
+                longPeriod, shortBuyingPressureSumIndicator, middleBuyingPressureSumIndicator,
+                longBuyingPressureSumIndicator, shortTrueRangeSumIndicator, middleTrueRangeSumIndicator,
+                longTrueRangeSumIndicator, shortWeight, middleWeight, longWeight, totalWeight, hundred);
     }
 
     @Override
@@ -269,5 +298,14 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         public int getCountOfUnstableBars() {
             return unstableBars;
         }
+    }
+
+    private record Config(BarSeries series, Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator, int shortPeriod, int middlePeriod, int longPeriod,
+            RunningTotalIndicator shortBuyingPressureSumIndicator,
+            RunningTotalIndicator middleBuyingPressureSumIndicator,
+            RunningTotalIndicator longBuyingPressureSumIndicator, RunningTotalIndicator shortTrueRangeSumIndicator,
+            RunningTotalIndicator middleTrueRangeSumIndicator, RunningTotalIndicator longTrueRangeSumIndicator,
+            Num shortWeight, Num middleWeight, Num longWeight, Num totalWeight, Num hundred) {
     }
 }
