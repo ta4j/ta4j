@@ -75,12 +75,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.ChainRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="initialRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.rules.JustOnceRule"/>
         <Method name="&lt;init&gt;"/>
         <Field name="rule"/>
@@ -176,33 +170,9 @@
         <Field name="rule2"/>
     </Match>
     <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.XorRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="rule1"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.XorRule"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="rule2"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.helper.ChainLink"/>
         <Method name="getRule"/>
-        <Field name="rule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="rule"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
-        <Method name="setRule"/>
         <Field name="rule"/>
     </Match>
 </FindBugsFilter>

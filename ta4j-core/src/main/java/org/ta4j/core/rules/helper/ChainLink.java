@@ -34,7 +34,7 @@ public class ChainLink {
      *                  current index is included.
      */
     public ChainLink(Rule rule, int threshold) {
-        this.rule = rule;
+        setRule(rule);
         this.threshold = threshold;
     }
 
@@ -49,7 +49,7 @@ public class ChainLink {
      * @param rule the {@link #rule}
      */
     public void setRule(Rule rule) {
-        this.rule = rule;
+        this.rule = Objects.requireNonNull(rule, "rule cannot be null");
     }
 
     /**

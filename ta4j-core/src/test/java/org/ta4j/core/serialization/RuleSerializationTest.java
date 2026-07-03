@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -439,6 +440,33 @@ public class RuleSerializationTest {
         assertThat(reconstructed.isSatisfied(1)).isTrue();
         assertThat(reconstructed.isSatisfied(2)).isFalse();
         assertThat(reconstructed.isSatisfied(5)).isTrue();
+    }
+
+    @Test
+    public void deserializeChainRuleRejectsNullChainLinksAndRules() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor initialRule = ComponentDescriptor.builder()
+                .withType("FixedRule")
+                .withParameters(Map.of("indexes", List.of(1)))
+                .build();
+        ComponentDescriptor nullEntryDescriptor = ComponentDescriptor.builder()
+                .withType("ChainRule")
+                .addComponent(initialRule)
+                .withParameters(Map.of("chainLinks", Collections.singletonList(null)))
+                .build();
+        ComponentDescriptor missingRuleDescriptor = ComponentDescriptor.builder()
+                .withType("ChainRule")
+                .addComponent(initialRule)
+                .withParameters(Map.of("chainLinks", List.of(Map.of("threshold", 1))))
+                .build();
+
+        IllegalArgumentException nullEntry = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, nullEntryDescriptor));
+        IllegalArgumentException missingRule = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, missingRuleDescriptor));
+
+        assertThat(nullEntry).hasMessageContaining("Chain link entry cannot be null");
+        assertThat(missingRule).hasMessageContaining("Chain link rule cannot be null");
     }
 
     @Test

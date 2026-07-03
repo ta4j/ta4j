@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.Serializable;
@@ -61,6 +62,18 @@ public class ChainRuleTest {
     @Test
     public void chainLinkUsesDescriptorSerializationOnly() {
         assertFalse(new ChainLink(new FixedRule(1), 2) instanceof Serializable);
+    }
+
+    @Test
+    public void chainConstructorRejectsNullRulesAndLinks() {
+        FixedRule initial = new FixedRule(1);
+        ChainLink link = new ChainLink(new FixedRule(2), 1);
+
+        assertThrows(NullPointerException.class, () -> new ChainRule(null, link));
+        assertThrows(NullPointerException.class, () -> new ChainRule(initial, (ChainLink[]) null));
+        assertThrows(NullPointerException.class, () -> new ChainRule(initial, link, null));
+        assertThrows(NullPointerException.class, () -> new ChainLink(null, 1));
+        assertThrows(NullPointerException.class, () -> link.setRule(null));
     }
 
     @Test
