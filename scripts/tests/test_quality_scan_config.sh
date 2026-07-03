@@ -7,7 +7,6 @@ CORE_POM="$ROOT/ta4j-core/pom.xml"
 EXAMPLES_POM="$ROOT/ta4j-examples/pom.xml"
 WORKFLOW="$ROOT/.github/workflows/test.yml"
 WRAPPER_PROPERTIES="$ROOT/.mvn/wrapper/maven-wrapper.properties"
-SPOTBUGS_FILTER="$ROOT/config/spotbugs/known-debt-filter.xml"
 
 fail() { echo "[FAIL] $1" >&2; exit 1; }
 pass() { echo "[PASS] $1"; }
@@ -90,8 +89,7 @@ test_parent_manages_quality_plugins_for_verify() {
   expect_file_contains "$POM" "<artifactId>exec-maven-plugin</artifactId>" "parent pom should skip root exec:java runs"
   expect_file_contains "$POM" "<skip>true</skip>" "parent pom should skip exec:java on the aggregator"
   expect_file_contains "$POM" "<quiet>true</quiet>" "SpotBugs should stay compact in verify logs"
-  expect_file_contains "$POM" "<excludeFilterFile>\${maven.multiModuleProjectDirectory}/config/spotbugs/known-debt-filter.xml</excludeFilterFile>" "SpotBugs should use the checked-in known-debt filter"
-  expect_file_contains "$SPOTBUGS_FILTER" "<FindBugsFilter>" "SpotBugs known-debt filter should be committed"
+  expect_file_not_contains "$POM" "<excludeFilterFile>" "SpotBugs should run without an exclude filter"
   expect_file_contains "$POM" "@{argLine}" "Surefire should late-bind the JaCoCo agent argLine"
   expect_execution_contains "$POM" "spotbugs-check" "<phase>verify</phase>" "SpotBugs should stay wired into verify"
   expect_execution_contains "$POM" "spotbugs-check" "<failOnError>true</failOnError>" "SpotBugs should fail verify for unbaselined findings"
@@ -117,8 +115,11 @@ test_modules_opt_in_to_managed_quality_plugins() {
 test_ci_runs_verify_for_both_jobs() {
   echo "Running test_ci_runs_verify_for_both_jobs"
 
-  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify" "default CI job should run verify through Maven Wrapper"
-  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "non-demo CI job should run verify through Maven Wrapper"
+  expect_file_contains "$WORKFLOW" "Build and run verify with Maven Wrapper and SpotBugs" "default CI job should advertise SpotBugs parity"
+  expect_file_contains "$WORKFLOW" "Build and run verify with SpotBugs and demo tags excluded" "non-demo CI job should advertise SpotBugs parity"
+  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify" "default CI job should run verify through Maven Wrapper so SpotBugs executes"
+  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "non-demo CI job should run verify through Maven Wrapper so SpotBugs executes"
+  expect_file_not_contains "$WORKFLOW" "spotbugs.skip" "CI should not skip SpotBugs"
 
   pass "test_ci_runs_verify_for_both_jobs"
 }

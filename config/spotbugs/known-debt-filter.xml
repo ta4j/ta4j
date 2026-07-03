@@ -1,4 +1,0 @@
-<?xml version="1.0" ?>
-<FindBugsFilter>
-    <!--Known SpotBugs debt after CF-207/208/209/210 cleanup. New unbaselined findings fail the build.-->
-</FindBugsFilter>

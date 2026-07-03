@@ -291,7 +291,6 @@
                     <configuration>
                         <quiet>true</quiet>
                         <xmlOutput>true</xmlOutput>
-                        <excludeFilterFile>${maven.multiModuleProjectDirectory}/config/spotbugs/known-debt-filter.xml</excludeFilterFile>
                     </configuration>
                     <executions>
                         <execution>
