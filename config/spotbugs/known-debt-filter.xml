@@ -75,18 +75,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardContext"/>
-        <Method name="runner"/>
-        <Field name="runner"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardContext"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="runner"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.rules.AndRule"/>
         <Method name="getRule1"/>
         <Field name="rule1"/>
