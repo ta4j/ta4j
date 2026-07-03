@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.numeric;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -199,6 +201,6 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
     @Test
     public void barSeries() {
         final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
-        assertEquals(cp1.getBarSeries(), numericIndicator.getBarSeries());
+        assertTrue(isSameSeries(cp1.getBarSeries(), numericIndicator.getBarSeries()));
     }
 }

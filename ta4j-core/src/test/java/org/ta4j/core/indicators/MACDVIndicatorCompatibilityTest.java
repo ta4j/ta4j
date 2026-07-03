@@ -80,7 +80,8 @@ public class MACDVIndicatorCompatibilityTest extends AbstractIndicatorTest<Indic
                 .isEqualByComparingTo(shim.getValue(stableIndex).minus(shim.getSignalLine(4).getValue(stableIndex)));
 
         MACDVMomentumStateIndicator momentum = shim.getMomentumStateIndicator(MACDVMomentumProfile.defaultProfile());
-        assertThat(momentum.getMacdVIndicator().getBarSeries()).isSameAs(shim.getBarSeries());
+        assertThat(IndicatorUtils.isSameSeries(momentum.getMacdVIndicator().getBarSeries(), shim.getBarSeries()))
+                .isTrue();
         assertThat(momentum.getMacdVIndicator().getValue(stableIndex)).isEqualByComparingTo(shim.getValue(stableIndex));
         assertThat(shim.crossedUpSignal()).isNotNull();
         assertThat(shim.crossedDownSignal()).isNotNull();

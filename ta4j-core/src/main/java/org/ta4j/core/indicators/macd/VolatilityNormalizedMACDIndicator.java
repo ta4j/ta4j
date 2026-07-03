@@ -11,6 +11,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -367,7 +368,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         if (signalLine == null) {
             throw new IllegalArgumentException("Signal line factory must not return null");
         }
-        if (signalLine.getBarSeries() != getBarSeries()) {
+        if (!IndicatorUtils.isSameSeries(getBarSeries(), signalLine.getBarSeries())) {
             throw new IllegalArgumentException("Signal line must share the same bar series");
         }
         return signalLine;

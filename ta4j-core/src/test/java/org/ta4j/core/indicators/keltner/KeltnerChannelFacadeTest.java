@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.keltner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -66,7 +68,7 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testCreation() {
         final var facade = new KeltnerChannelFacade(data, 14, 14, 2);
-        assertEquals(data, facade.middle().getBarSeries());
+        assertTrue(isSameSeries(data, facade.middle().getBarSeries()));
     }
 
     @Test

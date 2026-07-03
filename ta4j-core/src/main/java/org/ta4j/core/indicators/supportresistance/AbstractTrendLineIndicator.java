@@ -660,9 +660,6 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
      *         line could be computed (e.g., fewer than two swing points exist)
      */
     public synchronized TrendLineSegment getCurrentSegment() {
-        if (getBarSeries() == null) {
-            return null;
-        }
         refreshCachedState();
         final int beginIndex = getBarSeries().getBeginIndex();
         final int endIndex = getBarSeries().getEndIndex();

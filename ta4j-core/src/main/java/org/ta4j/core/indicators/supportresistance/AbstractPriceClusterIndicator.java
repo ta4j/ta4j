@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.supportresistance;
 
 import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,10 +111,10 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             resolvedWeight = new ConstantIndicator<>(series, series.numFactory().one());
         }
         Indicator<Num> resolvedSource = weightIndicatorSource != null ? weightIndicatorSource : resolvedWeight;
-        if (resolvedWeight.getBarSeries() != series) {
+        if (!isSameSeries(series, resolvedWeight.getBarSeries())) {
             throw new IllegalArgumentException("weightIndicator must share the same bar series as priceIndicator");
         }
-        if (resolvedSource.getBarSeries() != series) {
+        if (!isSameSeries(series, resolvedSource.getBarSeries())) {
             throw new IllegalArgumentException(
                     "weightIndicatorSource must share the same bar series as priceIndicator");
         }

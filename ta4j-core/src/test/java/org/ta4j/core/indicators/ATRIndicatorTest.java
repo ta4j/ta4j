@@ -159,7 +159,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         TRIndicator second = indicator.getTRIndicator();
 
         assertNotSame(first, second);
-        assertEquals(series, first.getBarSeries());
+        assertTrue(IndicatorUtils.isSameSeries(series, first.getBarSeries()));
         assertNumEquals(first.getValue(series.getEndIndex()), second.getValue(series.getEndIndex()));
     }
 

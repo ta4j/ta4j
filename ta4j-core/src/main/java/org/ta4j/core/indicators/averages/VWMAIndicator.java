@@ -9,6 +9,7 @@ import java.util.function.BiFunction;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
@@ -85,7 +86,7 @@ public class VWMAIndicator extends CachedIndicator<Num> {
                 .requireNonNull(averageFactory, "averageFactory must not be null");
         BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
                 "priceIndicator must reference a bar series");
-        if (series != validatedVolumeIndicator.getBarSeries()) {
+        if (!IndicatorUtils.isSameSeries(series, validatedVolumeIndicator.getBarSeries())) {
             throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
         }
 

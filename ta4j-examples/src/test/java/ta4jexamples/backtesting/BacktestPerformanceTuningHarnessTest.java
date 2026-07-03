@@ -90,16 +90,23 @@ class BacktestPerformanceTuningHarnessTest {
     }
 
     @Test
-    void createStrategiesReusesEquivalentNetMomentumIndicatorGraphs() {
+    void createStrategiesBuildsEquivalentNetMomentumIndicatorGraphs() {
         BarSeries series = buildSeries(500);
 
         List<Strategy> strategies = BacktestPerformanceTuningHarness.createStrategies(series, 64);
 
         NetMomentumIndicator firstIndicator = entryIndicator(strategies.get(0));
-        assertSame(firstIndicator, exitIndicator(strategies.get(0)),
-                "Entry and exit thresholds should share one momentum graph within each strategy");
-        assertTrue(strategies.stream().skip(1).anyMatch(strategy -> entryIndicator(strategy) == firstIndicator),
-                "Strategies with the same RSI/timeframe/decay inputs should reuse cached indicator work");
+        int sampleIndex = series.getEndIndex();
+
+        assertTrue(firstIndicator.getValue(sampleIndex).isEqual(exitIndicator(strategies.get(0)).getValue(sampleIndex)),
+                "Entry and exit thresholds should expose equivalent momentum values");
+        assertTrue(
+                strategies.stream()
+                        .skip(1)
+                        .map(this::entryIndicator)
+                        .anyMatch(indicator -> indicator.getValue(sampleIndex)
+                                .isEqual(firstIndicator.getValue(sampleIndex))),
+                "Strategies with the same RSI/timeframe/decay inputs should expose equivalent momentum values");
     }
 
     @Test
@@ -277,13 +284,21 @@ class BacktestPerformanceTuningHarnessTest {
 
     private NetMomentumIndicator entryIndicator(Strategy strategy) {
         CrossedUpIndicatorRule rule = (CrossedUpIndicatorRule) strategy.getEntryRule();
-        Indicator<Num> indicator = rule.getLow();
-        return (NetMomentumIndicator) indicator;
+        return netMomentumIndicator(rule.getLow(), rule.getUp());
     }
 
     private NetMomentumIndicator exitIndicator(Strategy strategy) {
         CrossedDownIndicatorRule rule = (CrossedDownIndicatorRule) strategy.getExitRule();
-        Indicator<Num> indicator = rule.getUp();
-        return (NetMomentumIndicator) indicator;
+        return netMomentumIndicator(rule.getLow(), rule.getUp());
+    }
+
+    private NetMomentumIndicator netMomentumIndicator(Indicator<Num> first, Indicator<Num> second) {
+        if (first instanceof NetMomentumIndicator netMomentumIndicator) {
+            return netMomentumIndicator;
+        }
+        if (second instanceof NetMomentumIndicator netMomentumIndicator) {
+            return netMomentumIndicator;
+        }
+        throw new AssertionError("Expected one crossed-rule side to be a NetMomentumIndicator");
     }
 }

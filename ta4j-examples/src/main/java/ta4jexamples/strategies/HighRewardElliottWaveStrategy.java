@@ -14,6 +14,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
@@ -260,7 +261,7 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
      */
     private static void validateScenarioIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        if (scenarioIndicator.getBarSeries() != series) {
+        if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
             throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
         }
     }

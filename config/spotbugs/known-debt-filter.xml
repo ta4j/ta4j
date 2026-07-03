@@ -1,10 +1,4 @@
 <?xml version="1.0" ?>
 <FindBugsFilter>
     <!--Known SpotBugs debt after CF-207/208/209/210 cleanup. New unbaselined findings fail the build.-->
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.indicators.AbstractIndicator"/>
-        <Method name="getBarSeries"/>
-        <Field name="series"/>
-    </Match>
 </FindBugsFilter>

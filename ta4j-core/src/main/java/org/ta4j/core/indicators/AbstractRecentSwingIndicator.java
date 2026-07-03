@@ -60,7 +60,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     @Override
     public final List<Integer> getSwingPointIndexes() {
         final BarSeries series = getBarSeries();
-        return series == null ? List.of() : swingPoints.getSwingPointIndexes(series.getEndIndex());
+        return swingPoints.getSwingPointIndexes(series.getEndIndex());
     }
 
     @Override
@@ -76,9 +76,6 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     @Override
     protected Num calculate(int index) {
         final BarSeries series = getBarSeries();
-        if (series == null) {
-            return NaN;
-        }
         final int beginIndex = series.getBeginIndex();
         final int endIndex = series.getEndIndex();
         if (index < beginIndex || index > endIndex) {

@@ -143,17 +143,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();
-        if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            T result = calculate(index);
-            if (log.isTraceEnabled()) {
-                log.trace("{}({}): {}", this, index, result);
-            }
-            return result;
-        }
-
         final int removedBarsCount = series.getRemovedBarsCount();
         final int endIndex = series.getEndIndex();
 

@@ -11,6 +11,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -183,10 +184,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
             final RecentSwingIndicator swingLowIndicator) {
         final BarSeries highSeries = swingHighIndicator.getBarSeries();
         final BarSeries lowSeries = swingLowIndicator.getBarSeries();
-        if (highSeries == null || lowSeries == null) {
-            throw new IllegalArgumentException("Swing indicators must expose a backing series");
-        }
-        if (highSeries != lowSeries) {
+        if (!IndicatorUtils.isSameSeries(highSeries, lowSeries)) {
             throw new IllegalArgumentException("Swing indicators must share the same bar series instance");
         }
         return highSeries;
