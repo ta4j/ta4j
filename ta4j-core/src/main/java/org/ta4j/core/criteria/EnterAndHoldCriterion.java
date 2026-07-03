@@ -64,7 +64,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *                                  enter-and-hold or relative-return criterion
      */
     public EnterAndHoldCriterion(AnalysisCriterion criterion) {
-        this(TradeType.BUY, criterion);
+        this(validatedConfig(TradeType.BUY, criterion, BigDecimal.ONE));
     }
 
     /**
@@ -76,7 +76,7 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *                                  enter-and-hold or relative-return criterion
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
-        this(tradeType, criterion, BigDecimal.ONE);
+        this(validatedConfig(tradeType, criterion, BigDecimal.ONE));
     }
 
     /**
@@ -90,6 +90,17 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @throws NullPointerException     if {@code amount} is {@code null}
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
+        this(validatedConfig(tradeType, criterion, amount));
+    }
+
+    private EnterAndHoldCriterion(Config config) {
+        this.tradeType = config.tradeType();
+        this.criterion = config.criterion();
+        this.amount = config.amount();
+    }
+
+    private static Config validatedConfig(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
+        AnalysisCriterion validatedCriterion = Objects.requireNonNull(criterion, "criterion");
         if (criterion instanceof EnterAndHoldCriterion) {
             throw new IllegalArgumentException("Criterion cannot be an instance of EnterAndHoldCriterion.");
         }
@@ -103,9 +114,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
         if (criterion instanceof VersusEnterAndHoldCriterion) {
             throw new IllegalArgumentException("Criterion cannot be an instance of VersusEnterAndHoldCriterion.");
         }
-        this.tradeType = tradeType;
-        this.criterion = criterion;
-        this.amount = Objects.requireNonNull(amount);
+        return new Config(Objects.requireNonNull(tradeType, "tradeType"), validatedCriterion,
+                Objects.requireNonNull(amount));
     }
 
     @Override
@@ -164,5 +174,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " of " + criterion.getClass().getSimpleName();
+    }
+
+    private record Config(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
     }
 }

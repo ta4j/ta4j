@@ -78,7 +78,7 @@ public class ActiveReturnCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.7
      */
     public ActiveReturnCriterion(AnalysisCriterion primaryCriterion, AnalysisCriterion benchmarkCriterion) {
-        this(primaryCriterion, benchmarkCriterion, ReturnRepresentation.DECIMAL);
+        this(validatedConfig(primaryCriterion, benchmarkCriterion, ReturnRepresentation.DECIMAL));
     }
 
     /**
@@ -97,11 +97,30 @@ public class ActiveReturnCriterion extends AbstractAnalysisCriterion {
      */
     public ActiveReturnCriterion(AnalysisCriterion primaryCriterion, AnalysisCriterion benchmarkCriterion,
             ReturnRepresentation returnRepresentation) {
-        this.primaryCriterion = Objects.requireNonNull(primaryCriterion, "primaryCriterion");
-        this.benchmarkCriterion = Objects.requireNonNull(benchmarkCriterion, "benchmarkCriterion");
-        this.primaryReturnRepresentation = validateReturnCriterion("primaryCriterion", this.primaryCriterion);
-        this.benchmarkReturnRepresentation = validateReturnCriterion("benchmarkCriterion", this.benchmarkCriterion);
-        this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
+        this(validatedConfig(primaryCriterion, benchmarkCriterion, returnRepresentation));
+    }
+
+    private ActiveReturnCriterion(Config config) {
+        this.primaryCriterion = config.primaryCriterion();
+        this.benchmarkCriterion = config.benchmarkCriterion();
+        this.primaryReturnRepresentation = config.primaryReturnRepresentation();
+        this.benchmarkReturnRepresentation = config.benchmarkReturnRepresentation();
+        this.returnRepresentation = config.returnRepresentation();
+    }
+
+    private static Config validatedConfig(AnalysisCriterion primaryCriterion, AnalysisCriterion benchmarkCriterion,
+            ReturnRepresentation returnRepresentation) {
+        AnalysisCriterion validatedPrimaryCriterion = Objects.requireNonNull(primaryCriterion, "primaryCriterion");
+        AnalysisCriterion validatedBenchmarkCriterion = Objects.requireNonNull(benchmarkCriterion,
+                "benchmarkCriterion");
+        ReturnRepresentation primaryReturnRepresentation = validateReturnCriterion("primaryCriterion",
+                validatedPrimaryCriterion);
+        ReturnRepresentation benchmarkReturnRepresentation = validateReturnCriterion("benchmarkCriterion",
+                validatedBenchmarkCriterion);
+        ReturnRepresentation validatedReturnRepresentation = Objects.requireNonNull(returnRepresentation,
+                "returnRepresentation");
+        return new Config(validatedPrimaryCriterion, validatedBenchmarkCriterion, primaryReturnRepresentation,
+                benchmarkReturnRepresentation, validatedReturnRepresentation);
     }
 
     @Override
@@ -177,5 +196,10 @@ public class ActiveReturnCriterion extends AbstractAnalysisCriterion {
             return abstractCriterion.getReturnRepresentation();
         }
         return Optional.empty();
+    }
+
+    private record Config(AnalysisCriterion primaryCriterion, AnalysisCriterion benchmarkCriterion,
+            ReturnRepresentation primaryReturnRepresentation, ReturnRepresentation benchmarkReturnRepresentation,
+            ReturnRepresentation returnRepresentation) {
     }
 }

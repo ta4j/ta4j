@@ -193,21 +193,6 @@
         <Field name="barBuilder"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.criteria.ActiveReturnCriterion"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.criteria.EnterAndHoldCriterion"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.criteria.risk.RMultipleCriterion"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.indicators.ATRIndicator"/>
         <Method name="&lt;init&gt;"/>
