@@ -2,16 +2,6 @@
 <FindBugsFilter>
     <!--Known SpotBugs debt after CF-207/208/209/210 cleanup. New unbaselined findings fail the build.-->
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.BaseBar"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.BaseBarSeries"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.BaseStrategy"/>
         <Method name="getEntryRule"/>
@@ -188,11 +178,6 @@
         <Class name="org.ta4j.core.indicators.AbstractIndicator"/>
         <Method name="getBarSeries"/>
         <Field name="series"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.indicators.CachedIndicator"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>

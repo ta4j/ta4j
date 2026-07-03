@@ -81,6 +81,25 @@ public class BaseBar implements Bar {
     public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount, long trades) {
 
+        this(resolvedTimes(timePeriod, beginTime, endTime), openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades);
+    }
+
+    private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
+            Num amount, long trades) {
+        this.timePeriod = times.timePeriod();
+        this.beginTime = times.beginTime();
+        this.endTime = times.endTime();
+        this.openPrice = openPrice;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
+        this.closePrice = closePrice;
+        this.volume = volume;
+        this.amount = amount;
+        this.trades = trades;
+    }
+
+    private static ResolvedTimes resolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
         final Duration resolvedTimePeriod;
         if (timePeriod != null) {
             if (beginTime != null && endTime != null
@@ -113,16 +132,10 @@ public class BaseBar implements Bar {
             throw new NullPointerException("End time cannot be null");
         }
 
-        this.timePeriod = resolvedTimePeriod;
-        this.beginTime = resolvedBeginTime;
-        this.endTime = resolvedEndTime;
-        this.openPrice = openPrice;
-        this.highPrice = highPrice;
-        this.lowPrice = lowPrice;
-        this.closePrice = closePrice;
-        this.volume = volume;
-        this.amount = amount;
-        this.trades = trades;
+        return new ResolvedTimes(resolvedTimePeriod, resolvedBeginTime, resolvedEndTime);
+    }
+
+    private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
     @Override

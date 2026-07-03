@@ -77,7 +77,7 @@ public class BaseBarSeries implements BarSeries {
      * @param bars the list of bars of the bar series
      */
     public BaseBarSeries(final String name, final List<Bar> bars) {
-        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory());
+        this(defaultConfig(name, bars));
     }
 
     /**
@@ -95,26 +95,43 @@ public class BaseBarSeries implements BarSeries {
      */
     BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
-        this.name = name;
-        this.numFactory = numFactory;
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory));
+    }
 
-        this.bars = new ArrayList<>(bars);
-        this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
-        if (bars.isEmpty()) {
+    private BaseBarSeries(final Config config) {
+        this.name = config.name();
+        this.numFactory = config.numFactory();
+        this.bars = config.bars();
+        this.barBuilderFactory = config.barBuilderFactory();
+        this.seriesBeginIndex = config.seriesBeginIndex();
+        this.seriesEndIndex = config.seriesEndIndex();
+        this.constrained = config.constrained();
+    }
+
+    private static Config defaultConfig(final String name, final List<Bar> bars) {
+        List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
+        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, false, DecimalNumFactory.getInstance(),
+                new TimeBarBuilderFactory());
+    }
+
+    private static Config validatedConfig(final String name, final List<Bar> bars, final int seriesBeginIndex,
+            final int seriesEndIndex, final boolean constrained, final NumFactory numFactory,
+            final BarBuilderFactory barBuilderFactory) {
+        List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
+        BarBuilderFactory validatedBarBuilderFactory = Objects.requireNonNull(barBuilderFactory);
+        if (copiedBars.isEmpty()) {
             // Bar list empty
-            this.constrained = false;
-            return;
+            return new Config(name, copiedBars, -1, -1, false, numFactory, validatedBarBuilderFactory);
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
             throw new IllegalArgumentException("End index must be >= to begin index - 1");
         }
-        if (seriesEndIndex >= bars.size()) {
+        if (seriesEndIndex >= copiedBars.size()) {
             throw new IllegalArgumentException("End index must be < to the bar list size");
         }
-        this.seriesBeginIndex = seriesBeginIndex;
-        this.seriesEndIndex = seriesEndIndex;
-        this.constrained = constrained;
+        return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, constrained, numFactory,
+                validatedBarBuilderFactory);
     }
 
     /**
@@ -138,6 +155,10 @@ public class BaseBarSeries implements BarSeries {
     private static String buildOutOfBoundsMessage(final BaseBarSeries series, final int index) {
         return String.format("Size of series: %s bars, %s bars removed, index = %s", series.bars.size(),
                 series.removedBarsCount, index);
+    }
+
+    private record Config(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
+            NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
     }
 
     @Override

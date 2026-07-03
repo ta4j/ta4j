@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
@@ -96,17 +97,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        this(series, LAST_BAR_WAIT_TIMEOUT_MS);
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
     }
 
     CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
-        super(series);
+        this(validatedConfig(series, lastBarWaitTimeoutMs));
+    }
+
+    private CachedIndicator(Config config) {
+        super(config.series());
+        this.cache = new CachedBuffer<>(config.cacheLimit());
+        this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
+    }
+
+    private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
         if (lastBarWaitTimeoutMs <= 0) {
             throw new IllegalArgumentException("Last-bar wait timeout must be positive");
         }
         int limit = series.getMaximumBarCount();
-        this.cache = new CachedBuffer<>(limit);
-        this.lastBarWaitTimeoutMs = lastBarWaitTimeoutMs;
+        return new Config(series, limit, lastBarWaitTimeoutMs);
     }
 
     /**
@@ -115,7 +124,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param indicator a related indicator (with a bar series)
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
+        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+    }
+
+    private record Config(BarSeries series, int cacheLimit, long lastBarWaitTimeoutMs) {
+    }
+
+    private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
+        return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
     }
 
     /**
