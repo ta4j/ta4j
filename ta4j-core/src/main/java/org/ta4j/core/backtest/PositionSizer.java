@@ -253,7 +253,7 @@ public interface PositionSizer {
          */
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
-            Objects.requireNonNull(strategy, "strategy");
+            strategy = StrategySnapshots.copy(strategy);
             barSeries = snapshotSeries(barSeries);
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
@@ -264,6 +264,11 @@ public interface PositionSizer {
         @Override
         public BarSeries barSeries() {
             return snapshotSeries(barSeries);
+        }
+
+        @Override
+        public Strategy strategy() {
+            return StrategySnapshots.copy(strategy);
         }
 
         /**

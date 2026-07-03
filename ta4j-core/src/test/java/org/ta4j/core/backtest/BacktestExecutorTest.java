@@ -60,7 +60,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(strategies.size(), result.runtimeReport().strategyRuntimes().size());
 
         for (int i = 0; i < strategies.size(); i++) {
-            assertSame(strategies.get(i), result.runtimeReport().strategyRuntimes().get(i).strategy());
+            Strategy runtimeStrategy = result.runtimeReport().strategyRuntimes().get(i).strategy();
+
+            assertNotSame(strategies.get(i), runtimeStrategy);
+            assertEquals(strategies.get(i).getName(), runtimeStrategy.getName());
+            assertEquals(strategies.get(i).getUnstableBars(), runtimeStrategy.getUnstableBars());
         }
 
         assertFalse(result.runtimeReport()

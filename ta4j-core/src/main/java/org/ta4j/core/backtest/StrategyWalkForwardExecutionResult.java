@@ -48,7 +48,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      */
     public StrategyWalkForwardExecutionResult {
         barSeries = snapshotSeries(barSeries);
-        strategy = Objects.requireNonNull(strategy, "strategy");
+        strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport");
@@ -57,6 +57,11 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     @Override
     public BarSeries barSeries() {
         return snapshotSeries(barSeries);
+    }
+
+    @Override
+    public Strategy strategy() {
+        return StrategySnapshots.copy(strategy);
     }
 
     /**

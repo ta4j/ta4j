@@ -3,36 +3,6 @@
     <!--Known SpotBugs debt after CF-207/208/209/210 cleanup. New unbaselined findings fail the build.-->
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
-        <Method name="strategy"/>
-        <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
-        <Method name="strategy"/>
-        <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
-        <Method name="&lt;init&gt;"/>
-        <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="org.ta4j.core.backtest.StrategyWalkForwardExecutionResult"/>
-        <Method name="strategy"/>
-        <Field name="strategy"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.indicators.AbstractIndicator"/>
         <Method name="getBarSeries"/>
         <Field name="series"/>

@@ -143,7 +143,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         PositionSizer positionSizer = context -> {
             BarSeries firstContextSeries = context.barSeries();
             BarSeries secondContextSeries = context.barSeries();
-            assertSame(oneTradeStrategy, context.strategy());
+            Strategy firstContextStrategy = context.strategy();
+            Strategy secondContextStrategy = context.strategy();
+            assertNotSame(oneTradeStrategy, firstContextStrategy);
+            assertNotSame(firstContextStrategy, secondContextStrategy);
+            assertTrue(firstContextStrategy.shouldEnter(2));
             assertNotSame(series, firstContextSeries);
             assertNotSame(firstContextSeries, secondContextSeries);
             assertEquals(series.getBarCount(), firstContextSeries.getBarCount());
