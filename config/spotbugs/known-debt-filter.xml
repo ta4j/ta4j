@@ -129,16 +129,6 @@
         <Field name="strategy"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.backtest.SlippageExecutionModel"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.backtest.StopLimitExecutionModel"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="org.ta4j.core.backtest.StrategyWalkForwardExecutionResult"/>
         <Method name="barSeries"/>
