@@ -62,7 +62,7 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
 
         NumFactory numFactory = getBarSeries().numFactory();
         ShockSampler sampler = ShockSampler.create(config.shockModel(), historicalReturns, state, numFactory);
-        RandomGenerator random = new SplittableRandom(SeedMixer.mix(config.seed(), index, config.horizon()));
+        RandomGenerator random = new SplittableRandom(mixSeed(config.seed(), index, config.horizon()));
         List<Num> cumulativeReturns = new ArrayList<>(config.iterationCount());
         for (int iteration = 0; iteration < config.iterationCount(); iteration++) {
             cumulativeReturns.add(simulatePath(random, sampler, state, numFactory));
@@ -102,7 +102,7 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
         Num variance = startingState.variance();
         Num volatility = startingState.volatility();
         for (int step = 0; step < config.horizon(); step++) {
-            Num stepReturn = stepReturn(random, sampler, numFactory, drift, volatility);
+            Num stepReturn = stepReturn(random, sampler, drift, volatility);
             cumulativeReturn = cumulativeReturn.plus(stepReturn);
             if (config.volatilityUpdateMode() == VolatilityUpdateMode.EWMA) {
                 Num decay = numFactory.numOf(config.volatilityDecayFactor());
@@ -117,12 +117,54 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
         return cumulativeReturn;
     }
 
-    private Num stepReturn(RandomGenerator random, ShockSampler sampler, NumFactory numFactory, Num drift,
-            Num volatility) {
-        Num shock = sampler.sample(random, numFactory);
+    private Num stepReturn(RandomGenerator random, ShockSampler sampler, Num drift, Num volatility) {
+        Num shock = sampler.sample(random);
         if (config.shockModel() == ShockModel.HISTORICAL_BOOTSTRAP) {
             return shock;
         }
         return drift.plus(volatility.multipliedBy(shock));
+    }
+
+    private static long mixSeed(long seed, int index, int horizon) {
+        long value = seed;
+        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
+        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
+        value ^= 0x1C69B3F74AC4AE35L + horizon;
+        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
+        return value ^ value >>> 33;
+    }
+
+    @FunctionalInterface
+    private interface ShockSampler {
+
+        Num sample(RandomGenerator random);
+
+        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ReturnForecastState state,
+                NumFactory numFactory) {
+            return switch (model) {
+            case HISTORICAL_BOOTSTRAP -> historicalBootstrap(historicalReturns);
+            case STANDARDIZED_EMPIRICAL -> standardizedEmpirical(historicalReturns, state, numFactory);
+            case NORMAL -> random -> numFactory.numOf(random.nextGaussian());
+            };
+        }
+
+        private static ShockSampler historicalBootstrap(List<Num> historicalReturns) {
+            List<Num> samples = List.copyOf(historicalReturns);
+            return random -> samples.get(random.nextInt(samples.size()));
+        }
+
+        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ReturnForecastState state,
+                NumFactory numFactory) {
+            List<Num> shocks = new ArrayList<>(historicalReturns.size());
+            if (state.volatility().isZero()) {
+                shocks.add(numFactory.zero());
+            } else {
+                for (Num historicalReturn : historicalReturns) {
+                    shocks.add(historicalReturn.minus(state.mean()).dividedBy(state.volatility()));
+                }
+            }
+            List<Num> samples = List.copyOf(shocks);
+            return random -> samples.get(random.nextInt(samples.size()));
+        }
     }
 }

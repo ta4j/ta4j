@@ -1,14 +1,14 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast;
+package org.ta4j.core.indicators.helpers;
 
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -81,12 +81,11 @@ public final class LogReturnIndicator extends CachedIndicator<Num> {
         }
         Num current = indicator.getValue(index);
         Num previous = indicator.getValue(index - barCount);
-        if (ForecastNumerics.isInvalid(current) || ForecastNumerics.isInvalid(previous) || !current.isPositive()
-                || !previous.isPositive()) {
+        if (isInvalid(current) || isInvalid(previous) || !current.isPositive() || !previous.isPositive()) {
             return NaN.NaN;
         }
         Num result = current.dividedBy(previous).log();
-        if (ForecastNumerics.isInvalid(result)) {
+        if (isInvalid(result)) {
             return NaN.NaN;
         }
         return result;
@@ -107,6 +106,15 @@ public final class LogReturnIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("barCount must be >= 1");
         }
         return new Config(Objects.requireNonNull(indicator, "indicator must not be null"), barCount);
+    }
+
+    private static boolean isInvalid(Num value) {
+        if (IndicatorUtils.isInvalid(value)) {
+            return true;
+        }
+        Number delegate = value.getDelegate();
+        return delegate instanceof Double doubleValue && Double.isInfinite(doubleValue)
+                || delegate instanceof Float floatValue && Float.isInfinite(floatValue);
     }
 
     private record Config(Indicator<Num> indicator, int barCount) {

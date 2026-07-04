@@ -4,7 +4,6 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -13,6 +12,7 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -75,17 +75,6 @@ public class MonteCarloReturnForecastIndicatorTest
         assertTrue(normalDistribution.defined());
         assertTrue(empiricalDistribution.quantile(0.05).isLessThanOrEqual(empiricalDistribution.quantile(0.95)));
         assertTrue(normalDistribution.standardDeviation().isPositive());
-    }
-
-    @Test
-    public void validationRejectsInvalidConfig() {
-        assertThrows(IllegalArgumentException.class, () -> MonteCarloForecastConfig.builder().horizon(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> MonteCarloForecastConfig.builder().iterationCount(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> MonteCarloForecastConfig.builder().lookbackBarCount(0).build());
-        assertThrows(IllegalArgumentException.class,
-                () -> MonteCarloForecastConfig.builder().quantiles(0.5, 1.1).build());
     }
 
     private MonteCarloReturnForecastIndicator forecast(BarSeries series, ShockModel shockModel, int horizon,

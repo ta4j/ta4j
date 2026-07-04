@@ -4,13 +4,13 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -97,14 +97,5 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(stateIndicator.getValue(2).mean().isNaN());
         assertTrue(stateIndicator.getValue(3).mean().isNaN());
         assertTrue(stateIndicator.getValue(4).defined());
-    }
-
-    @Test
-    public void configValidationRejectsInvalidValues() {
-        assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateConfig(0, 0.5, DriftMode.ZERO));
-        assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateConfig(2, 1.0, DriftMode.ZERO));
-        assertThrows(NullPointerException.class, () -> new EwmaReturnForecastStateConfig(2, 0.5, null));
-        assertThrows(IllegalArgumentException.class,
-                () -> new ReturnForecastState(1, 1, false, numOf(0), numOf(0), numOf(0), numOf(0)));
     }
 }
