@@ -104,5 +104,7 @@ public class EwmaReturnForecastStateIndicatorTest
         assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateConfig(0, 0.5, DriftMode.ZERO));
         assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateConfig(2, 1.0, DriftMode.ZERO));
         assertThrows(NullPointerException.class, () -> new EwmaReturnForecastStateConfig(2, 0.5, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ReturnForecastState(1, 1, false, numOf(0), numOf(0), numOf(0), numOf(0)));
     }
 }

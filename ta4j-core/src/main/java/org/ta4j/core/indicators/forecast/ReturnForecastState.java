@@ -38,6 +38,9 @@ public record ReturnForecastState(int index, int observationCount, boolean defin
         if (defined && observationCount == 0) {
             throw new IllegalArgumentException("defined states must include at least one observation");
         }
+        if (!defined && observationCount != 0) {
+            throw new IllegalArgumentException("undefined states must have zero observations");
+        }
         mean = Objects.requireNonNull(mean, "mean must not be null");
         drift = Objects.requireNonNull(drift, "drift must not be null");
         variance = Objects.requireNonNull(variance, "variance must not be null");

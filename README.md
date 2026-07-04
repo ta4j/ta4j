@@ -236,6 +236,7 @@ import org.ta4j.core.indicators.forecast.ShockModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
+BarSeries series = ...;
 ClosePriceIndicator close = new ClosePriceIndicator(series);
 
 EwmaReturnForecastStateConfig stateConfig = EwmaReturnForecastStateConfig.builder()

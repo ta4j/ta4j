@@ -43,7 +43,8 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
     protected ForecastDistribution<Num> calculate(int index) {
         ForecastDistribution<Num> logReturnForecast = logReturnForecastIndicator.getValue(index);
         if (logReturnForecast == null || !logReturnForecast.defined()) {
-            return ForecastDistribution.undefined(index, fallbackHorizon(logReturnForecast));
+            int horizon = logReturnForecast == null ? 1 : logReturnForecast.horizon();
+            return ForecastDistribution.undefined(index, horizon);
         }
         Num price = priceIndicator.getValue(index);
         if (ForecastNumerics.isInvalid(price) || !price.isPositive()) {
@@ -65,9 +66,5 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), logReturnForecastIndicator.getCountOfUnstableBars());
-    }
-
-    private static int fallbackHorizon(ForecastDistribution<Num> distribution) {
-        return distribution == null ? 1 : distribution.horizon();
     }
 }
