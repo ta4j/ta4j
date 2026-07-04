@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
@@ -177,6 +178,21 @@ class ElliottSwingIndicatorTest {
         assertThat(swings.get(0).toIndex()).isEqualTo(4);
         assertThat(swings.get(0).fromPrice()).isEqualByComparingTo(factory.numOf(12));
         assertThat(swings.get(0).toPrice()).isEqualByComparingTo(factory.numOf(8));
+    }
+
+    @Test
+    void rejectsNullSwingSourceAndMismatchedSeries() {
+        var highSeries = new MockBarSeriesBuilder().build();
+        var lowSeries = new MockBarSeriesBuilder().build();
+        var highPrice = new FixedIndicator<>(highSeries, highSeries.numFactory().one());
+        var lowPrice = new FixedIndicator<>(lowSeries, lowSeries.numFactory().one());
+        var swingLow = new FixedRecentSwingIndicator(lowSeries, lowPrice, List.of());
+
+        assertThrows(NullPointerException.class,
+                () -> new ElliottSwingIndicator((RecentSwingIndicator) null, swingLow, ElliottDegree.MINOR));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ElliottSwingIndicator(new FixedRecentSwingIndicator(highSeries, highPrice, List.of()),
+                        swingLow, ElliottDegree.MINOR));
     }
 
     private static final class FixedRecentSwingIndicator implements RecentSwingIndicator {

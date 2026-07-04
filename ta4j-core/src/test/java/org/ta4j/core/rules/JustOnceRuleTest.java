@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -67,6 +68,11 @@ public class JustOnceRuleTest {
         assertFalse(rule.isSatisfied(4));
         assertFalse(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(1));
+    }
+
+    @Test
+    public void constructorRejectsNullInnerRule() {
+        assertThrows(NullPointerException.class, () -> new JustOnceRule(null));
     }
 
     @Test

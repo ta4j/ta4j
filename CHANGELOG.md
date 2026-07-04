@@ -6,10 +6,14 @@
 - **Pluggable execution-target estimation for dynamic sizing**: Added `TradeExecutionModel#estimateEntryTarget(...)` so custom execution models can provide sizing-aware fill timing and pricing. Dynamic sizing now defaults to conservative next-open estimation for models that do not override this API, and falls back safely when no target is resolvable to keep runs defined.
 
 ### Changed
+- **Elliott anchor calibration is harness-only**: Long BTC anchor calibration now lives behind `ElliottWaveAnchorCalibrationHarness` as a dedicated CLI/job entrypoint, while the remaining harness unit tests exercise registry, windowing, report, and artifact contracts with synthetic inputs. Active docs warn that full anchor calibration can run for 8+ hours.
 - **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
 - **EW snapshot outputs are easier to consume from automation**: `ElliottWavePresetDemo` now has help/status-code handling for invalid CLI usage, and live macro scenario JSON includes portable chart and report file names for artifact viewers that do not preserve absolute paths.
 - **Quiet Maven verify stays focused on failures**: `ta4j-core` test logging now keeps intentional `TimeBarBuilder` missing-bar warnings and invalid `ReturnRepresentation` parse warnings out of `mvn verify -q` output while preserving explicit log-capture assertions for those expected paths.
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
+
+### Fixed
+- **CF-207/208/209/210/211/236 SpotBugs closure**: Cleared the historical SpotBugs baseline across constructor safety, cache concurrency, representation ownership, examples IO/reporting, serialization, indicator/rule/backtest accessors, and Elliott analysis paths; Maven `verify`, standalone SpotBugs scans, and GitHub CI now run SpotBugs without an exclude filter and fail on new findings.
 
 ## 0.22.8 (2026-06-29)
 

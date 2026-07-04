@@ -189,6 +189,36 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Creates a new analysis runner with the same effective configuration.
+     *
+     * @return independent runner copy
+     * @since 0.22.9
+     */
+    public ElliottWaveAnalysisRunner copy() {
+        final Builder builder = new Builder();
+        builder.baseDegree = baseDegree;
+        builder.higherDegrees = higherDegrees;
+        builder.lowerDegrees = lowerDegrees;
+        builder.higherDegreesExplicit = true;
+        builder.lowerDegreesExplicit = true;
+        builder.maxScenarios = maxScenarios;
+        builder.maxScenariosExplicit = true;
+        builder.scenarioSwingWindow = scenarioSwingWindow;
+        builder.scenarioSwingWindowExplicit = true;
+        builder.seriesSelector = seriesSelector;
+        builder.analysisRunner = usesDefaultAnalysisRunner ? null : analysisRunner;
+        builder.baseConfidenceWeight = baseConfidenceWeight;
+        builder.baseConfidenceWeightExplicit = true;
+        builder.logicProfile = logicProfile;
+        builder.swingDetector = swingDetector;
+        builder.swingFilter = swingFilter;
+        builder.confidenceModelFactory = confidenceModelFactory;
+        builder.patternSet = patternSet;
+        builder.minConfidence = minConfidence;
+        return new ElliottWaveAnalysisRunner(builder);
+    }
+
+    /**
      * Runs analysis on the supplied series.
      *
      * <p>

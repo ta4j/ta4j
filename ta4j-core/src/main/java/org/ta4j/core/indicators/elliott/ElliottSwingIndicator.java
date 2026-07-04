@@ -11,6 +11,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -69,7 +70,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @since 0.22.0
      */
     public ElliottSwingIndicator(final BarSeries series, final int window, final ElliottDegree degree) {
-        this(series, window, window, window, degree);
+        this(validateInputs(fractalHigh(series, window, window, window), fractalLow(series, window, window, window),
+                degree));
     }
 
     /**
@@ -84,7 +86,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottSwingIndicator(final BarSeries series, final int lookbackLength, final int lookforwardLength,
             final ElliottDegree degree) {
-        this(series, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength), degree);
+        this(validateInputs(
+                fractalHigh(series, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength)),
+                fractalLow(series, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength)),
+                degree));
     }
 
     /**
@@ -101,8 +106,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottSwingIndicator(final BarSeries series, final int lookbackLength, final int lookforwardLength,
             final int allowedEqualBars, final ElliottDegree degree) {
-        this(fractalHigh(series, lookbackLength, lookforwardLength, allowedEqualBars),
-                fractalLow(series, lookbackLength, lookforwardLength, allowedEqualBars), degree);
+        this(validateInputs(fractalHigh(series, lookbackLength, lookforwardLength, allowedEqualBars),
+                fractalLow(series, lookbackLength, lookforwardLength, allowedEqualBars), degree));
     }
 
     /**
@@ -115,7 +120,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @since 0.22.0
      */
     public ElliottSwingIndicator(final Indicator<Num> indicator, final int window, final ElliottDegree degree) {
-        this(indicator, window, window, window, degree);
+        this(validateInputs(fractalHigh(indicator, window, window, window),
+                fractalLow(indicator, window, window, window), degree));
     }
 
     /**
@@ -130,7 +136,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottSwingIndicator(final Indicator<Num> indicator, final int lookbackLength, final int lookforwardLength,
             final ElliottDegree degree) {
-        this(indicator, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength), degree);
+        this(validateInputs(
+                fractalHigh(indicator, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength)),
+                fractalLow(indicator, lookbackLength, lookforwardLength, Math.min(lookbackLength, lookforwardLength)),
+                degree));
     }
 
     /**
@@ -147,8 +156,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottSwingIndicator(final Indicator<Num> indicator, final int lookbackLength, final int lookforwardLength,
             final int allowedEqualBars, final ElliottDegree degree) {
-        this(fractalHigh(indicator, lookbackLength, lookforwardLength, allowedEqualBars),
-                fractalLow(indicator, lookbackLength, lookforwardLength, allowedEqualBars), degree);
+        this(validateInputs(fractalHigh(indicator, lookbackLength, lookforwardLength, allowedEqualBars),
+                fractalLow(indicator, lookbackLength, lookforwardLength, allowedEqualBars), degree));
     }
 
     /**
@@ -161,20 +170,21 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottSwingIndicator(final RecentSwingIndicator swingHighIndicator,
             final RecentSwingIndicator swingLowIndicator, final ElliottDegree degree) {
-        super(requireSeries(swingHighIndicator, swingLowIndicator));
-        this.swingHighIndicator = Objects.requireNonNull(swingHighIndicator, "swingHighIndicator");
-        this.swingLowIndicator = Objects.requireNonNull(swingLowIndicator, "swingLowIndicator");
-        this.degree = Objects.requireNonNull(degree, "degree");
+        this(validateInputs(swingHighIndicator, swingLowIndicator, degree));
+    }
+
+    private ElliottSwingIndicator(final ValidatedSwingInputs inputs) {
+        super(inputs.series());
+        this.swingHighIndicator = inputs.swingHighIndicator();
+        this.swingLowIndicator = inputs.swingLowIndicator();
+        this.degree = inputs.degree();
     }
 
     private static BarSeries requireSeries(final RecentSwingIndicator swingHighIndicator,
             final RecentSwingIndicator swingLowIndicator) {
-        final BarSeries highSeries = Objects.requireNonNull(swingHighIndicator, "swingHighIndicator").getBarSeries();
-        final BarSeries lowSeries = Objects.requireNonNull(swingLowIndicator, "swingLowIndicator").getBarSeries();
-        if (highSeries == null || lowSeries == null) {
-            throw new IllegalArgumentException("Swing indicators must expose a backing series");
-        }
-        if (highSeries != lowSeries) {
+        final BarSeries highSeries = swingHighIndicator.getBarSeries();
+        final BarSeries lowSeries = swingLowIndicator.getBarSeries();
+        if (!IndicatorUtils.isSameSeries(highSeries, lowSeries)) {
             throw new IllegalArgumentException("Swing indicators must share the same bar series instance");
         }
         return highSeries;
@@ -284,6 +294,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public ElliottDegree getDegree() {
         return degree;
+    }
+
+    ElliottSwingIndicator copy() {
+        return new ElliottSwingIndicator(swingHighIndicator, swingLowIndicator, degree);
     }
 
     private List<Pivot> pivots(final int index) {
@@ -401,6 +415,18 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         return new RecentFractalSwingLowIndicator(indicator, lookbackLength, lookforwardLength, allowedEqualBars);
     }
 
+    private static ValidatedSwingInputs validateInputs(final RecentSwingIndicator swingHighIndicator,
+            final RecentSwingIndicator swingLowIndicator, final ElliottDegree degree) {
+        final RecentSwingIndicator validatedSwingHighIndicator = Objects.requireNonNull(swingHighIndicator,
+                "swingHighIndicator");
+        final RecentSwingIndicator validatedSwingLowIndicator = Objects.requireNonNull(swingLowIndicator,
+                "swingLowIndicator");
+        final ElliottDegree validatedDegree = Objects.requireNonNull(degree, "degree");
+        final BarSeries series = requireSeries(validatedSwingHighIndicator, validatedSwingLowIndicator);
+        return new ValidatedSwingInputs(validatedSwingHighIndicator, validatedSwingLowIndicator, validatedDegree,
+                series);
+    }
+
     private enum PivotType {
         HIGH, LOW;
 
@@ -410,5 +436,9 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     private record Pivot(int index, Num price, PivotType type) {
+    }
+
+    private record ValidatedSwingInputs(RecentSwingIndicator swingHighIndicator, RecentSwingIndicator swingLowIndicator,
+            ElliottDegree degree, BarSeries series) {
     }
 }

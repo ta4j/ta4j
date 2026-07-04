@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -56,7 +57,7 @@ public final class ZigZagSwingDetector implements SwingDetector {
     public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
-        if (reversalIndicator.getBarSeries() != series) {
+        if (!IndicatorUtils.isSameSeries(series, reversalIndicator.getBarSeries())) {
             throw new IllegalArgumentException("reversalIndicator must share the same BarSeries instance");
         }
         if (series.isEmpty()) {

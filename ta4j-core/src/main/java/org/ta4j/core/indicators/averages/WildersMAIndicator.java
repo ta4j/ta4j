@@ -52,7 +52,6 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
         Num numBars = numFactory.numOf(barCount);
         Num k = one.dividedBy(numBars);
-        Num prevWMA = indicator.getValue(0);
 
         // Simulate extended historical data for initialization
         if (index < barCount) {
@@ -67,17 +66,12 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
             Num preResult = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - index - 1)))
                     .dividedBy(numBars);
 
-            prevWMA = preResult;
             return preResult;
         }
 
-        // For the first value, initialize with the first input value
-
-        if (index > 0) {
-            prevWMA = getValue(index - 1);
-        }
+        Num previousWildersAverage = index == 0 ? indicator.getValue(0) : getValue(index - 1);
         Num currentPrice = indicator.getValue(index);
-        return currentPrice.multipliedBy(k).plus(prevWMA.multipliedBy(numFactory.one().minus(k)));
+        return currentPrice.multipliedBy(k).plus(previousWildersAverage.multipliedBy(one.minus(k)));
     }
 
     @Override

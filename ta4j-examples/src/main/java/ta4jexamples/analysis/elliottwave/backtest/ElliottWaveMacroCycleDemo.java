@@ -1424,7 +1424,11 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static String fileName(final Path path) {
-        return path == null || path.getFileName() == null ? "" : path.getFileName().toString();
+        if (path == null) {
+            return "";
+        }
+        Path fileName = path.getFileName();
+        return fileName == null ? "" : fileName.toString();
     }
 
     private static String fileName(final String path) {
@@ -1718,11 +1722,6 @@ public final class ElliottWaveMacroCycleDemo {
         final TruthTargetCoverage truthTargetCoverage = truthTargetCoverage(historicalCycles, matchedCycleFitsById,
                 List.of());
         return buildMacroProfileEvaluation(profile, cycleFits, chartSegments, truthTargetCoverage);
-    }
-
-    private static MacroProfileEvaluation evaluateCanonicalProfile(final BarSeries series,
-            final MacroLogicProfile profile, final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return evaluateCanonicalProfilePair(series, profile, registry).truthTargetEvaluation();
     }
 
     private static HistoricalProfileEvaluations evaluateCanonicalProfilePair(final BarSeries series,
@@ -2178,11 +2177,6 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static List<BarLabel> buildAnchorLabels(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return buildAnchorLabels(series, registry.anchors());
-    }
-
-    private static List<BarLabel> buildAnchorLabels(final BarSeries series,
             final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors) {
         final List<BarLabel> labels = new ArrayList<>();
         final Num topPad = series.numFactory().numOf("1.02");
@@ -2383,11 +2377,6 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static int latestBottomAnchorIndex(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return latestBottomAnchorIndex(series, registry.anchors());
-    }
-
-    private static int latestBottomAnchorIndex(final BarSeries series,
             final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors) {
         return anchors.stream()
                 .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
@@ -2483,7 +2472,10 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static void saveSummary(final String json, final Path summaryPath, final String description) {
         try {
-            Files.createDirectories(summaryPath.getParent());
+            Path parent = summaryPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Files.writeString(summaryPath, json);
         } catch (final IOException exception) {
             throw new IllegalStateException("Unable to write " + description + " " + summaryPath, exception);

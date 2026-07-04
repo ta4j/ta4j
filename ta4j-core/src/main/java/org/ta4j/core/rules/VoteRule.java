@@ -33,7 +33,7 @@ public class VoteRule extends AbstractRule {
      * @param rules         the rules to vote
      */
     public VoteRule(int requiredVotes, Rule... rules) {
-        this(requiredVotes, Arrays.asList(rules));
+        this(validatedConfig(requiredVotes, Arrays.asList(rules)));
     }
 
     /**
@@ -43,6 +43,15 @@ public class VoteRule extends AbstractRule {
      * @param rules         the rules to vote
      */
     public VoteRule(int requiredVotes, List<Rule> rules) {
+        this(validatedConfig(requiredVotes, rules));
+    }
+
+    private VoteRule(Config config) {
+        this.requiredVotes = config.requiredVotes();
+        this.rules = config.rules();
+    }
+
+    private static Config validatedConfig(int requiredVotes, List<Rule> rules) {
         if (requiredVotes < 1) {
             throw new IllegalArgumentException("Required votes must be at least 1");
         }
@@ -53,11 +62,10 @@ public class VoteRule extends AbstractRule {
             throw new IllegalArgumentException("Required votes cannot exceed number of rules");
         }
 
-        this.requiredVotes = requiredVotes;
         for (Rule rule : rules) {
             Objects.requireNonNull(rule, "rule cannot be null");
         }
-        this.rules = List.copyOf(rules);
+        return new Config(requiredVotes, List.copyOf(rules));
     }
 
     @Override
@@ -88,7 +96,7 @@ public class VoteRule extends AbstractRule {
      * @return the list of rules
      */
     public List<Rule> getRules() {
-        return rules;
+        return List.copyOf(rules);
     }
 
     /**
@@ -96,5 +104,8 @@ public class VoteRule extends AbstractRule {
      */
     public int getRequiredVotes() {
         return requiredVotes;
+    }
+
+    private record Config(int requiredVotes, List<Rule> rules) {
     }
 }

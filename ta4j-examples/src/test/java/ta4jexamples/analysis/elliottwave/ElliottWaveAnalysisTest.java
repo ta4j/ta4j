@@ -417,7 +417,7 @@ class ElliottWaveAnalysisTest {
                 FIB_TOLERANCE);
 
         assertNotNull(result, "Analysis result should not be null");
-        assertEquals(series, result.series(), "Series should match");
+        assertEquals(series.getName(), result.seriesName(), "Series name should match");
         assertEquals(ElliottDegree.PRIMARY, result.degree(), "Degree should match");
         assertNotNull(result.phaseIndicator(), "Phase indicator should not be null");
         assertNotNull(result.invalidationIndicator(), "Invalidation indicator should not be null");

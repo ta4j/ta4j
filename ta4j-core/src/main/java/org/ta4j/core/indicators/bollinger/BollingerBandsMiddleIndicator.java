@@ -43,6 +43,10 @@ public class BollingerBandsMiddleIndicator extends CachedIndicator<Num> {
         return indicator;
     }
 
+    BollingerBandsMiddleIndicator copy() {
+        return new BollingerBandsMiddleIndicator(indicator);
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " deviation: " + indicator;

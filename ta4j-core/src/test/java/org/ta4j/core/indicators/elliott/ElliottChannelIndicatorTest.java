@@ -29,6 +29,24 @@ class ElliottChannelIndicatorTest {
     }
 
     @Test
+    void accessorReturnsOwnedSwingCopy() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var channelIndicator = new ElliottChannelIndicator(swingIndicator);
+
+        ElliottSwingIndicator exposedSwing = channelIndicator.getSwingIndicator();
+
+        assertThat(exposedSwing).isNotSameAs(swingIndicator);
+        assertThat(exposedSwing.getValue(series.getEndIndex()))
+                .isEqualTo(swingIndicator.getValue(series.getEndIndex()));
+    }
+
+    @Test
     void projectsChannelUsingRecentSwings() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };

@@ -39,7 +39,7 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public TrueStrengthIndexIndicator(Indicator<Num> indicator) {
-        this(indicator, 25, 13);
+        this(validatedConfig(indicator, 25, 13));
     }
 
     /**
@@ -52,24 +52,37 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public TrueStrengthIndexIndicator(Indicator<Num> indicator, int firstSmoothingPeriod, int secondSmoothingPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, firstSmoothingPeriod, secondSmoothingPeriod));
+    }
+
+    private TrueStrengthIndexIndicator(Config config) {
+        super(config.priceIndicator());
+        this.firstSmoothingPeriod = config.firstSmoothingPeriod();
+        this.secondSmoothingPeriod = config.secondSmoothingPeriod();
+        this.priceIndicator = config.priceIndicator();
+        this.doubleSmoothedChange = config.doubleSmoothedChange();
+        this.doubleSmoothedAbsoluteChange = config.doubleSmoothedAbsoluteChange();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int firstSmoothingPeriod,
+            int secondSmoothingPeriod) {
         if (firstSmoothingPeriod < 1) {
             throw new IllegalArgumentException("First smoothing period must be a positive integer");
         }
         if (secondSmoothingPeriod < 1) {
             throw new IllegalArgumentException("Second smoothing period must be a positive integer");
         }
-        this.firstSmoothingPeriod = firstSmoothingPeriod;
-        this.secondSmoothingPeriod = secondSmoothingPeriod;
-        this.priceIndicator = indicator;
 
-        DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(this.priceIndicator);
+        DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(indicator);
         EMAIndicator firstSmoothingChange = new EMAIndicator(priceChangeIndicator, firstSmoothingPeriod);
-        this.doubleSmoothedChange = new EMAIndicator(firstSmoothingChange, secondSmoothingPeriod);
+        EMAIndicator doubleSmoothedChange = new EMAIndicator(firstSmoothingChange, secondSmoothingPeriod);
 
         UnaryOperationIndicator absolutePriceChange = UnaryOperationIndicator.abs(priceChangeIndicator);
         EMAIndicator firstSmoothingAbsoluteChange = new EMAIndicator(absolutePriceChange, firstSmoothingPeriod);
-        this.doubleSmoothedAbsoluteChange = new EMAIndicator(firstSmoothingAbsoluteChange, secondSmoothingPeriod);
+        EMAIndicator doubleSmoothedAbsoluteChange = new EMAIndicator(firstSmoothingAbsoluteChange,
+                secondSmoothingPeriod);
+        return new Config(indicator, doubleSmoothedChange, doubleSmoothedAbsoluteChange, firstSmoothingPeriod,
+                secondSmoothingPeriod);
     }
 
     @Override
@@ -89,5 +102,9 @@ public class TrueStrengthIndexIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         // Unstable period is the sum of both smoothing periods
         return firstSmoothingPeriod + secondSmoothingPeriod;
+    }
+
+    private record Config(Indicator<Num> priceIndicator, EMAIndicator doubleSmoothedChange,
+            EMAIndicator doubleSmoothedAbsoluteChange, int firstSmoothingPeriod, int secondSmoothingPeriod) {
     }
 }

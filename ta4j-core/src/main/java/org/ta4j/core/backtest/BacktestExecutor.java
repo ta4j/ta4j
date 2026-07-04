@@ -334,8 +334,8 @@ public class BacktestExecutor {
      * <p>
      * When the strategy count exceeds {@value #PARALLEL_THRESHOLD}, uses batched
      * sequential processing to prevent memory exhaustion. Each batch is processed
-     * in parallel, but batches are executed sequentially with explicit GC hints
-     * between batches to manage memory pressure.
+     * in parallel, but batches are executed sequentially so completed batch state
+     * can become unreachable before the next batch starts.
      * </p>
      *
      * @param strategies       the strategies
@@ -790,12 +790,8 @@ public class BacktestExecutor {
                 }
             }
 
-            // Clear batch results and suggest GC
+            // Clear batch results before moving to the next bounded batch.
             batchResults.clear();
-            if (batchEnd < strategyCount) {
-                System.gc();
-                Thread.yield(); // Give GC a chance to run
-            }
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
@@ -932,9 +928,9 @@ public class BacktestExecutor {
     }
 
     /**
-     * Executes strategies in batches to prevent memory exhaustion. Each batch is
-     * processed in parallel, but batches are executed sequentially with explicit GC
-     * hints between batches.
+     * Executes strategies in bounded batches to prevent memory exhaustion. Each
+     * batch is processed in parallel, but batches are executed sequentially so
+     * completed batch state can become unreachable before the next batch starts.
      */
     private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
             Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int batchSize) {
@@ -959,21 +955,6 @@ public class BacktestExecutor {
                     progressTracker.reportCompletion();
                 }
             });
-
-            // Aggressively suggest GC between batches to manage memory pressure
-            // For very large counts, be more aggressive
-            if (batchEnd < strategyCount) {
-                System.gc();
-                Thread.yield(); // Give GC a chance to run
-                if (strategyCount > LARGE_COUNT_THRESHOLD) {
-                    // For very large strategy counts, try even harder
-                    try {
-                        Thread.sleep(10); // Brief pause to let GC complete
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-            }
         }
     }
 

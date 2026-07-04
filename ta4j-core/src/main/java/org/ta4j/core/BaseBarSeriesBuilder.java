@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -118,7 +119,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
      * @return {@code this}
      */
     public BaseBarSeriesBuilder withBars(List<Bar> bars) {
-        this.bars = bars;
+        this.bars = new ArrayList<>(Objects.requireNonNull(bars, "bars must not be null"));
         return this;
     }
 

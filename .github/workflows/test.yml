@@ -39,7 +39,7 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Build and run verify with Maven Wrapper
+      - name: Build and run verify with Maven Wrapper and SpotBugs
         run: |
           xvfb-run ./mvnw -B license:check formatter:validate verify
 
@@ -66,6 +66,6 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Build and run verify with demo tags excluded
+      - name: Build and run verify with SpotBugs and demo tags excluded
         run: |
-          xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+          xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo

@@ -885,6 +885,11 @@ public final class RuleSerialization {
                     return deserializeChainLinks(value, context);
                 }
             }
+        } catch (IllegalArgumentException e) {
+            if (paramType.isArray() && paramType.getComponentType().equals(ChainLink.class)) {
+                throw e;
+            }
+            return null; // Can't resolve, try next match
         } catch (Exception e) {
             return null; // Can't resolve, try next match
         }
@@ -900,20 +905,20 @@ public final class RuleSerialization {
         for (int i = 0; i < list.size(); i++) {
             Object entry = list.get(i);
             if (entry == null) {
-                links[i] = null;
-                continue;
+                throw new IllegalArgumentException("Chain link entry cannot be null");
             }
             if (!(entry instanceof Map<?, ?> map)) {
                 throw new IllegalArgumentException("Chain link entry must be an object but was " + entry);
             }
-            Rule linkRule = null;
             Object ruleValue = map.get("rule");
-            if (ruleValue != null) {
-                ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
-                if (ruleDescriptor != null) {
-                    linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
-                }
+            if (ruleValue == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
             }
+            ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
+            if (ruleDescriptor == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
+            }
+            Rule linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
             int threshold = 0;
             Object thresholdValue = map.get("threshold");
             if (thresholdValue != null) {
@@ -1812,18 +1817,13 @@ public final class RuleSerialization {
             List<Map<String, Object>> serialized = new ArrayList<>(links.length);
             for (ChainLink link : links) {
                 if (link == null) {
-                    serialized.add(null);
-                    continue;
+                    throw new IllegalArgumentException("Chain link entry cannot be null");
                 }
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("threshold", serializeNumber(link.getThreshold()));
-                Rule linkRule = link.getRule();
-                if (linkRule != null) {
-                    ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
-                    payload.put("rule", ComponentSerialization.toJson(descriptor));
-                } else {
-                    payload.put("rule", null);
-                }
+                Rule linkRule = Objects.requireNonNull(link.getRule(), "chain link rule cannot be null");
+                ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
+                payload.put("rule", ComponentSerialization.toJson(descriptor));
                 serialized.add(payload);
             }
             return serialized;

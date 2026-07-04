@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -220,6 +221,27 @@ public class TriggeredRuleTest {
         new Stage(trigger, delegate, 1);
         assertThrows(NullPointerException.class, () -> new TriggeredRule(BooleanRule.FALSE, (Stage[]) null));
         assertThrows(NullPointerException.class, () -> new TriggeredRule(BooleanRule.FALSE, new Stage[] { null }));
+    }
+
+    @Test
+    public void stageAccessorsReturnRuleCopies() {
+        Rule trigger = new FixedRule(1);
+        Rule delegate = new FixedRule(2);
+        Stage stage = new Stage(trigger, delegate);
+
+        Rule firstTrigger = stage.triggerRule();
+        Rule secondTrigger = stage.triggerRule();
+        Rule firstDelegate = stage.delegateRule();
+        Rule secondDelegate = stage.delegateRule();
+
+        assertNotSame(trigger, firstTrigger);
+        assertNotSame(firstTrigger, secondTrigger);
+        assertNotSame(delegate, firstDelegate);
+        assertNotSame(firstDelegate, secondDelegate);
+        assertTrue(firstTrigger.isSatisfied(1));
+        assertFalse(firstTrigger.isSatisfied(2));
+        assertTrue(firstDelegate.isSatisfied(2));
+        assertFalse(firstDelegate.isSatisfied(1));
     }
 
     @Test

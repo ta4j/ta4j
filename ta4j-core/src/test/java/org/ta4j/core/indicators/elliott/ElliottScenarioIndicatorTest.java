@@ -123,8 +123,15 @@ class ElliottScenarioIndicatorTest {
         ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
         ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator, channelIndicator);
 
-        assertThat(indicator.getSwingIndicator()).isEqualTo(swingIndicator);
-        assertThat(indicator.getChannelIndicator()).isEqualTo(channelIndicator);
+        ElliottSwingIndicator exposedSwing = indicator.getSwingIndicator();
+        ElliottChannelIndicator exposedChannel = indicator.getChannelIndicator();
+
+        assertThat(exposedSwing).isNotSameAs(swingIndicator);
+        assertThat(exposedChannel).isNotSameAs(channelIndicator);
+        assertThat(exposedSwing.getValue(series.getEndIndex()))
+                .isEqualTo(swingIndicator.getValue(series.getEndIndex()));
+        assertThat(exposedChannel.getValue(series.getEndIndex()))
+                .isEqualTo(channelIndicator.getValue(series.getEndIndex()));
     }
 
     @Test

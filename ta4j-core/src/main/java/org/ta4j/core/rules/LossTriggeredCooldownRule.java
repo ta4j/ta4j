@@ -68,7 +68,7 @@ public class LossTriggeredCooldownRule extends AbstractRule {
      */
     public LossTriggeredCooldownRule(Indicator<Num> cooldownBarsIndicator, Rule resetRule, TradeType tradeType) {
         this.cooldownBarsIndicator = Objects.requireNonNull(cooldownBarsIndicator, "cooldownBarsIndicator");
-        this.resetRule = resetRule;
+        this.resetRule = resetRule == null ? null : RuleCopies.copy(resetRule);
         this.tradeType = tradeType;
     }
 
@@ -117,7 +117,7 @@ public class LossTriggeredCooldownRule extends AbstractRule {
      * @since 0.22.7
      */
     public Rule getResetRule() {
-        return resetRule;
+        return resetRule == null ? null : RuleCopies.copy(resetRule);
     }
 
     /**

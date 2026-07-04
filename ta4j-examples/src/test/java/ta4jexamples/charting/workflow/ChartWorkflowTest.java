@@ -63,8 +63,6 @@ import ta4jexamples.charting.storage.FileSystemChartStorage;
  */
 public class ChartWorkflowTest {
 
-    private static final byte[] RECORDED_CHART_BYTES = new byte[] { 1, 2, 3 };
-
     private ChartWorkflow chartWorkflow;
     private BarSeries barSeries;
     private TradingRecord tradingRecord;
@@ -305,40 +303,38 @@ public class ChartWorkflowTest {
     }
 
     @Test
-    public void testGenerateChartAsBytes() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
-        byte[] chartBytes = workflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
+    public void testGenerateChartAsBytes() throws IOException {
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Convenience byte export should return encoded bytes");
-        assertEquals(1, workflow.byteExportCount, "Convenience method should encode exactly one chart");
-        assertNotNull(workflow.lastChart, "Convenience method should build a chart before encoding");
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH, image.getWidth());
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT, image.getHeight());
     }
 
     @Test
-    public void testGenerateChartAsBytesWithIndicators() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
+    public void testGenerateChartAsBytesWithIndicators() throws IOException {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        byte[] chartBytes = workflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
+                sma);
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
                 closePrice, sma);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Indicator convenience export should return encoded bytes");
-        assertEquals(1, workflow.byteExportCount, "Indicator convenience method should encode exactly one chart");
-        assertInstanceOf(CombinedDomainXYPlot.class, workflow.lastChart.getPlot(),
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
                 "Indicator convenience method should build the combined chart before encoding");
+        assertTrue(decodeImage(chartBytes).getWidth() > 0, "Indicator convenience export should produce PNG bytes");
     }
 
     @Test
-    public void testRecordingByteExportWorkflowInterceptsExplicitDimensions() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
+    public void testGetChartAsByteArrayUsesExplicitDimensions() throws IOException {
         JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-        byte[] chartBytes = workflow.getChartAsByteArray(chart, 640, 360);
+        byte[] chartBytes = chartWorkflow.getChartAsByteArray(chart, 640, 360);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Explicit dimension export should return recorded bytes");
-        assertEquals(1, workflow.byteExportCount, "Explicit dimension export should encode exactly one chart");
-        assertSame(chart, workflow.lastChart, "Explicit dimension export should record the chart");
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(640, image.getWidth());
+        assertEquals(360, image.getHeight());
     }
 
     @Test
@@ -1382,24 +1378,6 @@ public class ChartWorkflowTest {
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
         assertNotNull(image, "Encoded chart bytes should decode into an image");
         return image;
-    }
-
-    private static final class RecordingByteExportChartWorkflow extends ChartWorkflow {
-        private int byteExportCount;
-        private JFreeChart lastChart;
-
-        @Override
-        public byte[] getChartAsByteArray(JFreeChart chart) {
-            return getChartAsByteArray(chart, ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH,
-                    ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT);
-        }
-
-        @Override
-        public byte[] getChartAsByteArray(JFreeChart chart, int imageWidth, int imageHeight) {
-            byteExportCount++;
-            lastChart = chart;
-            return RECORDED_CHART_BYTES;
-        }
     }
 
     private static final class RecordingChartStorage implements ChartStorage {

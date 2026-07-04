@@ -94,6 +94,38 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void constructorCopiesTradingStatements() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult source = executor
+                .executeWithRuntimeReport(List.of(new BaseStrategy(new FixedRule(0), new FixedRule(1))), numOf(1));
+        List<TradingStatement> statements = new ArrayList<>(source.tradingStatements());
+
+        BacktestExecutionResult result = new BacktestExecutionResult(series, statements, source.runtimeReport());
+        statements.clear();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertThrows(UnsupportedOperationException.class, () -> result.tradingStatements().clear());
+    }
+
+    @Test
+    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
+        BarSeries firstSnapshot = result.barSeries();
+        BarSeries secondSnapshot = result.barSeries();
+        series.barBuilder().closePrice(8).add();
+
+        assertNotSame(series, firstSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
+        assertEquals(3, firstSnapshot.getBarCount());
+        assertEquals(3, secondSnapshot.getBarCount());
+        assertEquals(3, result.barSeries().getBarCount());
+        assertEquals(series.getName(), firstSnapshot.getName());
+    }
+
+    @Test
     public void getTopStrategiesWithSingleCriterionSortsCorrectly() {
         // Create a bar series with price movement
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)

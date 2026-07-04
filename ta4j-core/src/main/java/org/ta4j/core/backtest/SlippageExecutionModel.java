@@ -32,7 +32,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public SlippageExecutionModel(Num slippageRatio) {
-        this(slippageRatio, PriceSource.NEXT_OPEN);
+        this(validatedConfig(slippageRatio, PriceSource.NEXT_OPEN));
     }
 
     /**
@@ -43,17 +43,25 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public SlippageExecutionModel(Num slippageRatio, PriceSource priceSource) {
-        Objects.requireNonNull(slippageRatio, "slippageRatio");
-        Objects.requireNonNull(priceSource, "priceSource");
-        if (slippageRatio.isNaN() || slippageRatio.isNegative()) {
+        this(validatedConfig(slippageRatio, priceSource));
+    }
+
+    private SlippageExecutionModel(Config config) {
+        this.slippageRatio = config.slippageRatio();
+        this.priceSource = config.priceSource();
+    }
+
+    private static Config validatedConfig(Num slippageRatio, PriceSource priceSource) {
+        Num validatedSlippageRatio = Objects.requireNonNull(slippageRatio, "slippageRatio");
+        PriceSource validatedPriceSource = Objects.requireNonNull(priceSource, "priceSource");
+        if (validatedSlippageRatio.isNaN() || validatedSlippageRatio.isNegative()) {
             throw new IllegalArgumentException("slippageRatio must be positive or zero");
         }
-        Num one = slippageRatio.getNumFactory().one();
-        if (slippageRatio.isGreaterThanOrEqual(one)) {
+        Num one = validatedSlippageRatio.getNumFactory().one();
+        if (validatedSlippageRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("slippageRatio must be less than 1");
         }
-        this.slippageRatio = slippageRatio;
-        this.priceSource = priceSource;
+        return new Config(validatedSlippageRatio, validatedPriceSource);
     }
 
     /**
@@ -99,5 +107,8 @@ public class SlippageExecutionModel implements TradeExecutionModel {
             return price.multipliedBy(one.plus(slippageRatio));
         }
         return price.multipliedBy(one.minus(slippageRatio));
+    }
+
+    private record Config(Num slippageRatio, PriceSource priceSource) {
     }
 }

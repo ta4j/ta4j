@@ -9,7 +9,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
 - **Run this before opening or updating a PR:** `./mvnw -B clean license:format formatter:format verify install` on macOS/Linux, `mvnw.cmd -B clean license:format formatter:format verify install` on Windows, or `mvn -B clean license:format formatter:format verify install` with system Maven 3.9+
-  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same command sequence and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
+  This matches the main CI path and keeps SpotBugs blocking plus JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same command sequence and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
 
 - **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
   These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full verification command.
@@ -68,10 +68,9 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay`
+- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo`
 - `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
-- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
-- `xvfb-run ./mvnw -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest`
+- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
@@ -91,8 +90,9 @@ regardless of the schedule variables. The `EW Snapshot Analysis` workflow is
 manual-only, runs on hosted Ubuntu, accepts `instrument`, `exchange`, and
 `lookbackDays` inputs, and uploads the live Elliott macro snapshot report,
 charts, scenario-outlook JSON, cached provider responses, and full demo log.
-The local `elliott-macro-cycle-replay` tag remains the long-form BTC regression
-lane when you need replay validation instead of a live monitoring snapshot.
+Long-form BTC anchor calibration is not a JUnit lane. Run
+`ElliottWaveAnchorCalibrationHarness` as an explicit examples job when you need
+the multi-hour calibration artifacts instead of a live monitoring snapshot.
 
 The `analysis-demo` tag is for examples that produce analysis reports and must
 be the only JUnit tag on each tagged test or class.

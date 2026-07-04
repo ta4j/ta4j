@@ -113,6 +113,33 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
         assertEquals(doubleNumFactory, bar2.getClosePrice().getNumFactory());
     }
 
+    @Test
+    public void testWithBarsCopiesInputList() {
+        NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        Duration duration = Duration.between(beginTime, endTime);
+        Bar bar = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
+        ArrayList<Bar> bars = new ArrayList<>();
+        bars.add(bar);
+
+        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withBars(bars);
+        bars.clear();
+        BaseBarSeries series = builder.build();
+
+        assertEquals(1, series.getBarCount());
+        assertEquals(bar, series.getBar(0));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     @SuppressWarnings("unused")
     public void testBuildWithBarsAndWithNumFactory() {

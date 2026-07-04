@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -140,8 +141,16 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1, 2), new FixedRule(3), TradeType.SELL);
         PositionSizer positionSizer = context -> {
-            assertSame(oneTradeStrategy, context.strategy());
-            assertSame(series, context.barSeries());
+            BarSeries firstContextSeries = context.barSeries();
+            BarSeries secondContextSeries = context.barSeries();
+            Strategy firstContextStrategy = context.strategy();
+            Strategy secondContextStrategy = context.strategy();
+            assertNotSame(oneTradeStrategy, firstContextStrategy);
+            assertNotSame(firstContextStrategy, secondContextStrategy);
+            assertTrue(firstContextStrategy.shouldEnter(2));
+            assertNotSame(series, firstContextSeries);
+            assertNotSame(firstContextSeries, secondContextSeries);
+            assertEquals(series.getBarCount(), firstContextSeries.getBarCount());
             assertEquals(TradeType.SELL, context.tradeType());
             return context.entryPrice().dividedBy(numFactory.numOf(10));
         };
@@ -155,6 +164,22 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(numFactory.numOf(3), position.getEntry().getAmount());
         assertEquals(3, position.getExit().getIndex());
         assertEquals(numFactory.numOf(3), position.getExit().getAmount());
+    }
+
+    @Test
+    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        BarSeries firstSnapshot = localManager.getBarSeries();
+        BarSeries secondSnapshot = localManager.getBarSeries();
+        series.barBuilder().closePrice(40).add();
+
+        assertNotSame(series, firstSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
+        assertEquals(3, firstSnapshot.getBarCount());
+        assertEquals(3, secondSnapshot.getBarCount());
+        assertEquals(3, localManager.getBarSeries().getBarCount());
+        assertEquals(series.getName(), firstSnapshot.getName());
     }
 
     @Test

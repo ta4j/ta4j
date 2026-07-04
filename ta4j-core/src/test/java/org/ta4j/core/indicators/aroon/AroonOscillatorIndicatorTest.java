@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.aroon;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.LocalDate;
@@ -206,8 +207,18 @@ public class AroonOscillatorIndicatorTest {
     @Test
     public void test() {
         var aroonOscillator = new AroonOscillatorIndicator(data, 25);
-        assertNotNull(aroonOscillator.getAroonUpIndicator());
-        assertNotNull(aroonOscillator.getAroonDownIndicator());
+        AroonUpIndicator firstUpIndicator = aroonOscillator.getAroonUpIndicator();
+        AroonUpIndicator secondUpIndicator = aroonOscillator.getAroonUpIndicator();
+        AroonDownIndicator firstDownIndicator = aroonOscillator.getAroonDownIndicator();
+        AroonDownIndicator secondDownIndicator = aroonOscillator.getAroonDownIndicator();
+
+        assertNotNull(firstUpIndicator);
+        assertNotNull(firstDownIndicator);
+        assertNotSame(firstUpIndicator, secondUpIndicator);
+        assertNotSame(firstDownIndicator, secondDownIndicator);
+        assertNumEquals(firstUpIndicator.getValue(data.getEndIndex()), secondUpIndicator.getValue(data.getEndIndex()));
+        assertNumEquals(firstDownIndicator.getValue(data.getEndIndex()),
+                secondDownIndicator.getValue(data.getEndIndex()));
 
         assertNumEquals(0, aroonOscillator.getValue(data.getBeginIndex()));
         assertNumEquals(84, aroonOscillator.getValue(data.getBeginIndex() + 25));

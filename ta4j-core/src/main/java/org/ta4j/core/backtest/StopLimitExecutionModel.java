@@ -57,7 +57,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill) {
-        this(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, PriceSource.NEXT_OPEN);
+        this(validatedConfig(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill,
+                PriceSource.NEXT_OPEN));
     }
 
     /**
@@ -73,34 +74,44 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill, PriceSource priceSource) {
-        validateRatio(stopTriggerRatio, "stopTriggerRatio");
-        validateRatio(limitOffsetRatio, "limitOffsetRatio");
-        validateRatio(maxBarParticipation, "maxBarParticipation");
-        Objects.requireNonNull(priceSource, "priceSource");
-        Num one = stopTriggerRatio.getNumFactory().one();
-        if (stopTriggerRatio.isGreaterThanOrEqual(one)) {
+        this(validatedConfig(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, priceSource));
+    }
+
+    private StopLimitExecutionModel(Config config) {
+        this.stopTriggerRatio = config.stopTriggerRatio();
+        this.limitOffsetRatio = config.limitOffsetRatio();
+        this.maxBarParticipationRate = config.maxBarParticipation();
+        this.maxBarsToFill = config.maxBarsToFill();
+        this.priceSource = config.priceSource();
+    }
+
+    private static Config validatedConfig(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
+            int maxBarsToFill, PriceSource priceSource) {
+        Num validatedStopTriggerRatio = validateRatio(stopTriggerRatio, "stopTriggerRatio");
+        Num validatedLimitOffsetRatio = validateRatio(limitOffsetRatio, "limitOffsetRatio");
+        Num validatedMaxBarParticipation = validateRatio(maxBarParticipation, "maxBarParticipation");
+        PriceSource validatedPriceSource = Objects.requireNonNull(priceSource, "priceSource");
+        Num one = validatedStopTriggerRatio.getNumFactory().one();
+        if (validatedStopTriggerRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("stopTriggerRatio must be < 1");
         }
-        if (limitOffsetRatio.isGreaterThanOrEqual(one)) {
+        if (validatedLimitOffsetRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("limitOffsetRatio must be < 1");
         }
-        if (maxBarParticipation.isZero()) {
+        if (validatedMaxBarParticipation.isZero()) {
             throw new IllegalArgumentException("maxBarParticipation must be > 0");
         }
-        if (maxBarParticipation.isGreaterThan(one)) {
+        if (validatedMaxBarParticipation.isGreaterThan(one)) {
             throw new IllegalArgumentException("maxBarParticipation must be <= 1");
         }
-        if (limitOffsetRatio.isLessThan(stopTriggerRatio)) {
+        if (validatedLimitOffsetRatio.isLessThan(validatedStopTriggerRatio)) {
             throw new IllegalArgumentException("limitOffsetRatio must be >= stopTriggerRatio");
         }
         if (maxBarsToFill < 1) {
             throw new IllegalArgumentException("maxBarsToFill must be >= 1");
         }
-        this.stopTriggerRatio = stopTriggerRatio;
-        this.limitOffsetRatio = limitOffsetRatio;
-        this.maxBarParticipationRate = maxBarParticipation;
-        this.maxBarsToFill = maxBarsToFill;
-        this.priceSource = priceSource;
+        return new Config(validatedStopTriggerRatio, validatedLimitOffsetRatio, validatedMaxBarParticipation,
+                maxBarsToFill, validatedPriceSource);
     }
 
     /**
@@ -252,11 +263,12 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return !tradingRecord.getOpenPositions().isEmpty();
     }
 
-    private static void validateRatio(Num ratio, String name) {
-        Objects.requireNonNull(ratio, name);
-        if (ratio.isNaN() || ratio.isNegative()) {
+    private static Num validateRatio(Num ratio, String name) {
+        Num validatedRatio = Objects.requireNonNull(ratio, name);
+        if (validatedRatio.isNaN() || validatedRatio.isNegative()) {
             throw new IllegalArgumentException(name + " must be positive or zero");
         }
+        return validatedRatio;
     }
 
     private int resolveActivationIndex(int referenceIndex) {
@@ -336,6 +348,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         rejectedOrders.computeIfAbsent(tradingRecord, ignored -> new ArrayList<>()).add(rejection);
     }
 
+    private record Config(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation, int maxBarsToFill,
+            PriceSource priceSource) {
+    }
+
     /**
      * Rejected stop-limit order metadata.
      *
@@ -369,6 +385,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     public record PendingOrderSnapshot(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
             Num filledAmount, Num stopPrice, Num limitPrice, int expiryIndex, boolean triggered,
             List<TradeFill> fills) {
+        public PendingOrderSnapshot {
+            fills = List.copyOf(Objects.requireNonNull(fills, "fills must not be null"));
+        }
+
+        public List<TradeFill> fills() {
+            return List.copyOf(fills);
+        }
     }
 
     private static final class PendingOrder {

@@ -90,6 +90,8 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
     private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
+    private final int barCount;
+    private final double multiplier;
 
     /**
      * Constructor with {@code barCount} = 10 and {@code multiplier} = 3.
@@ -114,6 +116,8 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
      */
     public SuperTrendIndicator(final BarSeries series, int barCount, double multiplier) {
         super(series);
+        this.barCount = barCount;
+        this.multiplier = multiplier;
         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
         this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
         this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
@@ -250,13 +254,13 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
         return (currentUpTrend && previousDownTrend) || (currentDownTrend && previousUpTrend);
     }
 
-    /** @return the {@link #superTrendLowerBandIndicator} */
+    /** @return a lower-band indicator for this SuperTrend configuration */
     public SuperTrendLowerBandIndicator getSuperTrendLowerBandIndicator() {
-        return superTrendLowerBandIndicator;
+        return new SuperTrendLowerBandIndicator(getBarSeries(), new ATRIndicator(getBarSeries(), barCount), multiplier);
     }
 
-    /** @return the {@link #superTrendUpperBandIndicator} */
+    /** @return an upper-band indicator for this SuperTrend configuration */
     public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
-        return superTrendUpperBandIndicator;
+        return new SuperTrendUpperBandIndicator(getBarSeries(), new ATRIndicator(getBarSeries(), barCount), multiplier);
     }
 }

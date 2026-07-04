@@ -45,7 +45,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(BarSeries series, Num bucketSize) {
-        this(new ClosePriceIndicator(series), 0, bucketSize);
+        this(validatedSeriesConfig(series, bucketSize));
     }
 
     /**
@@ -56,7 +56,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, Num bucketSize) {
-        this(priceIndicator, 0, bucketSize);
+        this(validatedConfig(priceIndicator, 0, bucketSize));
     }
 
     /**
@@ -69,17 +69,33 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize) {
-        super(priceIndicator);
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
-        this.lookbackCount = lookbackCount;
-        this.bucketSize = Objects.requireNonNull(bucketSize, "bucketSize must not be null");
-        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
+        this(validatedConfig(priceIndicator, lookbackCount, bucketSize));
+    }
+
+    private AbstractBounceCountIndicator(Config config) {
+        super(config.priceIndicator());
+        this.priceIndicator = config.priceIndicator();
+        this.lookbackCount = config.lookbackCount();
+        this.bucketSize = config.bucketSize();
+        this.bounceIndexCache = new ConcurrentHashMap<>();
+        this.lastPrunedCacheBeginIndex = config.series().getBeginIndex() - 1;
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        Num validatedBucketSize = Objects.requireNonNull(bucketSize, "bucketSize must not be null");
+        BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
                 "indicator must reference a bar series");
-        if (isInvalid(bucketSize) || bucketSize.isLessThan(series.numFactory().zero())) {
+        if (isInvalid(validatedBucketSize) || validatedBucketSize.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bucketSize must be greater than or equal to zero");
         }
-        this.bounceIndexCache = new ConcurrentHashMap<>();
-        this.lastPrunedCacheBeginIndex = series.getBeginIndex() - 1;
+        return new Config(validatedPriceIndicator, lookbackCount, validatedBucketSize, series);
+    }
+
+    private static Config validatedSeriesConfig(BarSeries series, Num bucketSize) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        return validatedConfig(new ClosePriceIndicator(validatedSeries), 0, bucketSize);
     }
 
     /**
@@ -355,5 +371,8 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         }
         bounceIndexCache().keySet().removeIf(cacheIndex -> cacheIndex < beginIndex);
         lastPrunedCacheBeginIndex = beginIndex;
+    }
+
+    private record Config(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize, BarSeries series) {
     }
 }

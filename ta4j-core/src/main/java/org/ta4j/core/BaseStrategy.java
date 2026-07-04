@@ -6,6 +6,7 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.rules.RuleCopies;
 
 /**
  * Base implementation of a {@link Strategy}.
@@ -44,7 +45,7 @@ public class BaseStrategy implements Strategy {
      * @param exitRule  the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
-        this(null, entryRule, exitRule, 0, TradeType.BUY);
+        this(validateConfig(null, entryRule, exitRule, 0, TradeType.BUY));
     }
 
     /**
@@ -56,7 +57,7 @@ public class BaseStrategy implements Strategy {
      *                     {@code index < unstableBars}
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars) {
-        this(null, entryRule, exitRule, unstableBars, TradeType.BUY);
+        this(validateConfig(null, entryRule, exitRule, unstableBars, TradeType.BUY));
     }
 
     /**
@@ -68,7 +69,7 @@ public class BaseStrategy implements Strategy {
      * @since 0.22.2
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, TradeType startingType) {
-        this(null, entryRule, exitRule, 0, startingType);
+        this(validateConfig(null, entryRule, exitRule, 0, startingType));
     }
 
     /**
@@ -82,7 +83,7 @@ public class BaseStrategy implements Strategy {
      * @since 0.22.2
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars, TradeType startingType) {
-        this(null, entryRule, exitRule, unstableBars, startingType);
+        this(validateConfig(null, entryRule, exitRule, unstableBars, startingType));
     }
 
     /**
@@ -93,7 +94,7 @@ public class BaseStrategy implements Strategy {
      * @param exitRule  the exit rule
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
-        this(name, entryRule, exitRule, 0, TradeType.BUY);
+        this(validateConfig(name, entryRule, exitRule, 0, TradeType.BUY));
     }
 
     /**
@@ -106,7 +107,7 @@ public class BaseStrategy implements Strategy {
      * @since 0.22.2
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, TradeType startingType) {
-        this(name, entryRule, exitRule, 0, startingType);
+        this(validateConfig(name, entryRule, exitRule, 0, startingType));
     }
 
     /**
@@ -120,7 +121,7 @@ public class BaseStrategy implements Strategy {
      * @throws IllegalArgumentException if entryRule or exitRule is null
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
-        this(name, entryRule, exitRule, unstableBars, TradeType.BUY);
+        this(validateConfig(name, entryRule, exitRule, unstableBars, TradeType.BUY));
     }
 
     /**
@@ -136,20 +137,15 @@ public class BaseStrategy implements Strategy {
      * @since 0.22.2
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars, TradeType startingType) {
-        if (entryRule == null || exitRule == null) {
-            throw new IllegalArgumentException("Rules cannot be null");
-        }
-        if (unstableBars < 0) {
-            throw new IllegalArgumentException("Unstable bars must be >= 0");
-        }
-        if (startingType == null) {
-            throw new IllegalArgumentException("Starting type cannot be null");
-        }
-        this.name = name;
-        this.entryRule = entryRule;
-        this.exitRule = exitRule;
-        this.unstableBars = unstableBars;
-        this.startingType = startingType;
+        this(validateConfig(name, entryRule, exitRule, unstableBars, startingType));
+    }
+
+    private BaseStrategy(ValidatedConfig config) {
+        this.name = config.name();
+        this.entryRule = config.entryRule();
+        this.exitRule = config.exitRule();
+        this.unstableBars = config.unstableBars();
+        this.startingType = config.startingType();
     }
 
     @Override
@@ -159,12 +155,12 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public Rule getEntryRule() {
-        return entryRule;
+        return RuleCopies.copy(entryRule);
     }
 
     @Override
     public Rule getExitRule() {
-        return exitRule;
+        return RuleCopies.copy(exitRule);
     }
 
     @Override
@@ -209,9 +205,8 @@ public class BaseStrategy implements Strategy {
             traceShouldEnter(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
             return false;
         }
-        boolean enter = traceLoggingEnabled
-                ? getEntryRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
-                : getEntryRule().isSatisfied(index, tradingRecord);
+        boolean enter = traceLoggingEnabled ? entryRule.isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : entryRule.isSatisfied(index, tradingRecord);
         traceShouldEnter(index, enter, traceLoggingEnabled, activeTraceMode, enter ? null : "entryRule");
         return enter;
     }
@@ -238,9 +233,8 @@ public class BaseStrategy implements Strategy {
             traceShouldExit(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
             return false;
         }
-        boolean exit = traceLoggingEnabled
-                ? getExitRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
-                : getExitRule().isSatisfied(index, tradingRecord);
+        boolean exit = traceLoggingEnabled ? exitRule.isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : exitRule.isSatisfied(index, tradingRecord);
         traceShouldExit(index, exit, traceLoggingEnabled, activeTraceMode, exit ? null : "exitRule");
         return exit;
     }
@@ -330,5 +324,23 @@ public class BaseStrategy implements Strategy {
             return " reason=unstable unstableBars=" + unstableBars;
         }
         return " reason=" + reason;
+    }
+
+    private static ValidatedConfig validateConfig(String name, Rule entryRule, Rule exitRule, int unstableBars,
+            TradeType startingType) {
+        if (entryRule == null || exitRule == null) {
+            throw new IllegalArgumentException("Rules cannot be null");
+        }
+        if (unstableBars < 0) {
+            throw new IllegalArgumentException("Unstable bars must be >= 0");
+        }
+        if (startingType == null) {
+            throw new IllegalArgumentException("Starting type cannot be null");
+        }
+        return new ValidatedConfig(name, entryRule, exitRule, unstableBars, startingType);
+    }
+
+    private record ValidatedConfig(String name, Rule entryRule, Rule exitRule, int unstableBars,
+            TradeType startingType) {
     }
 }

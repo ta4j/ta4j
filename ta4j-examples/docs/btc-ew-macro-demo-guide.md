@@ -37,7 +37,7 @@ The important line is that the legacy-anchored study is no longer a first-class 
 - Use `ElliottWaveBtcMacroCycleDemo` when you want the fixed ossified BTC dataset, the locked BTC truth registry, and the stable BTC artifact names.
 - Use `ElliottWaveMacroCycleDemo` when you already have a `BarSeries` and want the canonical historical study or live preset without BTC-specific resource loading.
 - Use `ElliottWavePresetDemo live <Coinbase|YahooFinance> <ticker> PT1D <lookbackDays>` when you want the live five-outlook snapshot package for any supported daily instrument.
-- Use `ElliottWaveAnchorCalibrationHarness` when you are calibrating, benchmarking, or comparing canonical output against the committed BTC truth target.
+- Use `ElliottWaveAnchorCalibrationHarness` only when you intentionally want the offline calibration job for benchmarking or comparing canonical output against the committed BTC truth target; complete runs can take 8+ hours.
 
 ## What changed
 
