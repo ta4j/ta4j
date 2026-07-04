@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **CF-289: Forecast distributions for forward price estimates**: Added a ta4j-core forecast indicator layer with immutable `ForecastDistribution` summaries, reducers, log-return transforms, EWMA return state, deterministic Monte Carlo cumulative-return forecasts, and factories for close-price forecast distributions or median point forecasts.
 - **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
 - **Dynamic backtest sizing**: You can now pass a `PositionSizer` into `BarSeriesManager`, `BacktestExecutor`, top-K strategy ranking, and walk-forward execution to size each entry from the signal bar while exits automatically close the currently open amount. Starter factories cover fixed units, realized-balance max sizing with entry-fee awareness, and Kelly sizing with optional fractional or levered coefficients (CF-90).
 - **Pluggable execution-target estimation for dynamic sizing**: Added `TradeExecutionModel#estimateEntryTarget(...)` so custom execution models can provide sizing-aware fill timing and pricing. Dynamic sizing now defaults to conservative next-open estimation for models that do not override this API, and falls back safely when no target is resolvable to keep runs defined.

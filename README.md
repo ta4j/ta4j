@@ -14,6 +14,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 - [Install in seconds](#install-in-seconds)
 - [Build commands: Maven](#build-commands-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
+- [Forecast distributions](#forecast-distributions)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
 - [Features at a glance](#features-at-a-glance)
@@ -213,6 +214,54 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+## Forecast distributions
+
+Forecast indicators produce forward-looking estimates at a decision index while
+staying inside the normal ta4j `Indicator` model. A forecast distribution made
+at index `i` only reads source values through `i`; evaluation code can later
+compare it with the realized value at `i + horizon`.
+
+```java
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.forecast.DriftMode;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateConfig;
+import org.ta4j.core.indicators.forecast.ForecastDistributionIndicator;
+import org.ta4j.core.indicators.forecast.ForecastIndicators;
+import org.ta4j.core.indicators.forecast.ForecastReducers;
+import org.ta4j.core.indicators.forecast.ForwardForecastIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloForecastConfig;
+import org.ta4j.core.indicators.forecast.ShockModel;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.Num;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+EwmaReturnForecastStateConfig stateConfig = EwmaReturnForecastStateConfig.builder()
+        .initializationBarCount(30)
+        .decayFactor(0.94)
+        .driftMode(DriftMode.ZERO)
+        .build();
+
+MonteCarloForecastConfig forecastConfig = MonteCarloForecastConfig.builder()
+        .horizon(1)
+        .iterationCount(1000)
+        .lookbackBarCount(252)
+        .seed(42L)
+        .shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
+        .build();
+
+ForecastDistributionIndicator<Num> nextCloseDistribution =
+        ForecastIndicators.ewmaVolatilityClosePriceForecast(close, stateConfig, forecastConfig);
+
+Indicator<Num> medianNextClose =
+        new ForwardForecastIndicator(nextCloseDistribution, ForecastReducers.median());
+```
+
+Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
+reducers so research runs can be repeated and evaluated against later realized
+prices.
 
 ### Staged exit rules
 
