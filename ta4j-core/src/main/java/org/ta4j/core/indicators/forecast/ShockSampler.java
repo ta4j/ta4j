@@ -13,20 +13,20 @@ import org.ta4j.core.num.NumFactory;
 @FunctionalInterface
 interface ShockSampler {
 
-    Num sample(RandomGenerator random, ReturnForecastState state, NumFactory numFactory);
+    Num sample(RandomGenerator random, NumFactory numFactory);
 
     static ShockSampler create(ShockModel model, List<Num> historicalReturns, ReturnForecastState state,
             NumFactory numFactory) {
         return switch (model) {
         case HISTORICAL_BOOTSTRAP -> historicalBootstrap(historicalReturns);
         case STANDARDIZED_EMPIRICAL -> standardizedEmpirical(historicalReturns, state, numFactory);
-        case NORMAL -> (random, currentState, factory) -> factory.numOf(random.nextGaussian());
+        case NORMAL -> (random, factory) -> factory.numOf(random.nextGaussian());
         };
     }
 
     private static ShockSampler historicalBootstrap(List<Num> historicalReturns) {
         List<Num> samples = List.copyOf(historicalReturns);
-        return (random, state, numFactory) -> samples.get(random.nextInt(samples.size()));
+        return (random, numFactory) -> samples.get(random.nextInt(samples.size()));
     }
 
     private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ReturnForecastState state,
@@ -40,6 +40,6 @@ interface ShockSampler {
             }
         }
         List<Num> samples = List.copyOf(shocks);
-        return (random, currentState, factory) -> samples.get(random.nextInt(samples.size()));
+        return (random, factory) -> samples.get(random.nextInt(samples.size()));
     }
 }

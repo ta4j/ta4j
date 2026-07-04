@@ -102,7 +102,7 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
         Num variance = startingState.variance();
         Num volatility = startingState.volatility();
         for (int step = 0; step < config.horizon(); step++) {
-            Num stepReturn = stepReturn(random, sampler, startingState, numFactory, drift, volatility);
+            Num stepReturn = stepReturn(random, sampler, numFactory, drift, volatility);
             cumulativeReturn = cumulativeReturn.plus(stepReturn);
             if (config.volatilityUpdateMode() == VolatilityUpdateMode.EWMA) {
                 Num decay = numFactory.numOf(config.volatilityDecayFactor());
@@ -117,9 +117,9 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
         return cumulativeReturn;
     }
 
-    private Num stepReturn(RandomGenerator random, ShockSampler sampler, ReturnForecastState state,
-            NumFactory numFactory, Num drift, Num volatility) {
-        Num shock = sampler.sample(random, state, numFactory);
+    private Num stepReturn(RandomGenerator random, ShockSampler sampler, NumFactory numFactory, Num drift,
+            Num volatility) {
+        Num shock = sampler.sample(random, numFactory);
         if (config.shockModel() == ShockModel.HISTORICAL_BOOTSTRAP) {
             return shock;
         }
