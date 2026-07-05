@@ -10,17 +10,18 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.walkforward.PredictionSnapshot;
 
 /**
  * Converts cumulative log-return forecast distributions to price forecasts.
  *
  * @since 0.22.9
  */
-public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastDistribution<Num>>
-        implements ForecastDistributionIndicator {
+public class LogReturnToPriceForecastIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
+        implements ForecastPredictionIndicator {
 
     private final Indicator<Num> priceIndicator;
-    private final ForecastDistributionIndicator logReturnForecastIndicator;
+    private final ForecastPredictionIndicator logReturnForecastIndicator;
 
     /**
      * Constructor.
@@ -31,7 +32,7 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
      * @since 0.22.9
      */
     public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator,
-            ForecastDistributionIndicator logReturnForecastIndicator) {
+            ForecastPredictionIndicator logReturnForecastIndicator) {
         super(IndicatorUtils.requireSameSeries(
                 Objects.requireNonNull(priceIndicator, "priceIndicator must not be null"),
                 Objects.requireNonNull(logReturnForecastIndicator, "logReturnForecastIndicator must not be null")));
@@ -40,18 +41,18 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
     }
 
     @Override
-    protected ForecastDistribution<Num> calculate(int index) {
-        ForecastDistribution<Num> logReturnForecast = logReturnForecastIndicator.getValue(index);
+    protected PredictionSnapshot.Forecast<Num> calculate(int index) {
+        PredictionSnapshot.Forecast<Num> logReturnForecast = logReturnForecastIndicator.getValue(index);
         if (logReturnForecast == null || !logReturnForecast.isStable()) {
             int horizon = logReturnForecast == null ? 1 : logReturnForecast.horizon();
-            return ForecastDistribution.unstable(index, horizon);
+            return PredictionSnapshot.Forecast.unstable(index, horizon);
         }
         Num price = priceIndicator.getValue(index);
-        if (ForecastNumerics.isInvalid(price) || !price.isPositive()) {
-            return ForecastDistribution.unstable(index, logReturnForecast.horizon());
+        if (IndicatorUtils.isInvalid(price) || !price.isPositive()) {
+            return PredictionSnapshot.Forecast.unstable(index, logReturnForecast.horizon());
         }
         return logReturnForecast.map(cumulativeLogReturn -> {
-            if (ForecastNumerics.isInvalid(cumulativeLogReturn)) {
+            if (IndicatorUtils.isInvalid(cumulativeLogReturn)) {
                 return NaN.NaN;
             }
             return price.multipliedBy(cumulativeLogReturn.exp());

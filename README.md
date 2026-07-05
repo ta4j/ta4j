@@ -14,7 +14,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 - [Install in seconds](#install-in-seconds)
 - [Build commands: Maven](#build-commands-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
-- [Forecast distributions](#forecast-distributions)
+- [Forecast predictions](#forecast-predictions)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
 - [Features at a glance](#features-at-a-glance)
@@ -215,52 +215,52 @@ System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
 
-## Forecast distributions
+## Forecast predictions
 
 Forecast indicators produce forward-looking estimates at a decision index while
-staying inside the normal ta4j `Indicator` model. A forecast distribution made
-at index `i` only reads source values through `i`; evaluation code can later
+staying inside the normal ta4j `Indicator` model. A forecast made at index `i`
+only reads source values through `i`; evaluation code can later
 compare it with the realized value at `i + horizon`.
 
 ```java
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.forecast.DriftMode;
-import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateConfig;
-import org.ta4j.core.indicators.forecast.ForecastDistributionIndicator;
-import org.ta4j.core.indicators.forecast.ForecastIndicators;
-import org.ta4j.core.indicators.forecast.MonteCarloForecastConfig;
-import org.ta4j.core.indicators.forecast.ShockModel;
+import org.ta4j.core.indicators.forecast.ForecastPredictionIndicator;
+import org.ta4j.core.indicators.forecast.ForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.LogReturnToPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnForecastIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 ClosePriceIndicator close = new ClosePriceIndicator(series);
+LogReturnIndicator returns = new LogReturnIndicator(close);
 
-EwmaReturnForecastStateConfig stateConfig = EwmaReturnForecastStateConfig.builder()
-        .initializationBarCount(30)
-        .decayFactor(0.94)
-        .driftMode(DriftMode.ZERO)
-        .build();
+ForecastStateIndicator state = ForecastStateIndicator.ofEwma(
+        returns,
+        30,
+        0.94,
+        ForecastStateIndicator.DriftMode.ZERO);
 
-MonteCarloForecastConfig forecastConfig = MonteCarloForecastConfig.builder()
+ForecastPredictionIndicator returnForecast = MonteCarloReturnForecastIndicator.builder(returns, state)
         .horizon(1)
         .iterationCount(1000)
         .lookbackBarCount(252)
         .seed(42L)
-        .shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
+        .shockModel(MonteCarloReturnForecastIndicator.ShockModel.STANDARDIZED_EMPIRICAL)
         .build();
 
-ForecastDistributionIndicator nextCloseDistribution =
-        ForecastIndicators.ewmaVolatilityClosePriceForecast(close, stateConfig, forecastConfig);
+ForecastPredictionIndicator nextCloseForecast =
+        new LogReturnToPriceForecastIndicator(close, returnForecast);
 
-Indicator<Num> medianNextClose = nextCloseDistribution.median();
-Indicator<Num> downsideNextClose = nextCloseDistribution.quantile(0.05);
+Indicator<Num> medianNextClose = nextCloseForecast.median();
+Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
 ```
 
 Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
-projection indicators so research runs can be repeated and evaluated against later realized
-prices.
+projection indicators so research runs can be repeated and evaluated against
+later realized prices.
 
 ### Staged exit rules
 

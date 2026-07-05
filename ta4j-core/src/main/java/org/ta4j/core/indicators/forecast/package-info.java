@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 /**
- * Forecast indicators and distribution adapters.
+ * Forecast indicators and prediction adapters.
  * <p>
  * Forecast values are made at a decision index and must only depend on source
  * data available at or before that index. Evaluation code may compare those

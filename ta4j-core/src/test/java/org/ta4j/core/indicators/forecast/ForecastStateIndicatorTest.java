@@ -15,10 +15,9 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class EwmaReturnForecastStateIndicatorTest
-        extends AbstractIndicatorTest<LogReturnIndicator, ReturnForecastState> {
+public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, ReturnForecastState> {
 
-    public EwmaReturnForecastStateIndicatorTest(NumFactory numFactory) {
+    public ForecastStateIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -26,12 +25,8 @@ public class EwmaReturnForecastStateIndicatorTest
     public void initializesRollingMeanStateAfterWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        EwmaReturnForecastStateConfig config = EwmaReturnForecastStateConfig.builder()
-                .initializationBarCount(2)
-                .decayFactor(0.5)
-                .driftMode(DriftMode.ROLLING_MEAN)
-                .build();
-        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, config);
+        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         assertEquals(2, stateIndicator.getCountOfUnstableBars());
         assertTrue(stateIndicator.getValue(1).mean().isNaN());
@@ -49,12 +44,8 @@ public class EwmaReturnForecastStateIndicatorTest
     public void zeroDriftModeKeepsMeanButUsesZeroDrift() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        EwmaReturnForecastStateConfig config = EwmaReturnForecastStateConfig.builder()
-                .initializationBarCount(2)
-                .decayFactor(0.5)
-                .driftMode(DriftMode.ZERO)
-                .build();
-        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, config);
+        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+                ForecastStateIndicator.DriftMode.ZERO);
 
         ReturnForecastState state = stateIndicator.getValue(2);
 
@@ -67,12 +58,8 @@ public class EwmaReturnForecastStateIndicatorTest
     public void recursiveUpdateIsStableWhenLateIndexIsRequestedFirst() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 140).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        EwmaReturnForecastStateConfig config = EwmaReturnForecastStateConfig.builder()
-                .initializationBarCount(2)
-                .decayFactor(0.5)
-                .driftMode(DriftMode.ROLLING_MEAN)
-                .build();
-        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, config);
+        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         ReturnForecastState state = stateIndicator.getValue(3);
 
@@ -87,12 +74,8 @@ public class EwmaReturnForecastStateIndicatorTest
                 .withData(100, 0, 100, 110, 121)
                 .build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        EwmaReturnForecastStateConfig config = EwmaReturnForecastStateConfig.builder()
-                .initializationBarCount(2)
-                .decayFactor(0.5)
-                .driftMode(DriftMode.ROLLING_MEAN)
-                .build();
-        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, config);
+        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         assertTrue(stateIndicator.getValue(2).mean().isNaN());
         assertTrue(stateIndicator.getValue(3).mean().isNaN());

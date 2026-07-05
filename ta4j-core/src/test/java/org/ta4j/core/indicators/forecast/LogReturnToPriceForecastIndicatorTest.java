@@ -17,9 +17,10 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.walkforward.PredictionSnapshot;
 
 public class LogReturnToPriceForecastIndicatorTest
-        extends AbstractIndicatorTest<LogReturnToPriceForecastIndicator, ForecastDistribution<Num>> {
+        extends AbstractIndicatorTest<LogReturnToPriceForecastIndicator, PredictionSnapshot.Forecast<Num>> {
 
     public LogReturnToPriceForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -31,49 +32,49 @@ public class LogReturnToPriceForecastIndicatorTest
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Num up = numOf(Math.log(1.1));
         Num down = numOf(Math.log(0.9));
-        ForecastDistribution<Num> logReturnDistribution = ForecastDistribution.ofSamples(1, 1, List.of(down, up),
-                List.of(0.0, 0.5, 1.0));
-        ForecastDistributionIndicator returnForecast = new FixedForecastIndicator(series, 1,
-                Map.of(1, logReturnDistribution));
+        PredictionSnapshot.Forecast<Num> logReturnForecast = PredictionSnapshot.Forecast.ofSamples(1, 1,
+                List.of(down, up), List.of(0.0, 0.5, 1.0));
+        ForecastPredictionIndicator returnForecast = new FixedForecastIndicator(series, 1,
+                Map.of(1, logReturnForecast));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
-        ForecastDistribution<Num> distribution = priceForecast.getValue(1);
+        PredictionSnapshot.Forecast<Num> forecast = priceForecast.getValue(1);
 
-        assertTrue(distribution.isStable());
-        assertNumEquals(100 * Math.sqrt(0.99), distribution.median());
-        assertNumEquals(100 * Math.sqrt(0.99), distribution.quantile(0.5));
-        assertNumEquals(90d, distribution.quantiles().get(0.0));
-        assertNumEquals(110d, distribution.quantiles().get(1.0));
+        assertTrue(forecast.isStable());
+        assertNumEquals(100 * Math.sqrt(0.99), forecast.median());
+        assertNumEquals(100 * Math.sqrt(0.99), forecast.quantile(0.5));
+        assertNumEquals(90d, forecast.quantiles().get(0.0));
+        assertNumEquals(110d, forecast.quantiles().get(1.0));
     }
 
     @Test
     public void propagatesUnstableAndInvalidPrices() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 0).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        ForecastDistributionIndicator returnForecast = new FixedForecastIndicator(series, 0,
-                Map.of(1, ForecastDistribution.ofSamples(1, 1, List.of(numOf(0)))));
+        ForecastPredictionIndicator returnForecast = new FixedForecastIndicator(series, 0,
+                Map.of(1, PredictionSnapshot.Forecast.ofSamples(1, 1, List.of(numOf(0)))));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
         assertTrue(priceForecast.getValue(0).mean().isNaN());
         assertTrue(priceForecast.getValue(1).mean().isNaN());
     }
 
-    private static final class FixedForecastIndicator implements ForecastDistributionIndicator {
+    private static final class FixedForecastIndicator implements ForecastPredictionIndicator {
 
         private final BarSeries series;
         private final int unstableBars;
-        private final Map<Integer, ForecastDistribution<Num>> values;
+        private final Map<Integer, PredictionSnapshot.Forecast<Num>> values;
 
         private FixedForecastIndicator(BarSeries series, int unstableBars,
-                Map<Integer, ForecastDistribution<Num>> values) {
+                Map<Integer, PredictionSnapshot.Forecast<Num>> values) {
             this.series = series;
             this.unstableBars = unstableBars;
             this.values = values;
         }
 
         @Override
-        public ForecastDistribution<Num> getValue(int index) {
-            return values.getOrDefault(index, ForecastDistribution.unstable(index, 1, NaN.NaN));
+        public PredictionSnapshot.Forecast<Num> getValue(int index) {
+            return values.getOrDefault(index, PredictionSnapshot.Forecast.unstable(index, 1, NaN.NaN));
         }
 
         @Override

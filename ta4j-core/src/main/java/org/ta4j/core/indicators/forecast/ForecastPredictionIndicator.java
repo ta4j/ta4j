@@ -6,13 +6,14 @@ package org.ta4j.core.indicators.forecast;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.walkforward.PredictionSnapshot;
 
 /**
- * Indicator that returns numeric forecast distributions.
+ * Indicator that returns numeric forecast prediction summaries.
  *
  * @since 0.22.9
  */
-public interface ForecastDistributionIndicator extends Indicator<ForecastDistribution<Num>> {
+public interface ForecastPredictionIndicator extends Indicator<PredictionSnapshot.Forecast<Num>> {
 
     /**
      * Returns a point indicator for the forecast mean.
@@ -21,7 +22,7 @@ public interface ForecastDistributionIndicator extends Indicator<ForecastDistrib
      * @since 0.22.9
      */
     default Indicator<Num> mean() {
-        return new ForwardForecastIndicator(this, ForecastDistribution::mean);
+        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::mean);
     }
 
     /**
@@ -31,7 +32,7 @@ public interface ForecastDistributionIndicator extends Indicator<ForecastDistrib
      * @since 0.22.9
      */
     default Indicator<Num> median() {
-        return new ForwardForecastIndicator(this, ForecastDistribution::median);
+        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::median);
     }
 
     /**
@@ -41,7 +42,7 @@ public interface ForecastDistributionIndicator extends Indicator<ForecastDistrib
      * @since 0.22.9
      */
     default Indicator<Num> standardDeviation() {
-        return new ForwardForecastIndicator(this, ForecastDistribution::standardDeviation);
+        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::standardDeviation);
     }
 
     /**
@@ -53,11 +54,11 @@ public interface ForecastDistributionIndicator extends Indicator<ForecastDistrib
      */
     default Indicator<Num> quantile(double probability) {
         validateProbability(probability);
-        return new ForwardForecastIndicator(this, distribution -> {
-            if (!distribution.quantiles().containsKey(probability)) {
+        return new ForwardForecastIndicator(this, forecast -> {
+            if (!forecast.quantiles().containsKey(probability)) {
                 return NaN.NaN;
             }
-            return distribution.quantile(probability);
+            return forecast.quantile(probability);
         });
     }
 

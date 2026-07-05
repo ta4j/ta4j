@@ -81,11 +81,12 @@ public final class LogReturnIndicator extends CachedIndicator<Num> {
         }
         Num current = indicator.getValue(index);
         Num previous = indicator.getValue(index - barCount);
-        if (isInvalid(current) || isInvalid(previous) || !current.isPositive() || !previous.isPositive()) {
+        if (IndicatorUtils.isInvalid(current) || IndicatorUtils.isInvalid(previous) || !current.isPositive()
+                || !previous.isPositive()) {
             return NaN.NaN;
         }
         Num result = current.dividedBy(previous).log();
-        if (isInvalid(result)) {
+        if (IndicatorUtils.isInvalid(result)) {
             return NaN.NaN;
         }
         return result;
@@ -106,15 +107,6 @@ public final class LogReturnIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("barCount must be >= 1");
         }
         return new Config(Objects.requireNonNull(indicator, "indicator must not be null"), barCount);
-    }
-
-    private static boolean isInvalid(Num value) {
-        if (IndicatorUtils.isInvalid(value)) {
-            return true;
-        }
-        Number delegate = value.getDelegate();
-        return delegate instanceof Double doubleValue && Double.isInfinite(doubleValue)
-                || delegate instanceof Float floatValue && Float.isInfinite(floatValue);
     }
 
     private record Config(Indicator<Num> indicator, int barCount) {
