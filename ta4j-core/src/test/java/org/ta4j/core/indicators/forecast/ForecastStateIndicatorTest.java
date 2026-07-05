@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -38,6 +39,20 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
         assertNumEquals(Math.log(1.1), state.drift());
         assertNumEquals(0d, state.variance());
         assertNumEquals(0d, state.volatility());
+    }
+
+    @Test
+    public void initializesVarianceWithPopulationWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        FixedIndicator<Num> returns = new FixedIndicator<>(series, numOf(0), numOf(1), numOf(3));
+        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 3, 0.5,
+                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        ReturnForecastState state = stateIndicator.getValue(2);
+
+        assertTrue(state.isStable());
+        assertNumEquals(4d / 3d, state.mean());
+        assertNumEquals(14d / 9d, state.variance());
     }
 
     @Test

@@ -3,16 +3,14 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
+import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -142,6 +140,7 @@ public final class ForecastStateIndicator extends CachedIndicator<ReturnForecast
 
         private final Indicator<Num> indicator;
         private final Indicator<Num> meanIndicator;
+        private final Indicator<Num> initialVarianceIndicator;
         private final int barCount;
         private final double decayFactor;
 
@@ -150,6 +149,7 @@ public final class ForecastStateIndicator extends CachedIndicator<ReturnForecast
             super(IndicatorUtils.requireSameSeries(indicator, meanIndicator));
             this.indicator = indicator;
             this.meanIndicator = meanIndicator;
+            this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);
             this.barCount = barCount;
             this.decayFactor = decayFactor;
         }
@@ -181,17 +181,7 @@ public final class ForecastStateIndicator extends CachedIndicator<ReturnForecast
         }
 
         private Num initialVariance(int index) {
-            List<Num> values = new ArrayList<>(barCount);
-            int startIndex = index - barCount + 1;
-            for (int i = startIndex; i <= index; i++) {
-                Num value = indicator.getValue(i);
-                if (IndicatorUtils.isInvalid(value)) {
-                    return NaN.NaN;
-                }
-                values.add(value);
-            }
-            SampleSummary summary = SampleSummary.fromValues(values.stream(), getBarSeries().numFactory());
-            return summary.m2().dividedBy(getBarSeries().numFactory().numOf(values.size()));
+            return initialVarianceIndicator.getValue(index);
         }
     }
 }
