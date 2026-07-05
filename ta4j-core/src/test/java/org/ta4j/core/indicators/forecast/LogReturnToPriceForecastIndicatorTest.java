@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.forecast;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,20 @@ public class LogReturnToPriceForecastIndicatorTest
 
     public LogReturnToPriceForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void horizonConstructorBuildsUsableDefaultPriceForecast() {
+        BarSeries series = constantSeries(300, 100);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, 5);
+
+        PredictionSnapshot.Forecast<Num> forecast = priceForecast.getValue(series.getEndIndex());
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(100, forecast.median());
+        assertNumEquals(100, forecast.quantile(0.05));
+        assertNumEquals(100, forecast.quantile(0.95));
     }
 
     @Test
@@ -57,6 +72,12 @@ public class LogReturnToPriceForecastIndicatorTest
 
         assertTrue(priceForecast.getValue(0).mean().isNaN());
         assertTrue(priceForecast.getValue(1).mean().isNaN());
+    }
+
+    private BarSeries constantSeries(int barCount, double value) {
+        double[] values = new double[barCount];
+        Arrays.fill(values, value);
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
     private static final class FixedForecastIndicator implements ForecastPredictionIndicator {

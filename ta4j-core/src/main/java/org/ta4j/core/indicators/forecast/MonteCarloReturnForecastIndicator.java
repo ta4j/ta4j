@@ -25,6 +25,9 @@ import org.ta4j.core.walkforward.PredictionSnapshot;
 public final class MonteCarloReturnForecastIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
         implements ForecastPredictionIndicator {
 
+    private static final int DEFAULT_STATE_INITIALIZATION_BAR_COUNT = 30;
+    private static final double DEFAULT_STATE_DECAY_FACTOR = 0.94d;
+
     private final Indicator<Num> returnIndicator;
     private final Indicator<ReturnForecastState> stateIndicator;
     private final int horizon;
@@ -37,6 +40,60 @@ public final class MonteCarloReturnForecastIndicator extends CachedIndicator<Pre
     private final List<Double> quantileProbabilities;
 
     /**
+     * Constructor using default EWMA state and default Monte Carlo settings.
+     *
+     * @param returnIndicator log-return source
+     * @since 0.22.9
+     */
+    public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator) {
+        this(returnIndicator, 1);
+    }
+
+    /**
+     * Constructor using default EWMA state and default Monte Carlo settings for the
+     * requested horizon.
+     *
+     * @param returnIndicator log-return source
+     * @param horizon         forecast horizon in bars
+     * @since 0.22.9
+     */
+    public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator, int horizon) {
+        this(returnIndicator, horizon, DEFAULT_STATE_INITIALIZATION_BAR_COUNT, DEFAULT_STATE_DECAY_FACTOR);
+    }
+
+    /**
+     * Constructor using zero-drift EWMA state and default Monte Carlo settings for
+     * the requested horizon.
+     *
+     * @param returnIndicator        log-return source
+     * @param horizon                forecast horizon in bars
+     * @param initializationBarCount observations required before state is stable
+     * @param decayFactor            EWMA decay factor in {@code (0, 1)}
+     * @since 0.22.9
+     */
+    public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator, int horizon, int initializationBarCount,
+            double decayFactor) {
+        this(returnIndicator, horizon, initializationBarCount, decayFactor, ForecastStateIndicator.DriftMode.ZERO);
+    }
+
+    /**
+     * Constructor using EWMA state and default Monte Carlo settings for the
+     * requested horizon.
+     *
+     * @param returnIndicator        log-return source
+     * @param horizon                forecast horizon in bars
+     * @param initializationBarCount observations required before state is stable
+     * @param decayFactor            EWMA decay factor in {@code (0, 1)}
+     * @param driftMode              drift assumption
+     * @since 0.22.9
+     */
+    public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator, int horizon, int initializationBarCount,
+            double decayFactor, ForecastStateIndicator.DriftMode driftMode) {
+        this(returnIndicator,
+                new ForecastStateIndicator(returnIndicator, initializationBarCount, decayFactor, driftMode), horizon);
+    }
+
+    /**
      * Constructor using default Monte Carlo settings.
      *
      * @param returnIndicator log-return source
@@ -45,7 +102,20 @@ public final class MonteCarloReturnForecastIndicator extends CachedIndicator<Pre
      */
     public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator,
             Indicator<ReturnForecastState> stateIndicator) {
-        this(builder(returnIndicator, stateIndicator));
+        this(returnIndicator, stateIndicator, 1);
+    }
+
+    /**
+     * Constructor using default Monte Carlo settings for the requested horizon.
+     *
+     * @param returnIndicator log-return source
+     * @param stateIndicator  return state source
+     * @param horizon         forecast horizon in bars
+     * @since 0.22.9
+     */
+    public MonteCarloReturnForecastIndicator(Indicator<Num> returnIndicator,
+            Indicator<ReturnForecastState> stateIndicator, int horizon) {
+        this(builder(returnIndicator, stateIndicator).horizon(horizon));
     }
 
     private MonteCarloReturnForecastIndicator(Builder builder) {

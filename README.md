@@ -226,33 +226,14 @@ compare it with the realized value at `i + horizon`.
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.ForecastPredictionIndicator;
-import org.ta4j.core.indicators.forecast.ForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.LogReturnToPriceForecastIndicator;
-import org.ta4j.core.indicators.forecast.MonteCarloReturnForecastIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 ClosePriceIndicator close = new ClosePriceIndicator(series);
-LogReturnIndicator returns = new LogReturnIndicator(close);
 
-ForecastStateIndicator state = ForecastStateIndicator.ofEwma(
-        returns,
-        30,
-        0.94,
-        ForecastStateIndicator.DriftMode.ZERO);
-
-ForecastPredictionIndicator returnForecast = MonteCarloReturnForecastIndicator.builder(returns, state)
-        .horizon(1)
-        .iterationCount(1000)
-        .lookbackBarCount(252)
-        .seed(42L)
-        .shockModel(MonteCarloReturnForecastIndicator.ShockModel.STANDARDIZED_EMPIRICAL)
-        .build();
-
-ForecastPredictionIndicator nextCloseForecast =
-        new LogReturnToPriceForecastIndicator(close, returnForecast);
+ForecastPredictionIndicator nextCloseForecast = new LogReturnToPriceForecastIndicator(close);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
 Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
@@ -261,6 +242,10 @@ Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
 Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
 projection indicators so research runs can be repeated and evaluated against
 later realized prices.
+
+The short constructor path creates log returns internally, then uses EWMA return
+state and default Monte Carlo settings. Use the builder only when a model needs
+advanced simulation tuning.
 
 ### Staged exit rules
 

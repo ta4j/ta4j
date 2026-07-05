@@ -25,7 +25,7 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void initializesRollingMeanStateAfterWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
                 ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         assertEquals(2, stateIndicator.getCountOfUnstableBars());
@@ -44,8 +44,7 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void zeroDriftModeKeepsMeanButUsesZeroDrift() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
-                ForecastStateIndicator.DriftMode.ZERO);
+        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5);
 
         ReturnForecastState state = stateIndicator.getValue(2);
 
@@ -58,7 +57,7 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void recursiveUpdateIsStableWhenLateIndexIsRequestedFirst() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 140).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
                 ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         ReturnForecastState state = stateIndicator.getValue(3);
@@ -74,7 +73,7 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
                 .withData(100, 0, 100, 110, 121)
                 .build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
                 ForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         assertTrue(stateIndicator.getValue(2).mean().isNaN());

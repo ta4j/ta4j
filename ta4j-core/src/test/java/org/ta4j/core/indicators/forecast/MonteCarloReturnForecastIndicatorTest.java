@@ -7,6 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
@@ -23,6 +24,20 @@ public class MonteCarloReturnForecastIndicatorTest
 
     public MonteCarloReturnForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void horizonConstructorBuildsUsableDefaultStateForecast() {
+        BarSeries series = constantSeries(300, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        MonteCarloReturnForecastIndicator forecast = new MonteCarloReturnForecastIndicator(returns, 5);
+
+        PredictionSnapshot.Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+
+        assertTrue(prediction.isStable());
+        assertEquals(5, prediction.horizon());
+        assertNumEquals(0, prediction.median());
+        assertNumEquals(0, prediction.standardDeviation());
     }
 
     @Test
@@ -84,7 +99,7 @@ public class MonteCarloReturnForecastIndicatorTest
             MonteCarloReturnForecastIndicator.ShockModel shockModel, int horizon, int iterations, int lookback,
             long seed, MonteCarloReturnForecastIndicator.VolatilityUpdateMode updateMode) {
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator state = ForecastStateIndicator.ofEwma(returns, 2, 0.5,
+        ForecastStateIndicator state = new ForecastStateIndicator(returns, 2, 0.5,
                 ForecastStateIndicator.DriftMode.ROLLING_MEAN);
         return MonteCarloReturnForecastIndicator.builder(returns, state)
                 .horizon(horizon)
@@ -95,6 +110,12 @@ public class MonteCarloReturnForecastIndicatorTest
                 .volatilityUpdateMode(updateMode)
                 .quantiles(0.05, 0.5, 0.95)
                 .build();
+    }
+
+    private BarSeries constantSeries(int barCount, double value) {
+        double[] values = new double[barCount];
+        Arrays.fill(values, value);
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
     private void assertEquivalent(PredictionSnapshot.Forecast<Num> expected, PredictionSnapshot.Forecast<Num> actual) {

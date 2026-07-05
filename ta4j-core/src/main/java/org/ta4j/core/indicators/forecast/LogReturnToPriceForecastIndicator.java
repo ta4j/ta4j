@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.PredictionSnapshot;
@@ -24,7 +25,29 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Predictio
     private final ForecastPredictionIndicator logReturnForecastIndicator;
 
     /**
-     * Constructor.
+     * Constructor using a default one-bar Monte Carlo log-return forecast.
+     *
+     * @param priceIndicator source price indicator read at the decision index
+     * @since 0.22.9
+     */
+    public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator) {
+        this(priceIndicator, 1);
+    }
+
+    /**
+     * Constructor using a default Monte Carlo log-return forecast for the requested
+     * horizon.
+     *
+     * @param priceIndicator source price indicator read at the decision index
+     * @param horizon        forecast horizon in bars
+     * @since 0.22.9
+     */
+    public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator, int horizon) {
+        this(priceIndicator, new MonteCarloReturnForecastIndicator(new LogReturnIndicator(priceIndicator), horizon));
+    }
+
+    /**
+     * Constructor using an explicit cumulative log-return forecast.
      *
      * @param priceIndicator             source price indicator read at the decision
      *                                   index

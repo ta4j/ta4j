@@ -29,7 +29,43 @@ public final class ForecastStateIndicator extends CachedIndicator<ReturnForecast
     private final DriftMode driftMode;
 
     /**
-     * Constructor.
+     * Constructor using EWMA mean and variance with zero drift.
+     *
+     * @param indicator              return source
+     * @param initializationBarCount observations required before the state is
+     *                               stable
+     * @param decayFactor            EWMA decay factor in {@code (0, 1)}
+     * @since 0.22.9
+     */
+    public ForecastStateIndicator(Indicator<Num> indicator, int initializationBarCount, double decayFactor) {
+        this(indicator, initializationBarCount, decayFactor, DriftMode.ZERO);
+    }
+
+    /**
+     * Constructor using EWMA mean and variance.
+     *
+     * @param indicator              return source
+     * @param initializationBarCount observations required before the state is
+     *                               stable
+     * @param decayFactor            EWMA decay factor in {@code (0, 1)}
+     * @param driftMode              drift assumption
+     * @since 0.22.9
+     */
+    public ForecastStateIndicator(Indicator<Num> indicator, int initializationBarCount, double decayFactor,
+            DriftMode driftMode) {
+        super(Objects.requireNonNull(indicator, "indicator must not be null"));
+        if (initializationBarCount < 1) {
+            throw new IllegalArgumentException("initializationBarCount must be >= 1");
+        }
+        Indicator<Num> mean = new EWMAIndicator(indicator, initializationBarCount, decayFactor);
+        this.meanIndicator = mean;
+        this.varianceIndicator = new EwmaVarianceIndicator(indicator, mean, initializationBarCount, decayFactor);
+        this.initialObservationCount = initializationBarCount;
+        this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
+    }
+
+    /**
+     * Constructor using explicit mean and variance indicators.
      *
      * @param meanIndicator           mean source
      * @param varianceIndicator       variance source
@@ -49,26 +85,6 @@ public final class ForecastStateIndicator extends CachedIndicator<ReturnForecast
         this.varianceIndicator = varianceIndicator;
         this.initialObservationCount = initialObservationCount;
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
-    }
-
-    /**
-     * Creates an EWMA-backed forecast state indicator.
-     *
-     * @param indicator              return source
-     * @param initializationBarCount observations required before the state is
-     *                               stable
-     * @param decayFactor            EWMA decay factor in {@code (0, 1)}
-     * @param driftMode              drift assumption
-     * @return forecast state indicator
-     * @since 0.22.9
-     */
-    public static ForecastStateIndicator ofEwma(Indicator<Num> indicator, int initializationBarCount,
-            double decayFactor, DriftMode driftMode) {
-        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
-        EWMAIndicator mean = new EWMAIndicator(validatedIndicator, initializationBarCount, decayFactor);
-        Indicator<Num> variance = new EwmaVarianceIndicator(validatedIndicator, mean, initializationBarCount,
-                decayFactor);
-        return new ForecastStateIndicator(mean, variance, initializationBarCount, driftMode);
     }
 
     @Override
