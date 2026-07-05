@@ -21,7 +21,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.9
  */
 public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastDistribution<Num>>
-        implements ForecastDistributionIndicator<Num> {
+        implements ForecastDistributionIndicator {
 
     private final Indicator<Num> returnIndicator;
     private final Indicator<ReturnForecastState> stateIndicator;
@@ -48,16 +48,16 @@ public class MonteCarloReturnForecastIndicator extends CachedIndicator<ForecastD
     @Override
     protected ForecastDistribution<Num> calculate(int index) {
         if (index < getCountOfUnstableBars()) {
-            return ForecastDistribution.undefined(index, config.horizon());
+            return ForecastDistribution.unstable(index, config.horizon());
         }
         ReturnForecastState state = stateIndicator.getValue(index);
-        if (state == null || !state.defined() || ForecastNumerics.isInvalid(state.volatility())
+        if (state == null || !state.isStable() || ForecastNumerics.isInvalid(state.volatility())
                 || ForecastNumerics.isInvalid(state.drift())) {
-            return ForecastDistribution.undefined(index, config.horizon());
+            return ForecastDistribution.unstable(index, config.horizon());
         }
         List<Num> historicalReturns = historicalReturns(index);
         if (historicalReturns.size() < config.lookbackBarCount()) {
-            return ForecastDistribution.undefined(index, config.horizon());
+            return ForecastDistribution.unstable(index, config.horizon());
         }
 
         NumFactory numFactory = getBarSeries().numFactory();

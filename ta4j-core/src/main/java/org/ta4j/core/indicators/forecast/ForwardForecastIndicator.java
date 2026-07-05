@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.forecast;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -16,29 +17,31 @@ import org.ta4j.core.num.Num;
  */
 public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
-    private final ForecastDistributionIndicator<Num> forecastIndicator;
-    private final ForecastReducer reducer;
+    private final ForecastDistributionIndicator forecastIndicator;
+    private final Function<ForecastDistribution<Num>, Num> valueResolver;
 
     /**
      * Constructor.
      *
      * @param forecastIndicator source forecast distribution indicator
-     * @param reducer           reducer used to derive one point value
+     * @param valueResolver     resolver used to derive one point value from a
+     *                          stable distribution
      * @since 0.22.9
      */
-    public ForwardForecastIndicator(ForecastDistributionIndicator<Num> forecastIndicator, ForecastReducer reducer) {
+    public ForwardForecastIndicator(ForecastDistributionIndicator forecastIndicator,
+            Function<ForecastDistribution<Num>, Num> valueResolver) {
         super(Objects.requireNonNull(forecastIndicator, "forecastIndicator must not be null"));
         this.forecastIndicator = forecastIndicator;
-        this.reducer = Objects.requireNonNull(reducer, "reducer must not be null");
+        this.valueResolver = Objects.requireNonNull(valueResolver, "valueResolver must not be null");
     }
 
     @Override
     protected Num calculate(int index) {
         ForecastDistribution<Num> distribution = forecastIndicator.getValue(index);
-        if (distribution == null || !distribution.defined()) {
+        if (distribution == null || !distribution.isStable()) {
             return NaN.NaN;
         }
-        Num value = reducer.reduce(distribution);
+        Num value = valueResolver.apply(distribution);
         if (ForecastNumerics.isInvalid(value)) {
             return NaN.NaN;
         }

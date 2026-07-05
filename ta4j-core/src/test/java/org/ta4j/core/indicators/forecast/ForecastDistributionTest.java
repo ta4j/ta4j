@@ -27,7 +27,7 @@ public class ForecastDistributionTest extends AbstractIndicatorTest<Object, Obje
         ForecastDistribution<Num> distribution = ForecastDistribution.ofSamples(4, 2,
                 List.of(numOf(1), numOf(2), numOf(3), numOf(4)));
 
-        assertTrue(distribution.defined());
+        assertTrue(distribution.isStable());
         assertEquals(4, distribution.index());
         assertEquals(2, distribution.horizon());
         assertEquals(4, distribution.sampleCount());
@@ -49,11 +49,11 @@ public class ForecastDistributionTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
-    public void returnsUndefinedWhenNoValidSamplesExist() {
+    public void returnsUnstableWhenNoValidSamplesExist() {
         ForecastDistribution<Num> distribution = ForecastDistribution.ofSamples(1, 1,
                 List.of(org.ta4j.core.num.NaN.NaN));
 
-        assertFalse(distribution.defined());
+        assertFalse(distribution.isStable());
         assertEquals(0, distribution.sampleCount());
         assertTrue(distribution.mean().isNaN());
         assertTrue(distribution.quantiles().isEmpty());
@@ -66,7 +66,7 @@ public class ForecastDistributionTest extends AbstractIndicatorTest<Object, Obje
 
         ForecastDistribution<Num> doubled = distribution.map(value -> value.multipliedBy(numOf(2)));
 
-        assertTrue(doubled.defined());
+        assertTrue(doubled.isStable());
         assertEquals(distribution.index(), doubled.index());
         assertEquals(distribution.horizon(), doubled.horizon());
         assertNumEquals(4, doubled.mean());
@@ -76,7 +76,7 @@ public class ForecastDistributionTest extends AbstractIndicatorTest<Object, Obje
 
     @Test
     public void validatesDistributionShape() {
-        assertThrows(IllegalArgumentException.class, () -> ForecastDistribution.undefined(0, 0));
+        assertThrows(IllegalArgumentException.class, () -> ForecastDistribution.unstable(0, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new ForecastDistribution<>(0, 1, 0, true, numOf(0), numOf(0), numOf(0), java.util.Map.of()));
         assertThrows(IllegalArgumentException.class,

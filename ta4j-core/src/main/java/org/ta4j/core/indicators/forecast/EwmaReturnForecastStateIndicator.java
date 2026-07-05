@@ -38,14 +38,14 @@ public class EwmaReturnForecastStateIndicator extends RecursiveCachedIndicator<R
     @Override
     protected ReturnForecastState calculate(int index) {
         if (index < getCountOfUnstableBars()) {
-            return ReturnForecastState.undefined(index);
+            return ReturnForecastState.unstable(index);
         }
-        ReturnForecastState previous = index > 0 ? getValue(index - 1) : ReturnForecastState.undefined(index);
+        ReturnForecastState previous = index > 0 ? getValue(index - 1) : ReturnForecastState.unstable(index);
         Num currentReturn = returnIndicator.getValue(index);
         if (ForecastNumerics.isInvalid(currentReturn)) {
-            return ReturnForecastState.undefined(index);
+            return ReturnForecastState.unstable(index);
         }
-        if (!previous.defined()) {
+        if (!previous.isStable()) {
             return initialize(index);
         }
         return update(index, previous, currentReturn);
@@ -67,7 +67,7 @@ public class EwmaReturnForecastStateIndicator extends RecursiveCachedIndicator<R
         for (int i = startIndex; i <= index; i++) {
             Num value = returnIndicator.getValue(i);
             if (ForecastNumerics.isInvalid(value)) {
-                return ReturnForecastState.undefined(index);
+                return ReturnForecastState.unstable(index);
             }
             returns.add(value);
         }

@@ -31,7 +31,7 @@ public final class ForecastIndicators {
      * @return close-price forecast distribution indicator
      * @since 0.22.9
      */
-    public static ForecastDistributionIndicator<Num> ewmaVolatilityClosePriceForecast(BarSeries series,
+    public static ForecastDistributionIndicator ewmaVolatilityClosePriceForecast(BarSeries series,
             EwmaReturnForecastStateConfig stateConfig, MonteCarloForecastConfig forecastConfig) {
         return ewmaVolatilityClosePriceForecast(new ClosePriceIndicator(series), stateConfig, forecastConfig);
     }
@@ -46,7 +46,7 @@ public final class ForecastIndicators {
      * @return price forecast distribution indicator
      * @since 0.22.9
      */
-    public static ForecastDistributionIndicator<Num> ewmaVolatilityClosePriceForecast(Indicator<Num> priceIndicator,
+    public static ForecastDistributionIndicator ewmaVolatilityClosePriceForecast(Indicator<Num> priceIndicator,
             EwmaReturnForecastStateConfig stateConfig, MonteCarloForecastConfig forecastConfig) {
         Indicator<Num> price = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
         EwmaReturnForecastStateConfig validatedStateConfig = Objects.requireNonNull(stateConfig,
@@ -72,8 +72,6 @@ public final class ForecastIndicators {
      */
     public static Indicator<Num> ewmaVolatilityMedianClosePriceForecast(Indicator<Num> priceIndicator,
             EwmaReturnForecastStateConfig stateConfig, MonteCarloForecastConfig forecastConfig) {
-        return new ForwardForecastIndicator(
-                ewmaVolatilityClosePriceForecast(priceIndicator, stateConfig, forecastConfig),
-                ForecastReducers.median());
+        return ewmaVolatilityClosePriceForecast(priceIndicator, stateConfig, forecastConfig).median();
     }
 }

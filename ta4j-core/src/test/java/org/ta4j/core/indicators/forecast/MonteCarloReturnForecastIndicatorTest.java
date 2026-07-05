@@ -34,7 +34,7 @@ public class MonteCarloReturnForecastIndicatorTest
 
         ForecastDistribution<Num> distribution = forecast.getValue(3);
 
-        assertTrue(distribution.defined());
+        assertTrue(distribution.isStable());
         assertEquals(50, distribution.sampleCount());
         assertNumEquals(0, distribution.mean());
         assertNumEquals(0, distribution.median());
@@ -59,7 +59,7 @@ public class MonteCarloReturnForecastIndicatorTest
     }
 
     @Test
-    public void empiricalAndNormalShockModelsProduceDefinedOrderedQuantiles() {
+    public void empiricalAndNormalShockModelsProduceStableOrderedQuantiles() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 103, 101, 107, 104, 110, 108, 113)
                 .build();
@@ -71,8 +71,8 @@ public class MonteCarloReturnForecastIndicatorTest
         ForecastDistribution<Num> empiricalDistribution = empirical.getValue(6);
         ForecastDistribution<Num> normalDistribution = normal.getValue(6);
 
-        assertTrue(empiricalDistribution.defined());
-        assertTrue(normalDistribution.defined());
+        assertTrue(empiricalDistribution.isStable());
+        assertTrue(normalDistribution.isStable());
         assertTrue(empiricalDistribution.quantile(0.05).isLessThanOrEqual(empiricalDistribution.quantile(0.95)));
         assertTrue(normalDistribution.standardDeviation().isPositive());
     }
@@ -99,7 +99,7 @@ public class MonteCarloReturnForecastIndicatorTest
     }
 
     private void assertEquivalent(ForecastDistribution<Num> expected, ForecastDistribution<Num> actual) {
-        assertEquals(expected.defined(), actual.defined());
+        assertEquals(expected.isStable(), actual.isStable());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertNumEquals(expected.mean(), actual.mean());
         assertNumEquals(expected.median(), actual.median());

@@ -37,7 +37,7 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(stateIndicator.getValue(1).mean().isNaN());
         ReturnForecastState state = stateIndicator.getValue(2);
 
-        assertTrue(state.defined());
+        assertTrue(state.isStable());
         assertEquals(2, state.observationCount());
         assertNumEquals(Math.log(1.1), state.mean());
         assertNumEquals(Math.log(1.1), state.drift());
@@ -58,7 +58,7 @@ public class EwmaReturnForecastStateIndicatorTest
 
         ReturnForecastState state = stateIndicator.getValue(2);
 
-        assertTrue(state.defined());
+        assertTrue(state.isStable());
         assertNumEquals(Math.log(1.1), state.mean());
         assertNumEquals(0, state.drift());
     }
@@ -76,13 +76,13 @@ public class EwmaReturnForecastStateIndicatorTest
 
         ReturnForecastState state = stateIndicator.getValue(3);
 
-        assertTrue(state.defined());
+        assertTrue(state.isStable());
         assertEquals(3, state.observationCount());
         assertTrue(state.volatility().isPositive());
     }
 
     @Test
-    public void invalidReturnsKeepStateUndefinedUntilWindowIsValid() {
+    public void invalidReturnsKeepStateUnstableUntilWindowIsValid() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 0, 100, 110, 121)
                 .build();
@@ -96,6 +96,6 @@ public class EwmaReturnForecastStateIndicatorTest
 
         assertTrue(stateIndicator.getValue(2).mean().isNaN());
         assertTrue(stateIndicator.getValue(3).mean().isNaN());
-        assertTrue(stateIndicator.getValue(4).defined());
+        assertTrue(stateIndicator.getValue(4).isStable());
     }
 }

@@ -39,8 +39,8 @@ public class ForecastIndicatorsTest extends AbstractIndicatorTest<Indicator<Num>
         MonteCarloReturnForecastIndicator returnForecast = new MonteCarloReturnForecastIndicator(returns, state,
                 forecastConfig);
         LogReturnToPriceForecastIndicator manual = new LogReturnToPriceForecastIndicator(close, returnForecast);
-        ForecastDistributionIndicator<Num> factory = ForecastIndicators.ewmaVolatilityClosePriceForecast(close,
-                stateConfig, forecastConfig);
+        ForecastDistributionIndicator factory = ForecastIndicators.ewmaVolatilityClosePriceForecast(close, stateConfig,
+                forecastConfig);
 
         assertEquivalent(manual.getValue(5), factory.getValue(5));
     }
@@ -63,13 +63,13 @@ public class ForecastIndicatorsTest extends AbstractIndicatorTest<Indicator<Num>
                 .withData(100, 101, 99, 105, 104, 108)
                 .build();
         GuardedIndicator guardedClose = new GuardedIndicator(new ClosePriceIndicator(series));
-        ForecastDistributionIndicator<Num> forecast = ForecastIndicators.ewmaVolatilityClosePriceForecast(guardedClose,
+        ForecastDistributionIndicator forecast = ForecastIndicators.ewmaVolatilityClosePriceForecast(guardedClose,
                 stateConfig(), forecastConfig(1, 50, 3, 42L));
 
         guardedClose.allowUpTo(3);
         ForecastDistribution<Num> distribution = forecast.getValue(3);
 
-        assertTrue(distribution.defined());
+        assertTrue(distribution.isStable());
     }
 
     private EwmaReturnForecastStateConfig stateConfig() {
@@ -92,7 +92,7 @@ public class ForecastIndicatorsTest extends AbstractIndicatorTest<Indicator<Num>
     }
 
     private void assertEquivalent(ForecastDistribution<Num> expected, ForecastDistribution<Num> actual) {
-        assertEquals(expected.defined(), actual.defined());
+        assertEquals(expected.isStable(), actual.isStable());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertNumEquals(expected.mean(), actual.mean());
         assertNumEquals(expected.median(), actual.median());

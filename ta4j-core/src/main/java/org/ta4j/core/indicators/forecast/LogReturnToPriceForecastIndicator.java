@@ -17,10 +17,10 @@ import org.ta4j.core.num.Num;
  * @since 0.22.9
  */
 public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastDistribution<Num>>
-        implements ForecastDistributionIndicator<Num> {
+        implements ForecastDistributionIndicator {
 
     private final Indicator<Num> priceIndicator;
-    private final ForecastDistributionIndicator<Num> logReturnForecastIndicator;
+    private final ForecastDistributionIndicator logReturnForecastIndicator;
 
     /**
      * Constructor.
@@ -31,7 +31,7 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
      * @since 0.22.9
      */
     public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator,
-            ForecastDistributionIndicator<Num> logReturnForecastIndicator) {
+            ForecastDistributionIndicator logReturnForecastIndicator) {
         super(IndicatorUtils.requireSameSeries(
                 Objects.requireNonNull(priceIndicator, "priceIndicator must not be null"),
                 Objects.requireNonNull(logReturnForecastIndicator, "logReturnForecastIndicator must not be null")));
@@ -42,13 +42,13 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<ForecastD
     @Override
     protected ForecastDistribution<Num> calculate(int index) {
         ForecastDistribution<Num> logReturnForecast = logReturnForecastIndicator.getValue(index);
-        if (logReturnForecast == null || !logReturnForecast.defined()) {
+        if (logReturnForecast == null || !logReturnForecast.isStable()) {
             int horizon = logReturnForecast == null ? 1 : logReturnForecast.horizon();
-            return ForecastDistribution.undefined(index, horizon);
+            return ForecastDistribution.unstable(index, horizon);
         }
         Num price = priceIndicator.getValue(index);
         if (ForecastNumerics.isInvalid(price) || !price.isPositive()) {
-            return ForecastDistribution.undefined(index, logReturnForecast.horizon());
+            return ForecastDistribution.unstable(index, logReturnForecast.horizon());
         }
         return logReturnForecast.map(cumulativeLogReturn -> {
             if (ForecastNumerics.isInvalid(cumulativeLogReturn)) {

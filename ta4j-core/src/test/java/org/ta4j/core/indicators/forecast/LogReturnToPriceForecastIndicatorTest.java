@@ -33,13 +33,13 @@ public class LogReturnToPriceForecastIndicatorTest
         Num down = numOf(Math.log(0.9));
         ForecastDistribution<Num> logReturnDistribution = ForecastDistribution.ofSamples(1, 1, List.of(down, up),
                 List.of(0.0, 0.5, 1.0));
-        ForecastDistributionIndicator<Num> returnForecast = new FixedForecastIndicator(series, 1,
+        ForecastDistributionIndicator returnForecast = new FixedForecastIndicator(series, 1,
                 Map.of(1, logReturnDistribution));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
         ForecastDistribution<Num> distribution = priceForecast.getValue(1);
 
-        assertTrue(distribution.defined());
+        assertTrue(distribution.isStable());
         assertNumEquals(100 * Math.sqrt(0.99), distribution.median());
         assertNumEquals(100 * Math.sqrt(0.99), distribution.quantile(0.5));
         assertNumEquals(90d, distribution.quantiles().get(0.0));
@@ -47,10 +47,10 @@ public class LogReturnToPriceForecastIndicatorTest
     }
 
     @Test
-    public void propagatesUndefinedAndInvalidPrices() {
+    public void propagatesUnstableAndInvalidPrices() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 0).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        ForecastDistributionIndicator<Num> returnForecast = new FixedForecastIndicator(series, 0,
+        ForecastDistributionIndicator returnForecast = new FixedForecastIndicator(series, 0,
                 Map.of(1, ForecastDistribution.ofSamples(1, 1, List.of(numOf(0)))));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
@@ -58,7 +58,7 @@ public class LogReturnToPriceForecastIndicatorTest
         assertTrue(priceForecast.getValue(1).mean().isNaN());
     }
 
-    private static final class FixedForecastIndicator implements ForecastDistributionIndicator<Num> {
+    private static final class FixedForecastIndicator implements ForecastDistributionIndicator {
 
         private final BarSeries series;
         private final int unstableBars;
@@ -73,7 +73,7 @@ public class LogReturnToPriceForecastIndicatorTest
 
         @Override
         public ForecastDistribution<Num> getValue(int index) {
-            return values.getOrDefault(index, ForecastDistribution.undefined(index, 1, NaN.NaN));
+            return values.getOrDefault(index, ForecastDistribution.unstable(index, 1, NaN.NaN));
         }
 
         @Override

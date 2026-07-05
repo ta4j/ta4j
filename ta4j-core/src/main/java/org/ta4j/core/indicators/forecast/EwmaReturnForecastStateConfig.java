@@ -9,7 +9,7 @@ import java.util.Objects;
  * Configuration for EWMA return state estimation.
  *
  * @param initializationBarCount number of valid return observations required
- *                               before the state is defined
+ *                               before the state is stable
  * @param decayFactor            EWMA decay in {@code (0, 1)}
  * @param driftMode              drift assumption
  * @since 0.22.9

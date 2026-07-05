@@ -13,14 +13,14 @@ import org.ta4j.core.num.Num;
  *
  * @param index            state index
  * @param observationCount number of returns incorporated into the state
- * @param defined          whether the state is defined
+ * @param isStable         whether the state is stable and usable
  * @param mean             rolling mean return estimate
  * @param drift            drift used by forecasts
  * @param variance         rolling return variance estimate
  * @param volatility       square root of {@code variance}
  * @since 0.22.9
  */
-public record ReturnForecastState(int index, int observationCount, boolean defined, Num mean, Num drift, Num variance,
+public record ReturnForecastState(int index, int observationCount, boolean isStable, Num mean, Num drift, Num variance,
         Num volatility) {
 
     /**
@@ -35,11 +35,11 @@ public record ReturnForecastState(int index, int observationCount, boolean defin
         if (observationCount < 0) {
             throw new IllegalArgumentException("observationCount must be >= 0");
         }
-        if (defined && observationCount == 0) {
-            throw new IllegalArgumentException("defined states must include at least one observation");
+        if (isStable && observationCount == 0) {
+            throw new IllegalArgumentException("stable states must include at least one observation");
         }
-        if (!defined && observationCount != 0) {
-            throw new IllegalArgumentException("undefined states must have zero observations");
+        if (!isStable && observationCount != 0) {
+            throw new IllegalArgumentException("unstable states must have zero observations");
         }
         mean = Objects.requireNonNull(mean, "mean must not be null");
         drift = Objects.requireNonNull(drift, "drift must not be null");
@@ -48,13 +48,13 @@ public record ReturnForecastState(int index, int observationCount, boolean defin
     }
 
     /**
-     * Creates an undefined state.
+     * Creates an unstable state.
      *
      * @param index state index
-     * @return undefined state
+     * @return unstable state
      * @since 0.22.9
      */
-    public static ReturnForecastState undefined(int index) {
+    public static ReturnForecastState unstable(int index) {
         return new ReturnForecastState(index, 0, false, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN);
     }
 }

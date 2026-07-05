@@ -19,10 +19,10 @@ public class ReturnForecastStateTest extends AbstractIndicatorTest<ReturnForecas
     }
 
     @Test
-    public void undefinedStateIsMarkedUndefined() {
-        ReturnForecastState state = ReturnForecastState.undefined(1);
+    public void unstableStateIsMarkedUnstable() {
+        ReturnForecastState state = ReturnForecastState.unstable(1);
 
-        assertFalse(state.defined());
+        assertFalse(state.isStable());
         assertTrue(state.mean().isNaN());
     }
 

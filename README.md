@@ -229,8 +229,6 @@ import org.ta4j.core.indicators.forecast.DriftMode;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateConfig;
 import org.ta4j.core.indicators.forecast.ForecastDistributionIndicator;
 import org.ta4j.core.indicators.forecast.ForecastIndicators;
-import org.ta4j.core.indicators.forecast.ForecastReducers;
-import org.ta4j.core.indicators.forecast.ForwardForecastIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloForecastConfig;
 import org.ta4j.core.indicators.forecast.ShockModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -253,15 +251,15 @@ MonteCarloForecastConfig forecastConfig = MonteCarloForecastConfig.builder()
         .shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
         .build();
 
-ForecastDistributionIndicator<Num> nextCloseDistribution =
+ForecastDistributionIndicator nextCloseDistribution =
         ForecastIndicators.ewmaVolatilityClosePriceForecast(close, stateConfig, forecastConfig);
 
-Indicator<Num> medianNextClose =
-        new ForwardForecastIndicator(nextCloseDistribution, ForecastReducers.median());
+Indicator<Num> medianNextClose = nextCloseDistribution.median();
+Indicator<Num> downsideNextClose = nextCloseDistribution.quantile(0.05);
 ```
 
 Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
-reducers so research runs can be repeated and evaluated against later realized
+projection indicators so research runs can be repeated and evaluated against later realized
 prices.
 
 ### Staged exit rules

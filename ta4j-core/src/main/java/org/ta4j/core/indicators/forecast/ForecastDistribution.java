@@ -22,18 +22,18 @@ import org.ta4j.core.num.NumFactory;
  * @param index             decision index where the forecast was made
  * @param horizon           forecast horizon in bars
  * @param sampleCount       number of samples summarized by this distribution
- * @param defined           whether the forecast is defined
- * @param mean              distribution mean, or an undefined value when not
- *                          defined
- * @param median            distribution median, or an undefined value when not
- *                          defined
+ * @param isStable          whether the forecast is stable and usable
+ * @param mean              distribution mean, or an unstable value when not
+ *                          stable
+ * @param median            distribution median, or an unstable value when not
+ *                          stable
  * @param standardDeviation population standard deviation of the summarized
  *                          samples
  * @param quantiles         quantile probability to forecast value
  * @param <T>               forecast value type
  * @since 0.22.9
  */
-public record ForecastDistribution<T>(int index, int horizon, int sampleCount, boolean defined, T mean, T median,
+public record ForecastDistribution<T>(int index, int horizon, int sampleCount, boolean isStable, T mean, T median,
         T standardDeviation, Map<Double, T> quantiles) {
 
     /**
@@ -58,11 +58,11 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
         if (sampleCount < 0) {
             throw new IllegalArgumentException("sampleCount must be >= 0");
         }
-        if (defined && sampleCount == 0) {
-            throw new IllegalArgumentException("defined distributions must summarize at least one sample");
+        if (isStable && sampleCount == 0) {
+            throw new IllegalArgumentException("stable distributions must summarize at least one sample");
         }
-        if (!defined && sampleCount != 0) {
-            throw new IllegalArgumentException("undefined distributions must have zero samples");
+        if (!isStable && sampleCount != 0) {
+            throw new IllegalArgumentException("unstable distributions must have zero samples");
         }
         mean = Objects.requireNonNull(mean, "mean must not be null");
         median = Objects.requireNonNull(median, "median must not be null");
@@ -82,29 +82,29 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
     }
 
     /**
-     * Creates an undefined {@link Num}-based distribution.
+     * Creates an unstable {@link Num}-based distribution.
      *
      * @param index   decision index
      * @param horizon forecast horizon in bars
-     * @return undefined forecast distribution
+     * @return unstable forecast distribution
      * @since 0.22.9
      */
-    public static ForecastDistribution<Num> undefined(int index, int horizon) {
-        return undefined(index, horizon, NaN.NaN);
+    public static ForecastDistribution<Num> unstable(int index, int horizon) {
+        return unstable(index, horizon, NaN.NaN);
     }
 
     /**
-     * Creates an undefined distribution using the provided undefined value.
+     * Creates an unstable distribution using the provided unstable value.
      *
-     * @param index          decision index
-     * @param horizon        forecast horizon in bars
-     * @param undefinedValue value used for summary fields
-     * @param <T>            forecast value type
-     * @return undefined forecast distribution
+     * @param index         decision index
+     * @param horizon       forecast horizon in bars
+     * @param unstableValue value used for summary fields
+     * @param <T>           forecast value type
+     * @return unstable forecast distribution
      * @since 0.22.9
      */
-    public static <T> ForecastDistribution<T> undefined(int index, int horizon, T undefinedValue) {
-        T value = Objects.requireNonNull(undefinedValue, "undefinedValue must not be null");
+    public static <T> ForecastDistribution<T> unstable(int index, int horizon, T unstableValue) {
+        T value = Objects.requireNonNull(unstableValue, "unstableValue must not be null");
         return new ForecastDistribution<>(index, horizon, 0, false, value, value, value, Map.of());
     }
 
@@ -114,7 +114,7 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
      * @param index   decision index
      * @param horizon forecast horizon in bars
      * @param samples sample values to summarize
-     * @return defined distribution, or undefined when no valid samples are present
+     * @return stable distribution, or unstable when no valid samples are present
      * @since 0.22.9
      */
     public static ForecastDistribution<Num> ofSamples(int index, int horizon, List<Num> samples) {
@@ -128,14 +128,14 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
      * @param horizon               forecast horizon in bars
      * @param samples               sample values to summarize
      * @param quantileProbabilities quantile probabilities in {@code [0, 1]}
-     * @return defined distribution, or undefined when no valid samples are present
+     * @return stable distribution, or unstable when no valid samples are present
      * @since 0.22.9
      */
     public static ForecastDistribution<Num> ofSamples(int index, int horizon, List<Num> samples,
             List<Double> quantileProbabilities) {
         List<Num> validSamples = validSamples(samples);
         if (validSamples.isEmpty()) {
-            return undefined(index, horizon);
+            return unstable(index, horizon);
         }
 
         NumFactory numFactory = validSamples.get(0).getNumFactory();
@@ -173,7 +173,7 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
 
     /**
      * Maps all summary values while preserving index, horizon, sample count, and
-     * defined state.
+     * stable state.
      *
      * @param mapper value mapper
      * @param <R>    mapped forecast value type
@@ -187,7 +187,7 @@ public record ForecastDistribution<T>(int index, int horizon, int sampleCount, b
             mappedQuantiles.put(entry.getKey(),
                     Objects.requireNonNull(valueMapper.apply(entry.getValue()), "mapped quantile must not be null"));
         }
-        return new ForecastDistribution<>(index, horizon, sampleCount, defined,
+        return new ForecastDistribution<>(index, horizon, sampleCount, isStable,
                 Objects.requireNonNull(valueMapper.apply(mean), "mapped mean must not be null"),
                 Objects.requireNonNull(valueMapper.apply(median), "mapped median must not be null"),
                 Objects.requireNonNull(valueMapper.apply(standardDeviation),
