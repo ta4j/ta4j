@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -30,6 +31,7 @@ public class LogReturnIndicatorTest extends AbstractIndicatorTest<LogReturnIndic
         LogReturnIndicator twoBar = new LogReturnIndicator(close, 2);
 
         assertEquals(ReturnRepresentation.LOG, oneBar.getReturnRepresentation());
+        assertSame(close, oneBar.getSourceIndicator());
         assertEquals(1, oneBar.getCountOfUnstableBars());
         assertTrue(oneBar.getValue(0).isNaN());
         assertNumEquals(Math.log(1.1), oneBar.getValue(1));

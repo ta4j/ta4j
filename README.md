@@ -227,20 +227,15 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.ForecastProjectionIndicator;
-import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
-import org.ta4j.core.indicators.forecast.ReturnForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.ReturnForecastStateIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
-ClosePriceIndicator close = new ClosePriceIndicator(series);
-
-LogReturnIndicator returns = new LogReturnIndicator(close);
+LogReturnIndicator returns = new LogReturnIndicator(series);
 ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
-ReturnForecastProjectionIndicator projection = new MonteCarloReturnProjectionIndicator(state, 5);
-ForecastProjectionIndicator nextCloseForecast = projection.toPriceForecast(close);
+ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
 Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
@@ -254,8 +249,9 @@ later realized prices.
 numeric output is a return stream in the declared representation. The initial
 forecast implementation supports log returns, so build the pipeline explicitly
 from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
-`MonteCarloReturnProjectionIndicator`. Use the projection builder only when a
-model needs advanced simulation tuning.
+`MonteCarloPriceForecastIndicator`. Use `MonteCarloReturnProjectionIndicator`
+and `LogReturnToPriceForecastIndicator` directly only when a model needs
+advanced simulation tuning or a custom explicit price source.
 
 ### Staged exit rules
 

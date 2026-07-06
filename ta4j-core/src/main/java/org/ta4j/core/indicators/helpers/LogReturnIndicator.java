@@ -77,6 +77,16 @@ public final class LogReturnIndicator extends CachedIndicator<Num> implements Re
     }
 
     /**
+     * Returns the source indicator used to calculate log returns.
+     *
+     * @return source indicator
+     * @since 0.22.9
+     */
+    public Indicator<Num> getSourceIndicator() {
+        return indicator;
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @since 0.22.9
