@@ -11,7 +11,7 @@ import org.ta4j.core.indicators.ReturnIndicator;
  *
  * @since 0.22.9
  */
-public interface ReturnForecastStateProvider extends ForecastStateProvider<ReturnForecastState> {
+public interface ReturnForecastStateIndicator extends ForecastStateIndicator<ReturnForecastState> {
 
     /**
      * Returns the source return indicator used to build this state.

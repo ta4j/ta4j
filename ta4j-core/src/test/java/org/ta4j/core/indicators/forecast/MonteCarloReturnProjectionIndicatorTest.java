@@ -105,13 +105,13 @@ public class MonteCarloReturnProjectionIndicatorTest
     }
 
     @Test
-    public void rejectsNonLogStateProvider() {
+    public void rejectsNonLogStateIndicator() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.DECIMAL, numOf(0),
                 numOf(1), numOf(2));
-        FixedReturnStateProvider stateProvider = new FixedReturnStateProvider(returns, ReturnRepresentation.DECIMAL);
+        FixedReturnStateIndicator stateIndicator = new FixedReturnStateIndicator(returns, ReturnRepresentation.DECIMAL);
 
-        assertThrows(IllegalArgumentException.class, () -> new MonteCarloReturnProjectionIndicator(stateProvider));
+        assertThrows(IllegalArgumentException.class, () -> new MonteCarloReturnProjectionIndicator(stateIndicator));
     }
 
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
@@ -163,12 +163,12 @@ public class MonteCarloReturnProjectionIndicatorTest
         }
     }
 
-    private static final class FixedReturnStateProvider implements ReturnForecastStateProvider {
+    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator {
 
         private final ReturnIndicator returns;
         private final ReturnRepresentation representation;
 
-        private FixedReturnStateProvider(ReturnIndicator returns, ReturnRepresentation representation) {
+        private FixedReturnStateIndicator(ReturnIndicator returns, ReturnRepresentation representation) {
             this.returns = returns;
             this.representation = representation;
         }

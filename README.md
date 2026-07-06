@@ -226,10 +226,10 @@ compare it with the realized value at `i + horizon`.
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
-import org.ta4j.core.indicators.forecast.ForecastProjectionProvider;
+import org.ta4j.core.indicators.forecast.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
-import org.ta4j.core.indicators.forecast.ReturnForecastProjectionProvider;
-import org.ta4j.core.indicators.forecast.ReturnForecastStateProvider;
+import org.ta4j.core.indicators.forecast.ReturnForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
@@ -238,9 +238,9 @@ BarSeries series = ...;
 ClosePriceIndicator close = new ClosePriceIndicator(series);
 
 LogReturnIndicator returns = new LogReturnIndicator(close);
-ReturnForecastStateProvider state = new EwmaReturnForecastStateIndicator(returns);
-ReturnForecastProjectionProvider projection = new MonteCarloReturnProjectionIndicator(state, 5);
-ForecastProjectionProvider<?> nextCloseForecast = projection.toPriceForecast(close);
+ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+ReturnForecastProjectionIndicator projection = new MonteCarloReturnProjectionIndicator(state, 5);
+ForecastProjectionIndicator nextCloseForecast = projection.toPriceForecast(close);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
 Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);

@@ -24,10 +24,10 @@ import org.ta4j.core.walkforward.PredictionSnapshot;
  * @since 0.22.9
  */
 public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
-        implements ReturnForecastProjectionProvider {
+        implements ReturnForecastProjectionIndicator {
 
     private final ReturnIndicator returnIndicator;
-    private final ReturnForecastStateProvider stateProvider;
+    private final ReturnForecastStateIndicator stateIndicator;
     private final int horizon;
     private final int iterationCount;
     private final int lookbackBarCount;
@@ -40,22 +40,22 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
     /**
      * Constructor using default Monte Carlo settings.
      *
-     * @param stateProvider log-return state provider
+     * @param stateIndicator log-return state indicator
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateProvider stateProvider) {
-        this(stateProvider, 1);
+    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator) {
+        this(stateIndicator, 1);
     }
 
     /**
      * Constructor using default Monte Carlo settings for the requested horizon.
      *
-     * @param stateProvider log-return state provider
-     * @param horizon       forecast horizon in bars
+     * @param stateIndicator log-return state indicator
+     * @param horizon        forecast horizon in bars
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateProvider stateProvider, int horizon) {
-        this(builder(stateProvider).horizon(horizon));
+    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator, int horizon) {
+        this(builder(stateIndicator).horizon(horizon));
     }
 
     /**
@@ -64,9 +64,9 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
      * @param builder builder
      */
     private MonteCarloReturnProjectionIndicator(Builder builder) {
-        super(requireSameSeries(builder.stateProvider));
-        this.stateProvider = builder.stateProvider;
-        this.returnIndicator = builder.stateProvider.getReturnIndicator();
+        super(requireSameSeries(builder.stateIndicator));
+        this.stateIndicator = builder.stateIndicator;
+        this.returnIndicator = builder.stateIndicator.getReturnIndicator();
         this.horizon = validatePositive("horizon", builder.horizon);
         this.iterationCount = validatePositive("iterationCount", builder.iterationCount);
         this.lookbackBarCount = validatePositive("lookbackBarCount", builder.lookbackBarCount);
@@ -81,12 +81,12 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
     /**
      * Returns a builder for this indicator.
      *
-     * @param stateProvider log-return state provider
+     * @param stateIndicator log-return state indicator
      * @return builder
      * @since 0.22.9
      */
-    public static Builder builder(ReturnForecastStateProvider stateProvider) {
-        return new Builder(stateProvider);
+    public static Builder builder(ReturnForecastStateIndicator stateIndicator) {
+        return new Builder(stateIndicator);
     }
 
     @Override
@@ -94,7 +94,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
         if (index < getCountOfUnstableBars()) {
             return PredictionSnapshot.Forecast.unstable(index, horizon);
         }
-        ReturnForecastState state = stateProvider.getValue(index);
+        ReturnForecastState state = stateIndicator.getValue(index);
         if (state == null || !state.isStable() || IndicatorUtils.isInvalid(state.volatility())
                 || IndicatorUtils.isInvalid(state.drift())) {
             return PredictionSnapshot.Forecast.unstable(index, horizon);
@@ -121,7 +121,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(stateProvider.getCountOfUnstableBars(),
+        return Math.max(stateIndicator.getCountOfUnstableBars(),
                 returnIndicator.getCountOfUnstableBars() + lookbackBarCount - 1);
     }
 
@@ -217,16 +217,17 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
         return List.copyOf(sorted);
     }
 
-    private static ReturnForecastStateProvider validateLogStateProvider(ReturnForecastStateProvider stateProvider) {
-        ReturnForecastStateProvider validated = Objects.requireNonNull(stateProvider, "stateProvider must not be null");
+    private static ReturnForecastStateIndicator validateLogStateIndicator(ReturnForecastStateIndicator stateIndicator) {
+        ReturnForecastStateIndicator validated = Objects.requireNonNull(stateIndicator,
+                "stateIndicator must not be null");
         if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
-            throw new IllegalArgumentException("stateProvider must use ReturnRepresentation.LOG");
+            throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
         }
         return validated;
     }
 
-    private static ReturnForecastStateProvider requireSameSeries(ReturnForecastStateProvider stateProvider) {
-        ReturnForecastStateProvider validated = validateLogStateProvider(stateProvider);
+    private static ReturnForecastStateIndicator requireSameSeries(ReturnForecastStateIndicator stateIndicator) {
+        ReturnForecastStateIndicator validated = validateLogStateIndicator(stateIndicator);
         IndicatorUtils.requireSameSeries(validated.getReturnIndicator(), validated);
         return validated;
     }
@@ -289,7 +290,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
      */
     public static final class Builder {
 
-        private final ReturnForecastStateProvider stateProvider;
+        private final ReturnForecastStateIndicator stateIndicator;
         private int horizon = 1;
         private int iterationCount = 1_000;
         private int lookbackBarCount = 252;
@@ -299,8 +300,8 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
         private double volatilityDecayFactor = 0.94d;
         private List<Double> quantileProbabilities = PredictionSnapshot.Forecast.DEFAULT_QUANTILE_PROBABILITIES;
 
-        private Builder(ReturnForecastStateProvider stateProvider) {
-            this.stateProvider = Objects.requireNonNull(stateProvider, "stateProvider must not be null");
+        private Builder(ReturnForecastStateIndicator stateIndicator) {
+            this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
         }
 
         /**

@@ -36,7 +36,7 @@ public class LogReturnToPriceForecastIndicatorTest
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         LogReturnIndicator returns = new LogReturnIndicator(close);
         EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
-        ReturnForecastProjectionProvider projection = new MonteCarloReturnProjectionIndicator(state, 5);
+        ReturnForecastProjectionIndicator projection = new MonteCarloReturnProjectionIndicator(state, 5);
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, projection);
 
         PredictionSnapshot.Forecast<Num> forecast = priceForecast.getValue(series.getEndIndex());
@@ -55,7 +55,7 @@ public class LogReturnToPriceForecastIndicatorTest
         Num down = numOf(Math.log(0.9));
         PredictionSnapshot.Forecast<Num> logReturnForecast = PredictionSnapshot.Forecast.ofSamples(1, 1,
                 List.of(down, up), List.of(0.0, 0.5, 1.0));
-        ReturnForecastProjectionProvider returnForecast = new FixedForecastIndicator(series, 1,
+        ReturnForecastProjectionIndicator returnForecast = new FixedForecastIndicator(series, 1,
                 ReturnRepresentation.LOG, Map.of(1, logReturnForecast));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
@@ -72,7 +72,7 @@ public class LogReturnToPriceForecastIndicatorTest
     public void propagatesUnstableAndInvalidPrices() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 0).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        ReturnForecastProjectionProvider returnForecast = new FixedForecastIndicator(series, 0,
+        ReturnForecastProjectionIndicator returnForecast = new FixedForecastIndicator(series, 0,
                 ReturnRepresentation.LOG, Map.of(1, PredictionSnapshot.Forecast.ofSamples(1, 1, List.of(numOf(0)))));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
@@ -84,7 +84,7 @@ public class LogReturnToPriceForecastIndicatorTest
     public void rejectsNonLogReturnProjection() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        ReturnForecastProjectionProvider decimalProjection = new FixedForecastIndicator(series, 0,
+        ReturnForecastProjectionIndicator decimalProjection = new FixedForecastIndicator(series, 0,
                 ReturnRepresentation.DECIMAL,
                 Map.of(1, PredictionSnapshot.Forecast.ofSamples(1, 1, List.of(numOf(0)))));
 
@@ -98,7 +98,7 @@ public class LogReturnToPriceForecastIndicatorTest
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
-    private static final class FixedForecastIndicator implements ReturnForecastProjectionProvider {
+    private static final class FixedForecastIndicator implements ReturnForecastProjectionIndicator {
 
         private final BarSeries series;
         private final int unstableBars;

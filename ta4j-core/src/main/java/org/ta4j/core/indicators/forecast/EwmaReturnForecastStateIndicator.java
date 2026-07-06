@@ -23,7 +23,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.9
  */
 public final class EwmaReturnForecastStateIndicator extends CachedIndicator<ReturnForecastState>
-        implements ReturnForecastStateProvider {
+        implements ReturnForecastStateIndicator {
 
     private final ReturnIndicator returnIndicator;
     private final Indicator<Num> meanIndicator;

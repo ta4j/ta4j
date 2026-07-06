@@ -8,11 +8,11 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 
 /**
- * Projects a return-state provider into a forward return forecast.
+ * Projects a return-state indicator into a forward return forecast.
  *
  * @since 0.22.9
  */
-public interface ReturnForecastProjectionProvider extends ForecastProjectionProvider<ReturnForecastState> {
+public interface ReturnForecastProjectionIndicator extends ForecastProjectionIndicator {
 
     /**
      * Returns the representation used by the projected cumulative returns.
@@ -26,10 +26,10 @@ public interface ReturnForecastProjectionProvider extends ForecastProjectionProv
      * Converts this return projection to a price projection.
      *
      * @param priceIndicator source price indicator read at the decision index
-     * @return price forecast projection provider
+     * @return price forecast projection indicator
      * @since 0.22.9
      */
-    default ForecastProjectionProvider<ReturnForecastState> toPriceForecast(Indicator<Num> priceIndicator) {
+    default ForecastProjectionIndicator toPriceForecast(Indicator<Num> priceIndicator) {
         return new LogReturnToPriceForecastIndicator(priceIndicator, this);
     }
 }

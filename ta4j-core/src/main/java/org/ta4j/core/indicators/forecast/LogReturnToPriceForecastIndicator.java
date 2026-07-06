@@ -19,10 +19,10 @@ import org.ta4j.core.walkforward.PredictionSnapshot;
  * @since 0.22.9
  */
 public class LogReturnToPriceForecastIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
-        implements ForecastProjectionProvider<ReturnForecastState> {
+        implements ForecastProjectionIndicator {
 
     private final Indicator<Num> priceIndicator;
-    private final ReturnForecastProjectionProvider logReturnForecastProjection;
+    private final ReturnForecastProjectionIndicator logReturnForecastProjection;
 
     /**
      * Constructor using an explicit cumulative log-return forecast.
@@ -33,7 +33,7 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Predictio
      * @since 0.22.9
      */
     public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator,
-            ReturnForecastProjectionProvider logReturnForecastProjection) {
+            ReturnForecastProjectionIndicator logReturnForecastProjection) {
         super(IndicatorUtils.requireSameSeries(
                 Objects.requireNonNull(priceIndicator, "priceIndicator must not be null"),
                 validateLogReturnProjection(logReturnForecastProjection)));
@@ -70,9 +70,9 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Predictio
         return Math.max(priceIndicator.getCountOfUnstableBars(), logReturnForecastProjection.getCountOfUnstableBars());
     }
 
-    private static ReturnForecastProjectionProvider validateLogReturnProjection(
-            ReturnForecastProjectionProvider projection) {
-        ReturnForecastProjectionProvider validated = Objects.requireNonNull(projection,
+    private static ReturnForecastProjectionIndicator validateLogReturnProjection(
+            ReturnForecastProjectionIndicator projection) {
+        ReturnForecastProjectionIndicator validated = Objects.requireNonNull(projection,
                 "logReturnForecastProjection must not be null");
         if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("logReturnForecastProjection must use ReturnRepresentation.LOG");
