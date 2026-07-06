@@ -274,21 +274,28 @@ public record PredictionSnapshot<P>(String foldId, int decisionIndex, List<Ranke
         }
 
         /**
+         * Returns whether this forecast includes the requested quantile probability.
+         *
+         * @param probability quantile probability in {@code [0, 1]}
+         * @return true if the quantile is available, false otherwise
+         * @since 0.22.9
+         */
+        public boolean hasQuantile(double probability) {
+            validateProbability(probability);
+            return quantiles.containsKey(probability);
+        }
+
+        /**
          * Returns the value for an included quantile probability.
          *
          * @param probability quantile probability in {@code [0, 1]}
-         * @return quantile value
-         * @throws IllegalArgumentException if this forecast does not include the
-         *                                  requested probability
+         * @return quantile value, or {@code null} when the valid probability was not
+         *         configured for this forecast
          * @since 0.22.9
          */
         public T quantile(double probability) {
             validateProbability(probability);
-            T value = quantiles.get(probability);
-            if (value == null) {
-                throw new IllegalArgumentException("Quantile " + probability + " is not available");
-            }
-            return value;
+            return quantiles.get(probability);
         }
 
         /**

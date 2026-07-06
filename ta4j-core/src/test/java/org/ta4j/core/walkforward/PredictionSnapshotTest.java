@@ -29,6 +29,7 @@ class PredictionSnapshotTest {
         assertThat(forecast.mean()).isEqualByComparingTo(NUM_FACTORY.numOf(2.5));
         assertThat(forecast.median()).isEqualByComparingTo(NUM_FACTORY.numOf(2.5));
         assertThat(forecast.standardDeviation()).isEqualByComparingTo(NUM_FACTORY.numOf(Math.sqrt(1.25)));
+        assertThat(forecast.hasQuantile(0.25)).isTrue();
         assertThat(forecast.quantile(0.25)).isEqualByComparingTo(NUM_FACTORY.numOf(1.75));
         assertThat(forecast.quantile(0.75)).isEqualByComparingTo(NUM_FACTORY.numOf(3.25));
     }
@@ -58,11 +59,24 @@ class PredictionSnapshotTest {
     }
 
     @Test
+    void forecastReturnsNullForMissingQuantiles() {
+        PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(2, 1,
+                List.of(NUM_FACTORY.numOf(1), NUM_FACTORY.numOf(3)), List.of(0.5));
+
+        assertThat(forecast.hasQuantile(0.95)).isFalse();
+        assertThat(forecast.quantile(0.95)).isNull();
+    }
+
+    @Test
     void forecastValidatesInputs() {
         assertThrows(IllegalArgumentException.class, () -> PredictionSnapshot.Forecast.unstable(0, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> PredictionSnapshot.Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of(-0.1)));
         assertThrows(IllegalArgumentException.class,
-                () -> PredictionSnapshot.Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of()).quantile(0.5));
+                () -> PredictionSnapshot.Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of()));
+        PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(0, 1,
+                List.of(NUM_FACTORY.one()), List.of(0.5));
+        assertThrows(IllegalArgumentException.class, () -> forecast.hasQuantile(-0.1));
+        assertThrows(IllegalArgumentException.class, () -> forecast.quantile(1.1));
     }
 }

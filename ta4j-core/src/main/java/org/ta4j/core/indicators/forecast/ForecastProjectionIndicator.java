@@ -48,6 +48,10 @@ public interface ForecastProjectionIndicator extends Indicator<PredictionSnapsho
     /**
      * Returns a point indicator for a forecast quantile.
      *
+     * <p>
+     * The returned indicator emits {@link NaN#NaN} when the forecast is unstable or
+     * when the valid probability was not configured on the forecast source.
+     *
      * @param probability quantile probability in {@code [0, 1]}
      * @return quantile point forecast indicator
      * @since 0.22.9
@@ -55,7 +59,7 @@ public interface ForecastProjectionIndicator extends Indicator<PredictionSnapsho
     default Indicator<Num> quantile(double probability) {
         validateProbability(probability);
         return new ForwardForecastIndicator(this, forecast -> {
-            if (!forecast.quantiles().containsKey(probability)) {
+            if (!forecast.hasQuantile(probability)) {
                 return NaN.NaN;
             }
             return forecast.quantile(probability);
