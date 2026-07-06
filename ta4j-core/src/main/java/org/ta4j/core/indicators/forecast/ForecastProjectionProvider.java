@@ -9,11 +9,12 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.PredictionSnapshot;
 
 /**
- * Indicator that returns numeric forecast prediction summaries.
+ * Indicator that returns numeric forecast projection summaries.
  *
+ * @param <S> state type used by the projection provider
  * @since 0.22.9
  */
-public interface ForecastPredictionIndicator extends Indicator<PredictionSnapshot.Forecast<Num>> {
+public interface ForecastProjectionProvider<S> extends Indicator<PredictionSnapshot.Forecast<Num>> {
 
     /**
      * Returns a point indicator for the forecast mean.

@@ -4,21 +4,28 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
+
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, ReturnForecastState> {
+public class EwmaReturnForecastStateIndicatorTest
+        extends AbstractIndicatorTest<LogReturnIndicator, ReturnForecastState> {
 
-    public ForecastStateIndicatorTest(NumFactory numFactory) {
+    public EwmaReturnForecastStateIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -26,9 +33,11 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void initializesRollingMeanStateAfterWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
-                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
+        assertSame(returns, stateIndicator.getReturnIndicator());
+        assertEquals(ReturnRepresentation.LOG, stateIndicator.getReturnRepresentation());
         assertEquals(2, stateIndicator.getCountOfUnstableBars());
         assertTrue(stateIndicator.getValue(1).mean().isNaN());
         ReturnForecastState state = stateIndicator.getValue(2);
@@ -44,9 +53,10 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     @Test
     public void initializesVarianceWithPopulationWindow() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        FixedIndicator<Num> returns = new FixedIndicator<>(series, numOf(0), numOf(1), numOf(3));
-        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 3, 0.5,
-                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, numOf(0), numOf(1),
+                numOf(3));
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 3, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         ReturnForecastState state = stateIndicator.getValue(2);
 
@@ -59,7 +69,7 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void zeroDriftModeKeepsMeanButUsesZeroDrift() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5);
 
         ReturnForecastState state = stateIndicator.getValue(2);
 
@@ -72,8 +82,8 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
     public void recursiveUpdateIsStableWhenLateIndexIsRequestedFirst() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 140).build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
-                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         ReturnForecastState state = stateIndicator.getValue(3);
 
@@ -88,11 +98,38 @@ public class ForecastStateIndicatorTest extends AbstractIndicatorTest<LogReturnI
                 .withData(100, 0, 100, 110, 121)
                 .build();
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        ForecastStateIndicator stateIndicator = new ForecastStateIndicator(returns, 2, 0.5,
-                ForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
 
         assertTrue(stateIndicator.getValue(2).mean().isNaN());
         assertTrue(stateIndicator.getValue(3).mean().isNaN());
         assertTrue(stateIndicator.getValue(4).isStable());
+    }
+
+    @Test
+    public void rejectsNonLogReturnRepresentations() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        for (ReturnRepresentation representation : List.of(ReturnRepresentation.DECIMAL,
+                ReturnRepresentation.PERCENTAGE, ReturnRepresentation.MULTIPLICATIVE)) {
+            FixedReturnIndicator returns = new FixedReturnIndicator(series, representation, numOf(0), numOf(1),
+                    numOf(3));
+
+            assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateIndicator(returns, 2, 0.5));
+        }
+    }
+
+    private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
+
+        private final ReturnRepresentation representation;
+
+        private FixedReturnIndicator(BarSeries series, ReturnRepresentation representation, Num... values) {
+            super(series, values);
+            this.representation = representation;
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return representation;
+        }
     }
 }

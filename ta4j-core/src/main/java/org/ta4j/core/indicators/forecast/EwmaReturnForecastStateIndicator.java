@@ -6,83 +6,105 @@ package org.ta4j.core.indicators.forecast;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Builds reusable forecast state from mean and variance indicators.
+ * Builds reusable log-return forecast state from EWMA mean and variance
+ * indicators.
  *
  * @since 0.22.9
  */
-public final class ForecastStateIndicator extends CachedIndicator<ReturnForecastState> {
+public final class EwmaReturnForecastStateIndicator extends CachedIndicator<ReturnForecastState>
+        implements ReturnForecastStateProvider {
 
+    private final ReturnIndicator returnIndicator;
     private final Indicator<Num> meanIndicator;
     private final Indicator<Num> varianceIndicator;
     private final int initialObservationCount;
     private final DriftMode driftMode;
 
     /**
+     * Constructor using default EWMA settings and zero drift.
+     *
+     * @param returnIndicator log-return source
+     * @since 0.22.9
+     */
+    public EwmaReturnForecastStateIndicator(ReturnIndicator returnIndicator) {
+        this(returnIndicator, 30, 0.94d);
+    }
+
+    /**
      * Constructor using EWMA mean and variance with zero drift.
      *
-     * @param indicator              return source
+     * @param returnIndicator        log-return source
      * @param initializationBarCount observations required before the state is
      *                               stable
      * @param decayFactor            EWMA decay factor in {@code (0, 1)}
      * @since 0.22.9
      */
-    public ForecastStateIndicator(Indicator<Num> indicator, int initializationBarCount, double decayFactor) {
-        this(indicator, initializationBarCount, decayFactor, DriftMode.ZERO);
+    public EwmaReturnForecastStateIndicator(ReturnIndicator returnIndicator, int initializationBarCount,
+            double decayFactor) {
+        this(returnIndicator, initializationBarCount, decayFactor, DriftMode.ZERO);
     }
 
     /**
      * Constructor using EWMA mean and variance.
      *
-     * @param indicator              return source
+     * @param returnIndicator        log-return source
      * @param initializationBarCount observations required before the state is
      *                               stable
      * @param decayFactor            EWMA decay factor in {@code (0, 1)}
      * @param driftMode              drift assumption
      * @since 0.22.9
      */
-    public ForecastStateIndicator(Indicator<Num> indicator, int initializationBarCount, double decayFactor,
-            DriftMode driftMode) {
-        super(Objects.requireNonNull(indicator, "indicator must not be null"));
+    public EwmaReturnForecastStateIndicator(ReturnIndicator returnIndicator, int initializationBarCount,
+            double decayFactor, DriftMode driftMode) {
+        super(validateLogReturnIndicator(returnIndicator));
         if (initializationBarCount < 1) {
             throw new IllegalArgumentException("initializationBarCount must be >= 1");
         }
-        Indicator<Num> mean = new EWMAIndicator(indicator, initializationBarCount, decayFactor);
+        Indicator<Num> mean = new EWMAIndicator(returnIndicator, initializationBarCount, decayFactor);
+        this.returnIndicator = returnIndicator;
         this.meanIndicator = mean;
-        this.varianceIndicator = new EwmaVarianceIndicator(indicator, mean, initializationBarCount, decayFactor);
+        this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, mean, initializationBarCount, decayFactor);
         this.initialObservationCount = initializationBarCount;
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
     }
 
     /**
-     * Constructor using explicit mean and variance indicators.
+     * {@inheritDoc}
      *
-     * @param meanIndicator           mean source
-     * @param varianceIndicator       variance source
-     * @param initialObservationCount observations represented by the first stable
-     *                                state
-     * @param driftMode               drift assumption
      * @since 0.22.9
      */
-    public ForecastStateIndicator(Indicator<Num> meanIndicator, Indicator<Num> varianceIndicator,
-            int initialObservationCount, DriftMode driftMode) {
-        super(IndicatorUtils.requireSameSeries(Objects.requireNonNull(meanIndicator, "meanIndicator must not be null"),
-                Objects.requireNonNull(varianceIndicator, "varianceIndicator must not be null")));
-        if (initialObservationCount < 1) {
-            throw new IllegalArgumentException("initialObservationCount must be >= 1");
+    @Override
+    public ReturnIndicator getReturnIndicator() {
+        return returnIndicator;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public ReturnRepresentation getReturnRepresentation() {
+        return ReturnRepresentation.LOG;
+    }
+
+    private static ReturnIndicator validateLogReturnIndicator(ReturnIndicator returnIndicator) {
+        ReturnIndicator validated = Objects.requireNonNull(returnIndicator, "returnIndicator must not be null");
+        if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
+            throw new IllegalArgumentException("returnIndicator must use ReturnRepresentation.LOG");
         }
-        this.meanIndicator = meanIndicator;
-        this.varianceIndicator = varianceIndicator;
-        this.initialObservationCount = initialObservationCount;
-        this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
+        return validated;
     }
 
     @Override

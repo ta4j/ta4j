@@ -19,18 +19,18 @@ import org.ta4j.core.walkforward.PredictionSnapshot;
  */
 public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
-    private final ForecastPredictionIndicator forecastIndicator;
+    private final ForecastProjectionProvider<?> forecastIndicator;
     private final Function<PredictionSnapshot.Forecast<Num>, Num> valueResolver;
 
     /**
      * Constructor.
      *
-     * @param forecastIndicator source forecast prediction indicator
+     * @param forecastIndicator source forecast projection provider
      * @param valueResolver     resolver used to derive one point value from a
      *                          stable distribution
      * @since 0.22.9
      */
-    public ForwardForecastIndicator(ForecastPredictionIndicator forecastIndicator,
+    public ForwardForecastIndicator(ForecastProjectionProvider<?> forecastIndicator,
             Function<PredictionSnapshot.Forecast<Num>, Num> valueResolver) {
         super(Objects.requireNonNull(forecastIndicator, "forecastIndicator must not be null"));
         this.forecastIndicator = forecastIndicator;

@@ -18,9 +18,10 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.walkforward.PredictionSnapshot;
 
-public class ForecastPredictionIndicatorTest extends AbstractIndicatorTest<ForecastPredictionIndicator, Num> {
+public class ForecastProjectionProviderTest
+        extends AbstractIndicatorTest<ForecastProjectionProvider<ReturnForecastState>, Num> {
 
-    public ForecastPredictionIndicatorTest(NumFactory numFactory) {
+    public ForecastProjectionProviderTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -29,7 +30,8 @@ public class ForecastPredictionIndicatorTest extends AbstractIndicatorTest<Forec
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(2, 1,
                 List.of(numOf(1), numOf(3)), List.of(0.05, 0.5, 0.95));
-        ForecastPredictionIndicator indicator = new FixedForecastIndicator(series, 1, Map.of(2, forecast));
+        ForecastProjectionProvider<ReturnForecastState> indicator = new FixedForecastIndicator(series, 1,
+                Map.of(2, forecast));
 
         assertNumEquals(2, indicator.mean().getValue(2));
         assertNumEquals(2, indicator.median().getValue(2));
@@ -42,12 +44,13 @@ public class ForecastPredictionIndicatorTest extends AbstractIndicatorTest<Forec
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(2, 1,
                 List.of(numOf(1), numOf(3)), List.of(0.5));
-        ForecastPredictionIndicator indicator = new FixedForecastIndicator(series, 0, Map.of(2, forecast));
+        ForecastProjectionProvider<ReturnForecastState> indicator = new FixedForecastIndicator(series, 0,
+                Map.of(2, forecast));
 
         assertTrue(indicator.quantile(0.95).getValue(2).isNaN());
     }
 
-    private static final class FixedForecastIndicator implements ForecastPredictionIndicator {
+    private static final class FixedForecastIndicator implements ForecastProjectionProvider<ReturnForecastState> {
 
         private final BarSeries series;
         private final int unstableBars;

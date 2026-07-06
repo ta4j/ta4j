@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -28,6 +29,7 @@ public class LogReturnIndicatorTest extends AbstractIndicatorTest<LogReturnIndic
         LogReturnIndicator oneBar = new LogReturnIndicator(close);
         LogReturnIndicator twoBar = new LogReturnIndicator(close, 2);
 
+        assertEquals(ReturnRepresentation.LOG, oneBar.getReturnRepresentation());
         assertEquals(1, oneBar.getCountOfUnstableBars());
         assertTrue(oneBar.getValue(0).isNaN());
         assertNumEquals(Math.log(1.1), oneBar.getValue(1));

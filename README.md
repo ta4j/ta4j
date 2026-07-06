@@ -225,15 +225,22 @@ compare it with the realized value at `i + horizon`.
 ```java
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.forecast.ForecastPredictionIndicator;
-import org.ta4j.core.indicators.forecast.LogReturnToPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.ForecastProjectionProvider;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
+import org.ta4j.core.indicators.forecast.ReturnForecastProjectionProvider;
+import org.ta4j.core.indicators.forecast.ReturnForecastStateProvider;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 ClosePriceIndicator close = new ClosePriceIndicator(series);
 
-ForecastPredictionIndicator nextCloseForecast = new LogReturnToPriceForecastIndicator(close);
+LogReturnIndicator returns = new LogReturnIndicator(close);
+ReturnForecastStateProvider state = new EwmaReturnForecastStateIndicator(returns);
+ReturnForecastProjectionProvider projection = new MonteCarloReturnProjectionIndicator(state, 5);
+ForecastProjectionProvider<?> nextCloseForecast = projection.toPriceForecast(close);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
 Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
@@ -243,9 +250,12 @@ Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
 projection indicators so research runs can be repeated and evaluated against
 later realized prices.
 
-The short constructor path creates log returns internally, then uses EWMA return
-state and default Monte Carlo settings. Use the builder only when a model needs
-advanced simulation tuning.
+`ReturnIndicator` is a semantic contract: implementations promise that their
+numeric output is a return stream in the declared representation. The initial
+forecast implementation supports log returns, so build the pipeline explicitly
+from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
+`MonteCarloReturnProjectionIndicator`. Use the projection builder only when a
+model needs advanced simulation tuning.
 
 ### Staged exit rules
 

@@ -7,8 +7,10 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -22,7 +24,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.9
  */
-public final class LogReturnIndicator extends CachedIndicator<Num> {
+public final class LogReturnIndicator extends CachedIndicator<Num> implements ReturnIndicator {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -72,6 +74,16 @@ public final class LogReturnIndicator extends CachedIndicator<Num> {
      */
     public int getBarCount() {
         return barCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public ReturnRepresentation getReturnRepresentation() {
+        return ReturnRepresentation.LOG;
     }
 
     @Override

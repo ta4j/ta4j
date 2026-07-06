@@ -6,9 +6,9 @@ package org.ta4j.core.indicators.forecast;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
-import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.PredictionSnapshot;
@@ -19,53 +19,31 @@ import org.ta4j.core.walkforward.PredictionSnapshot;
  * @since 0.22.9
  */
 public class LogReturnToPriceForecastIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
-        implements ForecastPredictionIndicator {
+        implements ForecastProjectionProvider<ReturnForecastState> {
 
     private final Indicator<Num> priceIndicator;
-    private final ForecastPredictionIndicator logReturnForecastIndicator;
-
-    /**
-     * Constructor using a default one-bar Monte Carlo log-return forecast.
-     *
-     * @param priceIndicator source price indicator read at the decision index
-     * @since 0.22.9
-     */
-    public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator) {
-        this(priceIndicator, 1);
-    }
-
-    /**
-     * Constructor using a default Monte Carlo log-return forecast for the requested
-     * horizon.
-     *
-     * @param priceIndicator source price indicator read at the decision index
-     * @param horizon        forecast horizon in bars
-     * @since 0.22.9
-     */
-    public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator, int horizon) {
-        this(priceIndicator, new MonteCarloReturnForecastIndicator(new LogReturnIndicator(priceIndicator), horizon));
-    }
+    private final ReturnForecastProjectionProvider logReturnForecastProjection;
 
     /**
      * Constructor using an explicit cumulative log-return forecast.
      *
-     * @param priceIndicator             source price indicator read at the decision
-     *                                   index
-     * @param logReturnForecastIndicator cumulative log-return forecast source
+     * @param priceIndicator              source price indicator read at the
+     *                                    decision index
+     * @param logReturnForecastProjection cumulative log-return projection source
      * @since 0.22.9
      */
     public LogReturnToPriceForecastIndicator(Indicator<Num> priceIndicator,
-            ForecastPredictionIndicator logReturnForecastIndicator) {
+            ReturnForecastProjectionProvider logReturnForecastProjection) {
         super(IndicatorUtils.requireSameSeries(
                 Objects.requireNonNull(priceIndicator, "priceIndicator must not be null"),
-                Objects.requireNonNull(logReturnForecastIndicator, "logReturnForecastIndicator must not be null")));
+                validateLogReturnProjection(logReturnForecastProjection)));
         this.priceIndicator = priceIndicator;
-        this.logReturnForecastIndicator = logReturnForecastIndicator;
+        this.logReturnForecastProjection = logReturnForecastProjection;
     }
 
     @Override
     protected PredictionSnapshot.Forecast<Num> calculate(int index) {
-        PredictionSnapshot.Forecast<Num> logReturnForecast = logReturnForecastIndicator.getValue(index);
+        PredictionSnapshot.Forecast<Num> logReturnForecast = logReturnForecastProjection.getValue(index);
         if (logReturnForecast == null || !logReturnForecast.isStable()) {
             int horizon = logReturnForecast == null ? 1 : logReturnForecast.horizon();
             return PredictionSnapshot.Forecast.unstable(index, horizon);
@@ -89,6 +67,16 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Predictio
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(priceIndicator.getCountOfUnstableBars(), logReturnForecastIndicator.getCountOfUnstableBars());
+        return Math.max(priceIndicator.getCountOfUnstableBars(), logReturnForecastProjection.getCountOfUnstableBars());
+    }
+
+    private static ReturnForecastProjectionProvider validateLogReturnProjection(
+            ReturnForecastProjectionProvider projection) {
+        ReturnForecastProjectionProvider validated = Objects.requireNonNull(projection,
+                "logReturnForecastProjection must not be null");
+        if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
+            throw new IllegalArgumentException("logReturnForecastProjection must use ReturnRepresentation.LOG");
+        }
+        return validated;
     }
 }

@@ -30,7 +30,8 @@ public class ForwardForecastIndicatorTest extends AbstractIndicatorTest<ForwardF
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         PredictionSnapshot.Forecast<Num> forecastSummary = PredictionSnapshot.Forecast.ofSamples(2, 1,
                 List.of(numOf(1), numOf(3)));
-        ForecastPredictionIndicator forecast = new FixedForecastIndicator(series, 1, Map.of(2, forecastSummary));
+        ForecastProjectionProvider<ReturnForecastState> forecast = new FixedForecastIndicator(series, 1,
+                Map.of(2, forecastSummary));
         ForwardForecastIndicator median = new ForwardForecastIndicator(forecast, PredictionSnapshot.Forecast::median);
         ForwardForecastIndicator p95 = new ForwardForecastIndicator(forecast, value -> value.quantile(0.95));
 
@@ -40,7 +41,7 @@ public class ForwardForecastIndicatorTest extends AbstractIndicatorTest<ForwardF
         assertTrue(median.getValue(1).isNaN());
     }
 
-    private static final class FixedForecastIndicator implements ForecastPredictionIndicator {
+    private static final class FixedForecastIndicator implements ForecastProjectionProvider<ReturnForecastState> {
 
         private final BarSeries series;
         private final int unstableBars;
