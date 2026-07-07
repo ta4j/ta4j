@@ -12,6 +12,8 @@ import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast;
+package org.ta4j.core.indicators.forecast.adapters;
 
 import java.util.Objects;
 
@@ -9,6 +9,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.PredictionSnapshot;

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast;
+package org.ta4j.core.indicators.forecast.state;
 
 import java.util.Objects;
 

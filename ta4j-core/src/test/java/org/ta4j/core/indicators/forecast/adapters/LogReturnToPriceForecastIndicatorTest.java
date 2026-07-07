@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast;
+package org.ta4j.core.indicators.forecast.adapters;
 
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -15,8 +15,11 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;

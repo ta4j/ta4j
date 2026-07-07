@@ -226,9 +226,9 @@ compare it with the realized value at `i + horizon`.
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
-import org.ta4j.core.indicators.forecast.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
-import org.ta4j.core.indicators.forecast.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
@@ -250,7 +250,7 @@ numeric output is a return stream in the declared representation. The initial
 forecast implementation supports log returns, so build the pipeline explicitly
 from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
 `MonteCarloPriceForecastIndicator`. Use `MonteCarloReturnProjectionIndicator`
-and `LogReturnToPriceForecastIndicator` directly only when a model needs
+and `LogReturnToPriceForecastIndicator` from the forecast adapter package directly only when a model needs
 advanced simulation tuning or a custom explicit price source.
 
 ### Staged exit rules

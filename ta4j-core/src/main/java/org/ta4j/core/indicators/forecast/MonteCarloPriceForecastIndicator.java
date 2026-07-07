@@ -8,6 +8,8 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.forecast.adapters.LogReturnToPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 

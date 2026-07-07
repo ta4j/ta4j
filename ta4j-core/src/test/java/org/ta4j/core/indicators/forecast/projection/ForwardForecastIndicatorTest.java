@@ -1,8 +1,9 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast;
+package org.ta4j.core.indicators.forecast.projection;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -18,33 +19,25 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.walkforward.PredictionSnapshot;
 
-public class ForecastProjectionIndicatorTest extends AbstractIndicatorTest<ForecastProjectionIndicator, Num> {
+public class ForwardForecastIndicatorTest extends AbstractIndicatorTest<ForwardForecastIndicator, Num> {
 
-    public ForecastProjectionIndicatorTest(NumFactory numFactory) {
+    public ForwardForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void projectionMethodsReturnPointIndicators() {
+    public void reducesDistribution() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(2, 1,
-                List.of(numOf(1), numOf(3)), List.of(0.05, 0.5, 0.95));
-        ForecastProjectionIndicator indicator = new FixedForecastIndicator(series, 1, Map.of(2, forecast));
+        PredictionSnapshot.Forecast<Num> forecastSummary = PredictionSnapshot.Forecast.ofSamples(2, 1,
+                List.of(numOf(1), numOf(3)));
+        ForecastProjectionIndicator forecast = new FixedForecastIndicator(series, 1, Map.of(2, forecastSummary));
+        ForwardForecastIndicator median = new ForwardForecastIndicator(forecast, PredictionSnapshot.Forecast::median);
+        ForwardForecastIndicator p95 = new ForwardForecastIndicator(forecast, value -> value.quantile(0.95));
 
-        assertNumEquals(2, indicator.mean().getValue(2));
-        assertNumEquals(2, indicator.median().getValue(2));
-        assertNumEquals(2.9, indicator.quantile(0.95).getValue(2));
-        assertNumEquals(1, indicator.standardDeviation().getValue(2));
-    }
-
-    @Test
-    public void missingQuantileProjectionReturnsNaN() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        PredictionSnapshot.Forecast<Num> forecast = PredictionSnapshot.Forecast.ofSamples(2, 1,
-                List.of(numOf(1), numOf(3)), List.of(0.5));
-        ForecastProjectionIndicator indicator = new FixedForecastIndicator(series, 0, Map.of(2, forecast));
-
-        assertTrue(indicator.quantile(0.95).getValue(2).isNaN());
+        assertEquals(1, median.getCountOfUnstableBars());
+        assertNumEquals(2, median.getValue(2));
+        assertNumEquals(2.9, p95.getValue(2));
+        assertTrue(median.getValue(1).isNaN());
     }
 
     private static final class FixedForecastIndicator implements ForecastProjectionIndicator {
