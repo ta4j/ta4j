@@ -49,6 +49,14 @@ public class AlignedPortfolioSeriesTest {
     }
 
     @Test
+    public void rejectsSingleAssetSeries() {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> AlignedPortfolioSeries.of(List.of(PortfolioSeries.of("ALPHA", series("alpha", start, 100)))));
+    }
+
+    @Test
     public void rejectsSeriesWithoutCommonEndTimes() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
 

@@ -964,36 +964,12 @@ See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/El
 
 ## Portfolio backtesting foundation
 
-Use `org.ta4j.core.portfolio` when you need one deterministic multi-asset
-portfolio run instead of stitching together several independent single-series
-backtests. The V1 API aligns asset-labeled `BarSeries` inputs by common bar end
-time, applies explicit static target weights, rebalances on configured aligned
-indexes, subtracts transaction costs, and returns portfolio snapshots plus a
-portfolio value `BarSeries` for follow-on analysis.
-
-```java
-PortfolioAsset equity = PortfolioAsset.of("EQUITY");
-PortfolioAsset bonds = PortfolioAsset.of("BONDS");
-
-AlignedPortfolioSeries portfolioSeries = AlignedPortfolioSeries.of(List.of(
-        new PortfolioSeries(equity, equitySeries),
-        new PortfolioSeries(bonds, bondSeries)));
-
-Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
-weights.put(equity, equitySeries.numFactory().numOf(0.60));
-weights.put(bonds, equitySeries.numFactory().numOf(0.35));
-
-PortfolioAllocation allocation = PortfolioAllocation.targetWeights(weights, equitySeries.numFactory());
-PortfolioExecutionResult result = new PortfolioExecutor(portfolioSeries, allocation,
-        equitySeries.numFactory().numOf(10_000), RebalancePolicy.onIndexes(Set.of(0, 3))).run();
-```
-
-This first slice is intentionally static target-weight accounting only. Advanced
-allocation methods such as Markowitz, HRP, entropy, universal portfolios, or
-optimizer SPIs should target these contracts after the portfolio accounting
-surface is stable. See
+Ta4j includes a static target-weight portfolio backtesting foundation under
+`org.ta4j.core.portfolio` for deterministic multi-asset experiments with
+aligned series, scheduled rebalances, transaction costs, and portfolio
+snapshots. See the
 [`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
-for a runnable walkthrough.
+example and the ta4j wiki for a complete user guide.
 
 ## Real-world examples
 

@@ -28,6 +28,11 @@ import org.ta4j.core.num.NumFactory;
  * bars can prepare those inputs before creating this contract.
  * </p>
  *
+ * <p>
+ * At least two source assets are required; a single {@link BarSeries} should
+ * use the standard ta4j single-series APIs instead.
+ * </p>
+ *
  * @since 0.22.9
  */
 public final class AlignedPortfolioSeries {
@@ -178,7 +183,7 @@ public final class AlignedPortfolioSeries {
         if (numFactory.produces(value)) {
             return value;
         }
-        return numFactory.numOf(value.doubleValue());
+        return numFactory.numOf(value.bigDecimalValue());
     }
 
     private PortfolioSeries requireAsset(PortfolioAsset asset) {

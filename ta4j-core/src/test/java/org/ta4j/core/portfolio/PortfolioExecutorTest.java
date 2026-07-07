@@ -16,6 +16,7 @@ import java.util.Map;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
@@ -38,6 +39,7 @@ public class PortfolioExecutorTest {
         assertNumEquals(-0.02, result.snapshots().get(1).periodReturn());
         assertNumEquals(1200, result.finalValue());
         assertNumEquals(0.2, result.totalReturn());
+        assertEquals(List.of(fixture.alpha(), fixture.beta()), List.copyOf(result.finalWeights().keySet()));
         assertNumEquals(0.6, result.finalWeights().get(fixture.alpha()));
         assertNumEquals(0.4, result.finalWeights().get(fixture.beta()));
     }
@@ -73,6 +75,42 @@ public class PortfolioExecutorTest {
         assertNumEquals(fixture.num(9.9009901), firstSnapshot.transactionCost(), 0.0001);
         assertNumEquals(fixture.num(990.0990099), firstSnapshot.turnover(), 0.0001);
         assertNumEquals(fixture.num(-0.00990099), firstSnapshot.periodReturn(), 0.0001);
+    }
+
+    @Test
+    public void transactionCostsPreserveCashSleeveTargetWeight() {
+        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
+        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.3);
+
+        PortfolioExecutionResult result = new PortfolioExecutor(fixture.series(), allocation, fixture.num(1000),
+                RebalancePolicy.atStart(), new LinearTransactionCostModel(0.01)).run();
+
+        PortfolioSnapshot firstSnapshot = result.snapshots().getFirst();
+        assertNumEquals(fixture.num(991.0802775), firstSnapshot.portfolioValue(), 0.0001);
+        assertNumEquals(fixture.num(99.1080278), firstSnapshot.cash(), 0.0001);
+        assertNumEquals(fixture.num(8.9197225), firstSnapshot.transactionCost(), 0.0001);
+        assertNumEquals(fixture.num(891.9722498), firstSnapshot.turnover(), 0.0001);
+        assertNumEquals(fixture.num(0.6), firstSnapshot.assetWeight(fixture.alpha()), 0.0001);
+        assertNumEquals(fixture.num(0.3), firstSnapshot.assetWeight(fixture.beta()), 0.0001);
+        assertNumEquals(fixture.num(0.1), firstSnapshot.cash().dividedBy(firstSnapshot.portfolioValue()), 0.0001);
+    }
+
+    @Test
+    public void fixedTransactionCostsPreserveCashSleeveTargetWeight() {
+        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
+        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.3);
+
+        PortfolioExecutionResult result = new PortfolioExecutor(fixture.series(), allocation, fixture.num(1000),
+                RebalancePolicy.atStart(), new FixedTransactionCostModel(5)).run();
+
+        PortfolioSnapshot firstSnapshot = result.snapshots().getFirst();
+        assertNumEquals(fixture.num(990), firstSnapshot.portfolioValue(), 0.0001);
+        assertNumEquals(fixture.num(99), firstSnapshot.cash(), 0.0001);
+        assertNumEquals(10, firstSnapshot.transactionCost());
+        assertNumEquals(fixture.num(891), firstSnapshot.turnover(), 0.0001);
+        assertNumEquals(0.6, firstSnapshot.assetWeight(fixture.alpha()));
+        assertNumEquals(0.3, firstSnapshot.assetWeight(fixture.beta()));
+        assertNumEquals(fixture.num(0.1), firstSnapshot.cash().dividedBy(firstSnapshot.portfolioValue()), 0.0001);
     }
 
     @Test

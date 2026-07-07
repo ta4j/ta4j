@@ -41,8 +41,8 @@ public class PortfolioAllocationTest {
         PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
         PortfolioAsset beta = PortfolioAsset.of("BETA");
 
-        PortfolioAllocation allocation = PortfolioAllocation.fullyInvested(List
-                .of(new WeightedValue<>(alpha, NUM_FACTORY.numOf(2)), new WeightedValue<>(beta, NUM_FACTORY.numOf(1))),
+        PortfolioAllocation allocation = PortfolioAllocation.fullyInvested(
+                List.of(new WeightedValue<>(alpha, NUM_FACTORY.two()), new WeightedValue<>(beta, NUM_FACTORY.one())),
                 NUM_FACTORY);
 
         assertNumEquals(NUM_FACTORY.numOf(2d / 3d), allocation.targetWeight(alpha), 0.0001);
@@ -55,12 +55,27 @@ public class PortfolioAllocationTest {
         PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
         PortfolioAsset beta = PortfolioAsset.of("BETA");
 
-        PortfolioAllocation allocation = PortfolioAllocation.fullyInvested(List.of(
-                new WeightedValue<>(alpha, NUM_FACTORY.numOf(2)), new WeightedValue<>(alpha, NUM_FACTORY.numOf(1)),
-                new WeightedValue<>(beta, NUM_FACTORY.numOf(1))), NUM_FACTORY);
+        PortfolioAllocation allocation = PortfolioAllocation.fullyInvested(
+                List.of(new WeightedValue<>(alpha, NUM_FACTORY.two()), new WeightedValue<>(alpha, NUM_FACTORY.one()),
+                        new WeightedValue<>(beta, NUM_FACTORY.one())),
+                NUM_FACTORY);
 
         assertNumEquals(0.75, allocation.targetWeight(alpha));
         assertNumEquals(0.25, allocation.targetWeight(beta));
+        assertNumEquals(0, allocation.cashWeight());
+    }
+
+    @Test
+    public void acceptsTinyWeightOvershootFromNumericDrift() {
+        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
+        PortfolioAsset beta = PortfolioAsset.of("BETA");
+        Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
+        weights.put(alpha, NUM_FACTORY.numOf(0.5));
+        weights.put(beta, NUM_FACTORY.numOf(0.5).plus(NUM_FACTORY.epsilon().dividedBy(NUM_FACTORY.two())));
+
+        PortfolioAllocation allocation = PortfolioAllocation.targetWeights(weights, NUM_FACTORY);
+
+        assertNumEquals(1, allocation.totalWeight());
         assertNumEquals(0, allocation.cashWeight());
     }
 

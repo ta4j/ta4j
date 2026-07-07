@@ -4,6 +4,8 @@
 package org.ta4j.core.portfolio;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -36,8 +38,8 @@ public record PortfolioSnapshot(int index, Instant endTime, Map<PortfolioAsset, 
      */
     public PortfolioSnapshot {
         Objects.requireNonNull(endTime, "endTime");
-        prices = Map.copyOf(Objects.requireNonNull(prices, "prices"));
-        holdings = Map.copyOf(Objects.requireNonNull(holdings, "holdings"));
+        prices = Collections.unmodifiableMap(new LinkedHashMap<>(Objects.requireNonNull(prices, "prices")));
+        holdings = Collections.unmodifiableMap(new LinkedHashMap<>(Objects.requireNonNull(holdings, "holdings")));
         Objects.requireNonNull(cash, "cash");
         Objects.requireNonNull(portfolioValue, "portfolioValue");
         Objects.requireNonNull(periodReturn, "periodReturn");

@@ -4,6 +4,7 @@
 package org.ta4j.core.portfolio;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +19,10 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * The executor marks each asset to the aligned close price, applies scheduled
- * rebalances with fractional units, subtracts transaction costs, and records a
- * portfolio-level snapshot for every aligned bar. It does not run per-asset
- * strategies or advanced optimizers; callers provide already decided static
- * target weights.
+ * rebalances with fractional units, solves target notionals against post-cost
+ * portfolio value, and records a portfolio-level snapshot for every aligned
+ * bar. It does not run per-asset strategies or advanced optimizers; callers
+ * provide already decided static target weights.
  * </p>
  *
  * @since 0.22.9
@@ -111,6 +112,8 @@ public final class PortfolioExecutor {
 
     private RebalanceState rebalance(Num cash, Map<PortfolioAsset, Num> holdings, Map<PortfolioAsset, Num> prices) {
         Num portfolioValue = portfolioValue(cash, holdings, prices);
+        Num targetPortfolioValue = postCostPortfolioValue(holdings, prices, portfolioValue);
+        Map<PortfolioAsset, Num> targetNotionals = targetNotionals(targetPortfolioValue);
         Map<PortfolioAsset, Num> nextHoldings = new LinkedHashMap<>(holdings);
         Num nextCash = cash;
         Num transactionCost = series.numFactory().zero();
@@ -120,12 +123,12 @@ public final class PortfolioExecutor {
             Num price = prices.get(asset);
             Num currentUnits = nextHoldings.get(asset);
             Num currentNotional = price.multipliedBy(currentUnits);
-            Num targetNotional = portfolioValue.multipliedBy(targetWeight(asset));
+            Num targetNotional = targetNotionals.get(asset);
             Num deltaNotional = targetNotional.minus(currentNotional);
             if (deltaNotional.isNegative()) {
                 Num gross = deltaNotional.abs();
+                Num cost = transactionCost(price, gross);
                 Num amount = gross.dividedBy(price);
-                Num cost = transactionCostModel.calculate(price, amount);
                 nextCash = nextCash.plus(gross).minus(cost);
                 nextHoldings.put(asset, currentUnits.minus(amount));
                 transactionCost = transactionCost.plus(cost);
@@ -133,34 +136,23 @@ public final class PortfolioExecutor {
             }
         }
 
-        BuyPlan buyPlan = buyPlan(nextHoldings, prices, portfolioValue);
-        Num buyScale = buyPlan.requiredCash().isZero() || nextCash.isGreaterThanOrEqual(buyPlan.requiredCash())
-                ? series.numFactory().one()
-                : nextCash.dividedBy(buyPlan.requiredCash());
-
         for (PortfolioAsset asset : series.assets()) {
-            Num desiredGross = buyPlan.buyGrossByAsset().get(asset).multipliedBy(buyScale);
+            Num price = prices.get(asset);
+            Num currentUnits = nextHoldings.get(asset);
+            Num currentNotional = price.multipliedBy(currentUnits);
+            Num desiredGross = targetNotionals.get(asset).minus(currentNotional);
             if (desiredGross.isZero() || desiredGross.isNegative()) {
                 continue;
             }
 
-            Num price = prices.get(asset);
-            Num amount = desiredGross.dividedBy(price);
-            Num cost = transactionCostModel.calculate(price, amount);
-            Num requiredCash = desiredGross.plus(cost);
-            if (requiredCash.isGreaterThan(nextCash)) {
-                Num affordableGross = nextCash.minus(cost);
-                if (affordableGross.isNegativeOrZero()) {
-                    continue;
-                }
-                amount = affordableGross.dividedBy(price);
-                desiredGross = affordableGross;
-                cost = transactionCostModel.calculate(price, amount);
-                requiredCash = desiredGross.plus(cost);
-                if (requiredCash.isGreaterThan(nextCash)) {
-                    continue;
-                }
+            desiredGross = affordableGross(price, desiredGross, nextCash);
+            if (desiredGross.isZero() || desiredGross.isNegative()) {
+                continue;
             }
+
+            Num amount = desiredGross.dividedBy(price);
+            Num cost = transactionCost(price, desiredGross);
+            Num requiredCash = desiredGross.plus(cost);
 
             nextCash = nextCash.minus(requiredCash);
             nextHoldings.put(asset, nextHoldings.get(asset).plus(amount));
@@ -168,29 +160,100 @@ public final class PortfolioExecutor {
             turnover = turnover.plus(desiredGross);
         }
 
-        return new RebalanceState(nextCash, Map.copyOf(nextHoldings), transactionCost, turnover);
+        return new RebalanceState(nextCash, orderedUnmodifiableMap(nextHoldings), transactionCost, turnover);
     }
 
-    private BuyPlan buyPlan(Map<PortfolioAsset, Num> holdings, Map<PortfolioAsset, Num> prices, Num portfolioValue) {
-        Map<PortfolioAsset, Num> buyGrossByAsset = new LinkedHashMap<>();
-        Num totalGross = series.numFactory().zero();
+    private Num postCostPortfolioValue(Map<PortfolioAsset, Num> holdings, Map<PortfolioAsset, Num> prices,
+            Num preCostPortfolioValue) {
+        Num costAtPreCostValue = rebalanceCost(holdings, prices, preCostPortfolioValue);
+        if (costAtPreCostValue.isZero()) {
+            return preCostPortfolioValue;
+        }
+
+        Num low = series.numFactory().zero();
+        Num high = preCostPortfolioValue;
+        Num tolerance = valueTolerance(preCostPortfolioValue);
+
+        for (int iteration = 0; iteration < 64; iteration++) {
+            Num mid = low.plus(high).dividedBy(series.numFactory().two());
+            Num remainingValue = preCostPortfolioValue.minus(rebalanceCost(holdings, prices, mid));
+            if (remainingValue.isGreaterThanOrEqual(mid)) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+            if (high.minus(low).abs().isLessThanOrEqual(tolerance)) {
+                break;
+            }
+        }
+
+        return low;
+    }
+
+    private Num rebalanceCost(Map<PortfolioAsset, Num> holdings, Map<PortfolioAsset, Num> prices,
+            Num targetPortfolioValue) {
         Num totalCost = series.numFactory().zero();
 
         for (PortfolioAsset asset : series.assets()) {
             Num price = prices.get(asset);
             Num currentNotional = price.multipliedBy(holdings.get(asset));
-            Num targetNotional = portfolioValue.multipliedBy(targetWeight(asset));
-            Num deltaNotional = targetNotional.minus(currentNotional);
-            Num gross = deltaNotional.isPositive() ? deltaNotional : series.numFactory().zero();
-            buyGrossByAsset.put(asset, gross);
-            if (gross.isPositive()) {
-                Num amount = gross.dividedBy(price);
-                totalGross = totalGross.plus(gross);
-                totalCost = totalCost.plus(transactionCostModel.calculate(price, amount));
+            Num targetNotional = targetPortfolioValue.multipliedBy(targetWeight(asset));
+            Num gross = targetNotional.minus(currentNotional).abs();
+            totalCost = totalCost.plus(transactionCost(price, gross));
+        }
+
+        return totalCost;
+    }
+
+    private Map<PortfolioAsset, Num> targetNotionals(Num targetPortfolioValue) {
+        Map<PortfolioAsset, Num> targetNotionals = new LinkedHashMap<>();
+        for (PortfolioAsset asset : series.assets()) {
+            targetNotionals.put(asset, targetPortfolioValue.multipliedBy(targetWeight(asset)));
+        }
+        return orderedUnmodifiableMap(targetNotionals);
+    }
+
+    private Num affordableGross(Num price, Num desiredGross, Num cash) {
+        if (desiredGross.isNegativeOrZero() || cash.isNegativeOrZero()) {
+            return series.numFactory().zero();
+        }
+        if (isBuyAffordable(price, desiredGross, cash)) {
+            return desiredGross;
+        }
+
+        Num low = series.numFactory().zero();
+        Num high = desiredGross;
+        Num tolerance = valueTolerance(desiredGross);
+        for (int iteration = 0; iteration < 64; iteration++) {
+            Num mid = low.plus(high).dividedBy(series.numFactory().two());
+            if (isBuyAffordable(price, mid, cash)) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+            if (high.minus(low).abs().isLessThanOrEqual(tolerance)) {
+                break;
             }
         }
 
-        return new BuyPlan(Map.copyOf(buyGrossByAsset), totalGross.plus(totalCost));
+        return low;
+    }
+
+    private boolean isBuyAffordable(Num price, Num gross, Num cash) {
+        Num requiredCash = gross.plus(transactionCost(price, gross));
+        return requiredCash.isLessThanOrEqual(cash);
+    }
+
+    private Num transactionCost(Num price, Num gross) {
+        if (gross.isNegativeOrZero()) {
+            return series.numFactory().zero();
+        }
+        return transactionCostModel.calculate(price, gross.dividedBy(price));
+    }
+
+    private Num valueTolerance(Num reference) {
+        Num epsilon = series.numFactory().epsilon();
+        return epsilon.max(reference.abs().multipliedBy(epsilon));
     }
 
     private Map<PortfolioAsset, Num> zeroHoldings() {
@@ -199,7 +262,7 @@ public final class PortfolioExecutor {
         for (PortfolioAsset asset : series.assets()) {
             holdings.put(asset, zero);
         }
-        return Map.copyOf(holdings);
+        return orderedUnmodifiableMap(holdings);
     }
 
     private Map<PortfolioAsset, Num> pricesAt(int index) {
@@ -208,7 +271,7 @@ public final class PortfolioExecutor {
             Num price = requirePositive(series.getClosePrice(asset, index), "close price for " + asset);
             prices.put(asset, price);
         }
-        return Map.copyOf(prices);
+        return orderedUnmodifiableMap(prices);
     }
 
     private Num portfolioValue(Num cash, Map<PortfolioAsset, Num> holdings, Map<PortfolioAsset, Num> prices) {
@@ -232,7 +295,7 @@ public final class PortfolioExecutor {
         for (PortfolioAsset asset : series.assets()) {
             normalizedWeights.put(asset, series.toPortfolioNum(allocation.targetWeight(asset)));
         }
-        return Map.copyOf(normalizedWeights);
+        return orderedUnmodifiableMap(normalizedWeights);
     }
 
     private Num targetWeight(PortfolioAsset asset) {
@@ -247,9 +310,10 @@ public final class PortfolioExecutor {
         return value;
     }
 
-    private record RebalanceState(Num cash, Map<PortfolioAsset, Num> holdings, Num transactionCost, Num turnover) {
+    private static <K, V> Map<K, V> orderedUnmodifiableMap(Map<K, V> values) {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
-    private record BuyPlan(Map<PortfolioAsset, Num> buyGrossByAsset, Num requiredCash) {
+    private record RebalanceState(Num cash, Map<PortfolioAsset, Num> holdings, Num transactionCost, Num turnover) {
     }
 }

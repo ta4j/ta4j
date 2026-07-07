@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -128,9 +130,10 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
      */
     public Map<PortfolioAsset, Num> finalWeights() {
         PortfolioSnapshot finalSnapshot = finalSnapshot();
-        return finalSnapshot.prices()
-                .keySet()
-                .stream()
-                .collect(java.util.stream.Collectors.toUnmodifiableMap(asset -> asset, finalSnapshot::assetWeight));
+        Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
+        for (PortfolioAsset asset : series.assets()) {
+            weights.put(asset, finalSnapshot.assetWeight(asset));
+        }
+        return Collections.unmodifiableMap(weights);
     }
 }

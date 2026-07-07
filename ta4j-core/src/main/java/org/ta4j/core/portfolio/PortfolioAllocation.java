@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,7 @@ public final class PortfolioAllocation {
     private final Num one;
 
     private PortfolioAllocation(Map<PortfolioAsset, Num> targetWeights, Num totalWeight, NumFactory numFactory) {
-        this.targetWeights = Map.copyOf(targetWeights);
+        this.targetWeights = Collections.unmodifiableMap(new LinkedHashMap<>(targetWeights));
         this.totalWeight = totalWeight;
         this.zero = numFactory.zero();
         this.one = numFactory.one();
@@ -64,8 +65,15 @@ public final class PortfolioAllocation {
             totalWeight = totalWeight.plus(weight);
         }
 
-        if (totalWeight.isGreaterThan(numFactory.one())) {
+        Num one = numFactory.one();
+        if (totalWeight.isGreaterThan(one.plus(numFactory.epsilon()))) {
             throw new IllegalArgumentException("sum of target weights must be <= 1");
+        }
+        if (totalWeight.isGreaterThan(one)) {
+            for (Map.Entry<PortfolioAsset, Num> entry : normalizedWeights.entrySet()) {
+                entry.setValue(entry.getValue().dividedBy(totalWeight));
+            }
+            totalWeight = one;
         }
         return new PortfolioAllocation(normalizedWeights, totalWeight, numFactory);
     }
@@ -140,6 +148,6 @@ public final class PortfolioAllocation {
         if (numFactory.produces(weight)) {
             return weight;
         }
-        return numFactory.numOf(weight.doubleValue());
+        return numFactory.numOf(weight.bigDecimalValue());
     }
 }
