@@ -26,10 +26,10 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 public class MonteCarloPriceForecastIndicatorTest
-        extends AbstractIndicatorTest<MonteCarloPriceForecastIndicator, PredictionSnapshot.Forecast<Num>> {
+        extends AbstractIndicatorTest<MonteCarloPriceForecastIndicator, Forecast<Num>> {
 
     public MonteCarloPriceForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -42,7 +42,7 @@ public class MonteCarloPriceForecastIndicatorTest
         EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
         MonteCarloPriceForecastIndicator forecast = new MonteCarloPriceForecastIndicator(state, 5);
 
-        PredictionSnapshot.Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
 
         assertTrue(prediction.isStable());
         assertEquals(5, prediction.horizon());
@@ -61,8 +61,8 @@ public class MonteCarloPriceForecastIndicatorTest
         ReturnForecastProjectionIndicator returnProjection = new MonteCarloReturnProjectionIndicator(state, 5);
         LogReturnToPriceForecastIndicator explicit = new LogReturnToPriceForecastIndicator(close, returnProjection);
 
-        PredictionSnapshot.Forecast<Num> expected = explicit.getValue(series.getEndIndex());
-        PredictionSnapshot.Forecast<Num> actual = inferred.getValue(series.getEndIndex());
+        Forecast<Num> expected = explicit.getValue(series.getEndIndex());
+        Forecast<Num> actual = inferred.getValue(series.getEndIndex());
 
         assertEquivalent(expected, actual);
     }
@@ -93,7 +93,7 @@ public class MonteCarloPriceForecastIndicatorTest
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
-    private void assertEquivalent(PredictionSnapshot.Forecast<Num> expected, PredictionSnapshot.Forecast<Num> actual) {
+    private void assertEquivalent(Forecast<Num> expected, Forecast<Num> actual) {
         assertEquals(expected.isStable(), actual.isStable());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertEquals(expected.horizon(), actual.horizon());

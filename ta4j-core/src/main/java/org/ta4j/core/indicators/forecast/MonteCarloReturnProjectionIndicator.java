@@ -19,14 +19,14 @@ import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
  * Monte Carlo cumulative log-return forecast indicator.
  *
  * @since 0.22.9
  */
-public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
+public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<Forecast<Num>>
         implements ReturnForecastProjectionIndicator {
 
     private final ReturnIndicator returnIndicator;
@@ -93,18 +93,18 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
     }
 
     @Override
-    protected PredictionSnapshot.Forecast<Num> calculate(int index) {
+    protected Forecast<Num> calculate(int index) {
         if (index < getCountOfUnstableBars()) {
-            return PredictionSnapshot.Forecast.unstable(index, horizon);
+            return Forecast.unstable(index, horizon);
         }
         ReturnForecastState state = stateIndicator.getValue(index);
         if (state == null || !state.isStable() || IndicatorUtils.isInvalid(state.volatility())
                 || IndicatorUtils.isInvalid(state.drift())) {
-            return PredictionSnapshot.Forecast.unstable(index, horizon);
+            return Forecast.unstable(index, horizon);
         }
         List<Num> historicalReturns = historicalReturns(index);
         if (historicalReturns.size() < lookbackBarCount) {
-            return PredictionSnapshot.Forecast.unstable(index, horizon);
+            return Forecast.unstable(index, horizon);
         }
 
         NumFactory numFactory = getBarSeries().numFactory();
@@ -114,7 +114,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
         for (int iteration = 0; iteration < iterationCount; iteration++) {
             cumulativeReturns.add(simulatePath(random, sampler, state, numFactory));
         }
-        return PredictionSnapshot.Forecast.ofSamples(index, horizon, cumulativeReturns, quantileProbabilities);
+        return Forecast.ofSamples(index, horizon, cumulativeReturns, quantileProbabilities);
     }
 
     /**
@@ -301,7 +301,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<P
         private ShockModel shockModel = ShockModel.STANDARDIZED_EMPIRICAL;
         private VolatilityUpdateMode volatilityUpdateMode = VolatilityUpdateMode.CONSTANT;
         private double volatilityDecayFactor = 0.94d;
-        private List<Double> quantileProbabilities = PredictionSnapshot.Forecast.DEFAULT_QUANTILE_PROBABILITIES;
+        private List<Double> quantileProbabilities = Forecast.DEFAULT_QUANTILE_PROBABILITIES;
 
         private Builder(ReturnForecastStateIndicator stateIndicator) {
             this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");

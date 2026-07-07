@@ -10,28 +10,27 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.walkforward.PredictionSnapshot;
 
 /**
- * Adapts a forecast distribution indicator into a point forecast indicator.
+ * Adapts a forecast summary indicator into a point forecast indicator.
  *
  * @since 0.22.9
  */
 public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
     private final ForecastProjectionIndicator forecastIndicator;
-    private final Function<PredictionSnapshot.Forecast<Num>, Num> valueResolver;
+    private final Function<Forecast<Num>, Num> valueResolver;
 
     /**
      * Constructor.
      *
      * @param forecastIndicator source forecast projection indicator
      * @param valueResolver     resolver used to derive one point value from a
-     *                          stable distribution
+     *                          stable forecast
      * @since 0.22.9
      */
     public ForwardForecastIndicator(ForecastProjectionIndicator forecastIndicator,
-            Function<PredictionSnapshot.Forecast<Num>, Num> valueResolver) {
+            Function<Forecast<Num>, Num> valueResolver) {
         super(Objects.requireNonNull(forecastIndicator, "forecastIndicator must not be null"));
         this.forecastIndicator = forecastIndicator;
         this.valueResolver = Objects.requireNonNull(valueResolver, "valueResolver must not be null");
@@ -39,7 +38,7 @@ public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        PredictionSnapshot.Forecast<Num> forecast = forecastIndicator.getValue(index);
+        Forecast<Num> forecast = forecastIndicator.getValue(index);
         if (forecast == null || !forecast.isStable()) {
             return NaN.NaN;
         }

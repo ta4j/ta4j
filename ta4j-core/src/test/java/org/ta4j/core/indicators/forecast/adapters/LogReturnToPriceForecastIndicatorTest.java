@@ -24,10 +24,10 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 public class LogReturnToPriceForecastIndicatorTest
-        extends AbstractIndicatorTest<LogReturnToPriceForecastIndicator, PredictionSnapshot.Forecast<Num>> {
+        extends AbstractIndicatorTest<LogReturnToPriceForecastIndicator, Forecast<Num>> {
 
     public LogReturnToPriceForecastIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -42,7 +42,7 @@ public class LogReturnToPriceForecastIndicatorTest
         ReturnForecastProjectionIndicator projection = new MonteCarloReturnProjectionIndicator(state, 5);
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, projection);
 
-        PredictionSnapshot.Forecast<Num> forecast = priceForecast.getValue(series.getEndIndex());
+        Forecast<Num> forecast = priceForecast.getValue(series.getEndIndex());
 
         assertTrue(forecast.isStable());
         assertNumEquals(100, forecast.median());
@@ -56,13 +56,12 @@ public class LogReturnToPriceForecastIndicatorTest
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Num up = numOf(Math.log(1.1));
         Num down = numOf(Math.log(0.9));
-        PredictionSnapshot.Forecast<Num> logReturnForecast = PredictionSnapshot.Forecast.ofSamples(1, 1,
-                List.of(down, up), List.of(0.0, 0.5, 1.0));
+        Forecast<Num> logReturnForecast = Forecast.ofSamples(1, 1, List.of(down, up), List.of(0.0, 0.5, 1.0));
         ReturnForecastProjectionIndicator returnForecast = new FixedForecastIndicator(series, 1,
                 ReturnRepresentation.LOG, Map.of(1, logReturnForecast));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
-        PredictionSnapshot.Forecast<Num> forecast = priceForecast.getValue(1);
+        Forecast<Num> forecast = priceForecast.getValue(1);
 
         assertTrue(forecast.isStable());
         assertNumEquals(100 * Math.sqrt(0.99), forecast.median());
@@ -76,7 +75,7 @@ public class LogReturnToPriceForecastIndicatorTest
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 0).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         ReturnForecastProjectionIndicator returnForecast = new FixedForecastIndicator(series, 0,
-                ReturnRepresentation.LOG, Map.of(1, PredictionSnapshot.Forecast.ofSamples(1, 1, List.of(numOf(0)))));
+                ReturnRepresentation.LOG, Map.of(1, Forecast.ofSamples(1, 1, List.of(numOf(0)))));
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
         assertTrue(priceForecast.getValue(0).mean().isNaN());
@@ -88,8 +87,7 @@ public class LogReturnToPriceForecastIndicatorTest
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         ReturnForecastProjectionIndicator decimalProjection = new FixedForecastIndicator(series, 0,
-                ReturnRepresentation.DECIMAL,
-                Map.of(1, PredictionSnapshot.Forecast.ofSamples(1, 1, List.of(numOf(0)))));
+                ReturnRepresentation.DECIMAL, Map.of(1, Forecast.ofSamples(1, 1, List.of(numOf(0)))));
 
         assertThrows(IllegalArgumentException.class,
                 () -> new LogReturnToPriceForecastIndicator(close, decimalProjection));
@@ -106,10 +104,10 @@ public class LogReturnToPriceForecastIndicatorTest
         private final BarSeries series;
         private final int unstableBars;
         private final ReturnRepresentation representation;
-        private final Map<Integer, PredictionSnapshot.Forecast<Num>> values;
+        private final Map<Integer, Forecast<Num>> values;
 
         private FixedForecastIndicator(BarSeries series, int unstableBars, ReturnRepresentation representation,
-                Map<Integer, PredictionSnapshot.Forecast<Num>> values) {
+                Map<Integer, Forecast<Num>> values) {
             this.series = series;
             this.unstableBars = unstableBars;
             this.representation = representation;
@@ -122,8 +120,8 @@ public class LogReturnToPriceForecastIndicatorTest
         }
 
         @Override
-        public PredictionSnapshot.Forecast<Num> getValue(int index) {
-            return values.getOrDefault(index, PredictionSnapshot.Forecast.unstable(index, 1, NaN.NaN));
+        public Forecast<Num> getValue(int index) {
+            return values.getOrDefault(index, Forecast.unstable(index, 1, NaN.NaN));
         }
 
         @Override

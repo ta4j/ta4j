@@ -2,11 +2,12 @@
  * SPDX-License-Identifier: MIT
  */
 /**
- * Forecast projection contracts and point-value adapters.
+ * Forecast projection contracts, summary values, and point-value adapters.
  * <p>
- * Projection indicators turn a hidden state into a forward forecast summary.
- * Point adapters expose one summary field, such as median or a quantile, as a
- * normal {@code Indicator<Num>} for rule and indicator composition.
+ * Projection indicators turn a hidden state into a forward {@link Forecast}
+ * summary. Point adapters expose one summary field, such as median or a
+ * quantile, as a normal {@code Indicator<Num>} for rule and indicator
+ * composition.
  *
  * @since 0.22.9
  */

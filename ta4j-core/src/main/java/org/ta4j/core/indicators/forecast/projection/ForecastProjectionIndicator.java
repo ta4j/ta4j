@@ -6,14 +6,13 @@ package org.ta4j.core.indicators.forecast.projection;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.walkforward.PredictionSnapshot;
 
 /**
  * Indicator that returns numeric forecast projection summaries.
  *
  * @since 0.22.9
  */
-public interface ForecastProjectionIndicator extends Indicator<PredictionSnapshot.Forecast<Num>> {
+public interface ForecastProjectionIndicator extends Indicator<Forecast<Num>> {
 
     /**
      * Returns a point indicator for the forecast mean.
@@ -22,7 +21,7 @@ public interface ForecastProjectionIndicator extends Indicator<PredictionSnapsho
      * @since 0.22.9
      */
     default Indicator<Num> mean() {
-        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::mean);
+        return new ForwardForecastIndicator(this, Forecast::mean);
     }
 
     /**
@@ -32,7 +31,7 @@ public interface ForecastProjectionIndicator extends Indicator<PredictionSnapsho
      * @since 0.22.9
      */
     default Indicator<Num> median() {
-        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::median);
+        return new ForwardForecastIndicator(this, Forecast::median);
     }
 
     /**
@@ -42,7 +41,7 @@ public interface ForecastProjectionIndicator extends Indicator<PredictionSnapsho
      * @since 0.22.9
      */
     default Indicator<Num> standardDeviation() {
-        return new ForwardForecastIndicator(this, PredictionSnapshot.Forecast::standardDeviation);
+        return new ForwardForecastIndicator(this, Forecast::standardDeviation);
     }
 
     /**

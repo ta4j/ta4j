@@ -13,14 +13,14 @@ import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
  * Converts cumulative log-return forecast distributions to price forecasts.
  *
  * @since 0.22.9
  */
-public class LogReturnToPriceForecastIndicator extends CachedIndicator<PredictionSnapshot.Forecast<Num>>
+public class LogReturnToPriceForecastIndicator extends CachedIndicator<Forecast<Num>>
         implements ForecastProjectionIndicator {
 
     private final Indicator<Num> priceIndicator;
@@ -44,15 +44,15 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Predictio
     }
 
     @Override
-    protected PredictionSnapshot.Forecast<Num> calculate(int index) {
-        PredictionSnapshot.Forecast<Num> logReturnForecast = logReturnForecastProjection.getValue(index);
+    protected Forecast<Num> calculate(int index) {
+        Forecast<Num> logReturnForecast = logReturnForecastProjection.getValue(index);
         if (logReturnForecast == null || !logReturnForecast.isStable()) {
             int horizon = logReturnForecast == null ? 1 : logReturnForecast.horizon();
-            return PredictionSnapshot.Forecast.unstable(index, horizon);
+            return Forecast.unstable(index, horizon);
         }
         Num price = priceIndicator.getValue(index);
         if (IndicatorUtils.isInvalid(price) || !price.isPositive()) {
-            return PredictionSnapshot.Forecast.unstable(index, logReturnForecast.horizon());
+            return Forecast.unstable(index, logReturnForecast.horizon());
         }
         return logReturnForecast.map(cumulativeLogReturn -> {
             if (IndicatorUtils.isInvalid(cumulativeLogReturn)) {

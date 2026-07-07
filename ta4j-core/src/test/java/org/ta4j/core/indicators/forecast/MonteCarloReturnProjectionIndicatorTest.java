@@ -23,10 +23,9 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 
-public class MonteCarloReturnProjectionIndicatorTest
-        extends AbstractIndicatorTest<LogReturnIndicator, PredictionSnapshot.Forecast<Num>> {
+public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, Forecast<Num>> {
 
     public MonteCarloReturnProjectionIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -39,7 +38,7 @@ public class MonteCarloReturnProjectionIndicatorTest
         EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
         MonteCarloReturnProjectionIndicator forecast = new MonteCarloReturnProjectionIndicator(state, 5);
 
-        PredictionSnapshot.Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
 
         assertEquals(ReturnRepresentation.LOG, forecast.getReturnRepresentation());
         assertTrue(prediction.isStable());
@@ -57,7 +56,7 @@ public class MonteCarloReturnProjectionIndicatorTest
                 MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL, 2, 50, 3, 42L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT);
 
-        PredictionSnapshot.Forecast<Num> prediction = forecast.getValue(3);
+        Forecast<Num> prediction = forecast.getValue(3);
 
         assertTrue(prediction.isStable());
         assertEquals(50, prediction.sampleCount());
@@ -78,9 +77,9 @@ public class MonteCarloReturnProjectionIndicatorTest
                 MonteCarloReturnProjectionIndicator.ShockModel.NORMAL, 2, 100, 4, 7L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA);
 
-        PredictionSnapshot.Forecast<Num> expected = first.getValue(6);
+        Forecast<Num> expected = first.getValue(6);
         second.getValue(7);
-        PredictionSnapshot.Forecast<Num> actual = second.getValue(6);
+        Forecast<Num> actual = second.getValue(6);
 
         assertEquivalent(expected, actual);
     }
@@ -97,8 +96,8 @@ public class MonteCarloReturnProjectionIndicatorTest
                 MonteCarloReturnProjectionIndicator.ShockModel.NORMAL, 1, 100, 4, 11L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT);
 
-        PredictionSnapshot.Forecast<Num> empiricalPrediction = empirical.getValue(6);
-        PredictionSnapshot.Forecast<Num> normalPrediction = normal.getValue(6);
+        Forecast<Num> empiricalPrediction = empirical.getValue(6);
+        Forecast<Num> normalPrediction = normal.getValue(6);
 
         assertTrue(empiricalPrediction.isStable());
         assertTrue(normalPrediction.isStable());
@@ -139,7 +138,7 @@ public class MonteCarloReturnProjectionIndicatorTest
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
-    private void assertEquivalent(PredictionSnapshot.Forecast<Num> expected, PredictionSnapshot.Forecast<Num> actual) {
+    private void assertEquivalent(Forecast<Num> expected, Forecast<Num> actual) {
         assertEquals(expected.isStable(), actual.isStable());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertNumEquals(expected.mean(), actual.mean());
