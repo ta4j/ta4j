@@ -10,8 +10,8 @@ import java.util.Set;
  * Decides which aligned portfolio bars should trigger a rebalance.
  *
  * <p>
- * The MVP policies are deliberately index based. Calendar-aware policies can be
- * implemented by callers using the aligned end time available through
+ * The MVP policies are deliberately index based. Calendar-aware policies can
+ * capture an {@link AlignedPortfolioSeries} and inspect
  * {@link AlignedPortfolioSeries#endTimes()}.
  * </p>
  *
@@ -24,13 +24,11 @@ public interface RebalancePolicy {
      * Returns {@code true} when the portfolio should be rebalanced at
      * {@code index}.
      *
-     * @param series           aligned portfolio series
-     * @param index            aligned portfolio index
-     * @param previousSnapshot previous snapshot, or {@code null} at the first bar
+     * @param index aligned portfolio index
      * @return true if the executor should rebalance
      * @since 0.22.9
      */
-    boolean shouldRebalance(AlignedPortfolioSeries series, int index, PortfolioSnapshot previousSnapshot);
+    boolean shouldRebalance(int index);
 
     /**
      * Rebalances only on the first aligned bar.
@@ -39,7 +37,7 @@ public interface RebalancePolicy {
      * @since 0.22.9
      */
     static RebalancePolicy atStart() {
-        return (series, index, previousSnapshot) -> index == 0;
+        return index -> index == 0;
     }
 
     /**
@@ -49,7 +47,7 @@ public interface RebalancePolicy {
      * @since 0.22.9
      */
     static RebalancePolicy everyBar() {
-        return (series, index, previousSnapshot) -> true;
+        return index -> true;
     }
 
     /**
@@ -62,6 +60,6 @@ public interface RebalancePolicy {
     static RebalancePolicy onIndexes(Set<Integer> indexes) {
         Objects.requireNonNull(indexes, "indexes");
         Set<Integer> rebalanceIndexes = Set.copyOf(indexes);
-        return (series, index, previousSnapshot) -> rebalanceIndexes.contains(index);
+        return rebalanceIndexes::contains;
     }
 }

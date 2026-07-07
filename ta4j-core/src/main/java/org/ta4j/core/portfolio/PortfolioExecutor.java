@@ -80,7 +80,6 @@ public final class PortfolioExecutor {
         Map<PortfolioAsset, Num> holdings = zeroHoldings();
         Num cash = initialCash;
         Num previousValue = initialCash;
-        PortfolioSnapshot previousSnapshot = null;
         List<PortfolioSnapshot> snapshots = new java.util.ArrayList<>(series.getBarCount());
 
         for (int index = 0; index < series.getBarCount(); index++) {
@@ -88,7 +87,7 @@ public final class PortfolioExecutor {
             Num transactionCost = series.numFactory().zero();
             Num turnover = series.numFactory().zero();
 
-            if (rebalancePolicy.shouldRebalance(series, index, previousSnapshot)) {
+            if (rebalancePolicy.shouldRebalance(index)) {
                 RebalanceState rebalanceState = rebalance(cash, holdings, prices);
                 cash = rebalanceState.cash();
                 holdings = rebalanceState.holdings();
@@ -103,7 +102,6 @@ public final class PortfolioExecutor {
             PortfolioSnapshot snapshot = new PortfolioSnapshot(index, endTime, prices, holdings, cash, portfolioValue,
                     periodReturn, transactionCost, turnover);
             snapshots.add(snapshot);
-            previousSnapshot = snapshot;
             previousValue = portfolioValue;
         }
 
