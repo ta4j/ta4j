@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.Map;
 import java.util.Objects;
@@ -62,7 +61,7 @@ public final class WyckoffStructureTracker {
                 followingSwingBars, allowedEqualBars);
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
-        if (isInvalid(this.breakoutTolerance)) {
+        if (!Num.isFinite(this.breakoutTolerance)) {
             throw new IllegalArgumentException("breakoutTolerance must be a valid number");
         }
         this.snapshotCache = new ConcurrentHashMap<>();
@@ -106,7 +105,7 @@ public final class WyckoffStructureTracker {
      */
     private StructureSnapshot computeSnapshot(int index, StructureSnapshot previous) {
         final Num close = closePriceIndicator.getValue(index);
-        if (isInvalid(close)) {
+        if (!Num.isFinite(close)) {
             return StructureSnapshot.empty();
         }
         final int latestHighIndex = swingHighIndicator.getLatestSwingIndex(index);
@@ -116,27 +115,27 @@ public final class WyckoffStructureTracker {
         int rangeHighIndex = latestHighIndex;
         int rangeLowIndex = latestLowIndex;
 
-        if (previous != null && !isInvalid(previous.rangeHigh())) {
-            if (isInvalid(rangeHigh) || previous.rangeHigh().isGreaterThan(rangeHigh)) {
+        if (previous != null && Num.isFinite(previous.rangeHigh())) {
+            if (!Num.isFinite(rangeHigh) || previous.rangeHigh().isGreaterThan(rangeHigh)) {
                 rangeHigh = previous.rangeHigh();
                 rangeHighIndex = previous.rangeHighIndex();
             }
         }
-        if (previous != null && !isInvalid(previous.rangeLow())) {
-            if (isInvalid(rangeLow) || previous.rangeLow().isLessThan(rangeLow)) {
+        if (previous != null && Num.isFinite(previous.rangeLow())) {
+            if (!Num.isFinite(rangeLow) || previous.rangeLow().isLessThan(rangeLow)) {
                 rangeLow = previous.rangeLow();
                 rangeLowIndex = previous.rangeLowIndex();
             }
         }
 
-        final boolean hasRange = !isInvalid(rangeHigh) && !isInvalid(rangeLow);
+        final boolean hasRange = Num.isFinite(rangeHigh) && Num.isFinite(rangeLow);
         final boolean inRange = hasRange && !close.isGreaterThan(rangeHigh) && !close.isLessThan(rangeLow);
         final Num tolerance = hasRange ? rangeHigh.minus(rangeLow).multipliedBy(breakoutTolerance) : NaN;
         final Num breakoutAboveThreshold = hasRange ? rangeHigh.plus(tolerance) : NaN;
         final Num breakoutBelowThreshold = hasRange ? rangeLow.minus(tolerance) : NaN;
-        final boolean brokeAbove = hasRange && !isInvalid(breakoutAboveThreshold)
+        final boolean brokeAbove = hasRange && Num.isFinite(breakoutAboveThreshold)
                 && close.isGreaterThan(breakoutAboveThreshold);
-        final boolean brokeBelow = hasRange && !isInvalid(breakoutBelowThreshold)
+        final boolean brokeBelow = hasRange && Num.isFinite(breakoutBelowThreshold)
                 && close.isLessThan(breakoutBelowThreshold);
         return new StructureSnapshot(rangeLow, rangeHigh, rangeLowIndex, rangeHighIndex, close, inRange, brokeAbove,
                 brokeBelow);

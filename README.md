@@ -14,6 +14,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 - [Install in seconds](#install-in-seconds)
 - [Build commands: Maven](#build-commands-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
+- [Forecast predictions](#forecast-predictions)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
 - [Features at a glance](#features-at-a-glance)
@@ -213,6 +214,44 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+## Forecast predictions
+
+Forecast indicators produce forward-looking estimates at a decision index while
+staying inside the normal ta4j `Indicator` model. A forecast made at index `i`
+only reads source values through `i`; evaluation code can later
+compare it with the realized value at `i + horizon`.
+
+```java
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.num.Num;
+
+BarSeries series = ...;
+LogReturnIndicator returns = new LogReturnIndicator(series);
+ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
+
+Indicator<Num> medianNextClose = nextCloseForecast.median();
+Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
+```
+
+Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
+projection indicators so research runs can be repeated and evaluated against
+later realized prices.
+
+`ReturnIndicator` is a semantic contract: implementations promise that their
+numeric output is a return stream in the declared representation. The initial
+forecast implementation supports log returns, so build the pipeline explicitly
+from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
+`MonteCarloPriceForecastIndicator`. Use `MonteCarloReturnProjectionIndicator`
+and `LogReturnToPriceForecastIndicator` from the forecast adapter package directly only when a model needs
+advanced simulation tuning or a custom explicit price source.
 
 ### Staged exit rules
 

@@ -116,7 +116,7 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= endIndex; i++) {
             Num price = priceIndicator.getValue(i);
             Num volume = volumeIndicator.getValue(i);
-            if (IndicatorUtils.isInvalid(price) || IndicatorUtils.isInvalid(volume) || volume.isNegative()) {
+            if (!Num.isFinite(price) || !Num.isFinite(volume) || volume.isNegative()) {
                 return VWAPValues.invalid(factory);
             }
             if (volume.isZero()) {

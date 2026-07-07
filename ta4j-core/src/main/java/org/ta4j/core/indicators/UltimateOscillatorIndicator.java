@@ -197,8 +197,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         Num middleAverage = calculateAverage(index, middleBuyingPressureSumIndicator, middleTrueRangeSumIndicator);
         Num longAverage = calculateAverage(index, longBuyingPressureSumIndicator, longTrueRangeSumIndicator);
 
-        if (IndicatorUtils.isInvalid(shortAverage) || IndicatorUtils.isInvalid(middleAverage)
-                || IndicatorUtils.isInvalid(longAverage)) {
+        if (!Num.isFinite(shortAverage) || !Num.isFinite(middleAverage) || !Num.isFinite(longAverage)) {
             return NaN;
         }
 
@@ -220,12 +219,12 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
     private Num calculateAverage(int index, RunningTotalIndicator buyingPressureSumIndicator,
             RunningTotalIndicator trueRangeSumIndicator) {
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (!Num.isFinite(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalBuyingPressure = buyingPressureSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalBuyingPressure)) {
+        if (!Num.isFinite(totalBuyingPressure)) {
             return NaN;
         }
 
@@ -285,8 +284,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
             Num close = closePriceIndicator.getValue(index);
             Num low = lowPriceIndicator.getValue(index);
             Num previousClose = closePriceIndicator.getValue(index - 1);
-            if (IndicatorUtils.isInvalid(close) || IndicatorUtils.isInvalid(low)
-                    || IndicatorUtils.isInvalid(previousClose)) {
+            if (!Num.isFinite(close) || !Num.isFinite(low) || !Num.isFinite(previousClose)) {
                 return NaN;
             }
 
