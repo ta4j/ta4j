@@ -119,6 +119,17 @@ public class EwmaReturnForecastStateIndicatorTest
         }
     }
 
+    @Test
+    public void rejectsInvalidDecayFactors() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+
+        assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateIndicator(returns, 2, 0));
+        assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateIndicator(returns, 2, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EwmaReturnForecastStateIndicator(returns, 2, Double.NaN));
+    }
+
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
 
         private final ReturnRepresentation representation;

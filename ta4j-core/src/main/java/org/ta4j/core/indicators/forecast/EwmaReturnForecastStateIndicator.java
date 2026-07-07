@@ -73,6 +73,9 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (initializationBarCount < 1) {
             throw new IllegalArgumentException("initializationBarCount must be >= 1");
         }
+        if (Double.isNaN(decayFactor) || decayFactor <= 0d || decayFactor >= 1d) {
+            throw new IllegalArgumentException("decayFactor must be in (0, 1)");
+        }
         Indicator<Num> mean = new EWMAIndicator(returnIndicator, initializationBarCount, decayFactor);
         this.returnIndicator = returnIndicator;
         this.meanIndicator = mean;
