@@ -962,6 +962,39 @@ Num invalidation = facade.invalidationLevel().getValue(index);
 
 See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
+## Portfolio backtesting foundation
+
+Use `org.ta4j.core.portfolio` when you need one deterministic multi-asset
+portfolio run instead of stitching together several independent single-series
+backtests. The V1 API aligns asset-labeled `BarSeries` inputs by common bar end
+time, applies explicit static target weights, rebalances on configured aligned
+indexes, subtracts transaction costs, and returns portfolio snapshots plus a
+portfolio value `BarSeries` for follow-on analysis.
+
+```java
+PortfolioAsset equity = PortfolioAsset.of("EQUITY");
+PortfolioAsset bonds = PortfolioAsset.of("BONDS");
+
+AlignedPortfolioSeries portfolioSeries = AlignedPortfolioSeries.of(List.of(
+        new PortfolioSeries(equity, equitySeries),
+        new PortfolioSeries(bonds, bondSeries)));
+
+Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
+weights.put(equity, equitySeries.numFactory().numOf(0.60));
+weights.put(bonds, equitySeries.numFactory().numOf(0.35));
+
+PortfolioAllocation allocation = PortfolioAllocation.targetWeights(weights, equitySeries.numFactory());
+PortfolioExecutionResult result = new PortfolioExecutor(portfolioSeries, allocation,
+        equitySeries.numFactory().numOf(10_000), RebalancePolicy.atStart()).run();
+```
+
+This first slice is intentionally static target-weight accounting only. Advanced
+allocation methods such as Markowitz, HRP, entropy, universal portfolios, or
+optimizer SPIs should target these contracts after the portfolio accounting
+surface is stable. See
+[`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
+for a runnable walkthrough.
+
 ## Real-world examples
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
@@ -1000,6 +1033,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
+- **[StaticPortfolioBacktest](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)** - Run a deterministic static target-weight multi-asset portfolio backtest with aligned inputs, rebalance snapshots, turnover, and transaction costs
 
 ### Charting Examples
 - **[IndicatorsToChart](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java)** - Visualize indicators overlaid on price charts
