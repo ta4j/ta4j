@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +33,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         // serial access can benefit from previous partial sums
         // which saves a lot of CPU work for very long barCounts
         if (previousIndex != -1 && previousIndex == index - 1) {
-            if (IndicatorUtils.isInvalid(previousSum)) {
+            if (!Num.isFinite(previousSum)) {
                 return slowPath(index);
             }
             return fastPath(index);

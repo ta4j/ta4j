@@ -119,11 +119,11 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         }
         Num mean = meanIndicator.getValue(index);
         Num variance = varianceIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(mean) || IndicatorUtils.isInvalid(variance)) {
+        if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
             return ReturnForecastState.unstable(index);
         }
         Num volatility = variance.sqrt();
-        if (IndicatorUtils.isInvalid(volatility)) {
+        if (!Num.isFinite(volatility)) {
             return ReturnForecastState.unstable(index);
         }
         Num drift = driftMode == DriftMode.ZERO ? getBarSeries().numFactory().zero() : mean;
@@ -187,12 +187,12 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
                 return NaN.NaN;
             }
             Num current = indicator.getValue(index);
-            if (IndicatorUtils.isInvalid(current)) {
+            if (!Num.isFinite(current)) {
                 return NaN.NaN;
             }
             Num previousVariance = getValue(index - 1);
             Num previousMean = meanIndicator.getValue(index - 1);
-            if (IndicatorUtils.isInvalid(previousVariance) || IndicatorUtils.isInvalid(previousMean)) {
+            if (!Num.isFinite(previousVariance) || !Num.isFinite(previousMean)) {
                 return initialVariance(index);
             }
             Num decay = getBarSeries().numFactory().numOf(decayFactor);

@@ -9,7 +9,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -103,12 +102,11 @@ public final class LogReturnIndicator extends CachedIndicator<Num> implements Re
         }
         Num current = indicator.getValue(index);
         Num previous = indicator.getValue(index - barCount);
-        if (IndicatorUtils.isInvalid(current) || IndicatorUtils.isInvalid(previous) || !current.isPositive()
-                || !previous.isPositive()) {
+        if (!Num.isFinite(current) || !Num.isFinite(previous) || !current.isPositive() || !previous.isPositive()) {
             return NaN.NaN;
         }
         Num result = current.dividedBy(previous).log();
-        if (IndicatorUtils.isInvalid(result)) {
+        if (!Num.isFinite(result)) {
             return NaN.NaN;
         }
         return result;

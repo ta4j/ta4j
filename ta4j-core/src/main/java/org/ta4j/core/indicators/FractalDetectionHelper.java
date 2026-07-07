@@ -100,7 +100,7 @@ final class FractalDetectionHelper {
         }
 
         final Num candidateValue = indicator.getValue(candidateIndex);
-        if (IndicatorUtils.isInvalid(candidateValue)) {
+        if (!Num.isFinite(candidateValue)) {
             return false;
         }
 
@@ -126,7 +126,7 @@ final class FractalDetectionHelper {
         int index = candidateIndex;
         while (index > beginIndex && equalsUsed < allowedEqualBars) {
             final Num previousValue = indicator.getValue(index - 1);
-            if (IndicatorUtils.isInvalid(previousValue)) {
+            if (!Num.isFinite(previousValue)) {
                 return -1;
             }
             if (!previousValue.isEqual(candidateValue)) {
@@ -150,7 +150,7 @@ final class FractalDetectionHelper {
         int index = candidateIndex;
         while (index < maxAvailableIndex && equalsUsed < allowedEqualBars) {
             final Num nextValue = indicator.getValue(index + 1);
-            if (IndicatorUtils.isInvalid(nextValue)) {
+            if (!Num.isFinite(nextValue)) {
                 return -1;
             }
             if (!nextValue.isEqual(candidateValue)) {
@@ -178,7 +178,7 @@ final class FractalDetectionHelper {
         }
         for (int i = plateauStartIndex - 1; i >= plateauStartIndex - precedingBars; i--) {
             final Num value = indicator.getValue(i);
-            if (IndicatorUtils.isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
+            if (!Num.isFinite(value) || !direction.isCandidateDominant(candidateValue, value)) {
                 return false;
             }
         }
@@ -198,7 +198,7 @@ final class FractalDetectionHelper {
                 return false;
             }
             final Num value = indicator.getValue(i);
-            if (IndicatorUtils.isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
+            if (!Num.isFinite(value) || !direction.isCandidateDominant(candidateValue, value)) {
                 return false;
             }
         }

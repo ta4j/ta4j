@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -95,7 +94,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("volumeIndicator must share the same bar series as priceIndicator");
         }
         Num validatedBandwidth = Objects.requireNonNull(bandwidth, "bandwidth must not be null");
-        if (isInvalid(validatedBandwidth) || validatedBandwidth.isLessThan(series.numFactory().zero())) {
+        if (!Num.isFinite(validatedBandwidth) || validatedBandwidth.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bandwidth must be greater than or equal to zero");
         }
         return new Config(validatedPriceIndicator, validatedVolumeIndicator, lookbackLength, validatedBandwidth);
@@ -116,7 +115,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         Num price = priceIndicator.getValue(index);
-        if (isInvalid(price)) {
+        if (!Num.isFinite(price)) {
             return NaN;
         }
         List<Sample> samples = collectSamples(index);
@@ -138,7 +137,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return NaN;
         }
-        if (isInvalid(price)) {
+        if (!Num.isFinite(price)) {
             return NaN;
         }
         List<Sample> samples = collectSamples(index);
@@ -195,7 +194,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= index; i++) {
             Num price = priceIndicator.getValue(i);
             Num volume = volumeIndicator.getValue(i);
-            if (isInvalid(price) || isInvalid(volume)) {
+            if (!Num.isFinite(price) || !Num.isFinite(volume)) {
                 continue;
             }
             Num weight = volume.abs();
@@ -284,7 +283,8 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         if (!usesGaussianKernel()) {
             return;
         }
-        if (!isInvalid(gaussianBandwidth) && !isInvalid(gaussianCoefficient) && !isInvalid(gaussianNegativeHalf)) {
+        if (Num.isFinite(gaussianBandwidth) && Num.isFinite(gaussianCoefficient)
+                && Num.isFinite(gaussianNegativeHalf)) {
             return;
         }
         NumFactory factory = getBarSeries().numFactory();

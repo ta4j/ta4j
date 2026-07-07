@@ -98,8 +98,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return Forecast.unstable(index, horizon);
         }
         ReturnForecastState state = stateIndicator.getValue(index);
-        if (state == null || !state.isStable() || IndicatorUtils.isInvalid(state.volatility())
-                || IndicatorUtils.isInvalid(state.drift())) {
+        if (state == null || !state.isStable() || !Num.isFinite(state.volatility()) || !Num.isFinite(state.drift())) {
             return Forecast.unstable(index, horizon);
         }
         List<Num> historicalReturns = historicalReturns(index);
@@ -143,7 +142,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         List<Num> values = new ArrayList<>(lookbackBarCount);
         for (int i = startIndex; i <= index; i++) {
             Num value = returnIndicator.getValue(i);
-            if (!IndicatorUtils.isInvalid(value)) {
+            if (Num.isFinite(value)) {
                 values.add(value);
             }
         }

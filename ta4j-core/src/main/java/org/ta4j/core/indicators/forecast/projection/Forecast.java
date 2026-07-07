@@ -13,7 +13,6 @@ import java.util.TreeMap;
 import java.util.function.Function;
 
 import org.ta4j.core.analysis.frequency.SampleSummary;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -302,7 +301,7 @@ public final class Forecast<T> {
         List<Num> input = Objects.requireNonNull(samples, "samples must not be null");
         List<Num> validSamples = new ArrayList<>(input.size());
         for (Num sample : input) {
-            if (!IndicatorUtils.isInvalid(sample)) {
+            if (Num.isFinite(sample)) {
                 validSamples.add(sample);
             }
         }

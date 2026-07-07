@@ -87,8 +87,10 @@ public final class IndicatorUtils {
      *
      * @param value numeric value to validate
      * @return {@code true} when invalid, otherwise {@code false}
+     * @deprecated use {@link Num#isFinite(Num)} directly
      * @since 0.22.3
      */
+    @Deprecated(since = "0.22.9", forRemoval = true)
     public static boolean isInvalid(Num value) {
         return !Num.isFinite(value);
     }

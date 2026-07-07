@@ -51,11 +51,11 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Forecast<
             return Forecast.unstable(index, horizon);
         }
         Num price = priceIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(price) || !price.isPositive()) {
+        if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, logReturnForecast.horizon());
         }
         return logReturnForecast.map(cumulativeLogReturn -> {
-            if (IndicatorUtils.isInvalid(cumulativeLogReturn)) {
+            if (!Num.isFinite(cumulativeLogReturn)) {
                 return NaN.NaN;
             }
             return price.multipliedBy(cumulativeLogReturn.exp());

@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.ArrayList;
@@ -103,7 +102,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         Num validatedTolerance = Objects.requireNonNull(tolerance, "tolerance must not be null");
         BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
                 "indicator must reference a bar series");
-        if (isInvalid(validatedTolerance) || validatedTolerance.isLessThan(series.numFactory().zero())) {
+        if (!Num.isFinite(validatedTolerance) || validatedTolerance.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("tolerance must be greater than or equal to zero");
         }
         Indicator<Num> resolvedWeight = weightIndicator;
@@ -215,11 +214,11 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         List<PriceCluster> clusters = new ArrayList<>();
         for (int i = startIndex; i <= endIndex; i++) {
             Num value = priceIndicator.getValue(i);
-            if (isInvalid(value)) {
+            if (!Num.isFinite(value)) {
                 continue;
             }
             Num weight = weightIndicator().getValue(i);
-            if (isInvalid(weight) || !weight.isPositive()) {
+            if (!Num.isFinite(weight) || !weight.isPositive()) {
                 continue;
             }
             boolean assigned = false;

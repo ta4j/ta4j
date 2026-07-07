@@ -9,7 +9,6 @@ import java.util.List;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.frequency.SampleSummary;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -47,7 +46,7 @@ public class EWMAIndicator extends AbstractEMAIndicator {
         int startIndex = index - getBarCount() + 1;
         for (int i = startIndex; i <= index; i++) {
             Num value = indicator.getValue(i);
-            if (IndicatorUtils.isInvalid(value)) {
+            if (!Num.isFinite(value)) {
                 return NaN.NaN;
             }
             values.add(value);

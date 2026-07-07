@@ -107,6 +107,7 @@ public class IndicatorUtilsTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     public void isInvalidHandlesNullAndNaN() {
         Num nan = DoubleNumFactory.getInstance().numOf(Double.NaN);
         Num valid = DoubleNumFactory.getInstance().one();

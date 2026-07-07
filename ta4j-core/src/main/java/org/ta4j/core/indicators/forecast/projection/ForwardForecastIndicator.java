@@ -7,7 +7,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -43,7 +42,7 @@ public class ForwardForecastIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         Num value = valueResolver.apply(forecast);
-        if (IndicatorUtils.isInvalid(value)) {
+        if (!Num.isFinite(value)) {
             return NaN.NaN;
         }
         return value;
