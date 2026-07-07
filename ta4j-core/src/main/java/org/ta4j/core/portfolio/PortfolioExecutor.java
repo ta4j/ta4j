@@ -63,7 +63,8 @@ public final class PortfolioExecutor {
             RebalancePolicy rebalancePolicy, CostModel transactionCostModel) {
         this.series = Objects.requireNonNull(series, "series");
         this.allocation = Objects.requireNonNull(allocation, "allocation");
-        this.initialCash = requirePositive(series.toPortfolioNum(initialCash), "initialCash");
+        this.initialCash = requirePositive(series.toPortfolioNum(Objects.requireNonNull(initialCash, "initialCash")),
+                "initialCash");
         this.rebalancePolicy = Objects.requireNonNull(rebalancePolicy, "rebalancePolicy");
         this.transactionCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         requireAllocationAssetsInSeries();

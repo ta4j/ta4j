@@ -14,7 +14,6 @@ import java.util.TreeSet;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -61,7 +60,7 @@ public final class AlignedPortfolioSeries {
         this.sourceSeriesByAsset = sourceSeriesByAsset(this.series);
         this.numFactory = this.sourceSeriesByAsset.get(this.assets.getFirst()).numFactory();
 
-        Alignment alignment = align(this.series);
+        Alignment alignment = align(this.series, this.sourceSeriesByAsset);
         this.endTimes = alignment.endTimes();
         this.sourceIndexesByAsset = alignment.sourceIndexesByAsset();
     }
@@ -126,7 +125,7 @@ public final class AlignedPortfolioSeries {
      * @since 0.22.9
      */
     public BarSeries getSeries(PortfolioAsset asset) {
-        return snapshotSeries(sourceSeriesByAsset.get(requireAsset(asset).asset()));
+        return PortfolioSeries.snapshotSeries(sourceSeriesByAsset.get(requireAsset(asset).asset()));
     }
 
     /**
@@ -197,12 +196,14 @@ public final class AlignedPortfolioSeries {
         }
     }
 
-    private static Alignment align(List<PortfolioSeries> sourceSeries) {
+    private static Alignment align(List<PortfolioSeries> sourceSeries,
+            Map<PortfolioAsset, BarSeries> sourceSeriesByAsset) {
         List<Map<Instant, Integer>> indexesByEndTime = new ArrayList<>(sourceSeries.size());
         TreeSet<Instant> commonEndTimes = null;
 
         for (PortfolioSeries portfolioSeries : sourceSeries) {
-            Map<Instant, Integer> currentIndexes = indexesByEndTime(portfolioSeries);
+            Map<Instant, Integer> currentIndexes = indexesByEndTime(portfolioSeries.asset(),
+                    sourceSeriesByAsset.get(portfolioSeries.asset()));
             indexesByEndTime.add(currentIndexes);
             if (commonEndTimes == null) {
                 commonEndTimes = new TreeSet<>(currentIndexes.keySet());
@@ -238,27 +239,16 @@ public final class AlignedPortfolioSeries {
         return Map.copyOf(sourceSeriesByAsset);
     }
 
-    private static Map<Instant, Integer> indexesByEndTime(PortfolioSeries portfolioSeries) {
+    private static Map<Instant, Integer> indexesByEndTime(PortfolioAsset asset, BarSeries source) {
         Map<Instant, Integer> indexesByEndTime = new HashMap<>();
-        BarSeries source = portfolioSeries.series();
         for (int index = source.getBeginIndex(); index <= source.getEndIndex(); index++) {
             Instant endTime = source.getBar(index).getEndTime();
             Integer previous = indexesByEndTime.putIfAbsent(endTime, index);
             if (previous != null) {
-                throw new IllegalArgumentException(
-                        "duplicate bar end time for asset " + portfolioSeries.asset() + ": " + endTime);
+                throw new IllegalArgumentException("duplicate bar end time for asset " + asset + ": " + endTime);
             }
         }
         return indexesByEndTime;
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries source = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(source.getName())
-                .withNumFactory(source.numFactory())
-                .withBars(source.getBarData())
-                .withMaxBarCount(source.getMaximumBarCount())
-                .build();
     }
 
     private record Alignment(List<Instant> endTimes, Map<PortfolioAsset, List<Integer>> sourceIndexesByAsset) {

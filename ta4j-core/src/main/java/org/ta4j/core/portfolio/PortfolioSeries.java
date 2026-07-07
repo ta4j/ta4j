@@ -60,7 +60,7 @@ public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
         return snapshotSeries(series);
     }
 
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
+    static BarSeries snapshotSeries(BarSeries barSeries) {
         BarSeries source = Objects.requireNonNull(barSeries, "barSeries");
         return new BaseBarSeriesBuilder().withName(source.getName())
                 .withNumFactory(source.numFactory())

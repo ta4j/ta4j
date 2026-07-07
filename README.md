@@ -985,7 +985,7 @@ weights.put(bonds, equitySeries.numFactory().numOf(0.35));
 
 PortfolioAllocation allocation = PortfolioAllocation.targetWeights(weights, equitySeries.numFactory());
 PortfolioExecutionResult result = new PortfolioExecutor(portfolioSeries, allocation,
-        equitySeries.numFactory().numOf(10_000), RebalancePolicy.atStart()).run();
+        equitySeries.numFactory().numOf(10_000), RebalancePolicy.onIndexes(Set.of(0, 3))).run();
 ```
 
 This first slice is intentionally static target-weight accounting only. Advanced

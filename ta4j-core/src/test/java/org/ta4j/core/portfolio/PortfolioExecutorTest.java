@@ -86,6 +86,15 @@ public class PortfolioExecutorTest {
     }
 
     @Test
+    public void rejectsNullInitialCash() {
+        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
+        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.4);
+
+        assertThrows(NullPointerException.class,
+                () -> new PortfolioExecutor(fixture.series(), allocation, null, RebalancePolicy.atStart()));
+    }
+
+    @Test
     public void convertsAllocationWeightsToPortfolioNumFactory() {
         Fixture fixture = fixture(new double[] { 100, 110 }, new double[] { 50, 55 });
         Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
