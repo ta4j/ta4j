@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.LinkedHashMap;
@@ -63,12 +64,12 @@ public class PortfolioAllocationTest {
         assertNumEquals(0, allocation.cashWeight());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void rejectsLeveragedWeights() {
         PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
         PortfolioAsset beta = PortfolioAsset.of("BETA");
 
-        PortfolioAllocation.targetWeights(Map.of(alpha, NUM_FACTORY.numOf(0.8), beta, NUM_FACTORY.numOf(0.4)),
-                NUM_FACTORY);
+        assertThrows(IllegalArgumentException.class, () -> PortfolioAllocation
+                .targetWeights(Map.of(alpha, NUM_FACTORY.numOf(0.8), beta, NUM_FACTORY.numOf(0.4)), NUM_FACTORY));
     }
 }

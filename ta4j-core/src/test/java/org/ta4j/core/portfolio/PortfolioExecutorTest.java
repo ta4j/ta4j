@@ -4,6 +4,7 @@
 package org.ta4j.core.portfolio;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -74,13 +75,14 @@ public class PortfolioExecutorTest {
         assertNumEquals(fixture.num(-0.00990099), firstSnapshot.periodReturn(), 0.0001);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void rejectsAllocationAssetsMissingFromAlignedSeries() {
         Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
         PortfolioAllocation allocation = PortfolioAllocation.targetWeights(
                 Map.of(PortfolioAsset.of("MISSING"), fixture.num(0.5)), fixture.alphaSeries().numFactory());
 
-        new PortfolioExecutor(fixture.series(), allocation, fixture.num(1000), RebalancePolicy.atStart());
+        assertThrows(IllegalArgumentException.class, () -> new PortfolioExecutor(fixture.series(), allocation,
+                fixture.num(1000), RebalancePolicy.atStart()));
     }
 
     @Test

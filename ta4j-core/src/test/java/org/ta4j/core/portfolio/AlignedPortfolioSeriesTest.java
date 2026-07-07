@@ -4,6 +4,7 @@
 package org.ta4j.core.portfolio;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -37,21 +38,23 @@ public class AlignedPortfolioSeriesTest {
         assertNumEquals(60, aligned.getClosePrice(beta, 1));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void rejectsDuplicateAssets() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
 
-        AlignedPortfolioSeries.of(List.of(new PortfolioSeries(alpha, series("alpha-a", start, 100, 101)),
-                new PortfolioSeries(alpha, series("alpha-b", start, 102, 103))));
+        assertThrows(IllegalArgumentException.class,
+                () -> AlignedPortfolioSeries.of(List.of(new PortfolioSeries(alpha, series("alpha-a", start, 100, 101)),
+                        new PortfolioSeries(alpha, series("alpha-b", start, 102, 103)))));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void rejectsSeriesWithoutCommonEndTimes() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
 
-        AlignedPortfolioSeries.of(List.of(PortfolioSeries.of("ALPHA", series("alpha", start, 100)),
-                PortfolioSeries.of("BETA", series("beta", start.plus(Duration.ofDays(1)), 50))));
+        assertThrows(IllegalArgumentException.class,
+                () -> AlignedPortfolioSeries.of(List.of(PortfolioSeries.of("ALPHA", series("alpha", start, 100)),
+                        PortfolioSeries.of("BETA", series("beta", start.plus(Duration.ofDays(1)), 50)))));
     }
 
     private static BarSeries series(String name, Instant start, double... closes) {
