@@ -80,16 +80,19 @@ public final class IndicatorUtils {
     }
 
     /**
-     * Returns whether the provided number is null or NaN.
+     * Returns whether the provided number is null, NaN, or backed by a raw infinite
+     * {@link Double} / {@link Float} delegate.
      * <p>
-     * This guards both logical-NaN and raw {@link Double#NaN} delegate cases.
+     * This compatibility helper delegates to {@link Num#isFinite(Num)}.
      *
      * @param value numeric value to validate
      * @return {@code true} when invalid, otherwise {@code false}
+     * @deprecated use {@link Num#isFinite(Num)} directly
      * @since 0.22.3
      */
+    @Deprecated(since = "0.22.9", forRemoval = true)
     public static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+        return !Num.isFinite(value);
     }
 
     private static BarSeries requireSeries(Indicator<?> indicator, String argumentName) {

@@ -163,7 +163,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
         Num positive = getPositiveValue(index);
         Num negative = getNegativeValue(index);
-        if (IndicatorUtils.isInvalid(positive) || IndicatorUtils.isInvalid(negative)) {
+        if (!Num.isFinite(positive) || !Num.isFinite(negative)) {
             return NaN;
         }
         return positive.minus(negative);
@@ -175,12 +175,12 @@ public class VortexIndicator extends CachedIndicator<Num> {
         }
 
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (!Num.isFinite(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalMovement = movementSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalMovement)) {
+        if (!Num.isFinite(totalMovement)) {
             return NaN;
         }
 
@@ -228,7 +228,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
             Num current = currentIndicator.getValue(index);
             Num previous = previousIndicator.getValue(index - 1);
-            if (IndicatorUtils.isInvalid(current) || IndicatorUtils.isInvalid(previous)) {
+            if (!Num.isFinite(current) || !Num.isFinite(previous)) {
                 return NaN;
             }
 

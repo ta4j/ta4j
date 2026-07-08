@@ -181,7 +181,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         final Num value = smoothedIndicator.getValue(displacedIndex);
-        return IndicatorUtils.isInvalid(value) ? NaN : value;
+        return !Num.isFinite(value) ? NaN : value;
     }
 
     /**

@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.ArrayList;
 import java.util.List;
@@ -87,7 +86,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         Num validatedBucketSize = Objects.requireNonNull(bucketSize, "bucketSize must not be null");
         BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
                 "indicator must reference a bar series");
-        if (isInvalid(validatedBucketSize) || validatedBucketSize.isLessThan(series.numFactory().zero())) {
+        if (!Num.isFinite(validatedBucketSize) || validatedBucketSize.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bucketSize must be greater than or equal to zero");
         }
         return new Config(validatedPriceIndicator, lookbackCount, validatedBucketSize, series);
@@ -179,11 +178,11 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
 
         for (int i = startIndex; i <= endIndex; i++) {
             Num value = priceIndicator.getValue(i);
-            if (isInvalid(value)) {
+            if (!Num.isFinite(value)) {
                 continue;
             }
 
-            if (isInvalid(previousValue)) {
+            if (!Num.isFinite(previousValue)) {
                 previousValue = value;
                 previousIndex = i;
                 continue;
@@ -223,7 +222,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
     private int seedPreviousIndex(int startIndex) {
         for (int i = startIndex - 1; i >= getBarSeries().getBeginIndex(); i--) {
             Num value = priceIndicator.getValue(i);
-            if (!isInvalid(value)) {
+            if (Num.isFinite(value)) {
                 return i;
             }
         }

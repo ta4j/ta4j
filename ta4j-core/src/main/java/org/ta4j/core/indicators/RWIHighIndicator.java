@@ -48,7 +48,7 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
         boolean hasDefinedValue = false;
         for (int n = 2; n <= barCount; n++) {
             Num rwiHigh = calcRWIHFor(index, n);
-            if (!IndicatorUtils.isInvalid(rwiHigh)) {
+            if (Num.isFinite(rwiHigh)) {
                 maxRWIH = hasDefinedValue ? maxRWIH.max(rwiHigh) : rwiHigh;
                 hasDefinedValue = true;
             }
