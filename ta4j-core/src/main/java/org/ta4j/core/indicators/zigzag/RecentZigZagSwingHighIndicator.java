@@ -50,18 +50,16 @@ import org.ta4j.core.num.Num;
 public class RecentZigZagSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
-    private final Indicator<Num> price; // same price as used in stateIndicator
+    private final Indicator<Num> price;
 
     /**
      * Constructs a RecentZigZagSwingHighIndicator.
      *
      * @param stateIndicator the ZigZagStateIndicator that tracks the ZigZag pattern
      *                       state
-     * @param price          the price indicator to use for retrieving swing high
-     *                       values. Should typically match the price indicator used
-     *                       in the stateIndicator (e.g., both using
-     *                       {@code HighPriceIndicator} or both using
-     *                       {@code ClosePriceIndicator})
+     * @param price          the price indicator used to retrieve swing-high values;
+     *                       typically the {@code HighPriceIndicator} corresponding
+     *                       to the state indicator's high-price component
      */
     public RecentZigZagSwingHighIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
         this(validatedConfig(stateIndicator, price));

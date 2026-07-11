@@ -74,7 +74,7 @@ abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIn
     protected abstract int followingBars();
 
     /**
-     * @return number of tolerated equal neighboring bars on each side
+     * @return maximum additional equal bars permitted in a plateau
      */
     protected abstract int allowedEqualBars();
 

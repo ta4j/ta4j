@@ -57,11 +57,9 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
      *
      * @param stateIndicator the ZigZagStateIndicator that tracks the ZigZag pattern
      *                       state
-     * @param price          the price indicator to use for retrieving swing low
-     *                       values. Should typically match the price indicator used
-     *                       in the stateIndicator (e.g., both using
-     *                       {@code LowPriceIndicator} or both using
-     *                       {@code ClosePriceIndicator})
+     * @param price          the price indicator used to retrieve swing-low values;
+     *                       typically the {@code LowPriceIndicator} corresponding
+     *                       to the state indicator's low-price component
      */
     public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
         this(validatedConfig(stateIndicator, price));

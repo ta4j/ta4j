@@ -256,9 +256,11 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * <p>
      * The ZigZag indicator has no fixed lookahead window since reversals can take
      * arbitrarily long to confirm. Each value only uses data up to the current
-     * index, so this method returns 0.
+     * index. The unstable-bar count is the maximum required by the underlying high,
+     * low, confirmation, and reversal sources.
      *
-     * @return maximum warm-up required by the high, low, and reversal sources
+     * @return maximum warm-up required by the high, low, confirmation, and reversal
+     *         sources
      */
     @Override
     public int getCountOfUnstableBars() {

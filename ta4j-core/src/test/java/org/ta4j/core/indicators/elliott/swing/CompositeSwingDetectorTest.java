@@ -79,6 +79,10 @@ class CompositeSwingDetectorTest {
         SwingDetectorResult result = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
 
         assertThat(result.pivots()).extracting(SwingPivot::index).containsExactly(2, 4);
+        CompositeSwingDetector reversed = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
+                List.of(detectorB, detectorA), 1, 2);
+        assertThat(reversed.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots())
+                .isEqualTo(result.pivots());
         assertThat(detector.getIndexTolerance()).isEqualTo(1);
         assertThat(detector.getRequiredVotes()).isEqualTo(2);
     }

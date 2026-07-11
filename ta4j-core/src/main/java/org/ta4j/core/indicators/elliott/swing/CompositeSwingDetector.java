@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott.swing;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -95,6 +96,7 @@ public final class CompositeSwingDetector implements SwingDetector {
 
     private List<SwingPivot> mergePivots(final List<List<SwingPivot>> pivotSets) {
         final List<PivotAccumulator> accumulators = new ArrayList<>();
+        final List<TaggedPivot> candidates = new ArrayList<>();
         for (int detectorIndex = 0; detectorIndex < pivotSets.size(); detectorIndex++) {
             final List<SwingPivot> pivots = pivotSets.get(detectorIndex);
             if (pivots == null || pivots.isEmpty()) {
@@ -104,20 +106,27 @@ public final class CompositeSwingDetector implements SwingDetector {
                 if (pivot == null) {
                     continue;
                 }
-                PivotAccumulator accumulator = null;
-                for (final PivotAccumulator candidate : accumulators) {
-                    if (candidate.type == pivot.type()
-                            && Math.abs(candidate.anchorIndex - pivot.index()) <= indexTolerance) {
-                        accumulator = candidate;
-                        break;
-                    }
-                }
-                if (accumulator == null) {
-                    accumulator = new PivotAccumulator(pivot);
-                    accumulators.add(accumulator);
-                }
-                accumulator.update(detectorIndex, pivot);
+                candidates.add(new TaggedPivot(detectorIndex, pivot));
             }
+        }
+        candidates.sort(Comparator.comparingInt((TaggedPivot candidate) -> candidate.pivot().index())
+                .thenComparing(candidate -> candidate.pivot().type())
+                .thenComparingInt(TaggedPivot::detectorIndex));
+
+        for (final TaggedPivot candidate : candidates) {
+            final SwingPivot pivot = candidate.pivot();
+            PivotAccumulator accumulator = null;
+            for (final PivotAccumulator cluster : accumulators) {
+                if (cluster.type == pivot.type() && Math.abs(cluster.anchorIndex - pivot.index()) <= indexTolerance) {
+                    accumulator = cluster;
+                    break;
+                }
+            }
+            if (accumulator == null) {
+                accumulator = new PivotAccumulator(pivot);
+                accumulators.add(accumulator);
+            }
+            accumulator.update(candidate.detectorIndex(), pivot);
         }
 
         if (accumulators.isEmpty()) {
@@ -149,6 +158,9 @@ public final class CompositeSwingDetector implements SwingDetector {
      */
     public int getRequiredVotes() {
         return requiredVotes;
+    }
+
+    private record TaggedPivot(int detectorIndex, SwingPivot pivot) {
     }
 
     private static final class PivotAccumulator {
