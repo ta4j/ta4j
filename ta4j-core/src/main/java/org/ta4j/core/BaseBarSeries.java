@@ -95,7 +95,8 @@ public class BaseBarSeries implements BarSeries {
      */
     BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
-        this(name, bars, seriesBeginIndex, seriesEndIndex, 0, constrained, numFactory, barBuilderFactory);
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, 0, constrained, numFactory,
+                barBuilderFactory));
     }
 
     BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
