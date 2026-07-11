@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
@@ -111,6 +112,35 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
         assertEquals(doubleNumFactory, series.numFactory());
         assertEquals(doubleNumFactory, bar1.getClosePrice().getNumFactory());
         assertEquals(doubleNumFactory, bar2.getClosePrice().getNumFactory());
+    }
+
+    @Test
+    public void testWithBeginIndexPreservesAbsoluteIndexesAndSubSeriesOffset() {
+        final NumFactory factory = DoubleNumFactory.getInstance();
+        final Duration duration = Duration.ofMinutes(1);
+        final Instant firstEnd = Instant.parse("2026-01-01T00:01:00Z");
+        final var bars = new ArrayList<Bar>();
+        for (int i = 0; i < 4; i++) {
+            bars.add(new TimeBarBuilder(factory).timePeriod(duration)
+                    .endTime(firstEnd.plus(duration.multipliedBy(i)))
+                    .closePrice(100 + i)
+                    .build());
+        }
+
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(50).build();
+        BarSeries subSeries = series.getSubSeries(51, 54);
+
+        assertEquals(50, series.getBeginIndex());
+        assertEquals(53, series.getEndIndex());
+        assertEquals(50, series.getRemovedBarsCount());
+        assertEquals(51, subSeries.getBeginIndex());
+        assertEquals(53, subSeries.getEndIndex());
+        assertEquals(series.getBar(51), subSeries.getBar(51));
+    }
+
+    @Test
+    public void testWithBeginIndexRejectsNegativeValues() {
+        assertThrows(IllegalArgumentException.class, () -> new BaseBarSeriesBuilder().withBeginIndex(-1));
     }
 
     @Test

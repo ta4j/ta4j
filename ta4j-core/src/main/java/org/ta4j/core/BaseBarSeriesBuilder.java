@@ -23,6 +23,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     private String name;
     private boolean constrained;
     private int maxBarCount;
+    private int beginIndex;
     private boolean isNumFactoryAssigned = false;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
     private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
@@ -37,6 +38,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         this.name = "unnamed_series";
         this.constrained = false;
         this.maxBarCount = Integer.MAX_VALUE;
+        this.beginIndex = 0;
     }
 
     @Override
@@ -44,8 +46,8 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         int beginIndex = -1;
         int endIndex = -1;
         if (!bars.isEmpty()) {
-            beginIndex = 0;
-            endIndex = bars.size() - 1;
+            beginIndex = this.beginIndex;
+            endIndex = beginIndex + bars.size() - 1;
 
             if (!isNumFactoryAssigned) {
                 // use numFactory derived from bars instead of default numFactory
@@ -66,7 +68,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         }
 
         var series = new BaseBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
-                constrained, numFactory, barBuilderFactory);
+                beginIndex < 0 ? 0 : beginIndex, constrained, numFactory, barBuilderFactory);
         series.setMaximumBarCount(maxBarCount);
         initValues(); // reinitialize values for next series
         return series;
@@ -120,6 +122,21 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
      */
     public BaseBarSeriesBuilder withBars(List<Bar> bars) {
         this.bars = new ArrayList<>(Objects.requireNonNull(bars, "bars must not be null"));
+        return this;
+    }
+
+    /**
+     * Sets the absolute index assigned to the first supplied bar.
+     *
+     * @param beginIndex non-negative first bar index
+     * @return {@code this}
+     * @since 0.22.9
+     */
+    public BaseBarSeriesBuilder withBeginIndex(int beginIndex) {
+        if (beginIndex < 0) {
+            throw new IllegalArgumentException("beginIndex must be non-negative");
+        }
+        this.beginIndex = beginIndex;
         return this;
     }
 
