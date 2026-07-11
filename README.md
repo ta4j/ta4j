@@ -487,6 +487,15 @@ and factory-configured `BaseTradingRecord` flows.
 
 ### Analyze indicator relationships
 
+For structural price analysis, choose the detector by turn shape. OHLC-aware
+ZigZag detection confirms sharp reversals after a price-distance threshold;
+fractal detection confirms local extrema after a fixed right-side window; and
+`SlopeChangeSwingDetector` confirms slower, rounded turns after a sustained
+rolling-slope reversal. `SwingDetectors.multiScale(...)` can require a quorum
+of nearby pivots from several configurations when consistency matters more than
+the earliest possible confirmation. All returned detector pivots are based only
+on bars available at the requested index.
+
 For sparse event studies, start with a windowed event-synchronization score:
 compare events such as Net Momentum zero crossings against newly confirmed
 ZigZag swing highs or lows inside a tolerance window. After the event timing is

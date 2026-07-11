@@ -57,6 +57,17 @@ public final class SwingDetectors {
     }
 
     /**
+     * Builds a causal rolling-slope swing detector.
+     *
+     * @param config slope-change configuration
+     * @return slope-change detector
+     * @since 0.22.4
+     */
+    public static SwingDetector slopeChange(final SlopeChangeConfig config) {
+        return new SlopeChangeSwingDetector(config);
+    }
+
+    /**
      * Builds a composite detector with the given policy.
      *
      * @param policy    composite policy
@@ -67,6 +78,21 @@ public final class SwingDetectors {
     public static SwingDetector composite(final CompositeSwingDetector.Policy policy,
             final SwingDetector... detectors) {
         return new CompositeSwingDetector(policy, toList(detectors));
+    }
+
+    /**
+     * Builds a tolerant multi-detector consensus.
+     *
+     * @param indexTolerance maximum bar distance within a pivot cluster
+     * @param requiredVotes  detector quorum
+     * @param detectors      detectors to combine
+     * @return tolerant composite detector
+     * @since 0.22.4
+     */
+    public static SwingDetector multiScale(final int indexTolerance, final int requiredVotes,
+            final SwingDetector... detectors) {
+        return new CompositeSwingDetector(CompositeSwingDetector.Policy.AND, toList(detectors), indexTolerance,
+                requiredVotes);
     }
 
     private static List<SwingDetector> toList(final SwingDetector... detectors) {

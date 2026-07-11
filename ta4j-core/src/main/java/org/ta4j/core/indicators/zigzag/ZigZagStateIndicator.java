@@ -7,8 +7,10 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -49,7 +51,8 @@ import org.ta4j.core.num.Num;
  */
 public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
 
-    private final Indicator<Num> price; // typically High, Low, or Close
+    private final Indicator<Num> highPrice;
+    private final Indicator<Num> lowPrice;
     private final Indicator<Num> reversalAmount; // threshold in price units
 
     /**
@@ -66,9 +69,31 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      *                       indicator.
      */
     public ZigZagStateIndicator(Indicator<Num> price, Indicator<Num> reversalAmount) {
-        super(price);
-        this.price = price;
-        this.reversalAmount = reversalAmount;
+        this(price, price, reversalAmount);
+    }
+
+    /**
+     * Constructs an OHLC-aware ZigZag state indicator.
+     *
+     * @param highPrice      source used to extend upward legs and confirm upward
+     *                       reversals
+     * @param lowPrice       source used to extend downward legs and confirm
+     *                       downward reversals
+     * @param reversalAmount positive reversal threshold in price units
+     * @since 0.22.4
+     */
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> reversalAmount) {
+        super(highPrice);
+        this.highPrice = IndicatorUtils.requireIndicator(highPrice, "highPrice");
+        this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);
+        this.reversalAmount = IndicatorUtils.requireIndicator(reversalAmount, "reversalAmount");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.reversalAmount);
+    }
+
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Number reversalAmount) {
+        this(highPrice, lowPrice, new ConstantIndicator<Num>(highPrice.getBarSeries(),
+                highPrice.getBarSeries().numFactory().numOf(reversalAmount)));
     }
 
     public ZigZagStateIndicator(Indicator<Num> price, Number reversalAmount) {
@@ -77,25 +102,25 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
     }
 
     public ZigZagStateIndicator(BarSeries series) {
-        this(new ClosePriceIndicator(series), new ATRIndicator(series, 14));
+        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ATRIndicator(series, 14));
     }
 
     ZigZagStateIndicator copy() {
-        return new ZigZagStateIndicator(price, reversalAmount);
+        return new ZigZagStateIndicator(highPrice, lowPrice, reversalAmount);
     }
 
     @Override
     protected ZigZagState calculate(int index) {
         final BarSeries series = getBarSeries();
         final int beginIndex = series.getBeginIndex();
-        final Num p = price.getValue(index);
+        final Num high = highPrice.getValue(index);
+        final Num low = lowPrice.getValue(index);
 
         if (index == beginIndex) {
-            // Initial state: no pivots, trend undefined, extreme is this bar
+            final Num initialPrice = Num.isFinite(high) ? high : low;
             return new ZigZagState(-1, null, // lastHighIndex, lastHighPrice
                     -1, null, // lastLowIndex, lastLowPrice
-                    ZigZagTrend.UNDEFINED, index, p // lastExtremeIndex, lastExtremePrice
-            );
+                    ZigZagTrend.UNDEFINED, index, initialPrice, index, high, index, low);
         }
 
         final ZigZagState prev = getValue(index - 1);
@@ -110,59 +135,84 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         int extremeIndex = prev.getLastExtremeIndex();
         Num extremePrice = prev.getLastExtremePrice();
 
-        final Num threshold = reversalAmount.getValue(index);
+        if (!Num.isFinite(high) || !Num.isFinite(low)) {
+            return prev;
+        }
 
         switch (trend) {
         case UNDEFINED:
-            if (p.isGreaterThan(extremePrice)) {
-                trend = ZigZagTrend.UP;
-                extremeIndex = index;
-                extremePrice = p;
-            } else if (p.isLessThan(extremePrice)) {
-                trend = ZigZagTrend.DOWN;
-                extremeIndex = index;
-                extremePrice = p;
+            int initialHighIndex = prev.getInitialHighIndex();
+            Num initialHighPrice = prev.getInitialHighPrice();
+            int initialLowIndex = prev.getInitialLowIndex();
+            Num initialLowPrice = prev.getInitialLowPrice();
+            if (!Num.isFinite(initialHighPrice) || !Num.isFinite(initialLowPrice)) {
+                initialHighIndex = index;
+                initialHighPrice = high;
+                initialLowIndex = index;
+                initialLowPrice = low;
             }
-            break;
+            final boolean extendsHigh = high.isGreaterThan(initialHighPrice);
+            final boolean extendsLow = low.isLessThan(initialLowPrice);
+            if (extendsHigh) {
+                initialHighIndex = index;
+                initialHighPrice = high;
+            }
+            if (extendsLow) {
+                initialLowIndex = index;
+                initialLowPrice = low;
+            }
+            final Num upThreshold = reversalAmount.getValue(initialLowIndex);
+            final Num downThreshold = reversalAmount.getValue(initialHighIndex);
+            final boolean confirmsUp = !extendsLow && Num.isFinite(upThreshold) && upThreshold.isPositive()
+                    && high.minus(initialLowPrice).isGreaterThanOrEqual(upThreshold);
+            final boolean confirmsDown = !extendsHigh && Num.isFinite(downThreshold) && downThreshold.isPositive()
+                    && initialHighPrice.minus(low).isGreaterThanOrEqual(downThreshold);
+            if (confirmsUp && !confirmsDown) {
+                lastLowIndex = initialLowIndex;
+                lastLowPrice = initialLowPrice;
+                trend = ZigZagTrend.UP;
+                extremeIndex = initialHighIndex;
+                extremePrice = initialHighPrice;
+            } else if (confirmsDown && !confirmsUp) {
+                lastHighIndex = initialHighIndex;
+                lastHighPrice = initialHighPrice;
+                trend = ZigZagTrend.DOWN;
+                extremeIndex = initialLowIndex;
+                extremePrice = initialLowPrice;
+            }
+            return new ZigZagState(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, extremeIndex,
+                    extremePrice, initialHighIndex, initialHighPrice, initialLowIndex, initialLowPrice);
 
         case UP:
-            if (p.isGreaterThan(extremePrice)) {
-                // Extend up‑leg
+            if (high.isGreaterThan(extremePrice)) {
                 extremeIndex = index;
-                extremePrice = p;
+                extremePrice = high;
             } else {
-                // Potential reversal down
-                Num moveDown = extremePrice.minus(p);
-                if (moveDown.isGreaterThanOrEqual(threshold)) {
-                    // Confirm swing high at extremeIndex
+                final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
+                if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
+                        && extremePrice.minus(low).isGreaterThanOrEqual(anchoredThreshold)) {
                     lastHighIndex = extremeIndex;
                     lastHighPrice = extremePrice;
-
-                    // Start new down‑leg from here
                     trend = ZigZagTrend.DOWN;
                     extremeIndex = index;
-                    extremePrice = p;
+                    extremePrice = low;
                 }
             }
             break;
 
         case DOWN:
-            if (p.isLessThan(extremePrice)) {
-                // Extend down‑leg
+            if (low.isLessThan(extremePrice)) {
                 extremeIndex = index;
-                extremePrice = p;
+                extremePrice = low;
             } else {
-                // Potential reversal up
-                Num moveUp = p.minus(extremePrice);
-                if (moveUp.isGreaterThanOrEqual(threshold)) {
-                    // Confirm swing low at extremeIndex
+                final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
+                if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
+                        && high.minus(extremePrice).isGreaterThanOrEqual(anchoredThreshold)) {
                     lastLowIndex = extremeIndex;
                     lastLowPrice = extremePrice;
-
-                    // Start new up‑leg from here
                     trend = ZigZagTrend.UP;
                     extremeIndex = index;
-                    extremePrice = p;
+                    extremePrice = high;
                 }
             }
             break;
@@ -179,12 +229,11 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * arbitrarily long to confirm. Each value only uses data up to the current
      * index, so this method returns 0.
      *
-     * @return 0, indicating no lookahead is required
+     * @return maximum warm-up required by the high, low, and reversal sources
      */
     @Override
     public int getCountOfUnstableBars() {
-        // There is no fixed lookahead window; reversals can take arbitrarily long.
-        // Returning 0 is reasonable: each value only uses data up to `index`.
-        return 0;
+        return Math.max(reversalAmount.getCountOfUnstableBars(),
+                Math.max(highPrice.getCountOfUnstableBars(), lowPrice.getCountOfUnstableBars()));
     }
 }

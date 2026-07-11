@@ -41,7 +41,7 @@ final class FractalDetectionHelper {
      * @param maxAvailableIndex highest index whose future context is available
      * @param precedingBars     required dominating bars before candidate
      * @param followingBars     required dominating bars after candidate
-     * @param allowedEqualBars  tolerated equal neighbors on each side
+     * @param allowedEqualBars  maximum additional equal bars in a plateau
      * @param direction         fractal direction
      * @return latest confirmed pivot index, or {@code -1} when unavailable
      */
@@ -58,12 +58,11 @@ final class FractalDetectionHelper {
         if (maxAvailableIndex < beginIndex || maxAvailableIndex > endIndex) {
             return -1;
         }
-        final int latestConfirmable = maxAvailableIndex - followingBars;
         final int earliestCandidate = beginIndex + precedingBars;
-        if (latestConfirmable < earliestCandidate) {
+        if (maxAvailableIndex < earliestCandidate) {
             return -1;
         }
-        for (int candidateIndex = latestConfirmable; candidateIndex >= earliestCandidate; candidateIndex--) {
+        for (int candidateIndex = maxAvailableIndex; candidateIndex >= earliestCandidate; candidateIndex--) {
             if (isConfirmedFractal(indicator, series, candidateIndex, precedingBars, followingBars, maxAvailableIndex,
                     allowedEqualBars, direction)) {
                 return candidateIndex;
@@ -81,7 +80,7 @@ final class FractalDetectionHelper {
      * @param precedingBars     required dominating bars before candidate
      * @param followingBars     required dominating bars after candidate
      * @param maxAvailableIndex highest index whose future context is available
-     * @param allowedEqualBars  tolerated equal neighbors on each side
+     * @param allowedEqualBars  maximum additional equal bars in a plateau
      * @param direction         fractal direction
      * @return {@code true} when confirmed, otherwise {@code false}
      */
@@ -104,27 +103,28 @@ final class FractalDetectionHelper {
             return false;
         }
 
-        final int plateauStart = findPlateauStart(indicator, beginIndex, candidateIndex, candidateValue,
-                allowedEqualBars);
+        final int plateauStart = findPlateauStart(indicator, beginIndex, candidateIndex, candidateValue);
         if (plateauStart < 0) {
             return false;
         }
-        final int plateauEnd = findPlateauEnd(indicator, candidateIndex, maxAvailableIndex, candidateValue,
-                allowedEqualBars);
+        final int plateauEnd = findPlateauEnd(indicator, candidateIndex, maxAvailableIndex, candidateValue);
         if (plateauEnd < 0) {
             return false;
         }
 
-        return hasDominatedPrecedingBars(indicator, beginIndex, plateauStart, precedingBars, candidateValue, direction)
+        final int plateauLength = plateauEnd - plateauStart + 1;
+        final int canonicalIndex = plateauStart + (plateauLength - 1) / 2;
+        return candidateIndex == canonicalIndex && plateauLength - 1 <= allowedEqualBars
+                && hasDominatedPrecedingBars(indicator, beginIndex, plateauStart, precedingBars, candidateValue,
+                        direction)
                 && hasDominatedFollowingBars(indicator, plateauEnd, maxAvailableIndex, followingBars, candidateValue,
                         direction);
     }
 
     private static int findPlateauStart(Indicator<Num> indicator, int beginIndex, int candidateIndex,
-            Num candidateValue, int allowedEqualBars) {
-        int equalsUsed = 0;
+            Num candidateValue) {
         int index = candidateIndex;
-        while (index > beginIndex && equalsUsed < allowedEqualBars) {
+        while (index > beginIndex) {
             final Num previousValue = indicator.getValue(index - 1);
             if (!Num.isFinite(previousValue)) {
                 return -1;
@@ -132,23 +132,15 @@ final class FractalDetectionHelper {
             if (!previousValue.isEqual(candidateValue)) {
                 break;
             }
-            equalsUsed++;
             index--;
-        }
-        if (index > beginIndex) {
-            final Num previousValue = indicator.getValue(index - 1);
-            if (previousValue.isEqual(candidateValue)) {
-                return -1;
-            }
         }
         return index;
     }
 
     private static int findPlateauEnd(Indicator<Num> indicator, int candidateIndex, int maxAvailableIndex,
-            Num candidateValue, int allowedEqualBars) {
-        int equalsUsed = 0;
+            Num candidateValue) {
         int index = candidateIndex;
-        while (index < maxAvailableIndex && equalsUsed < allowedEqualBars) {
+        while (index < maxAvailableIndex) {
             final Num nextValue = indicator.getValue(index + 1);
             if (!Num.isFinite(nextValue)) {
                 return -1;
@@ -156,14 +148,7 @@ final class FractalDetectionHelper {
             if (!nextValue.isEqual(candidateValue)) {
                 break;
             }
-            equalsUsed++;
             index++;
-        }
-        if (index < maxAvailableIndex) {
-            final Num nextValue = indicator.getValue(index + 1);
-            if (nextValue.isEqual(candidateValue)) {
-                return -1;
-            }
         }
         return index;
     }

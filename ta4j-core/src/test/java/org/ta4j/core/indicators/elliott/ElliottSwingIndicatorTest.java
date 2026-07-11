@@ -130,11 +130,11 @@ class ElliottSwingIndicatorTest {
         var swings = indicator.getValue(series.getEndIndex());
 
         assertThat(swings).hasSize(3);
-        assertThat(swings.get(0).fromIndex()).isEqualTo(2);
-        assertThat(swings.get(0).toIndex()).isEqualTo(4);
-        assertThat(swings.get(1).fromIndex()).isEqualTo(4);
-        assertThat(swings.get(1).toIndex()).isEqualTo(6);
-        assertThat(swings.get(2).toIndex()).isEqualTo(8);
+        assertThat(swings.get(0).fromIndex()).isEqualTo(1);
+        assertThat(swings.get(0).toIndex()).isEqualTo(3);
+        assertThat(swings.get(1).fromIndex()).isEqualTo(3);
+        assertThat(swings.get(1).toIndex()).isEqualTo(5);
+        assertThat(swings.get(2).toIndex()).isEqualTo(7);
     }
 
     @Test
@@ -149,8 +149,8 @@ class ElliottSwingIndicatorTest {
         var stateIndicator = new ZigZagStateIndicator(price, 1);
         var indicator = ElliottSwingIndicator.zigZag(stateIndicator, price, ElliottDegree.MINOR);
 
-        assertThat(indicator.getValue(series.getEndIndex())).hasSize(6);
-        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(1, 2, 3, 4, 5, 6, 7);
+        assertThat(indicator.getValue(series.getEndIndex())).hasSize(7);
+        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
     }
 
     @Test

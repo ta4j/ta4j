@@ -31,6 +31,10 @@ public final class ZigZagState {
     private final ZigZagTrend trend;
     private final int lastExtremeIndex;
     private final Num lastExtremePrice;
+    private final int initialHighIndex;
+    private final Num initialHighPrice;
+    private final int initialLowIndex;
+    private final Num initialLowPrice;
 
     /**
      * Constructs a new ZigZagState.
@@ -55,6 +59,13 @@ public final class ZigZagState {
      */
     public ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
             int lastExtremeIndex, Num lastExtremePrice) {
+        this(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, lastExtremeIndex, lastExtremePrice,
+                lastExtremeIndex, lastExtremePrice, lastExtremeIndex, lastExtremePrice);
+    }
+
+    ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
+            int lastExtremeIndex, Num lastExtremePrice, int initialHighIndex, Num initialHighPrice, int initialLowIndex,
+            Num initialLowPrice) {
         this.lastHighIndex = lastHighIndex;
         this.lastHighPrice = lastHighPrice;
         this.lastLowIndex = lastLowIndex;
@@ -62,6 +73,10 @@ public final class ZigZagState {
         this.trend = trend;
         this.lastExtremeIndex = lastExtremeIndex;
         this.lastExtremePrice = lastExtremePrice;
+        this.initialHighIndex = initialHighIndex;
+        this.initialHighPrice = initialHighPrice;
+        this.initialLowIndex = initialLowIndex;
+        this.initialLowPrice = initialLowPrice;
     }
 
     /**
@@ -137,5 +152,21 @@ public final class ZigZagState {
      */
     public Num getLastExtremePrice() {
         return lastExtremePrice;
+    }
+
+    int getInitialHighIndex() {
+        return initialHighIndex;
+    }
+
+    Num getInitialHighPrice() {
+        return initialHighPrice;
+    }
+
+    int getInitialLowIndex() {
+        return initialLowIndex;
+    }
+
+    Num getInitialLowPrice() {
+        return initialLowPrice;
     }
 }

@@ -99,8 +99,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @param series            source bar series
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
-     * @param allowedEqualBars  number of equal-value bars allowed on each side of a
-     *                          candidate pivot (flat tops/bottoms)
+     * @param allowedEqualBars  maximum additional equal-value bars in a flat
+     *                          top/bottom plateau
      * @param degree            swing degree metadata
      * @since 0.22.0
      */
@@ -149,8 +149,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @param indicator         indicator providing the values to analyse
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
-     * @param allowedEqualBars  number of equal-value bars allowed on each side of a
-     *                          candidate pivot (flat tops/bottoms)
+     * @param allowedEqualBars  maximum additional equal-value bars in a flat
+     *                          top/bottom plateau
      * @param degree            swing degree metadata
      * @since 0.22.0
      */
@@ -211,6 +211,25 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     /**
+     * Builds ZigZag-driven Elliott swings with dedicated high/low price sources.
+     *
+     * @param stateIndicator shared ZigZag state
+     * @param highPrice      source used to price swing highs
+     * @param lowPrice       source used to price swing lows
+     * @param degree         swing degree metadata
+     * @return OHLC-aware Elliott swing indicator
+     * @since 0.22.4
+     */
+    public static ElliottSwingIndicator zigZag(final ZigZagStateIndicator stateIndicator,
+            final Indicator<Num> highPrice, final Indicator<Num> lowPrice, final ElliottDegree degree) {
+        Objects.requireNonNull(stateIndicator, "stateIndicator");
+        Objects.requireNonNull(highPrice, "highPrice");
+        Objects.requireNonNull(lowPrice, "lowPrice");
+        return new ElliottSwingIndicator(new RecentZigZagSwingHighIndicator(stateIndicator, highPrice),
+                new RecentZigZagSwingLowIndicator(stateIndicator, lowPrice), degree);
+    }
+
+    /**
      * Convenience factory for ZigZag-driven Elliott swings using close prices and
      * an ATR(14) reversal threshold.
      *
@@ -221,9 +240,10 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      */
     public static ElliottSwingIndicator zigZag(final BarSeries series, final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
-        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> highPrice = new HighPriceIndicator(series);
+        final Indicator<Num> lowPrice = new LowPriceIndicator(series);
         final Indicator<Num> reversal = new ATRIndicator(series, 14);
-        return zigZag(new ZigZagStateIndicator(price, reversal), price, degree);
+        return zigZag(new ZigZagStateIndicator(highPrice, lowPrice, reversal), highPrice, lowPrice, degree);
     }
 
     @Override

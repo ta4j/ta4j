@@ -11,6 +11,7 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -67,14 +68,14 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
     }
 
     private RecentZigZagSwingLowIndicator(Config config) {
-        super(config.price(), 0);
+        super(config.price(), config.stateIndicator().getCountOfUnstableBars());
         this.stateIndicator = config.stateIndicator();
         this.price = config.price();
     }
 
     public RecentZigZagSwingLowIndicator(BarSeries series) {
-        this(new ZigZagStateIndicator(new LowPriceIndicator(series), new ATRIndicator(series, 14)),
-                new LowPriceIndicator(series));
+        this(new ZigZagStateIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ATRIndicator(series, 14)), new LowPriceIndicator(series));
     }
 
     /**

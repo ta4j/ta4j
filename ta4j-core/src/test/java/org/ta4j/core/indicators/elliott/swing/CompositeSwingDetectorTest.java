@@ -64,6 +64,26 @@ class CompositeSwingDetectorTest {
     }
 
     @Test
+    void tolerantConsensusClustersNearbyPivotsAndCountsDistinctDetectors() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        SwingDetector detectorA = (s, index, degree) -> SwingDetectorResult
+                .fromPivots(List.of(new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                        new SwingPivot(3, factory.numOf(120), SwingPivotType.HIGH)), degree);
+        SwingDetector detectorB = (s, index, degree) -> SwingDetectorResult
+                .fromPivots(List.of(new SwingPivot(2, factory.numOf(99), SwingPivotType.LOW),
+                        new SwingPivot(4, factory.numOf(122), SwingPivotType.HIGH)), degree);
+
+        CompositeSwingDetector detector = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
+                List.of(detectorA, detectorB), 1, 2);
+        SwingDetectorResult result = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+
+        assertThat(result.pivots()).extracting(SwingPivot::index).containsExactly(2, 4);
+        assertThat(detector.getIndexTolerance()).isEqualTo(1);
+        assertThat(detector.getRequiredVotes()).isEqualTo(2);
+    }
+
+    @Test
     void orPolicyCollapsesSharedIndexOppositePivotsIntoStrictlyIncreasingSwings() {
         BarSeries series = singleSeries();
         NumFactory factory = series.numFactory();
