@@ -118,13 +118,13 @@ public class BaseBarSeries implements BarSeries {
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
         List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
-        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, 0, false,
-                DecimalNumFactory.getInstance(), new TimeBarBuilderFactory());
+        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, 0, false, DecimalNumFactory.getInstance(),
+                new TimeBarBuilderFactory());
     }
 
     private static Config validatedConfig(final String name, final List<Bar> bars, final int seriesBeginIndex,
-            final int seriesEndIndex, final int removedBarsCount, final boolean constrained, final NumFactory numFactory,
-            final BarBuilderFactory barBuilderFactory) {
+            final int seriesEndIndex, final int removedBarsCount, final boolean constrained,
+            final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
         List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
         BarBuilderFactory validatedBarBuilderFactory = Objects.requireNonNull(barBuilderFactory);
         if (copiedBars.isEmpty()) {

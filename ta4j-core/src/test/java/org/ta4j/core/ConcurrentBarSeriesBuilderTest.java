@@ -130,8 +130,7 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
 
     @Test
     public void testWithBeginIndexRejectsNegativeValues() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new ConcurrentBarSeriesBuilder().withBeginIndex(-1));
+        assertThrows(IllegalArgumentException.class, () -> new ConcurrentBarSeriesBuilder().withBeginIndex(-1));
     }
 
     @Test
