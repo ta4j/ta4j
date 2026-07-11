@@ -5,9 +5,6 @@ These repo-local instructions override the user-level PR defaults for ta4j. Appl
 Override PR.RULE.PUSH_POLICY:
 ta4j is public. Existing non-default upstream branches may be pushed without asking, but the first push of a new remote branch requires explicit approval. Any push to `master` or the default branch also requires explicit approval.
 
-Override PR.RULE.NEW_REMOTE_BRANCH_PUSH:
-For ta4j, a direct user invocation of `$prd-deliver` or `$qa-and-ship` constitutes explicit permission to create and first-push the workflow's non-default delivery branch and to create or update its pull request after required local gates pass. Other first pushes still require explicit approval. This permission does not authorize pushes to `master`, default-branch mutation, or PR merge.
-
 Extend PR.RULE.CHANGELOG_STYLE:
 For ta4j PRs, user-visible behavior changes, public API changes, bug fixes, build/release behavior changes, and documentation changes that affect user or maintainer workflows require an entry in `CHANGELOG.md` under `Unreleased`. Skip only for changes that are exclusively test-only, internal cleanup with no user/maintainer-visible behavior change, or documentation-only edits that do not change documented behavior or workflow expectations. If a changelog entry is intentionally skipped for a non-trivial change, state the reason in the PR notes or handoff.
 
