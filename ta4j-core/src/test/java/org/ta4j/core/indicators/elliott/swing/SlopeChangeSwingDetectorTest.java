@@ -14,6 +14,13 @@ import org.ta4j.core.num.DoubleNumFactory;
 class SlopeChangeSwingDetectorTest {
 
     @Test
+    void constructsDefaultConfigFromWindow() {
+        SlopeChangeSwingDetector detector = new SlopeChangeSwingDetector(5);
+
+        assertThat(detector.getConfig()).isEqualTo(new SlopeChangeConfig(5, 1, 14, 0.0, 0.0));
+    }
+
+    @Test
     void detectsRoundedTurnsWithoutRepaintingConfirmedPrefix() {
         BarSeries series = series(1, 2, 4, 7, 9, 10, 9, 7, 4, 2, 1, 2, 4, 7, 9);
         SlopeChangeSwingDetector detector = new SlopeChangeSwingDetector(new SlopeChangeConfig(3, 2, 3, 0.1, 0.0));

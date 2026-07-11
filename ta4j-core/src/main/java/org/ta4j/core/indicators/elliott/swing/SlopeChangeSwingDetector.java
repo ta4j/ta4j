@@ -32,7 +32,25 @@ import org.ta4j.core.num.Num;
  */
 public final class SlopeChangeSwingDetector implements SwingDetector {
 
+    private static final int DEFAULT_CONFIRMATION_BARS = 1;
+    private static final int DEFAULT_ATR_PERIOD = 14;
+    private static final double DEFAULT_MIN_SLOPE_CHANGE = 0.0;
+    private static final double DEFAULT_MIN_ATR_REVERSAL = 0.0;
+
     private final SlopeChangeConfig config;
+
+    /**
+     * Creates a slope-change detector with the minimum required scale parameter.
+     * The detector confirms after one post-turn window, uses a 14-bar ATR, and
+     * leaves the optional slope-change and ATR-reversal filters disabled.
+     *
+     * @param window bars in each regression window
+     * @since 0.22.9
+     */
+    public SlopeChangeSwingDetector(final int window) {
+        this(new SlopeChangeConfig(window, DEFAULT_CONFIRMATION_BARS, DEFAULT_ATR_PERIOD, DEFAULT_MIN_SLOPE_CHANGE,
+                DEFAULT_MIN_ATR_REVERSAL));
+    }
 
     /**
      * @param config detector configuration
