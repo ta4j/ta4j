@@ -184,7 +184,7 @@ public class BaseBarSeries implements BarSeries {
         var builder = new BaseBarSeriesBuilder().withName(getName())
                 .withNumFactory(this.numFactory)
                 .withMaxBarCount(this.maximumBarCount)
-                .withBeginIndex(startIndex);
+                .withBeginIndex(this.removedBarsCount > 0 ? startIndex : 0);
         if (!this.bars.isEmpty()) {
             var removedBarsCount = getRemovedBarsCount();
             var start = startIndex - removedBarsCount;

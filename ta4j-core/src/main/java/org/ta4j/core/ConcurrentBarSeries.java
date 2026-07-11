@@ -142,7 +142,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
                 final int end = Math.min(endIndex - super.getRemovedBarsCount(), super.getEndIndex() + 1);
                 final var builder = new ConcurrentBarSeriesBuilder().withName(getName())
                         .withBars(cut(bars, start, end))
-                        .withBeginIndex(startIndex)
+                        .withBeginIndex(super.getRemovedBarsCount() > 0 ? startIndex : 0)
                         .withNumFactory(super.numFactory())
                         .withBarBuilderFactory(super.barBuilderFactory());
                 if (!isConstrained()) {
