@@ -58,7 +58,7 @@ public final class CompositeSwingDetector implements SwingDetector {
      * @param detectors      detectors to combine
      * @param indexTolerance maximum bar distance within a pivot cluster
      * @param requiredVotes  distinct detectors required to retain a cluster
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public CompositeSwingDetector(final Policy policy, final List<SwingDetector> detectors, final int indexTolerance,
             final int requiredVotes) {
@@ -137,7 +137,7 @@ public final class CompositeSwingDetector implements SwingDetector {
 
     /**
      * @return maximum bar distance used to cluster pivots
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public int getIndexTolerance() {
         return indexTolerance;
@@ -145,7 +145,7 @@ public final class CompositeSwingDetector implements SwingDetector {
 
     /**
      * @return detector quorum required for a cluster
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public int getRequiredVotes() {
         return requiredVotes;
@@ -169,6 +169,10 @@ public final class CompositeSwingDetector implements SwingDetector {
                 return;
             }
             final Num price = representative.price();
+            if (Num.isNaNOrNull(price)) {
+                representative = candidate;
+                return;
+            }
             if (type == SwingPivotType.HIGH) {
                 if (candidate.price().isGreaterThan(price)) {
                     representative = candidate;

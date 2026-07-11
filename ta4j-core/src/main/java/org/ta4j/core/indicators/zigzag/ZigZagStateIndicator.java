@@ -82,7 +82,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * @param lowPrice       source used to extend downward legs and confirm
      *                       downward reversals
      * @param reversalAmount positive reversal threshold in price units
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> reversalAmount) {
         this(highPrice, lowPrice, new ClosePriceIndicator(highPrice.getBarSeries()), reversalAmount);
@@ -96,7 +96,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * @param confirmationPrice source used to confirm movement away from an
      *                          extreme, commonly the close
      * @param reversalAmount    positive reversal threshold in price units
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
             Indicator<Num> reversalAmount) {
@@ -110,6 +110,14 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         IndicatorUtils.requireSameSeries(this.highPrice, this.reversalAmount);
     }
 
+    /**
+     * Constructs an OHLC-aware ZigZag with a constant reversal threshold.
+     *
+     * @param highPrice      source used to locate swing highs
+     * @param lowPrice       source used to locate swing lows
+     * @param reversalAmount positive reversal threshold in price units
+     * @since 0.22.9
+     */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Number reversalAmount) {
         this(highPrice, lowPrice, new ConstantIndicator<Num>(highPrice.getBarSeries(),
                 highPrice.getBarSeries().numFactory().numOf(reversalAmount)));

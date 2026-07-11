@@ -28,7 +28,7 @@ import org.ta4j.core.num.Num;
  * high or low in the transition interval. Detection is causal: evaluation at an
  * index never reads a later bar.
  *
- * @since 0.22.4
+ * @since 0.22.9
  */
 public final class SlopeChangeSwingDetector implements SwingDetector {
 

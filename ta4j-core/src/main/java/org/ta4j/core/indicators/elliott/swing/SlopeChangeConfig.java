@@ -13,7 +13,7 @@ package org.ta4j.core.indicators.elliott.swing;
  * @param minSlopeChange   minimum absolute change between pre/post slopes in
  *                         price units per bar
  * @param minAtrReversal   minimum pivot displacement as an ATR multiple
- * @since 0.22.4
+ * @since 0.22.9
  */
 public record SlopeChangeConfig(int window, int confirmationBars, int atrPeriod, double minSlopeChange,
         double minAtrReversal) {

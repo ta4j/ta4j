@@ -84,6 +84,25 @@ class CompositeSwingDetectorTest {
     }
 
     @Test
+    void tolerantConsensusPrefersFiniteRepresentative() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        SwingDetector detectorA = (s, index,
+                degree) -> new SwingDetectorResult(List.of(new SwingPivot(1, NaN, SwingPivotType.LOW)), List.of());
+        SwingDetector detectorB = (s, index, degree) -> SwingDetectorResult
+                .fromPivots(List.of(new SwingPivot(2, factory.hundred(), SwingPivotType.LOW)), degree);
+
+        CompositeSwingDetector detector = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
+                List.of(detectorA, detectorB), 1, 2);
+
+        assertThat(detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots()).singleElement()
+                .satisfies(pivot -> {
+                    assertThat(pivot.index()).isEqualTo(2);
+                    assertThat(pivot.price()).isEqualByComparingTo(factory.hundred());
+                });
+    }
+
+    @Test
     void orPolicyCollapsesSharedIndexOppositePivotsIntoStrictlyIncreasingSwings() {
         BarSeries series = singleSeries();
         NumFactory factory = series.numFactory();

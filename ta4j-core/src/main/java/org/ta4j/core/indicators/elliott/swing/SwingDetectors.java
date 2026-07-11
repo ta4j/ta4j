@@ -61,7 +61,7 @@ public final class SwingDetectors {
      *
      * @param config slope-change configuration
      * @return slope-change detector
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public static SwingDetector slopeChange(final SlopeChangeConfig config) {
         return new SlopeChangeSwingDetector(config);
@@ -87,7 +87,7 @@ public final class SwingDetectors {
      * @param requiredVotes  detector quorum
      * @param detectors      detectors to combine
      * @return tolerant composite detector
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public static SwingDetector multiScale(final int indexTolerance, final int requiredVotes,
             final SwingDetector... detectors) {

@@ -218,7 +218,7 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @param lowPrice       source used to price swing lows
      * @param degree         swing degree metadata
      * @return OHLC-aware Elliott swing indicator
-     * @since 0.22.4
+     * @since 0.22.9
      */
     public static ElliottSwingIndicator zigZag(final ZigZagStateIndicator stateIndicator,
             final Indicator<Num> highPrice, final Indicator<Num> lowPrice, final ElliottDegree degree) {
