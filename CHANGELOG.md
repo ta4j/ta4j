@@ -15,6 +15,10 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
+- **Source position labels remain accurate in isolated chart renders**: Trading-record
+  chart callers can now provide a 1-based source position start, so position bands
+  and buy/sell annotations retain their original ordinal when a focused chart
+  contains only a later source position (CF-299).
 - **CF-207/208/209/210/211/236 SpotBugs closure**: Cleared the historical SpotBugs baseline across constructor safety, cache concurrency, representation ownership, examples IO/reporting, serialization, indicator/rule/backtest accessors, and Elliott analysis paths; Maven `verify`, standalone SpotBugs scans, and GitHub CI now run SpotBugs without an exclude filter and fail on new findings.
 
 ## 0.22.8 (2026-06-29)
