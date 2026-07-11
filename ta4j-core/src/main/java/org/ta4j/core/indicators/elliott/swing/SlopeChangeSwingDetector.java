@@ -78,7 +78,7 @@ public final class SlopeChangeSwingDetector implements SwingDetector {
             }
             final SwingPivot pivot = extremePivot(type == SwingPivotType.HIGH ? high : low, candidate,
                     candidate + config.window() - 1, type);
-            if ((pivots.isEmpty() || pivots.get(pivots.size() - 1).type() != pivot.type())
+            if (pivot != null && (pivots.isEmpty() || pivots.get(pivots.size() - 1).type() != pivot.type())
                     && passesMagnitudeFilter(pivots, pivot, atr.getValue(pivot.index()), atrMultiplier)) {
                 pivots.add(pivot);
             }
@@ -133,8 +133,14 @@ public final class SlopeChangeSwingDetector implements SwingDetector {
             final SwingPivotType type) {
         int extremeIndex = start;
         Num extreme = values.getValue(start);
+        if (!Num.isFinite(extreme)) {
+            return null;
+        }
         for (int index = start + 1; index <= end; index++) {
             final Num value = values.getValue(index);
+            if (!Num.isFinite(value)) {
+                return null;
+            }
             if (type == SwingPivotType.HIGH && value.isGreaterThan(extreme)
                     || type == SwingPivotType.LOW && value.isLessThan(extreme)) {
                 extremeIndex = index;

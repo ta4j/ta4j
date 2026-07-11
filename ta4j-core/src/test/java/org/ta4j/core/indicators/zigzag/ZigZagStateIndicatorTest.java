@@ -270,6 +270,7 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
         series.barBuilder().highPrice(111).lowPrice(108).closePrice(109).add();
         series.barBuilder().highPrice(109).lowPrice(104).closePrice(104).add();
+        series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();
 
         final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
                 new LowPriceIndicator(series), 5);
@@ -278,6 +279,9 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         assertThat(state.getLastHighIndex()).isEqualTo(1);
         assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(111));
         assertThat(state.getTrend()).isEqualTo(ZigZagTrend.DOWN);
+        final ZigZagState extendedState = indicator.getValue(3);
+        assertThat(extendedState.getLastExtremeIndex()).isEqualTo(3);
+        assertThat(extendedState.getLastExtremePrice()).isEqualByComparingTo(numOf(95));
     }
 
     @Test

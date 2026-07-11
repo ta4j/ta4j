@@ -103,11 +103,13 @@ final class FractalDetectionHelper {
             return false;
         }
 
-        final int plateauStart = findPlateauStart(indicator, beginIndex, candidateIndex, candidateValue);
+        final int plateauStart = findPlateauStart(indicator, beginIndex, candidateIndex, candidateValue,
+                allowedEqualBars);
         if (plateauStart < 0) {
             return false;
         }
-        final int plateauEnd = findPlateauEnd(indicator, candidateIndex, maxAvailableIndex, candidateValue);
+        final int plateauEnd = findPlateauEnd(indicator, candidateIndex, maxAvailableIndex, candidateValue,
+                allowedEqualBars);
         if (plateauEnd < 0) {
             return false;
         }
@@ -122,8 +124,9 @@ final class FractalDetectionHelper {
     }
 
     private static int findPlateauStart(Indicator<Num> indicator, int beginIndex, int candidateIndex,
-            Num candidateValue) {
+            Num candidateValue, int allowedEqualBars) {
         int index = candidateIndex;
+        int equalBars = 0;
         while (index > beginIndex) {
             final Num previousValue = indicator.getValue(index - 1);
             if (!Num.isFinite(previousValue)) {
@@ -132,14 +135,18 @@ final class FractalDetectionHelper {
             if (!previousValue.isEqual(candidateValue)) {
                 break;
             }
+            if (++equalBars > allowedEqualBars) {
+                return -1;
+            }
             index--;
         }
         return index;
     }
 
     private static int findPlateauEnd(Indicator<Num> indicator, int candidateIndex, int maxAvailableIndex,
-            Num candidateValue) {
+            Num candidateValue, int allowedEqualBars) {
         int index = candidateIndex;
+        int equalBars = 0;
         while (index < maxAvailableIndex) {
             final Num nextValue = indicator.getValue(index + 1);
             if (!Num.isFinite(nextValue)) {
@@ -147,6 +154,9 @@ final class FractalDetectionHelper {
             }
             if (!nextValue.isEqual(candidateValue)) {
                 break;
+            }
+            if (++equalBars > allowedEqualBars) {
+                return -1;
             }
             index++;
         }
