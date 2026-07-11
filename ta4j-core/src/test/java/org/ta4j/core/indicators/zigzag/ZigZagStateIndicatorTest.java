@@ -269,7 +269,7 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     public void shouldUseIntrabarHighsAndLowsForPivotsAndReversals() {
         series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
         series.barBuilder().highPrice(111).lowPrice(108).closePrice(109).add();
-        series.barBuilder().highPrice(109).lowPrice(104).closePrice(108).add();
+        series.barBuilder().highPrice(109).lowPrice(104).closePrice(104).add();
 
         final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
                 new LowPriceIndicator(series), 5);
@@ -388,7 +388,7 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
 
         final ComponentDescriptor descriptor = original.toDescriptor();
         assertThat(descriptor.getType()).isEqualTo("ZigZagStateIndicator");
-        assertThat(descriptor.getComponents()).hasSize(3);
+        assertThat(descriptor.getComponents()).hasSize(4);
         assertThat(descriptor.getComponents())
                 .anySatisfy(component -> component.getType().equals("ClosePriceIndicator"));
         assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("ConstantIndicator"));
@@ -470,6 +470,6 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         // State fields should not be serialized
         assertThat(descriptor.getParameters()).doesNotContainKey("price");
         assertThat(descriptor.getParameters()).doesNotContainKey("reversalAmount");
-        assertThat(descriptor.getComponents()).hasSize(3); // High, low, and threshold components
+        assertThat(descriptor.getComponents()).hasSize(4); // High, low, confirmation, and threshold components
     }
 }

@@ -8,6 +8,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -53,6 +54,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
 
     private final Indicator<Num> highPrice;
     private final Indicator<Num> lowPrice;
+    private final Indicator<Num> confirmationPrice;
     private final Indicator<Num> reversalAmount; // threshold in price units
 
     /**
@@ -69,7 +71,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      *                       indicator.
      */
     public ZigZagStateIndicator(Indicator<Num> price, Indicator<Num> reversalAmount) {
-        this(price, price, reversalAmount);
+        this(price, price, price, reversalAmount);
     }
 
     /**
@@ -83,10 +85,27 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * @since 0.22.4
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> reversalAmount) {
+        this(highPrice, lowPrice, new ClosePriceIndicator(highPrice.getBarSeries()), reversalAmount);
+    }
+
+    /**
+     * Constructs a ZigZag with dedicated extreme and confirmation sources.
+     *
+     * @param highPrice         source used to locate swing highs
+     * @param lowPrice          source used to locate swing lows
+     * @param confirmationPrice source used to confirm movement away from an
+     *                          extreme, commonly the close
+     * @param reversalAmount    positive reversal threshold in price units
+     * @since 0.22.4
+     */
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
+            Indicator<Num> reversalAmount) {
         super(highPrice);
         this.highPrice = IndicatorUtils.requireIndicator(highPrice, "highPrice");
         this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
         IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);
+        this.confirmationPrice = IndicatorUtils.requireIndicator(confirmationPrice, "confirmationPrice");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.confirmationPrice);
         this.reversalAmount = IndicatorUtils.requireIndicator(reversalAmount, "reversalAmount");
         IndicatorUtils.requireSameSeries(this.highPrice, this.reversalAmount);
     }
@@ -102,11 +121,12 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
     }
 
     public ZigZagStateIndicator(BarSeries series) {
-        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ATRIndicator(series, 14));
+        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
+                new ATRIndicator(series, 14));
     }
 
     ZigZagStateIndicator copy() {
-        return new ZigZagStateIndicator(highPrice, lowPrice, reversalAmount);
+        return new ZigZagStateIndicator(highPrice, lowPrice, confirmationPrice, reversalAmount);
     }
 
     @Override
@@ -115,6 +135,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         final int beginIndex = series.getBeginIndex();
         final Num high = highPrice.getValue(index);
         final Num low = lowPrice.getValue(index);
+        final Num confirmation = confirmationPrice.getValue(index);
 
         if (index == beginIndex) {
             final Num initialPrice = Num.isFinite(high) ? high : low;
@@ -135,7 +156,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         int extremeIndex = prev.getLastExtremeIndex();
         Num extremePrice = prev.getLastExtremePrice();
 
-        if (!Num.isFinite(high) || !Num.isFinite(low)) {
+        if (!Num.isFinite(high) || !Num.isFinite(low) || !Num.isFinite(confirmation)) {
             return prev;
         }
 
@@ -164,9 +185,9 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             final Num upThreshold = reversalAmount.getValue(initialLowIndex);
             final Num downThreshold = reversalAmount.getValue(initialHighIndex);
             final boolean confirmsUp = !extendsLow && Num.isFinite(upThreshold) && upThreshold.isPositive()
-                    && high.minus(initialLowPrice).isGreaterThanOrEqual(upThreshold);
+                    && confirmation.minus(initialLowPrice).isGreaterThanOrEqual(upThreshold);
             final boolean confirmsDown = !extendsHigh && Num.isFinite(downThreshold) && downThreshold.isPositive()
-                    && initialHighPrice.minus(low).isGreaterThanOrEqual(downThreshold);
+                    && initialHighPrice.minus(confirmation).isGreaterThanOrEqual(downThreshold);
             if (confirmsUp && !confirmsDown) {
                 lastLowIndex = initialLowIndex;
                 lastLowPrice = initialLowPrice;
@@ -190,7 +211,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             } else {
                 final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
                 if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
-                        && extremePrice.minus(low).isGreaterThanOrEqual(anchoredThreshold)) {
+                        && extremePrice.minus(confirmation).isGreaterThanOrEqual(anchoredThreshold)) {
                     lastHighIndex = extremeIndex;
                     lastHighPrice = extremePrice;
                     trend = ZigZagTrend.DOWN;
@@ -207,7 +228,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             } else {
                 final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
                 if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
-                        && high.minus(extremePrice).isGreaterThanOrEqual(anchoredThreshold)) {
+                        && confirmation.minus(extremePrice).isGreaterThanOrEqual(anchoredThreshold)) {
                     lastLowIndex = extremeIndex;
                     lastLowPrice = extremePrice;
                     trend = ZigZagTrend.UP;
@@ -233,7 +254,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(reversalAmount.getCountOfUnstableBars(),
+        return Math.max(Math.max(reversalAmount.getCountOfUnstableBars(), confirmationPrice.getCountOfUnstableBars()),
                 Math.max(highPrice.getCountOfUnstableBars(), lowPrice.getCountOfUnstableBars()));
     }
 }
