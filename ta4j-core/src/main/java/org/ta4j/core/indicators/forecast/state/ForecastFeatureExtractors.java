@@ -61,12 +61,13 @@ public final class ForecastFeatureExtractors {
      * {@link #driftVolatility()} when drift is an intentional model input, or
      * {@link #meanDriftVarianceVolatility()} for the full common state surface.
      *
+     * @param <S> forecast state type
      * @return return-state feature extractor
      * @since 0.22.9
      */
-    public static ForecastFeatureExtractor<ReturnForecastState> returnStateDefaults() {
+    public static <S extends ForecastState> ForecastFeatureExtractor<S> returnStateDefaults() {
         return state -> {
-            ReturnForecastState value = requireStable(state);
+            S value = requireStable(state);
             return new double[] { finiteDouble(value.mean(), "mean"), finiteDouble(value.volatility(), "volatility") };
         };
     }

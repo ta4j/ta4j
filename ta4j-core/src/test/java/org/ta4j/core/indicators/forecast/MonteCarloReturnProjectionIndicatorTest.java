@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -133,6 +134,25 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         assertEquals(10, prediction.sampleCount());
     }
 
+    @Test
+    public void acceptsCustomStateUsingADifferentNumFactory() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        ReturnForecastStateIndicator<CustomReturnState> state = new FixedCustomStateIndicator(returns,
+                DecimalNumFactory.getInstance());
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .build();
+
+        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+
+        assertTrue(prediction.isStable());
+        assertEquals(10, prediction.sampleCount());
+        assertTrue(series.numFactory().produces(prediction.mean()));
+    }
+
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
             MonteCarloReturnProjectionIndicator.ShockModel shockModel, int horizon, int iterations, int lookback,
             long seed, MonteCarloReturnProjectionIndicator.VolatilityUpdateMode updateMode) {
@@ -226,9 +246,15 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
     private static final class FixedCustomStateIndicator implements ReturnForecastStateIndicator<CustomReturnState> {
 
         private final ReturnIndicator returns;
+        private final NumFactory stateNumFactory;
 
         private FixedCustomStateIndicator(ReturnIndicator returns) {
+            this(returns, returns.getBarSeries().numFactory());
+        }
+
+        private FixedCustomStateIndicator(ReturnIndicator returns, NumFactory stateNumFactory) {
             this.returns = returns;
+            this.stateNumFactory = stateNumFactory;
         }
 
         @Override
@@ -238,7 +264,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
 
         @Override
         public CustomReturnState getValue(int index) {
-            Num zero = getBarSeries().numFactory().zero();
+            Num zero = stateNumFactory.zero();
             return new CustomReturnState(index, index + 1, true, zero, zero, zero, zero);
         }
 

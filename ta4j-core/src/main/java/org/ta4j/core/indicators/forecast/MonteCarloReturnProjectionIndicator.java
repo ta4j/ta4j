@@ -18,11 +18,18 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
  * Monte Carlo cumulative log-return forecast indicator.
+ *
+ * <p>
+ * Values from custom return-state implementations are normalized to the source
+ * series {@link NumFactory}. A state is treated as unstable when its common
+ * values are unavailable, negative where prohibited, or cannot be represented
+ * by that factory.
  *
  * @since 0.22.9
  */
@@ -98,8 +105,13 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         if (index < getCountOfUnstableBars()) {
             return Forecast.unstable(index, horizon);
         }
-        ForecastState state = stateIndicator.getValue(index);
-        if (state == null || !state.isStable() || !Num.isFinite(state.volatility()) || !Num.isFinite(state.drift())) {
+        ForecastState rawState = stateIndicator.getValue(index);
+        if (rawState == null || !rawState.isStable()) {
+            return Forecast.unstable(index, horizon);
+        }
+        NumFactory numFactory = getBarSeries().numFactory();
+        ProjectionState state = ProjectionState.from(rawState, numFactory);
+        if (state == null) {
             return Forecast.unstable(index, horizon);
         }
         List<Num> historicalReturns = historicalReturns(index);
@@ -107,7 +119,6 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return Forecast.unstable(index, horizon);
         }
 
-        NumFactory numFactory = getBarSeries().numFactory();
         ShockSampler sampler = ShockSampler.create(shockModel, historicalReturns, state, numFactory);
         RandomGenerator random = new SplittableRandom(mixSeed(seed, index, horizon));
         List<Num> cumulativeReturns = new ArrayList<>(iterationCount);
@@ -150,7 +161,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return values;
     }
 
-    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ForecastState startingState,
+    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ProjectionState startingState,
             NumFactory numFactory) {
         Num cumulativeReturn = numFactory.zero();
         Num drift = startingState.drift();
@@ -421,12 +432,35 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         }
     }
 
+    private record ProjectionState(Num mean, Num drift, Num variance, Num volatility) {
+
+        private static ProjectionState from(ForecastState state, NumFactory numFactory) {
+            Num mean = normalize(state.mean(), numFactory);
+            Num drift = normalize(state.drift(), numFactory);
+            Num variance = normalize(state.variance(), numFactory);
+            Num volatility = normalize(state.volatility(), numFactory);
+            if (!Num.isFinite(mean) || !Num.isFinite(drift) || !Num.isFinite(variance) || !Num.isFinite(volatility)
+                    || variance.isNegative() || volatility.isNegative()) {
+                return null;
+            }
+            return new ProjectionState(mean, drift, variance, volatility);
+        }
+
+        private static Num normalize(Num value, NumFactory numFactory) {
+            if (!Num.isFinite(value)) {
+                return NaN.NaN;
+            }
+            Num normalized = numFactory.produces(value) ? value : numFactory.numOf(value.toString());
+            return Num.isFinite(normalized) ? normalized : NaN.NaN;
+        }
+    }
+
     @FunctionalInterface
     private interface ShockSampler {
 
         Num sample(RandomGenerator random);
 
-        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ForecastState state,
+        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ProjectionState state,
                 NumFactory numFactory) {
             return switch (model) {
             case HISTORICAL_BOOTSTRAP -> historicalBootstrap(historicalReturns);
@@ -440,7 +474,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return random -> samples.get(random.nextInt(samples.size()));
         }
 
-        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ForecastState state,
+        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ProjectionState state,
                 NumFactory numFactory) {
             List<Num> shocks = new ArrayList<>(historicalReturns.size());
             if (state.volatility().isZero()) {

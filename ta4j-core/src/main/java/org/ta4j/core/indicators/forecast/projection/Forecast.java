@@ -76,9 +76,7 @@ public final class Forecast<T> {
             validateFiniteNum("mean", validatedMean);
             validateFiniteNum("median", validatedMedian);
             validateStandardDeviation(validatedStandardDeviation);
-            for (T quantile : validatedQuantiles.values()) {
-                validateFiniteNum("quantile value", quantile);
-            }
+            validateQuantileValues(validatedQuantiles);
         }
         this.mean = validatedMean;
         this.median = validatedMedian;
@@ -214,11 +212,12 @@ public final class Forecast<T> {
      *
      * <p>
      * This factory is intended for projections that have a real summary but do not
-     * own a sample collection. Quantiles are validated, sorted, and copied. The
-     * caller-provided sample count records the number of distribution values
-     * represented by the summary. It must not be used for training or calibration
-     * observation counts. Analytic summaries that do not represent a sampled
-     * distribution use {@code 1}.
+     * own a sample collection. Quantile probabilities are validated and sorted;
+     * numeric quantile values must be finite and nondecreasing. The quantile map is
+     * defensively copied. The caller-provided sample count records the number of
+     * distribution values represented by the summary. It must not be used for
+     * training or calibration observation counts. Analytic summaries that do not
+     * represent a sampled distribution use {@code 1}.
      *
      * @param decisionIndex     decision index
      * @param horizon           forecast horizon in bars
@@ -309,7 +308,8 @@ public final class Forecast<T> {
 
     /**
      * Maps all summary values while preserving decision index, horizon, sample
-     * count, and stable state.
+     * count, and stable state. Numeric mappers must produce finite values, preserve
+     * quantile ordering, and produce a nonnegative mapped standard deviation.
      *
      * @param mapper value mapper
      * @param <R>    mapped forecast value type
@@ -352,6 +352,21 @@ public final class Forecast<T> {
         validateFiniteNum("standardDeviation", value);
         if (value instanceof Num number && number.isNegative()) {
             throw new IllegalArgumentException("standardDeviation must be >= 0");
+        }
+    }
+
+    private static void validateQuantileValues(Map<Double, ?> quantiles) {
+        Num previous = null;
+        for (Object quantile : quantiles.values()) {
+            validateFiniteNum("quantile value", quantile);
+            if (!(quantile instanceof Num number)) {
+                previous = null;
+                continue;
+            }
+            if (previous != null && number.isLessThan(previous)) {
+                throw new IllegalArgumentException("numeric quantile values must be nondecreasing");
+            }
+            previous = number;
         }
     }
 

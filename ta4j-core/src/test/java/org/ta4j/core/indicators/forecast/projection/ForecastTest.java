@@ -102,6 +102,20 @@ class ForecastTest {
     }
 
     @Test
+    void forecastRejectsCrossedNumericQuantiles() {
+        Map<Double, Num> crossedQuantiles = new LinkedHashMap<>();
+        crossedQuantiles.put(0.05, NUM_FACTORY.two());
+        crossedQuantiles.put(0.95, NUM_FACTORY.one());
+
+        assertThrows(IllegalArgumentException.class, () -> Forecast.ofSummary(0, 1, 1, NUM_FACTORY.one(),
+                NUM_FACTORY.one(), NUM_FACTORY.zero(), crossedQuantiles));
+
+        Forecast<Num> flatDistribution = Forecast.ofSummary(0, 1, 1, NUM_FACTORY.one(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), Map.of(0.05, NUM_FACTORY.one(), 0.95, NUM_FACTORY.one()));
+        assertThat(flatDistribution.isStable()).isTrue();
+    }
+
+    @Test
     void forecastAcceptsFiniteDecimalValuesThatOverflowDouble() {
         Num largeFiniteValue = DecimalNumFactory.getInstance().numOf("1E+10000");
 

@@ -31,6 +31,13 @@ public class ForecastFeatureExtractorsTest extends AbstractIndicatorTest<Forecas
     }
 
     @Test
+    public void returnStateDefaultsComposeWithGenericForecastStates() {
+        ForecastFeatureExtractor<ForecastState> extractor = ForecastFeatureExtractors.returnStateDefaults();
+
+        assertArrayEquals(new double[] { 1, 4 }, extractor.features(state()), 0d);
+    }
+
+    @Test
     public void extractorsReturnDefensiveArrays() {
         ForecastFeatureExtractor<ReturnForecastState> extractor = ForecastFeatureExtractors.returnStateDefaults();
 
