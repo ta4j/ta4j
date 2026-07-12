@@ -139,7 +139,7 @@ public class BaseBarSeries implements BarSeries {
         if (removedBarsCount < 0 || seriesBeginIndex < removedBarsCount) {
             throw new IllegalArgumentException("Removed bars count must be between zero and the begin index");
         }
-        if (seriesEndIndex >= removedBarsCount + copiedBars.size()) {
+        if ((long) seriesEndIndex >= (long) removedBarsCount + copiedBars.size()) {
             throw new IllegalArgumentException("End index must be within the offset bar list");
         }
         return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
@@ -182,13 +182,14 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
+        final int retainedStartIndex = Math.max(startIndex, this.seriesBeginIndex);
         var builder = new BaseBarSeriesBuilder().withName(getName())
                 .withNumFactory(this.numFactory)
                 .withMaxBarCount(this.maximumBarCount)
-                .withBeginIndex(this.removedBarsCount > 0 ? startIndex : 0);
+                .withBeginIndex(this.removedBarsCount > 0 ? retainedStartIndex : 0);
         if (!this.bars.isEmpty()) {
             var removedBarsCount = getRemovedBarsCount();
-            var start = startIndex - removedBarsCount;
+            var start = retainedStartIndex - removedBarsCount;
             var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
             return builder.withBars(cut(this.bars, start, end)).build();
         }
@@ -302,6 +303,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
+     * @throws ArithmeticException  if appending would advance the absolute index
+     *                              beyond {@link Integer#MAX_VALUE}
      */
     @Override
     public void addBar(final Bar bar, final boolean replace) {
@@ -317,6 +320,9 @@ public class BaseBarSeries implements BarSeries {
                 this.bars.set(this.bars.size() - 1, bar);
                 return;
             }
+            if (this.seriesEndIndex == Integer.MAX_VALUE) {
+                throw new ArithmeticException("Bar series index overflow");
+            }
             final int lastBarIndex = this.bars.size() - 1;
             final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
@@ -331,7 +337,7 @@ public class BaseBarSeries implements BarSeries {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
-        this.seriesEndIndex++;
+        this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
         removeExceedingBars();
     }
 

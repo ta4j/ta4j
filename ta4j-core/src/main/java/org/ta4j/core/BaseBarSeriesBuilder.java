@@ -41,13 +41,19 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
         this.beginIndex = 0;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws ArithmeticException if the configured begin index and bars would
+     *                             exceed {@link Integer#MAX_VALUE}
+     */
     @Override
     public BaseBarSeries build() {
         int beginIndex = -1;
         int endIndex = -1;
         if (!bars.isEmpty()) {
             beginIndex = this.beginIndex;
-            endIndex = beginIndex + bars.size() - 1;
+            endIndex = Math.addExact(beginIndex, bars.size() - 1);
 
             if (!isNumFactoryAssigned) {
                 // use numFactory derived from bars instead of default numFactory

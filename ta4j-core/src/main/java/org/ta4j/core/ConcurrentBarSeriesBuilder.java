@@ -48,6 +48,8 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * {@inheritDoc}
      *
      * @since 0.22.2
+     * @throws ArithmeticException if the configured begin index and bars would
+     *                             exceed {@link Integer#MAX_VALUE}
      */
     @Override
     public ConcurrentBarSeries build() {
@@ -55,7 +57,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
         int endIndex = -1;
         if (!bars.isEmpty()) {
             beginIndex = this.beginIndex;
-            endIndex = beginIndex + bars.size() - 1;
+            endIndex = Math.addExact(beginIndex, bars.size() - 1);
         }
         // If maxBarCount is configured, the series must be unconstrained to allow
         // removals.

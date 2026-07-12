@@ -129,6 +129,40 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
     }
 
     @Test
+    public void testWithBeginIndexClampsSubSeriesToRetainedWindow() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(createTestBars(3))
+                .withNumFactory(numFactory)
+                .withBeginIndex(50)
+                .build();
+
+        ConcurrentBarSeries subSeries = series.getSubSeries(0, 52);
+
+        assertEquals(50, subSeries.getBeginIndex());
+        assertEquals(51, subSeries.getEndIndex());
+        assertEquals(series.getBar(50), subSeries.getBar(50));
+    }
+
+    @Test
+    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
+        Bar first = createTestBar(0);
+        Bar second = createTestBar(1);
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(List.of(first))
+                .withNumFactory(numFactory)
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        assertThrows(ArithmeticException.class, () -> series.addBar(second));
+        assertEquals(1, series.getBarCount());
+        assertThrows(ArithmeticException.class,
+                () -> new ConcurrentBarSeriesBuilder().withBars(List.of(first, second))
+                        .withNumFactory(numFactory)
+                        .withBeginIndex(Integer.MAX_VALUE)
+                        .build());
+    }
+
+    @Test
     public void testWithBeginIndexRejectsNegativeValues() {
         assertThrows(IllegalArgumentException.class, () -> new ConcurrentBarSeriesBuilder().withBeginIndex(-1));
     }

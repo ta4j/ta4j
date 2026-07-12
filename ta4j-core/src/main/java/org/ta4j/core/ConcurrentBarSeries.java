@@ -138,11 +138,12 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             }
             final List<Bar> bars = super.getBarData();
             if (!bars.isEmpty()) {
-                final int start = startIndex - super.getRemovedBarsCount();
+                final int retainedStartIndex = Math.max(startIndex, super.getBeginIndex());
+                final int start = retainedStartIndex - super.getRemovedBarsCount();
                 final int end = Math.min(endIndex - super.getRemovedBarsCount(), super.getEndIndex() + 1);
                 final var builder = new ConcurrentBarSeriesBuilder().withName(getName())
                         .withBars(cut(bars, start, end))
-                        .withBeginIndex(super.getRemovedBarsCount() > 0 ? startIndex : 0)
+                        .withBeginIndex(super.getRemovedBarsCount() > 0 ? retainedStartIndex : 0)
                         .withNumFactory(super.numFactory())
                         .withBarBuilderFactory(super.barBuilderFactory());
                 if (!isConstrained()) {

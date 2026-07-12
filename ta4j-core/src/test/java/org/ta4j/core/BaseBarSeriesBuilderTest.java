@@ -130,6 +130,7 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
 
         BaseBarSeries series = new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(50).build();
         BarSeries subSeries = series.getSubSeries(51, 54);
+        BarSeries clampedSubSeries = series.getSubSeries(0, 52);
 
         assertEquals(50, series.getBeginIndex());
         assertEquals(53, series.getEndIndex());
@@ -137,6 +138,35 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
         assertEquals(51, subSeries.getBeginIndex());
         assertEquals(53, subSeries.getEndIndex());
         assertEquals(series.getBar(51), subSeries.getBar(51));
+        assertEquals(50, clampedSubSeries.getBeginIndex());
+        assertEquals(51, clampedSubSeries.getEndIndex());
+        assertEquals(series.getBar(50), clampedSubSeries.getBar(50));
+    }
+
+    @Test
+    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
+        final NumFactory factory = DoubleNumFactory.getInstance();
+        final Bar first = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        final Bar second = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build();
+
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        assertThrows(ArithmeticException.class, () -> series.addBar(second));
+        assertEquals(1, series.getBarCount());
+        assertThrows(ArithmeticException.class,
+                () -> new BaseBarSeriesBuilder().withBars(List.of(first, second))
+                        .withBeginIndex(Integer.MAX_VALUE)
+                        .build());
     }
 
     @Test
