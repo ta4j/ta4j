@@ -105,6 +105,22 @@ public interface BarSeries extends Serializable {
     List<Bar> getBarData();
 
     /**
+     * Removes every retained bar and resets the series to its initial empty index
+     * state.
+     *
+     * <p>
+     * The configured name, number factory, bar builder, and maximum bar count are
+     * preserved. The next appended bar receives index {@code 0}. Implementations
+     * that cannot safely clear their storage may retain the default behavior, which
+     * throws {@link UnsupportedOperationException}.
+     *
+     * @since 0.22.9
+     */
+    default void clear() {
+        throw new UnsupportedOperationException("This bar series does not support clearing");
+    }
+
+    /**
      * @return the begin index of the series
      */
     int getBeginIndex();

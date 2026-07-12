@@ -251,6 +251,19 @@ public class BaseBarSeries implements BarSeries {
         return List.copyOf(this.bars);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void clear() {
+        this.bars.clear();
+        this.seriesBeginIndex = -1;
+        this.seriesEndIndex = -1;
+        this.removedBarsCount = 0;
+    }
+
     @Override
     public int getBeginIndex() {
         return this.seriesBeginIndex;

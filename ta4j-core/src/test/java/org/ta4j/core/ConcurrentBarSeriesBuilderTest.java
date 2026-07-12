@@ -134,6 +134,22 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
     }
 
     @Test
+    public void testClearRestoredSeriesResetsInitialIndex() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(createTestBars(1))
+                .withNumFactory(numFactory)
+                .withBeginIndex(40)
+                .withMaxBarCount(10)
+                .build();
+
+        series.clear();
+        series.addBar(createTestBar(1));
+
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(0, series.getEndIndex());
+        assertEquals(10, series.getMaximumBarCount());
+    }
+
+    @Test
     public void testWithBarsEmptyList() {
         ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testWithBarsEmptyListSeries")
                 .withBars(Collections.emptyList())

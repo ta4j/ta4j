@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -141,6 +142,25 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
     @Test
     public void testWithBeginIndexRejectsNegativeValues() {
         assertThrows(IllegalArgumentException.class, () -> new BaseBarSeriesBuilder().withBeginIndex(-1));
+    }
+
+    @Test
+    public void testClearRestoredSeriesResetsInitialIndex() {
+        List<Bar> bars = List.of(new TimeBarBuilder(DoubleNumFactory.getInstance()).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build());
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(40).withMaxBarCount(10).build();
+
+        series.clear();
+        series.addBar(new TimeBarBuilder(series.numFactory()).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build());
+
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(0, series.getEndIndex());
+        assertEquals(10, series.getMaximumBarCount());
     }
 
     @Test

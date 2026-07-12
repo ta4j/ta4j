@@ -242,6 +242,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void clear() {
+        this.writeLock.lock();
+        try {
+            super.clear();
+            this.tradeBarBuilder = null;
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
     @Override
     public int getBeginIndex() {
         this.readLock.lock();
