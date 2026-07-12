@@ -7,11 +7,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -144,43 +146,36 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithLargeStrategyCountUsesBatchProcessing() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
-
-        // Create more than PARALLEL_THRESHOLD (1000) strategies to trigger batched
-        // processing
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        AtomicInteger progressUpdateCount = new AtomicInteger(0);
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                completed -> progressUpdateCount.incrementAndGet());
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
-        assertEquals(strategies.size(), progressUpdateCount.get());
+    public void batchingDecisionUsesConfiguredThreshold() {
+        assertFalse(BacktestExecutor.usesBatchedExecution(1000));
+        assertTrue(BacktestExecutor.usesBatchedExecution(1001));
     }
 
     @Test
-    public void executeWithCustomBatchSize() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+    public void effectiveBatchSizeCapsVeryLargeWorkloads() {
+        assertEquals(500, BacktestExecutor.effectiveBatchSize(1500, 500));
+        assertEquals(250, BacktestExecutor.effectiveBatchSize(5001, 500));
+        assertEquals(100, BacktestExecutor.effectiveBatchSize(5001, 100));
+    }
 
-        // Create more than PARALLEL_THRESHOLD strategies
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+    @Test
+    public void batchedExecutionVisitsEveryIndexExactlyOnce() {
+        int itemCount = 7;
+        AtomicIntegerArray visits = new AtomicIntegerArray(itemCount);
+
+        BacktestExecutor.forEachBatchIndex(itemCount, 3, index -> visits.incrementAndGet(index));
+
+        for (int index = 0; index < itemCount; index++) {
+            assertEquals(1, visits.get(index));
         }
+    }
 
-        int customBatchSize = 250;
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                null, customBatchSize);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+    @Test
+    public void batchedExecutionRejectsInvalidBatchSizes() {
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, 0, index -> {
+        }));
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, -1, index -> {
+        }));
     }
 
     @Test
