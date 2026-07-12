@@ -128,13 +128,14 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to Maven 3.9.16, so contributors do not need a separate Maven install.
 
 - **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
-- **Contributor quality path:** Use `./mvnw -B clean license:format formatter:format verify install`, `mvnw.cmd -B clean license:format formatter:format verify install`, or `mvn -B clean license:format formatter:format verify install` to match CI and get blocking SpotBugs plus advisory JaCoCo feedback alongside the test suite
-- **Quiet local/agent quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell to run the same command sequence with filtered terminal output, bounded warning/error/exception/unexpected-output summaries, and a full log under `.agents/logs/`
+- **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell. This is the canonical PR gate used by hosted CI: it runs actionlint, repository script fixtures, non-mutating license and formatter validation, and all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback.
+- **Maven-only equivalent:** Use `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
+- **Formatting/header repair:** Run `./mvnw -B license:format formatter:format` separately when validation reports a problem, review the resulting diff, then rerun the canonical gate. The canonical gate never repairs committed-source defects before checking them.
 - **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
 - **JaCoCo-only local gate:** Use `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
 - **Focused coverage report:** Use `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
 
-Run `./mvnw -B clean license:format formatter:format verify install`, `mvnw.cmd -B clean license:format formatter:format verify install`, or `mvn -B clean license:format formatter:format verify install`, or use the quiet build script before opening or updating a pull request.
+Run the quiet build script before opening or updating a pull request.
 
 ## Try it now
 
@@ -1133,7 +1134,7 @@ For the curated onboarding path, use:
 - Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://github.com/ta4j/ta4j/blob/master/.github/CONTRIBUTING.md).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
-- Run `./mvnw -B clean license:format formatter:format verify install`, `mvnw.cmd -B clean license:format formatter:format verify install`, or `mvn -B clean license:format formatter:format verify install`, or the quiet build script before opening or updating a pull request. It matches CI and includes blocking SpotBugs plus advisory JaCoCo reporting alongside the test suite; the quiet script keeps the raw Maven log while summarizing warnings, errors, exceptions, and unexpected output.
+- Run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1` before opening or updating a pull request. Hosted CI calls the same entrypoint, including actionlint, repository script fixtures, non-mutating source validation, all non-demo tests, blocking SpotBugs, and advisory JaCoCo; the quiet script preserves the raw Maven log while summarizing warnings, errors, exceptions, and unexpected output.
 - For faster local quality loops, use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` or `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full verification command.
 
 ## Release & snapshot publishing

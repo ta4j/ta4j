@@ -8,8 +8,8 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 2. **Opinionated implementations belong outside the core.** ta4j aims to be widely applicable. Highly subjective “feature bundles” (e.g., metric dashboards, bespoke reporting formats, hard-coded broker behaviors) are better published as separate modules or example projects. Keep contributions focused on reusable primitives.
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
-- **Run this before opening or updating a PR:** `./mvnw -B clean license:format formatter:format verify install` on macOS/Linux, `mvnw.cmd -B clean license:format formatter:format verify install` on Windows, or `mvn -B clean license:format formatter:format verify install` with system Maven 3.9+
-  This matches the main CI path and keeps SpotBugs blocking plus JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same command sequence and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
+- **Run this before opening or updating a PR:** `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell.
+  Hosted CI calls the same entrypoint. The default gate runs actionlint, repository script fixtures, `clean license:check formatter:validate verify`, all non-demo tests, blocking SpotBugs, and advisory JaCoCo without modifying source files. Use `./mvnw -B license:format formatter:format` only as a separate repair step, review its diff, and rerun the canonical gate.
 
 - **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
   These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full verification command.
@@ -29,9 +29,9 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    ```
 4. **Implement + test.** Run the full build before pushing:
    ```bash
-   ./mvnw -B clean license:format formatter:format verify install
+   scripts/run-full-build-quiet.sh
    ```
-   On Windows, use `mvnw.cmd -B clean license:format formatter:format verify install`; if you already manage Maven 3.9+ yourself, `mvn -B clean license:format formatter:format verify install` is also supported. The quiet scripts are optional filtered-output wrappers for the same command sequence and preserve full logs under `.agents/logs/`. CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format` locally when needed before your final verification command.
+   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1`. The scripts preserve full logs under `.agents/logs/`, and CI invokes the same Bash entrypoint. CI will fail if changes are not formatted or lack the project license header; repair those issues with `./mvnw -B license:format formatter:format`, review the diff, and rerun the canonical gate.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 

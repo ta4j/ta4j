@@ -4,13 +4,16 @@ $ErrorActionPreference = "Stop"
 
 function Show-Usage {
     @"
-Usage: scripts/run-full-build-quiet.ps1 [--goals "goal..."] [--] [maven-args...]
+Usage: scripts/run-full-build-quiet.ps1 [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
-Runs Maven with filtered terminal output and writes the complete log to
-.agents/logs/full-build-*.log.
+The default invocation runs the same repository-owned checks and Maven gate as
+hosted PR CI. Maven output is filtered and the complete log is written to
+.agents/logs/full-build-*.log. Explicit --goals invocations remain focused and
+skip repository preflight checks.
 
 Examples:
   scripts/run-full-build-quiet.ps1
+  scripts/run-full-build-quiet.ps1 --preflight-only
   scripts/run-full-build-quiet.ps1 -- -pl ta4j-core
   scripts/run-full-build-quiet.ps1 --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
   scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
@@ -297,8 +300,10 @@ function Write-FailureDigest {
     }
 }
 
-$goals = @("verify")
+$goals = @("clean", "license:check", "formatter:validate", "verify")
 $mavenArgs = @()
+$defaultGate = $true
+$preflightOnly = $false
 $index = 0
 while ($index -lt $args.Count) {
     $arg = $args[$index]
@@ -313,9 +318,14 @@ while ($index -lt $args.Count) {
                 throw "Missing value for --goals"
             }
             $goals = Split-Goals $args[$index]
+            $defaultGate = $false
         }
         '^--goals=' {
             $goals = Split-Goals $arg.Substring("--goals=".Length)
+            $defaultGate = $false
+        }
+        '^--preflight-only$' {
+            $preflightOnly = $true
         }
         '^--$' {
             $index++
@@ -335,6 +345,25 @@ while ($index -lt $args.Count) {
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 Set-Location $repoRoot
+
+if ($defaultGate -or $preflightOnly) {
+    $bash = Get-Command bash -ErrorAction SilentlyContinue
+    if (-not $bash) {
+        throw "bash is required to run the hosted CI parity preflight checks"
+    }
+    & $bash.Source (Join-Path $repoRoot "scripts/run-full-build-quiet.sh") --preflight-only
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+}
+
+if ($preflightOnly) {
+    exit 0
+}
+
+if ($defaultGate) {
+    $mavenArgs = @("-Dta4j.excludedTestTags=analysis-demo") + $mavenArgs
+}
 
 $logDir = Join-Path $repoRoot ".agents/logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null

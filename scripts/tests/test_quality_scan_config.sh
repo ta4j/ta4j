@@ -6,6 +6,10 @@ POM="$ROOT/pom.xml"
 CORE_POM="$ROOT/ta4j-core/pom.xml"
 EXAMPLES_POM="$ROOT/ta4j-examples/pom.xml"
 WORKFLOW="$ROOT/.github/workflows/test.yml"
+FORMAT_WORKFLOW="$ROOT/.github/workflows/validate.yml"
+LICENSE_WORKFLOW="$ROOT/.github/workflows/check.yml"
+ACTIONLINT_WORKFLOW="$ROOT/.github/workflows/actionlint.yml"
+QUIET_BUILD="$ROOT/scripts/run-full-build-quiet.sh"
 WRAPPER_PROPERTIES="$ROOT/.mvn/wrapper/maven-wrapper.properties"
 
 fail() { echo "[FAIL] $1" >&2; exit 1; }
@@ -112,16 +116,21 @@ test_modules_opt_in_to_managed_quality_plugins() {
   pass "test_modules_opt_in_to_managed_quality_plugins"
 }
 
-test_ci_runs_verify_for_both_jobs() {
-  echo "Running test_ci_runs_verify_for_both_jobs"
+test_ci_reuses_canonical_local_gates() {
+  echo "Running test_ci_reuses_canonical_local_gates"
 
-  expect_file_contains "$WORKFLOW" "Build and run verify with Maven Wrapper and SpotBugs" "default CI job should advertise SpotBugs parity"
-  expect_file_contains "$WORKFLOW" "Build and run verify with SpotBugs and demo tags excluded" "non-demo CI job should advertise SpotBugs parity"
-  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify" "default CI job should run verify through Maven Wrapper so SpotBugs executes"
-  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "non-demo CI job should run verify through Maven Wrapper so SpotBugs executes"
+  expect_file_contains "$WORKFLOW" "xvfb-run scripts/run-full-build-quiet.sh" "hosted verify should call the canonical local gate"
+  expect_file_not_contains "$WORKFLOW" "./mvnw -B" "hosted verify should not duplicate the local Maven command"
+  expect_file_contains "$FORMAT_WORKFLOW" "scripts/run-full-build-quiet.sh --goals formatter:validate" "hosted formatting should reuse the local entrypoint"
+  expect_file_contains "$LICENSE_WORKFLOW" "scripts/run-full-build-quiet.sh --goals license:check" "hosted licensing should reuse the local entrypoint"
+  expect_file_contains "$ACTIONLINT_WORKFLOW" "scripts/run-full-build-quiet.sh --preflight-only" "hosted workflow lint should reuse local preflight"
+  expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:check formatter:validate verify)" "local default should use non-mutating hosted goals"
+  expect_file_contains "$QUIET_BUILD" "-Dta4j.excludedTestTags=analysis-demo" "local default should include hosted non-demo tests"
+  expect_file_contains "$QUIET_BUILD" "actionlint@v1.7.12" "local fallback should pin the hosted actionlint version"
+  expect_file_not_contains "$QUIET_BUILD" "GOALS=(clean license:format formatter:format" "local default must not repair defects before validation"
   expect_file_not_contains "$WORKFLOW" "spotbugs.skip" "CI should not skip SpotBugs"
 
-  pass "test_ci_runs_verify_for_both_jobs"
+  pass "test_ci_reuses_canonical_local_gates"
 }
 
 test_maven_wrapper_is_committed_and_pinned() {
@@ -139,7 +148,8 @@ test_maven_wrapper_is_committed_and_pinned() {
 test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
-  expect_file_contains "$ROOT/README.md" "Use \`./mvnw -B clean license:format formatter:format verify install\`, \`mvnw.cmd -B clean license:format formatter:format verify install\`" "README should point contributors at wrapper-based full quality command options"
+  expect_file_contains "$ROOT/README.md" "Use \`scripts/run-full-build-quiet.sh\` on macOS/Linux/Git Bash/WSL or \`scripts/run-full-build-quiet.ps1\` on Windows PowerShell" "README should point contributors at the canonical local/hosted gate"
+  expect_file_contains "$ROOT/README.md" "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "README should document the non-mutating Maven-only equivalent"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.sh" "README should document the quiet Bash verify wrapper"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.ps1" "README should document the quiet PowerShell verify wrapper"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "README should document the standalone SpotBugs loop with clean compilation"
@@ -147,7 +157,7 @@ test_docs_point_to_real_maven_commands() {
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`./mvnw -B clean license:format formatter:format verify install\` on macOS/Linux, \`mvnw.cmd -B clean license:format formatter:format verify install\` on Windows" "contributing guide should use the wrapper full quality command as the canonical PR command"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`scripts/run-full-build-quiet.sh\` on macOS/Linux/Git Bash/WSL or \`scripts/run-full-build-quiet.ps1\` on Windows PowerShell" "contributing guide should use the shared local/hosted gate"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "contributing guide should document the standalone SpotBugs loop with clean compilation"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am test jacoco:report jacoco:check" "contributing guide should document the standalone JaCoCo gate"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -B license:format formatter:format" "contributing guide should keep the wrapper formatter and license fix command"
@@ -160,7 +170,7 @@ test_docs_point_to_real_maven_commands() {
 test_parent_declares_quality_defaults
 test_parent_manages_quality_plugins_for_verify
 test_modules_opt_in_to_managed_quality_plugins
-test_ci_runs_verify_for_both_jobs
+test_ci_reuses_canonical_local_gates
 test_maven_wrapper_is_committed_and_pinned
 test_docs_point_to_real_maven_commands
 

@@ -122,21 +122,49 @@ MAVEN_FLAGS=(
 
 usage() {
     cat <<'EOF'
-Usage: scripts/run-full-build-quiet.sh [--goals "goal..."] [--] [maven-args...]
+Usage: scripts/run-full-build-quiet.sh [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
-Runs Maven with filtered terminal output and writes the complete log to
-.agents/logs/full-build-*.log.
+The default invocation runs the same repository-owned checks and Maven gate as
+hosted PR CI. Maven output is filtered and the complete log is written to
+.agents/logs/full-build-*.log. Explicit --goals invocations remain focused and
+skip repository preflight checks.
 
 Examples:
   scripts/run-full-build-quiet.sh
+  scripts/run-full-build-quiet.sh --preflight-only
   scripts/run-full-build-quiet.sh -- -pl ta4j-core
   scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
   scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
 EOF
 }
 
-GOALS=(clean license:format formatter:format verify install)
+run_repository_preflight() {
+    if [[ -d "$REPO_ROOT/.github/workflows" ]]; then
+        echo "Running actionlint..."
+        if command -v actionlint >/dev/null 2>&1 && actionlint -version 2>&1 | grep -Fq "1.7.12"; then
+            actionlint
+        elif command -v go >/dev/null 2>&1; then
+            go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+        else
+            echo "actionlint 1.7.12 or Go is required for hosted CI parity." >&2
+            return 1
+        fi
+    fi
+
+    local fixture
+    for fixture in "$REPO_ROOT"/scripts/tests/test_*.sh; do
+        if [[ ! -f "$fixture" ]]; then
+            continue
+        fi
+        echo "Running ${fixture#"$REPO_ROOT"/}..."
+        bash "$fixture"
+    done
+}
+
+GOALS=(clean license:check formatter:validate verify)
 EXTRA_MAVEN_ARGS=()
+DEFAULT_GATE="true"
+PREFLIGHT_ONLY="false"
 while (($# > 0)); do
     case "$1" in
         -h|--help)
@@ -150,6 +178,7 @@ while (($# > 0)); do
                 exit 2
             fi
             read -r -a GOALS <<< "$1"
+            DEFAULT_GATE="false"
             shift
             ;;
         --goals=*)
@@ -159,6 +188,11 @@ while (($# > 0)); do
                 exit 2
             fi
             read -r -a GOALS <<< "$goal_value"
+            DEFAULT_GATE="false"
+            shift
+            ;;
+        --preflight-only)
+            PREFLIGHT_ONLY="true"
             shift
             ;;
         --)
@@ -172,6 +206,19 @@ while (($# > 0)); do
             ;;
     esac
 done
+
+if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
+    run_repository_preflight
+    echo "Repository preflight checks passed."
+fi
+
+if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
+    exit 0
+fi
+
+if [[ "$DEFAULT_GATE" == "true" ]]; then
+    EXTRA_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo" "${EXTRA_MAVEN_ARGS[@]}")
+fi
 
 if ((${#GOALS[@]} == 0)); then
     echo "At least one Maven goal is required" >&2
