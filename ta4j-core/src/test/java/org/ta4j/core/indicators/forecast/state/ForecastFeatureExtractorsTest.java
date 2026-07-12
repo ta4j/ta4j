@@ -67,6 +67,6 @@ public class ForecastFeatureExtractorsTest extends AbstractIndicatorTest<Forecas
     }
 
     private ReturnForecastState state() {
-        return new ReturnForecastState(3, 4, true, numOf(1), numOf(2), numOf(3), numOf(4));
+        return new ReturnForecastState(3, 4, true, numFactory.one(), numFactory.two(), numFactory.three(), numOf(4));
     }
 }

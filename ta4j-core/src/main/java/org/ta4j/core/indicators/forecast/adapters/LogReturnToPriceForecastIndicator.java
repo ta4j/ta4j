@@ -20,8 +20,10 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
  * Converts cumulative log-return forecast distributions to price forecasts.
- * Returns an unstable forecast when any exponential price conversion overflows
- * or otherwise produces a non-finite value.
+ * Median and quantiles use the monotonic exponential transform. Mean and
+ * standard deviation use the moment-matched lognormal approximation implied by
+ * the return mean and standard deviation. Returns an unstable forecast when any
+ * price conversion overflows or otherwise produces a non-finite value.
  *
  * @since 0.22.9
  */
@@ -59,9 +61,16 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Forecast<
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, logReturnForecast.horizon());
         }
-        Num mean = toPrice(price, logReturnForecast.mean());
+        NumFactory numFactory = price.getNumFactory();
+        Num logReturnMean = normalize(logReturnForecast.mean(), numFactory);
+        Num logReturnStandardDeviation = normalize(logReturnForecast.standardDeviation(), numFactory);
+        if (!Num.isFinite(logReturnMean) || !Num.isFinite(logReturnStandardDeviation)) {
+            return Forecast.unstable(index, logReturnForecast.horizon());
+        }
+        Num logReturnVariance = logReturnStandardDeviation.multipliedBy(logReturnStandardDeviation);
+        Num mean = price.multipliedBy(logReturnMean.plus(logReturnVariance.dividedBy(numFactory.two())).exp());
         Num median = toPrice(price, logReturnForecast.median());
-        Num standardDeviation = toPrice(price, logReturnForecast.standardDeviation());
+        Num standardDeviation = mean.multipliedBy(logReturnVariance.exp().minus(numFactory.one()).sqrt());
         Map<Double, Num> quantiles = new LinkedHashMap<>();
         for (Map.Entry<Double, Num> entry : logReturnForecast.quantiles().entrySet()) {
             quantiles.put(entry.getKey(), toPrice(price, entry.getValue()));
@@ -85,17 +94,21 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Forecast<
     }
 
     private static Num toPrice(Num price, Num cumulativeLogReturn) {
-        if (!Num.isFinite(cumulativeLogReturn)) {
-            return NaN.NaN;
-        }
         NumFactory numFactory = price.getNumFactory();
-        Num normalizedReturn = numFactory.produces(cumulativeLogReturn) ? cumulativeLogReturn
-                : numFactory.numOf(cumulativeLogReturn.bigDecimalValue());
+        Num normalizedReturn = normalize(cumulativeLogReturn, numFactory);
         if (!Num.isFinite(normalizedReturn)) {
             return NaN.NaN;
         }
         Num convertedPrice = price.multipliedBy(normalizedReturn.exp());
         return Num.isFinite(convertedPrice) ? convertedPrice : NaN.NaN;
+    }
+
+    private static Num normalize(Num value, NumFactory numFactory) {
+        if (!Num.isFinite(value)) {
+            return NaN.NaN;
+        }
+        Num normalized = numFactory.produces(value) ? value : numFactory.numOf(value.bigDecimalValue());
+        return Num.isFinite(normalized) ? normalized : NaN.NaN;
     }
 
     private static ReturnForecastProjectionIndicator validateLogReturnProjection(

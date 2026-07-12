@@ -16,6 +16,7 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
+- **Log-return price forecasts expose coherent price-space moments**: Price forecast adapters now use a moment-matched lognormal approximation for mean and standard deviation, preserve zero dispersion for deterministic returns, and continue to return unstable summaries when conversion overflows.
 - **Source position labels remain accurate in isolated chart renders**: Trading-record
   chart callers can now provide a 1-based source position start, so position bands
   and buy/sell annotations retain their original ordinal when a focused chart

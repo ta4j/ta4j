@@ -49,6 +49,7 @@ public class LogReturnToPriceForecastIndicatorTest
         Forecast<Num> forecast = priceForecast.getValue(series.getEndIndex());
 
         assertTrue(forecast.isStable());
+        assertNumEquals(0, forecast.standardDeviation());
         assertNumEquals(100, forecast.median());
         assertNumEquals(100, forecast.quantile(0.05));
         assertNumEquals(100, forecast.quantile(0.95));
@@ -66,8 +67,15 @@ public class LogReturnToPriceForecastIndicatorTest
         LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
 
         Forecast<Num> forecast = priceForecast.getValue(1);
+        double logMean = logReturnForecast.mean().doubleValue();
+        double logStandardDeviation = logReturnForecast.standardDeviation().doubleValue();
+        double expectedMean = 100 * Math.exp(logMean + logStandardDeviation * logStandardDeviation / 2);
+        double expectedStandardDeviation = expectedMean
+                * Math.sqrt(Math.exp(logStandardDeviation * logStandardDeviation) - 1);
 
         assertTrue(forecast.isStable());
+        assertNumEquals(expectedMean, forecast.mean());
+        assertNumEquals(expectedStandardDeviation, forecast.standardDeviation());
         assertNumEquals(100 * Math.sqrt(0.99), forecast.median());
         assertNumEquals(100 * Math.sqrt(0.99), forecast.quantile(0.5));
         assertNumEquals(90d, forecast.quantiles().get(0.0));
@@ -123,6 +131,7 @@ public class LogReturnToPriceForecastIndicatorTest
         assertTrue(forecast.isStable());
         assertEquals(17, forecast.sampleCount());
         assertTrue(doubleFactory.produces(forecast.mean()));
+        assertNumEquals(0, forecast.standardDeviation());
     }
 
     @Test
