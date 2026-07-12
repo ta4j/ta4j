@@ -29,12 +29,12 @@ class SlopeChangeSwingDetectorTest {
     void balancedDefaultsRejectInsignificantReversals() {
         BarSeries series = noisySeries();
         SlopeChangeSwingDetector balanced = new SlopeChangeSwingDetector(2);
-        SlopeChangeSwingDetector permissive = new SlopeChangeSwingDetector(new SlopeChangeConfig(2, 1, 14, 0.0, 0.0));
+        SlopeChangeSwingDetector unfiltered = new SlopeChangeSwingDetector(new SlopeChangeConfig(2, 2, 14, 0.0, 0.0));
 
         SwingDetectorResult balancedResult = balanced.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
-        SwingDetectorResult permissiveResult = permissive.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+        SwingDetectorResult unfilteredResult = unfiltered.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
 
-        assertThat(permissiveResult.pivots()).hasSizeGreaterThan(balancedResult.pivots().size());
+        assertThat(unfilteredResult.pivots()).hasSizeGreaterThan(balancedResult.pivots().size());
     }
 
     @Test
