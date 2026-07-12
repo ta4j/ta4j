@@ -343,6 +343,20 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     }
 
     @Test
+    public void shouldWaitForUnambiguousDirectionWhenInitialRangeConfirmsBothWays() {
+        series.barBuilder().highPrice(110).lowPrice(90).closePrice(100).add();
+        series.barBuilder().highPrice(110).lowPrice(90).closePrice(100).add();
+        series.barBuilder().highPrice(110).lowPrice(100).closePrice(107).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5);
+
+        assertThat(indicator.getValue(1).getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(indicator.getValue(2).getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(indicator.getValue(2).getLastLowIndex()).isZero();
+    }
+
+    @Test
     public void shouldPreserveFiniteInitialCandidateWhenOtherSideBecomesAvailable() {
         series.barBuilder().highPrice(110).lowPrice(NaN.NaN).closePrice(100).add();
         series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();

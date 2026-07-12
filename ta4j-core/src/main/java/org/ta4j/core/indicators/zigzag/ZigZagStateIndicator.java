@@ -217,6 +217,8 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
                     && confirmation.minus(initialLowPrice).isGreaterThanOrEqual(upThreshold);
             final boolean confirmsDown = !extendsHigh && Num.isFinite(downThreshold) && downThreshold.isPositive()
                     && initialHighPrice.minus(confirmation).isGreaterThanOrEqual(downThreshold);
+            // A bar that confirms both directions has no observable intrabar ordering.
+            // Wait for an unambiguous confirmation instead of inventing a direction.
             if (confirmsUp && !confirmsDown) {
                 lastLowIndex = initialLowIndex;
                 lastLowPrice = initialLowPrice;
