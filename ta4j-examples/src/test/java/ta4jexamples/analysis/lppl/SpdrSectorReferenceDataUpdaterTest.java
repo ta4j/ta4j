@@ -227,10 +227,12 @@ class SpdrSectorReferenceDataUpdaterTest {
 
     private static String bars(SpdrSectorReferenceDataUpdater.ReferenceBar... bars) throws IOException {
         Path tempFile = Files.createTempFile("spdr-bars", ".json");
-        SpdrSectorReferenceDataUpdater.writeReferenceBars(tempFile, List.of(bars));
-        String json = Files.readString(tempFile);
-        Files.deleteIfExists(tempFile);
-        return json;
+        try {
+            SpdrSectorReferenceDataUpdater.writeReferenceBars(tempFile, List.of(bars));
+            return Files.readString(tempFile);
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 
     private static SpdrSectorReferenceDataUpdater.ReferenceBar bar(long start, String close) {
