@@ -7,6 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -167,6 +168,14 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         for (int index = 0; index < itemCount; index++) {
             assertEquals(1, visits.get(index));
         }
+    }
+
+    @Test
+    public void batchedExecutionRejectsInvalidBatchSizes() {
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, 0, index -> {
+        }));
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, -1, index -> {
+        }));
     }
 
     @Test

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -15,6 +16,9 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
+import org.ta4j.core.serialization.RuleSerialization;
 
 public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
 
@@ -53,9 +57,16 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
         series.barBuilder().endTime(Instant.parse("2019-09-17T12:00:00Z")).add();
         series.barBuilder().endTime(Instant.parse("2019-09-18T12:00:00Z")).add();
         var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
-        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY);
-        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
-        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+        DayOfWeekRule mondayFirst = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+        DayOfWeekRule wednesdayFirst = new DayOfWeekRule(dateTime, DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY);
+        ComponentDescriptor mondayFirstDescriptor = RuleSerialization.describe(mondayFirst);
+        ComponentDescriptor wednesdayFirstDescriptor = RuleSerialization.describe(wednesdayFirst);
+
+        assertEquals(mondayFirstDescriptor, wednesdayFirstDescriptor);
+        assertEquals(ComponentSerialization.toJson(mondayFirstDescriptor),
+                ComponentSerialization.toJson(wednesdayFirstDescriptor));
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, wednesdayFirst);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, wednesdayFirst);
     }
 
     @Test

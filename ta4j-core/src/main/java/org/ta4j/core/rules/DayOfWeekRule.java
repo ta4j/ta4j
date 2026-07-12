@@ -7,6 +7,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
@@ -55,7 +56,7 @@ public class DayOfWeekRule extends AbstractRule {
         for (DayOfWeek day : copiedDays) {
             copiedDaySet.add(Objects.requireNonNull(day, "dayOfWeek"));
         }
-        return new Config(validatedTimeIndicator, Set.copyOf(copiedDaySet));
+        return new Config(validatedTimeIndicator, Collections.unmodifiableSet(copiedDaySet));
     }
 
     /** This rule does not use the {@code tradingRecord}. */

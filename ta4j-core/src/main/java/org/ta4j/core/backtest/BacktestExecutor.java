@@ -465,6 +465,9 @@ public class BacktestExecutor {
      * @param action    action invoked once for every index
      */
     static void forEachBatchIndex(int itemCount, int batchSize, IntConsumer action) {
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("batchSize must be positive");
+        }
         for (int batchStart = 0; batchStart < itemCount; batchStart += batchSize) {
             int batchEnd = Math.min(batchStart + batchSize, itemCount);
             IntStream.range(batchStart, batchEnd).parallel().forEach(action);
