@@ -211,6 +211,13 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
                 initialLowIndex = index;
                 initialLowPrice = low;
             }
+            if (extendsHigh && !extendsLow) {
+                extremeIndex = initialHighIndex;
+                extremePrice = initialHighPrice;
+            } else if (extendsLow && !extendsHigh) {
+                extremeIndex = initialLowIndex;
+                extremePrice = initialLowPrice;
+            }
             final Num upThreshold = reversalAmount.getValue(initialLowIndex);
             final Num downThreshold = reversalAmount.getValue(initialHighIndex);
             final boolean confirmsUp = !extendsLow && Num.isFinite(upThreshold) && upThreshold.isPositive()

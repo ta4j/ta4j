@@ -131,9 +131,10 @@ public final class ZigZagState {
     /**
      * Returns the bar index of the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the bar index of the current extreme point
      */
@@ -144,9 +145,10 @@ public final class ZigZagState {
     /**
      * Returns the price value at the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the price value at the current extreme point
      */

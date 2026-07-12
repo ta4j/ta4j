@@ -357,6 +357,26 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     }
 
     @Test
+    public void shouldTrackLatestUnambiguousInitialExtremeDuringWarmUp() {
+        series.barBuilder().highPrice(100).lowPrice(90).closePrice(95).add();
+        series.barBuilder().highPrice(105).lowPrice(91).closePrice(97).add();
+        series.barBuilder().highPrice(104).lowPrice(85).closePrice(93).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 20);
+
+        final ZigZagState extendedHigh = indicator.getValue(1);
+        assertThat(extendedHigh.getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(extendedHigh.getLastExtremeIndex()).isOne();
+        assertThat(extendedHigh.getLastExtremePrice()).isEqualByComparingTo(numOf(105));
+
+        final ZigZagState extendedLow = indicator.getValue(2);
+        assertThat(extendedLow.getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(extendedLow.getLastExtremeIndex()).isEqualTo(2);
+        assertThat(extendedLow.getLastExtremePrice()).isEqualByComparingTo(numOf(85));
+    }
+
+    @Test
     public void shouldPreserveFiniteInitialCandidateWhenOtherSideBecomesAvailable() {
         series.barBuilder().highPrice(110).lowPrice(NaN.NaN).closePrice(100).add();
         series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();
