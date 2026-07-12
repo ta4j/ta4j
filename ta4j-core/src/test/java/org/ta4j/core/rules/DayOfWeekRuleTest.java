@@ -53,7 +53,7 @@ public class DayOfWeekRuleTest extends AbstractIndicatorTest<Object, Object> {
         series.barBuilder().endTime(Instant.parse("2019-09-17T12:00:00Z")).add();
         series.barBuilder().endTime(Instant.parse("2019-09-18T12:00:00Z")).add();
         var dateTime = new DateTimeIndicator(series, Bar::getEndTime);
-        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY);
+        DayOfWeekRule rule = new DayOfWeekRule(dateTime, DayOfWeek.WEDNESDAY, DayOfWeek.MONDAY);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
     }

@@ -7,7 +7,7 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -51,7 +51,7 @@ public class DayOfWeekRule extends AbstractRule {
         DateTimeIndicator validatedTimeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
         Objects.requireNonNull(daysOfWeek, "daysOfWeek");
         DayOfWeek[] copiedDays = Arrays.copyOf(daysOfWeek, daysOfWeek.length);
-        Set<DayOfWeek> copiedDaySet = new HashSet<>(copiedDays.length);
+        Set<DayOfWeek> copiedDaySet = EnumSet.noneOf(DayOfWeek.class);
         for (DayOfWeek day : copiedDays) {
             copiedDaySet.add(Objects.requireNonNull(day, "dayOfWeek"));
         }
