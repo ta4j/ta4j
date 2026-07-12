@@ -116,6 +116,19 @@ class ForecastTest {
     }
 
     @Test
+    void forecastOrdersQuantilesAcrossNumFactories() {
+        Map<Double, Num> quantiles = new LinkedHashMap<>();
+        quantiles.put(0.05, NUM_FACTORY.one());
+        quantiles.put(0.95, DecimalNumFactory.getInstance().numOf(2));
+
+        Forecast<Num> forecast = Forecast.ofSummary(0, 1, 1, NUM_FACTORY.one(), NUM_FACTORY.one(), NUM_FACTORY.zero(),
+                quantiles);
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.quantiles()).hasSize(2);
+    }
+
+    @Test
     void forecastAcceptsFiniteDecimalValuesThatOverflowDouble() {
         Num largeFiniteValue = DecimalNumFactory.getInstance().numOf("1E+10000");
 

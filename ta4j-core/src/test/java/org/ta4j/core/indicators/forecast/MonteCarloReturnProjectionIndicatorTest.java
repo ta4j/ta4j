@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -153,6 +154,30 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         assertTrue(series.numFactory().produces(prediction.mean()));
     }
 
+    @Test
+    public void rejectsCustomStateWithInvalidStableMetadata() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        ReturnForecastStateIndicator<CustomReturnState> futureState = new FixedCustomStateIndicator(returns,
+                series.numFactory(), 1, 1);
+        ReturnForecastStateIndicator<CustomReturnState> emptyState = new FixedCustomStateIndicator(returns,
+                series.numFactory(), 0, 0);
+        MonteCarloReturnProjectionIndicator futureStateForecast = MonteCarloReturnProjectionIndicator
+                .builder(futureState)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .build();
+        MonteCarloReturnProjectionIndicator emptyStateForecast = MonteCarloReturnProjectionIndicator.builder(emptyState)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .build();
+
+        assertFalse(futureStateForecast.getValue(series.getEndIndex()).isStable());
+        assertFalse(emptyStateForecast.getValue(series.getEndIndex()).isStable());
+    }
+
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
             MonteCarloReturnProjectionIndicator.ShockModel shockModel, int horizon, int iterations, int lookback,
             long seed, MonteCarloReturnProjectionIndicator.VolatilityUpdateMode updateMode) {
@@ -247,14 +272,23 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
 
         private final ReturnIndicator returns;
         private final NumFactory stateNumFactory;
+        private final int stateIndexOffset;
+        private final int observationCount;
 
         private FixedCustomStateIndicator(ReturnIndicator returns) {
-            this(returns, returns.getBarSeries().numFactory());
+            this(returns, returns.getBarSeries().numFactory(), 0, -1);
         }
 
         private FixedCustomStateIndicator(ReturnIndicator returns, NumFactory stateNumFactory) {
+            this(returns, stateNumFactory, 0, -1);
+        }
+
+        private FixedCustomStateIndicator(ReturnIndicator returns, NumFactory stateNumFactory, int stateIndexOffset,
+                int observationCount) {
             this.returns = returns;
             this.stateNumFactory = stateNumFactory;
+            this.stateIndexOffset = stateIndexOffset;
+            this.observationCount = observationCount;
         }
 
         @Override
@@ -265,7 +299,9 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         @Override
         public CustomReturnState getValue(int index) {
             Num zero = stateNumFactory.zero();
-            return new CustomReturnState(index, index + 1, true, zero, zero, zero, zero);
+            int representedObservations = observationCount < 0 ? index + 1 : observationCount;
+            return new CustomReturnState(index + stateIndexOffset, representedObservations, true, zero, zero, zero,
+                    zero);
         }
 
         @Override

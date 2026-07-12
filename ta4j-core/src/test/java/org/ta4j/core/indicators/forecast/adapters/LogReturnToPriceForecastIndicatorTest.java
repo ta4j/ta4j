@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndi
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -102,6 +103,26 @@ public class LogReturnToPriceForecastIndicatorTest
         assertFalse(forecast.isStable());
         assertEquals(0, forecast.sampleCount());
         assertTrue(forecast.mean().isNaN());
+    }
+
+    @Test
+    public void convertsSummaryValuesFromADifferentNumFactory() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(100, 100).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Num logReturn = decimalFactory.numOf("0.1");
+        Forecast<Num> logReturnForecast = Forecast.ofSummary(1, 1, 17, logReturn, logReturn, decimalFactory.zero(),
+                Map.of(0.5, logReturn));
+        ReturnForecastProjectionIndicator returnForecast = new FixedForecastIndicator(series, 0,
+                ReturnRepresentation.LOG, Map.of(1, logReturnForecast));
+        LogReturnToPriceForecastIndicator priceForecast = new LogReturnToPriceForecastIndicator(close, returnForecast);
+
+        Forecast<Num> forecast = priceForecast.getValue(1);
+
+        assertTrue(forecast.isStable());
+        assertEquals(17, forecast.sampleCount());
+        assertTrue(doubleFactory.produces(forecast.mean()));
     }
 
     @Test

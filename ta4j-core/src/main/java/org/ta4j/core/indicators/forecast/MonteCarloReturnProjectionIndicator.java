@@ -106,7 +106,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return Forecast.unstable(index, horizon);
         }
         ForecastState rawState = stateIndicator.getValue(index);
-        if (rawState == null || !rawState.isStable()) {
+        if (rawState == null || !rawState.isStable() || rawState.index() != index || rawState.observationCount() <= 0) {
             return Forecast.unstable(index, horizon);
         }
         NumFactory numFactory = getBarSeries().numFactory();
@@ -450,7 +450,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             if (!Num.isFinite(value)) {
                 return NaN.NaN;
             }
-            Num normalized = numFactory.produces(value) ? value : numFactory.numOf(value.toString());
+            Num normalized = numFactory.produces(value) ? value : numFactory.numOf(value.bigDecimalValue());
             return Num.isFinite(normalized) ? normalized : NaN.NaN;
         }
     }

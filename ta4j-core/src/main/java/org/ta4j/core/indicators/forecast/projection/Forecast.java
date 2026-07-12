@@ -363,7 +363,7 @@ public final class Forecast<T> {
                 previous = null;
                 continue;
             }
-            if (previous != null && number.isLessThan(previous)) {
+            if (previous != null && number.bigDecimalValue().compareTo(previous.bigDecimalValue()) < 0) {
                 throw new IllegalArgumentException("numeric quantile values must be nondecreasing");
             }
             previous = number;

@@ -15,6 +15,7 @@ import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
@@ -87,7 +88,14 @@ public class LogReturnToPriceForecastIndicator extends CachedIndicator<Forecast<
         if (!Num.isFinite(cumulativeLogReturn)) {
             return NaN.NaN;
         }
-        return price.multipliedBy(cumulativeLogReturn.exp());
+        NumFactory numFactory = price.getNumFactory();
+        Num normalizedReturn = numFactory.produces(cumulativeLogReturn) ? cumulativeLogReturn
+                : numFactory.numOf(cumulativeLogReturn.bigDecimalValue());
+        if (!Num.isFinite(normalizedReturn)) {
+            return NaN.NaN;
+        }
+        Num convertedPrice = price.multipliedBy(normalizedReturn.exp());
+        return Num.isFinite(convertedPrice) ? convertedPrice : NaN.NaN;
     }
 
     private static ReturnForecastProjectionIndicator validateLogReturnProjection(
