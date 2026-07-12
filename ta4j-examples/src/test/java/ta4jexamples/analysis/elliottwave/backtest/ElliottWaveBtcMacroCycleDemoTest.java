@@ -54,7 +54,7 @@ import com.google.gson.JsonParser;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
-@Tag("elliott-macro-cycle-replay")
+@Tag("analysis-demo")
 class ElliottWaveBtcMacroCycleDemoTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class);
