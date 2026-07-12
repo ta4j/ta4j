@@ -87,7 +87,7 @@ public class FractalDetectionHelperTest extends AbstractIndicatorTest<Indicator<
                 1, FractalDetectionHelper.Direction.HIGH);
 
         assertThat(withoutEquals).isEqualTo(-1);
-        assertThat(withEquals).isEqualTo(4);
+        assertThat(withEquals).isEqualTo(3);
     }
 
     @Test

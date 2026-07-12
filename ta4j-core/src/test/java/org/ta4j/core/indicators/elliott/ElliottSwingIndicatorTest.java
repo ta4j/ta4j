@@ -10,13 +10,17 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 
@@ -130,11 +134,11 @@ class ElliottSwingIndicatorTest {
         var swings = indicator.getValue(series.getEndIndex());
 
         assertThat(swings).hasSize(3);
-        assertThat(swings.get(0).fromIndex()).isEqualTo(2);
-        assertThat(swings.get(0).toIndex()).isEqualTo(4);
-        assertThat(swings.get(1).fromIndex()).isEqualTo(4);
-        assertThat(swings.get(1).toIndex()).isEqualTo(6);
-        assertThat(swings.get(2).toIndex()).isEqualTo(8);
+        assertThat(swings.get(0).fromIndex()).isEqualTo(1);
+        assertThat(swings.get(0).toIndex()).isEqualTo(3);
+        assertThat(swings.get(1).fromIndex()).isEqualTo(3);
+        assertThat(swings.get(1).toIndex()).isEqualTo(5);
+        assertThat(swings.get(2).toIndex()).isEqualTo(7);
     }
 
     @Test
@@ -149,8 +153,35 @@ class ElliottSwingIndicatorTest {
         var stateIndicator = new ZigZagStateIndicator(price, 1);
         var indicator = ElliottSwingIndicator.zigZag(stateIndicator, price, ElliottDegree.MINOR);
 
-        assertThat(indicator.getValue(series.getEndIndex())).hasSize(6);
-        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(1, 2, 3, 4, 5, 6, 7);
+        assertThat(indicator.getValue(series.getEndIndex())).hasSize(7);
+        assertThat(indicator.getPivotIndexes(series.getEndIndex())).containsExactly(0, 1, 2, 3, 4, 5, 6, 7);
+    }
+
+    @Test
+    void derivesZigZagPriceSourcesFromState() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+            for (double close : closes) {
+                series.barBuilder()
+                        .openPrice(close)
+                        .highPrice(close + 1)
+                        .lowPrice(close - 1)
+                        .closePrice(close)
+                        .volume(0)
+                        .add();
+            }
+            Indicator<Num> high = new HighPriceIndicator(series);
+            Indicator<Num> low = new LowPriceIndicator(series);
+            ZigZagStateIndicator state = new ZigZagStateIndicator(high, low, 1);
+
+            ElliottSwingIndicator derived = ElliottSwingIndicator.zigZag(state, ElliottDegree.MINOR);
+            ElliottSwingIndicator explicit = ElliottSwingIndicator.zigZag(state, high, low, ElliottDegree.MINOR);
+
+            assertThat(derived.getValue(series.getEndIndex())).isEqualTo(explicit.getValue(series.getEndIndex()));
+            assertThat(derived.getPivotIndexes(series.getEndIndex()))
+                    .isEqualTo(explicit.getPivotIndexes(series.getEndIndex()));
+        }
     }
 
     @Test

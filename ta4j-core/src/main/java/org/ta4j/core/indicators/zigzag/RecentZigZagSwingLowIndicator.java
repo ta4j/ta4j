@@ -11,6 +11,7 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -33,10 +34,8 @@ import org.ta4j.core.num.Num;
  * the given index. Use {@link ZigZagPivotLowIndicator} to detect when a new
  * swing low is confirmed in real-time.
  * <p>
- * The price indicator passed to the constructor should typically match the
- * price indicator used in the underlying {@link ZigZagStateIndicator} (e.g.,
- * both using {@code LowPriceIndicator} or both using
- * {@code ClosePriceIndicator}).
+ * The state-only constructor uses the state's low-price source. An explicit
+ * source can be supplied when custom swing pricing is intentional.
  *
  * @see ZigZagStateIndicator
  * @see ZigZagPivotLowIndicator
@@ -52,29 +51,37 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
     private final Indicator<Num> price;
 
     /**
-     * Constructs a RecentZigZagSwingLowIndicator.
+     * Constructs an indicator using the state's low-price source.
+     *
+     * @param stateIndicator ZigZag state providing swing indexes and low prices
+     * @since 0.22.9
+     */
+    public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator) {
+        this(stateIndicator, Objects.requireNonNull(stateIndicator, "stateIndicator").lowPriceIndicator());
+    }
+
+    /**
+     * Constructs an indicator with an explicit swing-low price source.
      *
      * @param stateIndicator the ZigZagStateIndicator that tracks the ZigZag pattern
      *                       state
-     * @param price          the price indicator to use for retrieving swing low
-     *                       values. Should typically match the price indicator used
-     *                       in the stateIndicator (e.g., both using
-     *                       {@code LowPriceIndicator} or both using
-     *                       {@code ClosePriceIndicator})
+     * @param price          the price indicator used to retrieve swing-low values;
+     *                       typically the {@code LowPriceIndicator} corresponding
+     *                       to the state indicator's low-price component
      */
     public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
         this(validatedConfig(stateIndicator, price));
     }
 
     private RecentZigZagSwingLowIndicator(Config config) {
-        super(config.price(), 0);
+        super(config.price(), config.stateIndicator().getCountOfUnstableBars());
         this.stateIndicator = config.stateIndicator();
         this.price = config.price();
     }
 
     public RecentZigZagSwingLowIndicator(BarSeries series) {
-        this(new ZigZagStateIndicator(new LowPriceIndicator(series), new ATRIndicator(series, 14)),
-                new LowPriceIndicator(series));
+        this(new ZigZagStateIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ATRIndicator(series, 14)), new LowPriceIndicator(series));
     }
 
     /**

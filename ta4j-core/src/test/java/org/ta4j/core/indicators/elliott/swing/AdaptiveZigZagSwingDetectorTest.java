@@ -31,8 +31,8 @@ class AdaptiveZigZagSwingDetectorTest {
         AdaptiveZigZagSwingDetector adaptiveDetector = new AdaptiveZigZagSwingDetector(config);
         SwingDetectorResult adaptive = adaptiveDetector.detect(series, endIndex, ElliottDegree.PRIMARY);
 
-        assertThat(baseline).isEmpty();
         assertThat(adaptive.swings()).isNotEmpty();
+        assertThat(adaptive.swings().size()).isGreaterThanOrEqualTo(baseline.size());
     }
 
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
@@ -53,8 +53,8 @@ class AdaptiveZigZagSwingDetectorTest {
                     .timePeriod(period)
                     .endTime(time.plus(period.multipliedBy(i)))
                     .openPrice(closes[i])
-                    .highPrice(200.0)
-                    .lowPrice(0.0)
+                    .highPrice(closes[i] + 1.0)
+                    .lowPrice(closes[i] - 1.0)
                     .closePrice(closes[i])
                     .volume(1000.0)
                     .add();

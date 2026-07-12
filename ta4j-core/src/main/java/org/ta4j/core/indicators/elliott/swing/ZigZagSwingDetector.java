@@ -12,7 +12,8 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.num.Num;
 
@@ -64,9 +65,10 @@ public final class ZigZagSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final Indicator<Num> price = new ClosePriceIndicator(series);
-        final ZigZagStateIndicator state = new ZigZagStateIndicator(price, reversalIndicator);
-        final ElliottSwingIndicator indicator = ElliottSwingIndicator.zigZag(state, price, degree);
+        final Indicator<Num> highPrice = new HighPriceIndicator(series);
+        final Indicator<Num> lowPrice = new LowPriceIndicator(series);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, reversalIndicator);
+        final ElliottSwingIndicator indicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
         return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
     }
 

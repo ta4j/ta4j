@@ -16,6 +16,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -47,6 +48,20 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         assertThat(state.getLastLowIndex()).isEqualTo(-1);
         assertThat(state.getLastExtremeIndex()).isEqualTo(0);
         assertThat(state.getLastExtremePrice()).isEqualByComparingTo(numOf(100));
+    }
+
+    @Test
+    public void shouldRejectNullHighPriceBeforeConstructorDelegation() {
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+
+        final IllegalArgumentException threeArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, threshold));
+        final IllegalArgumentException fourArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, low, threshold));
+
+        assertThat(threeArgument).hasMessage("highPrice must not be null");
+        assertThat(fourArgument).hasMessage("highPrice must not be null");
     }
 
     @Test
@@ -266,6 +281,117 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     }
 
     @Test
+    public void shouldUseIntrabarHighsAndLowsForPivotsAndReversals() {
+        series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
+        series.barBuilder().highPrice(111).lowPrice(108).closePrice(109).add();
+        series.barBuilder().highPrice(109).lowPrice(104).closePrice(104).add();
+        series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5);
+        final ZigZagState state = indicator.getValue(2);
+
+        assertThat(state.getLastHighIndex()).isEqualTo(1);
+        assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(111));
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.DOWN);
+        final ZigZagState extendedState = indicator.getValue(3);
+        assertThat(extendedState.getLastLowIndex()).isEqualTo(3);
+        assertThat(extendedState.getLastLowPrice()).isEqualByComparingTo(numOf(95));
+        assertThat(extendedState.getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(extendedState.getLastExtremePrice()).isEqualByComparingTo(numOf(105));
+    }
+
+    @Test
+    public void shouldConfirmSwingHighAfterSameBarHighExtension() {
+        series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
+        series.barBuilder().highPrice(106).lowPrice(104).closePrice(105).add();
+        series.barBuilder().highPrice(112).lowPrice(100).closePrice(105).add();
+
+        final ZigZagState state = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5).getValue(2);
+
+        assertThat(state.getLastHighIndex()).isEqualTo(2);
+        assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(112));
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.DOWN);
+    }
+
+    @Test
+    public void shouldConfirmSwingLowAfterSameBarLowExtension() {
+        series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
+        series.barBuilder().highPrice(96).lowPrice(94).closePrice(95).add();
+        series.barBuilder().highPrice(102).lowPrice(88).closePrice(95).add();
+
+        final ZigZagState state = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5).getValue(2);
+
+        assertThat(state.getLastLowIndex()).isEqualTo(2);
+        assertThat(state.getLastLowPrice()).isEqualByComparingTo(numOf(88));
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.UP);
+    }
+
+    @Test
+    public void shouldWaitForThresholdBeforeChoosingInitialDirection() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(102).add();
+        series.barBuilder().closePrice(105).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new ClosePriceIndicator(series), 5);
+
+        assertThat(indicator.getValue(1).getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(indicator.getValue(2).getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(indicator.getValue(2).getLastLowIndex()).isZero();
+    }
+
+    @Test
+    public void shouldWaitForUnambiguousDirectionWhenInitialRangeConfirmsBothWays() {
+        series.barBuilder().highPrice(110).lowPrice(90).closePrice(100).add();
+        series.barBuilder().highPrice(110).lowPrice(90).closePrice(100).add();
+        series.barBuilder().highPrice(110).lowPrice(100).closePrice(107).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5);
+
+        assertThat(indicator.getValue(1).getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(indicator.getValue(2).getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(indicator.getValue(2).getLastLowIndex()).isZero();
+    }
+
+    @Test
+    public void shouldTrackLatestUnambiguousInitialExtremeDuringWarmUp() {
+        series.barBuilder().highPrice(100).lowPrice(90).closePrice(95).add();
+        series.barBuilder().highPrice(105).lowPrice(91).closePrice(97).add();
+        series.barBuilder().highPrice(104).lowPrice(85).closePrice(93).add();
+
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 20);
+
+        final ZigZagState extendedHigh = indicator.getValue(1);
+        assertThat(extendedHigh.getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(extendedHigh.getLastExtremeIndex()).isOne();
+        assertThat(extendedHigh.getLastExtremePrice()).isEqualByComparingTo(numOf(105));
+
+        final ZigZagState extendedLow = indicator.getValue(2);
+        assertThat(extendedLow.getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
+        assertThat(extendedLow.getLastExtremeIndex()).isEqualTo(2);
+        assertThat(extendedLow.getLastExtremePrice()).isEqualByComparingTo(numOf(85));
+    }
+
+    @Test
+    public void shouldPreserveFiniteInitialCandidateWhenOtherSideBecomesAvailable() {
+        series.barBuilder().highPrice(110).lowPrice(NaN.NaN).closePrice(100).add();
+        series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();
+
+        final Indicator<Num> high = new HighPriceIndicator(series);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final ZigZagState state = new ZigZagStateIndicator(high, low, 20).getValue(1);
+
+        assertThat(state.getInitialHighIndex()).isZero();
+        assertThat(state.getInitialHighPrice()).isEqualByComparingTo(numOf(110));
+        assertThat(state.getInitialLowIndex()).isOne();
+        assertThat(state.getInitialLowPrice()).isEqualByComparingTo(numOf(95));
+    }
+
+    @Test
     public void shouldSupportDynamicThreshold() {
         // Price: 100, 110, 105 (reversal: 5, threshold: 5)
         series.barBuilder().closePrice(100).add();
@@ -291,6 +417,30 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         final ZigZagState state = indicator.getValue(2);
         assertThat(state.getLastHighIndex()).isEqualTo(1);
         assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(110));
+    }
+
+    @Test
+    public void shouldAnchorDynamicThresholdAtCandidateExtreme() {
+        series.barBuilder().closePrice(100).add();
+        series.barBuilder().closePrice(110).add();
+        series.barBuilder().closePrice(107).add();
+
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final Indicator<Num> threshold = new CachedIndicator<Num>(price) {
+            @Override
+            protected Num calculate(int index) {
+                return index == 2 ? numOf(1) : numOf(5);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        final ZigZagState state = new ZigZagStateIndicator(price, threshold).getValue(2);
+
+        assertThat(state.getLastHighIndex()).isEqualTo(-1);
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.UP);
     }
 
     @Test
@@ -336,7 +486,7 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
 
         final ComponentDescriptor descriptor = original.toDescriptor();
         assertThat(descriptor.getType()).isEqualTo("ZigZagStateIndicator");
-        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents()).hasSize(4);
         assertThat(descriptor.getComponents())
                 .anySatisfy(component -> component.getType().equals("ClosePriceIndicator"));
         assertThat(descriptor.getComponents()).anySatisfy(component -> component.getType().equals("ConstantIndicator"));
@@ -418,6 +568,6 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         // State fields should not be serialized
         assertThat(descriptor.getParameters()).doesNotContainKey("price");
         assertThat(descriptor.getParameters()).doesNotContainKey("reversalAmount");
-        assertThat(descriptor.getComponents()).hasSize(2); // Only the two indicator components
+        assertThat(descriptor.getComponents()).hasSize(4); // High, low, confirmation, and threshold components
     }
 }
