@@ -95,7 +95,15 @@ public class BaseBarSeries implements BarSeries {
      */
     BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
-        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory));
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, 0, constrained, numFactory,
+                barBuilderFactory));
+    }
+
+    BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
+            final int removedBarsCount, final boolean constrained, final NumFactory numFactory,
+            final BarBuilderFactory barBuilderFactory) {
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
+                barBuilderFactory));
     }
 
     private BaseBarSeries(final Config config) {
@@ -105,32 +113,36 @@ public class BaseBarSeries implements BarSeries {
         this.barBuilderFactory = config.barBuilderFactory();
         this.seriesBeginIndex = config.seriesBeginIndex();
         this.seriesEndIndex = config.seriesEndIndex();
+        this.removedBarsCount = config.removedBarsCount();
         this.constrained = config.constrained();
     }
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
         List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
-        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, false, DecimalNumFactory.getInstance(),
+        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, 0, false, DecimalNumFactory.getInstance(),
                 new TimeBarBuilderFactory());
     }
 
     private static Config validatedConfig(final String name, final List<Bar> bars, final int seriesBeginIndex,
-            final int seriesEndIndex, final boolean constrained, final NumFactory numFactory,
-            final BarBuilderFactory barBuilderFactory) {
+            final int seriesEndIndex, final int removedBarsCount, final boolean constrained,
+            final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
         List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
         BarBuilderFactory validatedBarBuilderFactory = Objects.requireNonNull(barBuilderFactory);
         if (copiedBars.isEmpty()) {
             // Bar list empty
-            return new Config(name, copiedBars, -1, -1, false, numFactory, validatedBarBuilderFactory);
+            return new Config(name, copiedBars, -1, -1, 0, false, numFactory, validatedBarBuilderFactory);
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
             throw new IllegalArgumentException("End index must be >= to begin index - 1");
         }
-        if (seriesEndIndex >= copiedBars.size()) {
-            throw new IllegalArgumentException("End index must be < to the bar list size");
+        if (removedBarsCount < 0 || seriesBeginIndex < removedBarsCount) {
+            throw new IllegalArgumentException("Removed bars count must be between zero and the begin index");
         }
-        return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, constrained, numFactory,
+        if ((long) seriesEndIndex >= (long) removedBarsCount + copiedBars.size()) {
+            throw new IllegalArgumentException("End index must be within the offset bar list");
+        }
+        return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
                 validatedBarBuilderFactory);
     }
 
@@ -157,8 +169,8 @@ public class BaseBarSeries implements BarSeries {
                 series.removedBarsCount, index);
     }
 
-    private record Config(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, boolean constrained,
-            NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
+    private record Config(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, int removedBarsCount,
+            boolean constrained, NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
     }
 
     @Override
@@ -170,12 +182,14 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
+        final int retainedStartIndex = Math.max(startIndex, this.seriesBeginIndex);
         var builder = new BaseBarSeriesBuilder().withName(getName())
                 .withNumFactory(this.numFactory)
-                .withMaxBarCount(this.maximumBarCount);
+                .withMaxBarCount(this.maximumBarCount)
+                .withBeginIndex(this.removedBarsCount > 0 ? retainedStartIndex : 0);
         if (!this.bars.isEmpty()) {
             var removedBarsCount = getRemovedBarsCount();
-            var start = startIndex - removedBarsCount;
+            var start = retainedStartIndex - removedBarsCount;
             var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
             return builder.withBars(cut(this.bars, start, end)).build();
         }
@@ -238,6 +252,19 @@ public class BaseBarSeries implements BarSeries {
         return List.copyOf(this.bars);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void clear() {
+        this.bars.clear();
+        this.seriesBeginIndex = -1;
+        this.seriesEndIndex = -1;
+        this.removedBarsCount = 0;
+    }
+
     @Override
     public int getBeginIndex() {
         return this.seriesBeginIndex;
@@ -276,6 +303,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
+     * @throws ArithmeticException  if appending would advance the absolute index
+     *                              beyond {@link Integer#MAX_VALUE}
      */
     @Override
     public void addBar(final Bar bar, final boolean replace) {
@@ -291,6 +320,9 @@ public class BaseBarSeries implements BarSeries {
                 this.bars.set(this.bars.size() - 1, bar);
                 return;
             }
+            if (this.seriesEndIndex == Integer.MAX_VALUE) {
+                throw new ArithmeticException("Bar series index overflow");
+            }
             final int lastBarIndex = this.bars.size() - 1;
             final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
             if (!bar.getEndTime().isAfter(seriesEndTime)) {
@@ -305,7 +337,7 @@ public class BaseBarSeries implements BarSeries {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
-        this.seriesEndIndex++;
+        this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
         removeExceedingBars();
     }
 

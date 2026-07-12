@@ -8,6 +8,11 @@
 - **Pluggable execution-target estimation for dynamic sizing**: Added `TradeExecutionModel#estimateEntryTarget(...)` so custom execution models can provide sizing-aware fill timing and pricing. Dynamic sizing now defaults to conservative next-open estimation for models that do not override this API, and falls back safely when no target is resolvable to keep runs defined.
 
 ### Changed
+- **Retained bar series can resume at their absolute index**: `BaseBarSeriesBuilder` and
+  `ConcurrentBarSeriesBuilder` now accept `withBeginIndex(int)`, allowing persisted windows to
+  append, prune, create subseries, and serialize without rebasing their surviving bars to zero;
+  `BarSeries.clear()` resets a restored series for intentional reinitialization while preserving
+  its configuration.
 - **Finite `Num` validation is reusable across indicators**: Added `Num.isFinite(...)` for indicator-safe checks that reject null, NaN, and primitive-backed infinities without misclassifying finite high-precision `DecimalNum` values whose `doubleValue()` overflows; internal indicator code now uses this shared contract directly, and `IndicatorUtils.isInvalid(...)` is deprecated as a compatibility shim.
 - **Elliott anchor calibration is harness-only**: Long BTC anchor calibration now lives behind `ElliottWaveAnchorCalibrationHarness` as a dedicated CLI/job entrypoint, while the remaining harness unit tests exercise registry, windowing, report, and artifact contracts with synthetic inputs. Active docs warn that full anchor calibration can run for 8+ hours.
 - **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
