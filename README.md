@@ -1018,22 +1018,39 @@ See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/El
 
 ## LPPL exhaustion quickstart
 
-LPPL exhaustion indicators fit a Log-Periodic Power Law model to rolling log-price windows to surface late-stage bubble and crash setups. Use `LPPLExhaustionIndicator` when you need fit diagnostics and `LPPLExhaustionScoreIndicator` when rules or charts only need a bounded score.
+LPPL exhaustion indicators fit a Log-Periodic Power Law model to rolling log-price windows to surface late-stage bubble and crash setups. For rules and charts, the primary path is a regular bounded numeric indicator:
 
 ```java
 BarSeries series = ...;
 int index = series.getEndIndex();
 
-LPPLExhaustionIndicator exhaustion = new LPPLExhaustionIndicator(series);
-LPPLExhaustion snapshot = exhaustion.getValue(index);
-
-LPPLExhaustionScoreIndicator score = new LPPLExhaustionScoreIndicator(exhaustion);
+LPPLExhaustionScoreIndicator score = new LPPLExhaustionScoreIndicator(series);
 Num boundedScore = score.getValue(index); // positive = crash exhaustion, negative = bubble exhaustion
 ```
 
-Use `new LPPLExhaustionIndicator(priceIndicator, profile)` or `new LPPLExhaustionScoreIndicator(priceIndicator, profile)` when you need injected prices or tighter calibration settings. LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
+Use the rich indicator when fit status and diagnostics affect the decision:
 
-The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example that emits deterministic CSV/report artifacts with signed standalone LPPL scores, universe-relative rotation scores, qualitative crash/bubble exhaustion buckets, calibration metadata, fit-status diagnostics, and reference-data refresh metadata. By default the demo refreshes Yahoo Finance deltas into `target/analysis-demos/lppl-sector-rotation/reference-data`; set `ta4j.lpplUpdateReferenceData=true` only in the reviewable automation flow that updates committed adjusted resources.
+```java
+LPPLExhaustionIndicator exhaustion = new LPPLExhaustionIndicator(series);
+LPPLExhaustion snapshot = exhaustion.getValue(index);
+if (snapshot.isActionable()) {
+    LPPLFit dominantFit = snapshot.dominantFit();
+}
+```
+
+Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
+
+```java
+LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
+        .withWindows(200, 300, 500)
+        .withActionableCriticalTimeRange(10, 30)
+        .withOptimizerSettings(160, 0.80);
+LPPLExhaustionScoreIndicator tunedScore = new LPPLExhaustionScoreIndicator(series, profile);
+```
+
+LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
+
+The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example backed by adjusted daily resources through 2026-07-10. Run its `main` class with no arguments for a deterministic offline report. Pass `--refresh` to analyze disposable live-data copies, `--update-resources` for an explicit local committed-data refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. The demo is intentionally not exposed as a GitHub Actions or tagged-JUnit workflow.
 
 ## Real-world examples
 

@@ -40,10 +40,6 @@ import ta4jexamples.datasources.http.HttpResponseWrapper;
 final class SpdrSectorReferenceDataUpdater {
 
     static final int DEFAULT_OVERLAP_DAYS = 7;
-    static final String UPDATE_REFERENCE_DATA_PROPERTY = "ta4j.lpplUpdateReferenceData";
-    static final String REFERENCE_DATA_DIR_PROPERTY = "ta4j.lpplReferenceDataDir";
-    static final String DEMO_OUTPUT_DIR_PROPERTY = "ta4j.lpplDemoOutputDir";
-    static final String OVERLAP_DAYS_PROPERTY = "ta4j.lpplReferenceOverlapDays";
 
     private static final Logger LOG = LogManager.getLogger(SpdrSectorReferenceDataUpdater.class);
     private static final ZoneId MARKET_ZONE = ZoneId.of("America/New_York");
@@ -155,12 +151,17 @@ final class SpdrSectorReferenceDataUpdater {
             throw new IOException("SPDR reference JSON must contain candles");
         }
 
-        TreeMap<Long, ReferenceBar> bars = new TreeMap<>();
+        List<ReferenceBar> bars = new ArrayList<>(candles.size());
+        long previousStart = Long.MIN_VALUE;
         for (JsonElement element : candles) {
             ReferenceBar bar = ReferenceBar.fromCoinbaseStyleJson(element.getAsJsonObject());
-            bars.put(bar.startEpochSecond(), bar);
+            if (bar.startEpochSecond() <= previousStart) {
+                throw new IOException("SPDR reference candles must have unique, strictly increasing start times");
+            }
+            bars.add(bar);
+            previousStart = bar.startEpochSecond();
         }
-        return List.copyOf(bars.values());
+        return List.copyOf(bars);
     }
 
     static void writeReferenceBars(Path path, List<ReferenceBar> bars) throws IOException {
@@ -227,45 +228,6 @@ final class SpdrSectorReferenceDataUpdater {
             referenceDataDirectory = referenceDataDirectory.toAbsolutePath().normalize();
             outputDirectory = outputDirectory.toAbsolutePath().normalize();
             responseCacheDirectory = responseCacheDirectory.toAbsolutePath().normalize();
-        }
-
-        static Settings fromSystemProperties() {
-            Path outputDirectory = configuredPath(DEMO_OUTPUT_DIR_PROPERTY,
-                    "target/analysis-demos/lppl-sector-rotation");
-            Path referenceDataDirectory = configuredPath(REFERENCE_DATA_DIR_PROPERTY,
-                    "ta4j-examples/src/main/resources");
-            boolean updateReferenceData = Boolean.getBoolean(UPDATE_REFERENCE_DATA_PROPERTY);
-            int overlapDays = Integer.getInteger(OVERLAP_DAYS_PROPERTY, DEFAULT_OVERLAP_DAYS);
-            return new Settings(referenceDataDirectory, outputDirectory, outputDirectory.resolve("responses"),
-                    updateReferenceData, overlapDays, Instant.now());
-        }
-
-        private static Path configuredPath(String propertyName, String defaultValue) {
-            Path configuredPath = Path.of(System.getProperty(propertyName, defaultValue));
-            if (configuredPath.isAbsolute()) {
-                return configuredPath;
-            }
-            return repositoryRoot().resolve(configuredPath);
-        }
-
-        private static Path repositoryRoot() {
-            String mavenRoot = System.getProperty("maven.multiModuleProjectDirectory");
-            if (mavenRoot != null && !mavenRoot.isBlank()) {
-                Path root = Path.of(mavenRoot).toAbsolutePath().normalize();
-                if (Files.exists(root.resolve("pom.xml"))) {
-                    return root;
-                }
-            }
-
-            Path directory = Path.of("").toAbsolutePath().normalize();
-            while (directory != null) {
-                if (Files.exists(directory.resolve("pom.xml"))
-                        && Files.isDirectory(directory.resolve("ta4j-examples"))) {
-                    return directory;
-                }
-                directory = directory.getParent();
-            }
-            return Path.of("").toAbsolutePath().normalize();
         }
 
         Path outputDataDirectory() {

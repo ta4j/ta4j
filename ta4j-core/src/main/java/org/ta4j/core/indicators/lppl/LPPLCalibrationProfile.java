@@ -6,50 +6,41 @@ package org.ta4j.core.indicators.lppl;
 import java.util.Arrays;
 
 /**
- * Calibration profile for Log-Periodic Power Law (LPPL) exhaustion indicators.
+ * Immutable calibration settings for Log-Periodic Power Law (LPPL) exhaustion
+ * indicators.
  *
  * <p>
- * The default profile uses the common LPPL empirical ranges for {@code m} and
- * {@code omega}, searches critical times after the current bar, and validates
- * active exhaustion only when the critical time is near enough to matter for a
- * trading or rotation signal.
+ * Start with {@link #defaults()} and replace only the related group of settings
+ * that needs tuning. This keeps the common path readable while still exposing
+ * the complete LPPL search space.
  *
- * @param windows                 rolling fit windows in bars; values are sorted
- *                                and duplicates are removed
- * @param minM                    lower bound for the power-law exponent
- * @param maxM                    upper bound for the power-law exponent
- * @param mSteps                  grid-search steps for {@code m}
- * @param minOmega                lower bound for log-periodic frequency
- * @param maxOmega                upper bound for log-periodic frequency
- * @param omegaSteps              grid-search steps for {@code omega}
- * @param minCriticalOffset       minimum critical-time offset from the current
- *                                bar
- * @param maxCriticalOffset       maximum critical-time offset from the current
- *                                bar
- * @param criticalOffsetStep      grid-search step for critical-time offsets
- * @param activeMinCriticalOffset minimum offset for an actionable exhaustion
- *                                signal
- * @param activeMaxCriticalOffset maximum offset for an actionable exhaustion
- *                                signal
- * @param maxEvaluations          optimizer evaluation budget per fit
- * @param minRSquared             minimum fit quality for an actionable signal
- * @since 0.22.7
+ * @since 0.22.9
  */
-public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, int mSteps, double minOmega,
-        double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
-        int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations, double minRSquared) {
+public final class LPPLCalibrationProfile {
 
-    /**
-     * Creates a validated calibration profile.
-     *
-     * @since 0.22.7
-     */
-    public LPPLCalibrationProfile {
+    private final int[] windows;
+    private final double minM;
+    private final double maxM;
+    private final int mSteps;
+    private final double minOmega;
+    private final double maxOmega;
+    private final int omegaSteps;
+    private final int minCriticalOffset;
+    private final int maxCriticalOffset;
+    private final int criticalOffsetStep;
+    private final int activeMinCriticalOffset;
+    private final int activeMaxCriticalOffset;
+    private final int maxEvaluations;
+    private final double minRSquared;
+
+    LPPLCalibrationProfile(int[] windows, double minM, double maxM, int mSteps, double minOmega, double maxOmega,
+            int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
+            int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations, double minRSquared) {
         if (windows == null || windows.length == 0) {
             throw new IllegalArgumentException("windows must contain at least one value");
         }
-        windows = Arrays.stream(windows).sorted().distinct().toArray();
-        for (int window : windows) {
+        this.windows = Arrays.stream(windows).sorted().distinct().toArray();
+        for (int window : this.windows) {
             if (window < 5) {
                 throw new IllegalArgumentException("windows must be at least 5 bars");
             }
@@ -82,11 +73,24 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
         if (!Double.isFinite(minRSquared) || minRSquared < 0 || minRSquared > 1) {
             throw new IllegalArgumentException("minRSquared must be between 0 and 1");
         }
+        this.minM = minM;
+        this.maxM = maxM;
+        this.mSteps = mSteps;
+        this.minOmega = minOmega;
+        this.maxOmega = maxOmega;
+        this.omegaSteps = omegaSteps;
+        this.minCriticalOffset = minCriticalOffset;
+        this.maxCriticalOffset = maxCriticalOffset;
+        this.criticalOffsetStep = criticalOffsetStep;
+        this.activeMinCriticalOffset = activeMinCriticalOffset;
+        this.activeMaxCriticalOffset = activeMaxCriticalOffset;
+        this.maxEvaluations = maxEvaluations;
+        this.minRSquared = minRSquared;
     }
 
     /**
      * @return daily-equity defaults suitable for first-pass LPPL exhaustion scans
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public static LPPLCalibrationProfile defaults() {
         return new LPPLCalibrationProfile(new int[] { 200, 300, 400, 500 }, 0.1, 0.9, 5, 6.0, 13.0, 8, 1, 60, 5, 10, 30,
@@ -94,18 +98,197 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
     }
 
     /**
+     * @param windows rolling fit windows in bars
+     * @return a profile using the supplied windows
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withWindows(int... windows) {
+        return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
+     * @param minM  lower power-law exponent bound
+     * @param maxM  upper power-law exponent bound
+     * @param steps grid-search steps
+     * @return a profile using the supplied exponent search
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withExponentSearch(double minM, double maxM, int steps) {
+        return copy(windows, minM, maxM, steps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
+     * @param minOmega lower log-periodic frequency bound
+     * @param maxOmega upper log-periodic frequency bound
+     * @param steps    grid-search steps
+     * @return a profile using the supplied frequency search
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withFrequencySearch(double minOmega, double maxOmega, int steps) {
+        return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, steps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
+     * @param minimumOffset minimum searched critical-time offset
+     * @param maximumOffset maximum searched critical-time offset
+     * @param step          grid-search step
+     * @return a profile using the supplied critical-time search
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withCriticalTimeSearch(int minimumOffset, int maximumOffset, int step) {
+        return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minimumOffset, maximumOffset, step,
+                activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
+     * @param minimumOffset minimum actionable critical-time offset
+     * @param maximumOffset maximum actionable critical-time offset
+     * @return a profile using the supplied actionable range
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withActionableCriticalTimeRange(int minimumOffset, int maximumOffset) {
+        return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, minimumOffset, maximumOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
+     * @param maxEvaluations optimizer evaluation budget per fit
+     * @param minRSquared    minimum actionable fit quality
+     * @return a profile using the supplied optimizer settings
+     * @since 0.22.9
+     */
+    public LPPLCalibrationProfile withOptimizerSettings(int maxEvaluations, double minRSquared) {
+        return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    /**
      * @return defensive copy of rolling fit windows
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public int[] windows() {
         return Arrays.copyOf(windows, windows.length);
     }
 
     /**
-     * Compares profiles using window values instead of array identity.
-     *
-     * @since 0.22.7
+     * @return lower power-law exponent bound
+     * @since 0.22.9
      */
+    public double minM() {
+        return minM;
+    }
+
+    /**
+     * @return upper power-law exponent bound
+     * @since 0.22.9
+     */
+    public double maxM() {
+        return maxM;
+    }
+
+    /**
+     * @return exponent grid-search steps
+     * @since 0.22.9
+     */
+    public int mSteps() {
+        return mSteps;
+    }
+
+    /**
+     * @return lower frequency bound
+     * @since 0.22.9
+     */
+    public double minOmega() {
+        return minOmega;
+    }
+
+    /**
+     * @return upper frequency bound
+     * @since 0.22.9
+     */
+    public double maxOmega() {
+        return maxOmega;
+    }
+
+    /**
+     * @return frequency grid-search steps
+     * @since 0.22.9
+     */
+    public int omegaSteps() {
+        return omegaSteps;
+    }
+
+    /**
+     * @return minimum searched critical-time offset
+     * @since 0.22.9
+     */
+    public int minCriticalOffset() {
+        return minCriticalOffset;
+    }
+
+    /**
+     * @return maximum searched critical-time offset
+     * @since 0.22.9
+     */
+    public int maxCriticalOffset() {
+        return maxCriticalOffset;
+    }
+
+    /**
+     * @return critical-time grid-search step
+     * @since 0.22.9
+     */
+    public int criticalOffsetStep() {
+        return criticalOffsetStep;
+    }
+
+    /**
+     * @return minimum actionable critical-time offset
+     * @since 0.22.9
+     */
+    public int activeMinCriticalOffset() {
+        return activeMinCriticalOffset;
+    }
+
+    /**
+     * @return maximum actionable critical-time offset
+     * @since 0.22.9
+     */
+    public int activeMaxCriticalOffset() {
+        return activeMaxCriticalOffset;
+    }
+
+    /**
+     * @return optimizer evaluation budget per fit
+     * @since 0.22.9
+     */
+    public int maxEvaluations() {
+        return maxEvaluations;
+    }
+
+    /**
+     * @return minimum actionable coefficient of determination
+     * @since 0.22.9
+     */
+    public double minRSquared() {
+        return minRSquared;
+    }
+
+    private LPPLCalibrationProfile copy(int[] windows, double minM, double maxM, int mSteps, double minOmega,
+            double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
+            int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations, double minRSquared) {
+        return new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
+                minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
+                activeMaxCriticalOffset, maxEvaluations, minRSquared);
+    }
+
+    int maxWindow() {
+        return windows[windows.length - 1];
+    }
+
     @Override
     public boolean equals(Object object) {
         if (this == object) {
@@ -124,10 +307,6 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
                 && Double.compare(minRSquared, other.minRSquared) == 0;
     }
 
-    /**
-     * @return hash code based on window values and scalar profile settings
-     * @since 0.22.7
-     */
     @Override
     public int hashCode() {
         int result = Arrays.hashCode(windows);
@@ -147,11 +326,6 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
         return result;
     }
 
-    /**
-     * @return readable profile description with window values instead of array
-     *         identity
-     * @since 0.22.7
-     */
     @Override
     public String toString() {
         return "LPPLCalibrationProfile[windows=" + Arrays.toString(windows) + ", minM=" + minM + ", maxM=" + maxM
@@ -160,9 +334,5 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
                 + ", criticalOffsetStep=" + criticalOffsetStep + ", activeMinCriticalOffset=" + activeMinCriticalOffset
                 + ", activeMaxCriticalOffset=" + activeMaxCriticalOffset + ", maxEvaluations=" + maxEvaluations
                 + ", minRSquared=" + minRSquared + "]";
-    }
-
-    int maxWindow() {
-        return windows[windows.length - 1];
     }
 }

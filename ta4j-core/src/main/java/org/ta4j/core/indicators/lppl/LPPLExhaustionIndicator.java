@@ -27,9 +27,9 @@ import org.ta4j.core.num.Num;
  * diagnostics. Use {@link LPPLExhaustionScoreIndicator} when only a numeric
  * oscillator-like output is needed.
  *
- * @since 0.22.7
+ * @since 0.22.9
  */
-public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
+public final class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
 
     private final Indicator<Num> priceIndicator;
     private final int[] windows;
@@ -54,7 +54,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
      * calibration settings.
      *
      * @param series underlying bar series
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLExhaustionIndicator(BarSeries series) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")));
@@ -66,7 +66,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
      *
      * @param series  underlying bar series
      * @param profile calibration profile
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLExhaustionIndicator(BarSeries series, LPPLCalibrationProfile profile) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), profile);
@@ -77,7 +77,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
      * default calibration settings.
      *
      * @param priceIndicator price source to model
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLExhaustionIndicator(Indicator<Num> priceIndicator) {
         this(priceIndicator, LPPLCalibrationProfile.defaults());
@@ -88,7 +88,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
      *
      * @param priceIndicator price source to model
      * @param profile        calibration profile
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLExhaustionIndicator(Indicator<Num> priceIndicator, LPPLCalibrationProfile profile) {
         this(priceIndicator, Objects.requireNonNull(profile, "profile").windows(), profile.minM(), profile.maxM(),
@@ -117,9 +117,9 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
      * @param activeMaxCriticalOffset maximum actionable critical-time offset
      * @param maxEvaluations          optimizer evaluation budget
      * @param minRSquared             minimum actionable fit quality
-     * @since 0.22.7
+     * @since 0.22.9
      */
-    public LPPLExhaustionIndicator(Indicator<Num> priceIndicator, int[] windows, double minM, double maxM, int mSteps,
+    LPPLExhaustionIndicator(Indicator<Num> priceIndicator, int[] windows, double minM, double maxM, int mSteps,
             double minOmega, double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset,
             int criticalOffsetStep, int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations,
             double minRSquared) {
@@ -251,7 +251,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
 
     /**
      * @return source unstable bars plus the largest configured LPPL fit window
-     * @since 0.22.7
+     * @since 0.22.9
      */
     @Override
     public int getCountOfUnstableBars() {
@@ -260,7 +260,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
 
     /**
      * @return source price indicator
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public Indicator<Num> getPriceIndicator() {
         return priceIndicator;
@@ -268,7 +268,7 @@ public class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustion> {
 
     /**
      * @return calibration profile used by this indicator
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLCalibrationProfile getProfile() {
         return profile;

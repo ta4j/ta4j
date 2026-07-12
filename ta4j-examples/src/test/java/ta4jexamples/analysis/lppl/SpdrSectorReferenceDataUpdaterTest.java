@@ -21,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
 class SpdrSectorReferenceDataUpdaterTest {
 
     private static final Instant NOW = Instant.parse("2026-05-06T12:00:00Z");
-    private static final String RESOURCE = "YahooFinance-XLI-PT1D-20240102_20260429.json";
+    private static final String RESOURCE = "YahooFinance-XLI-PT1D-20240102_20260710.json";
 
     @TempDir
     Path tempDirectory;
@@ -64,6 +64,20 @@ class SpdrSectorReferenceDataUpdaterTest {
         assertThrows(IOException.class, () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars("{}"));
         assertThrows(IllegalArgumentException.class,
                 () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(bars(bar(100, "0"))));
+    }
+
+    @Test
+    void rejectsDuplicateOrOutOfOrderReferenceCandles() throws IOException {
+        String duplicate = bars(bar(200, "11"), bar(200, "12"));
+        String outOfOrder = bars(bar(200, "11"), bar(100, "10"));
+
+        IOException duplicateFailure = assertThrows(IOException.class,
+                () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(duplicate));
+        IOException orderFailure = assertThrows(IOException.class,
+                () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(outOfOrder));
+
+        assertTrue(duplicateFailure.getMessage().contains("strictly increasing"));
+        assertTrue(orderFailure.getMessage().contains("strictly increasing"));
     }
 
     @Test
@@ -133,7 +147,7 @@ class SpdrSectorReferenceDataUpdaterTest {
     private Path seedReference(String ticker, String json) throws IOException {
         Path referenceDirectory = tempDirectory.resolve("resources");
         Files.createDirectories(referenceDirectory);
-        Files.writeString(referenceDirectory.resolve("YahooFinance-" + ticker + "-PT1D-20240102_20260429.json"), json);
+        Files.writeString(referenceDirectory.resolve("YahooFinance-" + ticker + "-PT1D-20240102_20260710.json"), json);
         return referenceDirectory;
     }
 

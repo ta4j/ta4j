@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -33,28 +34,26 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * Sector SPDR ETF universe.
  *
  * <p>
- * The committed seed resources are adjusted daily Yahoo Finance bars ending
- * near the 2026-04-29 reference snapshot. Analysis-demo runs can refresh those
- * references incrementally with live Yahoo deltas before running the report,
- * keeping local runs deterministic by writing refreshed copies under
- * {@code target/analysis-demos}.
+ * The committed resources are adjusted daily Yahoo Finance bars. The default
+ * run is fully offline and deterministic. Pass {@code --refresh} to analyze
+ * incrementally refreshed copies, or {@code --update-resources} to refresh the
+ * committed local resources explicitly.
+ *
+ * @since 0.22.9
  */
 public final class SpdrSectorLPPLRotationDemo {
 
-    private static final LocalDate SEED_SNAPSHOT_DATE = LocalDate.of(2026, 4, 29);
+    private static final LocalDate SEED_SNAPSHOT_DATE = LocalDate.of(2026, 7, 10);
+    private static final String RESOURCE_PREFIX = "ta4jexamples/analysis/lppl/spdr-sector-rotation/";
+    private static final Path DEFAULT_OUTPUT_DIRECTORY = Path.of("target/analysis-demos/lppl-sector-rotation");
+    private static final String USAGE = "Usage: SpdrSectorLPPLRotationDemo [--refresh | --update-resources] "
+            + "[--output-dir <path>] [--help]";
 
-    private static final List<SectorDefinition> UNIVERSE = List.of(
-            new SectorDefinition("XLI", "Industrials", "YahooFinance-XLI-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLV", "Health Care", "YahooFinance-XLV-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLF", "Financials", "YahooFinance-XLF-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLRE", "Real Estate", "YahooFinance-XLRE-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLE", "Energy", "YahooFinance-XLE-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLU", "Utilities", "YahooFinance-XLU-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLK", "Technology", "YahooFinance-XLK-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLB", "Materials", "YahooFinance-XLB-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLP", "Consumer Staples", "YahooFinance-XLP-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLY", "Consumer Discretionary", "YahooFinance-XLY-PT1D-20240102_20260429.json"),
-            new SectorDefinition("XLC", "Communication Services", "YahooFinance-XLC-PT1D-20240102_20260429.json"));
+    private static final List<SectorDefinition> UNIVERSE = List.of(sector("XLI", "Industrials"),
+            sector("XLV", "Health Care"), sector("XLF", "Financials"), sector("XLRE", "Real Estate"),
+            sector("XLE", "Energy"), sector("XLU", "Utilities"), sector("XLK", "Technology"),
+            sector("XLB", "Materials"), sector("XLP", "Consumer Staples"), sector("XLY", "Consumer Discretionary"),
+            sector("XLC", "Communication Services"));
 
     private SpdrSectorLPPLRotationDemo() {
     }
@@ -62,12 +61,24 @@ public final class SpdrSectorLPPLRotationDemo {
     /**
      * Runs the SPDR LPPL rotation demo.
      *
-     * @param args ignored
-     * @throws IOException if refreshed reference-data artifacts cannot be written
+     * @param args optional refresh and output arguments
+     * @throws IOException if report or refreshed reference-data artifacts cannot be
+     *                     written
+     * @since 0.22.9
      */
     public static void main(String[] args) throws IOException {
-        DemoRun run = runAnalysisDemo(demoProfile(), SpdrSectorReferenceDataUpdater.Settings.fromSystemProperties());
+        DemoOptions options = DemoOptions.parse(args);
+        if (options.help()) {
+            System.out.println(USAGE);
+            return;
+        }
+        DemoRun run = runDemo(demoProfile(), options);
         System.out.print(run.report());
+    }
+
+    private static SectorDefinition sector(String ticker, String sector) {
+        return new SectorDefinition(ticker, sector,
+                RESOURCE_PREFIX + "YahooFinance-" + ticker + "-PT1D-20240102_20260710.json");
     }
 
     static List<SectorDefinition> closedUniverse() {
@@ -78,13 +89,18 @@ public final class SpdrSectorLPPLRotationDemo {
         return LPPLCalibrationProfile.defaults();
     }
 
-    static DemoRun runAnalysisDemo(LPPLCalibrationProfile profile, SpdrSectorReferenceDataUpdater.Settings settings)
-            throws IOException {
-        SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = new SpdrSectorReferenceDataUpdater()
-                .refresh(UNIVERSE, settings);
+    static DemoRun runDemo(LPPLCalibrationProfile profile, DemoOptions options) throws IOException {
+        SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = null;
+        if (options.refresh()) {
+            Path resourceDirectory = repositoryRoot().resolve("ta4j-examples/src/main/resources");
+            SpdrSectorReferenceDataUpdater.Settings settings = new SpdrSectorReferenceDataUpdater.Settings(
+                    resourceDirectory, options.outputDirectory(), options.outputDirectory().resolve("responses"),
+                    options.updateResources(), SpdrSectorReferenceDataUpdater.DEFAULT_OVERLAP_DAYS, Instant.now());
+            refreshSummary = new SpdrSectorReferenceDataUpdater().refresh(UNIVERSE, settings);
+        }
         List<SectorSnapshot> snapshots = analyze(profile, refreshSummary);
         String report = renderReport(snapshots, profile, refreshSummary);
-        writeArtifacts(settings.outputDirectory(), report, snapshots, refreshSummary);
+        writeArtifacts(options.outputDirectory(), report, snapshots, refreshSummary);
         return new DemoRun(snapshots, refreshSummary, report);
     }
 
@@ -148,7 +164,7 @@ public final class SpdrSectorLPPLRotationDemo {
                     .sum();
             int actionableFits = sectorInstruments.stream()
                     .map(InstrumentSnapshot::exhaustion)
-                    .mapToInt(LPPLExhaustion::validFits)
+                    .mapToInt(LPPLExhaustion::actionableFits)
                     .sum();
             int crashFits = sectorInstruments.stream()
                     .map(InstrumentSnapshot::exhaustion)
@@ -428,8 +444,21 @@ public final class SpdrSectorLPPLRotationDemo {
         Files.writeString(outputDirectory.resolve("lppl-sector-report.txt"), report, StandardCharsets.UTF_8);
         Files.writeString(outputDirectory.resolve("lppl-sector-snapshots.csv"), renderSnapshotCsv(snapshots),
                 StandardCharsets.UTF_8);
-        Files.writeString(outputDirectory.resolve("lppl-reference-refresh.csv"), renderRefreshSummary(refreshSummary),
-                StandardCharsets.UTF_8);
+        if (refreshSummary != null) {
+            Files.writeString(outputDirectory.resolve("lppl-reference-refresh.csv"),
+                    renderRefreshSummary(refreshSummary), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static Path repositoryRoot() {
+        Path directory = Path.of("").toAbsolutePath().normalize();
+        while (directory != null) {
+            if (Files.exists(directory.resolve("pom.xml")) && Files.isDirectory(directory.resolve("ta4j-examples"))) {
+                return directory;
+            }
+            directory = directory.getParent();
+        }
+        return Path.of("").toAbsolutePath().normalize();
     }
 
     private static List<SectorSnapshot> withRanks(List<SectorSnapshot> snapshots) {
@@ -486,7 +515,7 @@ public final class SpdrSectorLPPLRotationDemo {
     }
 
     private static double diagnosticStrength(LPPLExhaustion exhaustion) {
-        if (exhaustion.isValid()) {
+        if (exhaustion.isActionable()) {
             return 2.0 + Math.abs(scoreValue(exhaustion));
         }
         LPPLFit fit = exhaustion.dominantFit();
@@ -538,12 +567,12 @@ public final class SpdrSectorLPPLRotationDemo {
     }
 
     private static boolean hasCrashExhaustion(InstrumentSnapshot instrument) {
-        return instrument.exhaustion().isValid()
+        return instrument.exhaustion().isActionable()
                 && instrument.exhaustion().side() == LPPLExhaustionSide.CRASH_EXHAUSTION;
     }
 
     private static boolean hasBubbleExhaustion(InstrumentSnapshot instrument) {
-        return instrument.exhaustion().isValid()
+        return instrument.exhaustion().isActionable()
                 && instrument.exhaustion().side() == LPPLExhaustionSide.BUBBLE_EXHAUSTION;
     }
 
@@ -552,7 +581,7 @@ public final class SpdrSectorLPPLRotationDemo {
     }
 
     private static double scoreValue(LPPLExhaustion exhaustion) {
-        if (!exhaustion.isValid()) {
+        if (!exhaustion.isActionable()) {
             return 0.0;
         }
         double value = exhaustion.score().doubleValue();
@@ -574,6 +603,42 @@ public final class SpdrSectorLPPLRotationDemo {
 
     record DemoRun(List<SectorSnapshot> snapshots, SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary,
             String report) {
+    }
+
+    record DemoOptions(Path outputDirectory, boolean refresh, boolean updateResources, boolean help) {
+
+        DemoOptions {
+            outputDirectory = outputDirectory.toAbsolutePath().normalize();
+            if (updateResources && !refresh) {
+                throw new IllegalArgumentException("updateResources requires refresh");
+            }
+        }
+
+        static DemoOptions parse(String[] args) {
+            Path outputDirectory = DEFAULT_OUTPUT_DIRECTORY;
+            boolean refresh = false;
+            boolean updateResources = false;
+            boolean help = false;
+            String[] safeArgs = args == null ? new String[0] : args;
+            for (int i = 0; i < safeArgs.length; i++) {
+                switch (safeArgs[i]) {
+                case "--refresh" -> refresh = true;
+                case "--update-resources" -> {
+                    refresh = true;
+                    updateResources = true;
+                }
+                case "--output-dir" -> {
+                    if (++i >= safeArgs.length) {
+                        throw new IllegalArgumentException("--output-dir requires a path\n" + USAGE);
+                    }
+                    outputDirectory = Path.of(safeArgs[i]);
+                }
+                case "--help" -> help = true;
+                default -> throw new IllegalArgumentException("Unknown argument: " + safeArgs[i] + "\n" + USAGE);
+                }
+            }
+            return new DemoOptions(outputDirectory, refresh, updateResources, help);
+        }
     }
 
     record SectorDefinition(String ticker, String sector, String resource) {

@@ -11,7 +11,7 @@ package org.ta4j.core.indicators.lppl;
  * identify crash exhaustion after persistent downside pressure, while negative
  * values identify bubble exhaustion after persistent upside pressure.
  *
- * @since 0.22.7
+ * @since 0.22.9
  */
 public enum LPPLExhaustionSide {
 
@@ -38,7 +38,7 @@ public enum LPPLExhaustionSide {
 
     /**
      * @return sign to apply to the bounded numeric exhaustion score
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public int scoreSign() {
         return scoreSign;

@@ -35,7 +35,7 @@ package org.ta4j.core.indicators.lppl;
  * @param criticalOffset fitted critical-time offset from the current bar
  * @param evaluations    optimizer evaluations consumed, or zero for grid-only
  *                       failures
- * @since 0.22.7
+ * @since 0.22.9
  */
 public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double b, double c1, double c2,
         double criticalTime, double m, double omega, double rss, double rms, double rSquared, int criticalOffset,
@@ -44,7 +44,7 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
     /**
      * Creates a validated fit record.
      *
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLFit {
         if (window < 0) {
@@ -63,7 +63,7 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
 
     /**
      * @return {@code true} when the optimizer produced finite LPPL parameters
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public boolean isConverged() {
         return status == LPPLExhaustionStatus.VALID && Double.isFinite(a) && Double.isFinite(b) && Double.isFinite(c1)
@@ -75,7 +75,7 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
      * @param profile calibration profile used to interpret the fit
      * @return {@code true} when the fit passes empirical LPPL filters and active
      *         horizon constraints
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public boolean isActionable(LPPLCalibrationProfile profile) {
         return isConverged() && rSquared >= profile.minRSquared() && m >= profile.minM() && m <= profile.maxM()
@@ -86,7 +86,7 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
 
     /**
      * @return LPPL exhaustion side implied by {@code B}
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public LPPLExhaustionSide side() {
         if (!Double.isFinite(b) || b == 0.0) {

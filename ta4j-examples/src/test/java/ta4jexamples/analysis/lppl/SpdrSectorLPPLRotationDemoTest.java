@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,9 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.indicators.lppl.LPPLCalibrationProfile;
@@ -29,7 +31,7 @@ import org.ta4j.core.num.NumFactory;
 
 class SpdrSectorLPPLRotationDemoTest {
 
-    private static final LocalDate SNAPSHOT_DATE = LocalDate.of(2026, 4, 29);
+    private static final LocalDate SNAPSHOT_DATE = LocalDate.of(2026, 7, 10);
 
     private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
@@ -114,7 +116,7 @@ class SpdrSectorLPPLRotationDemoTest {
 
         assertTrue(report.startsWith(
                 "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,status,dominant_fit_status,attempted_fits,converged_fits,actionable_fits,crash_fits,bubble_fits,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n"
-                        + "2026-04-29,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000,1,1,1.2500,CRASH_EXHAUSTION,VALID,VALID,1,1,1,1,0,1.0000,1.0000,0.7000,80,20,0.9000,0.1000,CRASH_EXHAUSTED_LEADER\n\n"
+                        + "2026-07-10,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000,1,1,1.2500,CRASH_EXHAUSTION,VALID,VALID,1,1,1,1,0,1.0000,1.0000,0.7000,80,20,0.9000,0.1000,CRASH_EXHAUSTED_LEADER\n\n"
                         + "LPPL calibration profile\n"));
         assertTrue(report.contains("windows=[200, 300, 400, 500]"));
         assertTrue(report.contains("min_r_squared=0.7500"));
@@ -122,6 +124,25 @@ class SpdrSectorLPPLRotationDemoTest {
         assertTrue(report.contains(
                 "This snapshot has 1 dominant crash-exhaustion sector and 0 dominant bubble-exhaustion sectors"));
         assertTrue(report.contains("Qualitative buckets: CRASH_EXHAUSTED_LEADER=1."));
+    }
+
+    @Test
+    void refreshSummaryRowsMatchTheDocumentedColumns() {
+        SpdrSectorReferenceDataUpdater.TickerRefresh refresh = new SpdrSectorReferenceDataUpdater.TickerRefresh("XLI",
+                "Industrials", tempDirectory.resolve("XLI.json"), LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 10),
+                582, 53, 632, 50, 2, false, "");
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = new SpdrSectorReferenceDataUpdater.RefreshSummary(
+                List.of(refresh), tempDirectory, tempDirectory.resolve("responses"));
+
+        String row = SpdrSectorLPPLRotationDemo.renderRefreshSummary(summary)
+                .lines()
+                .filter(line -> line.startsWith("XLI,"))
+                .findFirst()
+                .orElseThrow();
+
+        assertArrayEquals(
+                new String[] { "XLI", "2026-07-10", "2026-07-10", "582", "53", "632", "50", "2", "false", "" },
+                row.split(",", -1));
     }
 
     @Test
@@ -145,15 +166,27 @@ class SpdrSectorLPPLRotationDemoTest {
 
     @Test
     void analyzeLoadsAllOfflineSpdrResources() {
-        LPPLCalibrationProfile smokeProfile = new LPPLCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
-                10, 30, 10, 10, 30, 25, 0.5);
-
-        List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile);
+        List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile());
 
         assertEquals(11, snapshots.size());
         assertTrue(snapshots.stream().allMatch(snapshot -> Double.isFinite(snapshot.lpplScore())));
         assertTrue(snapshots.stream().allMatch(snapshot -> Double.isFinite(snapshot.relativeRotationScore())));
         assertTrue(snapshots.stream().allMatch(snapshot -> snapshot.latestDate() != null));
+    }
+
+    @Test
+    void committedResourcesShareTheCurrentCompleteSession() throws IOException {
+        Set<LocalDate> lastDates = new HashSet<>();
+        for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : SpdrSectorLPPLRotationDemo.closedUniverse()) {
+            assertTrue(definition.resource().startsWith("ta4jexamples/analysis/lppl/spdr-sector-rotation/"));
+            List<SpdrSectorReferenceDataUpdater.ReferenceBar> bars = SpdrSectorReferenceDataUpdater
+                    .readReferenceBars(tempDirectory.resolve("missing"), definition.resource());
+            assertTrue(bars.size() >= 500);
+            assertEquals(LocalDate.of(2024, 1, 2), bars.get(0).localDate());
+            lastDates.add(bars.get(bars.size() - 1).localDate());
+        }
+
+        assertEquals(Set.of(SNAPSHOT_DATE), lastDates);
     }
 
     @Test
@@ -168,58 +201,45 @@ class SpdrSectorLPPLRotationDemoTest {
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = updater
                 .refresh(SpdrSectorLPPLRotationDemo.closedUniverse(), settings);
 
-        LPPLCalibrationProfile smokeProfile = new LPPLCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
-                10, 30, 10, 10, 30, 25, 0.5);
-        List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile,
+        List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile(),
                 refreshSummary);
-        String report = SpdrSectorLPPLRotationDemo.renderReport(snapshots, smokeProfile, refreshSummary);
+        String report = SpdrSectorLPPLRotationDemo.renderReport(snapshots, smokeProfile(), refreshSummary);
 
         assertEquals(11, snapshots.size());
         assertTrue(report.contains("Reference data refresh"));
-        assertTrue(Files.exists(
-                outputDirectory.resolve("reference-data").resolve("YahooFinance-XLI-PT1D-20240102_20260429.json")));
+        String xliResource = SpdrSectorLPPLRotationDemo.closedUniverse().get(0).resource();
+        assertTrue(Files.exists(outputDirectory.resolve("reference-data").resolve(xliResource)));
     }
 
     @Test
-    void systemPropertySettingsResolveRelativePathsFromRepositoryRoot() {
-        String previousOutputDirectory = System.getProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY);
-        String previousReferenceDataDirectory = System
-                .getProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY);
-        try {
-            System.setProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY,
-                    "target/analysis-demos/lppl-sector-rotation");
-            System.setProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY,
-                    "ta4j-examples/src/main/resources");
+    void commandLineOptionsKeepRefreshExplicit() {
+        SpdrSectorLPPLRotationDemo.DemoOptions defaults = SpdrSectorLPPLRotationDemo.DemoOptions.parse(new String[0]);
+        SpdrSectorLPPLRotationDemo.DemoOptions refresh = SpdrSectorLPPLRotationDemo.DemoOptions
+                .parse(new String[] { "--refresh", "--output-dir", tempDirectory.toString() });
+        SpdrSectorLPPLRotationDemo.DemoOptions update = SpdrSectorLPPLRotationDemo.DemoOptions
+                .parse(new String[] { "--update-resources" });
 
-            SpdrSectorReferenceDataUpdater.Settings settings = SpdrSectorReferenceDataUpdater.Settings
-                    .fromSystemProperties();
-            Path repositoryRoot = repositoryRoot();
-
-            assertEquals(repositoryRoot.resolve("target/analysis-demos/lppl-sector-rotation").normalize(),
-                    settings.outputDirectory());
-            assertEquals(repositoryRoot.resolve("ta4j-examples/src/main/resources").normalize(),
-                    settings.referenceDataDirectory());
-        } finally {
-            restoreProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY, previousOutputDirectory);
-            restoreProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY, previousReferenceDataDirectory);
-        }
+        assertFalse(defaults.refresh());
+        assertFalse(defaults.updateResources());
+        assertTrue(refresh.refresh());
+        assertFalse(refresh.updateResources());
+        assertEquals(tempDirectory.toAbsolutePath().normalize(), refresh.outputDirectory());
+        assertTrue(update.refresh());
+        assertTrue(update.updateResources());
     }
 
     @Test
-    @Tag("lppl-sector-rotation-demo")
-    void lpplSectorRotationDemoFunnelRefreshesReferencesAndWritesArtifacts() throws IOException {
-        SpdrSectorReferenceDataUpdater.Settings settings = SpdrSectorReferenceDataUpdater.Settings
-                .fromSystemProperties();
-
-        SpdrSectorLPPLRotationDemo.DemoRun run = SpdrSectorLPPLRotationDemo
-                .runAnalysisDemo(SpdrSectorLPPLRotationDemo.demoProfile(), settings);
+    void lpplSectorRotationMainPathIsOfflineAndWritesArtifacts() throws IOException {
+        SpdrSectorLPPLRotationDemo.DemoOptions options = new SpdrSectorLPPLRotationDemo.DemoOptions(tempDirectory,
+                false, false, false);
+        SpdrSectorLPPLRotationDemo.DemoRun run = SpdrSectorLPPLRotationDemo.runDemo(smokeProfile(), options);
 
         assertEquals(11, run.snapshots().size());
-        assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-sector-report.txt")));
-        assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-sector-snapshots.csv")));
-        assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-reference-refresh.csv")));
-        assertTrue(run.report()
-                .contains(SpdrSectorLPPLRotationDemo.renderProfile(SpdrSectorLPPLRotationDemo.demoProfile())));
+        assertNull(run.refreshSummary());
+        assertTrue(Files.exists(tempDirectory.resolve("lppl-sector-report.txt")));
+        assertTrue(Files.exists(tempDirectory.resolve("lppl-sector-snapshots.csv")));
+        assertFalse(Files.exists(tempDirectory.resolve("lppl-reference-refresh.csv")));
+        assertTrue(run.report().contains(SpdrSectorLPPLRotationDemo.renderProfile(smokeProfile())));
         assertFalse(run.report().isBlank());
     }
 
@@ -228,28 +248,21 @@ class SpdrSectorLPPLRotationDemoTest {
         for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : SpdrSectorLPPLRotationDemo.closedUniverse()) {
             try (java.io.InputStream stream = getClass().getClassLoader().getResourceAsStream(definition.resource())) {
                 assertNotNull(stream, definition.resource());
-                Files.copy(stream, referenceDataDirectory.resolve(definition.resource()));
+                Path destination = referenceDataDirectory.resolve(definition.resource());
+                Files.createDirectories(destination.getParent());
+                Files.copy(stream, destination);
             }
         }
     }
 
-    private Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath().normalize();
-        while (directory != null) {
-            if (Files.exists(directory.resolve("pom.xml")) && Files.isDirectory(directory.resolve("ta4j-examples"))) {
-                return directory;
-            }
-            directory = directory.getParent();
-        }
-        throw new IllegalStateException("Unable to locate repository root");
-    }
-
-    private void restoreProperty(String name, String value) {
-        if (value == null) {
-            System.clearProperty(name);
-        } else {
-            System.setProperty(name, value);
-        }
+    private LPPLCalibrationProfile smokeProfile() {
+        return LPPLCalibrationProfile.defaults()
+                .withWindows(200)
+                .withExponentSearch(0.1, 0.9, 2)
+                .withFrequencySearch(6.0, 13.0, 2)
+                .withCriticalTimeSearch(10, 30, 10)
+                .withActionableCriticalTimeRange(10, 30)
+                .withOptimizerSettings(25, 0.5);
     }
 
     private SpdrSectorLPPLRotationDemo.SectorSnapshot snapshot(String sector, String ticker, double score,
