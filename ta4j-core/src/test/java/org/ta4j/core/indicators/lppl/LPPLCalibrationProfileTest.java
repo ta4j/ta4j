@@ -54,6 +54,17 @@ class LPPLCalibrationProfileTest {
     }
 
     @Test
+    void narrowingCriticalTimeSearchKeepsTheProfileUsable() {
+        LPPLCalibrationProfile overlapping = LPPLCalibrationProfile.defaults().withCriticalTimeSearch(5, 20, 1);
+        LPPLCalibrationProfile disjoint = LPPLCalibrationProfile.defaults().withCriticalTimeSearch(1, 5, 1);
+
+        assertThat(overlapping.activeMinCriticalOffset()).isEqualTo(10);
+        assertThat(overlapping.activeMaxCriticalOffset()).isEqualTo(20);
+        assertThat(disjoint.activeMinCriticalOffset()).isEqualTo(1);
+        assertThat(disjoint.activeMaxCriticalOffset()).isEqualTo(5);
+    }
+
+    @Test
     void rejectsInvalidGroupedSettings() {
         LPPLCalibrationProfile defaults = LPPLCalibrationProfile.defaults();
 

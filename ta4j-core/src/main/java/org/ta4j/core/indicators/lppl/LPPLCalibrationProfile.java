@@ -132,6 +132,9 @@ public final class LPPLCalibrationProfile {
     }
 
     /**
+     * Narrows the actionable range to the overlap with this search, or to the
+     * complete search when the previous actionable range does not overlap.
+     *
      * @param minimumOffset minimum searched critical-time offset
      * @param maximumOffset maximum searched critical-time offset
      * @param step          grid-search step
@@ -139,8 +142,14 @@ public final class LPPLCalibrationProfile {
      * @since 0.22.9
      */
     public LPPLCalibrationProfile withCriticalTimeSearch(int minimumOffset, int maximumOffset, int step) {
+        int actionableMinimum = Math.max(minimumOffset, activeMinCriticalOffset);
+        int actionableMaximum = Math.min(maximumOffset, activeMaxCriticalOffset);
+        if (actionableMinimum > actionableMaximum) {
+            actionableMinimum = minimumOffset;
+            actionableMaximum = maximumOffset;
+        }
         return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minimumOffset, maximumOffset, step,
-                activeMinCriticalOffset, activeMaxCriticalOffset, maxEvaluations, minRSquared);
+                actionableMinimum, actionableMaximum, maxEvaluations, minRSquared);
     }
 
     /**

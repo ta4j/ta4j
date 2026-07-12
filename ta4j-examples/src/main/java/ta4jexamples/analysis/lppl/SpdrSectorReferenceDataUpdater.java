@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,7 +70,13 @@ final class SpdrSectorReferenceDataUpdater {
         for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
             refreshes.add(refreshTicker(definition, settings, effectiveFetcher));
         }
-        return new RefreshSummary(refreshes, settings.outputDataDirectory(), settings.responseCacheDirectory());
+        long distinctEndDates = refreshes.stream().map(TickerRefresh::newLastDate).distinct().count();
+        if (distinctEndDates > 1) {
+            throw new IOException("SPDR reference refresh did not produce a common final session");
+        }
+        PromotionResult promotion = promoteReferenceData(universe, settings, refreshes);
+        return new RefreshSummary(promotion.refreshes(), promotion.analysisDataDirectory(),
+                settings.responseCacheDirectory());
     }
 
     private TickerRefresh refreshTicker(SpdrSectorLPPLRotationDemo.SectorDefinition definition, Settings settings,
@@ -92,17 +99,13 @@ final class SpdrSectorReferenceDataUpdater {
                     .filter(bar -> bar.isCompleteFor(settings.now()))
                     .toList();
             MergeResult merge = merge(existingBars, fetchedBars);
-            if (!settings.updateReferenceData() || merge.hasChanges()) {
-                writeReferenceBars(outputPath, merge.bars());
-            }
+            writeReferenceBars(outputPath, merge.bars());
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
                     merge.lastDate(), existingBars.size(), fetchedBars.size(), merge.bars().size(), merge.addedBars(),
                     merge.revisedBars(), false, "");
         } catch (IOException | RuntimeException exception) {
             LOG.warn("Unable to refresh SPDR reference data for {}", definition.ticker(), exception);
-            if (!settings.updateReferenceData()) {
-                writeReferenceBars(outputPath, existingBars);
-            }
+            writeReferenceBars(outputPath, existingBars);
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
                     previousLastDate, existingBars.size(), 0, existingBars.size(), 0, 0, true,
                     exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());
@@ -126,6 +129,48 @@ final class SpdrSectorReferenceDataUpdater {
             }
         }
         return new MergeResult(List.copyOf(merged.values()), addedBars, revisedBars);
+    }
+
+    private static PromotionResult promoteReferenceData(List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe,
+            Settings settings, List<TickerRefresh> refreshes) throws IOException {
+        if (!settings.updateReferenceData() || refreshes.stream().anyMatch(TickerRefresh::skipped)) {
+            return new PromotionResult(List.copyOf(refreshes), settings.outputDataDirectory());
+        }
+
+        List<Path> temporaryFiles = new ArrayList<>(universe.size());
+        List<Path> targetFiles = new ArrayList<>(universe.size());
+        try {
+            for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
+                TickerRefresh refresh = refreshes.stream()
+                        .filter(candidate -> candidate.ticker().equals(definition.ticker()))
+                        .findFirst()
+                        .orElseThrow(() -> new IOException("Missing SPDR refresh result for " + definition.ticker()));
+                Path target = settings.referenceDataDirectory().resolve(definition.resource());
+                Files.createDirectories(target.getParent());
+                Path temporary = Files.createTempFile(target.getParent(), ".lppl-reference-", ".json");
+                Files.copy(refresh.outputPath(), temporary, StandardCopyOption.REPLACE_EXISTING);
+                temporaryFiles.add(temporary);
+                targetFiles.add(target);
+            }
+            for (int i = 0; i < temporaryFiles.size(); i++) {
+                Files.move(temporaryFiles.get(i), targetFiles.get(i), StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            for (Path temporary : temporaryFiles) {
+                Files.deleteIfExists(temporary);
+            }
+        }
+
+        List<TickerRefresh> promoted = refreshes.stream()
+                .map(refresh -> refresh.withOutputPath(settings.referenceDataDirectory()
+                        .resolve(universe.stream()
+                                .filter(definition -> definition.ticker().equals(refresh.ticker()))
+                                .findFirst()
+                                .orElseThrow()
+                                .resource())))
+                .toList();
+        return new PromotionResult(promoted, settings.referenceDataDirectory());
     }
 
     static List<ReferenceBar> readReferenceBars(Path path, String fallbackResource) throws IOException {
@@ -231,7 +276,7 @@ final class SpdrSectorReferenceDataUpdater {
         }
 
         Path outputDataDirectory() {
-            return updateReferenceData ? referenceDataDirectory : outputDirectory.resolve("reference-data");
+            return outputDirectory.resolve("reference-data");
         }
 
         Path outputPath(String resource) {
@@ -258,6 +303,14 @@ final class SpdrSectorReferenceDataUpdater {
     record TickerRefresh(String ticker, String sector, Path outputPath, LocalDate previousLastDate,
             LocalDate newLastDate, int existingBars, int fetchedBars, int mergedBars, int addedBars, int revisedBars,
             boolean skipped, String message) {
+
+        TickerRefresh withOutputPath(Path outputPath) {
+            return new TickerRefresh(ticker, sector, outputPath, previousLastDate, newLastDate, existingBars,
+                    fetchedBars, mergedBars, addedBars, revisedBars, skipped, message);
+        }
+    }
+
+    private record PromotionResult(List<TickerRefresh> refreshes, Path analysisDataDirectory) {
     }
 
     record MergeResult(List<ReferenceBar> bars, int addedBars, int revisedBars) {

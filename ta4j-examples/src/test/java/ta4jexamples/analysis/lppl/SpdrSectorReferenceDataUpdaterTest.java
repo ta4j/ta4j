@@ -22,6 +22,7 @@ class SpdrSectorReferenceDataUpdaterTest {
 
     private static final Instant NOW = Instant.parse("2026-05-06T12:00:00Z");
     private static final String RESOURCE = "YahooFinance-XLI-PT1D-20240102_20260710.json";
+    private static final String SECOND_RESOURCE = "YahooFinance-XLF-PT1D-20240102_20260710.json";
 
     @TempDir
     Path tempDirectory;
@@ -113,6 +114,38 @@ class SpdrSectorReferenceDataUpdaterTest {
     }
 
     @Test
+    void promotesCommittedResourcesOnlyAfterACompleteRefresh() throws IOException {
+        Path referenceDirectory = seedReference("XLI", bars(bar(100, "10")));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
+                (ticker, start, end) -> List.of(bar(300, "12")));
+
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
+                settings(referenceDirectory, true));
+
+        Path trackedResource = referenceDirectory.resolve(RESOURCE);
+        assertEquals(trackedResource, summary.tickers().get(0).outputPath());
+        assertEquals(referenceDirectory.toAbsolutePath().normalize(), summary.analysisDataDirectory());
+        assertTrue(Files.readString(trackedResource).contains("\"start\": \"300\""));
+    }
+
+    @Test
+    void rejectsMismatchedFinalSessionsBeforeChangingCommittedResources() throws IOException {
+        Path referenceDirectory = seedReference("XLI", bars(bar(100, "10")));
+        Files.writeString(referenceDirectory.resolve(SECOND_RESOURCE), bars(bar(100, "20")));
+        String originalXli = Files.readString(referenceDirectory.resolve(RESOURCE));
+        String originalXlf = Files.readString(referenceDirectory.resolve(SECOND_RESOURCE));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater((ticker, start,
+                end) -> ticker.equals("XLI") ? List.of(bar(86_400, "12")) : List.of(bar(172_800, "22")));
+
+        IOException failure = assertThrows(IOException.class,
+                () -> updater.refresh(twoInstrumentUniverse(), settings(referenceDirectory, true)));
+
+        assertTrue(failure.getMessage().contains("common final session"));
+        assertEquals(originalXli, Files.readString(referenceDirectory.resolve(RESOURCE)));
+        assertEquals(originalXlf, Files.readString(referenceDirectory.resolve(SECOND_RESOURCE)));
+    }
+
+    @Test
     void parsesYahooAdjustedCloseAndScalesOhlc() throws IOException {
         String yahooJson = """
                 {
@@ -163,6 +196,11 @@ class SpdrSectorReferenceDataUpdaterTest {
 
     private List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe() {
         return List.of(new SpdrSectorLPPLRotationDemo.SectorDefinition("XLI", "Industrials", RESOURCE));
+    }
+
+    private List<SpdrSectorLPPLRotationDemo.SectorDefinition> twoInstrumentUniverse() {
+        return List.of(new SpdrSectorLPPLRotationDemo.SectorDefinition("XLI", "Industrials", RESOURCE),
+                new SpdrSectorLPPLRotationDemo.SectorDefinition("XLF", "Financials", SECOND_RESOURCE));
     }
 
     private static String bars(SpdrSectorReferenceDataUpdater.ReferenceBar... bars) throws IOException {
