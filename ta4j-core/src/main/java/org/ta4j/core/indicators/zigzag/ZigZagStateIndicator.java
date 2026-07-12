@@ -85,7 +85,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * @since 0.22.9
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> reversalAmount) {
-        this(highPrice, lowPrice, new ClosePriceIndicator(highPrice.getBarSeries()), reversalAmount);
+        this(highPrice, lowPrice, defaultConfirmationPrice(highPrice), reversalAmount);
     }
 
     /**
@@ -100,8 +100,8 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
             Indicator<Num> reversalAmount) {
-        super(highPrice);
-        this.highPrice = IndicatorUtils.requireIndicator(highPrice, "highPrice");
+        super(requireHighPrice(highPrice));
+        this.highPrice = highPrice;
         this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
         IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);
         this.confirmationPrice = IndicatorUtils.requireIndicator(confirmationPrice, "confirmationPrice");
@@ -119,8 +119,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * @since 0.22.9
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Number reversalAmount) {
-        this(highPrice, lowPrice, new ConstantIndicator<Num>(highPrice.getBarSeries(),
-                highPrice.getBarSeries().numFactory().numOf(reversalAmount)));
+        this(highPrice, lowPrice, constantReversal(highPrice, reversalAmount));
     }
 
     public ZigZagStateIndicator(Indicator<Num> price, Number reversalAmount) {
@@ -143,6 +142,20 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
 
     Indicator<Num> lowPriceIndicator() {
         return lowPrice;
+    }
+
+    private static Indicator<Num> requireHighPrice(final Indicator<Num> highPrice) {
+        return IndicatorUtils.requireIndicator(highPrice, "highPrice");
+    }
+
+    private static Indicator<Num> defaultConfirmationPrice(final Indicator<Num> highPrice) {
+        return new ClosePriceIndicator(requireHighPrice(highPrice).getBarSeries());
+    }
+
+    private static Indicator<Num> constantReversal(final Indicator<Num> highPrice, final Number reversalAmount) {
+        final Indicator<Num> validatedHighPrice = requireHighPrice(highPrice);
+        return new ConstantIndicator<Num>(validatedHighPrice.getBarSeries(),
+                validatedHighPrice.getBarSeries().numFactory().numOf(reversalAmount));
     }
 
     @Override

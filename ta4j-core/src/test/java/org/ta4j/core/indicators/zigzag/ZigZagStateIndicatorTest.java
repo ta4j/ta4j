@@ -50,6 +50,20 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     }
 
     @Test
+    public void shouldRejectNullHighPriceBeforeConstructorDelegation() {
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
+
+        final IllegalArgumentException threeArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, threshold));
+        final IllegalArgumentException fourArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, low, threshold));
+
+        assertThat(threeArgument).hasMessage("highPrice must not be null");
+        assertThat(fourArgument).hasMessage("highPrice must not be null");
+    }
+
+    @Test
     public void shouldDetectUpTrendAfterInitialRise() {
         // Price: 100, 102, 105, 108
         series.barBuilder().closePrice(100).add();
