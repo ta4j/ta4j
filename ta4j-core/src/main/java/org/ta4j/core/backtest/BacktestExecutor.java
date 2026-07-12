@@ -22,6 +22,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 
 /**
@@ -409,9 +410,8 @@ public class BacktestExecutor {
 
         // For large strategy counts, use batched processing to prevent memory
         // exhaustion. Use smaller batches for very large counts.
-        if (strategyCount > PARALLEL_THRESHOLD) {
-            int effectiveBatchSize = strategyCount > LARGE_COUNT_THRESHOLD ? Math.min(batchSize, SMALL_BATCH_SIZE)
-                    : batchSize;
+        if (usesBatchedExecution(strategyCount)) {
+            int effectiveBatchSize = effectiveBatchSize(strategyCount, batchSize);
             executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
                     effectiveBatchSize);
         } else {
@@ -433,6 +433,45 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport);
+    }
+
+    /**
+     * Determines whether an execution should use bounded batches.
+     *
+     * @param strategyCount number of strategies in the execution
+     * @return {@code true} when bounded batching is required
+     */
+    static boolean usesBatchedExecution(int strategyCount) {
+        return strategyCount > PARALLEL_THRESHOLD;
+    }
+
+    /**
+     * Selects the requested batch size, capped for exceptionally large workloads.
+     *
+     * @param strategyCount      number of strategies in the execution
+     * @param requestedBatchSize caller-provided batch size
+     * @return effective batch size for the execution
+     */
+    static int effectiveBatchSize(int strategyCount, int requestedBatchSize) {
+        return strategyCount > LARGE_COUNT_THRESHOLD ? Math.min(requestedBatchSize, SMALL_BATCH_SIZE)
+                : requestedBatchSize;
+    }
+
+    /**
+     * Visits every item index in bounded parallel batches.
+     *
+     * @param itemCount number of item indexes to visit
+     * @param batchSize maximum number of indexes processed in one batch
+     * @param action    action invoked once for every index
+     */
+    static void forEachBatchIndex(int itemCount, int batchSize, IntConsumer action) {
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("batchSize must be positive");
+        }
+        for (int batchStart = 0; batchStart < itemCount; batchStart += batchSize) {
+            int batchEnd = Math.min(batchStart + batchSize, itemCount);
+            IntStream.range(batchStart, batchEnd).parallel().forEach(action);
+        }
     }
 
     /**
@@ -937,25 +976,19 @@ public class BacktestExecutor {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
-        for (int batchStart = 0; batchStart < strategyCount; batchStart += batchSize) {
-            int batchEnd = Math.min(batchStart + batchSize, strategyCount);
-            final int batchStartFinal = batchStart;
+        forEachBatchIndex(strategyCount, batchSize, index -> {
+            Strategy strategy = strategyArray[index];
+            long strategyStart = System.nanoTime();
+            TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
+            TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
+                    seriesManager.getBarSeries());
+            statements[index] = statement;
+            durations[index] = System.nanoTime() - strategyStart;
 
-            IntStream.range(0, batchEnd - batchStart).parallel().forEach(localIndex -> {
-                int globalIndex = batchStartFinal + localIndex;
-                Strategy strategy = strategyArray[globalIndex];
-                long strategyStart = System.nanoTime();
-                TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
-                TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                        seriesManager.getBarSeries());
-                statements[globalIndex] = statement;
-                durations[globalIndex] = System.nanoTime() - strategyStart;
-
-                if (progressTracker != null) {
-                    progressTracker.reportCompletion();
-                }
-            });
-        }
+            if (progressTracker != null) {
+                progressTracker.reportCompletion();
+            }
+        });
     }
 
     private static final class ProgressTracker {
