@@ -15,6 +15,7 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
+- **Day-of-week rule descriptors are deterministic**: `DayOfWeekRule` now canonicalizes its configured enum set so descriptor and JSON serialization round trips cannot fail or change output when hash iteration order varies between runs.
 - **Source position labels remain accurate in isolated chart renders**: Trading-record
   chart callers can now provide a 1-based source position start, so position bands
   and buy/sell annotations retain their original ordinal when a focused chart
