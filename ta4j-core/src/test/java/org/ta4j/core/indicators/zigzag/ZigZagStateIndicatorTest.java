@@ -16,6 +16,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -309,6 +310,21 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         assertThat(indicator.getValue(1).getTrend()).isEqualTo(ZigZagTrend.UNDEFINED);
         assertThat(indicator.getValue(2).getTrend()).isEqualTo(ZigZagTrend.UP);
         assertThat(indicator.getValue(2).getLastLowIndex()).isZero();
+    }
+
+    @Test
+    public void shouldPreserveFiniteInitialCandidateWhenOtherSideBecomesAvailable() {
+        series.barBuilder().highPrice(110).lowPrice(NaN.NaN).closePrice(100).add();
+        series.barBuilder().highPrice(105).lowPrice(95).closePrice(100).add();
+
+        final Indicator<Num> high = new HighPriceIndicator(series);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final ZigZagState state = new ZigZagStateIndicator(high, low, 20).getValue(1);
+
+        assertThat(state.getInitialHighIndex()).isZero();
+        assertThat(state.getInitialHighPrice()).isEqualByComparingTo(numOf(110));
+        assertThat(state.getInitialLowIndex()).isOne();
+        assertThat(state.getInitialLowPrice()).isEqualByComparingTo(numOf(95));
     }
 
     @Test

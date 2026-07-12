@@ -195,9 +195,11 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             Num initialHighPrice = prev.getInitialHighPrice();
             int initialLowIndex = prev.getInitialLowIndex();
             Num initialLowPrice = prev.getInitialLowPrice();
-            if (!Num.isFinite(initialHighPrice) || !Num.isFinite(initialLowPrice)) {
+            if (!Num.isFinite(initialHighPrice)) {
                 initialHighIndex = index;
                 initialHighPrice = high;
+            }
+            if (!Num.isFinite(initialLowPrice)) {
                 initialLowIndex = index;
                 initialLowPrice = low;
             }
