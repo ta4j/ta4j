@@ -191,7 +191,7 @@ jobs:
           POM_VERSION: ${{ steps.state.outputs.pom_version }}
         run: |
           set -euo pipefail
-          python3 scripts/release/release_helpers.py snapshot-publication \
+          bash scripts/release/release_helpers.sh snapshot-publication \
             --version "${POM_VERSION}" \
             --output snapshot-publication.json \
             --github-output "$GITHUB_OUTPUT"
@@ -203,7 +203,7 @@ jobs:
           HEALTH_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
         run: |
           set -euo pipefail
-          python3 scripts/release/release_helpers.py snapshot-publication-policy \
+          bash scripts/release/release_helpers.sh snapshot-publication-policy \
             --event-name "${HEALTH_EVENT_NAME}" \
             --workflow-name "${HEALTH_TRIGGER_WORKFLOW}" \
             --output snapshot-publication-policy.json \

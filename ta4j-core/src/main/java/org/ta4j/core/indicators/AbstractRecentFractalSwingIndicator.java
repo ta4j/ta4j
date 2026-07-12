@@ -11,7 +11,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * This base centralizes latest-swing scanning via
  * {@link FractalDetectionHelper#findLatestConfirmedFractalIndex(Indicator, org.ta4j.core.BarSeries, int, int, int, int, FractalDetectionHelper.Direction)}
- * while subclasses define direction and local parameter naming.
+ * while subclasses define direction and local parameter naming. A configured
+ * following window of zero still requires one dominated bar so a returned pivot
+ * is confirmed and cannot be invalidated by an equal or more extreme next bar.
  */
 abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIndicator {
 
@@ -35,7 +37,7 @@ abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIn
      * @param precedingBars             required dominating bars before the
      *                                  candidate
      * @param followingBars             required dominating bars after the candidate
-     * @param allowedEqualBars          tolerated equal neighbors on each side
+     * @param allowedEqualBars          maximum additional equal bars in a plateau
      * @param precedingBarsArgumentName argument label for preceding bars
      * @param followingBarsArgumentName argument label for following bars
      * @return unstable-bar contribution
@@ -52,13 +54,13 @@ abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIn
         if (allowedEqualBars < 0) {
             throw new IllegalArgumentException("allowedEqualBars must be 0 or greater");
         }
-        return precedingBars + followingBars;
+        return precedingBars + Math.max(1, followingBars);
     }
 
     @Override
     protected final int detectLatestSwingIndex(int index) {
         return FractalDetectionHelper.findLatestConfirmedFractalIndex(indicator, getBarSeries(), index, precedingBars(),
-                followingBars(), allowedEqualBars(), direction());
+                Math.max(1, followingBars()), allowedEqualBars(), direction());
     }
 
     /**
@@ -72,7 +74,7 @@ abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIn
     protected abstract int followingBars();
 
     /**
-     * @return number of tolerated equal neighboring bars on each side
+     * @return maximum additional equal bars permitted in a plateau
      */
     protected abstract int allowedEqualBars();
 

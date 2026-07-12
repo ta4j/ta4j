@@ -21,6 +21,9 @@
  * null or NaN</li>
  * <li>{@link org.ta4j.core.num.Num#isValid(Num)} - Checks if a value is valid
  * (not null and not NaN), the logical complement of {@code isNaNOrNull()}</li>
+ * <li>{@link org.ta4j.core.num.Num#isFinite(Num)} - Checks if a value is valid
+ * and not a primitive-backed infinity while preserving finite high-precision
+ * values</li>
  * </ul>
  */
 package org.ta4j.core.num;

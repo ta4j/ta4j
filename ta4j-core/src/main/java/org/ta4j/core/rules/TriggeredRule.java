@@ -120,12 +120,20 @@ public class TriggeredRule extends AbstractRule {
          * @since 0.22.7
          */
         public Stage {
-            Objects.requireNonNull(triggerRule, "triggerRule");
-            Objects.requireNonNull(delegateRule, "delegateRule");
-            Objects.requireNonNull(resetPolicy, "resetPolicy");
+            triggerRule = RuleCopies.copy(Objects.requireNonNull(triggerRule, "triggerRule"));
+            delegateRule = RuleCopies.copy(Objects.requireNonNull(delegateRule, "delegateRule"));
+            resetPolicy = Objects.requireNonNull(resetPolicy, "resetPolicy");
             if (activationWindowBars < 0) {
                 throw new IllegalArgumentException("activationWindowBars must be >= 0");
             }
+        }
+
+        public Rule triggerRule() {
+            return RuleCopies.copy(triggerRule);
+        }
+
+        public Rule delegateRule() {
+            return RuleCopies.copy(delegateRule);
         }
     }
 
@@ -155,7 +163,7 @@ public class TriggeredRule extends AbstractRule {
      * @since 0.22.7
      */
     public TriggeredRule(Rule alwaysActiveRule, Stage... stages) {
-        this(alwaysActiveRule, null, false, toStageArrays(stages));
+        this(validatedConfig(alwaysActiveRule, null, false, toStageArrays(stages)));
     }
 
     /**
@@ -170,7 +178,7 @@ public class TriggeredRule extends AbstractRule {
      * @since 0.22.7
      */
     public TriggeredRule(Rule alwaysActiveRule, Rule explicitResetRule, Stage... stages) {
-        this(alwaysActiveRule, explicitResetRule, false, toStageArrays(stages));
+        this(validatedConfig(alwaysActiveRule, explicitResetRule, false, toStageArrays(stages)));
     }
 
     /**
@@ -189,7 +197,7 @@ public class TriggeredRule extends AbstractRule {
      */
     public TriggeredRule(Rule alwaysActiveRule, Rule explicitResetRule, boolean resetAllStagesOnSatisfaction,
             Collection<Stage> stages) {
-        this(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, toStageArrays(stages));
+        this(validatedConfig(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, toStageArrays(stages)));
     }
 
     /**
@@ -208,7 +216,7 @@ public class TriggeredRule extends AbstractRule {
      */
     public TriggeredRule(Rule alwaysActiveRule, Rule explicitResetRule, boolean resetAllStagesOnSatisfaction,
             Stage... stages) {
-        this(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, toStageArrays(stages));
+        this(validatedConfig(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, toStageArrays(stages)));
     }
 
     /**
@@ -234,8 +242,8 @@ public class TriggeredRule extends AbstractRule {
     public TriggeredRule(Rule alwaysActiveRule, boolean resetAllStagesOnSatisfaction, Rule[] triggerRules,
             Rule[] delegateRules, int[] activationWindowBars, boolean[] primeDelegateWhileInactive,
             ResetPolicy[] resetPolicies) {
-        this(alwaysActiveRule, null, resetAllStagesOnSatisfaction, triggerRules, delegateRules, activationWindowBars,
-                primeDelegateWhileInactive, resetPolicies);
+        this(validatedConfig(alwaysActiveRule, null, resetAllStagesOnSatisfaction, triggerRules, delegateRules,
+                activationWindowBars, primeDelegateWhileInactive, resetPolicies));
     }
 
     /**
@@ -264,26 +272,22 @@ public class TriggeredRule extends AbstractRule {
     public TriggeredRule(Rule alwaysActiveRule, Rule explicitResetRule, boolean resetAllStagesOnSatisfaction,
             Rule[] triggerRules, Rule[] delegateRules, int[] activationWindowBars, boolean[] primeDelegateWhileInactive,
             ResetPolicy[] resetPolicies) {
-        validateStageArrays(triggerRules, delegateRules, activationWindowBars, primeDelegateWhileInactive,
-                resetPolicies);
-        this.alwaysActiveRule = alwaysActiveRule != null ? alwaysActiveRule : BooleanRule.FALSE;
-        this.explicitResetRule = explicitResetRule;
-        this.resetAllStagesOnSatisfaction = resetAllStagesOnSatisfaction;
-        this.triggerRules = triggerRules.clone();
-        this.delegateRules = delegateRules.clone();
-        this.activationWindowBars = activationWindowBars.clone();
-        this.primeDelegateWhileInactive = primeDelegateWhileInactive.clone();
-        this.resetPolicies = resetPolicies.clone();
+        this(validatedConfig(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, triggerRules,
+                delegateRules, activationWindowBars, primeDelegateWhileInactive, resetPolicies));
+    }
+
+    private TriggeredRule(Config config) {
+        this.alwaysActiveRule = config.alwaysActiveRule();
+        this.explicitResetRule = config.explicitResetRule();
+        this.resetAllStagesOnSatisfaction = config.resetAllStagesOnSatisfaction();
+        this.triggerRules = config.triggerRules();
+        this.delegateRules = config.delegateRules();
+        this.activationWindowBars = config.activationWindowBars();
+        this.primeDelegateWhileInactive = config.primeDelegateWhileInactive();
+        this.resetPolicies = config.resetPolicies();
         this.hasPositionResetStages = hasResetPolicy(this.resetPolicies, ResetPolicy.ON_POSITION_CHANGE);
         this.hasExplicitResetStages = hasResetPolicy(this.resetPolicies, ResetPolicy.ON_EXPLICIT_RESET_RULE);
         this.stageStates = createStageStates(this.triggerRules.length);
-    }
-
-    private TriggeredRule(Rule alwaysActiveRule, Rule explicitResetRule, boolean resetAllStagesOnSatisfaction,
-            StageArrays stages) {
-        this(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, stages.triggerRules(),
-                stages.delegateRules(), stages.activationWindowBars(), stages.primeDelegateWhileInactive(),
-                stages.resetPolicies());
     }
 
     @Override
@@ -433,6 +437,25 @@ public class TriggeredRule extends AbstractRule {
         }
     }
 
+    private static Config validatedConfig(Rule alwaysActiveRule, Rule explicitResetRule,
+            boolean resetAllStagesOnSatisfaction, Rule[] triggerRules, Rule[] delegateRules, int[] activationWindowBars,
+            boolean[] primeDelegateWhileInactive, ResetPolicy[] resetPolicies) {
+        validateStageArrays(triggerRules, delegateRules, activationWindowBars, primeDelegateWhileInactive,
+                resetPolicies);
+        Rule resolvedAlwaysActiveRule = alwaysActiveRule != null ? alwaysActiveRule : BooleanRule.FALSE;
+        Rule resolvedExplicitResetRule = explicitResetRule == null ? null : RuleCopies.copy(explicitResetRule);
+        return new Config(resolvedAlwaysActiveRule, resolvedExplicitResetRule, resetAllStagesOnSatisfaction,
+                triggerRules.clone(), delegateRules.clone(), activationWindowBars.clone(),
+                primeDelegateWhileInactive.clone(), resetPolicies.clone());
+    }
+
+    private static Config validatedConfig(Rule alwaysActiveRule, Rule explicitResetRule,
+            boolean resetAllStagesOnSatisfaction, StageArrays stages) {
+        return validatedConfig(alwaysActiveRule, explicitResetRule, resetAllStagesOnSatisfaction, stages.triggerRules(),
+                stages.delegateRules(), stages.activationWindowBars(), stages.primeDelegateWhileInactive(),
+                stages.resetPolicies());
+    }
+
     private static boolean hasResetPolicy(ResetPolicy[] resetPolicies, ResetPolicy resetPolicy) {
         for (ResetPolicy candidate : resetPolicies) {
             if (candidate == resetPolicy) {
@@ -452,6 +475,11 @@ public class TriggeredRule extends AbstractRule {
 
     private record StageArrays(Rule[] triggerRules, Rule[] delegateRules, int[] activationWindowBars,
             boolean[] primeDelegateWhileInactive, ResetPolicy[] resetPolicies) {
+    }
+
+    private record Config(Rule alwaysActiveRule, Rule explicitResetRule, boolean resetAllStagesOnSatisfaction,
+            Rule[] triggerRules, Rule[] delegateRules, int[] activationWindowBars, boolean[] primeDelegateWhileInactive,
+            ResetPolicy[] resetPolicies) {
     }
 
     private static final class StageState {

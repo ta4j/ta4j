@@ -4,12 +4,14 @@
 package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -111,6 +113,111 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
         assertEquals(doubleNumFactory, series.numFactory());
         assertEquals(doubleNumFactory, bar1.getClosePrice().getNumFactory());
         assertEquals(doubleNumFactory, bar2.getClosePrice().getNumFactory());
+    }
+
+    @Test
+    public void testWithBeginIndexPreservesAbsoluteIndexesAndSubSeriesOffset() {
+        final NumFactory factory = DoubleNumFactory.getInstance();
+        final Duration duration = Duration.ofMinutes(1);
+        final Instant firstEnd = Instant.parse("2026-01-01T00:01:00Z");
+        final var bars = new ArrayList<Bar>();
+        for (int i = 0; i < 4; i++) {
+            bars.add(new TimeBarBuilder(factory).timePeriod(duration)
+                    .endTime(firstEnd.plus(duration.multipliedBy(i)))
+                    .closePrice(100 + i)
+                    .build());
+        }
+
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(50).build();
+        BarSeries subSeries = series.getSubSeries(51, 54);
+        BarSeries clampedSubSeries = series.getSubSeries(0, 52);
+
+        assertEquals(50, series.getBeginIndex());
+        assertEquals(53, series.getEndIndex());
+        assertEquals(50, series.getRemovedBarsCount());
+        assertEquals(51, subSeries.getBeginIndex());
+        assertEquals(53, subSeries.getEndIndex());
+        assertEquals(series.getBar(51), subSeries.getBar(51));
+        assertEquals(50, clampedSubSeries.getBeginIndex());
+        assertEquals(51, clampedSubSeries.getEndIndex());
+        assertEquals(series.getBar(50), clampedSubSeries.getBar(50));
+    }
+
+    @Test
+    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
+        final NumFactory factory = DoubleNumFactory.getInstance();
+        final Bar first = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        final Bar second = new TimeBarBuilder(factory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build();
+
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        assertThrows(ArithmeticException.class, () -> series.addBar(second));
+        assertEquals(1, series.getBarCount());
+        assertThrows(ArithmeticException.class,
+                () -> new BaseBarSeriesBuilder().withBars(List.of(first, second))
+                        .withBeginIndex(Integer.MAX_VALUE)
+                        .build());
+    }
+
+    @Test
+    public void testWithBeginIndexRejectsNegativeValues() {
+        assertThrows(IllegalArgumentException.class, () -> new BaseBarSeriesBuilder().withBeginIndex(-1));
+    }
+
+    @Test
+    public void testClearRestoredSeriesResetsInitialIndex() {
+        List<Bar> bars = List.of(new TimeBarBuilder(DoubleNumFactory.getInstance()).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build());
+        BaseBarSeries series = new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(40).withMaxBarCount(10).build();
+
+        series.clear();
+        series.addBar(new TimeBarBuilder(series.numFactory()).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build());
+
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(0, series.getEndIndex());
+        assertEquals(10, series.getMaximumBarCount());
+    }
+
+    @Test
+    public void testWithBarsCopiesInputList() {
+        NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        Duration duration = Duration.between(beginTime, endTime);
+        Bar bar = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
+        ArrayList<Bar> bars = new ArrayList<>();
+        bars.add(bar);
+
+        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withBars(bars);
+        bars.clear();
+        BaseBarSeries series = builder.build();
+
+        assertEquals(1, series.getBarCount());
+        assertEquals(bar, series.getBar(0));
     }
 
     @Test(expected = IllegalArgumentException.class)

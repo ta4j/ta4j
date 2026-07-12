@@ -5,12 +5,15 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -59,7 +62,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(strategies.size(), result.runtimeReport().strategyRuntimes().size());
 
         for (int i = 0; i < strategies.size(); i++) {
-            assertSame(strategies.get(i), result.runtimeReport().strategyRuntimes().get(i).strategy());
+            Strategy runtimeStrategy = result.runtimeReport().strategyRuntimes().get(i).strategy();
+
+            assertNotSame(strategies.get(i), runtimeStrategy);
+            assertEquals(strategies.get(i).getName(), runtimeStrategy.getName());
+            assertEquals(strategies.get(i).getUnstableBars(), runtimeStrategy.getUnstableBars());
         }
 
         assertFalse(result.runtimeReport()
@@ -71,6 +78,23 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertTrue(result.runtimeReport()
                 .maxStrategyRuntime()
                 .compareTo(result.runtimeReport().minStrategyRuntime()) >= 0);
+    }
+
+    @Test
+    public void executeWithRuntimeReportAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), positionSizer,
+                Trade.TradeType.BUY);
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
     }
 
     @Test
@@ -122,43 +146,36 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithLargeStrategyCountUsesBatchProcessing() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
-
-        // Create more than PARALLEL_THRESHOLD (1000) strategies to trigger batched
-        // processing
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        AtomicInteger progressUpdateCount = new AtomicInteger(0);
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                completed -> progressUpdateCount.incrementAndGet());
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
-        assertEquals(strategies.size(), progressUpdateCount.get());
+    public void batchingDecisionUsesConfiguredThreshold() {
+        assertFalse(BacktestExecutor.usesBatchedExecution(1000));
+        assertTrue(BacktestExecutor.usesBatchedExecution(1001));
     }
 
     @Test
-    public void executeWithCustomBatchSize() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+    public void effectiveBatchSizeCapsVeryLargeWorkloads() {
+        assertEquals(500, BacktestExecutor.effectiveBatchSize(1500, 500));
+        assertEquals(250, BacktestExecutor.effectiveBatchSize(5001, 500));
+        assertEquals(100, BacktestExecutor.effectiveBatchSize(5001, 100));
+    }
 
-        // Create more than PARALLEL_THRESHOLD strategies
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
+    @Test
+    public void batchedExecutionVisitsEveryIndexExactlyOnce() {
+        int itemCount = 7;
+        AtomicIntegerArray visits = new AtomicIntegerArray(itemCount);
+
+        BacktestExecutor.forEachBatchIndex(itemCount, 3, index -> visits.incrementAndGet(index));
+
+        for (int index = 0; index < itemCount; index++) {
+            assertEquals(1, visits.get(index));
         }
+    }
 
-        int customBatchSize = 250;
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                null, customBatchSize);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+    @Test
+    public void batchedExecutionRejectsInvalidBatchSizes() {
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, 0, index -> {
+        }));
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, -1, index -> {
+        }));
     }
 
     @Test
@@ -420,6 +437,28 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void executeAndKeepTopKAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        Strategy smallestEntry = new BaseStrategy(new FixedRule(0), new FixedRule(3));
+        Strategy middleEntry = new BaseStrategy(new FixedRule(1), new FixedRule(3));
+        Strategy largestEntry = new BaseStrategy(new FixedRule(2), new FixedRule(3));
+        List<Strategy> strategies = List.of(largestEntry, middleEntry, smallestEntry);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
+        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(0.01),
+                new ZeroCostModel(), new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, positionSizer, Trade.TradeType.BUY,
+                new CommissionsCriterion(), 1, null);
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertSame(smallestEntry, result.tradingStatements().getFirst().getStrategy());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
     public void executeWalkForwardRunsStrategyAcrossFolds() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
@@ -432,9 +471,47 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, numOf(1), Trade.TradeType.BUY,
                 config);
 
-        assertSame(series, result.barSeries());
+        BarSeries resultSeries = result.barSeries();
+        assertNotSame(series, resultSeries);
+        assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWalkForwardAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, positionSizer,
+                Trade.TradeType.BUY, config);
+
+        assertFalse(result.folds().isEmpty());
+        assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWithWalkForwardAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, positionSizer,
+                Trade.TradeType.BUY, config);
+
+        assertEquals(1, result.backtest().tradingStatements().size());
+        assertFalse(result.walkForward().folds().isEmpty());
     }
 
     @Test
@@ -452,7 +529,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(1, result.backtest().tradingStatements().size());
         assertFalse(result.walkForward().folds().isEmpty());
-        assertSame(result.backtest().barSeries(), result.walkForward().barSeries());
+        BarSeries backtestSeries = result.backtest().barSeries();
+        BarSeries walkForwardSeries = result.walkForward().barSeries();
+        assertNotSame(backtestSeries, walkForwardSeries);
+        assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
+        assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }
 
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {

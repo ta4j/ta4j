@@ -48,14 +48,14 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
-    /** @return the {@link #aroonUpIndicator} */
+    /** @return an Aroon Up indicator for this oscillator's configuration */
     public AroonUpIndicator getAroonUpIndicator() {
-        return aroonUpIndicator;
+        return new AroonUpIndicator(getBarSeries(), barCount);
     }
 
-    /** @return the {@link #aroonDownIndicator} */
+    /** @return an Aroon Down indicator for this oscillator's configuration */
     public AroonDownIndicator getAroonDownIndicator() {
-        return aroonDownIndicator;
+        return new AroonDownIndicator(getBarSeries(), barCount);
     }
 
 }

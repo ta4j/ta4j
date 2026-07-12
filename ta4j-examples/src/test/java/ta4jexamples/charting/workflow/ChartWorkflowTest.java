@@ -12,6 +12,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.ui.Layer;
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -19,16 +20,19 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
 import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Arrays;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,8 +66,6 @@ import ta4jexamples.charting.storage.FileSystemChartStorage;
  * </ul>
  */
 public class ChartWorkflowTest {
-
-    private static final byte[] RECORDED_CHART_BYTES = new byte[] { 1, 2, 3 };
 
     private ChartWorkflow chartWorkflow;
     private BarSeries barSeries;
@@ -160,6 +162,56 @@ public class ChartWorkflowTest {
 
         assertTrue(plot.getAnnotations().stream().anyMatch(XYTextAnnotation.class::isInstance),
                 "Trade annotations should contain readable labels");
+    }
+
+    @Test
+    public void testCustomSourcePositionStartFlowsThroughPlainAndVolumeCharts() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        JFreeChart plainChart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(plainChart.getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        JFreeChart volumeChart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2, volume);
+        CombinedDomainXYPlot combinedPlot = assertInstanceOf(CombinedDomainXYPlot.class, volumeChart.getPlot());
+        assertSourceOrdinalLabels(combinedPlot.getSubplots().get(0), 2);
+    }
+
+    @Test
+    public void testCustomSourcePositionStartFlowsThroughSavedAndEncodedCharts() throws IOException {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        RecordingChartStorage storage = new RecordingChartStorage();
+        ChartWorkflow persistentWorkflow = new ChartWorkflow(new TradingChartFactory(), new MockChartDisplayer(),
+                storage);
+
+        persistentWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(storage.lastChart.getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        persistentWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2,
+                volume);
+        CombinedDomainXYPlot savedVolumePlot = assertInstanceOf(CombinedDomainXYPlot.class,
+                storage.lastChart.getPlot());
+        assertSourceOrdinalLabels(savedVolumePlot.getSubplots().get(0), 2);
+
+        byte[] defaultBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX);
+        byte[] shiftedBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        assertNotNull(decodeImage(shiftedBytes));
+        assertFalse(Arrays.equals(defaultBytes, shiftedBytes),
+                "Shifted trade labels should change encoded chart output");
+
+        byte[] defaultVolumeBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy",
+                tradingRecord, TimeAxisMode.BAR_INDEX, volume);
+        byte[] shiftedVolumeBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy",
+                tradingRecord, TimeAxisMode.BAR_INDEX, 2, volume);
+        assertNotNull(decodeImage(shiftedVolumeBytes));
+        assertFalse(Arrays.equals(defaultVolumeBytes, shiftedVolumeBytes),
+                "Shifted trade labels should change encoded volume chart output");
     }
 
     @Test
@@ -305,40 +357,38 @@ public class ChartWorkflowTest {
     }
 
     @Test
-    public void testGenerateChartAsBytes() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
-        byte[] chartBytes = workflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
+    public void testGenerateChartAsBytes() throws IOException {
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Convenience byte export should return encoded bytes");
-        assertEquals(1, workflow.byteExportCount, "Convenience method should encode exactly one chart");
-        assertNotNull(workflow.lastChart, "Convenience method should build a chart before encoding");
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH, image.getWidth());
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT, image.getHeight());
     }
 
     @Test
-    public void testGenerateChartAsBytesWithIndicators() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
+    public void testGenerateChartAsBytesWithIndicators() throws IOException {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-        byte[] chartBytes = workflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
+                sma);
+        byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
                 closePrice, sma);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Indicator convenience export should return encoded bytes");
-        assertEquals(1, workflow.byteExportCount, "Indicator convenience method should encode exactly one chart");
-        assertInstanceOf(CombinedDomainXYPlot.class, workflow.lastChart.getPlot(),
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
                 "Indicator convenience method should build the combined chart before encoding");
+        assertTrue(decodeImage(chartBytes).getWidth() > 0, "Indicator convenience export should produce PNG bytes");
     }
 
     @Test
-    public void testRecordingByteExportWorkflowInterceptsExplicitDimensions() {
-        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
+    public void testGetChartAsByteArrayUsesExplicitDimensions() throws IOException {
         JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-        byte[] chartBytes = workflow.getChartAsByteArray(chart, 640, 360);
+        byte[] chartBytes = chartWorkflow.getChartAsByteArray(chart, 640, 360);
 
-        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Explicit dimension export should return recorded bytes");
-        assertEquals(1, workflow.byteExportCount, "Explicit dimension export should encode exactly one chart");
-        assertSame(chart, workflow.lastChart, "Explicit dimension export should record the chart");
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(640, image.getWidth());
+        assertEquals(360, image.getHeight());
     }
 
     @Test
@@ -517,6 +567,48 @@ public class ChartWorkflowTest {
         assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
         assertTrue(spyDisplayer.getLastChart().getTitle().getText().contains("Test Strategy"),
                 "Chart title should contain strategy name");
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartUsesCustomSourcePositionStart() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        MockChartDisplayer displayer = new MockChartDisplayer();
+        ChartWorkflow workflow = new ChartWorkflow(new TradingChartFactory(), displayer, ChartStorage.noOp());
+
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(displayer.getLastChart().getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2,
+                volume);
+        CombinedDomainXYPlot combinedPlot = assertInstanceOf(CombinedDomainXYPlot.class,
+                displayer.getLastChart().getPlot());
+        assertSourceOrdinalLabels(combinedPlot.getSubplots().get(0), 2);
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartRejectsInvalidSourcePositionStart() {
+        MockChartDisplayer displayer = new MockChartDisplayer();
+        ChartWorkflow workflow = new ChartWorkflow(new TradingChartFactory(), displayer, ChartStorage.noOp());
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0));
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0, volume));
+
+        BaseTradingRecord overflowRecord = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        overflowRecord.enter(1, barSeries.getBar(1).getClosePrice(), amount);
+        overflowRecord.exit(3, barSeries.getBar(3).getClosePrice(), amount);
+        overflowRecord.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", overflowRecord, TimeAxisMode.BAR_INDEX, Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", overflowRecord, TimeAxisMode.BAR_INDEX, Integer.MAX_VALUE, volume));
+        assertNull(displayer.getLastChart(), "Invalid source positions must not reach the displayer");
     }
 
     @Test
@@ -1384,22 +1476,35 @@ public class ChartWorkflowTest {
         return image;
     }
 
-    private static final class RecordingByteExportChartWorkflow extends ChartWorkflow {
-        private int byteExportCount;
-        private JFreeChart lastChart;
+    private static void assertSourceOrdinalLabels(XYPlot plot, int sourcePositionNumber) {
+        String buyPrefix = "B" + sourcePositionNumber + " @";
+        String sellPrefix = "S" + sourcePositionNumber + " @";
+        assertTrue(
+                plot.getAnnotations()
+                        .stream()
+                        .filter(XYTextAnnotation.class::isInstance)
+                        .map(XYTextAnnotation.class::cast)
+                        .map(XYTextAnnotation::getText)
+                        .anyMatch(text -> text.startsWith(buyPrefix)),
+                "Buy annotation should use the source position number");
+        assertTrue(
+                plot.getAnnotations()
+                        .stream()
+                        .filter(XYTextAnnotation.class::isInstance)
+                        .map(XYTextAnnotation.class::cast)
+                        .map(XYTextAnnotation::getText)
+                        .anyMatch(text -> text.startsWith(sellPrefix)),
+                "Sell annotation should use the source position number");
 
-        @Override
-        public byte[] getChartAsByteArray(JFreeChart chart) {
-            return getChartAsByteArray(chart, ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH,
-                    ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT);
-        }
-
-        @Override
-        public byte[] getChartAsByteArray(JFreeChart chart, int imageWidth, int imageHeight) {
-            byteExportCount++;
-            lastChart = chart;
-            return RECORDED_CHART_BYTES;
-        }
+        Collection<?> markers = plot.getDomainMarkers(Layer.BACKGROUND);
+        assertNotNull(markers, "Position band should be present");
+        assertTrue(
+                markers.stream()
+                        .filter(IntervalMarker.class::isInstance)
+                        .map(IntervalMarker.class::cast)
+                        .map(IntervalMarker::getLabel)
+                        .anyMatch(("Position " + sourcePositionNumber)::equals),
+                "Position band should use the source position number");
     }
 
     private static final class RecordingChartStorage implements ChartStorage {

@@ -90,6 +90,12 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  * and portability sanity checks on any ossified non-BTC resources that are
  * already large enough for the fixed walk-forward geometry.
  *
+ * <p>
+ * <strong>Warning:</strong> complete calibration runs can run for 8+ hours.
+ * This class is a dedicated CLI/job entrypoint rather than a unit-test helper;
+ * only run it when you really, really want the long-form BTC anchor calibration
+ * artifacts and are prepared to wait for them.
+ *
  * @since 0.22.4
  */
 public final class ElliottWaveAnchorCalibrationHarness {
@@ -130,9 +136,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     /**
-     * Runs the default BTC anchor-calibration report.
+     * Runs the BTC anchor-calibration job.
      *
-     * @param args unused
+     * <p>
+     * <strong>Warning:</strong> this CLI can run for 8+ hours, especially with
+     * {@code --exhaustive}. Use it only when intentionally producing the offline
+     * anchor-calibration artifact bundle.
+     *
+     * @param args optional calibration depth, one of no args, {@code --routine},
+     *             {@code --targeted}, or {@code --exhaustive}
      */
     public static void main(String[] args) {
         Instant startedAt = Instant.now();

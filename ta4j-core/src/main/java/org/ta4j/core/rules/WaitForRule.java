@@ -35,11 +35,19 @@ public class WaitForRule extends AbstractRule {
      * @param numberOfBars the number of bars to wait for
      */
     public WaitForRule(TradeType tradeType, int numberOfBars) {
+        this(validatedConfig(tradeType, numberOfBars));
+    }
+
+    private WaitForRule(Config config) {
+        this.tradeType = config.tradeType();
+        this.numberOfBars = config.numberOfBars();
+    }
+
+    private static Config validatedConfig(TradeType tradeType, int numberOfBars) {
         if (numberOfBars < 0) {
             throw new IllegalArgumentException("numberOfBars must be >= 0");
         }
-        this.tradeType = Objects.requireNonNull(tradeType, "tradeType");
-        this.numberOfBars = numberOfBars;
+        return new Config(Objects.requireNonNull(tradeType, "tradeType"), numberOfBars);
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -56,5 +64,8 @@ public class WaitForRule extends AbstractRule {
         }
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(TradeType tradeType, int numberOfBars) {
     }
 }

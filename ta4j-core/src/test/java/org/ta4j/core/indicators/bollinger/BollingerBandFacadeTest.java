@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.bollinger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Test;
 import org.ta4j.core.Indicator;
@@ -32,14 +34,14 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
 
         final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
 
-        assertEquals(data, bollingerBandFacade.bandwidth().getBarSeries());
-        assertEquals(data, bollingerBandFacade.middle().getBarSeries());
+        assertTrue(isSameSeries(data, bollingerBandFacade.bandwidth().getBarSeries()));
+        assertTrue(isSameSeries(data, bollingerBandFacade.middle().getBarSeries()));
 
         final BollingerBandFacade bollingerBandFacadeOfIndicator = new BollingerBandFacade(new OpenPriceIndicator(data),
                 barCount, 2);
 
-        assertEquals(data, bollingerBandFacadeOfIndicator.lower().getBarSeries());
-        assertEquals(data, bollingerBandFacadeOfIndicator.upper().getBarSeries());
+        assertTrue(isSameSeries(data, bollingerBandFacadeOfIndicator.lower().getBarSeries()));
+        assertTrue(isSameSeries(data, bollingerBandFacadeOfIndicator.upper().getBarSeries()));
     }
 
     @Test

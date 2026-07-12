@@ -41,8 +41,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param followingLowerBars number of immediately following bars that must be
      *                           strictly lower than a swing high
-     * @param allowedEqualBars   number of bars on each side that may equal the
-     *                           swing-high value
+     * @param allowedEqualBars   maximum additional bars in a flat-high plateau
      * @param barCount           number of bars to look back when selecting swing
      *                           points for the trend line
      * @since 0.20
@@ -63,8 +62,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param followingLowerBars number of immediately following bars that must be
      *                           strictly lower than a swing high
-     * @param allowedEqualBars   number of bars on each side that may equal the
-     *                           swing-high value
+     * @param allowedEqualBars   maximum additional bars in a flat-high plateau
      * @param barCount           number of bars to look back when selecting swing
      *                           points for the trend line
      * @since 0.20
@@ -85,8 +83,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param followingLowerBars number of immediately following bars that must be
      *                           strictly lower than a swing high
-     * @param allowedEqualBars   number of bars on each side that may equal the
-     *                           swing-high value
+     * @param allowedEqualBars   maximum additional bars in a flat-high plateau
      * @since 0.20
      */
     public TrendLineResistanceIndicator(Indicator<Num> indicator, int precedingLowerBars, int followingLowerBars,
@@ -105,8 +102,7 @@ public class TrendLineResistanceIndicator extends AbstractTrendLineIndicator {
      *                           strictly lower than a swing high
      * @param followingLowerBars number of immediately following bars that must be
      *                           strictly lower than a swing high
-     * @param allowedEqualBars   number of bars on each side that may equal the
-     *                           swing-high value
+     * @param allowedEqualBars   maximum additional bars in a flat-high plateau
      * @param scoringWeights     the scoring weights to use for candidate evaluation
      * @since 0.20
      */

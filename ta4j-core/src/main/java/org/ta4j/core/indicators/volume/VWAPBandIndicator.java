@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -55,17 +56,41 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
      */
     public VWAPBandIndicator(AbstractVWAPIndicator vwapIndicator, Indicator<Num> standardDeviationIndicator,
             Number multiplier, BandType bandType) {
-        super(IndicatorUtils.requireSameSeries(vwapIndicator, standardDeviationIndicator));
-        this.vwapIndicator = vwapIndicator;
-        this.standardDeviationIndicator = standardDeviationIndicator;
-        this.bandType = Objects.requireNonNull(bandType, "bandType must not be null");
-        this.multiplier = getBarSeries().numFactory()
+        this(validatedConfig(vwapIndicator, standardDeviationIndicator, multiplier, bandType));
+    }
+
+    private VWAPBandIndicator(Config config) {
+        super(config.series());
+        this.vwapIndicator = config.vwapIndicator();
+        this.standardDeviationIndicator = config.standardDeviationIndicator();
+        this.bandType = config.bandType();
+        this.multiplier = config.multiplier();
+        this.band = config.band();
+    }
+
+    private static Config validatedConfig(AbstractVWAPIndicator vwapIndicator,
+            Indicator<Num> standardDeviationIndicator, Number multiplier, BandType bandType) {
+        BarSeries series = IndicatorUtils.requireSameSeries(vwapIndicator, standardDeviationIndicator);
+        AbstractVWAPIndicator ownedVwapIndicator = vwapIndicator.copy();
+        Indicator<Num> ownedStandardDeviationIndicator = copyIfVwapIndicator(standardDeviationIndicator);
+        IndicatorUtils.requireSameSeries(ownedVwapIndicator, ownedStandardDeviationIndicator);
+        BandType validatedBandType = Objects.requireNonNull(bandType, "bandType must not be null");
+        Num validatedMultiplier = series.numFactory()
                 .numOf(Objects.requireNonNull(multiplier, "multiplier must not be null"));
-        if (Num.isNaNOrNull(this.multiplier)) {
+        if (Num.isNaNOrNull(validatedMultiplier)) {
             throw new IllegalArgumentException("multiplier must be a valid number");
         }
-        this.band = new BandIndicator(vwapIndicator, standardDeviationIndicator, this.multiplier.getDelegate(),
-                BandIndicator.BandType.valueOf(bandType.name()));
+        BandIndicator band = new BandIndicator(ownedVwapIndicator, ownedStandardDeviationIndicator,
+                validatedMultiplier.getDelegate(), BandIndicator.BandType.valueOf(validatedBandType.name()));
+        return new Config(series, ownedVwapIndicator, ownedStandardDeviationIndicator, validatedMultiplier, band,
+                validatedBandType);
+    }
+
+    private static Indicator<Num> copyIfVwapIndicator(Indicator<Num> indicator) {
+        if (indicator instanceof AbstractVWAPIndicator vwapIndicator) {
+            return vwapIndicator.copy();
+        }
+        return indicator;
     }
 
     /**
@@ -78,7 +103,11 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VWAPBandIndicator(AbstractVWAPIndicator vwapIndicator, Number multiplier, BandType bandType) {
-        this(vwapIndicator, new VWAPStandardDeviationIndicator(vwapIndicator), multiplier, bandType);
+        this(validatedConfig(vwapIndicator, multiplier, bandType));
+    }
+
+    private static Config validatedConfig(AbstractVWAPIndicator vwapIndicator, Number multiplier, BandType bandType) {
+        return validatedConfig(vwapIndicator, new VWAPStandardDeviationIndicator(vwapIndicator), multiplier, bandType);
     }
 
     /**
@@ -146,5 +175,9 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
         } catch (NumberFormatException ex) {
             return raw;
         }
+    }
+
+    private record Config(BarSeries series, AbstractVWAPIndicator vwapIndicator,
+            Indicator<Num> standardDeviationIndicator, Num multiplier, BandIndicator band, BandType bandType) {
     }
 }

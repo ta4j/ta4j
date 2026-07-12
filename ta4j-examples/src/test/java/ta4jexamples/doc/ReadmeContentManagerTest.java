@@ -97,8 +97,9 @@ public class ReadmeContentManagerTest {
         assertTrue(pom.contains("<version>[25,)</version>"));
         assertTrue(readme.contains("JDK-25%2B"));
         assertTrue(readme.contains("Java 25+"));
-        assertFalse(readme.contains("./mvnw"));
-        assertFalse(readme.contains("mvnw.cmd"));
+        assertTrue(readme.contains("./mvnw -B clean license:format formatter:format verify install"));
+        assertTrue(readme.contains("mvnw.cmd -B clean license:format formatter:format verify install"));
+        assertTrue(readme.contains("mvn -B clean license:format formatter:format verify install"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {
@@ -111,7 +112,8 @@ public class ReadmeContentManagerTest {
                 }
                 expectedActionPins.forEach((actionPrefix, expectedPin) -> {
                     if (workflow.contains(actionPrefix)) {
-                        assertTrue(workflow.contains(expectedPin), path + " should use " + expectedPin);
+                        assertTrue(workflow.contains(expectedPin) || containsFullShaActionPin(workflow, actionPrefix),
+                                path + " should use " + expectedPin + " or a full commit SHA");
                     }
                 });
                 forbiddenActionPins.forEach((forbiddenPin) -> assertFalse(workflow.contains(forbiddenPin),
@@ -119,13 +121,21 @@ public class ReadmeContentManagerTest {
                 if (path.getFileName().toString().equals("github-release.yml")) {
                     assertTrue(workflow.contains("path: workflow-support"),
                             path + " should stage workflow support files separately from the release tag checkout");
-                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.py"), path
+                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.sh"), path
                             + " should validate artifacts with workflow support files, not the checked-out tag tree");
                 }
             });
         }
 
         assertFalse(setupJavaWorkflows.isEmpty());
+    }
+
+    private static boolean containsFullShaActionPin(String workflow, String actionPrefix) {
+        return workflow.lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("uses: " + actionPrefix))
+                .map(line -> line.substring(line.indexOf(actionPrefix) + actionPrefix.length()).trim())
+                .anyMatch(ref -> ref.matches("[0-9a-fA-F]{40}"));
     }
 
     private static String buildSourceSnippets(String lineSeparator) {

@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -181,13 +182,13 @@ public class CashFlow implements PerformanceIndicator {
 
     private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this.barSeries = snapshotSeries(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = barSeries.getEndIndex();
+        int seriesEnd = this.barSeries.getEndIndex();
         this.valueStartIndex = Math.max(0, startIndex);
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().one()));
+        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -286,7 +287,7 @@ public class CashFlow implements PerformanceIndicator {
 
     @Override
     public BarSeries getBarSeries() {
-        return barSeries;
+        return snapshotSeries(barSeries);
     }
 
     /**
@@ -338,6 +339,15 @@ public class CashFlow implements PerformanceIndicator {
 
     private int toValueIndex(int index) {
         return index - valueStartIndex;
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {

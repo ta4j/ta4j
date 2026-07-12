@@ -46,14 +46,28 @@ class ElliottWavePresetDemoTest {
     }
 
     @Test
-    void shouldUseBtcMacroPresetForDailyBitcoin() {
-        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT1D"));
-        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("btc-usd", "PT24H"));
+    void shouldUseDailyMacroPresetForDailyIntervals() {
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT1D"));
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT24H"));
     }
 
     @Test
-    void shouldNotUseBtcMacroPresetForOtherAssetsOrIntervals() {
-        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("ETH-USD", "PT1D"));
-        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT4H"));
+    void shouldNotUseDailyMacroPresetForIntradayOrMissingIntervals() {
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT4H"));
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset(null));
+    }
+
+    @Test
+    void runHelpReturnsSuccessWithoutLoadingData() {
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "--help" }));
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "help" }));
+    }
+
+    @Test
+    void runInvalidArgumentsReturnUsageStatus() {
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "unknown" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "zero" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "0" }));
     }
 }

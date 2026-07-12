@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.aroon;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -198,7 +200,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
     @Test
     public void testCreation() {
         final AroonFacade facade = new AroonFacade(data, 5);
-        assertEquals(data, facade.down().getBarSeries());
+        assertTrue(isSameSeries(data, facade.down().getBarSeries()));
     }
 
     @Test

@@ -35,11 +35,22 @@ public class ElliottImpulsePhaseRule extends AbstractRule {
      */
     public ElliottImpulsePhaseRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
             final ElliottPhase... phases) {
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        this(validatedConfig(scenarioIndicator, phases));
+    }
+
+    private ElliottImpulsePhaseRule(final Config config) {
+        this.scenarioIndicator = config.scenarioIndicator();
+        this.allowedPhases = config.allowedPhases();
+    }
+
+    private static Config validatedConfig(final Indicator<ElliottScenarioSet> scenarioIndicator,
+            final ElliottPhase... phases) {
+        Indicator<ElliottScenarioSet> validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
         if (phases == null || phases.length == 0) {
             throw new IllegalArgumentException("phases must not be empty");
         }
-        this.allowedPhases = EnumSet.copyOf(Arrays.asList(phases));
+        return new Config(validatedScenarioIndicator, EnumSet.copyOf(Arrays.asList(phases)));
     }
 
     @Override
@@ -49,5 +60,8 @@ public class ElliottImpulsePhaseRule extends AbstractRule {
                 && allowedPhases.contains(base.currentPhase());
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(Indicator<ElliottScenarioSet> scenarioIndicator, Set<ElliottPhase> allowedPhases) {
     }
 }

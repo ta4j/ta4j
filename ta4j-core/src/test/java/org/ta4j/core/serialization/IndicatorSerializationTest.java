@@ -21,6 +21,7 @@ import org.ta4j.core.num.Num;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class IndicatorSerializationTest {
 
@@ -103,6 +104,28 @@ public class IndicatorSerializationTest {
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(fromJson.getValue(i)).isEqualTo(indicator.getValue(i));
         }
+    }
+
+    @Test
+    public void describeRejectsNullIndicator() {
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.describe(null));
+
+        assertThat(exception).hasMessage("Indicator cannot be null").hasNoCause();
+    }
+
+    @Test
+    public void fromDescriptorRejectsNullInputs() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder().withType("ClosePriceIndicator").build();
+
+        IndicatorSerializationException nullSeriesException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(null, descriptor));
+        assertThat(nullSeriesException).hasMessage("Series and descriptor cannot be null").hasNoCause();
+
+        IndicatorSerializationException nullDescriptorException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, null));
+        assertThat(nullDescriptorException).hasMessage("Series and descriptor cannot be null").hasNoCause();
     }
 
     @Test

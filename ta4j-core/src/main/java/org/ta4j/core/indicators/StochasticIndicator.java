@@ -48,14 +48,24 @@ public class StochasticIndicator extends CachedIndicator<Num> {
      * @throws IllegalArgumentException if lookback is less than 1
      */
     public StochasticIndicator(Indicator<Num> indicator, int lookback) {
-        super(indicator);
+        this(validatedConfig(indicator, lookback));
+    }
+
+    private StochasticIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.highest = config.highest();
+        this.lowest = config.lowest();
+        this.lookback = config.lookback();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int lookback) {
         if (lookback < 1) {
             throw new IllegalArgumentException("Stochastic look-back length must be a positive integer");
         }
-        this.indicator = indicator;
-        this.highest = new HighestValueIndicator(indicator, lookback);
-        this.lowest = new LowestValueIndicator(indicator, lookback);
-        this.lookback = lookback;
+        HighestValueIndicator highest = new HighestValueIndicator(indicator, lookback);
+        LowestValueIndicator lowest = new LowestValueIndicator(indicator, lookback);
+        return new Config(indicator, highest, lowest, lookback);
     }
 
     @Override
@@ -85,4 +95,7 @@ public class StochasticIndicator extends CachedIndicator<Num> {
         return Math.max(highest.getCountOfUnstableBars(), lowest.getCountOfUnstableBars());
     }
 
+    private record Config(Indicator<Num> indicator, HighestValueIndicator highest, LowestValueIndicator lowest,
+            int lookback) {
+    }
 }

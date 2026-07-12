@@ -182,7 +182,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Build and test snapshot candidate"
-          mvn -B clean test
+          ./mvnw -B clean test
           echo "::endgroup::"
 
       - name: Deploy Snapshot
@@ -193,7 +193,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Deploy snapshot to Maven Central"
-          mvn -B deploy -Psign-snapshots 2>&1 | tee snapshot-deploy.log
+          ./mvnw -B deploy -Psign-snapshots 2>&1 | tee snapshot-deploy.log
           echo "::endgroup::"
 
       - name: Snapshot publication summary

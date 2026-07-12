@@ -69,7 +69,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VortexIndicator(BarSeries series) {
-        this(series, DEFAULT_BAR_COUNT);
+        this(validatedConfig(series, DEFAULT_BAR_COUNT));
     }
 
     /**
@@ -80,7 +80,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VortexIndicator(BarSeries series, int barCount) {
-        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series), barCount);
+        this(validatedConfig(series, barCount));
     }
 
     /**
@@ -94,24 +94,43 @@ public class VortexIndicator extends CachedIndicator<Num> {
      */
     public VortexIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator, int barCount) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
-        this.highPriceIndicator = highPriceIndicator;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.closePriceIndicator = closePriceIndicator;
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, barCount));
+    }
 
+    private VortexIndicator(Config config) {
+        super(config.series());
+        this.highPriceIndicator = config.highPriceIndicator();
+        this.lowPriceIndicator = config.lowPriceIndicator();
+        this.closePriceIndicator = config.closePriceIndicator();
+        this.barCount = config.barCount();
+        this.positiveMovementSumIndicator = config.positiveMovementSumIndicator();
+        this.negativeMovementSumIndicator = config.negativeMovementSumIndicator();
+        this.trueRangeSumIndicator = config.trueRangeSumIndicator();
+    }
+
+    private static Config validatedConfig(BarSeries series, int barCount) {
+        return validatedConfig(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ClosePriceIndicator(series), barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator, int barCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
         validateBarCount(barCount);
-        this.barCount = barCount;
 
-        VortexMovementIndicator positiveMovementIndicator = new VortexMovementIndicator(this.highPriceIndicator,
-                this.lowPriceIndicator);
-        VortexMovementIndicator negativeMovementIndicator = new VortexMovementIndicator(this.lowPriceIndicator,
-                this.highPriceIndicator);
-        TRIndicator trueRangeIndicator = new TRIndicator(this.highPriceIndicator, this.lowPriceIndicator,
-                this.closePriceIndicator);
+        VortexMovementIndicator positiveMovementIndicator = new VortexMovementIndicator(highPriceIndicator,
+                lowPriceIndicator);
+        VortexMovementIndicator negativeMovementIndicator = new VortexMovementIndicator(lowPriceIndicator,
+                highPriceIndicator);
+        TRIndicator trueRangeIndicator = new TRIndicator(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
 
-        this.positiveMovementSumIndicator = new RunningTotalIndicator(positiveMovementIndicator, barCount);
-        this.negativeMovementSumIndicator = new RunningTotalIndicator(negativeMovementIndicator, barCount);
-        this.trueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, barCount);
+        RunningTotalIndicator positiveMovementSumIndicator = new RunningTotalIndicator(positiveMovementIndicator,
+                barCount);
+        RunningTotalIndicator negativeMovementSumIndicator = new RunningTotalIndicator(negativeMovementIndicator,
+                barCount);
+        RunningTotalIndicator trueRangeSumIndicator = new RunningTotalIndicator(trueRangeIndicator, barCount);
+        return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator,
+                positiveMovementSumIndicator, negativeMovementSumIndicator, trueRangeSumIndicator, barCount);
     }
 
     /**
@@ -144,7 +163,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
         Num positive = getPositiveValue(index);
         Num negative = getNegativeValue(index);
-        if (IndicatorUtils.isInvalid(positive) || IndicatorUtils.isInvalid(negative)) {
+        if (!Num.isFinite(positive) || !Num.isFinite(negative)) {
             return NaN;
         }
         return positive.minus(negative);
@@ -156,12 +175,12 @@ public class VortexIndicator extends CachedIndicator<Num> {
         }
 
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (!Num.isFinite(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalMovement = movementSumIndicator.getValue(index);
-        if (IndicatorUtils.isInvalid(totalMovement)) {
+        if (!Num.isFinite(totalMovement)) {
             return NaN;
         }
 
@@ -209,7 +228,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
             Num current = currentIndicator.getValue(index);
             Num previous = previousIndicator.getValue(index - 1);
-            if (IndicatorUtils.isInvalid(current) || IndicatorUtils.isInvalid(previous)) {
+            if (!Num.isFinite(current) || !Num.isFinite(previous)) {
                 return NaN;
             }
 
@@ -220,5 +239,11 @@ public class VortexIndicator extends CachedIndicator<Num> {
         public int getCountOfUnstableBars() {
             return unstableBars;
         }
+    }
+
+    private record Config(BarSeries series, Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator, RunningTotalIndicator positiveMovementSumIndicator,
+            RunningTotalIndicator negativeMovementSumIndicator, RunningTotalIndicator trueRangeSumIndicator,
+            int barCount) {
     }
 }

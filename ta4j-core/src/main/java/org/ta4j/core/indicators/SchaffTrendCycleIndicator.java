@@ -36,7 +36,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator) {
-        this(indicator, 23, 50, 10, 3);
+        this(validatedConfig(indicator, 23, 50, 10, 3));
     }
 
     /**
@@ -52,22 +52,32 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
             int smoothingPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, fastPeriod, slowPeriod, cycleLength, smoothingPeriod));
+    }
+
+    private SchaffTrendCycleIndicator(Config config) {
+        super(config.indicator());
+        this.slowPeriod = config.slowPeriod();
+        this.cycleLength = config.cycleLength();
+        this.smoothingPeriod = config.smoothingPeriod();
+        this.stcSmoothed = config.stcSmoothed();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
+            int smoothingPeriod) {
         if (fastPeriod < 1 || slowPeriod < 1 || cycleLength < 1 || smoothingPeriod < 1) {
             throw new IllegalArgumentException("All Schaff Trend Cycle periods must be positive integers");
         }
         if (fastPeriod >= slowPeriod) {
             throw new IllegalArgumentException("Slow period must be greater than fast period for MACD calculation");
         }
-        this.slowPeriod = slowPeriod;
-        this.cycleLength = cycleLength;
-        this.smoothingPeriod = smoothingPeriod;
 
         MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
         StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
         EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
         StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        this.stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        EMAIndicator stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        return new Config(indicator, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
     @Override
@@ -85,5 +95,9 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         // Stochastic (cycleLength) -> EMA (smoothingPeriod)
         // Unstable periods are additive through the chain
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
+    }
+
+    private record Config(Indicator<Num> indicator, EMAIndicator stcSmoothed, int slowPeriod, int cycleLength,
+            int smoothingPeriod) {
     }
 }

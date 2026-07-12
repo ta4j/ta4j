@@ -34,8 +34,8 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
             DonchianChannelUpperIndicator donchianChannelUpperIndicator) {
         super(series);
         this.barCount = barCount;
-        this.lower = donchianChannelLowerIndicator;
-        this.upper = donchianChannelUpperIndicator;
+        this.lower = donchianChannelLowerIndicator.copy();
+        this.upper = donchianChannelUpperIndicator.copy();
     }
 
     @Override

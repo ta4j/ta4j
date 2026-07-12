@@ -8,14 +8,14 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 2. **Opinionated implementations belong outside the core.** ta4j aims to be widely applicable. Highly subjective “feature bundles” (e.g., metric dashboards, bespoke reporting formats, hard-coded broker behaviors) are better published as separate modules or example projects. Keep contributions focused on reusable primitives.
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
-- **Run this before opening or updating a PR:** `mvn -B verify`
-  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow.
+- **Run this before opening or updating a PR:** `./mvnw -B clean license:format formatter:format verify install` on macOS/Linux, `mvnw.cmd -B clean license:format formatter:format verify install` on Windows, or `mvn -B clean license:format formatter:format verify install` with system Maven 3.9+
+  This matches the main CI path and keeps SpotBugs blocking plus JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same command sequence and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
 
-- **Use focused local quality loops when iterating:** `mvn -pl ta4j-core -am clean compile spotbugs:check` and `mvn -pl ta4j-core -am test jacoco:report jacoco:check`
-  These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full `mvn -B verify`.
+- **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
+  These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full verification command.
 
-- **Fix formatting and license headers when needed:** `mvn -B license:format formatter:format`
-  First-time contributors almost always hit this; run the formatter command locally before your final `mvn -B verify`.
+- **Fix formatting and license headers when needed:** `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format`
+  First-time contributors almost always hit this; run the formatter command locally before your final verification command.
 
 ## Contribution checklist
 
@@ -29,9 +29,9 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    ```
 4. **Implement + test.** Run the full build before pushing:
    ```bash
-   mvn -B clean license:format formatter:format test install
+   ./mvnw -B clean license:format formatter:format verify install
    ```
-   CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run the command locally first.
+   On Windows, use `mvnw.cmd -B clean license:format formatter:format verify install`; if you already manage Maven 3.9+ yourself, `mvn -B clean license:format formatter:format verify install` is also supported. The quiet scripts are optional filtered-output wrappers for the same command sequence and preserve full logs under `.agents/logs/`. CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format` locally when needed before your final verification command.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
@@ -68,11 +68,9 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,lppl-sector-rotation-demo,elliott-macro-cycle-replay`
-- `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
-- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=lppl-sector-rotation-demo,elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
-- `xvfb-run mvn -B test -Dgroups=lppl-sector-rotation-demo -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay -Dta4j.lpplDemoOutputDir=target/analysis-demos/lppl-sector-rotation -Dta4j.lpplReferenceDataDir=ta4j-examples/src/main/resources`
-- `xvfb-run mvn -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest,ElliottWaveBtcMacroCycleDemoTest`
+- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
+- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
@@ -83,34 +81,29 @@ The dedicated workflows are:
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
 - `Run Analysis Demo Tagged Tests` (`.github/workflows/test-tag-analysis-demo.yml`)
-- `Run LPPL Sector Rotation Demo Tagged Tests` (`.github/workflows/test-tag-lppl-sector-rotation-demo.yml`)
-- `Run Elliott Macro Cycle Replay Tagged Tests` (`.github/workflows/test-tag-elliott-macro-cycle-replay.yml`)
+- `EW Snapshot Analysis` (`.github/workflows/elliott-wave-snapshot-analysis.yml`)
 
-Scheduled runs are opt-in per tag except `lppl-sector-rotation-demo`, which runs
-weekly by default unless
-`TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_ENABLED=false`. For other
-tagged schedules, set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true` and
-`TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`. Daily and
-monthly LPPL runs also require the LPPL schedule variable to be enabled and the
-slot set to `daily` or `monthly`. Manual workflow dispatches run regardless of
-the schedule variables. The `elliott-macro-cycle-replay` workflow is manual-only
-and requires a self-hosted runner labeled `ta4j-macro-cycle-replay`.
+Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
+and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
+Unset variables leave scheduled runs disabled, while manual workflow dispatches run
+regardless of the schedule variables. The `EW Snapshot Analysis` workflow is
+manual-only, runs on hosted Ubuntu, accepts `instrument`, `exchange`, and
+`lookbackDays` inputs, and uploads the live Elliott macro snapshot report,
+charts, scenario-outlook JSON, cached provider responses, and full demo log.
+Long-form BTC anchor calibration is not a JUnit lane. Run
+`ElliottWaveAnchorCalibrationHarness` as an explicit examples job when you need
+the multi-hour calibration artifacts instead of a live monitoring snapshot.
 
-The `analysis-demo` tag is for Elliott examples that produce analysis reports
-and must be the only JUnit tag on each tagged test or class.
+The `analysis-demo` tag is for examples that produce analysis reports and must
+be the only JUnit tag on each tagged test or class.
 Its workflow defaults to `coinbase:BTC-USD`, accepts provider-qualified manual
 inputs such as `coinbase:ETH-USD` or `coinbase:ETH/USD`, and uploads generated
-JSON, charts, and cached provider responses from
-`target/analysis-demos/elliott-wave/**`. Set `TA4J_ANALYSIS_DEMO_INSTRUMENT` to
-override the scheduled Elliott instrument.
-
-The `lppl-sector-rotation-demo` tag is for the SPDR LPPL sector rotation report.
-Its workflow writes LPPL reports, refreshed reference-data copies, and Yahoo
-response caches under `target/analysis-demos/lppl-sector-rotation/**`. Scheduled
-and manually dispatched LPPL workflow runs set `ta4j.lpplUpdateReferenceData=true`;
-when adjusted SPDR resource files change, the workflow opens or updates the
-`automation/lppl-spdr-reference-data` branch instead of pushing directly to
-`master`.
+JSON, charts, and cached provider responses from `target/analysis-demos/**`.
+Version 1 supports Coinbase instruments only. For scheduled analysis-demo runs,
+`weekly` is the intended slot; use
+`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED=true` with
+`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT=weekly`, and set
+`TA4J_ANALYSIS_DEMO_INSTRUMENT` to override the scheduled instrument.
 
 ## API lifecycle and @since policy
 

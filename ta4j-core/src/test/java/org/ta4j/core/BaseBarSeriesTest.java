@@ -186,6 +186,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         List<Bar> barData = seriesWithBars.getBarData();
         assertNotNull(barData);
         assertEquals(5, barData.size());
+        assertThrows(UnsupportedOperationException.class, () -> barData.add(testBars.get(0)));
 
         // Test that it returns a copy (immutability)
         List<Bar> originalData = seriesWithBars.getBarData();

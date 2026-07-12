@@ -37,7 +37,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator) {
-        this(indicator, 3, 2, 100);
+        this(validatedConfig(indicator, 3, 2, 100));
     }
 
     /**
@@ -51,15 +51,27 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod, int percentRankPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, rsiPeriod, streakRsiPeriod, percentRankPeriod));
+    }
+
+    private ConnorsRSIIndicator(Config config) {
+        super(config.indicator());
+        this.priceRsi = config.priceRsi();
+        this.streakRsi = config.streakRsi();
+        this.percentRankIndicator = config.percentRankIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod,
+            int percentRankPeriod) {
         if (rsiPeriod < 1 || streakRsiPeriod < 1 || percentRankPeriod < 1) {
             throw new IllegalArgumentException("Connors RSI periods must be positive integers");
         }
 
         DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(indicator);
-        this.priceRsi = new RSIIndicator(indicator, rsiPeriod);
-        this.streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
-        this.percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
+        RSIIndicator priceRsi = new RSIIndicator(indicator, rsiPeriod);
+        RSIIndicator streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
+        PercentRankIndicator percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
+        return new Config(indicator, priceRsi, streakRsi, percentRankIndicator);
     }
 
     @Override
@@ -83,5 +95,9 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         // Return the maximum unstable period of all three components
         return Math.max(Math.max(priceRsi.getCountOfUnstableBars(), streakRsi.getCountOfUnstableBars()),
                 percentRankIndicator.getCountOfUnstableBars());
+    }
+
+    private record Config(Indicator<Num> indicator, RSIIndicator priceRsi, RSIIndicator streakRsi,
+            PercentRankIndicator percentRankIndicator) {
     }
 }

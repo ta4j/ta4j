@@ -30,6 +30,23 @@ class ElliottRatioIndicatorTest {
     }
 
     @Test
+    void accessorReturnsOwnedSwingCopy() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 11, 13, 12, 14, 13 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+        var swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        var ratioIndicator = new ElliottRatioIndicator(swingIndicator);
+
+        ElliottSwingIndicator exposedSwing = ratioIndicator.getSwingIndicator();
+
+        assertThat(exposedSwing).isNotSameAs(swingIndicator);
+        assertThat(exposedSwing.getValue(series.getEndIndex()))
+                .isEqualTo(swingIndicator.getValue(series.getEndIndex()));
+    }
+
+    @Test
     void computesRetracementRatioFromSeries() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 11, 13, 12, 14, 13 };

@@ -6,6 +6,7 @@ package org.ta4j.core.bars;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
@@ -30,7 +31,7 @@ public class AmountBarBuilder implements BarBuilder {
     private final NumFactory numFactory;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private BarSeries barSeries;
+    private Consumer<Bar> barAppender;
     private Duration timePeriod;
     private Instant beginTime;
     private Instant endTime;
@@ -267,7 +268,7 @@ public class AmountBarBuilder implements BarBuilder {
 
     @Override
     public AmountBarBuilder bindTo(final BarSeries barSeries) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this.barAppender = Objects.requireNonNull(barSeries)::addBar;
         return this;
     }
 
@@ -381,7 +382,7 @@ public class AmountBarBuilder implements BarBuilder {
                 }
             }
 
-            barSeries.addBar(build());
+            boundBarAppender().accept(build());
             amount = amountRemainder;
             volume = volumeRemainder;
 
@@ -497,6 +498,10 @@ public class AmountBarBuilder implements BarBuilder {
         }
         final Num updated = current.minus(remainder);
         return updated.isZero() ? null : updated;
+    }
+
+    private Consumer<Bar> boundBarAppender() {
+        return Objects.requireNonNull(barAppender, "barSeries");
     }
 
     private static final class CarryOverSnapshot {

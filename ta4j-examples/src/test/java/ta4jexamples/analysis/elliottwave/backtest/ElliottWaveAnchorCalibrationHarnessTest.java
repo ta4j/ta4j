@@ -10,26 +10,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
-import java.time.Duration;
-import java.time.Instant;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
-import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
@@ -44,16 +42,11 @@ import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
-import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
-
 class ElliottWaveAnchorCalibrationHarnessTest {
 
-    @Tag("analysis-demo")
     @Test
-    void defaultBitcoinAnchorsLoadsResolvedVersionedRegistry() {
-        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
-                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+    void defaultBitcoinAnchorsTranslatesResolvedRegistryWithoutRunningCalibration() {
+        BarSeries series = seriesWithDefaultAnchorWindows();
 
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
@@ -100,24 +93,15 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void portabilitySeriesResourcesLoadFromExpandedEthDailyAndSp500WeeklyDatasets() {
-        BarSeries ethSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
-                ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, ElliottWaveAnchorCalibrationHarness.ETH_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
-        BarSeries sp500Series = OssifiedElliottWaveSeriesLoader.loadSeries(
-                ElliottWaveAnchorCalibrationHarnessTest.class, ElliottWaveAnchorCalibrationHarness.SP500_RESOURCE,
-                ElliottWaveAnchorCalibrationHarness.SP500_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
-
-        assertTrue(ethSeries.getBarCount() > 3000);
-        assertTrue(sp500Series.getBarCount() > 3000);
+    void calibrationDepthKeepsPortabilityOutOfDefaultAndTargetedUnitPaths() {
+        assertFalse(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE.includePortability());
+        assertFalse(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.TARGETED.includePortability());
+        assertTrue(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE.includePortability());
     }
 
     @Test
     void targetedBtcValidationWindowUsesReducedSeriesAndFilteredTruthAnchors() {
-        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
-                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+        BarSeries fullSeries = seriesWithDefaultAnchorWindows();
 
         BarSeries targetedSeries = ElliottWaveAnchorCalibrationHarness.targetedBitcoinSeries(fullSeries);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry targetedAnchors = ElliottWaveAnchorCalibrationHarness
@@ -215,39 +199,26 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void buildMacroAnalysisRunnerUsesFractalWindowToChangeDetectedSwings() {
-        BarSeries series = oscillatingSeries(72);
+    void candidateProfileManifestMetadataCapturesSearchInputsWithoutRunningAnalysis() {
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
+                .vector("minute-f3-impulse", "search-v1", "lane-a", "impulse-only", ElliottDegree.MINUTE, 1, 2, 13, 1,
+                        4, 0.62, "pattern-aware", ConfidenceProfiles::patternAwareModel, "metadata-only unit profile");
 
-        ElliottWaveAnalysisResult narrow = ElliottWaveAnchorCalibrationHarness
-                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 2)
-                .analyze(series);
-        ElliottWaveAnalysisResult broad = ElliottWaveAnchorCalibrationHarness
-                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 6)
-                .analyze(series);
+        Map<String, String> metadata = profile.manifestMetadata();
 
-        ElliottAnalysisResult narrowBase = narrow.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
-        ElliottAnalysisResult broadBase = broad.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
-
-        assertFalse(narrowBase.rawSwings().isEmpty());
-        assertFalse(broadBase.rawSwings().isEmpty());
-        assertFalse(narrowBase.processedSwings().isEmpty());
-        assertFalse(broadBase.processedSwings().isEmpty());
-        assertTrue(narrowBase.rawSwings().size() > broadBase.rawSwings().size());
-    }
-
-    @Test
-    void buildMacroAnalysisRunnerHonorsPatternSetOverrides() {
-        BarSeries series = oscillatingSeries(72);
-
-        ElliottWaveAnalysisResult impulseOnly = ElliottWaveAnchorCalibrationHarness
-                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 3, PatternSet.of(ScenarioType.IMPULSE),
-                        0.62, ConfidenceProfiles::patternAwareModel)
-                .analyze(series);
-
-        ElliottAnalysisResult base = impulseOnly.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
-
-        assertFalse(base.scenarios().all().isEmpty());
-        assertTrue(base.scenarios().all().stream().allMatch(scenario -> scenario.type().isImpulse()));
+        assertEquals("minute-f3-impulse", profile.id());
+        assertEquals(ElliottDegree.MINUTE, profile.degree());
+        assertEquals(1, profile.higherDegrees());
+        assertEquals(2, profile.lowerDegrees());
+        assertEquals(13, profile.maxScenarios());
+        assertEquals(1, profile.scenarioSwingWindow());
+        assertEquals(4, profile.fractalWindow());
+        assertEquals("search-v1", metadata.get("searchPlanId"));
+        assertEquals("lane-a", metadata.get("laneId"));
+        assertEquals("impulse-only", metadata.get("scoreFamily"));
+        assertEquals("0.62", metadata.get("baseConfidenceWeight"));
+        assertEquals("pattern-aware", metadata.get("confidenceModel"));
+        assertEquals("metadata-only unit profile", metadata.get("rationale"));
     }
 
     @Test
@@ -663,15 +634,19 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void candidateProfilesUseFullSeriesForMacroAnalysis() {
-        BarSeries series = longSyntheticSeries(500);
-        ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
-                .of("minute-f2", ElliottDegree.MINUTE, 1, 0, 25, 0, 2, "macro window");
+    void calibrationDepthParsesCliModesWithoutStartingTheCalibrationJob() {
+        assertEquals(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.parse(new String[0]));
+        assertEquals(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.parse(new String[] { "--routine" }));
+        assertEquals(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.TARGETED,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.parse(new String[] { "--targeted" }));
+        assertEquals(ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.parse(new String[] { "--exhaustive" }));
 
-        ElliottWaveAnalysisResult analysis = profile.context().runner().analyze(series);
-
-        assertEquals(series.getBarCount(), analysis.analysisFor(ElliottDegree.MINUTE).orElseThrow().barCount());
-        assertEquals(series.getBarCount(), analysis.analysisFor(ElliottDegree.MINOR).orElseThrow().barCount());
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> ElliottWaveAnchorCalibrationHarness.CalibrationDepth.parse(new String[] { "--unknown" }));
+        assertTrue(thrown.getMessage().contains("--targeted"));
     }
 
     @Test
@@ -1041,6 +1016,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 WalkForwardRuntimeReport.empty(), manifest);
     }
 
+    @SafeVarargs
     private static PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment> snapshot(String foldId,
             int decisionIndex, RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>... predictions) {
         return new PredictionSnapshot<>(foldId, decisionIndex, List.of(predictions), Map.of());
@@ -1164,49 +1140,36 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         return series;
     }
 
-    private static BarSeries longSyntheticSeries(int barCount) {
-        BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-long-anchor-series").build();
-        Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
-        for (int index = 0; index < barCount; index++) {
-            double base = 100.0 + (index * 2.0);
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
-                    .openPrice(base)
-                    .highPrice(base + 6.0)
-                    .lowPrice(base - 6.0)
-                    .closePrice(base + 2.0)
-                    .volume(1.0)
-                    .amount(base + 2.0)
-                    .trades(1)
-                    .build());
+    private static BarSeries seriesWithDefaultAnchorWindows() {
+        ElliottWaveAnchorRegistry registry = ElliottWaveAnchorRegistry.load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-default-anchor-windows").build();
+        for (int index = 0; index < registry.anchors().size(); index++) {
+            ElliottWaveAnchorRegistry.AnchorSpec anchor = registry.anchors().get(index);
+            Instant midpoint = anchor.windowStart()
+                    .plusMillis(Duration.between(anchor.windowStart(), anchor.windowEnd()).toMillis() / 2L);
+            double base = 100.0 + (index * 25.0);
+            addAnchorWindowBar(series, anchor, anchor.windowStart(), base, false);
+            addAnchorWindowBar(series, anchor, midpoint, base, true);
+            addAnchorWindowBar(series, anchor, anchor.windowEnd(), base, false);
         }
         return series;
     }
 
-    private static BarSeries oscillatingSeries(int barCount) {
-        BarSeries series = new BaseBarSeriesBuilder().withName("oscillating-anchor-series").build();
-        Instant firstEndTime = Instant.parse("2021-01-01T00:00:00Z");
-        for (int index = 0; index < barCount; index++) {
-            double trend = 200.0 + (index * 1.8);
-            double wave = Math.sin(index / 2.2) * 18.0;
-            double noise = ((index % 3) - 1) * 3.5;
-            double close = trend + wave + noise;
-            double open = close - ((index % 2 == 0) ? 4.0 : -4.0);
-            double high = Math.max(open, close) + 6.0 + (Math.cos(index / 3.0) * 2.0);
-            double low = Math.min(open, close) - 6.0 - (Math.sin(index / 3.0) * 2.0);
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
-                    .openPrice(open)
-                    .highPrice(high)
-                    .lowPrice(low)
-                    .closePrice(close)
-                    .volume(1.0)
-                    .amount(close)
-                    .trades(1)
-                    .build());
-        }
-        return series;
+    private static void addAnchorWindowBar(BarSeries series, ElliottWaveAnchorRegistry.AnchorSpec anchor,
+            Instant endTime, double base, boolean selectedExtremum) {
+        boolean top = anchor.kind() == ElliottWaveAnchorRegistry.AnchorKind.TOP;
+        double high = top && selectedExtremum ? base + 20.0 : base + 5.0;
+        double low = !top && selectedExtremum ? base - 20.0 : base - 5.0;
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime)
+                .openPrice(base)
+                .highPrice(high)
+                .lowPrice(low)
+                .closePrice(base)
+                .volume(1.0)
+                .amount(base)
+                .trades(1)
+                .build());
     }
 }

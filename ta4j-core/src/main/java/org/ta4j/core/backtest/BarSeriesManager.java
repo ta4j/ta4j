@@ -5,15 +5,18 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
@@ -150,7 +153,7 @@ public class BarSeriesManager {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
-        this.barSeries = barSeries;
+        this.barSeries = snapshotSeries(barSeries);
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -161,7 +164,7 @@ public class BarSeriesManager {
      * @return the managed bar series
      */
     public BarSeries getBarSeries() {
-        return barSeries;
+        return snapshotSeries(barSeries);
     }
 
     /**
@@ -262,6 +265,69 @@ public class BarSeriesManager {
     }
 
     /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param tradeType     the {@link TradeType} used to open the position
+     * @param positionSizer dynamic entry position sizer
+     * @return the trading record coming from the run
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer) {
+        return run(strategy, tradeType, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @return the trading record coming from the run
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, PositionSizer positionSizer) {
+        Objects.requireNonNull(strategy, "strategy");
+        return run(strategy, strategy.getStartingType(), positionSizer);
+    }
+
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using the strategy starting type and a dynamic entry position
+     * sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param startIndex    the start index for the run (included)
+     * @param finishIndex   the finish index for the run (included)
+     * @return the trading record coming from the run
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, PositionSizer positionSizer, int startIndex, int finishIndex) {
+        Objects.requireNonNull(strategy, "strategy");
+        return run(strategy, strategy.getStartingType(), positionSizer, startIndex, finishIndex);
+    }
+
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using a dynamic entry position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param tradeType     the {@link TradeType} used to open the position
+     * @param positionSizer dynamic entry position sizer
+     * @param startIndex    the start index for the run (included)
+     * @param finishIndex   the finish index for the run (included)
+     * @return the trading record coming from the run
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer, int startIndex,
+            int finishIndex) {
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+    }
+
+    /**
      * Runs the provided strategy over the managed series using the supplied trading
      * record.
      *
@@ -316,45 +382,40 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(strategy, "strategy");
-        Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amount, "amount");
-        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
-        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+    }
 
-        if (log.isTraceEnabled()) {
-            log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
-                    strategy, tradingRecord.getStartingType());
-        }
+    /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * position sizer and a supplied trading record.
+     *
+     * @param strategy      strategy to execute
+     * @param tradingRecord the trading record instance to mutate
+     * @param positionSizer dynamic entry position sizer
+     * @return the supplied trading record after execution
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer) {
+        return run(strategy, tradingRecord, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
 
-        int lastProcessedIndex = runEndIndex;
-        for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            lastProcessedIndex = i;
-            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-            // For each bar between both indexes...
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-            }
-        }
-
-        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
-            // If the last position is still open and there are still bars after the
-            // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-                // For each bar after the end index of this run...
-                // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-                    break;
-                }
-            }
-        }
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
-        return tradingRecord;
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using a supplied trading record and dynamic entry position
+     * sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param tradingRecord the trading record instance to mutate
+     * @param positionSizer dynamic entry position sizer
+     * @param startIndex    the start index for the run (included)
+     * @param finishIndex   the finish index for the run (included)
+     * @return the supplied trading record after execution
+     * @since 0.22.9
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
+            int startIndex, int finishIndex) {
+        return runWithPositionSizer(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
@@ -415,6 +476,38 @@ public class BarSeriesManager {
     }
 
     /**
+     * Executes walk-forward testing for one strategy using the provided entry trade
+     * type and dynamic entry position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param tradeType     trade type used to open positions
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config) {
+        return runWalkForward(strategy, tradeType, positionSizer, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with a dynamic entry position
+     * sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return runWalkForward(strategy, strategy.getStartingType(), positionSizer, config, null);
+    }
+
+    /**
      * Executes walk-forward testing for one strategy with optional per-fold
      * progress updates.
      *
@@ -431,6 +524,141 @@ public class BarSeriesManager {
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
                 new AnchoredExpandingWalkForwardSplitter());
         return executor.execute(strategy, tradeType, amount, config, progressCallback);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with dynamic entry amount
+     * provider and optional per-fold progress updates.
+     *
+     * @param strategy         strategy to execute
+     * @param tradeType        trade type used to open positions
+     * @param positionSizer    dynamic entry position sizer
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
+    }
+
+    private TradingRecord runWithPositionSizer(Strategy strategy, TradingRecord tradingRecord,
+            PositionSizer positionSizer, int startIndex, int finishIndex) {
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        TradeType runTradeType = tradingRecord.getStartingType();
+        return run(strategy, tradingRecord, startIndex, finishIndex,
+                index -> amountForNextOperation(positionSizer, index, strategy, tradingRecord, runTradeType));
+    }
+
+    private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
+            IntFunction<Num> amountResolver) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(amountResolver, "amountResolver");
+        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
+        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+
+        if (log.isTraceEnabled()) {
+            log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
+                    strategy, tradingRecord.getStartingType());
+        }
+
+        int lastProcessedIndex = runEndIndex;
+        for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            lastProcessedIndex = i;
+            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+            // For each bar between both indexes...
+            if (strategy.shouldOperate(i, tradingRecord)) {
+                tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+            }
+        }
+
+        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+            // If the last position is still open and there are still bars after the
+            // endIndex of the barSeries, then we execute the strategy on these bars
+            // to give an opportunity to close this position.
+            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
+            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                lastProcessedIndex = i;
+                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                // For each bar after the end index of this run...
+                // --> Trying to close the last position
+                if (strategy.shouldOperate(i, tradingRecord)) {
+                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    break;
+                }
+            }
+        }
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
+        return tradingRecord;
+    }
+
+    private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
+            TradeType tradeType) {
+        Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
+        validateAmount(amount);
+        return amount;
+    }
+
+    private static void validateAmount(Num amount) {
+        if (amount == null || amount.isNaN()) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
+
+        if (amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
+    }
+
+    private Num amountForNextOperation(PositionSizer positionSizer, int index, Strategy strategy,
+            TradingRecord tradingRecord, TradeType tradeType) {
+        if (tradingRecord.isClosed()) {
+            return amountForIndex(positionSizer, index, strategy, tradingRecord, tradeType);
+        }
+        return tradingRecord.getCurrentPosition().amount();
+    }
+
+    private PositionSizer.Context positionSizerContext(int index, Strategy strategy, TradingRecord tradingRecord,
+            TradeType tradeType) {
+        ExecutionTarget target = estimateEntryTarget(index, tradeType);
+        return new PositionSizer.Context(index, target.index(), target.price(), strategy, barSeries, tradeType,
+                tradingRecord, transactionCostModel, holdingCostModel);
+    }
+
+    private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
+        ExecutionTarget target = tradeExecutionModel.estimateEntryTarget(index, barSeries, tradeType);
+        if (target == null) {
+            return fallbackSizingTarget(index);
+        }
+        return target;
+    }
+
+    private ExecutionTarget fallbackSizingTarget(int index) {
+        int fallbackIndex = index;
+        if (barSeries.isEmpty()) {
+            return new ExecutionTarget(index, barSeries.numFactory().one());
+        }
+        int safeBegin = barSeries.getBeginIndex();
+        int safeEnd = barSeries.getEndIndex();
+        if (fallbackIndex < safeBegin) {
+            fallbackIndex = safeBegin;
+        } else if (fallbackIndex > safeEnd) {
+            fallbackIndex = safeEnd;
+        }
+        return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
+    }
+
+    private static BarSeries snapshotSeries(BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 
 }

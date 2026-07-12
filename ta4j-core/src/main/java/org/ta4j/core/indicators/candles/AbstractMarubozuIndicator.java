@@ -42,13 +42,34 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     private final Num zero;
 
     AbstractMarubozuIndicator(final BarSeries series) {
-        this(series, DEFAULT_BODY_AVERAGE_PERIOD, DEFAULT_BODY_TO_AVERAGE_BODY_RATIO,
-                DEFAULT_UPPER_SHADOW_TO_BODY_RATIO, DEFAULT_LOWER_SHADOW_TO_BODY_RATIO);
+        this(validatedConfig(series, DEFAULT_BODY_AVERAGE_PERIOD, DEFAULT_BODY_TO_AVERAGE_BODY_RATIO,
+                DEFAULT_UPPER_SHADOW_TO_BODY_RATIO, DEFAULT_LOWER_SHADOW_TO_BODY_RATIO));
     }
 
     AbstractMarubozuIndicator(final BarSeries series, final int bodyAveragePeriod, final double bodyToAverageBodyRatio,
             final double upperShadowToBodyRatio, final double lowerShadowToBodyRatio) {
-        super(Objects.requireNonNull(series, "series must not be null"));
+        this(validatedConfig(series, bodyAveragePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
+                lowerShadowToBodyRatio));
+    }
+
+    private AbstractMarubozuIndicator(final Config config) {
+        super(config.series());
+        this.bodyAveragePeriod = config.bodyAveragePeriod();
+        this.realBodyIndicator = config.realBodyIndicator();
+        this.bodyHeightIndicator = config.bodyHeightIndicator();
+        this.averageBodyHeightIndicator = config.averageBodyHeightIndicator();
+        this.upperShadowIndicator = config.upperShadowIndicator();
+        this.lowerShadowIndicator = config.lowerShadowIndicator();
+        this.bodyToAverageBodyRatioThreshold = config.bodyToAverageBodyRatioThreshold();
+        this.upperShadowToBodyRatioThreshold = config.upperShadowToBodyRatioThreshold();
+        this.lowerShadowToBodyRatioThreshold = config.lowerShadowToBodyRatioThreshold();
+        this.zero = config.zero();
+    }
+
+    private static Config validatedConfig(final BarSeries series, final int bodyAveragePeriod,
+            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
+            final double lowerShadowToBodyRatio) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
         if (bodyAveragePeriod < 1) {
             throw new IllegalArgumentException("bodyAveragePeriod must be >= 1");
         }
@@ -61,18 +82,20 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         if (lowerShadowToBodyRatio < 0d) {
             throw new IllegalArgumentException("lowerShadowToBodyRatio must be >= 0");
         }
-        this.bodyAveragePeriod = bodyAveragePeriod;
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bodyHeightIndicator = UnaryOperationIndicator.abs(this.realBodyIndicator);
-        this.averageBodyHeightIndicator = new SMAIndicator(this.bodyHeightIndicator, bodyAveragePeriod);
-        this.upperShadowIndicator = new UpperShadowIndicator(series);
-        this.lowerShadowIndicator = new LowerShadowIndicator(series);
+        RealBodyIndicator realBodyIndicator = new RealBodyIndicator(validatedSeries);
+        Indicator<Num> bodyHeightIndicator = UnaryOperationIndicator.abs(realBodyIndicator);
+        SMAIndicator averageBodyHeightIndicator = new SMAIndicator(bodyHeightIndicator, bodyAveragePeriod);
+        UpperShadowIndicator upperShadowIndicator = new UpperShadowIndicator(validatedSeries);
+        LowerShadowIndicator lowerShadowIndicator = new LowerShadowIndicator(validatedSeries);
 
-        final NumFactory numFactory = series.numFactory();
-        this.bodyToAverageBodyRatioThreshold = numFactory.numOf(bodyToAverageBodyRatio);
-        this.upperShadowToBodyRatioThreshold = numFactory.numOf(upperShadowToBodyRatio);
-        this.lowerShadowToBodyRatioThreshold = numFactory.numOf(lowerShadowToBodyRatio);
-        this.zero = numFactory.zero();
+        final NumFactory numFactory = validatedSeries.numFactory();
+        Num bodyToAverageBodyRatioThreshold = numFactory.numOf(bodyToAverageBodyRatio);
+        Num upperShadowToBodyRatioThreshold = numFactory.numOf(upperShadowToBodyRatio);
+        Num lowerShadowToBodyRatioThreshold = numFactory.numOf(lowerShadowToBodyRatio);
+        Num zero = numFactory.zero();
+        return new Config(validatedSeries, realBodyIndicator, bodyHeightIndicator, averageBodyHeightIndicator,
+                upperShadowIndicator, lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatioThreshold,
+                upperShadowToBodyRatioThreshold, lowerShadowToBodyRatioThreshold, zero);
     }
 
     @Override
@@ -121,4 +144,10 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
      * @since 0.19
      */
     protected abstract boolean isBullish();
+
+    private record Config(BarSeries series, RealBodyIndicator realBodyIndicator, Indicator<Num> bodyHeightIndicator,
+            SMAIndicator averageBodyHeightIndicator, UpperShadowIndicator upperShadowIndicator,
+            LowerShadowIndicator lowerShadowIndicator, int bodyAveragePeriod, Num bodyToAverageBodyRatioThreshold,
+            Num upperShadowToBodyRatioThreshold, Num lowerShadowToBodyRatioThreshold, Num zero) {
+    }
 }
