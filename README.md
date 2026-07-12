@@ -228,13 +228,14 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 LogReturnIndicator returns = new LogReturnIndicator(series);
-ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
 ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
@@ -255,12 +256,16 @@ advanced simulation tuning or a custom explicit price source.
 
 All reusable state records implement `ForecastState`, which exposes index,
 observation count, stability, mean, drift, variance, and volatility without
-coupling downstream models to EWMA or another estimator. Use
+coupling downstream models to EWMA or another estimator. Return-derived models
+implement `ReturnForecastStateIndicator<S>` so projections can infer their
+`ReturnIndicator` and return representation without duplicate constructor
+arguments. Use
 `ForecastFeatureExtractors` only at primitive-only distance or regression
 boundaries, and check `state.isStable()` before extracting features. Projection
 wrappers that calculate a real summary without generating samples can use
-`Forecast.ofSummary(...)`; sample-based models should continue to use
-`Forecast.ofSamples(...)`.
+`Forecast.ofSummary(...)` with the number of represented distribution values;
+training and calibration row counts are model metadata, not forecast sample
+counts. Sample-based models should continue to use `Forecast.ofSamples(...)`.
 
 ### Staged exit rules
 

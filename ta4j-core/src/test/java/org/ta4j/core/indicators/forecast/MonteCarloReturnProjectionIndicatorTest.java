@@ -16,6 +16,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.state.ForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
@@ -23,7 +25,6 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, Forecast<Num>> {
 
@@ -35,7 +36,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
     public void horizonConstructorBuildsUsableDefaultStateForecast() {
         BarSeries series = constantSeries(300, 100);
         LogReturnIndicator returns = new LogReturnIndicator(series);
-        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+        ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
         MonteCarloReturnProjectionIndicator forecast = new MonteCarloReturnProjectionIndicator(state, 5);
 
         Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
@@ -115,6 +116,23 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         assertThrows(IllegalArgumentException.class, () -> new MonteCarloReturnProjectionIndicator(stateIndicator));
     }
 
+    @Test
+    public void acceptsCustomReturnDerivedForecastState() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        ReturnForecastStateIndicator<CustomReturnState> state = new FixedCustomStateIndicator(returns);
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .build();
+
+        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+
+        assertTrue(prediction.isStable());
+        assertEquals(10, prediction.sampleCount());
+    }
+
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
             MonteCarloReturnProjectionIndicator.ShockModel shockModel, int horizon, int iterations, int lookback,
             long seed, MonteCarloReturnProjectionIndicator.VolatilityUpdateMode updateMode) {
@@ -164,7 +182,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         }
     }
 
-    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator {
+    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator<ReturnForecastState> {
 
         private final ReturnIndicator returns;
         private final ReturnRepresentation representation;
@@ -188,6 +206,40 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         public ReturnForecastState getValue(int index) {
             Num zero = getBarSeries().numFactory().zero();
             return new ReturnForecastState(index, index + 1, true, zero, zero, zero, zero);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return returns.getBarSeries();
+        }
+    }
+
+    private record CustomReturnState(int index, int observationCount, boolean isStable, Num mean, Num drift,
+            Num variance, Num volatility) implements ForecastState {
+    }
+
+    private static final class FixedCustomStateIndicator implements ReturnForecastStateIndicator<CustomReturnState> {
+
+        private final ReturnIndicator returns;
+
+        private FixedCustomStateIndicator(ReturnIndicator returns) {
+            this.returns = returns;
+        }
+
+        @Override
+        public ReturnIndicator getReturnIndicator() {
+            return returns;
+        }
+
+        @Override
+        public CustomReturnState getValue(int index) {
+            Num zero = getBarSeries().numFactory().zero();
+            return new CustomReturnState(index, index + 1, true, zero, zero, zero, zero);
         }
 
         @Override

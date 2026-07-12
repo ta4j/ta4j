@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -26,8 +27,7 @@ public class ForecastFeatureExtractorsTest extends AbstractIndicatorTest<Forecas
                 ForecastFeatureExtractors.<ForecastState>meanDriftVarianceVolatility().features(state), 0d);
         assertArrayEquals(new double[] { 2, 4 },
                 ForecastFeatureExtractors.<ForecastState>driftVolatility().features(state), 0d);
-        assertArrayEquals(new double[] { 1, 2, 4 }, ForecastFeatureExtractors.returnStateDefaults().features(state),
-                0d);
+        assertArrayEquals(new double[] { 1, 4 }, ForecastFeatureExtractors.returnStateDefaults().features(state), 0d);
     }
 
     @Test
@@ -39,7 +39,7 @@ public class ForecastFeatureExtractorsTest extends AbstractIndicatorTest<Forecas
 
         assertNotSame(first, second);
         first[0] = 99;
-        assertArrayEquals(new double[] { 1, 2, 4 }, second, 0d);
+        assertArrayEquals(new double[] { 1, 4 }, second, 0d);
     }
 
     @Test
@@ -48,6 +48,15 @@ public class ForecastFeatureExtractorsTest extends AbstractIndicatorTest<Forecas
 
         assertThrows(NullPointerException.class, () -> extractor.features(null));
         assertThrows(IllegalArgumentException.class, () -> extractor.features(ReturnForecastState.unstable(0)));
+    }
+
+    @Test
+    public void extractorsRejectFiniteNumsThatOverflowPrimitiveBoundary() {
+        Num largeFiniteValue = DecimalNumFactory.getInstance().numOf("1E+10000");
+        ReturnForecastState state = new ReturnForecastState(3, 4, true, largeFiniteValue, numOf(2), numOf(3), numOf(4));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> ForecastFeatureExtractors.returnStateDefaults().features(state));
     }
 
     private ReturnForecastState state() {

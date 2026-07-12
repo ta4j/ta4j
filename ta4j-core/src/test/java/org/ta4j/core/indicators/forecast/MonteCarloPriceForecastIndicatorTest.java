@@ -120,7 +120,7 @@ public class MonteCarloPriceForecastIndicatorTest
         }
     }
 
-    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator {
+    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator<ReturnForecastState> {
 
         private final ReturnIndicator returns;
         private final ReturnRepresentation representation;

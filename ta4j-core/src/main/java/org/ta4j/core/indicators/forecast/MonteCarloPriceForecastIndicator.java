@@ -9,6 +9,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.forecast.adapters.LogReturnToPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.state.ForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
@@ -33,7 +34,7 @@ public final class MonteCarloPriceForecastIndicator extends LogReturnToPriceFore
      * @param stateIndicator log-return state indicator
      * @since 0.22.9
      */
-    public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator stateIndicator) {
+    public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
@@ -44,12 +45,14 @@ public final class MonteCarloPriceForecastIndicator extends LogReturnToPriceFore
      * @param horizon        forecast horizon in bars
      * @since 0.22.9
      */
-    public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator stateIndicator, int horizon) {
+    public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator,
+            int horizon) {
         super(sourceIndicator(stateIndicator), new MonteCarloReturnProjectionIndicator(stateIndicator, horizon));
     }
 
-    private static Indicator<Num> sourceIndicator(ReturnForecastStateIndicator stateIndicator) {
-        ReturnForecastStateIndicator validated = Objects.requireNonNull(stateIndicator,
+    private static Indicator<Num> sourceIndicator(
+            ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
+        ReturnForecastStateIndicator<? extends ForecastState> validated = Objects.requireNonNull(stateIndicator,
                 "stateIndicator must not be null");
         if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");

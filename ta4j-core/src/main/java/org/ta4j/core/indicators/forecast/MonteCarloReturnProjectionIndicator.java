@@ -14,12 +14,12 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
-import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
+import org.ta4j.core.indicators.forecast.state.ForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
  * Monte Carlo cumulative log-return forecast indicator.
@@ -30,7 +30,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         implements ReturnForecastProjectionIndicator {
 
     private final ReturnIndicator returnIndicator;
-    private final ReturnForecastStateIndicator stateIndicator;
+    private final ReturnForecastStateIndicator<? extends ForecastState> stateIndicator;
     private final int horizon;
     private final int iterationCount;
     private final int lookbackBarCount;
@@ -46,7 +46,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      * @param stateIndicator log-return state indicator
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator) {
+    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
@@ -57,7 +57,8 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      * @param horizon        forecast horizon in bars
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator, int horizon) {
+    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator,
+            int horizon) {
         this(builder(stateIndicator).horizon(horizon));
     }
 
@@ -88,7 +89,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      * @return builder
      * @since 0.22.9
      */
-    public static Builder builder(ReturnForecastStateIndicator stateIndicator) {
+    public static Builder builder(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
         return new Builder(stateIndicator);
     }
 
@@ -97,7 +98,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         if (index < getCountOfUnstableBars()) {
             return Forecast.unstable(index, horizon);
         }
-        ReturnForecastState state = stateIndicator.getValue(index);
+        ForecastState state = stateIndicator.getValue(index);
         if (state == null || !state.isStable() || !Num.isFinite(state.volatility()) || !Num.isFinite(state.drift())) {
             return Forecast.unstable(index, horizon);
         }
@@ -149,7 +150,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return values;
     }
 
-    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ReturnForecastState startingState,
+    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ForecastState startingState,
             NumFactory numFactory) {
         Num cumulativeReturn = numFactory.zero();
         Num drift = startingState.drift();
@@ -219,8 +220,9 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return List.copyOf(sorted);
     }
 
-    private static ReturnForecastStateIndicator validateLogStateIndicator(ReturnForecastStateIndicator stateIndicator) {
-        ReturnForecastStateIndicator validated = Objects.requireNonNull(stateIndicator,
+    private static ReturnForecastStateIndicator<? extends ForecastState> validateLogStateIndicator(
+            ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
+        ReturnForecastStateIndicator<? extends ForecastState> validated = Objects.requireNonNull(stateIndicator,
                 "stateIndicator must not be null");
         if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
@@ -228,8 +230,9 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return validated;
     }
 
-    private static ReturnForecastStateIndicator requireSameSeries(ReturnForecastStateIndicator stateIndicator) {
-        ReturnForecastStateIndicator validated = validateLogStateIndicator(stateIndicator);
+    private static ReturnForecastStateIndicator<? extends ForecastState> requireSameSeries(
+            ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
+        ReturnForecastStateIndicator<? extends ForecastState> validated = validateLogStateIndicator(stateIndicator);
         IndicatorUtils.requireSameSeries(validated.getReturnIndicator(), validated);
         return validated;
     }
@@ -292,7 +295,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      */
     public static final class Builder {
 
-        private final ReturnForecastStateIndicator stateIndicator;
+        private final ReturnForecastStateIndicator<? extends ForecastState> stateIndicator;
         private int horizon = 1;
         private int iterationCount = 1_000;
         private int lookbackBarCount = 252;
@@ -302,7 +305,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         private double volatilityDecayFactor = 0.94d;
         private List<Double> quantileProbabilities = Forecast.DEFAULT_QUANTILE_PROBABILITIES;
 
-        private Builder(ReturnForecastStateIndicator stateIndicator) {
+        private Builder(ReturnForecastStateIndicator<? extends ForecastState> stateIndicator) {
             this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
         }
 
@@ -423,7 +426,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
 
         Num sample(RandomGenerator random);
 
-        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ReturnForecastState state,
+        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ForecastState state,
                 NumFactory numFactory) {
             return switch (model) {
             case HISTORICAL_BOOTSTRAP -> historicalBootstrap(historicalReturns);
@@ -437,7 +440,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return random -> samples.get(random.nextInt(samples.size()));
         }
 
-        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ReturnForecastState state,
+        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ForecastState state,
                 NumFactory numFactory) {
             List<Num> shocks = new ArrayList<>(historicalReturns.size());
             if (state.volatility().isZero()) {

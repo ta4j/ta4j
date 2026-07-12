@@ -53,7 +53,13 @@ public final class ForecastFeatureExtractors {
     }
 
     /**
-     * Extracts the default return-state features: mean, drift, and volatility.
+     * Extracts the default return-state features: mean and volatility.
+     *
+     * <p>
+     * Drift is intentionally omitted because the built-in EWMA state defaults to
+     * zero drift and its rolling-mean mode makes drift equal to mean. Use
+     * {@link #driftVolatility()} when drift is an intentional model input, or
+     * {@link #meanDriftVarianceVolatility()} for the full common state surface.
      *
      * @return return-state feature extractor
      * @since 0.22.9
@@ -61,8 +67,7 @@ public final class ForecastFeatureExtractors {
     public static ForecastFeatureExtractor<ReturnForecastState> returnStateDefaults() {
         return state -> {
             ReturnForecastState value = requireStable(state);
-            return new double[] { finiteDouble(value.mean(), "mean"), finiteDouble(value.drift(), "drift"),
-                    finiteDouble(value.volatility(), "volatility") };
+            return new double[] { finiteDouble(value.mean(), "mean"), finiteDouble(value.volatility(), "volatility") };
         };
     }
 

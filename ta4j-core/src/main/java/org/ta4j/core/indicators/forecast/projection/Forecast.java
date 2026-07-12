@@ -59,19 +59,31 @@ public final class Forecast<T> {
             throw new IllegalArgumentException("sampleCount must be >= 0");
         }
         if (isStable && sampleCount == 0) {
-            throw new IllegalArgumentException("stable forecasts must summarize at least one sample");
+            throw new IllegalArgumentException("stable forecasts must represent at least one distribution value");
         }
         if (!isStable && sampleCount != 0) {
-            throw new IllegalArgumentException("unstable forecasts must have zero samples");
+            throw new IllegalArgumentException("unstable forecasts must have zero represented distribution values");
         }
         this.decisionIndex = decisionIndex;
         this.horizon = horizon;
         this.sampleCount = sampleCount;
         this.isStable = isStable;
-        this.mean = Objects.requireNonNull(mean, "mean must not be null");
-        this.median = Objects.requireNonNull(median, "median must not be null");
-        this.standardDeviation = Objects.requireNonNull(standardDeviation, "standardDeviation must not be null");
-        this.quantiles = validateQuantiles(quantiles);
+        T validatedMean = Objects.requireNonNull(mean, "mean must not be null");
+        T validatedMedian = Objects.requireNonNull(median, "median must not be null");
+        T validatedStandardDeviation = Objects.requireNonNull(standardDeviation, "standardDeviation must not be null");
+        Map<Double, T> validatedQuantiles = validateQuantiles(quantiles);
+        if (isStable) {
+            validateFiniteNum("mean", validatedMean);
+            validateFiniteNum("median", validatedMedian);
+            validateStandardDeviation(validatedStandardDeviation);
+            for (T quantile : validatedQuantiles.values()) {
+                validateFiniteNum("quantile value", quantile);
+            }
+        }
+        this.mean = validatedMean;
+        this.median = validatedMedian;
+        this.standardDeviation = validatedStandardDeviation;
+        this.quantiles = validatedQuantiles;
     }
 
     /**
@@ -95,9 +107,14 @@ public final class Forecast<T> {
     }
 
     /**
-     * Returns the number of samples summarized by this forecast.
+     * Returns the number of distribution values represented by this forecast.
      *
-     * @return sample count
+     * <p>
+     * This can be simulated paths, selected neighbors, or bootstrap draws. It is
+     * not an estimator training or calibration observation count. Analytic
+     * single-model summaries use {@code 1}.
+     *
+     * @return represented distribution value count
      * @since 0.22.9
      */
     public int sampleCount() {
@@ -135,7 +152,7 @@ public final class Forecast<T> {
     }
 
     /**
-     * Returns the population standard deviation of summarized samples.
+     * Returns the population standard deviation of the represented distribution.
      *
      * @return standard deviation
      * @since 0.22.9
@@ -198,12 +215,14 @@ public final class Forecast<T> {
      * <p>
      * This factory is intended for projections that have a real summary but do not
      * own a sample collection. Quantiles are validated, sorted, and copied. The
-     * caller-provided sample count records the number of observations or model
-     * samples represented by the summary.
+     * caller-provided sample count records the number of distribution values
+     * represented by the summary. It must not be used for training or calibration
+     * observation counts. Analytic summaries that do not represent a sampled
+     * distribution use {@code 1}.
      *
      * @param decisionIndex     decision index
      * @param horizon           forecast horizon in bars
-     * @param sampleCount       positive represented sample or observation count
+     * @param sampleCount       positive number of represented distribution values
      * @param mean              forecast mean
      * @param median            forecast median
      * @param standardDeviation forecast standard deviation
@@ -321,6 +340,19 @@ public final class Forecast<T> {
             sorted.put(probability, Objects.requireNonNull(entry.getValue(), "quantile value must not be null"));
         }
         return Collections.unmodifiableMap(new LinkedHashMap<>(sorted));
+    }
+
+    private static void validateFiniteNum(String fieldName, Object value) {
+        if (value instanceof Num number && !Num.isFinite(number)) {
+            throw new IllegalArgumentException(fieldName + " must be finite");
+        }
+    }
+
+    private static void validateStandardDeviation(Object value) {
+        validateFiniteNum("standardDeviation", value);
+        if (value instanceof Num number && number.isNegative()) {
+            throw new IllegalArgumentException("standardDeviation must be >= 0");
+        }
     }
 
     private static List<Num> validSamples(List<Num> samples) {

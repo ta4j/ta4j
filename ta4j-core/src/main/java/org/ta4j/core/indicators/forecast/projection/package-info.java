@@ -7,7 +7,8 @@
  * Projection indicators turn a hidden state into a forward {@link Forecast}
  * summary. Point adapters expose one summary field, such as median or a
  * quantile, as a normal {@code Indicator<Num>} for rule and indicator
- * composition.
+ * composition. A summary's sample count describes represented distribution
+ * values, not estimator training or calibration observations.
  *
  * @since 0.22.9
  */

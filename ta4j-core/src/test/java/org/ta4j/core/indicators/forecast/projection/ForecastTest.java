@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -61,6 +62,13 @@ class ForecastTest {
     }
 
     @Test
+    void forecastRejectsInvalidNumericValuesProducedByMapping() {
+        Forecast<Num> forecast = Forecast.ofSamples(2, 1, List.of(NUM_FACTORY.one()), List.of(0.5));
+
+        assertThrows(IllegalArgumentException.class, () -> forecast.map(value -> NaN.NaN));
+    }
+
+    @Test
     void forecastCreatesDefensiveSortedSummary() {
         Map<Double, Num> inputQuantiles = new LinkedHashMap<>();
         inputQuantiles.put(0.95, NUM_FACTORY.numOf(5));
@@ -77,6 +85,31 @@ class ForecastTest {
         assertThat(forecast.quantiles().keySet()).containsExactly(0.05, 0.95);
         assertThat(forecast.quantile(0.95)).isEqualByComparingTo(NUM_FACTORY.numOf(5));
         assertThrows(UnsupportedOperationException.class, () -> forecast.quantiles().put(0.5, NUM_FACTORY.numOf(2.5)));
+    }
+
+    @Test
+    void forecastRejectsInvalidNumericSummaryValues() {
+        Num infinity = NUM_FACTORY.numOf(Double.POSITIVE_INFINITY);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> Forecast.ofSummary(0, 1, 1, NaN.NaN, NUM_FACTORY.zero(), NUM_FACTORY.zero(), Map.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> Forecast.ofSummary(0, 1, 1, NUM_FACTORY.zero(), infinity, NUM_FACTORY.zero(), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> Forecast.ofSummary(0, 1, 1, NUM_FACTORY.zero(),
+                NUM_FACTORY.zero(), NUM_FACTORY.numOf(-1), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> Forecast.ofSummary(0, 1, 1, NUM_FACTORY.zero(),
+                NUM_FACTORY.zero(), NUM_FACTORY.zero(), Map.of(0.5, NaN.NaN)));
+    }
+
+    @Test
+    void forecastAcceptsFiniteDecimalValuesThatOverflowDouble() {
+        Num largeFiniteValue = DecimalNumFactory.getInstance().numOf("1E+10000");
+
+        Forecast<Num> forecast = Forecast.ofSummary(0, 1, 1, largeFiniteValue, largeFiniteValue,
+                DecimalNumFactory.getInstance().zero(), Map.of(0.5, largeFiniteValue));
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.mean()).isSameAs(largeFiniteValue);
     }
 
     @Test
