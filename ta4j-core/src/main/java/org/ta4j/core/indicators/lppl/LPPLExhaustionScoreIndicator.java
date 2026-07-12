@@ -40,7 +40,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
     private final int activeMaxCriticalOffset;
     private final int maxEvaluations;
     private final double minRSquared;
-    private final transient LPPLExhaustionIndicator exhaustionIndicator;
+    private final transient Indicator<LPPLExhaustion> exhaustionIndicator;
 
     /**
      * Creates a score indicator over close prices using default calibration
@@ -99,19 +99,24 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(LPPLExhaustionIndicator exhaustionIndicator) {
-        this(Objects.requireNonNull(exhaustionIndicator, "exhaustionIndicator").getPriceIndicator(),
-                exhaustionIndicator.getProfile());
+        this(Objects.requireNonNull(exhaustionIndicator, "exhaustionIndicator"), exhaustionIndicator.getProfile());
     }
 
     LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator, int[] windows, double minM, double maxM, int mSteps,
             double minOmega, double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset,
             int criticalOffsetStep, int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations,
             double minRSquared) {
-        super(Objects.requireNonNull(priceIndicator, "priceIndicator"));
-        LPPLCalibrationProfile profile = new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega,
-                omegaSteps, minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
-                activeMaxCriticalOffset, maxEvaluations, minRSquared);
-        this.priceIndicator = priceIndicator;
+        this(new LPPLExhaustionIndicator(priceIndicator, windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
+                minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
+                activeMaxCriticalOffset, maxEvaluations, minRSquared),
+                new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
+                        minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
+                        activeMaxCriticalOffset, maxEvaluations, minRSquared));
+    }
+
+    private LPPLExhaustionScoreIndicator(LPPLExhaustionIndicator exhaustionIndicator, LPPLCalibrationProfile profile) {
+        super(exhaustionIndicator.getPriceIndicator());
+        this.priceIndicator = exhaustionIndicator.getPriceIndicator();
         this.windows = profile.windows();
         this.minM = profile.minM();
         this.maxM = profile.maxM();
@@ -126,7 +131,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
         this.activeMaxCriticalOffset = profile.activeMaxCriticalOffset();
         this.maxEvaluations = profile.maxEvaluations();
         this.minRSquared = profile.minRSquared();
-        this.exhaustionIndicator = new LPPLExhaustionIndicator(priceIndicator, profile);
+        this.exhaustionIndicator = exhaustionIndicator;
     }
 
     @Override

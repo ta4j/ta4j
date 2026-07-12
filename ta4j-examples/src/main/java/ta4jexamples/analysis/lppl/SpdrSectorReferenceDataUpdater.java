@@ -70,9 +70,12 @@ final class SpdrSectorReferenceDataUpdater {
         for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
             refreshes.add(refreshTicker(definition, settings, effectiveFetcher));
         }
-        long distinctEndDates = refreshes.stream().map(TickerRefresh::newLastDate).distinct().count();
-        if (distinctEndDates > 1) {
-            throw new IOException("SPDR reference refresh did not produce a common final session");
+        boolean anySkipped = refreshes.stream().anyMatch(TickerRefresh::skipped);
+        if (!anySkipped) {
+            long distinctEndDates = refreshes.stream().map(TickerRefresh::newLastDate).distinct().count();
+            if (distinctEndDates > 1) {
+                throw new IOException("SPDR reference refresh did not produce a common final session");
+            }
         }
         PromotionResult promotion = promoteReferenceData(universe, settings, refreshes);
         return new RefreshSummary(promotion.refreshes(), promotion.analysisDataDirectory(),

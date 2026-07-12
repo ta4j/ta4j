@@ -17,6 +17,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -43,6 +45,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  */
 public final class SpdrSectorLPPLRotationDemo {
 
+    private static final Logger LOG = LogManager.getLogger(SpdrSectorLPPLRotationDemo.class);
     private static final LocalDate SEED_SNAPSHOT_DATE = LocalDate.of(2026, 7, 10);
     private static final String RESOURCE_PREFIX = "ta4jexamples/analysis/lppl/spdr-sector-rotation/";
     private static final Path DEFAULT_OUTPUT_DIRECTORY = Path.of("target/analysis-demos/lppl-sector-rotation");
@@ -98,18 +101,23 @@ public final class SpdrSectorLPPLRotationDemo {
                     options.updateResources(), SpdrSectorReferenceDataUpdater.DEFAULT_OVERLAP_DAYS, Instant.now());
             refreshSummary = new SpdrSectorReferenceDataUpdater().refresh(UNIVERSE, settings);
         }
-        List<SectorSnapshot> snapshots = analyze(profile, refreshSummary);
+        List<SectorSnapshot> snapshots = analyze(profile, refreshSummary, options.outputDirectory());
         String report = renderReport(snapshots, profile, refreshSummary);
         writeArtifacts(options.outputDirectory(), report, snapshots, refreshSummary);
         return new DemoRun(snapshots, refreshSummary, report);
     }
 
-    static List<SectorSnapshot> analyze(LPPLCalibrationProfile profile) {
+    static List<SectorSnapshot> analyze(LPPLCalibrationProfile profile) throws IOException {
         return analyze(profile, null);
     }
 
     static List<SectorSnapshot> analyze(LPPLCalibrationProfile profile,
-            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) throws IOException {
+        return analyze(profile, refreshSummary, null);
+    }
+
+    static List<SectorSnapshot> analyze(LPPLCalibrationProfile profile,
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary, Path progressDirectory) throws IOException {
         JsonFileBarSeriesDataSource dataSource = new JsonFileBarSeriesDataSource();
         List<InstrumentSnapshot> instruments = new ArrayList<>(UNIVERSE.size());
         for (SectorDefinition definition : UNIVERSE) {
@@ -119,8 +127,14 @@ public final class SpdrSectorLPPLRotationDemo {
                 throw new IllegalStateException("Unable to load SPDR resource: " + source);
             }
             LPPLExhaustionIndicator indicator = new LPPLExhaustionIndicator(new ClosePriceIndicator(series), profile);
-            instruments.add(new InstrumentSnapshot(definition.ticker(), definition.sector(), latestBarDate(series),
-                    indicator.getValue(series.getEndIndex())));
+            InstrumentSnapshot instrument = new InstrumentSnapshot(definition.ticker(), definition.sector(),
+                    latestBarDate(series), indicator.getValue(series.getEndIndex()));
+            instruments.add(instrument);
+            if (progressDirectory != null) {
+                writeInstrumentProgress(progressDirectory, instruments);
+            }
+            LOG.info("Completed LPPL calibration for {} ({}/{})", definition.ticker(), instruments.size(),
+                    UNIVERSE.size());
         }
         return aggregate(instruments);
     }
@@ -261,7 +275,7 @@ public final class SpdrSectorLPPLRotationDemo {
                     .append(',')
                     .append(refresh.skipped())
                     .append(',')
-                    .append(message(refresh))
+                    .append(refresh.message() == null ? "" : refresh.message().replace(',', ';'))
                     .append('\n');
         }
         return builder.toString();
@@ -450,6 +464,30 @@ public final class SpdrSectorLPPLRotationDemo {
         }
     }
 
+    private static void writeInstrumentProgress(Path outputDirectory, List<InstrumentSnapshot> instruments)
+            throws IOException {
+        Files.createDirectories(outputDirectory);
+        StringBuilder builder = new StringBuilder("date,sector,ticker,status,side,score,actionable_fits\n");
+        for (InstrumentSnapshot instrument : instruments) {
+            LPPLExhaustion exhaustion = instrument.exhaustion();
+            builder.append(instrument.latestDate())
+                    .append(',')
+                    .append(instrument.sector())
+                    .append(',')
+                    .append(instrument.ticker())
+                    .append(',')
+                    .append(exhaustion.status())
+                    .append(',')
+                    .append(exhaustion.side())
+                    .append(',')
+                    .append(format(scoreValue(exhaustion)))
+                    .append(',')
+                    .append(exhaustion.actionableFits())
+                    .append('\n');
+        }
+        Files.writeString(outputDirectory.resolve("lppl-instrument-progress.csv"), builder, StandardCharsets.UTF_8);
+    }
+
     private static Path repositoryRoot() {
         Path directory = Path.of("").toAbsolutePath().normalize();
         while (directory != null) {
@@ -560,10 +598,6 @@ public final class SpdrSectorLPPLRotationDemo {
 
     private static String label(long count, String singular) {
         return count == 1 ? singular : singular + "s";
-    }
-
-    private static String message(SpdrSectorReferenceDataUpdater.TickerRefresh refresh) {
-        return refresh.message() == null ? "" : refresh.message().replace(',', ';');
     }
 
     private static boolean hasCrashExhaustion(InstrumentSnapshot instrument) {

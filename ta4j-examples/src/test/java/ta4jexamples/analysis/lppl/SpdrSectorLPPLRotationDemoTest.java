@@ -165,7 +165,7 @@ class SpdrSectorLPPLRotationDemoTest {
     }
 
     @Test
-    void analyzeLoadsAllOfflineSpdrResources() {
+    void analyzeLoadsAllOfflineSpdrResources() throws IOException {
         List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile());
 
         assertEquals(11, snapshots.size());
@@ -202,13 +202,17 @@ class SpdrSectorLPPLRotationDemoTest {
                 .refresh(SpdrSectorLPPLRotationDemo.closedUniverse(), settings);
 
         List<SpdrSectorLPPLRotationDemo.SectorSnapshot> snapshots = SpdrSectorLPPLRotationDemo.analyze(smokeProfile(),
-                refreshSummary);
+                refreshSummary, outputDirectory);
         String report = SpdrSectorLPPLRotationDemo.renderReport(snapshots, smokeProfile(), refreshSummary);
 
         assertEquals(11, snapshots.size());
         assertTrue(report.contains("Reference data refresh"));
         String xliResource = SpdrSectorLPPLRotationDemo.closedUniverse().get(0).resource();
         assertTrue(Files.exists(outputDirectory.resolve("reference-data").resolve(xliResource)));
+        List<String> progressRows = Files.readAllLines(outputDirectory.resolve("lppl-instrument-progress.csv"));
+        assertEquals(12, progressRows.size());
+        assertTrue(progressRows.get(1).contains("Industrials,XLI"));
+        assertTrue(progressRows.get(11).contains("Communication Services,XLC"));
     }
 
     @Test

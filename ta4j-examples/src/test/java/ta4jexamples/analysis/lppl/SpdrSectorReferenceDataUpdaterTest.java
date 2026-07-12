@@ -146,6 +146,28 @@ class SpdrSectorReferenceDataUpdaterTest {
     }
 
     @Test
+    void preservesPartialRefreshDetailsWithoutPromotingMismatchedResources() throws IOException {
+        Path referenceDirectory = seedReference("XLI", bars(bar(100, "10")));
+        Files.writeString(referenceDirectory.resolve(SECOND_RESOURCE), bars(bar(100, "20")));
+        String originalXli = Files.readString(referenceDirectory.resolve(RESOURCE));
+        String originalXlf = Files.readString(referenceDirectory.resolve(SECOND_RESOURCE));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater((ticker, start, end) -> {
+            if (ticker.equals("XLF")) {
+                throw new IOException("network unavailable");
+            }
+            return List.of(bar(86_400, "12"));
+        });
+
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(twoInstrumentUniverse(),
+                settings(referenceDirectory, true));
+
+        assertFalse(summary.tickers().get(0).skipped());
+        assertTrue(summary.tickers().get(1).skipped());
+        assertEquals(originalXli, Files.readString(referenceDirectory.resolve(RESOURCE)));
+        assertEquals(originalXlf, Files.readString(referenceDirectory.resolve(SECOND_RESOURCE)));
+    }
+
+    @Test
     void parsesYahooAdjustedCloseAndScalesOhlc() throws IOException {
         String yahooJson = """
                 {

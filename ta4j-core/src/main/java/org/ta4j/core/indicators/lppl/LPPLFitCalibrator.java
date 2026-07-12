@@ -17,6 +17,7 @@ import org.apache.commons.math3.linear.DecompositionSolver;
 import org.apache.commons.math3.linear.QRDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.linear.SingularMatrixException;
 import org.apache.commons.math3.util.Pair;
 
 final class LPPLFitCalibrator {
@@ -205,7 +206,7 @@ final class LPPLFitCalibrator {
             return new NonlinearFit(logPrices.length, coefficients[0], coefficients[1], coefficients[2],
                     coefficients[3], criticalTime, m, omega, rss, rms, rSquared, criticalOffset, evaluations,
                     predicted);
-        } catch (RuntimeException e) {
+        } catch (SingularMatrixException e) {
             return null;
         }
     }
