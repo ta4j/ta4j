@@ -100,7 +100,7 @@ public final class CompositeSwingDetector implements SwingDetector {
                 continue;
             }
             for (final SwingPivot pivot : pivots) {
-                if (pivot == null) {
+                if (pivot == null || Num.isNaNOrNull(pivot.price())) {
                     continue;
                 }
                 candidates.add(new TaggedPivot(detectorIndex, pivot));

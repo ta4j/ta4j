@@ -295,8 +295,38 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(111));
         assertThat(state.getTrend()).isEqualTo(ZigZagTrend.DOWN);
         final ZigZagState extendedState = indicator.getValue(3);
-        assertThat(extendedState.getLastExtremeIndex()).isEqualTo(3);
-        assertThat(extendedState.getLastExtremePrice()).isEqualByComparingTo(numOf(95));
+        assertThat(extendedState.getLastLowIndex()).isEqualTo(3);
+        assertThat(extendedState.getLastLowPrice()).isEqualByComparingTo(numOf(95));
+        assertThat(extendedState.getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(extendedState.getLastExtremePrice()).isEqualByComparingTo(numOf(105));
+    }
+
+    @Test
+    public void shouldConfirmSwingHighAfterSameBarHighExtension() {
+        series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
+        series.barBuilder().highPrice(106).lowPrice(104).closePrice(105).add();
+        series.barBuilder().highPrice(112).lowPrice(100).closePrice(105).add();
+
+        final ZigZagState state = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5).getValue(2);
+
+        assertThat(state.getLastHighIndex()).isEqualTo(2);
+        assertThat(state.getLastHighPrice()).isEqualByComparingTo(numOf(112));
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.DOWN);
+    }
+
+    @Test
+    public void shouldConfirmSwingLowAfterSameBarLowExtension() {
+        series.barBuilder().highPrice(101).lowPrice(99).closePrice(100).add();
+        series.barBuilder().highPrice(96).lowPrice(94).closePrice(95).add();
+        series.barBuilder().highPrice(102).lowPrice(88).closePrice(95).add();
+
+        final ZigZagState state = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), 5).getValue(2);
+
+        assertThat(state.getLastLowIndex()).isEqualTo(2);
+        assertThat(state.getLastLowPrice()).isEqualByComparingTo(numOf(88));
+        assertThat(state.getTrend()).isEqualTo(ZigZagTrend.UP);
     }
 
     @Test

@@ -101,7 +101,7 @@ class CompositeSwingDetectorTest {
     }
 
     @Test
-    void tolerantConsensusPrefersFiniteRepresentative() {
+    void tolerantConsensusDoesNotCountInvalidPricesTowardQuorum() {
         BarSeries series = singleSeries();
         NumFactory factory = series.numFactory();
         SwingDetector detectorA = (s, index,
@@ -111,11 +111,7 @@ class CompositeSwingDetectorTest {
 
         CompositeSwingDetector detector = new CompositeSwingDetector(List.of(detectorA, detectorB), 1, 2);
 
-        assertThat(detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots()).singleElement()
-                .satisfies(pivot -> {
-                    assertThat(pivot.index()).isEqualTo(2);
-                    assertThat(pivot.price()).isEqualByComparingTo(factory.hundred());
-                });
+        assertThat(detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots()).isEmpty();
     }
 
     @Test

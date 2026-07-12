@@ -77,10 +77,8 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
     /**
      * Constructs an OHLC-aware ZigZag state indicator.
      *
-     * @param highPrice      source used to extend upward legs and confirm upward
-     *                       reversals
-     * @param lowPrice       source used to extend downward legs and confirm
-     *                       downward reversals
+     * @param highPrice      source used to locate and extend swing-high candidates
+     * @param lowPrice       source used to locate and extend swing-low candidates
      * @param reversalAmount positive reversal threshold in price units
      * @since 0.22.9
      */
@@ -239,16 +237,15 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             if (high.isGreaterThan(extremePrice)) {
                 extremeIndex = index;
                 extremePrice = high;
-            } else {
-                final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
-                if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
-                        && extremePrice.minus(confirmation).isGreaterThanOrEqual(anchoredThreshold)) {
-                    lastHighIndex = extremeIndex;
-                    lastHighPrice = extremePrice;
-                    trend = ZigZagTrend.DOWN;
-                    extremeIndex = index;
-                    extremePrice = low;
-                }
+            }
+            final Num anchoredHighThreshold = reversalAmount.getValue(extremeIndex);
+            if (Num.isFinite(anchoredHighThreshold) && anchoredHighThreshold.isPositive()
+                    && extremePrice.minus(confirmation).isGreaterThanOrEqual(anchoredHighThreshold)) {
+                lastHighIndex = extremeIndex;
+                lastHighPrice = extremePrice;
+                trend = ZigZagTrend.DOWN;
+                extremeIndex = index;
+                extremePrice = low;
             }
             break;
 
@@ -256,16 +253,15 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
             if (low.isLessThan(extremePrice)) {
                 extremeIndex = index;
                 extremePrice = low;
-            } else {
-                final Num anchoredThreshold = reversalAmount.getValue(extremeIndex);
-                if (Num.isFinite(anchoredThreshold) && anchoredThreshold.isPositive()
-                        && confirmation.minus(extremePrice).isGreaterThanOrEqual(anchoredThreshold)) {
-                    lastLowIndex = extremeIndex;
-                    lastLowPrice = extremePrice;
-                    trend = ZigZagTrend.UP;
-                    extremeIndex = index;
-                    extremePrice = high;
-                }
+            }
+            final Num anchoredLowThreshold = reversalAmount.getValue(extremeIndex);
+            if (Num.isFinite(anchoredLowThreshold) && anchoredLowThreshold.isPositive()
+                    && confirmation.minus(extremePrice).isGreaterThanOrEqual(anchoredLowThreshold)) {
+                lastLowIndex = extremeIndex;
+                lastLowPrice = extremePrice;
+                trend = ZigZagTrend.UP;
+                extremeIndex = index;
+                extremePrice = high;
             }
             break;
         }
