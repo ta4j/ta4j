@@ -10,6 +10,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -24,7 +25,22 @@ import org.ta4j.core.num.Num;
  */
 public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
 
-    private final LPPLExhaustionIndicator exhaustionIndicator;
+    private final Indicator<Num> priceIndicator;
+    private final int[] windows;
+    private final double minM;
+    private final double maxM;
+    private final int mSteps;
+    private final double minOmega;
+    private final double maxOmega;
+    private final int omegaSteps;
+    private final int minCriticalOffset;
+    private final int maxCriticalOffset;
+    private final int criticalOffsetStep;
+    private final int activeMinCriticalOffset;
+    private final int activeMaxCriticalOffset;
+    private final int maxEvaluations;
+    private final double minRSquared;
+    private final transient LPPLExhaustionIndicator exhaustionIndicator;
 
     /**
      * Creates a score indicator over close prices using default calibration
@@ -34,7 +50,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(BarSeries series) {
-        this(new LPPLExhaustionIndicator(series));
+        this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")));
     }
 
     /**
@@ -46,7 +62,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(BarSeries series, LPPLCalibrationProfile profile) {
-        this(new LPPLExhaustionIndicator(series, profile));
+        this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), profile);
     }
 
     /**
@@ -57,7 +73,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator) {
-        this(new LPPLExhaustionIndicator(priceIndicator));
+        this(priceIndicator, LPPLCalibrationProfile.defaults());
     }
 
     /**
@@ -69,7 +85,11 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator, LPPLCalibrationProfile profile) {
-        this(new LPPLExhaustionIndicator(priceIndicator, profile));
+        this(priceIndicator, Objects.requireNonNull(profile, "profile").windows(), profile.minM(), profile.maxM(),
+                profile.mSteps(), profile.minOmega(), profile.maxOmega(), profile.omegaSteps(),
+                profile.minCriticalOffset(), profile.maxCriticalOffset(), profile.criticalOffsetStep(),
+                profile.activeMinCriticalOffset(), profile.activeMaxCriticalOffset(), profile.maxEvaluations(),
+                profile.minRSquared());
     }
 
     /**
@@ -79,8 +99,34 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionScoreIndicator(LPPLExhaustionIndicator exhaustionIndicator) {
-        super(copyOf(exhaustionIndicator));
-        this.exhaustionIndicator = copyOf(exhaustionIndicator);
+        this(Objects.requireNonNull(exhaustionIndicator, "exhaustionIndicator").getPriceIndicator(),
+                exhaustionIndicator.getProfile());
+    }
+
+    LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator, int[] windows, double minM, double maxM, int mSteps,
+            double minOmega, double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset,
+            int criticalOffsetStep, int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations,
+            double minRSquared) {
+        super(Objects.requireNonNull(priceIndicator, "priceIndicator"));
+        LPPLCalibrationProfile profile = new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega,
+                omegaSteps, minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
+                activeMaxCriticalOffset, maxEvaluations, minRSquared);
+        this.priceIndicator = priceIndicator;
+        this.windows = profile.windows();
+        this.minM = profile.minM();
+        this.maxM = profile.maxM();
+        this.mSteps = profile.mSteps();
+        this.minOmega = profile.minOmega();
+        this.maxOmega = profile.maxOmega();
+        this.omegaSteps = profile.omegaSteps();
+        this.minCriticalOffset = profile.minCriticalOffset();
+        this.maxCriticalOffset = profile.maxCriticalOffset();
+        this.criticalOffsetStep = profile.criticalOffsetStep();
+        this.activeMinCriticalOffset = profile.activeMinCriticalOffset();
+        this.activeMaxCriticalOffset = profile.activeMaxCriticalOffset();
+        this.maxEvaluations = profile.maxEvaluations();
+        this.minRSquared = profile.minRSquared();
+        this.exhaustionIndicator = new LPPLExhaustionIndicator(priceIndicator, profile);
     }
 
     @Override
@@ -105,11 +151,9 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public LPPLExhaustionIndicator getExhaustionIndicator() {
-        return copyOf(exhaustionIndicator);
-    }
-
-    private static LPPLExhaustionIndicator copyOf(LPPLExhaustionIndicator indicator) {
-        LPPLExhaustionIndicator source = Objects.requireNonNull(indicator, "exhaustionIndicator");
-        return new LPPLExhaustionIndicator(source.getPriceIndicator(), source.getProfile());
+        return new LPPLExhaustionIndicator(priceIndicator,
+                new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
+                        minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
+                        activeMaxCriticalOffset, maxEvaluations, minRSquared));
     }
 }
