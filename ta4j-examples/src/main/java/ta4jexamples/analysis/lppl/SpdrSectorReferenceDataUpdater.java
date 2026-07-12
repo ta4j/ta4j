@@ -146,8 +146,12 @@ final class SpdrSectorReferenceDataUpdater {
                         .findFirst()
                         .orElseThrow(() -> new IOException("Missing SPDR refresh result for " + definition.ticker()));
                 Path target = settings.referenceDataDirectory().resolve(definition.resource());
-                Files.createDirectories(target.getParent());
-                Path temporary = Files.createTempFile(target.getParent(), ".lppl-reference-", ".json");
+                Path targetDirectory = target.getParent();
+                if (targetDirectory == null) {
+                    throw new IOException("SPDR reference target must have a parent directory: " + target);
+                }
+                Files.createDirectories(targetDirectory);
+                Path temporary = Files.createTempFile(targetDirectory, ".lppl-reference-", ".json");
                 Files.copy(refresh.outputPath(), temporary, StandardCopyOption.REPLACE_EXISTING);
                 temporaryFiles.add(temporary);
                 targetFiles.add(target);
