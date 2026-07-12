@@ -18,7 +18,9 @@
  * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}.
  * Framework contracts, state records, point-projection adapters, and explicit
  * conversion bridges live in the {@code state}, {@code projection}, and
- * {@code adapters} subpackages.
+ * {@code adapters} subpackages. State implementations share the
+ * {@link org.ta4j.core.indicators.forecast.state.ForecastState} contract so
+ * generic projections can consume their common return-domain summary.
  *
  * @since 0.22.9
  */

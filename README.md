@@ -253,6 +253,15 @@ from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
 and `LogReturnToPriceForecastIndicator` from the forecast adapter package directly only when a model needs
 advanced simulation tuning or a custom explicit price source.
 
+All reusable state records implement `ForecastState`, which exposes index,
+observation count, stability, mean, drift, variance, and volatility without
+coupling downstream models to EWMA or another estimator. Use
+`ForecastFeatureExtractors` only at primitive-only distance or regression
+boundaries, and check `state.isStable()` before extracting features. Projection
+wrappers that calculate a real summary without generating samples can use
+`Forecast.ofSummary(...)`; sample-based models should continue to use
+`Forecast.ofSamples(...)`.
+
 ### Staged exit rules
 
 When an exit needs a thesis invalidation, a profit target, and a timeout, compose

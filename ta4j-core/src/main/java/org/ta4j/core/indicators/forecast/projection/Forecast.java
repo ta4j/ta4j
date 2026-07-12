@@ -192,6 +192,32 @@ public final class Forecast<T> {
     }
 
     /**
+     * Creates a stable forecast from summary values produced by a model or
+     * calibration wrapper.
+     *
+     * <p>
+     * This factory is intended for projections that have a real summary but do not
+     * own a sample collection. Quantiles are validated, sorted, and copied. The
+     * caller-provided sample count records the number of observations or model
+     * samples represented by the summary.
+     *
+     * @param decisionIndex     decision index
+     * @param horizon           forecast horizon in bars
+     * @param sampleCount       positive represented sample or observation count
+     * @param mean              forecast mean
+     * @param median            forecast median
+     * @param standardDeviation forecast standard deviation
+     * @param quantiles         quantile probability to forecast value
+     * @param <T>               forecast value type
+     * @return stable forecast summary
+     * @since 0.22.9
+     */
+    public static <T> Forecast<T> ofSummary(int decisionIndex, int horizon, int sampleCount, T mean, T median,
+            T standardDeviation, Map<Double, T> quantiles) {
+        return new Forecast<>(decisionIndex, horizon, sampleCount, true, mean, median, standardDeviation, quantiles);
+    }
+
+    /**
      * Summarizes samples using the default forecast quantiles.
      *
      * @param decisionIndex decision index

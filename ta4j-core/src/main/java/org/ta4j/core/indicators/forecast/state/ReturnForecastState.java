@@ -21,7 +21,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.9
  */
 public record ReturnForecastState(int index, int observationCount, boolean isStable, Num mean, Num drift, Num variance,
-        Num volatility) {
+        Num volatility) implements ForecastState {
 
     /**
      * Creates a return forecast state.
@@ -45,6 +45,14 @@ public record ReturnForecastState(int index, int observationCount, boolean isSta
         drift = Objects.requireNonNull(drift, "drift must not be null");
         variance = Objects.requireNonNull(variance, "variance must not be null");
         volatility = Objects.requireNonNull(volatility, "volatility must not be null");
+        if (isStable) {
+            requireFinite(mean, "mean");
+            requireFinite(drift, "drift");
+            requireNonNegative(variance, "variance");
+            requireNonNegative(volatility, "volatility");
+        } else if (!mean.isNaN() || !drift.isNaN() || !variance.isNaN() || !volatility.isNaN()) {
+            throw new IllegalArgumentException("unstable states must use NaN values");
+        }
     }
 
     /**
@@ -56,5 +64,18 @@ public record ReturnForecastState(int index, int observationCount, boolean isSta
      */
     public static ReturnForecastState unstable(int index) {
         return new ReturnForecastState(index, 0, false, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN);
+    }
+
+    private static void requireFinite(Num value, String fieldName) {
+        if (!Num.isFinite(value)) {
+            throw new IllegalArgumentException(fieldName + " must be finite for stable states");
+        }
+    }
+
+    private static void requireNonNegative(Num value, String fieldName) {
+        requireFinite(value, fieldName);
+        if (value.isNegative()) {
+            throw new IllegalArgumentException(fieldName + " must be >= 0");
+        }
     }
 }

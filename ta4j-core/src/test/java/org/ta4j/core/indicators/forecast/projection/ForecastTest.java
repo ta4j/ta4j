@@ -6,7 +6,9 @@ package org.ta4j.core.indicators.forecast.projection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -59,6 +61,25 @@ class ForecastTest {
     }
 
     @Test
+    void forecastCreatesDefensiveSortedSummary() {
+        Map<Double, Num> inputQuantiles = new LinkedHashMap<>();
+        inputQuantiles.put(0.95, NUM_FACTORY.numOf(5));
+        inputQuantiles.put(0.05, NUM_FACTORY.numOf(1));
+
+        Forecast<Num> forecast = Forecast.ofSummary(7, 3, 20, NUM_FACTORY.numOf(3), NUM_FACTORY.numOf(2.5),
+                NUM_FACTORY.numOf(1.25), inputQuantiles);
+        inputQuantiles.clear();
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.decisionIndex()).isEqualTo(7);
+        assertThat(forecast.horizon()).isEqualTo(3);
+        assertThat(forecast.sampleCount()).isEqualTo(20);
+        assertThat(forecast.quantiles().keySet()).containsExactly(0.05, 0.95);
+        assertThat(forecast.quantile(0.95)).isEqualByComparingTo(NUM_FACTORY.numOf(5));
+        assertThrows(UnsupportedOperationException.class, () -> forecast.quantiles().put(0.5, NUM_FACTORY.numOf(2.5)));
+    }
+
+    @Test
     void forecastReturnsNullForMissingQuantiles() {
         Forecast<Num> forecast = Forecast.ofSamples(2, 1, List.of(NUM_FACTORY.numOf(1), NUM_FACTORY.numOf(3)),
                 List.of(0.5));
@@ -74,6 +95,10 @@ class ForecastTest {
                 () -> Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of(-0.1)));
         assertThrows(IllegalArgumentException.class,
                 () -> Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> Forecast.ofSummary(0, 1, 0, NUM_FACTORY.zero(),
+                NUM_FACTORY.zero(), NUM_FACTORY.zero(), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> Forecast.ofSummary(0, 1, 1, NUM_FACTORY.zero(),
+                NUM_FACTORY.zero(), NUM_FACTORY.zero(), Map.of(1.1, NUM_FACTORY.zero())));
         Forecast<Num> forecast = Forecast.ofSamples(0, 1, List.of(NUM_FACTORY.one()), List.of(0.5));
         assertThrows(IllegalArgumentException.class, () -> forecast.hasQuantile(-0.1));
         assertThrows(IllegalArgumentException.class, () -> forecast.quantile(1.1));
