@@ -17,6 +17,7 @@
 
 ### Fixed
 - **Log-return price forecasts expose coherent price-space moments**: Price forecast adapters now use a moment-matched lognormal approximation for mean and standard deviation, preserve zero dispersion for deterministic returns, and continue to return unstable summaries when conversion overflows.
+- **Day-of-week rule descriptors are deterministic**: `DayOfWeekRule` now canonicalizes its configured enum set so descriptor and JSON serialization round trips cannot fail or change output when hash iteration order varies between runs.
 - **Source position labels remain accurate in isolated chart renders**: Trading-record
   chart callers can now provide a 1-based source position start, so position bands
   and buy/sell annotations retain their original ordinal when a focused chart
