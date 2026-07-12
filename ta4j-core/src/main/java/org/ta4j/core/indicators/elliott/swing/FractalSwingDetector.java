@@ -41,7 +41,7 @@ public final class FractalSwingDetector implements SwingDetector {
      *
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
-     * @param allowedEqualBars  number of equal-value bars allowed on each side
+     * @param allowedEqualBars  maximum additional equal-value bars in a plateau
      * @since 0.22.2
      */
     public FractalSwingDetector(final int lookbackLength, final int lookforwardLength, final int allowedEqualBars) {
