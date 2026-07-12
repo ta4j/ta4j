@@ -80,6 +80,20 @@ class SlopeChangeSwingDetectorTest {
         assertThat(detector.detect(invalidSeries, invalidSeries.getEndIndex(), ElliottDegree.MINOR).pivots()).isEmpty();
     }
 
+    @Test
+    void replacesSameTypePivotWithStrongerTransitionExtreme() {
+        BarSeries series = series(100, 105, 105, 104, 104, 105, 107, 104);
+        SlopeChangeSwingDetector detector = new SlopeChangeSwingDetector(new SlopeChangeConfig(2, 1, 2, 3.0, 0.0));
+
+        SwingDetectorResult result = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+
+        assertThat(result.pivots()).singleElement().satisfies(pivot -> {
+            assertThat(pivot.type()).isEqualTo(SwingPivotType.HIGH);
+            assertThat(pivot.index()).isEqualTo(6);
+            assertThat(pivot.price()).isEqualByComparingTo(series.numFactory().numOf(107.5));
+        });
+    }
+
     private BarSeries series(double... closes) {
         BarSeries series = new MockBarSeriesBuilder().build();
         for (double close : closes) {
