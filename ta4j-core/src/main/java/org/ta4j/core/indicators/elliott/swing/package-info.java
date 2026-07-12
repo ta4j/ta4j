@@ -9,7 +9,7 @@
  * Elliott scenario generation and validation. ZigZag and fractal detectors
  * cover sharp or fixed-window turns,
  * {@link org.ta4j.core.indicators.elliott.swing.SlopeChangeSwingDetector}
- * targets rounded turns, and tolerant composite detection provides multi-scale
+ * targets rounded turns, and tolerant composite detection provides quorum
  * consensus without requiring exact pivot-index agreement.
  * </p>
  */

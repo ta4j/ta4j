@@ -34,10 +34,8 @@ import org.ta4j.core.num.Num;
  * the given index. Use {@link ZigZagPivotLowIndicator} to detect when a new
  * swing low is confirmed in real-time.
  * <p>
- * The price indicator passed to the constructor should typically match the
- * price indicator used in the underlying {@link ZigZagStateIndicator} (e.g.,
- * both using {@code LowPriceIndicator} or both using
- * {@code ClosePriceIndicator}).
+ * The state-only constructor uses the state's low-price source. An explicit
+ * source can be supplied when custom swing pricing is intentional.
  *
  * @see ZigZagStateIndicator
  * @see ZigZagPivotLowIndicator
@@ -53,7 +51,17 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
     private final Indicator<Num> price;
 
     /**
-     * Constructs a RecentZigZagSwingLowIndicator.
+     * Constructs an indicator using the state's low-price source.
+     *
+     * @param stateIndicator ZigZag state providing swing indexes and low prices
+     * @since 0.22.9
+     */
+    public RecentZigZagSwingLowIndicator(ZigZagStateIndicator stateIndicator) {
+        this(stateIndicator, Objects.requireNonNull(stateIndicator, "stateIndicator").lowPriceIndicator());
+    }
+
+    /**
+     * Constructs an indicator with an explicit swing-low price source.
      *
      * @param stateIndicator the ZigZagStateIndicator that tracks the ZigZag pattern
      *                       state

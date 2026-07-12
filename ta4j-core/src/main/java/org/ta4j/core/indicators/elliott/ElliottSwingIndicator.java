@@ -211,6 +211,20 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     /**
+     * Builds OHLC-aware ZigZag swings from the state's own high/low sources.
+     *
+     * @param stateIndicator shared ZigZag state and price sources
+     * @param degree         swing degree metadata
+     * @return OHLC-aware Elliott swing indicator
+     * @since 0.22.9
+     */
+    public static ElliottSwingIndicator zigZag(final ZigZagStateIndicator stateIndicator, final ElliottDegree degree) {
+        Objects.requireNonNull(stateIndicator, "stateIndicator");
+        return new ElliottSwingIndicator(new RecentZigZagSwingHighIndicator(stateIndicator),
+                new RecentZigZagSwingLowIndicator(stateIndicator), degree);
+    }
+
+    /**
      * Builds ZigZag-driven Elliott swings with dedicated high/low price sources.
      *
      * @param stateIndicator shared ZigZag state

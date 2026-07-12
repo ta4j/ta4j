@@ -15,13 +15,12 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.num.Num;
 
 /**
- * Combines multiple swing detectors with AND/OR pivot agreement.
+ * Combines multiple swing detectors with exact or tolerant pivot agreement.
  *
  * <p>
- * Use this detector when you need stronger confirmation (AND) or broader
- * coverage (OR) across multiple swing detection strategies. It merges pivots
- * from underlying detectors and resolves disagreements according to the chosen
- * policy.
+ * Use the policy constructor for exact AND/OR compatibility. Use the
+ * tolerance/quorum constructor when nearby same-type pivots should count as
+ * consensus even when their indexes do not match exactly.
  *
  * @since 0.22.2
  */
@@ -37,7 +36,6 @@ public final class CompositeSwingDetector implements SwingDetector {
     }
 
     private final List<SwingDetector> detectors;
-    private final Policy policy;
     private final int indexTolerance;
     private final int requiredVotes;
 
@@ -49,21 +47,20 @@ public final class CompositeSwingDetector implements SwingDetector {
      * @since 0.22.2
      */
     public CompositeSwingDetector(final Policy policy, final List<SwingDetector> detectors) {
-        this(policy, detectors, 0, policy == Policy.AND && detectors != null ? detectors.size() : 1);
+        this(detectors, 0,
+                Objects.requireNonNull(policy, "policy") == Policy.AND && detectors != null ? detectors.size() : 1);
     }
 
     /**
-     * Creates a composite detector that clusters nearby same-type pivots.
+     * Creates a consensus detector that clusters nearby same-type pivots.
      *
-     * @param policy         compatibility policy label
      * @param detectors      detectors to combine
      * @param indexTolerance maximum bar distance within a pivot cluster
      * @param requiredVotes  distinct detectors required to retain a cluster
      * @since 0.22.9
      */
-    public CompositeSwingDetector(final Policy policy, final List<SwingDetector> detectors, final int indexTolerance,
+    public CompositeSwingDetector(final List<SwingDetector> detectors, final int indexTolerance,
             final int requiredVotes) {
-        this.policy = Objects.requireNonNull(policy, "policy");
         if (detectors == null || detectors.isEmpty()) {
             throw new IllegalArgumentException("detectors cannot be null or empty");
         }

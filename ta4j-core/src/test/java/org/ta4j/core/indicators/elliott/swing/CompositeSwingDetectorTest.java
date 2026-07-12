@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -74,17 +75,29 @@ class CompositeSwingDetectorTest {
                 .fromPivots(List.of(new SwingPivot(2, factory.numOf(99), SwingPivotType.LOW),
                         new SwingPivot(4, factory.numOf(122), SwingPivotType.HIGH)), degree);
 
-        CompositeSwingDetector detector = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
-                List.of(detectorA, detectorB), 1, 2);
+        CompositeSwingDetector detector = new CompositeSwingDetector(List.of(detectorA, detectorB), 1, 2);
         SwingDetectorResult result = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
 
         assertThat(result.pivots()).extracting(SwingPivot::index).containsExactly(2, 4);
-        CompositeSwingDetector reversed = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
-                List.of(detectorB, detectorA), 1, 2);
+        CompositeSwingDetector reversed = new CompositeSwingDetector(List.of(detectorB, detectorA), 1, 2);
         assertThat(reversed.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots())
                 .isEqualTo(result.pivots());
         assertThat(detector.getIndexTolerance()).isEqualTo(1);
         assertThat(detector.getRequiredVotes()).isEqualTo(2);
+
+        SwingDetector factoryDetector = SwingDetectors.consensus(1, 2, detectorA, detectorB);
+        assertThat(factoryDetector.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots())
+                .isEqualTo(result.pivots());
+    }
+
+    @Test
+    void tolerantConsensusValidatesToleranceAndQuorum() {
+        SwingDetector detector = (series, index, degree) -> new SwingDetectorResult(List.of(), List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> new CompositeSwingDetector(List.of(detector), -1, 1));
+        assertThrows(IllegalArgumentException.class, () -> new CompositeSwingDetector(List.of(detector), 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new CompositeSwingDetector(List.of(detector), 0, 2));
+        assertThrows(IllegalArgumentException.class, () -> SwingDetectors.consensus(0, 1));
     }
 
     @Test
@@ -96,8 +109,7 @@ class CompositeSwingDetectorTest {
         SwingDetector detectorB = (s, index, degree) -> SwingDetectorResult
                 .fromPivots(List.of(new SwingPivot(2, factory.hundred(), SwingPivotType.LOW)), degree);
 
-        CompositeSwingDetector detector = new CompositeSwingDetector(CompositeSwingDetector.Policy.AND,
-                List.of(detectorA, detectorB), 1, 2);
+        CompositeSwingDetector detector = new CompositeSwingDetector(List.of(detectorA, detectorB), 1, 2);
 
         assertThat(detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR).pivots()).singleElement()
                 .satisfies(pivot -> {

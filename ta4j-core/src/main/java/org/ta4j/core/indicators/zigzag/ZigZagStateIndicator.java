@@ -137,6 +137,14 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         return new ZigZagStateIndicator(highPrice, lowPrice, confirmationPrice, reversalAmount);
     }
 
+    Indicator<Num> highPriceIndicator() {
+        return highPrice;
+    }
+
+    Indicator<Num> lowPriceIndicator() {
+        return lowPrice;
+    }
+
     @Override
     protected ZigZagState calculate(int index) {
         final BarSeries series = getBarSeries();

@@ -15,9 +15,26 @@ class SlopeChangeSwingDetectorTest {
 
     @Test
     void constructsDefaultConfigFromWindow() {
+        SlopeChangeConfig defaults = SlopeChangeConfig.defaults(5);
         SlopeChangeSwingDetector detector = new SlopeChangeSwingDetector(5);
+        SwingDetector factoryDetector = SwingDetectors.slopeChange(5);
 
-        assertThat(detector.getConfig()).isEqualTo(new SlopeChangeConfig(5, 1, 14, 0.0, 0.0));
+        assertThat(defaults).isEqualTo(new SlopeChangeConfig(5, 2, 14, 0.0, 0.5));
+        assertThat(detector.getConfig()).isEqualTo(defaults);
+        assertThat(factoryDetector).isInstanceOf(SlopeChangeSwingDetector.class);
+        assertThat(((SlopeChangeSwingDetector) factoryDetector).getConfig()).isEqualTo(defaults);
+    }
+
+    @Test
+    void balancedDefaultsRejectInsignificantReversals() {
+        BarSeries series = noisySeries();
+        SlopeChangeSwingDetector balanced = new SlopeChangeSwingDetector(2);
+        SlopeChangeSwingDetector permissive = new SlopeChangeSwingDetector(new SlopeChangeConfig(2, 1, 14, 0.0, 0.0));
+
+        SwingDetectorResult balancedResult = balanced.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+        SwingDetectorResult permissiveResult = permissive.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+
+        assertThat(permissiveResult.pivots()).hasSizeGreaterThan(balancedResult.pivots().size());
     }
 
     @Test
@@ -70,6 +87,24 @@ class SlopeChangeSwingDetectorTest {
                     .openPrice(close)
                     .highPrice(close + 0.5)
                     .lowPrice(close - 0.5)
+                    .closePrice(close)
+                    .volume(1)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries noisySeries() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        double[] closes = { 100.0, 100.3, 100.6, 100.2, 99.9, 100.2, 100.5, 100.1, 99.8, 100.1, 100.4, 100.0, 99.7,
+                100.0, 100.3, 99.9, 99.6, 99.9, 100.2, 99.8 };
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            double halfRange = index == 0 ? 20.0 : 0.05;
+            series.barBuilder()
+                    .openPrice(close)
+                    .highPrice(close + halfRange)
+                    .lowPrice(close - halfRange)
                     .closePrice(close)
                     .volume(1)
                     .add();
