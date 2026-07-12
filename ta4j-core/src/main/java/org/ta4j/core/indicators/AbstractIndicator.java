@@ -95,6 +95,11 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         }
 
         @Override
+        public void clear() {
+            throw new UnsupportedOperationException("Indicator bar series views are read-only");
+        }
+
+        @Override
         public int getBeginIndex() {
             return delegate.getBeginIndex();
         }

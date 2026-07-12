@@ -23,6 +23,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
     private String name;
     private boolean maxBarCountConfigured;
     private int maxBarCount;
+    private int beginIndex;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
     private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory(true);
 
@@ -40,26 +41,29 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
         this.name = UNNAMED_SERIES_NAME;
         this.maxBarCountConfigured = false;
         this.maxBarCount = Integer.MAX_VALUE;
+        this.beginIndex = 0;
     }
 
     /**
      * {@inheritDoc}
      *
      * @since 0.22.2
+     * @throws ArithmeticException if the configured begin index and bars would
+     *                             exceed {@link Integer#MAX_VALUE}
      */
     @Override
     public ConcurrentBarSeries build() {
         int beginIndex = -1;
         int endIndex = -1;
         if (!bars.isEmpty()) {
-            beginIndex = 0;
-            endIndex = bars.size() - 1;
+            beginIndex = this.beginIndex;
+            endIndex = Math.addExact(beginIndex, bars.size() - 1);
         }
         // If maxBarCount is configured, the series must be unconstrained to allow
         // removals.
         boolean effectiveConstrained = !maxBarCountConfigured;
         var series = new ConcurrentBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
-                effectiveConstrained, numFactory, barBuilderFactory);
+                beginIndex < 0 ? 0 : beginIndex, effectiveConstrained, numFactory, barBuilderFactory);
         if (maxBarCountConfigured) {
             series.setMaximumBarCount(maxBarCount);
         }
@@ -97,6 +101,21 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      */
     public ConcurrentBarSeriesBuilder withBars(List<Bar> bars) {
         this.bars = new ArrayList<>(bars);
+        return this;
+    }
+
+    /**
+     * Sets the absolute index assigned to the first supplied bar.
+     *
+     * @param beginIndex non-negative first bar index
+     * @return {@code this}
+     * @since 0.22.9
+     */
+    public ConcurrentBarSeriesBuilder withBeginIndex(int beginIndex) {
+        if (beginIndex < 0) {
+            throw new IllegalArgumentException("beginIndex must be non-negative");
+        }
+        this.beginIndex = beginIndex;
         return this;
     }
 
