@@ -53,6 +53,12 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
         }
+        if (status == LPPLExhaustionStatus.VALID && window < LPPLCalibrationProfile.MINIMUM_WINDOW) {
+            throw new IllegalArgumentException("valid fits require at least five bars");
+        }
+        if (evaluations < 0) {
+            throw new IllegalArgumentException("evaluations must be non-negative");
+        }
         if (status == LPPLExhaustionStatus.VALID
                 && (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(c1) || !Double.isFinite(c2)
                         || !Double.isFinite(criticalTime) || !Double.isFinite(m) || !Double.isFinite(omega)

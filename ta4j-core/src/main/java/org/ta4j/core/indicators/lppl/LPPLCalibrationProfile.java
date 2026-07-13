@@ -18,6 +18,8 @@ import java.util.Arrays;
  */
 public final class LPPLCalibrationProfile {
 
+    static final int MINIMUM_WINDOW = 5;
+
     private final int[] windows;
     private final double minM;
     private final double maxM;
@@ -41,7 +43,7 @@ public final class LPPLCalibrationProfile {
         }
         this.windows = Arrays.stream(windows).sorted().distinct().toArray();
         for (int window : this.windows) {
-            if (window < 5) {
+            if (window < MINIMUM_WINDOW) {
                 throw new IllegalArgumentException("windows must be at least 5 bars");
             }
         }

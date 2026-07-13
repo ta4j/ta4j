@@ -39,7 +39,7 @@ final class LPPLFitCalibrator {
      */
     LPPLFit fit(double[] logPrices) {
         int window = logPrices.length;
-        if (window < 5) {
+        if (window < LPPLCalibrationProfile.MINIMUM_WINDOW) {
             return LPPLFit.invalid(window, LPPLExhaustionStatus.INSUFFICIENT_DATA);
         }
         for (double logPrice : logPrices) {
