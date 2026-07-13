@@ -48,6 +48,22 @@ class LPPLExhaustionIndicatorTest {
     }
 
     @Test
+    void keepsQualifiedEvidenceUsableOutsideTheActionHorizon() {
+        BarSeries series = LPPLTestFixtures.syntheticSeries(-0.03, 45);
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile()
+                .withCriticalTimeSearch(10, 60, 5)
+                .withActionableCriticalTimeRange(10, 30);
+        LPPLExhaustionIndicator indicator = new LPPLExhaustionIndicator(new ClosePriceIndicator(series), profile);
+
+        LPPLExhaustion exhaustion = indicator.getValue(series.getEndIndex());
+
+        assertThat(exhaustion.fits()).anyMatch(fit -> fit.isQualified(profile));
+        assertThat(exhaustion.fits()).noneMatch(fit -> fit.isActionable(profile));
+        assertThat(exhaustion.status()).isEqualTo(LPPLExhaustionStatus.VALID);
+        assertThat(exhaustion.isActionable()).isFalse();
+    }
+
+    @Test
     void reportsWarmupBoundaryWithoutReadingPrehistory() {
         BarSeries series = LPPLTestFixtures.syntheticSeries(0.03);
         LPPLExhaustionIndicator indicator = new LPPLExhaustionIndicator(new ClosePriceIndicator(series),
