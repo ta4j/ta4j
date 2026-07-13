@@ -76,6 +76,18 @@ class SectorLPPLReferenceDataUpdaterTest {
     }
 
     @Test
+    void rejectsReplacementThatDropsAKnownSession() {
+        List<SectorLPPLReferenceDataUpdater.ReferenceBar> existing = List.of(bar(100, "10"), bar(200, "11"));
+        List<SectorLPPLReferenceDataUpdater.ReferenceBar> replacementWithGap = List.of(bar(100, "10"),
+                bar(300, "12"));
+
+        IOException failure = assertThrows(IOException.class,
+                () -> SectorLPPLReferenceDataUpdater.replaceAdjustedHistory(existing, replacementWithGap));
+
+        assertTrue(failure.getMessage().contains("complete adjusted history"));
+    }
+
+    @Test
     void requiresACommonFinalSessionAcrossAllLenses() {
         List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> universe = List.of(definition("AAA", "missing/AAA.json"),
                 definition("BBB", "missing/BBB.json"));
