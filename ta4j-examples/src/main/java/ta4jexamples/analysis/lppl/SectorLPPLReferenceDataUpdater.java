@@ -157,6 +157,9 @@ final class SectorLPPLReferenceDataUpdater {
                 revisedBars++;
             }
         }
+        if (!refreshedByStart.keySet().containsAll(existingByStart.keySet())) {
+            throw new IOException("Yahoo refresh did not return the complete adjusted history");
+        }
         return new MergeResult(List.copyOf(refreshedByStart.values()), addedBars, revisedBars);
     }
 
