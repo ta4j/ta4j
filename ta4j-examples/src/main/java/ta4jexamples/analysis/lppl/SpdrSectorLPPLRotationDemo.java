@@ -98,7 +98,7 @@ public final class SpdrSectorLPPLRotationDemo {
             Path resourceDirectory = repositoryRoot().resolve("ta4j-examples/src/main/resources");
             SpdrSectorReferenceDataUpdater.Settings settings = new SpdrSectorReferenceDataUpdater.Settings(
                     resourceDirectory, options.outputDirectory(), options.outputDirectory().resolve("responses"),
-                    options.updateResources(), SpdrSectorReferenceDataUpdater.DEFAULT_OVERLAP_DAYS, Instant.now());
+                    options.updateResources(), Instant.now());
             refreshSummary = new SpdrSectorReferenceDataUpdater().refresh(UNIVERSE, settings);
         }
         List<SectorSnapshot> snapshots = analyze(profile, refreshSummary, options.outputDirectory());

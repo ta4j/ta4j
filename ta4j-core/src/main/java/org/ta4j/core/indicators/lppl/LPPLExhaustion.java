@@ -12,7 +12,7 @@ import org.ta4j.core.num.Num;
  * {@link LPPLExhaustionIndicator}.
  *
  * @param status         aggregate status
- * @param side           dominant exhaustion side
+ * @param side           dominant exhaustion side by actionable-fit count
  * @param score          bounded score in {@code [-1, 1]}; positive values are
  *                       crash exhaustion and negative values are bubble
  *                       exhaustion
@@ -70,6 +70,11 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
                 || (side == LPPLExhaustionSide.CRASH_EXHAUSTION && score.isNegative())
                 || (side == LPPLExhaustionSide.BUBBLE_EXHAUSTION && score.isPositive())) {
             throw new IllegalArgumentException("score direction must match side");
+        }
+        if ((side == LPPLExhaustionSide.NONE && crashFits != bubbleFits)
+                || (side == LPPLExhaustionSide.CRASH_EXHAUSTION && crashFits <= bubbleFits)
+                || (side == LPPLExhaustionSide.BUBBLE_EXHAUSTION && bubbleFits <= crashFits)) {
+            throw new IllegalArgumentException("side must match the crashFits/bubbleFits majority");
         }
     }
 

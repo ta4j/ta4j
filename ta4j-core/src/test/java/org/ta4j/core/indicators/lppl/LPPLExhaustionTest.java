@@ -56,4 +56,17 @@ class LPPLExhaustionTest {
         assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
                 LPPLExhaustionSide.CRASH_EXHAUSTION, two, one, fit, List.of(fit), 1, 1, 1, 0));
     }
+
+    @Test
+    void rejectsSideThatContradictsActionableFitMajority() {
+        Num zero = DoubleNumFactory.getInstance().zero();
+        Num one = DoubleNumFactory.getInstance().one();
+        LPPLFit fit = LPPLFitTest.validFit(0.03);
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.NONE, zero, one, fit,
+                        List.of(fit), 1, 1, 1, 0));
+
+        assertThat(failure).hasMessageContaining("crashFits/bubbleFits majority");
+    }
 }

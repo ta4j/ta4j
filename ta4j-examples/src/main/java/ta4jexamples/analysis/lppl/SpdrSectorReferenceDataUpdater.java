@@ -41,8 +41,6 @@ import ta4jexamples.datasources.http.HttpResponseWrapper;
 
 final class SpdrSectorReferenceDataUpdater {
 
-    static final int DEFAULT_OVERLAP_DAYS = 7;
-
     private static final Logger LOG = LogManager.getLogger(SpdrSectorReferenceDataUpdater.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final ZoneId MARKET_ZONE = ZoneId.of("America/New_York");
@@ -96,15 +94,16 @@ final class SpdrSectorReferenceDataUpdater {
             if (existingBars.isEmpty()) {
                 throw new IOException("No existing SPDR reference bars for " + definition.ticker());
             }
+            ReferenceBar firstExisting = existingBars.get(0);
             ReferenceBar lastExisting = existingBars.get(existingBars.size() - 1);
             previousLastDate = lastExisting.localDate();
-            Instant fetchStart = lastExisting.startInstant().minus(Duration.ofDays(settings.overlapDays()));
+            Instant fetchStart = firstExisting.startInstant();
             Instant fetchEnd = settings.now();
             List<ReferenceBar> fetchedBars = effectiveFetcher.fetch(definition.ticker(), fetchStart, fetchEnd)
                     .stream()
                     .filter(bar -> bar.isCompleteFor(settings.now()))
                     .toList();
-            MergeResult merge = merge(existingBars, fetchedBars);
+            MergeResult merge = replaceAdjustedHistory(existingBars, fetchedBars);
             writeReferenceBars(outputPath, merge.bars());
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
                     merge.lastDate(), existingBars.size(), fetchedBars.size(), merge.bars().size(), merge.addedBars(),
@@ -124,23 +123,33 @@ final class SpdrSectorReferenceDataUpdater {
         }
     }
 
-    private static MergeResult merge(List<ReferenceBar> existingBars, List<ReferenceBar> fetchedBars) {
-        TreeMap<Long, ReferenceBar> merged = new TreeMap<>();
-        for (ReferenceBar bar : existingBars) {
-            merged.put(bar.startEpochSecond(), bar);
+    private static MergeResult replaceAdjustedHistory(List<ReferenceBar> existingBars, List<ReferenceBar> fetchedBars)
+            throws IOException {
+        if (fetchedBars.size() < existingBars.size()
+                || fetchedBars.get(0).localDate().isAfter(existingBars.get(0).localDate())) {
+            throw new IOException("Yahoo refresh did not return the complete adjusted history");
         }
 
+        TreeMap<Long, ReferenceBar> existingByStart = new TreeMap<>();
+        for (ReferenceBar bar : existingBars) {
+            existingByStart.put(bar.startEpochSecond(), bar);
+        }
+
+        TreeMap<Long, ReferenceBar> refreshedByStart = new TreeMap<>();
         int addedBars = 0;
         int revisedBars = 0;
         for (ReferenceBar fetched : fetchedBars) {
-            ReferenceBar previous = merged.put(fetched.startEpochSecond(), fetched);
+            if (refreshedByStart.put(fetched.startEpochSecond(), fetched) != null) {
+                throw new IOException("Yahoo refresh returned duplicate timestamps");
+            }
+            ReferenceBar previous = existingByStart.get(fetched.startEpochSecond());
             if (previous == null) {
                 addedBars++;
             } else if (!previous.hasSameValues(fetched)) {
                 revisedBars++;
             }
         }
-        return new MergeResult(List.copyOf(merged.values()), addedBars, revisedBars);
+        return new MergeResult(List.copyOf(refreshedByStart.values()), addedBars, revisedBars);
     }
 
     private static PromotionResult promoteReferenceData(List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe,
@@ -297,7 +306,7 @@ final class SpdrSectorReferenceDataUpdater {
     }
 
     record Settings(Path referenceDataDirectory, Path outputDirectory, Path responseCacheDirectory,
-            boolean updateReferenceData, int overlapDays, Instant now) {
+            boolean updateReferenceData, Instant now) {
 
         Settings {
             if (referenceDataDirectory == null) {
@@ -308,9 +317,6 @@ final class SpdrSectorReferenceDataUpdater {
             }
             if (responseCacheDirectory == null) {
                 throw new IllegalArgumentException("responseCacheDirectory must not be null");
-            }
-            if (overlapDays < 0) {
-                throw new IllegalArgumentException("overlapDays must be non-negative");
             }
             if (now == null) {
                 throw new IllegalArgumentException("now must not be null");

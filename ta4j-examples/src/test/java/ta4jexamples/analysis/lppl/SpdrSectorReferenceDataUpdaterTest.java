@@ -31,7 +31,7 @@ class SpdrSectorReferenceDataUpdaterTest {
     void appendsOnlyMissingBarsAndWritesChronologicalOutput() throws IOException {
         Path referenceDirectory = seedReference("XLI", bars(bar(100, "10"), bar(200, "11")));
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
-                (ticker, start, end) -> List.of(bar(300, "12")));
+                (ticker, start, end) -> List.of(bar(100, "10"), bar(200, "11"), bar(300, "12")));
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
                 settings(referenceDirectory, false));
@@ -49,7 +49,7 @@ class SpdrSectorReferenceDataUpdaterTest {
     void replacesOverlappingCorrectedBars() throws IOException {
         Path referenceDirectory = seedReference("XLI", bars(bar(100, "10"), bar(200, "11")));
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
-                (ticker, start, end) -> List.of(bar(200, "11.5")));
+                (ticker, start, end) -> List.of(bar(100, "10"), bar(200, "11.5")));
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
                 settings(referenceDirectory, false));
@@ -58,6 +58,21 @@ class SpdrSectorReferenceDataUpdaterTest {
         assertEquals(0, refresh.addedBars());
         assertEquals(1, refresh.revisedBars());
         assertTrue(Files.readString(refresh.outputPath()).contains("\"close\": \"11.5\""));
+    }
+
+    @Test
+    void rejectsARefreshThatDoesNotReturnTheCompleteAdjustedHistory() throws IOException {
+        Path referenceDirectory = seedReference("XLI", bars(bar(100, "10"), bar(200, "11")));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
+                (ticker, start, end) -> List.of(bar(200, "11.5")));
+
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
+                settings(referenceDirectory, false));
+
+        SpdrSectorReferenceDataUpdater.TickerRefresh refresh = summary.tickers().get(0);
+        assertTrue(refresh.skipped());
+        assertTrue(refresh.message().contains("complete adjusted history"));
+        assertEquals(2, refresh.mergedBars());
     }
 
     @Test
@@ -95,7 +110,7 @@ class SpdrSectorReferenceDataUpdaterTest {
         Instant beforeSettlement = Instant.parse("2026-05-06T19:00:00Z");
         long currentDayStart = Instant.parse("2026-05-06T13:30:00Z").getEpochSecond();
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
-                (ticker, start, end) -> List.of(bar(currentDayStart, "12")));
+                (ticker, start, end) -> List.of(bar(100, "10"), bar(currentDayStart, "12")));
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
                 settings(referenceDirectory, false, beforeSettlement));
@@ -127,7 +142,7 @@ class SpdrSectorReferenceDataUpdaterTest {
         Files.createDirectories(referenceDirectory);
         Files.writeString(referenceDirectory.resolve(SECOND_RESOURCE), bars(bar(100, "20")));
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
-                (ticker, start, end) -> List.of(bar(300, "22")));
+                (ticker, start, end) -> List.of(bar(100, "20"), bar(300, "22")));
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(twoInstrumentUniverse(),
                 settings(referenceDirectory, false));
@@ -143,7 +158,7 @@ class SpdrSectorReferenceDataUpdaterTest {
     void promotesCommittedResourcesOnlyAfterACompleteRefresh() throws IOException {
         Path referenceDirectory = seedReference("XLI", bars(bar(100, "10")));
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
-                (ticker, start, end) -> List.of(bar(300, "12")));
+                (ticker, start, end) -> List.of(bar(100, "10"), bar(300, "12")));
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(universe(),
                 settings(referenceDirectory, true));
@@ -160,8 +175,9 @@ class SpdrSectorReferenceDataUpdaterTest {
         Files.writeString(referenceDirectory.resolve(SECOND_RESOURCE), bars(bar(100, "20")));
         String originalXli = Files.readString(referenceDirectory.resolve(RESOURCE));
         String originalXlf = Files.readString(referenceDirectory.resolve(SECOND_RESOURCE));
-        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater((ticker, start,
-                end) -> ticker.equals("XLI") ? List.of(bar(86_400, "12")) : List.of(bar(172_800, "22")));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
+                (ticker, start, end) -> ticker.equals("XLI") ? List.of(bar(100, "10"), bar(86_400, "12"))
+                        : List.of(bar(100, "20"), bar(172_800, "22")));
 
         IOException failure = assertThrows(IOException.class,
                 () -> updater.refresh(twoInstrumentUniverse(), settings(referenceDirectory, true)));
@@ -181,7 +197,7 @@ class SpdrSectorReferenceDataUpdaterTest {
             if (ticker.equals("XLF")) {
                 throw new IOException("network unavailable");
             }
-            return List.of(bar(86_400, "12"));
+            return List.of(bar(100, "10"), bar(86_400, "12"));
         });
 
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(twoInstrumentUniverse(),
@@ -274,7 +290,7 @@ class SpdrSectorReferenceDataUpdaterTest {
     private SpdrSectorReferenceDataUpdater.Settings settings(Path referenceDirectory, boolean updateReferenceData,
             Instant now) {
         return new SpdrSectorReferenceDataUpdater.Settings(referenceDirectory, tempDirectory.resolve("analysis"),
-                tempDirectory.resolve("analysis").resolve("responses"), updateReferenceData, 7, now);
+                tempDirectory.resolve("analysis").resolve("responses"), updateReferenceData, now);
     }
 
     private List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe() {

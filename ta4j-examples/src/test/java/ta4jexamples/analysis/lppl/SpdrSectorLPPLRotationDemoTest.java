@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -196,7 +197,7 @@ class SpdrSectorLPPLRotationDemoTest {
         copySeedResources(referenceDataDirectory);
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater((ticker, start, end) -> List.of());
         SpdrSectorReferenceDataUpdater.Settings settings = new SpdrSectorReferenceDataUpdater.Settings(
-                referenceDataDirectory, outputDirectory, outputDirectory.resolve("responses"), false, 7,
+                referenceDataDirectory, outputDirectory, outputDirectory.resolve("responses"), false,
                 Instant.parse("2026-05-01T12:00:00Z"));
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = updater
                 .refresh(SpdrSectorLPPLRotationDemo.closedUniverse(), settings);
@@ -213,6 +214,33 @@ class SpdrSectorLPPLRotationDemoTest {
         assertEquals(12, progressRows.size());
         assertTrue(progressRows.get(1).contains("Industrials,XLI"));
         assertTrue(progressRows.get(11).contains("Communication Services,XLC"));
+    }
+
+    @Test
+    void preservesCompletedInstrumentProgressWhenALaterResourceFails() throws IOException {
+        Path referenceDataDirectory = tempDirectory.resolve("resources");
+        Path outputDirectory = tempDirectory.resolve("analysis");
+        copySeedResources(referenceDataDirectory);
+        List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe = SpdrSectorLPPLRotationDemo.closedUniverse();
+        SpdrSectorLPPLRotationDemo.SectorDefinition first = universe.get(0);
+        SpdrSectorLPPLRotationDemo.SectorDefinition second = universe.get(1);
+        Path firstPath = referenceDataDirectory.resolve(first.resource());
+        Path corruptSecondPath = referenceDataDirectory.resolve(second.resource());
+        Files.writeString(corruptSecondPath, "not-json");
+        List<SpdrSectorReferenceDataUpdater.TickerRefresh> refreshes = List.of(
+                new SpdrSectorReferenceDataUpdater.TickerRefresh(first.ticker(), first.sector(), firstPath,
+                        SNAPSHOT_DATE, SNAPSHOT_DATE, 632, 632, 632, 0, 0, false, ""),
+                new SpdrSectorReferenceDataUpdater.TickerRefresh(second.ticker(), second.sector(), corruptSecondPath,
+                        SNAPSHOT_DATE, SNAPSHOT_DATE, 632, 632, 632, 0, 0, false, ""));
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = new SpdrSectorReferenceDataUpdater.RefreshSummary(
+                refreshes, referenceDataDirectory, outputDirectory.resolve("responses"));
+
+        assertThrows(IllegalStateException.class,
+                () -> SpdrSectorLPPLRotationDemo.analyze(smokeProfile(), summary, outputDirectory));
+
+        List<String> progressRows = Files.readAllLines(outputDirectory.resolve("lppl-instrument-progress.csv"));
+        assertEquals(2, progressRows.size());
+        assertTrue(progressRows.get(1).contains("Industrials,XLI"));
     }
 
     @Test
