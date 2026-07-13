@@ -53,6 +53,5 @@ class LPPLExhaustionScoreIndicatorTest {
                 .isEqualTo(ComponentSerialization.toJson(descriptor));
         assertThat(fromDescriptor.getValue(series.getEndIndex())).isEqualTo(original.getValue(series.getEndIndex()));
         assertThat(fromJson.getValue(series.getEndIndex())).isEqualTo(original.getValue(series.getEndIndex()));
-        assertThat(original.getExhaustionIndicator()).isNotSameAs(original.getExhaustionIndicator());
     }
 }

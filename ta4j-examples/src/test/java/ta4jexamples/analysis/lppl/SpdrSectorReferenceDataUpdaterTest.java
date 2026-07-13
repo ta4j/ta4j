@@ -117,6 +117,24 @@ class SpdrSectorReferenceDataUpdaterTest {
     }
 
     @Test
+    void missingSeedSkipsOnlyThatTicker() throws IOException {
+        Path referenceDirectory = tempDirectory.resolve("resources");
+        Files.createDirectories(referenceDirectory);
+        Files.writeString(referenceDirectory.resolve(SECOND_RESOURCE), bars(bar(100, "20")));
+        SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(
+                (ticker, start, end) -> List.of(bar(300, "22")));
+
+        SpdrSectorReferenceDataUpdater.RefreshSummary summary = updater.refresh(twoInstrumentUniverse(),
+                settings(referenceDirectory, false));
+
+        assertEquals(2, summary.tickers().size());
+        assertTrue(summary.tickers().get(0).skipped());
+        assertTrue(summary.tickers().get(0).message().contains("Missing SPDR reference resource"));
+        assertFalse(summary.tickers().get(1).skipped());
+        assertEquals(1, summary.tickers().get(1).addedBars());
+    }
+
+    @Test
     void promotesCommittedResourcesOnlyAfterACompleteRefresh() throws IOException {
         Path referenceDirectory = seedReference("XLI", bars(bar(100, "10")));
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater(

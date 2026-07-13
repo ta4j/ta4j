@@ -85,20 +85,21 @@ final class SpdrSectorReferenceDataUpdater {
     }
 
     private TickerRefresh refreshTicker(SpdrSectorLPPLRotationDemo.SectorDefinition definition, Settings settings,
-            YahooDailyBarFetcher effectiveFetcher) throws IOException {
+            YahooDailyBarFetcher effectiveFetcher) {
         Path sourcePath = settings.referenceDataDirectory().resolve(definition.resource());
-        List<ReferenceBar> existingBars = readReferenceBars(sourcePath, definition.resource());
-        if (existingBars.isEmpty()) {
-            throw new IOException("No existing SPDR reference bars for " + definition.ticker());
-        }
-
-        ReferenceBar lastExisting = existingBars.get(existingBars.size() - 1);
-        Instant fetchStart = lastExisting.startInstant().minus(Duration.ofDays(settings.overlapDays()));
-        Instant fetchEnd = settings.now();
         Path outputPath = settings.outputPath(definition.resource());
-        LocalDate previousLastDate = lastExisting.localDate();
+        List<ReferenceBar> existingBars = List.of();
+        LocalDate previousLastDate = null;
 
         try {
+            existingBars = readReferenceBars(sourcePath, definition.resource());
+            if (existingBars.isEmpty()) {
+                throw new IOException("No existing SPDR reference bars for " + definition.ticker());
+            }
+            ReferenceBar lastExisting = existingBars.get(existingBars.size() - 1);
+            previousLastDate = lastExisting.localDate();
+            Instant fetchStart = lastExisting.startInstant().minus(Duration.ofDays(settings.overlapDays()));
+            Instant fetchEnd = settings.now();
             List<ReferenceBar> fetchedBars = effectiveFetcher.fetch(definition.ticker(), fetchStart, fetchEnd)
                     .stream()
                     .filter(bar -> bar.isCompleteFor(settings.now()))
@@ -110,7 +111,13 @@ final class SpdrSectorReferenceDataUpdater {
                     merge.revisedBars(), false, "");
         } catch (IOException | RuntimeException exception) {
             LOG.warn("Unable to refresh SPDR reference data for {}", definition.ticker(), exception);
-            writeReferenceBars(outputPath, existingBars);
+            if (!existingBars.isEmpty()) {
+                try {
+                    writeReferenceBars(outputPath, existingBars);
+                } catch (IOException writeException) {
+                    exception.addSuppressed(writeException);
+                }
+            }
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
                     previousLastDate, existingBars.size(), 0, existingBars.size(), 0, 0, true,
                     exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());

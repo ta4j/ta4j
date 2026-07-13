@@ -54,7 +54,7 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
         if (attemptedFits != fits.size()) {
             throw new IllegalArgumentException("attemptedFits must equal fits.size()");
         }
-        if (attemptedFits < 0 || actionableFits < 0 || crashFits < 0 || bubbleFits < 0) {
+        if (actionableFits < 0 || crashFits < 0 || bubbleFits < 0) {
             throw new IllegalArgumentException("fit counts must be non-negative");
         }
         if (actionableFits > attemptedFits) {

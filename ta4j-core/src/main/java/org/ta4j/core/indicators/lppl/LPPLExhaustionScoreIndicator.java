@@ -151,14 +151,4 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
         return exhaustionIndicator.getCountOfUnstableBars();
     }
 
-    /**
-     * @return rich LPPL exhaustion indicator used by this numeric projection
-     * @since 0.22.9
-     */
-    public LPPLExhaustionIndicator getExhaustionIndicator() {
-        return new LPPLExhaustionIndicator(priceIndicator,
-                new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
-                        minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
-                        activeMaxCriticalOffset, maxEvaluations, minRSquared));
-    }
 }

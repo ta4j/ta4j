@@ -31,10 +31,15 @@ class LPPLExhaustionTest {
         LPPLFit fit = LPPLFitTest.validFit(0.03);
         List<LPPLFit> fits = List.of(fit);
 
-        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
-                LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, fits, 0, 1, 1, 0));
-        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
-                LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, fits, 1, 1, 0, 0));
+        IllegalArgumentException attemptedFitsFailure = assertThrows(IllegalArgumentException.class,
+                () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit,
+                        fits, 0, 1, 1, 0));
+        IllegalArgumentException directionalFitsFailure = assertThrows(IllegalArgumentException.class,
+                () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit,
+                        fits, 1, 1, 0, 0));
+
+        assertThat(attemptedFitsFailure).hasMessageContaining("attemptedFits");
+        assertThat(directionalFitsFailure).hasMessageContaining("crashFits + bubbleFits");
     }
 
     @Test
