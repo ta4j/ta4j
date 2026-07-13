@@ -1,6 +1,9 @@
 ## Unreleased
 
+### Changed
 - **Local and hosted quality-gate parity**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run the same non-mutating source checks, repository script fixtures, actionlint validation, and all non-demo test scope used by pull-request CI. Hosted workflows reuse the local entrypoint, so formatting, license, workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings are caught before push instead of being repaired or omitted locally.
+
+## 0.23.0 (2026-07-13)
 
 ### Added
 - **Causal swing detection for sharp, rounded, and consensus-confirmed turns**: Added `SwingDetectors.slopeChange(window)` with balanced persistence and half-ATR filtering plus `SwingDetectors.consensus(...)` for tolerant quorum agreement, while ZigZag detection now locates pivots from intrabar highs/lows, confirms reversals from closes with pivot-anchored thresholds, derives matching high/low swing sources directly from state, and resolves fractal plateaus to one deterministic midpoint.
