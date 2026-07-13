@@ -11,7 +11,9 @@ import org.ta4j.core.num.Num;
  * Rich Log-Periodic Power Law (LPPL) exhaustion result returned by
  * {@link LPPLExhaustionIndicator}.
  *
- * @param status         aggregate status
+ * @param status         aggregate calibration status;
+ *                       {@link LPPLExhaustionStatus#VALID} also covers
+ *                       qualified evidence outside the action horizon
  * @param side           dominant exhaustion side by actionable-fit count
  * @param score          bounded score in {@code [-1, 1]}; positive values are
  *                       crash exhaustion and negative values are bubble

@@ -12,7 +12,8 @@ package org.ta4j.core.indicators.lppl;
 public enum LPPLExhaustionStatus {
 
     /**
-     * The fit or aggregate signal is usable.
+     * The fit or aggregate result is usable. A valid aggregate can retain
+     * structurally qualified evidence without having a near-term actionable side.
      */
     VALID,
 
@@ -32,7 +33,8 @@ public enum LPPLExhaustionStatus {
     OPTIMIZER_FAILED,
 
     /**
-     * Calibration converged, but no fit passed the configured LPPL filters.
+     * Calibration converged, but no fit passed the configured structural LPPL
+     * qualification filters.
      */
     NO_VALID_FIT
 }

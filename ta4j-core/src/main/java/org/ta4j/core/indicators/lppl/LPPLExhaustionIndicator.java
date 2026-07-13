@@ -192,6 +192,7 @@ public final class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustio
     }
 
     private LPPLExhaustion aggregate(List<LPPLFit> fits) {
+        List<LPPLFit> qualified = fits.stream().filter(fit -> fit.isQualified(profile)).toList();
         List<LPPLFit> actionable = fits.stream().filter(fit -> fit.isActionable(profile)).toList();
         int crashFits = (int) actionable.stream()
                 .filter(fit -> fit.side() == LPPLExhaustionSide.CRASH_EXHAUSTION)
@@ -204,9 +205,10 @@ public final class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustio
                     .filter(LPPLFit::isConverged)
                     .max(Comparator.comparingDouble(LPPLFit::rSquared))
                     .orElseGet(() -> LPPLFit.invalid(0, LPPLExhaustionStatus.NO_VALID_FIT));
-            return new LPPLExhaustion(LPPLExhaustionStatus.NO_VALID_FIT, LPPLExhaustionSide.NONE,
-                    getBarSeries().numFactory().zero(), NaN, bestFit, fits, fits.size(), actionable.size(), crashFits,
-                    bubbleFits);
+            LPPLExhaustionStatus status = qualified.isEmpty() ? LPPLExhaustionStatus.NO_VALID_FIT
+                    : LPPLExhaustionStatus.VALID;
+            return new LPPLExhaustion(status, LPPLExhaustionSide.NONE, getBarSeries().numFactory().zero(), NaN, bestFit,
+                    fits, fits.size(), actionable.size(), crashFits, bubbleFits);
         }
 
         LPPLExhaustionSide side = crashFits > bubbleFits ? LPPLExhaustionSide.CRASH_EXHAUSTION
