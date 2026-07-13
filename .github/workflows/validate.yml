@@ -36,4 +36,4 @@ jobs:
           cache: maven
 
       - name: Validate source code formatting
-        run: xvfb-run ./mvnw -B formatter:validate
+        run: xvfb-run scripts/run-full-build-quiet.sh --goals formatter:validate

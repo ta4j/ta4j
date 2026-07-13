@@ -39,33 +39,11 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Build and run verify with Maven Wrapper and SpotBugs
-        run: |
-          xvfb-run ./mvnw -B license:check formatter:validate verify
-
-  test-all-tags:
-    name: Build and Verify (All Non-Demo Tags)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Cache Maven packages
-        uses: actions/cache@v5
+      - name: Set up Go for the pinned actionlint fallback
+        uses: actions/setup-go@v6
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          go-version: stable
+          cache: false
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 25
-          cache: maven
-
-      - name: Build and run verify with SpotBugs and demo tags excluded
-        run: |
-          xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo
+      - name: Run the canonical quality gate without modifying the checkout
+        run: xvfb-run scripts/run-full-build-quiet.sh --validate-only
