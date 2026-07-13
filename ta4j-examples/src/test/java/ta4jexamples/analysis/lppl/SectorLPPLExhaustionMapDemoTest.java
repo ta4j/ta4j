@@ -57,53 +57,66 @@ class SectorLPPLExhaustionMapDemoTest {
     }
 
     @Test
-    void aggregateUsesMedianAndReportsConflictingLensDirections() {
+    void aggregateReportsRawMedianNumericHorizonsAndLensConflict() {
         List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> definitions = definitions("Energy");
         List<SectorLPPLExhaustionMapDemo.InstrumentSnapshot> instruments = List.of(
-                snapshot(definitions.get(0), -0.95, LPPLExhaustionSide.BUBBLE_EXHAUSTION, 20),
-                snapshot(definitions.get(1), -0.40, LPPLExhaustionSide.BUBBLE_EXHAUSTION, 50),
-                snapshot(definitions.get(2), 0.20, LPPLExhaustionSide.CRASH_EXHAUSTION, 90));
+                snapshot(definitions.get(0), -0.95, 20, unavailable()),
+                snapshot(definitions.get(1), -0.40, 50, unavailable()),
+                snapshot(definitions.get(2), 0.20, 90, unavailable()));
 
         SectorLPPLExhaustionMapDemo.GroupSnapshot group = SectorLPPLExhaustionMapDemo.aggregate(instruments).getFirst();
 
-        assertEquals(-0.40, group.spectrumScore(), 0.000001);
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.BUBBLE, group.band());
-        assertEquals(SectorLPPLExhaustionMapDemo.LensAgreement.CONFLICTED, group.agreement());
-        assertEquals(SectorLPPLExhaustionMapDemo.Proximity.APPROACHING, group.proximity());
-        assertEquals(35.0, group.medianCriticalOffset(), 0.000001);
+        assertEquals(-0.40, group.rawRegimeScore(), 0.000001);
+        assertEquals(LPPLExhaustionSide.BUBBLE_EXHAUSTION, group.rawSide());
+        assertEquals(0, group.lensSupportCount());
+        assertEquals(3, group.lensCount());
+        assertFalse(group.lensConflicted());
+        assertEquals(27.5, group.criticalHorizonSessionsQ1(), 0.000001);
+        assertEquals(35.0, group.criticalHorizonSessionsMedian(), 0.000001);
+        assertEquals(42.5, group.criticalHorizonSessionsQ3(), 0.000001);
+        assertEquals("NONE", group.benchmarkQualifiedSide());
     }
 
     @Test
-    void agreementDistinguishesThreeTwoOneAndNoSignal() {
-        assertEquals("3/3", aggregateAgreement("Technology", -0.3, -0.2, -0.1).toString());
-        assertEquals("2/3", aggregateAgreement("Technology", -0.3, -0.2, 0.0).toString());
-        assertEquals("1/3", aggregateAgreement("Technology", -0.3, 0.0, 0.0).toString());
-        assertEquals("NO_SIGNAL", aggregateAgreement("Technology", 0.0, 0.0, 0.0).toString());
+    void rawSideUsesExplicitNumericThreshold() {
+        assertEquals(LPPLExhaustionSide.BUBBLE_EXHAUSTION, SectorLPPLExhaustionMapDemo.rawSide(-0.10));
+        assertEquals(LPPLExhaustionSide.NONE, SectorLPPLExhaustionMapDemo.rawSide(-0.0999));
+        assertEquals(LPPLExhaustionSide.NONE, SectorLPPLExhaustionMapDemo.rawSide(0.0999));
+        assertEquals(LPPLExhaustionSide.CRASH_EXHAUSTION, SectorLPPLExhaustionMapDemo.rawSide(0.10));
     }
 
     @Test
-    void spectrumBandsHonorDocumentedBoundaries() {
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.STRONG_BUBBLE, aggregateBand(-0.60));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.BUBBLE, aggregateBand(-0.25));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.WEAK_BUBBLE, aggregateBand(-0.10));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.NEUTRAL_OR_MIXED, aggregateBand(0.0));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.WEAK_CRASH, aggregateBand(0.10));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.CRASH, aggregateBand(0.25));
-        assertEquals(SectorLPPLExhaustionMapDemo.SpectrumBand.STRONG_CRASH, aggregateBand(0.60));
+    void groupWithNoRawSideReportsMissingNumericHorizon() {
+        List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> definitions = definitions("Utilities");
+        SectorLPPLExhaustionMapDemo.GroupSnapshot group = SectorLPPLExhaustionMapDemo
+                .aggregate(List.of(snapshot(definitions.get(0), 0.0, Double.NaN, unavailable()),
+                        snapshot(definitions.get(1), 0.0, Double.NaN, unavailable()),
+                        snapshot(definitions.get(2), 0.0, Double.NaN, unavailable())))
+                .getFirst();
+
+        assertEquals(LPPLExhaustionSide.NONE, group.rawSide());
+        assertTrue(Double.isNaN(group.criticalHorizonSessionsQ1()));
+        assertTrue(Double.isNaN(group.criticalHorizonSessionsMedian()));
+        assertTrue(Double.isNaN(group.criticalHorizonSessionsQ3()));
     }
 
     @Test
-    void instrumentScoreMatchesStructuralFormula() throws IOException {
+    void instrumentScoreMatchesStructuralFormulaAndReportsQuartiles() throws IOException {
         SectorLPPLExhaustionMapDemo.InstrumentDefinition definition = definition("XLC");
-        BarSeries series = load(definition);
         SectorLPPLExhaustionMapDemo.InstrumentSnapshot snapshot = SectorLPPLExhaustionMapDemo
-                .analyzeInstrument(definition, series, smokeProfile());
+                .analyzeInstrument(definition, load(definition), smokeProfile());
 
-        double expected = snapshot.side().scoreSign() * snapshot.regimeConfidence() * snapshot.directionalConsensus()
+        LPPLExhaustionSide dominantSide = snapshot.crashFits() > snapshot.bubbleFits()
+                ? LPPLExhaustionSide.CRASH_EXHAUSTION
+                : snapshot.bubbleFits() > snapshot.crashFits() ? LPPLExhaustionSide.BUBBLE_EXHAUSTION
+                        : LPPLExhaustionSide.NONE;
+        double expected = dominantSide.scoreSign() * snapshot.regimeConfidence() * snapshot.directionalConsensus()
                 * snapshot.averageRSquared();
-        assertEquals(expected, snapshot.regimeScore(), 0.0000001);
-        assertEquals(snapshot.actionableFits() / (double) smokeProfile().windows().length, snapshot.nearTermFitShare(),
-                0.0000001);
+        assertEquals(expected, snapshot.rawRegimeScore(), 0.0000001);
+        assertEquals(snapshot.actionableFits() / (double) smokeProfile().windows().length,
+                snapshot.nearTermActionableFitShare(), 0.0000001);
+        assertEquals(snapshot.criticalHorizonSessionsQ1(), snapshot.criticalHorizonSessionsMedian(), 0.0000001);
+        assertEquals(snapshot.criticalHorizonSessionsMedian(), snapshot.criticalHorizonSessionsQ3(), 0.0000001);
     }
 
     @Test
@@ -122,9 +135,9 @@ class SectorLPPLExhaustionMapDemoTest {
     }
 
     @Test
-    void offlineRunWritesStableAbsoluteSpectrumArtifacts() throws IOException {
+    void offlineRunWritesNumericArtifactsAndNoAmbiguousLabels() throws IOException {
         SectorLPPLExhaustionMapDemo.DemoOptions options = new SectorLPPLExhaustionMapDemo.DemoOptions(tempDirectory,
-                false, false, false);
+                false, false, false, false);
         SectorLPPLExhaustionMapDemo.DemoRun run = SectorLPPLExhaustionMapDemo.runDemo(smokeProfile(), options);
 
         assertEquals(12, run.groups().size());
@@ -133,79 +146,68 @@ class SectorLPPLExhaustionMapDemoTest {
         assertTrue(Files.exists(tempDirectory.resolve("lppl-group-spectrum.csv")));
         assertTrue(Files.exists(tempDirectory.resolve("lppl-instrument-regimes.csv")));
         assertTrue(Files.exists(tempDirectory.resolve("lppl-fit-details.csv")));
+        assertTrue(Files.exists(tempDirectory.resolve("lppl-null-benchmarks.csv")));
+        assertTrue(Files.exists(tempDirectory.resolve("lppl-rolling-snapshots.csv")));
+        assertTrue(Files.exists(tempDirectory.resolve("lppl-benchmark-summary.txt")));
         assertEquals(13, Files.readAllLines(tempDirectory.resolve("lppl-group-spectrum.csv")).size());
         assertEquals(37, Files.readAllLines(tempDirectory.resolve("lppl-instrument-regimes.csv")).size());
-        assertFalse(run.report().contains("relative_rank"));
+        assertFalse(run.report().contains("IMMINENT"));
+        assertFalse(run.report().contains("APPROACHING"));
+        assertFalse(run.report().contains("DEVELOPING"));
+        assertFalse(run.report().contains("STRONG_BUBBLE"));
+        assertTrue(run.report().contains("horizon_sessions_q1/median/q3="));
     }
 
     @Test
     void artifactRowsKeepStableColumnCounts() throws IOException {
         SectorLPPLExhaustionMapDemo.DemoRun run = SectorLPPLExhaustionMapDemo.runDemo(smokeProfile(),
-                new SectorLPPLExhaustionMapDemo.DemoOptions(tempDirectory, false, false, false));
+                new SectorLPPLExhaustionMapDemo.DemoOptions(tempDirectory, false, false, false, false));
 
-        assertStableColumns(SectorLPPLExhaustionMapDemo.renderGroupCsv(run.groups()), 15);
-        assertStableColumns(SectorLPPLExhaustionMapDemo.renderInstrumentCsv(run.instruments()), 25);
+        assertStableColumns(SectorLPPLExhaustionMapDemo.renderGroupCsv(run.groups()), 32);
+        assertStableColumns(SectorLPPLExhaustionMapDemo.renderInstrumentCsv(run.instruments()), 39);
         assertStableColumns(SectorLPPLExhaustionMapDemo.renderFitCsv(run.instruments()), 14);
     }
 
     @Test
-    void semiconductorSnapshotRetainsStructuralBubbleEvidenceOutsideActionBand() throws IOException {
+    void semiconductorSnapshotIsReproducibleWithoutHardCodedConclusion() throws IOException {
         List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> semiconductorDefinitions = definitions("Semiconductors");
-        List<SectorLPPLExhaustionMapDemo.InstrumentSnapshot> snapshots = semiconductorDefinitions.stream()
-                .map(definition -> {
-                    try {
-                        return SectorLPPLExhaustionMapDemo.analyzeInstrument(definition, load(definition),
-                                SectorLPPLExhaustionMapDemo.AnalysisProfile.production());
-                    } catch (IOException exception) {
-                        throw new IllegalStateException(exception);
-                    }
-                })
-                .toList();
-
-        assertTrue(snapshots.stream().allMatch(snapshot -> snapshot.latestDate().equals(SNAPSHOT_DATE)));
-        assertTrue(snapshots.stream().allMatch(snapshot -> snapshot.side() == LPPLExhaustionSide.BUBBLE_EXHAUSTION));
-        assertTrue(snapshots.stream().allMatch(snapshot -> snapshot.regimeScore() < 0.0));
-        assertTrue(snapshots.stream().allMatch(snapshot -> snapshot.qualifiedFits() > snapshot.actionableFits()));
-        SectorLPPLExhaustionMapDemo.GroupSnapshot group = SectorLPPLExhaustionMapDemo.aggregate(snapshots).getFirst();
-        assertEquals("Semiconductors", group.group());
-        assertTrue(group.spectrumScore() < 0.0);
+        for (SectorLPPLExhaustionMapDemo.InstrumentDefinition definition : semiconductorDefinitions) {
+            BarSeries series = load(definition);
+            SectorLPPLExhaustionMapDemo.InstrumentSnapshot first = SectorLPPLExhaustionMapDemo
+                    .analyzeInstrument(definition, series, smokeProfile());
+            SectorLPPLExhaustionMapDemo.InstrumentSnapshot second = SectorLPPLExhaustionMapDemo
+                    .analyzeInstrument(definition, series, smokeProfile());
+            assertEquals(SNAPSHOT_DATE, first.latestDate());
+            assertTrue(Double.isFinite(first.rawRegimeScore()));
+            assertEquals(first.rawRegimeScore(), second.rawRegimeScore(), 0.0000000001);
+            assertEquals(first.rawSide(), second.rawSide());
+            assertEquals("NONE", first.benchmarkQualifiedSide());
+        }
     }
 
     @Test
-    void commandLineKeepsNetworkAndResourceMutationExplicit() {
+    void commandLineKeepsNetworkResourceMutationAndBenchmarkExplicit() {
         SectorLPPLExhaustionMapDemo.DemoOptions defaults = SectorLPPLExhaustionMapDemo.DemoOptions.parse(new String[0]);
         SectorLPPLExhaustionMapDemo.DemoOptions refresh = SectorLPPLExhaustionMapDemo.DemoOptions
                 .parse(new String[] { "--refresh", "--output-dir", tempDirectory.toString() });
+        SectorLPPLExhaustionMapDemo.DemoOptions benchmark = SectorLPPLExhaustionMapDemo.DemoOptions
+                .parse(new String[] { "--benchmark" });
         SectorLPPLExhaustionMapDemo.DemoOptions update = SectorLPPLExhaustionMapDemo.DemoOptions
-                .parse(new String[] { "--update-resources" });
+                .parse(new String[] { "--update-resources", "--benchmark" });
 
         assertFalse(defaults.refresh());
-        assertFalse(defaults.updateResources());
+        assertFalse(defaults.benchmark());
         assertTrue(refresh.refresh());
-        assertFalse(refresh.updateResources());
+        assertFalse(refresh.benchmark());
         assertEquals(tempDirectory.toAbsolutePath().normalize(), refresh.outputDirectory());
+        assertTrue(benchmark.benchmark());
         assertTrue(update.refresh());
         assertTrue(update.updateResources());
+        assertTrue(update.benchmark());
+        assertThrows(IllegalArgumentException.class,
+                () -> SectorLPPLExhaustionMapDemo.DemoOptions.parse(new String[] { "--update-resources" }));
         assertThrows(IllegalArgumentException.class,
                 () -> SectorLPPLExhaustionMapDemo.DemoOptions.parse(new String[] { "--unknown" }));
-    }
-
-    private SectorLPPLExhaustionMapDemo.LensAgreement aggregateAgreement(String group, double primary,
-            double equalWeight, double alternative) {
-        List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> definitions = definitions(group);
-        return SectorLPPLExhaustionMapDemo.aggregate(List.of(snapshot(definitions.get(0), primary, side(primary), 40),
-                snapshot(definitions.get(1), equalWeight, side(equalWeight), 40),
-                snapshot(definitions.get(2), alternative, side(alternative), 40))).getFirst().agreement();
-    }
-
-    private SectorLPPLExhaustionMapDemo.SpectrumBand aggregateBand(double score) {
-        List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> definitions = definitions("Financials");
-        LPPLExhaustionSide side = side(score);
-        return SectorLPPLExhaustionMapDemo
-                .aggregate(List.of(snapshot(definitions.get(0), score, side, 40),
-                        snapshot(definitions.get(1), score, side, 40), snapshot(definitions.get(2), score, side, 40)))
-                .getFirst()
-                .band();
     }
 
     private List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> definitions(String group) {
@@ -224,21 +226,18 @@ class SectorLPPLExhaustionMapDemoTest {
     }
 
     private SectorLPPLExhaustionMapDemo.InstrumentSnapshot snapshot(
-            SectorLPPLExhaustionMapDemo.InstrumentDefinition definition, double score, LPPLExhaustionSide side,
-            double criticalOffset) {
+            SectorLPPLExhaustionMapDemo.InstrumentDefinition definition, double score, double criticalOffset,
+            SectorLPPLBenchmark.Metrics metrics) {
+        LPPLExhaustionSide side = SectorLPPLExhaustionMapDemo.rawSide(score);
         return new SectorLPPLExhaustionMapDemo.InstrumentSnapshot(definition, SNAPSHOT_DATE, 1890, 0.0, 0.0, 0.0, 0.0,
                 side, score, side == LPPLExhaustionSide.NONE ? 0 : 1, 0,
                 side == LPPLExhaustionSide.BUBBLE_EXHAUSTION ? 1 : 0,
-                side == LPPLExhaustionSide.CRASH_EXHAUSTION ? 1 : 0, Math.abs(score), 1.0, 0.9, criticalOffset, 0.0,
-                criticalOffset <= 30 ? SectorLPPLExhaustionMapDemo.Proximity.IMMINENT
-                        : criticalOffset <= 90 ? SectorLPPLExhaustionMapDemo.Proximity.APPROACHING
-                                : SectorLPPLExhaustionMapDemo.Proximity.DEVELOPING,
-                0.0, List.of());
+                side == LPPLExhaustionSide.CRASH_EXHAUSTION ? 1 : 0, Math.abs(score), 1.0, 0.9, criticalOffset - 5.0,
+                criticalOffset, criticalOffset + 5.0, 0.0, List.of(), metrics);
     }
 
-    private static LPPLExhaustionSide side(double score) {
-        return score < 0.0 ? LPPLExhaustionSide.BUBBLE_EXHAUSTION
-                : score > 0.0 ? LPPLExhaustionSide.CRASH_EXHAUSTION : LPPLExhaustionSide.NONE;
+    private static SectorLPPLBenchmark.Metrics unavailable() {
+        return SectorLPPLBenchmark.Metrics.unavailable();
     }
 
     private BarSeries load(SectorLPPLExhaustionMapDemo.InstrumentDefinition definition) throws IOException {

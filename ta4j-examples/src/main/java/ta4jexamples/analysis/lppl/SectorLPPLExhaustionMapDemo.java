@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,9 +37,15 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  *
  * <p>
  * The committed resources are split- and distribution-adjusted daily Yahoo
- * Finance bars. The default run is deterministic and offline. Structural regime
- * evidence is reported separately from the narrower near-term action horizon,
- * so a qualified developing regime is not presented as a neutral zero.
+ * Finance bars. The default run is deterministic and offline. Reports keep the
+ * raw LPPL score, critical-time horizon, and near-term actionable-fit share
+ * separate. A bubble or crash conclusion is published only when it also exceeds
+ * the committed trend and randomized-return false-positive baseline.
+ *
+ * <p>
+ * A benchmark-qualified side of {@code NONE} means that the LPPL evidence did
+ * not pass the null controls. It does not mean that an ETF is fairly valued,
+ * undervalued, or expected to trade sideways.
  *
  * @since 0.23.1
  */
@@ -47,10 +54,11 @@ public final class SectorLPPLExhaustionMapDemo {
     private static final Logger LOG = LogManager.getLogger(SectorLPPLExhaustionMapDemo.class);
     private static final LocalDate HISTORY_START = LocalDate.of(2019, 1, 2);
     private static final LocalDate SEED_SNAPSHOT_DATE = LocalDate.of(2026, 7, 10);
-    private static final String RESOURCE_PREFIX = "ta4jexamples/analysis/lppl/sector-exhaustion-map/";
+    static final String RESOURCE_PREFIX = "ta4jexamples/analysis/lppl/sector-exhaustion-map/";
     private static final Path DEFAULT_OUTPUT_DIRECTORY = Path.of("target/analysis-demos/lppl-exhaustion-map");
     private static final String USAGE = "Usage: SectorLPPLExhaustionMapDemo [--refresh | --update-resources] "
-            + "[--output-dir <path>] [--help]";
+            + "[--benchmark] [--output-dir <path>] [--help]";
+    static final double RAW_SIDE_THRESHOLD = 0.10;
 
     private static final List<CoverageGroup> GROUPS = List.of(sector("Communication Services", "XLC", "RSPC", "FCOM"),
             sector("Consumer Discretionary", "XLY", "RSPD", "FDIS"), sector("Consumer Staples", "XLP", "RSPS", "FSTA"),
@@ -66,7 +74,7 @@ public final class SectorLPPLExhaustionMapDemo {
     /**
      * Runs the multi-lens LPPL exhaustion map.
      *
-     * @param args optional refresh and output arguments
+     * @param args optional refresh, benchmark, and output arguments
      * @throws IOException if data or report artifacts cannot be read or written
      * @since 0.23.1
      */
@@ -81,19 +89,29 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     static DemoRun runDemo(AnalysisProfile profile, DemoOptions options) throws IOException {
+        Path resourceDirectory = repositoryRoot(Path.of("")).resolve("ta4j-examples/src/main/resources");
         SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary = null;
         if (options.refresh()) {
-            Path resourceDirectory = repositoryRoot(Path.of("")).resolve("ta4j-examples/src/main/resources");
             SectorLPPLReferenceDataUpdater.Settings settings = new SectorLPPLReferenceDataUpdater.Settings(
                     resourceDirectory, options.outputDirectory(), options.outputDirectory().resolve("responses"),
                     options.updateResources(), Instant.now());
             refreshSummary = new SectorLPPLReferenceDataUpdater().refresh(universe(), settings);
         }
-        List<InstrumentSnapshot> instruments = analyze(profile, refreshSummary, options.outputDirectory());
-        List<GroupSnapshot> groups = aggregate(instruments);
-        String report = renderReport(groups, instruments, profile, refreshSummary);
-        writeArtifacts(options.outputDirectory(), report, groups, instruments, refreshSummary);
-        return new DemoRun(groups, instruments, refreshSummary, report);
+
+        List<LoadedInstrument> loaded = loadSeries(refreshSummary);
+        List<InstrumentSnapshot> rawInstruments = analyze(profile, loaded, options.outputDirectory());
+        SectorLPPLBenchmark.Result benchmark = options.benchmark()
+                ? SectorLPPLBenchmark.run(loaded, rawInstruments, profile, options.outputDirectory())
+                : SectorLPPLBenchmark.loadCommitted(loaded, profile).orElseGet(SectorLPPLBenchmark.Result::unavailable);
+        if (options.updateResources()) {
+            benchmark.writeManifest(resourceDirectory.resolve(RESOURCE_PREFIX));
+        }
+
+        List<InstrumentSnapshot> instruments = applyBenchmark(rawInstruments, benchmark.instrumentMetrics());
+        List<GroupSnapshot> groups = aggregate(instruments, benchmark.groupMetrics());
+        String report = renderReport(groups, instruments, profile, refreshSummary, benchmark);
+        writeArtifacts(options.outputDirectory(), report, groups, instruments, refreshSummary, benchmark);
+        return new DemoRun(groups, instruments, refreshSummary, benchmark, report);
     }
 
     static List<InstrumentDefinition> universe() {
@@ -105,25 +123,34 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     static List<InstrumentSnapshot> analyze(AnalysisProfile profile) throws IOException {
-        return analyze(profile, null, null);
+        return analyze(profile, loadSeries(null), null);
     }
 
-    static List<InstrumentSnapshot> analyze(AnalysisProfile profile,
-            SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary, Path progressDirectory) throws IOException {
+    private static List<LoadedInstrument> loadSeries(SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary)
+            throws IOException {
         JsonFileBarSeriesDataSource dataSource = new JsonFileBarSeriesDataSource();
-        List<InstrumentSnapshot> snapshots = new ArrayList<>(universe().size());
+        List<LoadedInstrument> loaded = new ArrayList<>(universe().size());
         for (InstrumentDefinition definition : universe()) {
             String source = refreshSummary == null ? definition.resource() : refreshSummary.sourceFor(definition);
             BarSeries series = dataSource.loadSeries(source);
             if (series == null || series.isEmpty()) {
                 throw new IllegalStateException("Unable to load LPPL reference resource: " + source);
             }
-            snapshots.add(analyzeInstrument(definition, series, profile));
+            loaded.add(new LoadedInstrument(definition, series));
+        }
+        return List.copyOf(loaded);
+    }
+
+    private static List<InstrumentSnapshot> analyze(AnalysisProfile profile, List<LoadedInstrument> loaded,
+            Path progressDirectory) throws IOException {
+        List<InstrumentSnapshot> snapshots = new ArrayList<>(loaded.size());
+        for (LoadedInstrument instrument : loaded) {
+            snapshots.add(analyzeInstrument(instrument.definition(), instrument.series(), profile));
             if (progressDirectory != null) {
                 writeInstrumentProgress(progressDirectory, snapshots);
             }
-            LOG.info("Completed LPPL calibration for {} ({}/{})", definition.ticker(), snapshots.size(),
-                    universe().size());
+            LOG.info("Completed LPPL calibration for {} ({}/{})", instrument.definition().ticker(), snapshots.size(),
+                    loaded.size());
         }
         return List.copyOf(snapshots);
     }
@@ -144,28 +171,33 @@ public final class SectorLPPLExhaustionMapDemo {
         int actionableFits = (int) fits.stream().filter(FitSnapshot::actionable).count();
         int bubbleFits = countSide(fits, LPPLExhaustionSide.BUBBLE_EXHAUSTION);
         int crashFits = countSide(fits, LPPLExhaustionSide.CRASH_EXHAUSTION);
-        LPPLExhaustionSide side = crashFits > bubbleFits ? LPPLExhaustionSide.CRASH_EXHAUSTION
+        LPPLExhaustionSide dominantSide = crashFits > bubbleFits ? LPPLExhaustionSide.CRASH_EXHAUSTION
                 : bubbleFits > crashFits ? LPPLExhaustionSide.BUBBLE_EXHAUSTION : LPPLExhaustionSide.NONE;
         double confidence = fraction(qualifiedFits, fits.size());
         double consensus = qualifiedFits == 0 ? 0.0 : Math.abs(crashFits - bubbleFits) / (double) qualifiedFits;
         List<FitSnapshot> dominantFits = fits.stream()
                 .filter(FitSnapshot::qualified)
-                .filter(snapshot -> snapshot.fit().side() == side)
+                .filter(snapshot -> snapshot.fit().side() == dominantSide)
                 .toList();
         double quality = dominantFits.stream().mapToDouble(snapshot -> snapshot.fit().rSquared()).average().orElse(0.0);
-        double regimeScore = side.scoreSign() * confidence * consensus * quality;
-        double medianOffset = percentile(dominantFits, 0.5);
+        double regimeScore = dominantSide.scoreSign() * confidence * consensus * quality;
         double firstQuartile = percentile(dominantFits, 0.25);
+        double medianOffset = percentile(dominantFits, 0.5);
         double thirdQuartile = percentile(dominantFits, 0.75);
 
         return new InstrumentSnapshot(definition, latestBarDate(series), series.getBarCount(), returnOver(close, 20),
-                returnOver(close, 60), returnOver(close, 120), returnOver(close, 252), side, regimeScore, qualifiedFits,
-                actionableFits, bubbleFits, crashFits, confidence, consensus, quality, medianOffset,
-                Double.isNaN(firstQuartile) ? Double.NaN : thirdQuartile - firstQuartile, proximity(medianOffset),
-                fraction(actionableFits, fits.size()), fits);
+                returnOver(close, 60), returnOver(close, 120), returnOver(close, 252), rawSide(regimeScore),
+                regimeScore, qualifiedFits, actionableFits, bubbleFits, crashFits, confidence, consensus, quality,
+                firstQuartile, medianOffset, thirdQuartile, fraction(actionableFits, fits.size()), fits,
+                SectorLPPLBenchmark.Metrics.unavailable());
     }
 
     static List<GroupSnapshot> aggregate(List<InstrumentSnapshot> instruments) {
+        return aggregate(instruments, Map.of());
+    }
+
+    static List<GroupSnapshot> aggregate(List<InstrumentSnapshot> instruments,
+            Map<String, SectorLPPLBenchmark.Metrics> groupMetrics) {
         List<InstrumentSnapshot> safeInstruments = instruments == null ? List.of() : List.copyOf(instruments);
         List<GroupSnapshot> groups = new ArrayList<>(GROUPS.size());
         for (CoverageGroup definition : GROUPS) {
@@ -178,104 +210,172 @@ public final class SectorLPPLExhaustionMapDemo {
             if (lenses.size() != 3) {
                 throw new IllegalArgumentException(definition.name() + " requires exactly three ETF lenses");
             }
-            double spectrumScore = median(lenses.stream().mapToDouble(InstrumentSnapshot::regimeScore).toArray());
+            double rawScore = median(lenses.stream().mapToDouble(InstrumentSnapshot::rawRegimeScore).toArray());
+            LPPLExhaustionSide rawSide = rawSide(rawScore);
+            List<InstrumentSnapshot> agreeing = lenses.stream()
+                    .filter(snapshot -> snapshot.rawSide() == rawSide)
+                    .toList();
+            double[] horizons = agreeing.stream()
+                    .mapToDouble(InstrumentSnapshot::criticalHorizonSessionsMedian)
+                    .filter(Double::isFinite)
+                    .sorted()
+                    .toArray();
             int bubbleLenses = (int) lenses.stream()
-                    .filter(snapshot -> snapshot.side() == LPPLExhaustionSide.BUBBLE_EXHAUSTION)
+                    .filter(snapshot -> snapshot.benchmark().qualified())
+                    .filter(snapshot -> snapshot.benchmark().qualifiedSide() == LPPLExhaustionSide.BUBBLE_EXHAUSTION)
                     .count();
             int crashLenses = (int) lenses.stream()
-                    .filter(snapshot -> snapshot.side() == LPPLExhaustionSide.CRASH_EXHAUSTION)
+                    .filter(snapshot -> snapshot.benchmark().qualified())
+                    .filter(snapshot -> snapshot.benchmark().qualifiedSide() == LPPLExhaustionSide.CRASH_EXHAUSTION)
                     .count();
-            LPPLExhaustionSide side = spectrumScore < 0.0 ? LPPLExhaustionSide.BUBBLE_EXHAUSTION
-                    : spectrumScore > 0.0 ? LPPLExhaustionSide.CRASH_EXHAUSTION : LPPLExhaustionSide.NONE;
-            List<InstrumentSnapshot> agreeing = lenses.stream().filter(snapshot -> snapshot.side() == side).toList();
-            double medianOffset = median(agreeing.stream()
-                    .mapToDouble(InstrumentSnapshot::medianCriticalOffset)
-                    .filter(Double::isFinite)
-                    .toArray());
-            groups.add(new GroupSnapshot(definition.type(), definition.name(), latestDate(lenses), spectrumScore,
-                    band(spectrumScore), agreement(bubbleLenses, crashLenses), side, proximity(medianOffset),
-                    medianOffset, lens(lenses, Lens.PRIMARY), lens(lenses, Lens.EQUAL_WEIGHT),
-                    lens(lenses, Lens.ALTERNATIVE)));
+            SectorLPPLBenchmark.Metrics metrics = groupMetrics.getOrDefault(definition.name(),
+                    SectorLPPLBenchmark.Metrics.unavailable());
+            groups.add(new GroupSnapshot(definition.type(), definition.name(), latestDate(lenses), rawScore, rawSide,
+                    percentile(horizons, 0.25), percentile(horizons, 0.5), percentile(horizons, 0.75),
+                    median(lenses.stream().mapToDouble(InstrumentSnapshot::nearTermActionableFitShare).toArray()),
+                    Math.max(bubbleLenses, crashLenses), lenses.size(), bubbleLenses > 0 && crashLenses > 0, metrics,
+                    lens(lenses, Lens.PRIMARY), lens(lenses, Lens.EQUAL_WEIGHT), lens(lenses, Lens.ALTERNATIVE)));
         }
-        groups.sort(Comparator.comparingDouble(GroupSnapshot::spectrumScore).thenComparing(GroupSnapshot::group));
+        groups.sort(Comparator.comparingInt(SectorLPPLExhaustionMapDemo::displayOrder)
+                .thenComparingDouble(GroupSnapshot::rawRegimeScore)
+                .thenComparing(GroupSnapshot::group));
         return List.copyOf(groups);
     }
 
+    private static List<InstrumentSnapshot> applyBenchmark(List<InstrumentSnapshot> instruments,
+            Map<String, SectorLPPLBenchmark.Metrics> metrics) {
+        return instruments.stream()
+                .map(snapshot -> snapshot.withBenchmark(metrics.getOrDefault(snapshot.definition().ticker(),
+                        SectorLPPLBenchmark.Metrics.unavailable())))
+                .toList();
+    }
+
     static String renderReport(List<GroupSnapshot> groups, List<InstrumentSnapshot> instruments,
-            AnalysisProfile profile, SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary) {
+            AnalysisProfile profile, SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary,
+            SectorLPPLBenchmark.Result benchmark) {
         StringBuilder builder = new StringBuilder();
         builder.append("LPPL sector and sub-sector exhaustion map\n")
-                .append("Negative scores indicate bubble exhaustion; positive scores indicate crash exhaustion.\n\n")
+                .append("Negative raw scores indicate bubble exhaustion; positive raw scores indicate crash exhaustion.\n")
+                .append("A benchmark-qualified side of NONE means no calibrated LPPL conclusion, not fair value.\n\n")
                 .append(renderGroupCsv(groups))
                 .append('\n')
                 .append(renderProfile(profile))
+                .append('\n')
+                .append(benchmark.renderSummary())
                 .append('\n');
         if (refreshSummary != null) {
             builder.append(renderRefreshSummary(refreshSummary)).append('\n');
         }
-        builder.append("Interpretation\n");
+        builder.append("Numeric interpretation\n");
         for (GroupSnapshot group : groups) {
             builder.append(group.group())
-                    .append(": ")
-                    .append(group.band())
-                    .append(" score=")
-                    .append(format(group.spectrumScore()))
-                    .append(" agreement=")
-                    .append(group.agreement())
-                    .append(" proximity=")
-                    .append(group.proximity())
-                    .append(" tc_median=")
-                    .append(formatNullable(group.medianCriticalOffset()))
+                    .append(": raw_score=")
+                    .append(format(group.rawRegimeScore()))
+                    .append(" raw_side=")
+                    .append(sideLabel(group.rawSide()))
+                    .append(" qualified_side=")
+                    .append(group.benchmarkQualifiedSide())
+                    .append(" p=")
+                    .append(formatNullable(group.benchmark().empiricalNullPValue()))
+                    .append(" horizon_sessions_q1/median/q3=")
+                    .append(formatNullable(group.criticalHorizonSessionsQ1()))
+                    .append('/')
+                    .append(formatNullable(group.criticalHorizonSessionsMedian()))
+                    .append('/')
+                    .append(formatNullable(group.criticalHorizonSessionsQ3()))
+                    .append(" actionable_share=")
+                    .append(format(group.nearTermActionableFitShare()))
                     .append(" lenses=")
+                    .append(group.lensSupportCount())
+                    .append('/')
+                    .append(group.lensCount())
+                    .append(" conflicted=")
+                    .append(group.lensConflicted())
+                    .append(" [")
                     .append(formatLens(group.primary()))
                     .append("; ")
                     .append(formatLens(group.equalWeight()))
                     .append("; ")
                     .append(formatLens(group.alternative()))
-                    .append('\n');
+                    .append("]\n");
         }
-        long developing = instruments.stream()
-                .filter(snapshot -> snapshot.side() != LPPLExhaustionSide.NONE && snapshot.actionableFits() == 0)
+        long outsideActionRange = instruments.stream()
+                .filter(snapshot -> snapshot.rawSide() != LPPLExhaustionSide.NONE && snapshot.actionableFits() == 0)
                 .count();
-        builder.append("Qualified regimes outside the near-term action range remain visible: ")
-                .append(developing)
+        builder.append("Raw structural regimes outside the near-term action range: ")
+                .append(outsideActionRange)
                 .append(" instrument(s).\n");
         return builder.toString();
     }
 
     static String renderGroupCsv(List<GroupSnapshot> groups) {
         StringBuilder builder = new StringBuilder(
-                "date,type,group,spectrum_score,spectrum_band,lens_agreement,side,proximity,median_critical_offset,primary_ticker,primary_score,equal_weight_ticker,equal_weight_score,alternative_ticker,alternative_score\n");
+                "date,type,group,raw_regime_score,raw_side,critical_horizon_sessions_q1,critical_horizon_sessions_median,critical_horizon_sessions_q3,near_term_actionable_fit_share,lens_support_count,lens_count,lens_conflicted,baseline_available,baseline_qualified,benchmark_qualified_side,empirical_null_p_value,null_signal_rate,estimated_gated_false_positive_rate,trend_control_score,beats_trend_control,rolling_snapshot_count,historical_raw_signal_rate,historical_current_side_rate,current_abs_score_percentile,side_change_count,current_same_side_run_sessions,primary_ticker,primary_score,equal_weight_ticker,equal_weight_score,alternative_ticker,alternative_score\n");
         for (GroupSnapshot group : groups) {
+            SectorLPPLBenchmark.Metrics benchmark = group.benchmark();
             builder.append(group.latestDate())
                     .append(',')
                     .append(group.type())
                     .append(',')
                     .append(group.group())
                     .append(',')
-                    .append(format(group.spectrumScore()))
+                    .append(format(group.rawRegimeScore()))
                     .append(',')
-                    .append(group.band())
+                    .append(sideLabel(group.rawSide()))
                     .append(',')
-                    .append(group.agreement())
+                    .append(formatNullable(group.criticalHorizonSessionsQ1()))
                     .append(',')
-                    .append(group.side())
+                    .append(formatNullable(group.criticalHorizonSessionsMedian()))
                     .append(',')
-                    .append(group.proximity())
+                    .append(formatNullable(group.criticalHorizonSessionsQ3()))
                     .append(',')
-                    .append(formatNullable(group.medianCriticalOffset()))
+                    .append(format(group.nearTermActionableFitShare()))
+                    .append(',')
+                    .append(group.lensSupportCount())
+                    .append(',')
+                    .append(group.lensCount())
+                    .append(',')
+                    .append(group.lensConflicted())
+                    .append(',')
+                    .append(benchmark.available())
+                    .append(',')
+                    .append(benchmark.qualified())
+                    .append(',')
+                    .append(group.benchmarkQualifiedSide())
+                    .append(',')
+                    .append(formatNullable(benchmark.empiricalNullPValue()))
+                    .append(',')
+                    .append(formatNullable(benchmark.nullSignalRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.estimatedGatedFalsePositiveRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.trendControlScore()))
+                    .append(',')
+                    .append(benchmark.beatsTrendControl())
+                    .append(',')
+                    .append(benchmark.rollingSnapshotCount())
+                    .append(',')
+                    .append(formatNullable(benchmark.historicalRawSignalRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.historicalCurrentSideRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.currentAbsScorePercentile()))
+                    .append(',')
+                    .append(benchmark.sideChangeCount())
+                    .append(',')
+                    .append(benchmark.currentSameSideRunSessions())
                     .append(',')
                     .append(group.primary().definition().ticker())
                     .append(',')
-                    .append(format(group.primary().regimeScore()))
+                    .append(format(group.primary().rawRegimeScore()))
                     .append(',')
                     .append(group.equalWeight().definition().ticker())
                     .append(',')
-                    .append(format(group.equalWeight().regimeScore()))
+                    .append(format(group.equalWeight().rawRegimeScore()))
                     .append(',')
                     .append(group.alternative().definition().ticker())
                     .append(',')
-                    .append(format(group.alternative().regimeScore()))
+                    .append(format(group.alternative().rawRegimeScore()))
                     .append('\n');
         }
         return builder.toString();
@@ -283,9 +383,10 @@ public final class SectorLPPLExhaustionMapDemo {
 
     static String renderInstrumentCsv(List<InstrumentSnapshot> instruments) {
         StringBuilder builder = new StringBuilder(
-                "date,type,group,ticker,lens,weighting,universe,bars,return_20,return_60,return_120,return_252,side,regime_score,qualified_fits,actionable_fits,bubble_fits,crash_fits,regime_confidence,directional_consensus,average_r_squared,median_critical_offset,critical_offset_iqr,proximity,near_term_fit_share\n");
+                "date,type,group,ticker,lens,weighting,universe,bars,return_20,return_60,return_120,return_252,raw_side,raw_regime_score,qualified_fits,actionable_fits,bubble_fits,crash_fits,regime_confidence,directional_consensus,average_r_squared,critical_horizon_sessions_q1,critical_horizon_sessions_median,critical_horizon_sessions_q3,near_term_actionable_fit_share,baseline_available,baseline_qualified,benchmark_qualified_side,empirical_null_p_value,null_signal_rate,estimated_gated_false_positive_rate,trend_control_score,beats_trend_control,rolling_snapshot_count,historical_raw_signal_rate,historical_current_side_rate,current_abs_score_percentile,side_change_count,current_same_side_run_sessions\n");
         for (InstrumentSnapshot snapshot : instruments) {
             InstrumentDefinition definition = snapshot.definition();
+            SectorLPPLBenchmark.Metrics benchmark = snapshot.benchmark();
             builder.append(snapshot.latestDate())
                     .append(',')
                     .append(definition.type())
@@ -310,9 +411,9 @@ public final class SectorLPPLExhaustionMapDemo {
                     .append(',')
                     .append(formatNullable(snapshot.return252()))
                     .append(',')
-                    .append(snapshot.side())
+                    .append(sideLabel(snapshot.rawSide()))
                     .append(',')
-                    .append(format(snapshot.regimeScore()))
+                    .append(format(snapshot.rawRegimeScore()))
                     .append(',')
                     .append(snapshot.qualifiedFits())
                     .append(',')
@@ -328,13 +429,41 @@ public final class SectorLPPLExhaustionMapDemo {
                     .append(',')
                     .append(format(snapshot.averageRSquared()))
                     .append(',')
-                    .append(formatNullable(snapshot.medianCriticalOffset()))
+                    .append(formatNullable(snapshot.criticalHorizonSessionsQ1()))
                     .append(',')
-                    .append(formatNullable(snapshot.criticalOffsetIqr()))
+                    .append(formatNullable(snapshot.criticalHorizonSessionsMedian()))
                     .append(',')
-                    .append(snapshot.proximity())
+                    .append(formatNullable(snapshot.criticalHorizonSessionsQ3()))
                     .append(',')
-                    .append(format(snapshot.nearTermFitShare()))
+                    .append(format(snapshot.nearTermActionableFitShare()))
+                    .append(',')
+                    .append(benchmark.available())
+                    .append(',')
+                    .append(benchmark.qualified())
+                    .append(',')
+                    .append(snapshot.benchmarkQualifiedSide())
+                    .append(',')
+                    .append(formatNullable(benchmark.empiricalNullPValue()))
+                    .append(',')
+                    .append(formatNullable(benchmark.nullSignalRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.estimatedGatedFalsePositiveRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.trendControlScore()))
+                    .append(',')
+                    .append(benchmark.beatsTrendControl())
+                    .append(',')
+                    .append(benchmark.rollingSnapshotCount())
+                    .append(',')
+                    .append(formatNullable(benchmark.historicalRawSignalRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.historicalCurrentSideRate()))
+                    .append(',')
+                    .append(formatNullable(benchmark.currentAbsScorePercentile()))
+                    .append(',')
+                    .append(benchmark.sideChangeCount())
+                    .append(',')
+                    .append(benchmark.currentSameSideRunSessions())
                     .append('\n');
         }
         return builder.toString();
@@ -421,8 +550,8 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     private static void writeArtifacts(Path outputDirectory, String report, List<GroupSnapshot> groups,
-            List<InstrumentSnapshot> instruments, SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary)
-            throws IOException {
+            List<InstrumentSnapshot> instruments, SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary,
+            SectorLPPLBenchmark.Result benchmark) throws IOException {
         Files.createDirectories(outputDirectory);
         Files.writeString(outputDirectory.resolve("lppl-exhaustion-map.txt"), report, StandardCharsets.UTF_8);
         Files.writeString(outputDirectory.resolve("lppl-group-spectrum.csv"), renderGroupCsv(groups),
@@ -431,6 +560,7 @@ public final class SectorLPPLExhaustionMapDemo {
                 StandardCharsets.UTF_8);
         Files.writeString(outputDirectory.resolve("lppl-fit-details.csv"), renderFitCsv(instruments),
                 StandardCharsets.UTF_8);
+        benchmark.writeArtifacts(outputDirectory);
         if (refreshSummary != null) {
             Files.writeString(outputDirectory.resolve("lppl-reference-refresh.csv"),
                     renderRefreshSummary(refreshSummary), StandardCharsets.UTF_8);
@@ -506,24 +636,22 @@ public final class SectorLPPLExhaustionMapDemo {
                 percentile);
     }
 
-    private static double percentile(double[] values, double percentile) {
+    static double percentile(double[] values, double percentile) {
         if (values.length == 0) {
             return Double.NaN;
         }
-        double position = percentile * (values.length - 1);
+        double[] sorted = Arrays.copyOf(values, values.length);
+        Arrays.sort(sorted);
+        double position = percentile * (sorted.length - 1);
         int lower = (int) Math.floor(position);
         int upper = (int) Math.ceil(position);
         if (lower == upper) {
-            return values[lower];
+            return sorted[lower];
         }
-        return values[lower] + (values[upper] - values[lower]) * (position - lower);
+        return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
     }
 
-    private static double median(double[] values) {
-        if (values.length == 0) {
-            return Double.NaN;
-        }
-        Arrays.sort(values);
+    static double median(double[] values) {
         return percentile(values, 0.5);
     }
 
@@ -531,52 +659,29 @@ public final class SectorLPPLExhaustionMapDemo {
         return denominator == 0 ? 0.0 : numerator / (double) denominator;
     }
 
-    private static Proximity proximity(double offset) {
-        if (!Double.isFinite(offset)) {
-            return Proximity.NONE;
+    static LPPLExhaustionSide rawSide(double score) {
+        if (score <= -RAW_SIDE_THRESHOLD) {
+            return LPPLExhaustionSide.BUBBLE_EXHAUSTION;
         }
-        if (offset <= 30.0) {
-            return Proximity.IMMINENT;
+        if (score >= RAW_SIDE_THRESHOLD) {
+            return LPPLExhaustionSide.CRASH_EXHAUSTION;
         }
-        if (offset <= 90.0) {
-            return Proximity.APPROACHING;
-        }
-        return Proximity.DEVELOPING;
+        return LPPLExhaustionSide.NONE;
     }
 
-    private static SpectrumBand band(double score) {
-        if (score <= -0.60) {
-            return SpectrumBand.STRONG_BUBBLE;
-        }
-        if (score <= -0.25) {
-            return SpectrumBand.BUBBLE;
-        }
-        if (score <= -0.10) {
-            return SpectrumBand.WEAK_BUBBLE;
-        }
-        if (score < 0.10) {
-            return SpectrumBand.NEUTRAL_OR_MIXED;
-        }
-        if (score < 0.25) {
-            return SpectrumBand.WEAK_CRASH;
-        }
-        if (score < 0.60) {
-            return SpectrumBand.CRASH;
-        }
-        return SpectrumBand.STRONG_CRASH;
-    }
-
-    private static LensAgreement agreement(int bubbleLenses, int crashLenses) {
-        if (bubbleLenses > 0 && crashLenses > 0) {
-            return LensAgreement.CONFLICTED;
-        }
-        int agreeing = Math.max(bubbleLenses, crashLenses);
-        return switch (agreeing) {
-        case 3 -> LensAgreement.THREE_OF_THREE;
-        case 2 -> LensAgreement.TWO_OF_THREE;
-        case 1 -> LensAgreement.ONE_OF_THREE;
-        default -> LensAgreement.NO_SIGNAL;
+    static String sideLabel(LPPLExhaustionSide side) {
+        return switch (side) {
+        case BUBBLE_EXHAUSTION -> "BUBBLE";
+        case CRASH_EXHAUSTION -> "CRASH";
+        case NONE -> "NONE";
         };
+    }
+
+    private static int displayOrder(GroupSnapshot group) {
+        if (!group.benchmark().qualified()) {
+            return 1;
+        }
+        return group.benchmark().qualifiedSide() == LPPLExhaustionSide.BUBBLE_EXHAUSTION ? 0 : 2;
     }
 
     private static LocalDate latestBarDate(BarSeries series) {
@@ -593,15 +698,15 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     private static String formatLens(InstrumentSnapshot snapshot) {
-        return snapshot.definition().ticker() + "=" + format(snapshot.regimeScore()) + "/" + snapshot.side() + "/"
-                + snapshot.proximity();
+        return snapshot.definition().ticker() + "=" + format(snapshot.rawRegimeScore()) + "/"
+                + sideLabel(snapshot.rawSide()) + "/p=" + formatNullable(snapshot.benchmark().empiricalNullPValue());
     }
 
-    private static String format(double value) {
+    static String format(double value) {
         return String.format(Locale.ROOT, "%.4f", value);
     }
 
-    private static String formatNullable(double value) {
+    static String formatNullable(double value) {
         return Double.isFinite(value) ? format(value) : "NA";
     }
 
@@ -621,30 +726,6 @@ public final class SectorLPPLExhaustionMapDemo {
         CAP_WEIGHTED, EQUAL_WEIGHTED, CONCENTRATED_CAP_WEIGHTED, MODIFIED_EQUAL_WEIGHTED, MODIFIED_CAP_WEIGHTED
     }
 
-    enum Proximity {
-        IMMINENT, APPROACHING, DEVELOPING, NONE
-    }
-
-    enum SpectrumBand {
-        STRONG_BUBBLE, BUBBLE, WEAK_BUBBLE, NEUTRAL_OR_MIXED, WEAK_CRASH, CRASH, STRONG_CRASH
-    }
-
-    enum LensAgreement {
-        THREE_OF_THREE("3/3"), TWO_OF_THREE("2/3"), ONE_OF_THREE("1/3"), CONFLICTED("CONFLICTED"),
-        NO_SIGNAL("NO_SIGNAL");
-
-        private final String label;
-
-        LensAgreement(String label) {
-            this.label = label;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
-    }
-
     record CoverageGroup(CoverageType type, String name, List<InstrumentDefinition> instruments) {
 
         CoverageGroup {
@@ -657,6 +738,9 @@ public final class SectorLPPLExhaustionMapDemo {
 
     record InstrumentDefinition(CoverageType type, String group, String ticker, Lens lens, Weighting weighting,
             String universe, LocalDate historyStart, String resource) {
+    }
+
+    record LoadedInstrument(InstrumentDefinition definition, BarSeries series) {
     }
 
     record AnalysisProfile(int[] windows, int criticalOffsetStep, int activeMinCriticalOffset,
@@ -693,35 +777,59 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     record InstrumentSnapshot(InstrumentDefinition definition, LocalDate latestDate, int bars, double return20,
-            double return60, double return120, double return252, LPPLExhaustionSide side, double regimeScore,
+            double return60, double return120, double return252, LPPLExhaustionSide rawSide, double rawRegimeScore,
             int qualifiedFits, int actionableFits, int bubbleFits, int crashFits, double regimeConfidence,
-            double directionalConsensus, double averageRSquared, double medianCriticalOffset, double criticalOffsetIqr,
-            Proximity proximity, double nearTermFitShare, List<FitSnapshot> fits) {
+            double directionalConsensus, double averageRSquared, double criticalHorizonSessionsQ1,
+            double criticalHorizonSessionsMedian, double criticalHorizonSessionsQ3, double nearTermActionableFitShare,
+            List<FitSnapshot> fits, SectorLPPLBenchmark.Metrics benchmark) {
 
         InstrumentSnapshot {
             fits = List.copyOf(fits);
         }
+
+        InstrumentSnapshot withBenchmark(SectorLPPLBenchmark.Metrics replacement) {
+            return new InstrumentSnapshot(definition, latestDate, bars, return20, return60, return120, return252,
+                    rawSide, rawRegimeScore, qualifiedFits, actionableFits, bubbleFits, crashFits, regimeConfidence,
+                    directionalConsensus, averageRSquared, criticalHorizonSessionsQ1, criticalHorizonSessionsMedian,
+                    criticalHorizonSessionsQ3, nearTermActionableFitShare, fits, replacement);
+        }
+
+        String benchmarkQualifiedSide() {
+            return benchmark.qualified() ? sideLabel(benchmark.qualifiedSide()) : "NONE";
+        }
     }
 
-    record GroupSnapshot(CoverageType type, String group, LocalDate latestDate, double spectrumScore, SpectrumBand band,
-            LensAgreement agreement, LPPLExhaustionSide side, Proximity proximity, double medianCriticalOffset,
-            InstrumentSnapshot primary, InstrumentSnapshot equalWeight, InstrumentSnapshot alternative) {
+    record GroupSnapshot(CoverageType type, String group, LocalDate latestDate, double rawRegimeScore,
+            LPPLExhaustionSide rawSide, double criticalHorizonSessionsQ1, double criticalHorizonSessionsMedian,
+            double criticalHorizonSessionsQ3, double nearTermActionableFitShare, int lensSupportCount, int lensCount,
+            boolean lensConflicted, SectorLPPLBenchmark.Metrics benchmark, InstrumentSnapshot primary,
+            InstrumentSnapshot equalWeight, InstrumentSnapshot alternative) {
+
+        String benchmarkQualifiedSide() {
+            return benchmark.qualified() ? sideLabel(benchmark.qualifiedSide()) : "NONE";
+        }
     }
 
     record DemoRun(List<GroupSnapshot> groups, List<InstrumentSnapshot> instruments,
-            SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary, String report) {
+            SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary, SectorLPPLBenchmark.Result benchmark,
+            String report) {
     }
 
-    record DemoOptions(Path outputDirectory, boolean refresh, boolean updateResources, boolean help) {
+    record DemoOptions(Path outputDirectory, boolean refresh, boolean updateResources, boolean benchmark,
+            boolean help) {
 
         DemoOptions {
             outputDirectory = outputDirectory.toAbsolutePath().normalize();
+            if (updateResources && !benchmark) {
+                throw new IllegalArgumentException("--update-resources requires --benchmark\n" + USAGE);
+            }
         }
 
         static DemoOptions parse(String[] args) {
             Path output = DEFAULT_OUTPUT_DIRECTORY;
             boolean refresh = false;
             boolean updateResources = false;
+            boolean benchmark = false;
             boolean help = false;
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
@@ -730,6 +838,7 @@ public final class SectorLPPLExhaustionMapDemo {
                     refresh = true;
                     updateResources = true;
                 }
+                case "--benchmark" -> benchmark = true;
                 case "--output-dir" -> {
                     if (++i >= args.length) {
                         throw new IllegalArgumentException("--output-dir requires a path\n" + USAGE);
@@ -740,7 +849,7 @@ public final class SectorLPPLExhaustionMapDemo {
                 default -> throw new IllegalArgumentException("Unknown argument: " + args[i] + "\n" + USAGE);
                 }
             }
-            return new DemoOptions(output, refresh, updateResources, help);
+            return new DemoOptions(output, refresh, updateResources, benchmark, help);
         }
     }
 }
