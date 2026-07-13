@@ -133,6 +133,10 @@ class SectorLPPLBenchmarkTest {
                 metadata.profileFingerprint(), 20260710L, 199, 21, 750, 0.10, 0.05);
         assertFalse(SectorLPPLBenchmark.matches(SectorLPPLBenchmark.Manifest.from(wrongData, instruments, groups),
                 loaded, profile));
+        SectorLPPLBenchmark.Metadata incomplete = new SectorLPPLBenchmark.Metadata(1, "2026-07-10", null,
+                metadata.profileFingerprint(), 20260710L, 199, 21, 750, 0.10, 0.05);
+        assertFalse(SectorLPPLBenchmark.matches(SectorLPPLBenchmark.Manifest.from(incomplete, instruments, groups),
+                loaded, profile));
     }
 
     @Test
