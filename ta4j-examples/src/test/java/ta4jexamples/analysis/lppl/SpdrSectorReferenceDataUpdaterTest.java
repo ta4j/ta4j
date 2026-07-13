@@ -66,8 +66,13 @@ class SpdrSectorReferenceDataUpdaterTest {
         String nonPositive = """
                 {"candles":[{"start":"100","open":"1","high":"1","low":"1","close":"0","volume":"10"}]}
                 """;
+        String invalidOhlcEnvelope = """
+                {"candles":[{"start":"100","open":"2","high":"1","low":"0.5","close":"1","volume":"10"}]}
+                """;
         assertThrows(IllegalArgumentException.class,
                 () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(nonPositive));
+        assertThrows(IllegalArgumentException.class,
+                () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(invalidOhlcEnvelope));
     }
 
     @Test

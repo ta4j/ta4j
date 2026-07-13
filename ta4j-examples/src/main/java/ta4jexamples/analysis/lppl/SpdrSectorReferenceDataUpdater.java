@@ -378,6 +378,10 @@ final class SpdrSectorReferenceDataUpdater {
             low = normalizedPrice(low, "low");
             close = normalizedPrice(close, "close");
             volume = normalizedVolume(volume);
+            if (high.compareTo(low) < 0 || high.compareTo(open) < 0 || high.compareTo(close) < 0
+                    || low.compareTo(open) > 0 || low.compareTo(close) > 0) {
+                throw new IllegalArgumentException("SPDR reference OHLC values must satisfy low <= open/close <= high");
+            }
         }
 
         static ReferenceBar fromCoinbaseStyleJson(JsonObject candle) throws IOException {
