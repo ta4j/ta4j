@@ -275,7 +275,8 @@ public final class SpdrSectorLPPLRotationDemo {
                     .append(',')
                     .append(refresh.skipped())
                     .append(',')
-                    .append(refresh.message() == null ? "" : refresh.message().replace(',', ';'))
+                    .append(refresh.message() == null ? ""
+                            : refresh.message().replace(',', ';').replace('\n', ' ').replace('\r', ' '))
                     .append('\n');
         }
         return builder.toString();

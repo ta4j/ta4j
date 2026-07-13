@@ -131,7 +131,7 @@ class SpdrSectorLPPLRotationDemoTest {
     void refreshSummaryRowsMatchTheDocumentedColumns() {
         SpdrSectorReferenceDataUpdater.TickerRefresh refresh = new SpdrSectorReferenceDataUpdater.TickerRefresh("XLI",
                 "Industrials", tempDirectory.resolve("XLI.json"), LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 10),
-                582, 53, 632, 50, 2, false, "");
+                582, 53, 632, 50, 2, false, "network,\ntimeout\r");
         SpdrSectorReferenceDataUpdater.RefreshSummary summary = new SpdrSectorReferenceDataUpdater.RefreshSummary(
                 List.of(refresh), tempDirectory, tempDirectory.resolve("responses"));
 
@@ -141,9 +141,8 @@ class SpdrSectorLPPLRotationDemoTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertArrayEquals(
-                new String[] { "XLI", "2026-07-10", "2026-07-10", "582", "53", "632", "50", "2", "false", "" },
-                row.split(",", -1));
+        assertArrayEquals(new String[] { "XLI", "2026-07-10", "2026-07-10", "582", "53", "632", "50", "2", "false",
+                "network; timeout " }, row.split(",", -1));
     }
 
     @Test

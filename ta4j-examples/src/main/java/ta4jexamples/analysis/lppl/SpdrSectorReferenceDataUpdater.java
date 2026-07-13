@@ -105,6 +105,8 @@ final class SpdrSectorReferenceDataUpdater {
                     .toList();
             MergeResult merge = replaceAdjustedHistory(existingBars, fetchedBars);
             writeReferenceBars(outputPath, merge.bars());
+            LOG.info("Refreshed SPDR reference data for {}: added={} revised={} bars={}", definition.ticker(),
+                    merge.addedBars(), merge.revisedBars(), merge.bars().size());
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
                     merge.lastDate(), existingBars.size(), fetchedBars.size(), merge.bars().size(), merge.addedBars(),
                     merge.revisedBars(), false, "");
