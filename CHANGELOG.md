@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.23.0 (2026-07-13)
+
 ### Added
 - **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. Advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SpdrSectorLPPLRotationDemo.main` runs an offline adjusted-data sector report with explicit local refresh options.
 - **Causal swing detection for sharp, rounded, and consensus-confirmed turns**: Added `SwingDetectors.slopeChange(window)` with balanced persistence and half-ATR filtering plus `SwingDetectors.consensus(...)` for tolerant quorum agreement, while ZigZag detection now locates pivots from intrabar highs/lows, confirms reversals from closes with pivot-anchored thresholds, derives matching high/low swing sources directly from state, and resolves fractal plateaus to one deterministic midpoint.
