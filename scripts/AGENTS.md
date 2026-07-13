@@ -4,7 +4,7 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 
 ## Build script contract
 
-- `run-full-build-quiet.sh` and `run-full-build-quiet.ps1` default to the hosted PR gate: repository preflight checks plus non-mutating Maven `clean license:check formatter:validate verify` across all non-demo tags. Use `--goals "goal..."` only when intentionally running a focused Maven goal set; focused invocations skip repository preflight checks.
+- `run-full-build-quiet.sh` and `run-full-build-quiet.ps1` default to the local contributor gate: repository preflight checks plus mutating Maven `clean license:format formatter:format verify` across all non-demo tags. Hosted PR CI must use `--validate-only` for non-mutating `clean license:check formatter:validate verify`. Use `--goals "goal..."` only when intentionally running a focused Maven goal set; focused invocations skip repository preflight checks.
 - `run-full-build-quiet.sh` must enforce a default 3-minute timeout (`QUIET_BUILD_TIMEOUT_SECONDS` can override). `QUIET_BUILD_HEARTBEAT_SECONDS` controls periodic still-running output.
 - Preserve quiet-build behavior: full log under `.agents/logs/` and concise aggregated stdout with command banner, heartbeat, build result, reactor/test summaries, bounded warning/error/exception/unexpected-output digests, and log path.
 - Keep Maven argument pass-through intact for focused modules, tagged tests, and quality-tool flags, for example `scripts/run-full-build-quiet.sh -- -pl ta4j-core` and `scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration`.

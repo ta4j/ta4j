@@ -45,5 +45,5 @@ jobs:
           go-version: stable
           cache: false
 
-      - name: Run the canonical local quality gate
-        run: xvfb-run scripts/run-full-build-quiet.sh
+      - name: Run the canonical quality gate without modifying the checkout
+        run: xvfb-run scripts/run-full-build-quiet.sh --validate-only

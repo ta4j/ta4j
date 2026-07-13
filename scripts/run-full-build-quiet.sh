@@ -122,15 +122,17 @@ MAVEN_FLAGS=(
 
 usage() {
     cat <<'EOF'
-Usage: scripts/run-full-build-quiet.sh [--preflight-only] [--goals "goal..."] [--] [maven-args...]
+Usage: scripts/run-full-build-quiet.sh [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
-The default invocation runs the same repository-owned checks and Maven gate as
-hosted PR CI. Maven output is filtered and the complete log is written to
-.agents/logs/full-build-*.log. Explicit --goals invocations remain focused and
-skip repository preflight checks.
+The default local invocation repairs license headers and formatting before it
+runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
+--validate-only to reject those defects without modifying its checkout. Maven
+output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+Explicit --goals invocations remain focused and skip repository preflight checks.
 
 Examples:
   scripts/run-full-build-quiet.sh
+  scripts/run-full-build-quiet.sh --validate-only
   scripts/run-full-build-quiet.sh --preflight-only
   scripts/run-full-build-quiet.sh -- -pl ta4j-core
   scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
@@ -161,10 +163,11 @@ run_repository_preflight() {
     done
 }
 
-GOALS=(clean license:check formatter:validate verify)
+GOALS=(clean license:format formatter:format verify)
 EXTRA_MAVEN_ARGS=()
 DEFAULT_GATE="true"
 PREFLIGHT_ONLY="false"
+VALIDATE_ONLY="false"
 while (($# > 0)); do
     case "$1" in
         -h|--help)
@@ -195,6 +198,10 @@ while (($# > 0)); do
             PREFLIGHT_ONLY="true"
             shift
             ;;
+        --validate-only)
+            VALIDATE_ONLY="true"
+            shift
+            ;;
         --)
             shift
             EXTRA_MAVEN_ARGS+=("$@")
@@ -206,6 +213,15 @@ while (($# > 0)); do
             ;;
     esac
 done
+
+if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
+    echo "--validate-only cannot be combined with --goals" >&2
+    exit 2
+fi
+
+if [[ "$VALIDATE_ONLY" == "true" ]]; then
+    GOALS=(clean license:check formatter:validate verify)
+fi
 
 if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
     run_repository_preflight

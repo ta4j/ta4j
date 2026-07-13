@@ -4,16 +4,19 @@ $ErrorActionPreference = "Stop"
 
 function Show-Usage {
     @"
-Usage: scripts/run-full-build-quiet.ps1 [--preflight-only] [--goals "goal..."] [--] [maven-args...]
+Usage: scripts/run-full-build-quiet.ps1 [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
-The default invocation runs the same repository-owned checks and Maven gate as
-hosted PR CI. Maven output is filtered and the complete log is written to
-.agents/logs/full-build-*.log. Explicit --goals invocations remain focused and
-skip repository preflight checks. The default gate and --preflight-only require
-Bash; on Windows, install Git for Windows and include Git Bash on PATH.
+The default local invocation repairs license headers and formatting before it
+runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
+--validate-only to reject those defects without modifying its checkout. Maven
+output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+Explicit --goals invocations remain focused and skip repository preflight checks.
+The default gate and --preflight-only require Bash; on Windows, install Git for
+Windows and include Git Bash on PATH.
 
 Examples:
   scripts/run-full-build-quiet.ps1
+  scripts/run-full-build-quiet.ps1 --validate-only
   scripts/run-full-build-quiet.ps1 --preflight-only
   scripts/run-full-build-quiet.ps1 -- -pl ta4j-core
   scripts/run-full-build-quiet.ps1 --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
@@ -301,10 +304,11 @@ function Write-FailureDigest {
     }
 }
 
-$goals = @("clean", "license:check", "formatter:validate", "verify")
+$goals = @("clean", "license:format", "formatter:format", "verify")
 $mavenArgs = @()
 $defaultGate = $true
 $preflightOnly = $false
+$validateOnly = $false
 $index = 0
 while ($index -lt $args.Count) {
     $arg = $args[$index]
@@ -328,6 +332,9 @@ while ($index -lt $args.Count) {
         '^--preflight-only$' {
             $preflightOnly = $true
         }
+        '^--validate-only$' {
+            $validateOnly = $true
+        }
         '^--$' {
             $index++
             while ($index -lt $args.Count) {
@@ -341,6 +348,14 @@ while ($index -lt $args.Count) {
         }
     }
     $index++
+}
+
+if ($validateOnly -and -not $defaultGate) {
+    throw "--validate-only cannot be combined with --goals"
+}
+
+if ($validateOnly) {
+    $goals = @("clean", "license:check", "formatter:validate", "verify")
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

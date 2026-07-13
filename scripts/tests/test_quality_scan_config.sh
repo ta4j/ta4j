@@ -119,15 +119,15 @@ test_modules_opt_in_to_managed_quality_plugins() {
 test_ci_reuses_canonical_local_gates() {
   echo "Running test_ci_reuses_canonical_local_gates"
 
-  expect_file_contains "$WORKFLOW" "xvfb-run scripts/run-full-build-quiet.sh" "hosted verify should call the canonical local gate"
+  expect_file_contains "$WORKFLOW" "xvfb-run scripts/run-full-build-quiet.sh --validate-only" "hosted verify should call the canonical gate in non-mutating mode"
   expect_file_not_contains "$WORKFLOW" "./mvnw -B" "hosted verify should not duplicate the local Maven command"
   expect_file_contains "$FORMAT_WORKFLOW" "scripts/run-full-build-quiet.sh --goals formatter:validate" "hosted formatting should reuse the local entrypoint"
   expect_file_contains "$LICENSE_WORKFLOW" "scripts/run-full-build-quiet.sh --goals license:check" "hosted licensing should reuse the local entrypoint"
   expect_file_contains "$ACTIONLINT_WORKFLOW" "scripts/run-full-build-quiet.sh --preflight-only" "hosted workflow lint should reuse local preflight"
-  expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:check formatter:validate verify)" "local default should use non-mutating hosted goals"
+  expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:format formatter:format verify)" "local default should repair source before verify"
+  expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:check formatter:validate verify)" "validate-only mode should preserve hosted non-mutating goals"
   expect_file_contains "$QUIET_BUILD" "-Dta4j.excludedTestTags=analysis-demo" "local default should include hosted non-demo tests"
   expect_file_contains "$QUIET_BUILD" "actionlint@v1.7.12" "local fallback should pin the hosted actionlint version"
-  expect_file_not_contains "$QUIET_BUILD" "GOALS=(clean license:format formatter:format" "local default must not repair defects before validation"
   expect_file_not_contains "$WORKFLOW" "spotbugs.skip" "CI should not skip SpotBugs"
 
   pass "test_ci_reuses_canonical_local_gates"
