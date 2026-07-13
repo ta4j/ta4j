@@ -89,7 +89,9 @@ public final class SectorLPPLExhaustionMapDemo {
     }
 
     static DemoRun runDemo(AnalysisProfile profile, DemoOptions options) throws IOException {
-        Path resourceDirectory = repositoryRoot(Path.of("")).resolve("ta4j-examples/src/main/resources");
+        Path resourceDirectory = options.refresh()
+                ? repositoryRoot(Path.of("")).resolve("ta4j-examples/src/main/resources")
+                : null;
         SectorLPPLReferenceDataUpdater.RefreshSummary refreshSummary = null;
         if (options.refresh()) {
             SectorLPPLReferenceDataUpdater.Settings settings = new SectorLPPLReferenceDataUpdater.Settings(
