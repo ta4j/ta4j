@@ -88,6 +88,25 @@ class SectorLPPLReferenceDataUpdaterTest {
     }
 
     @Test
+    void requiresACommonFinalSessionWhenOneLensFallsBackToExistingData() throws IOException {
+        List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> universe = List.of(definition("AAA", "nested/AAA.json"),
+                definition("BBB", "nested/BBB.json"));
+        Path resources = tempDirectory.resolve("resources");
+        SectorLPPLReferenceDataUpdater.writeReferenceBars(resources.resolve("nested/AAA.json"), history(810, 0));
+        SectorLPPLReferenceDataUpdater.writeReferenceBars(resources.resolve("nested/BBB.json"), history(810, 0));
+        SectorLPPLReferenceDataUpdater updater = new SectorLPPLReferenceDataUpdater((ticker, start, end) -> {
+            if (ticker.equals("AAA")) {
+                return history(811, 0);
+            }
+            throw new IOException("simulated provider failure");
+        });
+
+        IOException failure = assertThrows(IOException.class, () -> updater.refresh(universe, settings(false)));
+
+        assertTrue(failure.getMessage().contains("common final session"));
+    }
+
+    @Test
     void refusesShortHistoryAndDoesNotPromotePartialRefresh() throws IOException {
         SectorLPPLExhaustionMapDemo.InstrumentDefinition definition = definition("AAA", "missing/AAA.json");
         SectorLPPLReferenceDataUpdater updater = new SectorLPPLReferenceDataUpdater(
