@@ -71,6 +71,25 @@ class SectorLPPLBenchmarkTest {
     }
 
     @Test
+    void summaryDoesNotClaimBinomialConfidenceForSynchronizedNullPaths() {
+        SectorLPPLBenchmark.Metadata metadata = new SectorLPPLBenchmark.Metadata(1, "2026-07-10", "data", "profile",
+                20260710L, 199, 21, 750, 0.10, 0.05);
+        Map<String, SectorLPPLBenchmark.Metrics> instruments = new LinkedHashMap<>();
+        instruments.put("FIRST", metricsWithRates(0.50, 0.05));
+        instruments.put("SYNCHRONIZED", metricsWithRates(0.50, 0.05));
+        Map<String, SectorLPPLBenchmark.Metrics> groups = Map.of("GROUP", metricsWithRates(0.50, 0.05));
+        SectorLPPLBenchmark.Result result = new SectorLPPLBenchmark.Result(true, metadata, instruments, groups,
+                List.of(), List.of(), SectorLPPLBenchmark.Manifest.from(metadata, instruments, groups));
+
+        String summary = result.renderSummary();
+
+        assertFalse(summary.contains("95%_wilson"),
+                "synchronized and leave-one-out-ranked null rows are not independent binomial trials");
+        assertTrue(summary.contains("instrument_gated_false_positive_rate=0.0500"));
+        assertTrue(summary.contains("group_gated_false_positive_rate=0.0500"));
+    }
+
+    @Test
     void rollingCadenceIncludesWarmupAndCurrentSession() {
         assertEquals(List.of(), SectorLPPLBenchmark.rollingEndIndices(749, 750, 21));
         assertEquals(List.of(749), SectorLPPLBenchmark.rollingEndIndices(750, 750, 21));
@@ -205,5 +224,10 @@ class SectorLPPLBenchmarkTest {
     private static SectorLPPLBenchmark.Metrics qualified(LPPLExhaustionSide side) {
         return new SectorLPPLBenchmark.Metrics(true, true, side, 0.01, 0.20, 0.03, -0.20, true, 10, 0.40, 0.30, 0.90, 2,
                 42);
+    }
+
+    private static SectorLPPLBenchmark.Metrics metricsWithRates(double nullSignalRate, double falsePositiveRate) {
+        return new SectorLPPLBenchmark.Metrics(true, false, LPPLExhaustionSide.NONE, 0.50, nullSignalRate,
+                falsePositiveRate, 0.20, false, 10, 0.40, 0.30, 0.90, 2, 42);
     }
 }
