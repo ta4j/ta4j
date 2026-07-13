@@ -167,7 +167,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @param maxEvaluations optimizer evaluation budget per fit
-     * @param minRSquared    minimum actionable fit quality
+     * @param minRSquared    minimum structurally qualified fit quality
      * @return a profile using the supplied optimizer settings
      * @since 0.23.1
      */
@@ -281,7 +281,7 @@ public final class LPPLCalibrationProfile {
     }
 
     /**
-     * @return minimum actionable coefficient of determination
+     * @return minimum structurally qualified coefficient of determination
      * @since 0.23.1
      */
     public double minRSquared() {

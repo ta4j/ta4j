@@ -116,7 +116,7 @@ public final class LPPLExhaustionIndicator extends CachedIndicator<LPPLExhaustio
      * @param activeMinCriticalOffset minimum actionable critical-time offset
      * @param activeMaxCriticalOffset maximum actionable critical-time offset
      * @param maxEvaluations          optimizer evaluation budget
-     * @param minRSquared             minimum actionable fit quality
+     * @param minRSquared             minimum structurally qualified fit quality
      * @since 0.23.1
      */
     LPPLExhaustionIndicator(Indicator<Num> priceIndicator, int[] windows, double minM, double maxM, int mSteps,
