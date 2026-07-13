@@ -3,6 +3,9 @@
 ### Added
 - **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` near-term indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. `LPPLFit.isQualified(...)` lets structural scans retain credible regimes outside the action horizon, advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SectorLPPLExhaustionMapDemo.main` maps 11 sectors plus semiconductors through three adjusted-data ETF lenses with explicit local refresh options.
 
+### Changed
+- **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
+
 ## 0.23.0 (2026-07-13)
 
 ### Added

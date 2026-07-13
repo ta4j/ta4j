@@ -97,9 +97,13 @@ public class ReadmeContentManagerTest {
         assertTrue(pom.contains("<version>[25,)</version>"));
         assertTrue(readme.contains("JDK-25%2B"));
         assertTrue(readme.contains("Java 25+"));
-        assertTrue(readme.contains("./mvnw -B clean license:format formatter:format verify install"));
-        assertTrue(readme.contains("mvnw.cmd -B clean license:format formatter:format verify install"));
-        assertTrue(readme.contains("mvn -B clean license:format formatter:format verify install"));
+        assertTrue(readme.contains("scripts/run-full-build-quiet.sh"));
+        assertTrue(readme.contains("scripts/run-full-build-quiet.ps1"));
+        assertTrue(readme.contains(
+                "./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo"));
+        assertTrue(readme.contains(
+                "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo"));
+        assertTrue(readme.contains("./mvnw -B license:format formatter:format"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {

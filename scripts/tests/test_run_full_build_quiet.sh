@@ -82,6 +82,17 @@ if [[ "${FAKE_MAVEN_CAPS:-0}" == "1" ]]; then
     echo "unexpected fixture diagnostic ${index}"
   done
 fi
+if [[ "${FAKE_MAVEN_UNFORMATTED:-0}" == "1" ]]; then
+  for arg in "$@"; do
+    if [[ "$arg" == "formatter:format" ]]; then
+      echo formatted > "$FAKE_SOURCE_FILE"
+    elif [[ "$arg" == "formatter:validate" ]]; then
+      echo "[ERROR] File has not been previously formatted."
+      echo "[INFO] BUILD FAILURE"
+      exit 8
+    fi
+  done
+fi
 if [[ "${FAKE_MAVEN_SUCCESS_UNEXPECTED:-0}" == "1" ]]; then
   echo "java.lang.IllegalStateException: suspicious success diagnostic"
   echo "    at org.ta4j.Fixture.run(Fixture.java:42)"
@@ -123,8 +134,8 @@ latest_log_from_output() {
   sed -n 's/^Full build log saved to: //p' <<<"$output" | tail -n 1
 }
 
-test_default_invocation_uses_verify() {
-  echo "Running test_default_invocation_uses_verify"
+test_default_invocation_uses_local_repair_gate() {
+  echo "Running test_default_invocation_uses_local_repair_gate"
   create_test_repo
   write_fake_maven
 
@@ -132,16 +143,92 @@ test_default_invocation_uses_verify() {
   output="$(run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Using system Maven from PATH: mvn" "script should use fake system Maven"
-  expect_contains "$output" "Maven goals: verify" "default goal should be verify"
+  expect_contains "$output" "Maven goals: clean license:format formatter:format verify" "default goals should repair local sources before verify"
   expect_contains "$output" "[INFO] BUILD SUCCESS" "default invocation should surface build result"
+  expect_file_contains_line "$TMP/maven-args.txt" "clean" "default invocation should clean generated output"
+  expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
+  expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should pass verify"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "clean" "default invocation should not pass old clean goal"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should not pass old license goal"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should not pass old formatter goal"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not pass old install goal"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo" "default invocation should include hosted non-demo tests"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "license:check" "default invocation should not duplicate hosted license validation"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:validate" "default invocation should not duplicate hosted format validation"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not add a non-CI lifecycle phase"
 
   finish_test_repo
-  pass "test_default_invocation_uses_verify"
+  pass "test_default_invocation_uses_local_repair_gate"
+}
+
+test_preflight_only_runs_repository_checks_without_maven() {
+  echo "Running test_preflight_only_runs_repository_checks_without_maven"
+  create_test_repo
+  write_fake_maven
+  mkdir -p "$TMP/.github/workflows" "$TMP/scripts/tests"
+  cat > "$TMP/bin/actionlint" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-version" ]]; then
+  echo "1.7.12"
+  exit 0
+fi
+echo actionlint > "$FAKE_ACTIONLINT_MARKER"
+EOF
+  chmod +x "$TMP/bin/actionlint"
+  cat > "$TMP/scripts/tests/test_fixture.sh" <<'EOF'
+#!/usr/bin/env bash
+echo fixture > "$FAKE_FIXTURE_MARKER"
+EOF
+
+  export FAKE_ACTIONLINT_MARKER="$TMP/actionlint-ran.txt"
+  export FAKE_FIXTURE_MARKER="$TMP/fixture-ran.txt"
+  local output
+  output="$(run_quiet_build scripts/run-full-build-quiet.sh --preflight-only)"
+
+  expect_contains "$output" "Repository preflight checks passed." "preflight-only mode should report success"
+  [[ -f "$FAKE_ACTIONLINT_MARKER" ]] || fail "preflight-only mode should run actionlint"
+  [[ -f "$FAKE_FIXTURE_MARKER" ]] || fail "preflight-only mode should run script fixtures"
+  [[ ! -f "$TMP/maven-args.txt" ]] || fail "preflight-only mode must not invoke Maven"
+
+  finish_test_repo
+  pass "test_preflight_only_runs_repository_checks_without_maven"
+}
+
+test_default_gate_repairs_unformatted_source() {
+  echo "Running test_default_gate_repairs_unformatted_source"
+  create_test_repo
+  write_fake_maven
+  local source_file="$TMP/Unformatted.java"
+  echo unformatted > "$source_file"
+
+  local output
+  output="$(FAKE_MAVEN_UNFORMATTED=1 FAKE_SOURCE_FILE="$source_file" run_quiet_build scripts/run-full-build-quiet.sh)"
+
+  expect_contains "$output" "BUILD SUCCESS" "local repair gate should continue through verify"
+  expect_file_contains_line "$source_file" "formatted" "default gate should repair unformatted source"
+
+  finish_test_repo
+  pass "test_default_gate_repairs_unformatted_source"
+}
+
+test_validate_only_rejects_unformatted_source_without_repairing_it() {
+  echo "Running test_validate_only_rejects_unformatted_source_without_repairing_it"
+  create_test_repo
+  write_fake_maven
+  local source_file="$TMP/Unformatted.java"
+  echo unformatted > "$source_file"
+
+  local output
+  if output="$(FAKE_MAVEN_UNFORMATTED=1 FAKE_SOURCE_FILE="$source_file" run_quiet_build scripts/run-full-build-quiet.sh --validate-only 2>&1)"; then
+    fail "validate-only gate should reject unformatted source"
+  fi
+
+  expect_contains "$output" "BUILD FAILURE" "format validation failure should be visible"
+  expect_file_contains_line "$source_file" "unformatted" "validate-only gate must leave unformatted source unchanged"
+  expect_file_contains_line "$TMP/maven-args.txt" "license:check" "validate-only should check license headers"
+  expect_file_contains_line "$TMP/maven-args.txt" "formatter:validate" "validate-only should validate formatting"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "license:format" "validate-only must not repair license headers"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:format" "validate-only must not repair formatting"
+
+  finish_test_repo
+  pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
 }
 
 test_goals_override_and_maven_args_passthrough() {
@@ -288,6 +375,12 @@ test_powershell_entrypoint_classifier_parity() {
   create_test_repo
   write_fake_maven
 
+  local ps1
+  ps1="$(<scripts/run-full-build-quiet.ps1)"
+  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"formatter:format\", \"verify\")" "PowerShell local default should repair source"
+  expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
+  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"formatter:validate\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
+
   if command -v pwsh >/dev/null 2>&1; then
     local output
     output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
@@ -295,8 +388,6 @@ test_powershell_entrypoint_classifier_parity() {
     expect_contains "$output" "Unexpected output summary:" "PowerShell unexpected digest should be visible"
     expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "PowerShell should surface exceptions"
   else
-    local ps1
-    ps1="$(<scripts/run-full-build-quiet.ps1)"
     expect_contains "$ps1" "function Write-FailureDigest" "PowerShell script should define failure digest"
     expect_contains "$ps1" "function Write-WarningSummary" "PowerShell script should define warning digest"
     expect_contains "$ps1" "function Write-UnexpectedSummary" "PowerShell script should define unexpected digest"
@@ -307,7 +398,10 @@ test_powershell_entrypoint_classifier_parity() {
   pass "test_powershell_entrypoint_classifier_parity"
 }
 
-test_default_invocation_uses_verify
+test_default_invocation_uses_local_repair_gate
+test_preflight_only_runs_repository_checks_without_maven
+test_default_gate_repairs_unformatted_source
+test_validate_only_rejects_unformatted_source_without_repairing_it
 test_goals_override_and_maven_args_passthrough
 test_noise_is_logged_but_not_printed
 test_unexpected_success_output_is_summarized
