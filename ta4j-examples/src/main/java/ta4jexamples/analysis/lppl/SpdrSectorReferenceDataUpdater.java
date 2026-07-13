@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +29,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -43,6 +44,7 @@ final class SpdrSectorReferenceDataUpdater {
     static final int DEFAULT_OVERLAP_DAYS = 7;
 
     private static final Logger LOG = LogManager.getLogger(SpdrSectorReferenceDataUpdater.class);
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final ZoneId MARKET_ZONE = ZoneId.of("America/New_York");
     private static final LocalTime DAILY_DATA_SETTLED_TIME = LocalTime.of(18, 0);
 
@@ -159,10 +161,7 @@ final class SpdrSectorReferenceDataUpdater {
                 temporaryFiles.add(temporary);
                 targetFiles.add(target);
             }
-            for (int i = 0; i < temporaryFiles.size(); i++) {
-                Files.move(temporaryFiles.get(i), targetFiles.get(i), StandardCopyOption.ATOMIC_MOVE,
-                        StandardCopyOption.REPLACE_EXISTING);
-            }
+            promoteFilesAtomically(temporaryFiles, targetFiles);
         } finally {
             for (Path temporary : temporaryFiles) {
                 Files.deleteIfExists(temporary);
@@ -178,6 +177,55 @@ final class SpdrSectorReferenceDataUpdater {
                                 .resource())))
                 .toList();
         return new PromotionResult(promoted, settings.referenceDataDirectory());
+    }
+
+    static void promoteFilesAtomically(List<Path> stagedFiles, List<Path> targetFiles) throws IOException {
+        if (stagedFiles.size() != targetFiles.size()) {
+            throw new IllegalArgumentException("stagedFiles and targetFiles must have equal sizes");
+        }
+        List<Path> backupFiles = new ArrayList<>(targetFiles.size());
+        int promotedCount = 0;
+        try {
+            for (Path target : targetFiles) {
+                Path targetDirectory = target.getParent();
+                if (targetDirectory == null) {
+                    throw new IOException("SPDR reference target must have a parent directory: " + target);
+                }
+                if (Files.exists(target)) {
+                    Path backup = Files.createTempFile(targetDirectory, ".lppl-backup-", ".json");
+                    Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
+                    backupFiles.add(backup);
+                } else {
+                    backupFiles.add(null);
+                }
+            }
+            for (int i = 0; i < stagedFiles.size(); i++) {
+                Files.move(stagedFiles.get(i), targetFiles.get(i), StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+                promotedCount++;
+            }
+        } catch (IOException promotionFailure) {
+            for (int i = promotedCount - 1; i >= 0; i--) {
+                try {
+                    Path backup = backupFiles.get(i);
+                    if (backup == null) {
+                        Files.deleteIfExists(targetFiles.get(i));
+                    } else {
+                        Files.move(backup, targetFiles.get(i), StandardCopyOption.ATOMIC_MOVE,
+                                StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException rollbackFailure) {
+                    promotionFailure.addSuppressed(rollbackFailure);
+                }
+            }
+            throw promotionFailure;
+        } finally {
+            for (Path backup : backupFiles) {
+                if (backup != null) {
+                    Files.deleteIfExists(backup);
+                }
+            }
+        }
     }
 
     static List<ReferenceBar> readReferenceBars(Path path, String fallbackResource) throws IOException {
@@ -221,37 +269,20 @@ final class SpdrSectorReferenceDataUpdater {
         if (parent != null) {
             Files.createDirectories(parent);
         }
-        StringBuilder builder = new StringBuilder();
-        builder.append("{\n  \"candles\": [\n");
-        for (int i = 0; i < bars.size(); i++) {
-            ReferenceBar bar = bars.get(i);
-            builder.append("    {\n")
-                    .append("      \"start\": \"")
-                    .append(bar.startEpochSecond())
-                    .append("\",\n")
-                    .append("      \"low\": \"")
-                    .append(formatNumber(bar.low()))
-                    .append("\",\n")
-                    .append("      \"high\": \"")
-                    .append(formatNumber(bar.high()))
-                    .append("\",\n")
-                    .append("      \"open\": \"")
-                    .append(formatNumber(bar.open()))
-                    .append("\",\n")
-                    .append("      \"close\": \"")
-                    .append(formatNumber(bar.close()))
-                    .append("\",\n")
-                    .append("      \"volume\": \"")
-                    .append(formatNumber(bar.volume()))
-                    .append("\"\n")
-                    .append("    }");
-            if (i + 1 < bars.size()) {
-                builder.append(',');
-            }
-            builder.append('\n');
+        JsonArray candles = new JsonArray();
+        for (ReferenceBar bar : bars) {
+            JsonObject candle = new JsonObject();
+            candle.addProperty("start", Long.toString(bar.startEpochSecond()));
+            candle.addProperty("low", formatNumber(bar.low()));
+            candle.addProperty("high", formatNumber(bar.high()));
+            candle.addProperty("open", formatNumber(bar.open()));
+            candle.addProperty("close", formatNumber(bar.close()));
+            candle.addProperty("volume", formatNumber(bar.volume()));
+            candles.add(candle);
         }
-        builder.append("  ]\n}\n");
-        Files.writeString(path, builder.toString(), StandardCharsets.UTF_8);
+        JsonObject root = new JsonObject();
+        root.add("candles", candles);
+        Files.writeString(path, GSON.toJson(root) + '\n', StandardCharsets.UTF_8);
     }
 
     private static String formatNumber(BigDecimal value) {
@@ -487,10 +518,9 @@ final class SpdrSectorReferenceDataUpdater {
             }
         }
 
-        private Path cachePath(String ticker, Instant start, Instant end) {
-            LocalDate endDate = end.atZone(ZoneOffset.UTC).toLocalDate();
-            String fileName = "YahooFinance-" + ticker.toUpperCase() + "-PT1D-" + start.getEpochSecond() + "_" + endDate
-                    + "-lppl-reference.json";
+        Path cachePath(String ticker, Instant start, Instant end) {
+            String fileName = "YahooFinance-" + ticker.toUpperCase() + "-PT1D-" + start.getEpochSecond() + "_"
+                    + end.getEpochSecond() + "-lppl-reference.json";
             return responseCacheDirectory.resolve(fileName);
         }
 

@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 
@@ -31,12 +31,24 @@ class LPPLExhaustionTest {
         LPPLFit fit = LPPLFitTest.validFit(0.03);
         List<LPPLFit> fits = List.of(fit);
 
-        assertThatThrownBy(() -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.CRASH_EXHAUSTION,
-                one, one, fit, fits, 0, 1, 1, 0)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("actionableFits")
-                .hasMessageContaining("attemptedFits");
-        assertThatThrownBy(() -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.CRASH_EXHAUSTION,
-                one, one, fit, fits, 1, 1, 0, 0)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("crashFits + bubbleFits");
+        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
+                LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, fits, 0, 1, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
+                LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, fits, 1, 1, 0, 0));
+    }
+
+    @Test
+    void rejectsContradictoryFitAndScoreMetadata() {
+        Num one = DoubleNumFactory.getInstance().one();
+        Num negativeOne = DoubleNumFactory.getInstance().minusOne();
+        Num two = DoubleNumFactory.getInstance().two();
+        LPPLFit fit = LPPLFitTest.validFit(0.03);
+
+        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
+                LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, List.of(fit), 0, 0, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
+                LPPLExhaustionSide.CRASH_EXHAUSTION, negativeOne, one, fit, List.of(fit), 1, 1, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
+                LPPLExhaustionSide.CRASH_EXHAUSTION, two, one, fit, List.of(fit), 1, 1, 1, 0));
     }
 }

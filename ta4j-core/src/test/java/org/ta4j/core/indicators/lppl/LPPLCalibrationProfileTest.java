@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -68,14 +68,11 @@ class LPPLCalibrationProfileTest {
     void rejectsInvalidGroupedSettings() {
         LPPLCalibrationProfile defaults = LPPLCalibrationProfile.defaults();
 
-        assertThatThrownBy(() -> defaults.withWindows(4)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> defaults.withExponentSearch(0.9, 0.1, 5)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> defaults.withFrequencySearch(8.0, 7.0, 3))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> defaults.withCriticalTimeSearch(1, 30, 0))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> defaults.withActionableCriticalTimeRange(0, 30))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> defaults.withOptimizerSettings(0, 0.6)).isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class, () -> defaults.withWindows(4));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withExponentSearch(0.9, 0.1, 5));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withFrequencySearch(8.0, 7.0, 3));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withCriticalTimeSearch(1, 30, 0));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withActionableCriticalTimeRange(0, 30));
+        assertThrows(IllegalArgumentException.class, () -> defaults.withOptimizerSettings(0, 0.6));
     }
 }

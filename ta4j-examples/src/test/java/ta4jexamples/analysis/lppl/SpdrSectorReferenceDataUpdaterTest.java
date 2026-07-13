@@ -63,8 +63,11 @@ class SpdrSectorReferenceDataUpdaterTest {
     @Test
     void rejectsMalformedAndNonPositiveReferenceBars() {
         assertThrows(IOException.class, () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars("{}"));
+        String nonPositive = """
+                {"candles":[{"start":"100","open":"1","high":"1","low":"1","close":"0","volume":"10"}]}
+                """;
         assertThrows(IllegalArgumentException.class,
-                () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(bars(bar(100, "0"))));
+                () -> SpdrSectorReferenceDataUpdater.parseCoinbaseStyleReferenceBars(nonPositive));
     }
 
     @Test
@@ -168,6 +171,25 @@ class SpdrSectorReferenceDataUpdaterTest {
     }
 
     @Test
+    void rollsBackAlreadyPromotedFilesWhenAUniverseMoveFails() throws IOException {
+        Path firstTarget = tempDirectory.resolve("targets/XLI.json");
+        Path secondTarget = tempDirectory.resolve("targets/XLF.json");
+        Path firstStaged = tempDirectory.resolve("staged/XLI.json");
+        Path missingSecondStaged = tempDirectory.resolve("staged/XLF.json");
+        Files.createDirectories(firstTarget.getParent());
+        Files.createDirectories(firstStaged.getParent());
+        Files.writeString(firstTarget, "old-xli");
+        Files.writeString(secondTarget, "old-xlf");
+        Files.writeString(firstStaged, "new-xli");
+
+        assertThrows(IOException.class, () -> SpdrSectorReferenceDataUpdater
+                .promoteFilesAtomically(List.of(firstStaged, missingSecondStaged), List.of(firstTarget, secondTarget)));
+
+        assertEquals("old-xli", Files.readString(firstTarget));
+        assertEquals("old-xlf", Files.readString(secondTarget));
+    }
+
+    @Test
     void parsesYahooAdjustedCloseAndScalesOhlc() throws IOException {
         String yahooJson = """
                 {
@@ -197,6 +219,22 @@ class SpdrSectorReferenceDataUpdaterTest {
         assertEquals(0, new BigDecimal("50").compareTo(bars.get(0).close()));
         assertEquals(0, new BigDecimal("55").compareTo(bars.get(0).high()));
         assertEquals(0, new BigDecimal("45").compareTo(bars.get(0).low()));
+    }
+
+    @Test
+    void yahooCacheKeysIncludeTheCompleteEndInstant() {
+        SpdrSectorReferenceDataUpdater.YahooFinanceAdjustedDailyBarFetcher fetcher = new SpdrSectorReferenceDataUpdater.YahooFinanceAdjustedDailyBarFetcher(
+                tempDirectory);
+        Instant start = Instant.parse("2026-07-01T00:00:00Z");
+        Instant earlyEnd = Instant.parse("2026-07-10T12:00:00Z");
+        Instant settledEnd = Instant.parse("2026-07-10T22:00:00Z");
+
+        Path earlyPath = fetcher.cachePath("XLI", start, earlyEnd);
+        Path settledPath = fetcher.cachePath("XLI", start, settledEnd);
+
+        assertFalse(earlyPath.equals(settledPath));
+        assertTrue(earlyPath.getFileName().toString().contains(Long.toString(earlyEnd.getEpochSecond())));
+        assertTrue(settledPath.getFileName().toString().contains(Long.toString(settledEnd.getEpochSecond())));
     }
 
     private Path seedReference(String ticker, String json) throws IOException {

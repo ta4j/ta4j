@@ -17,8 +17,8 @@ import org.ta4j.core.num.Num;
  *                       crash exhaustion and negative values are bubble
  *                       exhaustion
  * @param fitQuality     weighted fit quality used to scale the score
- * @param dominantFit    strongest actionable fit, or an invalid fit when none
- *                       exists
+ * @param dominantFit    strongest actionable fit; neutral results retain the
+ *                       strongest converged diagnostic fit when available
  * @param fits           per-window fit attempts
  * @param attemptedFits  number of windows attempted
  * @param actionableFits number of fits that pass the configured LPPL filters
@@ -51,6 +51,9 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
             throw new IllegalArgumentException("dominantFit must not be null");
         }
         fits = fits == null ? List.of() : List.copyOf(fits);
+        if (attemptedFits != fits.size()) {
+            throw new IllegalArgumentException("attemptedFits must equal fits.size()");
+        }
         if (attemptedFits < 0 || actionableFits < 0 || crashFits < 0 || bubbleFits < 0) {
             throw new IllegalArgumentException("fit counts must be non-negative");
         }
@@ -59,6 +62,14 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
         }
         if (crashFits + bubbleFits != actionableFits) {
             throw new IllegalArgumentException("crashFits + bubbleFits must equal actionableFits");
+        }
+        if (!Num.isFinite(score) || score.doubleValue() < -1.0 || score.doubleValue() > 1.0) {
+            throw new IllegalArgumentException("score must be finite and between -1 and 1");
+        }
+        if ((side == LPPLExhaustionSide.NONE && !score.isZero())
+                || (side == LPPLExhaustionSide.CRASH_EXHAUSTION && score.isNegative())
+                || (side == LPPLExhaustionSide.BUBBLE_EXHAUSTION && score.isPositive())) {
+            throw new IllegalArgumentException("score direction must match side");
         }
     }
 

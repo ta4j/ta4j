@@ -30,6 +30,13 @@ final class LPPLFitCalibrator {
         this.profile = profile;
     }
 
+    /**
+     * Runs a three-dimensional seed grid followed by finite-difference
+     * Levenberg-Marquardt refinement. Runtime grows with the configured exponent,
+     * frequency, and critical-offset steps, then with the optimizer evaluation
+     * budget; callers evaluating many bars should keep those settings deliberately
+     * bounded.
+     */
     LPPLFit fit(double[] logPrices) {
         int window = logPrices.length;
         if (window < 5) {
@@ -182,7 +189,7 @@ final class LPPLFitCalibrator {
         }
         try {
             RealMatrix design = new Array2DRowRealMatrix(x, false);
-            DecompositionSolver solver = new QRDecomposition(design, 1e-10).getSolver();
+            DecompositionSolver solver = new QRDecomposition(design, SINGULARITY_THRESHOLD).getSolver();
             RealVector beta = solver.solve(new ArrayRealVector(logPrices, false));
             double[] coefficients = beta.toArray();
             double[] predicted = design.operate(beta).toArray();
@@ -213,7 +220,7 @@ final class LPPLFitCalibrator {
 
     private boolean isValidNonlinearPoint(int window, double criticalTime, double m, double omega) {
         double lastTime = window - 1.0;
-        return Double.isFinite(criticalTime) && Double.isFinite(m) && Double.isFinite(omega) && criticalTime > lastTime
+        return Double.isFinite(criticalTime) && Double.isFinite(m) && Double.isFinite(omega)
                 && criticalTime >= lastTime + profile.minCriticalOffset()
                 && criticalTime <= lastTime + profile.maxCriticalOffset() && m >= profile.minM() && m <= profile.maxM()
                 && omega >= profile.minOmega() && omega <= profile.maxOmega();
