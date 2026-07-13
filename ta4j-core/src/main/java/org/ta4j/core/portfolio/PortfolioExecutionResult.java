@@ -27,7 +27,7 @@ import org.ta4j.core.num.Num;
  * @param allocation  target allocation used for execution
  * @param initialCash starting cash
  * @param snapshots   portfolio snapshots
- * @since 0.22.9
+ * @since 0.23.1
  */
 public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioAllocation allocation, Num initialCash,
         List<PortfolioSnapshot> snapshots) {
@@ -35,7 +35,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
     /**
      * Creates an execution result.
      *
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioExecutionResult {
         Objects.requireNonNull(series, "series");
@@ -49,7 +49,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return final portfolio snapshot
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioSnapshot finalSnapshot() {
         return snapshots.getLast();
@@ -57,7 +57,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return final portfolio value
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num finalValue() {
         return finalSnapshot().portfolioValue();
@@ -65,7 +65,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return total return from initial cash to final portfolio value
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num totalReturn() {
         return finalValue().minus(initialCash).dividedBy(initialCash);
@@ -73,7 +73,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return cumulative transaction costs
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num totalTransactionCost() {
         Num totalCost = initialCash.getNumFactory().zero();
@@ -85,7 +85,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return cumulative gross notional traded, excluding costs
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num totalTurnover() {
         Num totalTurnover = initialCash.getNumFactory().zero();
@@ -101,7 +101,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
      *
      * @param name series name
      * @return portfolio value series
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public BarSeries toPortfolioValueSeries(String name) {
         BarSeries valueSeries = new BaseBarSeriesBuilder().withName(name)
@@ -126,7 +126,7 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
 
     /**
      * @return final actual asset weights
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Map<PortfolioAsset, Num> finalWeights() {
         PortfolioSnapshot finalSnapshot = finalSnapshot();

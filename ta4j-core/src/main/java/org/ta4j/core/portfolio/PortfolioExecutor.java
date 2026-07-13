@@ -25,7 +25,7 @@ import org.ta4j.core.num.Num;
  * provide already decided static target weights.
  * </p>
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class PortfolioExecutor {
 
@@ -43,7 +43,7 @@ public final class PortfolioExecutor {
      * @param allocation      target allocation
      * @param initialCash     starting cash
      * @param rebalancePolicy rebalance policy
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioExecutor(AlignedPortfolioSeries series, PortfolioAllocation allocation, Num initialCash,
             RebalancePolicy rebalancePolicy) {
@@ -58,7 +58,7 @@ public final class PortfolioExecutor {
      * @param initialCash          starting cash
      * @param rebalancePolicy      rebalance policy
      * @param transactionCostModel transaction cost model for rebalance trades
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioExecutor(AlignedPortfolioSeries series, PortfolioAllocation allocation, Num initialCash,
             RebalancePolicy rebalancePolicy, CostModel transactionCostModel) {
@@ -76,7 +76,7 @@ public final class PortfolioExecutor {
      * Runs the portfolio execution.
      *
      * @return execution result
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioExecutionResult run() {
         Map<PortfolioAsset, Num> holdings = zeroHoldings();

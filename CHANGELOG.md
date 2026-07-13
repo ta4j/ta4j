@@ -2,12 +2,25 @@
 
 ### Added
 - **Static target-weight portfolio backtesting**: Added a first-class `org.ta4j.core.portfolio` foundation for multi-asset experiments, including asset identities, strict end-time aligned series, explicit target weights, rebalance policies, cost-aware portfolio snapshots, a portfolio value-series adapter, deterministic synthetic tests, and a standalone `StaticPortfolioBacktest` example. V1 intentionally keeps Markowitz, HRP, entropy, and other optimizers out of core until the accounting contracts are proven.
-- **Forecast predictions for forward price estimates**: Added a ta4j-core forecast indicator layer with `Forecast` summaries, a `ReturnIndicator` semantic contract, constructor-first EWMA and Monte Carlo price forecasts, explicit return projections for advanced tuning, `forecast.state`, `forecast.projection`, and `forecast.adapters` subpackages for framework contracts and conversion bridges, non-throwing forecast quantile lookup with `hasQuantile(...)`, and projection methods for quantiles, medians, means, and standard deviations as regular `Indicator<Num>` values.
+
+### Changed
+- **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
+
+## 0.23.0 (2026-07-13)
+
+### Added
+- **Causal swing detection for sharp, rounded, and consensus-confirmed turns**: Added `SwingDetectors.slopeChange(window)` with balanced persistence and half-ATR filtering plus `SwingDetectors.consensus(...)` for tolerant quorum agreement, while ZigZag detection now locates pivots from intrabar highs/lows, confirms reversals from closes with pivot-anchored thresholds, derives matching high/low swing sources directly from state, and resolves fractal plateaus to one deterministic midpoint.
+- **CF-289: Forecast predictions for forward price estimates**: Added a ta4j-core forecast indicator layer with `Forecast` summaries, a `ReturnIndicator` semantic contract, constructor-first EWMA and Monte Carlo price forecasts, explicit return projections for advanced tuning, `forecast.state`, `forecast.projection`, and `forecast.adapters` subpackages for framework contracts and conversion bridges, non-throwing forecast quantile lookup with `hasQuantile(...)`, and projection methods for quantiles, medians, means, and standard deviations as regular `Indicator<Num>` values.
 - **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
 - **Dynamic backtest sizing**: You can now pass a `PositionSizer` into `BarSeriesManager`, `BacktestExecutor`, top-K strategy ranking, and walk-forward execution to size each entry from the signal bar while exits automatically close the currently open amount. Starter factories cover fixed units, realized-balance max sizing with entry-fee awareness, and Kelly sizing with optional fractional or levered coefficients (CF-90).
 - **Pluggable execution-target estimation for dynamic sizing**: Added `TradeExecutionModel#estimateEntryTarget(...)` so custom execution models can provide sizing-aware fill timing and pricing. Dynamic sizing now defaults to conservative next-open estimation for models that do not override this API, and falls back safely when no target is resolvable to keep runs defined.
 
 ### Changed
+- **Retained bar series can resume at their absolute index**: `BaseBarSeriesBuilder` and
+  `ConcurrentBarSeriesBuilder` now accept `withBeginIndex(int)`, allowing persisted windows to
+  append, prune, create subseries, and serialize without rebasing their surviving bars to zero;
+  `BarSeries.clear()` resets a restored series for intentional reinitialization while preserving
+  its configuration.
 - **Finite `Num` validation is reusable across indicators**: Added `Num.isFinite(...)` for indicator-safe checks that reject null, NaN, and primitive-backed infinities without misclassifying finite high-precision `DecimalNum` values whose `doubleValue()` overflows; internal indicator code now uses this shared contract directly, and `IndicatorUtils.isInvalid(...)` is deprecated as a compatibility shim.
 - **Elliott anchor calibration is harness-only**: Long BTC anchor calibration now lives behind `ElliottWaveAnchorCalibrationHarness` as a dedicated CLI/job entrypoint, while the remaining harness unit tests exercise registry, windowing, report, and artifact contracts with synthetic inputs. Active docs warn that full anchor calibration can run for 8+ hours.
 - **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
@@ -16,6 +29,11 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
+- **Day-of-week rule descriptors are deterministic**: `DayOfWeekRule` now canonicalizes its configured enum set so descriptor and JSON serialization round trips cannot fail or change output when hash iteration order varies between runs.
+- **Source position labels remain accurate in isolated chart renders**: Trading-record
+  chart callers can now provide a 1-based source position start, so position bands
+  and buy/sell annotations retain their original ordinal when a focused chart
+  contains only a later source position (CF-299).
 - **CF-207/208/209/210/211/236 SpotBugs closure**: Cleared the historical SpotBugs baseline across constructor safety, cache concurrency, representation ownership, examples IO/reporting, serialization, indicator/rule/backtest accessors, and Elliott analysis paths; Maven `verify`, standalone SpotBugs scans, and GitHub CI now run SpotBugs without an exclude filter and fail on new findings.
 
 ## 0.22.8 (2026-06-29)

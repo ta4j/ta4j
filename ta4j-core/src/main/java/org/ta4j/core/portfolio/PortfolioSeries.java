@@ -19,7 +19,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
  *
  * @param asset  asset id
  * @param series source bar series
- * @since 0.22.9
+ * @since 0.23.1
  */
 public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
 
@@ -28,7 +28,7 @@ public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
      *
      * @param asset  asset id
      * @param series non-empty source bar series
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioSeries {
         Objects.requireNonNull(asset, "asset");
@@ -45,7 +45,7 @@ public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
      * @param assetId asset id
      * @param series  non-empty source bar series
      * @return asset/series pair
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static PortfolioSeries of(String assetId, BarSeries series) {
         return new PortfolioSeries(PortfolioAsset.of(assetId), series);
@@ -53,7 +53,7 @@ public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
 
     /**
      * @return snapshot copy of the source bar series
-     * @since 0.22.9
+     * @since 0.23.1
      */
     @Override
     public BarSeries series() {

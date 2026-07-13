@@ -15,7 +15,7 @@ import java.util.Set;
  * {@link AlignedPortfolioSeries#endTimes()}.
  * </p>
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 @FunctionalInterface
 public interface RebalancePolicy {
@@ -26,7 +26,7 @@ public interface RebalancePolicy {
      *
      * @param index aligned portfolio index
      * @return true if the executor should rebalance
-     * @since 0.22.9
+     * @since 0.23.1
      */
     boolean shouldRebalance(int index);
 
@@ -34,7 +34,7 @@ public interface RebalancePolicy {
      * Rebalances only on the first aligned bar.
      *
      * @return first-bar policy
-     * @since 0.22.9
+     * @since 0.23.1
      */
     static RebalancePolicy atStart() {
         return index -> index == 0;
@@ -44,7 +44,7 @@ public interface RebalancePolicy {
      * Rebalances on every aligned bar.
      *
      * @return every-bar policy
-     * @since 0.22.9
+     * @since 0.23.1
      */
     static RebalancePolicy everyBar() {
         return index -> true;
@@ -55,7 +55,7 @@ public interface RebalancePolicy {
      *
      * @param indexes indexes that trigger rebalancing
      * @return explicit-index policy
-     * @since 0.22.9
+     * @since 0.23.1
      */
     static RebalancePolicy onIndexes(Set<Integer> indexes) {
         Objects.requireNonNull(indexes, "indexes");

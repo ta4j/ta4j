@@ -36,4 +36,4 @@ jobs:
           cache: maven
 
       - name: Check license headers
-        run: xvfb-run ./mvnw -B license:check
+        run: xvfb-run scripts/run-full-build-quiet.sh --goals license:check

@@ -16,7 +16,7 @@ import java.util.Objects;
  * </p>
  *
  * @param id non-blank user supplied asset id
- * @since 0.22.9
+ * @since 0.23.1
  */
 public record PortfolioAsset(String id) implements Comparable<PortfolioAsset> {
 
@@ -24,7 +24,7 @@ public record PortfolioAsset(String id) implements Comparable<PortfolioAsset> {
      * Creates a portfolio asset id.
      *
      * @param id non-blank user supplied asset id
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioAsset {
         Objects.requireNonNull(id, "id");
@@ -39,7 +39,7 @@ public record PortfolioAsset(String id) implements Comparable<PortfolioAsset> {
      *
      * @param id non-blank user supplied asset id
      * @return asset id
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static PortfolioAsset of(String id) {
         return new PortfolioAsset(id);

@@ -33,7 +33,7 @@ import org.ta4j.core.num.NumFactory;
  * use the standard ta4j single-series APIs instead.
  * </p>
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class AlignedPortfolioSeries {
 
@@ -75,7 +75,7 @@ public final class AlignedPortfolioSeries {
      *
      * @param series asset/series pairs in deterministic output order
      * @return aligned portfolio series
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static AlignedPortfolioSeries of(List<PortfolioSeries> series) {
         Objects.requireNonNull(series, "series");
@@ -84,7 +84,7 @@ public final class AlignedPortfolioSeries {
 
     /**
      * @return assets in deterministic portfolio order
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public List<PortfolioAsset> assets() {
         return assets;
@@ -92,7 +92,7 @@ public final class AlignedPortfolioSeries {
 
     /**
      * @return source series in deterministic portfolio order
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public List<PortfolioSeries> series() {
         return series;
@@ -100,7 +100,7 @@ public final class AlignedPortfolioSeries {
 
     /**
      * @return shared numeric factory used for portfolio-level accounting
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public NumFactory numFactory() {
         return numFactory;
@@ -108,7 +108,7 @@ public final class AlignedPortfolioSeries {
 
     /**
      * @return aligned bar count after strict end-time intersection
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int getBarCount() {
         return endTimes.size();
@@ -116,7 +116,7 @@ public final class AlignedPortfolioSeries {
 
     /**
      * @return aligned end times in chronological order
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public List<Instant> endTimes() {
         return List.copyOf(endTimes);
@@ -127,7 +127,7 @@ public final class AlignedPortfolioSeries {
      *
      * @param asset asset id
      * @return source series
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public BarSeries getSeries(PortfolioAsset asset) {
         return PortfolioSeries.snapshotSeries(sourceSeriesByAsset.get(requireAsset(asset).asset()));
@@ -139,7 +139,7 @@ public final class AlignedPortfolioSeries {
      * @param asset asset id
      * @param index aligned portfolio index
      * @return source series index
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int getSourceIndex(PortfolioAsset asset, int index) {
         requireIndex(index);
@@ -152,7 +152,7 @@ public final class AlignedPortfolioSeries {
      * @param asset asset id
      * @param index aligned portfolio index
      * @return source bar
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Bar getBar(PortfolioAsset asset, int index) {
         PortfolioSeries portfolioSeries = requireAsset(asset);
@@ -165,7 +165,7 @@ public final class AlignedPortfolioSeries {
      * @param asset asset id
      * @param index aligned portfolio index
      * @return close price
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num getClosePrice(PortfolioAsset asset, int index) {
         return toPortfolioNum(getBar(asset, index).getClosePrice());
@@ -176,7 +176,7 @@ public final class AlignedPortfolioSeries {
      *
      * @param value source value
      * @return value compatible with {@link #numFactory()}
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num toPortfolioNum(Num value) {
         Objects.requireNonNull(value, "value");

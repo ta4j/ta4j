@@ -22,7 +22,7 @@ import org.ta4j.core.num.NumFactory;
  * portfolio slice unlevered and deterministic.
  * </p>
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class PortfolioAllocation {
 
@@ -44,7 +44,7 @@ public final class PortfolioAllocation {
      * @param targetWeights asset target weights
      * @param numFactory    numeric factory for portfolio accounting
      * @return portfolio allocation
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static PortfolioAllocation targetWeights(Map<PortfolioAsset, Num> targetWeights, NumFactory numFactory) {
         Objects.requireNonNull(targetWeights, "targetWeights");
@@ -90,7 +90,7 @@ public final class PortfolioAllocation {
      * @param weightedAssets weighted assets
      * @param numFactory     numeric factory for portfolio accounting
      * @return fully invested portfolio allocation
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static PortfolioAllocation fullyInvested(List<WeightedValue<PortfolioAsset>> weightedAssets,
             NumFactory numFactory) {
@@ -105,7 +105,7 @@ public final class PortfolioAllocation {
 
     /**
      * @return target weights by asset
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Map<PortfolioAsset, Num> targetWeights() {
         return targetWeights;
@@ -117,7 +117,7 @@ public final class PortfolioAllocation {
      *
      * @param asset asset id
      * @return target weight
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num targetWeight(PortfolioAsset asset) {
         Objects.requireNonNull(asset, "asset");
@@ -126,7 +126,7 @@ public final class PortfolioAllocation {
 
     /**
      * @return sum of all asset target weights
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num totalWeight() {
         return totalWeight;
@@ -134,7 +134,7 @@ public final class PortfolioAllocation {
 
     /**
      * @return cash target weight
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num cashWeight() {
         return one.minus(totalWeight);

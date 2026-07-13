@@ -93,6 +93,15 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     ConcurrentBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
+            final int removedBarsCount, final boolean constrained, final NumFactory numFactory,
+            final BarBuilderFactory barBuilderFactory) {
+        super(name, bars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
+                barBuilderFactory);
+        initLocks(new ReentrantReadWriteLock());
+        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder cannot be null");
+    }
+
+    ConcurrentBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory,
             final ReadWriteLock readWriteLock) {
         super(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory);
@@ -129,10 +138,12 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             }
             final List<Bar> bars = super.getBarData();
             if (!bars.isEmpty()) {
-                final int start = startIndex - super.getRemovedBarsCount();
+                final int retainedStartIndex = Math.max(startIndex, super.getBeginIndex());
+                final int start = retainedStartIndex - super.getRemovedBarsCount();
                 final int end = Math.min(endIndex - super.getRemovedBarsCount(), super.getEndIndex() + 1);
                 final var builder = new ConcurrentBarSeriesBuilder().withName(getName())
                         .withBars(cut(bars, start, end))
+                        .withBeginIndex(super.getRemovedBarsCount() > 0 ? retainedStartIndex : 0)
                         .withNumFactory(super.numFactory())
                         .withBarBuilderFactory(super.barBuilderFactory());
                 if (!isConstrained()) {
@@ -229,6 +240,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             return List.copyOf(super.getBarData());
         } finally {
             this.readLock.unlock();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void clear() {
+        this.writeLock.lock();
+        try {
+            super.clear();
+            this.tradeBarBuilder = null;
+        } finally {
+            this.writeLock.unlock();
         }
     }
 

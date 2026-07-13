@@ -25,7 +25,7 @@ import org.ta4j.core.num.Num;
  * @param transactionCost transaction costs paid at this snapshot
  * @param turnover        gross notional traded at this snapshot, excluding
  *                        costs
- * @since 0.22.9
+ * @since 0.23.1
  */
 public record PortfolioSnapshot(int index, Instant endTime, Map<PortfolioAsset, Num> prices,
         Map<PortfolioAsset, Num> holdings, Num cash, Num portfolioValue, Num periodReturn, Num transactionCost,
@@ -34,7 +34,7 @@ public record PortfolioSnapshot(int index, Instant endTime, Map<PortfolioAsset, 
     /**
      * Creates a portfolio snapshot.
      *
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public PortfolioSnapshot {
         Objects.requireNonNull(endTime, "endTime");
@@ -52,7 +52,7 @@ public record PortfolioSnapshot(int index, Instant endTime, Map<PortfolioAsset, 
      *
      * @param asset asset id
      * @return asset value
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num assetValue(PortfolioAsset asset) {
         Objects.requireNonNull(asset, "asset");
@@ -69,7 +69,7 @@ public record PortfolioSnapshot(int index, Instant endTime, Map<PortfolioAsset, 
      *
      * @param asset asset id
      * @return actual asset weight, or zero when portfolio value is zero
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public Num assetWeight(PortfolioAsset asset) {
         if (portfolioValue.isZero()) {

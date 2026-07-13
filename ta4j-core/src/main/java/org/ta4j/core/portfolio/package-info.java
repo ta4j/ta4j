@@ -13,6 +13,6 @@
  * target these contracts after the accounting model is stable.
  * </p>
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 package org.ta4j.core.portfolio;
