@@ -108,10 +108,7 @@ public final class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
             double minRSquared) {
         this(new LPPLExhaustionIndicator(priceIndicator, windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
                 minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
-                activeMaxCriticalOffset, maxEvaluations, minRSquared),
-                new LPPLCalibrationProfile(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
-                        minCriticalOffset, maxCriticalOffset, criticalOffsetStep, activeMinCriticalOffset,
-                        activeMaxCriticalOffset, maxEvaluations, minRSquared));
+                activeMaxCriticalOffset, maxEvaluations, minRSquared));
     }
 
     private LPPLExhaustionScoreIndicator(LPPLExhaustionIndicator exhaustionIndicator, LPPLCalibrationProfile profile) {

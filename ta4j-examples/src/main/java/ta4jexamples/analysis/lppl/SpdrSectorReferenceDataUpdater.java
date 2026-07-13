@@ -173,8 +173,8 @@ final class SpdrSectorReferenceDataUpdater {
                 }
                 Files.createDirectories(targetDirectory);
                 Path temporary = Files.createTempFile(targetDirectory, ".lppl-reference-", ".json");
-                Files.copy(refresh.outputPath(), temporary, StandardCopyOption.REPLACE_EXISTING);
                 temporaryFiles.add(temporary);
+                Files.copy(refresh.outputPath(), temporary, StandardCopyOption.REPLACE_EXISTING);
                 targetFiles.add(target);
             }
             promoteFilesAtomically(temporaryFiles, targetFiles);
@@ -209,8 +209,8 @@ final class SpdrSectorReferenceDataUpdater {
                 }
                 if (Files.exists(target)) {
                     Path backup = Files.createTempFile(targetDirectory, ".lppl-backup-", ".json");
-                    Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
                     backupFiles.add(backup);
+                    Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
                 } else {
                     backupFiles.add(null);
                 }
