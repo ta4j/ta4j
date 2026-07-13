@@ -29,6 +29,15 @@ class LPPLFitTest {
         assertThat(exception).hasMessageContaining("valid fits");
     }
 
+    @Test
+    void zeroQualityFitIsNotActionableAtAZeroThreshold() {
+        LPPLFit fit = new LPPLFit(LPPLTestFixtures.WINDOW, LPPLExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02,
+                LPPLTestFixtures.WINDOW + 20.0, 0.5, 8.0, 0.1, 0.1, 0.0, 20, 5);
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile().withOptimizerSettings(80, 0.0);
+
+        assertThat(fit.isActionable(profile)).isFalse();
+    }
+
     static LPPLFit validFit(double b) {
         return new LPPLFit(LPPLTestFixtures.WINDOW, LPPLExhaustionStatus.VALID, 1.0, b, 0.01, 0.02,
                 LPPLTestFixtures.WINDOW + 20.0, 0.5, 8.0, 0.1, 0.1, 0.9, 20, 5);

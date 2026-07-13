@@ -78,8 +78,8 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
      * @since 0.22.9
      */
     public boolean isActionable(LPPLCalibrationProfile profile) {
-        return isConverged() && rSquared >= profile.minRSquared() && m >= profile.minM() && m <= profile.maxM()
-                && omega >= profile.minOmega() && omega <= profile.maxOmega()
+        return isConverged() && rSquared > 0.0 && rSquared >= profile.minRSquared() && m >= profile.minM()
+                && m <= profile.maxM() && omega >= profile.minOmega() && omega <= profile.maxOmega()
                 && criticalOffset >= profile.activeMinCriticalOffset()
                 && criticalOffset <= profile.activeMaxCriticalOffset() && side() != LPPLExhaustionSide.NONE;
     }

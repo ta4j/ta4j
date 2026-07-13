@@ -4,6 +4,7 @@
 package ta4jexamples.analysis.lppl;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
@@ -253,7 +254,7 @@ final class SpdrSectorReferenceDataUpdater {
         if (Files.exists(path)) {
             json = Files.readString(path, StandardCharsets.UTF_8);
         } else {
-            try (java.io.InputStream stream = SpdrSectorReferenceDataUpdater.class.getClassLoader()
+            try (InputStream stream = SpdrSectorReferenceDataUpdater.class.getClassLoader()
                     .getResourceAsStream(fallbackResource)) {
                 if (stream == null) {
                     throw new IOException("Missing SPDR reference resource: " + fallbackResource);

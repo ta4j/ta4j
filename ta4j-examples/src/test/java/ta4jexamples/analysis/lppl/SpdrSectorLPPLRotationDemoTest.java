@@ -197,7 +197,7 @@ class SpdrSectorLPPLRotationDemoTest {
         SpdrSectorReferenceDataUpdater updater = new SpdrSectorReferenceDataUpdater((ticker, start, end) -> List.of());
         SpdrSectorReferenceDataUpdater.Settings settings = new SpdrSectorReferenceDataUpdater.Settings(
                 referenceDataDirectory, outputDirectory, outputDirectory.resolve("responses"), false,
-                Instant.parse("2026-05-01T12:00:00Z"));
+                Instant.parse("2026-07-11T12:00:00Z"));
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = updater
                 .refresh(SpdrSectorLPPLRotationDemo.closedUniverse(), settings);
 
@@ -309,18 +309,15 @@ class SpdrSectorLPPLRotationDemoTest {
     private SpdrSectorLPPLRotationDemo.SectorSnapshot snapshot(String sector, String ticker, double score,
             double relativeScore, int relativeRank, int absoluteRank, LPPLExhaustionSide side,
             SpdrSectorLPPLRotationDemo.ExhaustionBucket bucket) {
-        return new SpdrSectorLPPLRotationDemo.SectorSnapshot(sector, ticker, SNAPSHOT_DATE, 1,
-                side == LPPLExhaustionSide.CRASH_EXHAUSTION ? 1 : 0,
-                side == LPPLExhaustionSide.BUBBLE_EXHAUSTION ? 1 : 0,
-                side == LPPLExhaustionSide.CRASH_EXHAUSTION ? 1.0
-                        : side == LPPLExhaustionSide.BUBBLE_EXHAUSTION ? -1.0 : 0.0,
-                score, relativeScore, relativeRank, absoluteRank, 0.0, side,
-                side == LPPLExhaustionSide.NONE ? LPPLExhaustionStatus.NO_VALID_FIT : LPPLExhaustionStatus.VALID,
-                side == LPPLExhaustionSide.NONE ? LPPLExhaustionStatus.NO_VALID_FIT : LPPLExhaustionStatus.VALID, 1,
-                side == LPPLExhaustionSide.NONE ? 0 : 1, side == LPPLExhaustionSide.NONE ? 0 : 1,
-                side == LPPLExhaustionSide.CRASH_EXHAUSTION ? 1 : 0,
-                side == LPPLExhaustionSide.BUBBLE_EXHAUSTION ? 1 : 0, side == LPPLExhaustionSide.NONE ? 0.0 : 1.0,
-                side == LPPLExhaustionSide.NONE ? 0.0 : 1.0, Math.abs(score), 80, 20, 0.9, 0.1, bucket);
+        boolean isCrash = side == LPPLExhaustionSide.CRASH_EXHAUSTION;
+        boolean isBubble = side == LPPLExhaustionSide.BUBBLE_EXHAUSTION;
+        boolean isNone = side == LPPLExhaustionSide.NONE;
+        return new SpdrSectorLPPLRotationDemo.SectorSnapshot(sector, ticker, SNAPSHOT_DATE, 1, isCrash ? 1 : 0,
+                isBubble ? 1 : 0, isCrash ? 1.0 : isBubble ? -1.0 : 0.0, score, relativeScore, relativeRank,
+                absoluteRank, 0.0, side, isNone ? LPPLExhaustionStatus.NO_VALID_FIT : LPPLExhaustionStatus.VALID,
+                isNone ? LPPLExhaustionStatus.NO_VALID_FIT : LPPLExhaustionStatus.VALID, 1, isNone ? 0 : 1,
+                isNone ? 0 : 1, isCrash ? 1 : 0, isBubble ? 1 : 0, isNone ? 0.0 : 1.0, isNone ? 0.0 : 1.0,
+                Math.abs(score), 80, 20, 0.9, 0.1, bucket);
     }
 
     private SpdrSectorLPPLRotationDemo.InstrumentSnapshot instrument(String ticker, String sector, double score,
