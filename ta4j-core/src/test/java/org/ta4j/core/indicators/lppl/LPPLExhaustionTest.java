@@ -53,6 +53,9 @@ class LPPLExhaustionTest {
                 LPPLExhaustionSide.CRASH_EXHAUSTION, one, one, fit, List.of(fit), 0, 0, 0, 0));
         assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
                 LPPLExhaustionSide.CRASH_EXHAUSTION, negativeOne, one, fit, List.of(fit), 1, 1, 1, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID, LPPLExhaustionSide.CRASH_EXHAUSTION,
+                        DoubleNumFactory.getInstance().zero(), one, fit, List.of(fit), 1, 1, 1, 0));
         assertThrows(IllegalArgumentException.class, () -> new LPPLExhaustion(LPPLExhaustionStatus.VALID,
                 LPPLExhaustionSide.CRASH_EXHAUSTION, two, one, fit, List.of(fit), 1, 1, 1, 0));
     }

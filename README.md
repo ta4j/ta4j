@@ -1050,7 +1050,7 @@ LPPLExhaustionScoreIndicator tunedScore = new LPPLExhaustionScoreIndicator(serie
 
 LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
 
-The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example backed by adjusted daily resources through 2026-07-10. Run its `main` class with no arguments for a deterministic offline report. Pass `--refresh` to analyze disposable live-data copies, `--update-resources` for an explicit local committed-data refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. The demo is intentionally not exposed as a GitHub Actions or tagged-JUnit workflow.
+The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example backed by adjusted daily resources through 2026-07-10. Run its `main` class with no arguments for a deterministic offline report. Pass `--refresh` to analyze disposable live-data copies, `--update-resources` for an explicit local committed-data refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. A refresh downloads the complete history for all 11 ETFs so every bar uses Yahoo's current adjustment basis; it is intentionally more network-intensive than an incremental tail update. The demo is not exposed as a GitHub Actions or tagged-JUnit workflow.
 
 ## Real-world examples
 

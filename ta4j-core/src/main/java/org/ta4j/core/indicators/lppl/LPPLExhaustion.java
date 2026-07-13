@@ -67,8 +67,8 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
             throw new IllegalArgumentException("score must be finite and between -1 and 1");
         }
         if ((side == LPPLExhaustionSide.NONE && !score.isZero())
-                || (side == LPPLExhaustionSide.CRASH_EXHAUSTION && score.isNegative())
-                || (side == LPPLExhaustionSide.BUBBLE_EXHAUSTION && score.isPositive())) {
+                || (side == LPPLExhaustionSide.CRASH_EXHAUSTION && !score.isPositive())
+                || (side == LPPLExhaustionSide.BUBBLE_EXHAUSTION && !score.isNegative())) {
             throw new IllegalArgumentException("score direction must match side");
         }
         if ((side == LPPLExhaustionSide.NONE && crashFits != bubbleFits)

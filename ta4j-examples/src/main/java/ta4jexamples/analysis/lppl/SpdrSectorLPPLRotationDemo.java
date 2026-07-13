@@ -95,7 +95,7 @@ public final class SpdrSectorLPPLRotationDemo {
     static DemoRun runDemo(LPPLCalibrationProfile profile, DemoOptions options) throws IOException {
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = null;
         if (options.refresh()) {
-            Path resourceDirectory = repositoryRoot().resolve("ta4j-examples/src/main/resources");
+            Path resourceDirectory = repositoryRoot(Path.of("")).resolve("ta4j-examples/src/main/resources");
             SpdrSectorReferenceDataUpdater.Settings settings = new SpdrSectorReferenceDataUpdater.Settings(
                     resourceDirectory, options.outputDirectory(), options.outputDirectory().resolve("responses"),
                     options.updateResources(), Instant.now());
@@ -488,15 +488,15 @@ public final class SpdrSectorLPPLRotationDemo {
         Files.writeString(outputDirectory.resolve("lppl-instrument-progress.csv"), builder, StandardCharsets.UTF_8);
     }
 
-    private static Path repositoryRoot() {
-        Path directory = Path.of("").toAbsolutePath().normalize();
+    static Path repositoryRoot(Path start) {
+        Path directory = start.toAbsolutePath().normalize();
         while (directory != null) {
             if (Files.exists(directory.resolve("pom.xml")) && Files.isDirectory(directory.resolve("ta4j-examples"))) {
                 return directory;
             }
             directory = directory.getParent();
         }
-        return Path.of("").toAbsolutePath().normalize();
+        throw new IllegalStateException("Unable to locate the ta4j repository root from " + start.toAbsolutePath());
     }
 
     private static List<SectorSnapshot> withRanks(List<SectorSnapshot> snapshots) {

@@ -115,6 +115,8 @@ final class SpdrSectorReferenceDataUpdater {
                     writeReferenceBars(outputPath, existingBars);
                 } catch (IOException writeException) {
                     exception.addSuppressed(writeException);
+                    LOG.warn("Unable to restore existing SPDR reference data for {}", definition.ticker(),
+                            writeException);
                 }
             }
             return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,

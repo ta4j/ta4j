@@ -261,6 +261,16 @@ class SpdrSectorLPPLRotationDemoTest {
     }
 
     @Test
+    void repositoryRootFailsLoudlyOutsideARepository() {
+        Path outsideRepository = tempDirectory.resolve("outside");
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> SpdrSectorLPPLRotationDemo.repositoryRoot(outsideRepository));
+
+        assertTrue(failure.getMessage().contains("Unable to locate the ta4j repository root"));
+    }
+
+    @Test
     void lpplSectorRotationMainPathIsOfflineAndWritesArtifacts() throws IOException {
         SpdrSectorLPPLRotationDemo.DemoOptions options = new SpdrSectorLPPLRotationDemo.DemoOptions(tempDirectory,
                 false, false, false);
