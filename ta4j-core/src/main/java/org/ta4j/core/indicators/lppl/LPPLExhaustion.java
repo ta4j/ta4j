@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  * @param actionableFits number of fits that pass the configured LPPL filters
  * @param crashFits      actionable crash-exhaustion fits
  * @param bubbleFits     actionable bubble-exhaustion fits
- * @since 0.22.9
+ * @since 0.23.1
  */
 public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide side, Num score, Num fitQuality,
         LPPLFit dominantFit, List<LPPLFit> fits, int attemptedFits, int actionableFits, int crashFits, int bubbleFits) {
@@ -32,7 +32,7 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
     /**
      * Creates a validated immutable exhaustion result.
      *
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLExhaustion {
         if (status == null) {
@@ -81,7 +81,7 @@ public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide sid
     /**
      * @return {@code true} when at least one actionable LPPL fit supports the
      *         returned score
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public boolean isActionable() {
         return status == LPPLExhaustionStatus.VALID && side != LPPLExhaustionSide.NONE && actionableFits > 0;

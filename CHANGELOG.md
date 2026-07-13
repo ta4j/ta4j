@@ -1,11 +1,11 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. Advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SpdrSectorLPPLRotationDemo.main` runs an offline adjusted-data sector report with explicit local refresh options.
 
 ## 0.23.0 (2026-07-13)
 
 ### Added
-- **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. Advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SpdrSectorLPPLRotationDemo.main` runs an offline adjusted-data sector report with explicit local refresh options.
 - **Causal swing detection for sharp, rounded, and consensus-confirmed turns**: Added `SwingDetectors.slopeChange(window)` with balanced persistence and half-ATR filtering plus `SwingDetectors.consensus(...)` for tolerant quorum agreement, while ZigZag detection now locates pivots from intrabar highs/lows, confirms reversals from closes with pivot-anchored thresholds, derives matching high/low swing sources directly from state, and resolves fractal plateaus to one deterministic midpoint.
 - **CF-289: Forecast predictions for forward price estimates**: Added a ta4j-core forecast indicator layer with `Forecast` summaries, a `ReturnIndicator` semantic contract, constructor-first EWMA and Monte Carlo price forecasts, explicit return projections for advanced tuning, `forecast.state`, `forecast.projection`, and `forecast.adapters` subpackages for framework contracts and conversion bridges, non-throwing forecast quantile lookup with `hasQuantile(...)`, and projection methods for quantiles, medians, means, and standard deviations as regular `Indicator<Num>` values.
 - **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.

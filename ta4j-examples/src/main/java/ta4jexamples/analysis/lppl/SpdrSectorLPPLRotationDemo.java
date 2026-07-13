@@ -41,7 +41,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * incrementally refreshed copies, or {@code --update-resources} to refresh the
  * committed local resources explicitly.
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class SpdrSectorLPPLRotationDemo {
 
@@ -67,7 +67,7 @@ public final class SpdrSectorLPPLRotationDemo {
      * @param args optional refresh and output arguments
      * @throws IOException if report or refreshed reference-data artifacts cannot be
      *                     written
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static void main(String[] args) throws IOException {
         DemoOptions options = DemoOptions.parse(args);

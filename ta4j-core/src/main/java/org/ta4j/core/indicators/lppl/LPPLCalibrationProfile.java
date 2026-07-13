@@ -14,7 +14,7 @@ import java.util.Arrays;
  * that needs tuning. This keeps the common path readable while still exposing
  * the complete LPPL search space.
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class LPPLCalibrationProfile {
 
@@ -90,7 +90,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return daily-equity defaults suitable for first-pass LPPL exhaustion scans
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static LPPLCalibrationProfile defaults() {
         return new LPPLCalibrationProfile(new int[] { 200, 300, 400, 500 }, 0.1, 0.9, 5, 6.0, 13.0, 8, 1, 60, 5, 10, 30,
@@ -100,7 +100,7 @@ public final class LPPLCalibrationProfile {
     /**
      * @param windows rolling fit windows in bars
      * @return a profile using the supplied windows
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withWindows(int... windows) {
         return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
@@ -112,7 +112,7 @@ public final class LPPLCalibrationProfile {
      * @param maxM  upper power-law exponent bound
      * @param steps grid-search steps
      * @return a profile using the supplied exponent search
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withExponentSearch(double minM, double maxM, int steps) {
         return copy(windows, minM, maxM, steps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
@@ -124,7 +124,7 @@ public final class LPPLCalibrationProfile {
      * @param maxOmega upper log-periodic frequency bound
      * @param steps    grid-search steps
      * @return a profile using the supplied frequency search
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withFrequencySearch(double minOmega, double maxOmega, int steps) {
         return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, steps, minCriticalOffset, maxCriticalOffset,
@@ -139,7 +139,7 @@ public final class LPPLCalibrationProfile {
      * @param maximumOffset maximum searched critical-time offset
      * @param step          grid-search step
      * @return a profile using the supplied critical-time search
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withCriticalTimeSearch(int minimumOffset, int maximumOffset, int step) {
         int actionableMinimum = Math.max(minimumOffset, activeMinCriticalOffset);
@@ -156,7 +156,7 @@ public final class LPPLCalibrationProfile {
      * @param minimumOffset minimum actionable critical-time offset
      * @param maximumOffset maximum actionable critical-time offset
      * @return a profile using the supplied actionable range
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withActionableCriticalTimeRange(int minimumOffset, int maximumOffset) {
         return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
@@ -167,7 +167,7 @@ public final class LPPLCalibrationProfile {
      * @param maxEvaluations optimizer evaluation budget per fit
      * @param minRSquared    minimum actionable fit quality
      * @return a profile using the supplied optimizer settings
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public LPPLCalibrationProfile withOptimizerSettings(int maxEvaluations, double minRSquared) {
         return copy(windows, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
@@ -176,7 +176,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return defensive copy of rolling fit windows
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int[] windows() {
         return Arrays.copyOf(windows, windows.length);
@@ -184,7 +184,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return lower power-law exponent bound
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public double minM() {
         return minM;
@@ -192,7 +192,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return upper power-law exponent bound
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public double maxM() {
         return maxM;
@@ -200,7 +200,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return exponent grid-search steps
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int mSteps() {
         return mSteps;
@@ -208,7 +208,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return lower frequency bound
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public double minOmega() {
         return minOmega;
@@ -216,7 +216,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return upper frequency bound
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public double maxOmega() {
         return maxOmega;
@@ -224,7 +224,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return frequency grid-search steps
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int omegaSteps() {
         return omegaSteps;
@@ -232,7 +232,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return minimum searched critical-time offset
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int minCriticalOffset() {
         return minCriticalOffset;
@@ -240,7 +240,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return maximum searched critical-time offset
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int maxCriticalOffset() {
         return maxCriticalOffset;
@@ -248,7 +248,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return critical-time grid-search step
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int criticalOffsetStep() {
         return criticalOffsetStep;
@@ -256,7 +256,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return minimum actionable critical-time offset
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int activeMinCriticalOffset() {
         return activeMinCriticalOffset;
@@ -264,7 +264,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return maximum actionable critical-time offset
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int activeMaxCriticalOffset() {
         return activeMaxCriticalOffset;
@@ -272,7 +272,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return optimizer evaluation budget per fit
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public int maxEvaluations() {
         return maxEvaluations;
@@ -280,7 +280,7 @@ public final class LPPLCalibrationProfile {
 
     /**
      * @return minimum actionable coefficient of determination
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public double minRSquared() {
         return minRSquared;
