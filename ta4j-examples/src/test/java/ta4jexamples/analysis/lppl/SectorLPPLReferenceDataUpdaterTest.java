@@ -78,8 +78,7 @@ class SectorLPPLReferenceDataUpdaterTest {
     @Test
     void rejectsReplacementThatDropsAKnownSession() {
         List<SectorLPPLReferenceDataUpdater.ReferenceBar> existing = List.of(bar(100, "10"), bar(200, "11"));
-        List<SectorLPPLReferenceDataUpdater.ReferenceBar> replacementWithGap = List.of(bar(100, "10"),
-                bar(300, "12"));
+        List<SectorLPPLReferenceDataUpdater.ReferenceBar> replacementWithGap = List.of(bar(100, "10"), bar(300, "12"));
 
         IOException failure = assertThrows(IOException.class,
                 () -> SectorLPPLReferenceDataUpdater.replaceAdjustedHistory(existing, replacementWithGap));
@@ -129,6 +128,18 @@ class SectorLPPLReferenceDataUpdaterTest {
         assertTrue(summary.tickers().getFirst().skipped());
         assertTrue(summary.tickers().getFirst().message().contains("810"));
         assertFalse(Files.exists(tempDirectory.resolve("resources/missing/AAA.json")));
+    }
+
+    @Test
+    void refusesHistoryThatStartsAfterTheConfiguredSnapshotDate() throws IOException {
+        SectorLPPLExhaustionMapDemo.InstrumentDefinition definition = definition("AAA", "missing/AAA.json");
+        SectorLPPLReferenceDataUpdater updater = new SectorLPPLReferenceDataUpdater(
+                (ticker, start, end) -> history(810, 1));
+
+        SectorLPPLReferenceDataUpdater.RefreshSummary summary = updater.refresh(List.of(definition), settings(false));
+
+        assertTrue(summary.tickers().getFirst().skipped());
+        assertTrue(summary.tickers().getFirst().message().contains("did not start on 2019-01-02"));
     }
 
     @Test

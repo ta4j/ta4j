@@ -104,6 +104,10 @@ final class SectorLPPLReferenceDataUpdater {
             if (fetchedBars.size() < 810) {
                 throw new IOException("Yahoo refresh returned fewer than 810 complete bars for " + definition.ticker());
             }
+            if (!fetchedBars.getFirst().localDate().equals(definition.historyStart())) {
+                throw new IOException(
+                        "Yahoo refresh did not start on " + definition.historyStart() + " for " + definition.ticker());
+            }
             MergeResult merge = replaceAdjustedHistory(existingBars, fetchedBars);
             writeReferenceBars(outputPath, merge.bars());
             LOG.info("Refreshed LPPL reference data for {}: added={} revised={} bars={}", definition.ticker(),
