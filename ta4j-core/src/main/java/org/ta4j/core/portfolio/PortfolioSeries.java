@@ -64,6 +64,7 @@ public record PortfolioSeries(PortfolioAsset asset, BarSeries series) {
         BarSeries source = Objects.requireNonNull(barSeries, "barSeries");
         return new BaseBarSeriesBuilder().withName(source.getName())
                 .withNumFactory(source.numFactory())
+                .withBeginIndex(source.getBeginIndex())
                 .withBars(source.getBarData())
                 .withMaxBarCount(source.getMaximumBarCount())
                 .build();

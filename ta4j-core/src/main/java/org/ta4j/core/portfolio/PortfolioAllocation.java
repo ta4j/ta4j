@@ -142,7 +142,7 @@ public final class PortfolioAllocation {
 
     private static Num normalizeWeight(Num weight, NumFactory numFactory) {
         Objects.requireNonNull(weight, "weight");
-        if (Num.isNaNOrNull(weight) || Double.isInfinite(weight.doubleValue())) {
+        if (!Num.isFinite(weight)) {
             throw new IllegalArgumentException("target weight must be finite");
         }
         if (numFactory.produces(weight)) {

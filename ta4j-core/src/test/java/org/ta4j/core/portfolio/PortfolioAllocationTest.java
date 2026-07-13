@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -12,6 +13,7 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.analysis.WeightedValue;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -86,5 +88,17 @@ public class PortfolioAllocationTest {
 
         assertThrows(IllegalArgumentException.class, () -> PortfolioAllocation
                 .targetWeights(Map.of(alpha, NUM_FACTORY.numOf(0.8), beta, NUM_FACTORY.numOf(0.4)), NUM_FACTORY));
+    }
+
+    @Test
+    public void finiteHighPrecisionWeightUsesLeverageValidation() {
+        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        Map<PortfolioAsset, Num> weights = Map.of(alpha, decimalFactory.numOf("1E400"));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PortfolioAllocation.targetWeights(weights, decimalFactory));
+
+        assertEquals("sum of target weights must be <= 1", exception.getMessage());
     }
 }

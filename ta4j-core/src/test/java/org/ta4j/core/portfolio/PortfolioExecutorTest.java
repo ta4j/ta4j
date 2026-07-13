@@ -20,6 +20,7 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class PortfolioExecutorTest {
 
@@ -114,6 +115,21 @@ public class PortfolioExecutorTest {
     }
 
     @Test
+    public void fixedTransactionCostsSkipSellThatWouldSpendCashNegative() {
+        Fixture fixture = fixture(new double[] { 100, 101 }, new double[] { 100, 100 });
+        PortfolioAllocation allocation = allocation(fixture, 0.01, 0.99);
+
+        PortfolioExecutionResult result = new PortfolioExecutor(fixture.series(), allocation, fixture.num(1000),
+                RebalancePolicy.everyBar(), new FixedTransactionCostModel(50)).run();
+
+        PortfolioSnapshot firstSnapshot = result.snapshots().get(0);
+        PortfolioSnapshot secondSnapshot = result.snapshots().get(1);
+        assertNumEquals(firstSnapshot.holdings().get(fixture.alpha()), secondSnapshot.holdings().get(fixture.alpha()));
+        assertNumEquals(fixture.num(48.9109), secondSnapshot.cash(), 0.0001);
+        assertNumEquals(fixture.num(50), secondSnapshot.transactionCost(), 0.0001);
+    }
+
+    @Test
     public void rejectsAllocationAssetsMissingFromAlignedSeries() {
         Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
         PortfolioAllocation allocation = PortfolioAllocation.targetWeights(
@@ -144,6 +160,26 @@ public class PortfolioExecutorTest {
                 RebalancePolicy.atStart()).run();
 
         assertNumEquals(1100, result.finalValue());
+    }
+
+    @Test
+    public void acceptsFiniteHighPrecisionDecimalInputs() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
+        PortfolioAsset beta = PortfolioAsset.of("BETA");
+        BarSeries alphaSeries = decimalSeries("alpha", numFactory, "1E400", "1E400");
+        BarSeries betaSeries = decimalSeries("beta", numFactory, "2E400", "2E400");
+        AlignedPortfolioSeries portfolioSeries = AlignedPortfolioSeries
+                .of(List.of(new PortfolioSeries(alpha, alphaSeries), new PortfolioSeries(beta, betaSeries)));
+        Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
+        weights.put(alpha, numFactory.numOf("0.5"));
+        weights.put(beta, numFactory.numOf("0.5"));
+        PortfolioAllocation allocation = PortfolioAllocation.targetWeights(weights, numFactory);
+
+        PortfolioExecutionResult result = new PortfolioExecutor(portfolioSeries, allocation, numFactory.numOf("1E410"),
+                RebalancePolicy.atStart()).run();
+
+        assertEquals(2, result.snapshots().size());
     }
 
     @Test
@@ -184,6 +220,25 @@ public class PortfolioExecutorTest {
         Num zero = series.numFactory().zero();
         for (int i = 0; i < closes.length; i++) {
             Num close = series.numFactory().numOf(closes[i]);
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(i)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(zero)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries decimalSeries(String name, NumFactory numFactory, String... closes) {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(numFactory).build();
+        Num zero = numFactory.zero();
+        for (int i = 0; i < closes.length; i++) {
+            Num close = numFactory.numOf(closes[i]);
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(start.plus(Duration.ofDays(i)))

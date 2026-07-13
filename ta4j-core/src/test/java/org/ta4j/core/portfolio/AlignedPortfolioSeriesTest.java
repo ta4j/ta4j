@@ -39,6 +39,25 @@ public class AlignedPortfolioSeriesTest {
     }
 
     @Test
+    public void preservesRetainedSourceIndexesThroughSnapshots() {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
+        PortfolioAsset beta = PortfolioAsset.of("BETA");
+        BarSeries alphaSeries = retainedSeries("alpha", start, 10, 100, 110);
+        BarSeries betaSeries = retainedSeries("beta", start, 20, 50, 55);
+
+        AlignedPortfolioSeries aligned = AlignedPortfolioSeries
+                .of(List.of(new PortfolioSeries(alpha, alphaSeries), new PortfolioSeries(beta, betaSeries)));
+
+        assertEquals(10, aligned.getSourceIndex(alpha, 0));
+        assertEquals(11, aligned.getSourceIndex(alpha, 1));
+        assertEquals(20, aligned.getSourceIndex(beta, 0));
+        assertEquals(21, aligned.getSourceIndex(beta, 1));
+        assertEquals(10, aligned.getSeries(alpha).getBeginIndex());
+        assertEquals(20, aligned.getSeries(beta).getBeginIndex());
+    }
+
+    @Test
     public void rejectsDuplicateAssets() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
@@ -89,5 +108,13 @@ public class AlignedPortfolioSeriesTest {
                     .add();
         }
         return series;
+    }
+
+    private static BarSeries retainedSeries(String name, Instant start, int beginIndex, double... closes) {
+        BarSeries source = series(name, start, closes);
+        return new BaseBarSeriesBuilder().withName(name)
+                .withBeginIndex(beginIndex)
+                .withBars(source.getBarData())
+                .build();
     }
 }

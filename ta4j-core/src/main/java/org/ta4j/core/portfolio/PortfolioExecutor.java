@@ -126,7 +126,10 @@ public final class PortfolioExecutor {
             Num targetNotional = targetNotionals.get(asset);
             Num deltaNotional = targetNotional.minus(currentNotional);
             if (deltaNotional.isNegative()) {
-                Num gross = deltaNotional.abs();
+                Num gross = affordableSellGross(price, deltaNotional.abs(), nextCash);
+                if (gross.isZero() || gross.isNegative()) {
+                    continue;
+                }
                 Num cost = transactionCost(price, gross);
                 Num amount = gross.dividedBy(price);
                 nextCash = nextCash.plus(gross).minus(cost);
@@ -213,6 +216,32 @@ public final class PortfolioExecutor {
         return orderedUnmodifiableMap(targetNotionals);
     }
 
+    private Num affordableSellGross(Num price, Num desiredGross, Num cash) {
+        if (desiredGross.isNegativeOrZero()) {
+            return series.numFactory().zero();
+        }
+        if (isSellAffordable(price, desiredGross, cash)) {
+            return desiredGross;
+        }
+
+        Num low = series.numFactory().zero();
+        Num high = desiredGross;
+        Num tolerance = valueTolerance(desiredGross);
+        for (int iteration = 0; iteration < 64; iteration++) {
+            Num mid = low.plus(high).dividedBy(series.numFactory().two());
+            if (isSellAffordable(price, mid, cash)) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+            if (high.minus(low).abs().isLessThanOrEqual(tolerance)) {
+                break;
+            }
+        }
+
+        return low;
+    }
+
     private Num affordableGross(Num price, Num desiredGross, Num cash) {
         if (desiredGross.isNegativeOrZero() || cash.isNegativeOrZero()) {
             return series.numFactory().zero();
@@ -237,6 +266,11 @@ public final class PortfolioExecutor {
         }
 
         return low;
+    }
+
+    private boolean isSellAffordable(Num price, Num gross, Num cash) {
+        Num proceedsAfterCost = cash.plus(gross).minus(transactionCost(price, gross));
+        return proceedsAfterCost.isPositiveOrZero();
     }
 
     private boolean isBuyAffordable(Num price, Num gross, Num cash) {
@@ -304,7 +338,7 @@ public final class PortfolioExecutor {
 
     private static Num requirePositive(Num value, String name) {
         Objects.requireNonNull(value, name);
-        if (Num.isNaNOrNull(value) || Double.isInfinite(value.doubleValue()) || value.isNegativeOrZero()) {
+        if (!Num.isFinite(value) || value.isNegativeOrZero()) {
             throw new IllegalArgumentException(name + " must be finite and > 0");
         }
         return value;
