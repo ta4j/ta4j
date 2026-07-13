@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -159,6 +160,21 @@ class SectorLPPLExhaustionMapDemoTest {
     }
 
     @Test
+    void offlineRunWorksFromPackagedClasspathOutsideRepository() throws Exception {
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        Path output = tempDirectory.resolve("packaged-output");
+        Process process = new ProcessBuilder(java, "-cp", System.getProperty("surefire.test.class.path"),
+                PackagedClasspathRunner.class.getName(), output.toString()).directory(tempDirectory.toFile())
+                        .redirectErrorStream(true)
+                        .start();
+
+        assertTrue(process.waitFor(30, TimeUnit.SECONDS), "packaged-classpath run timed out");
+        String processOutput = new String(process.getInputStream().readAllBytes());
+        assertEquals(0, process.exitValue(), processOutput);
+        assertTrue(Files.exists(output.resolve("lppl-exhaustion-map.txt")));
+    }
+
+    @Test
     void artifactRowsKeepStableColumnCounts() throws IOException {
         SectorLPPLExhaustionMapDemo.DemoRun run = SectorLPPLExhaustionMapDemo.runDemo(smokeProfile(),
                 new SectorLPPLExhaustionMapDemo.DemoOptions(tempDirectory, false, false, false, false));
@@ -252,5 +268,19 @@ class SectorLPPLExhaustionMapDemoTest {
         csv.lines()
                 .filter(line -> !line.isBlank())
                 .forEach(line -> assertEquals(expectedColumns, line.split(",", -1).length, line));
+    }
+
+    public static final class PackagedClasspathRunner {
+
+        private PackagedClasspathRunner() {
+        }
+
+        public static void main(String[] args) throws IOException {
+            SectorLPPLExhaustionMapDemo.AnalysisProfile profile = new SectorLPPLExhaustionMapDemo.AnalysisProfile(
+                    new int[] { 125 }, 5, 10, 30, 1, 0.75);
+            SectorLPPLExhaustionMapDemo.DemoOptions options = new SectorLPPLExhaustionMapDemo.DemoOptions(
+                    Path.of(args[0]), false, false, false, false);
+            SectorLPPLExhaustionMapDemo.runDemo(profile, options);
+        }
     }
 }
