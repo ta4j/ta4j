@@ -544,7 +544,15 @@ final class SectorLPPLBenchmark {
         loaded.stream()
                 .sorted(Comparator.comparing(instrument -> instrument.definition().ticker()))
                 .forEach(instrument -> {
-                    update(digest, instrument.definition().ticker());
+                    SectorLPPLExhaustionMapDemo.InstrumentDefinition definition = instrument.definition();
+                    update(digest, definition.type().name());
+                    update(digest, definition.group());
+                    update(digest, definition.ticker());
+                    update(digest, definition.lens().name());
+                    update(digest, definition.weighting().name());
+                    update(digest, definition.universe());
+                    update(digest, definition.historyStart().toString());
+                    update(digest, definition.resource());
                     for (int index = 0; index < instrument.series().getBarCount(); index++) {
                         Bar bar = instrument.series().getBar(index);
                         update(digest, bar.getEndTime().toString());
