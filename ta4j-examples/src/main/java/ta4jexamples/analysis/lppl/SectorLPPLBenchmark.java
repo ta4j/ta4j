@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SplittableRandom;
@@ -169,8 +170,8 @@ final class SectorLPPLBenchmark {
             SectorLPPLExhaustionMapDemo.AnalysisProfile profile) {
         BenchmarkConfig production = BenchmarkConfig.production();
         return manifest != null && manifest.metadata() != null && manifest.metadata().schemaVersion() == SCHEMA_VERSION
-                && manifest.metadata().dataDigest().equals(dataDigest(loaded))
-                && manifest.metadata().profileFingerprint().equals(profileFingerprint(profile))
+                && Objects.equals(manifest.metadata().dataDigest(), dataDigest(loaded))
+                && Objects.equals(manifest.metadata().profileFingerprint(), profileFingerprint(profile))
                 && manifest.metadata().permutations() == production.permutations()
                 && manifest.metadata().seed() == production.seed()
                 && manifest.metadata().rollingStep() == production.rollingStep()
