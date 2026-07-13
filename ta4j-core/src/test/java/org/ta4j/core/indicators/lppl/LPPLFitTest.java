@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,10 +22,11 @@ class LPPLFitTest {
 
     @Test
     void rejectsValidFitWithNonFiniteDiagnostics() {
-        assertThatThrownBy(() -> new LPPLFit(LPPLTestFixtures.WINDOW, LPPLExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02,
-                LPPLTestFixtures.WINDOW + 20.0, 0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("valid fits");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new LPPLFit(LPPLTestFixtures.WINDOW, LPPLExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02,
+                        LPPLTestFixtures.WINDOW + 20.0, 0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5));
+
+        assertThat(exception).hasMessageContaining("valid fits");
     }
 
     static LPPLFit validFit(double b) {
