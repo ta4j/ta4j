@@ -6,6 +6,7 @@ package ta4jexamples.analysis.lppl;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -137,6 +138,23 @@ class SectorLPPLBenchmarkTest {
                 metadata.profileFingerprint(), 20260710L, 199, 21, 750, 0.10, 0.05);
         assertFalse(SectorLPPLBenchmark.matches(SectorLPPLBenchmark.Manifest.from(incomplete, instruments, groups),
                 loaded, profile));
+    }
+
+    @Test
+    void dataDigestIncludesUniverseTopology() {
+        List<SectorLPPLExhaustionMapDemo.LoadedInstrument> loaded = loadUniverse();
+        SectorLPPLExhaustionMapDemo.LoadedInstrument original = loaded.getFirst();
+        SectorLPPLExhaustionMapDemo.InstrumentDefinition definition = original.definition();
+        SectorLPPLExhaustionMapDemo.InstrumentDefinition regrouped = new SectorLPPLExhaustionMapDemo.InstrumentDefinition(
+                definition.type(), "Different group", definition.ticker(), definition.lens(), definition.weighting(),
+                definition.universe(), definition.historyStart(), definition.resource());
+        List<SectorLPPLExhaustionMapDemo.LoadedInstrument> changed = loaded.stream()
+                .map(instrument -> instrument == original
+                        ? new SectorLPPLExhaustionMapDemo.LoadedInstrument(regrouped, instrument.series())
+                        : instrument)
+                .toList();
+
+        assertNotEquals(SectorLPPLBenchmark.dataDigest(loaded), SectorLPPLBenchmark.dataDigest(changed));
     }
 
     @Test
