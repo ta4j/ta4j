@@ -165,8 +165,8 @@ class SectorLPPLExhaustionMapDemoTest {
         Path output = tempDirectory.resolve("packaged-output");
         Process process = new ProcessBuilder(java, "-cp", System.getProperty("surefire.test.class.path"),
                 PackagedClasspathRunner.class.getName(), output.toString()).directory(tempDirectory.toFile())
-                        .redirectErrorStream(true)
-                        .start();
+                .redirectErrorStream(true)
+                .start();
 
         assertTrue(process.waitFor(30, TimeUnit.SECONDS), "packaged-classpath run timed out");
         String processOutput = new String(process.getInputStream().readAllBytes());

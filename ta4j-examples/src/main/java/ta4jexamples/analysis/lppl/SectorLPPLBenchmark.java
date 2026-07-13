@@ -191,9 +191,10 @@ final class SectorLPPLBenchmark {
     }
 
     private static boolean hasExpectedEntities(List<EntityMetrics> entities, Set<String> expectedKeys) {
-        if (entities == null || entities.size() != expectedKeys.size() || entities.stream()
-                .anyMatch(entity -> entity == null || entity.metrics() == null || !entity.metrics().available()
-                        || entity.metrics().qualifiedSide() == null)) {
+        if (entities == null || entities.size() != expectedKeys.size()
+                || entities.stream()
+                        .anyMatch(entity -> entity == null || entity.metrics() == null || !entity.metrics().available()
+                                || entity.metrics().qualifiedSide() == null)) {
             return false;
         }
         Set<String> actualKeys = entities.stream().map(EntityMetrics::key).collect(java.util.stream.Collectors.toSet());
