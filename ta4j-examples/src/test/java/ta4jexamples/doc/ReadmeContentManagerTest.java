@@ -101,6 +101,7 @@ public class ReadmeContentManagerTest {
         assertTrue(readme.contains("scripts/run-full-build-quiet.ps1"));
         assertTrue(readme.contains(
                 "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo"));
+        assertTrue(readme.contains("./mvnw -B license:format formatter:format"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {

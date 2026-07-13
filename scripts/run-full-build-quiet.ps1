@@ -9,7 +9,8 @@ Usage: scripts/run-full-build-quiet.ps1 [--preflight-only] [--goals "goal..."] [
 The default invocation runs the same repository-owned checks and Maven gate as
 hosted PR CI. Maven output is filtered and the complete log is written to
 .agents/logs/full-build-*.log. Explicit --goals invocations remain focused and
-skip repository preflight checks.
+skip repository preflight checks. The default gate and --preflight-only require
+Bash; on Windows, install Git for Windows and include Git Bash on PATH.
 
 Examples:
   scripts/run-full-build-quiet.ps1

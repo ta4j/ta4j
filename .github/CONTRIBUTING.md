@@ -8,7 +8,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 2. **Opinionated implementations belong outside the core.** ta4j aims to be widely applicable. Highly subjective “feature bundles” (e.g., metric dashboards, bespoke reporting formats, hard-coded broker behaviors) are better published as separate modules or example projects. Keep contributions focused on reusable primitives.
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
-- **Run this before opening or updating a PR:** `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell.
+- **Run this before opening or updating a PR:** `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`.
   Hosted CI calls the same entrypoint. The default gate runs actionlint, repository script fixtures, `clean license:check formatter:validate verify`, all non-demo tests, blocking SpotBugs, and advisory JaCoCo without modifying source files. Use `./mvnw -B license:format formatter:format` only as a separate repair step, review its diff, and rerun the canonical gate.
 
 - **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
@@ -31,7 +31,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    ```bash
    scripts/run-full-build-quiet.sh
    ```
-   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1`. The scripts preserve full logs under `.agents/logs/`, and CI invokes the same Bash entrypoint. CI will fail if changes are not formatted or lack the project license header; repair those issues with `./mvnw -B license:format formatter:format`, review the diff, and rerun the canonical gate.
+   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1` with Git Bash available on `PATH`; Bash is required for the repository shell-fixture preflight. The scripts preserve full logs under `.agents/logs/`, and CI invokes the same Bash entrypoint. CI will fail if changes are not formatted or lack the project license header; repair those issues with `./mvnw -B license:format formatter:format`, review the diff, and rerun the canonical gate.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
