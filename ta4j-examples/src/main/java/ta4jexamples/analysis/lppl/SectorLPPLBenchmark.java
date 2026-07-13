@@ -710,18 +710,6 @@ final class SectorLPPLBenchmark {
         }
     }
 
-    private static double[] wilsonInterval(int successes, int trials) {
-        if (trials == 0) {
-            return new double[] { Double.NaN, Double.NaN };
-        }
-        double z = 1.959963984540054;
-        double rate = successes / (double) trials;
-        double denominator = 1.0 + z * z / trials;
-        double center = (rate + z * z / (2.0 * trials)) / denominator;
-        double margin = z * Math.sqrt(rate * (1.0 - rate) / trials + z * z / (4.0 * trials * trials)) / denominator;
-        return new double[] { Math.max(0.0, center - margin), Math.min(1.0, center + margin) };
-    }
-
     record BenchmarkConfig(long seed, int permutations, int rollingStep, int rollingWarmup, double rawSideThreshold,
             double alpha) {
 
@@ -863,10 +851,6 @@ final class SectorLPPLBenchmark {
                     .stream()
                     .filter(metrics -> Math.abs(metrics.trendControlScore()) >= metadata.rawSideThreshold())
                     .count();
-            double[] instrumentRawInterval = wilsonInterval(instrumentRawSignals, instrumentTrials);
-            double[] groupRawInterval = wilsonInterval(groupRawSignals, groupTrials);
-            double[] instrumentInterval = wilsonInterval(instrumentFalsePositives, instrumentTrials);
-            double[] groupInterval = wilsonInterval(groupFalsePositives, groupTrials);
             return "LPPL false-positive baseline\n" + "baseline_available=true\n" + "snapshot_date="
                     + metadata.snapshotDate() + "\nseed=" + metadata.seed() + "\nrandomized_paths="
                     + metadata.permutations() + "\nrolling_step_sessions=" + metadata.rollingStep()
@@ -875,22 +859,16 @@ final class SectorLPPLBenchmark {
                     + "\nalpha=" + SectorLPPLExhaustionMapDemo.format(metadata.alpha())
                     + "\ninstrument_raw_null_signal_rate="
                     + SectorLPPLExhaustionMapDemo.format(instrumentRawSignals / (double) instrumentTrials)
-                    + " 95%_wilson=[" + SectorLPPLExhaustionMapDemo.format(instrumentRawInterval[0]) + ','
-                    + SectorLPPLExhaustionMapDemo.format(instrumentRawInterval[1]) + "]\ngroup_raw_null_signal_rate="
-                    + SectorLPPLExhaustionMapDemo.format(groupRawSignals / (double) groupTrials) + " 95%_wilson=["
-                    + SectorLPPLExhaustionMapDemo.format(groupRawInterval[0]) + ','
-                    + SectorLPPLExhaustionMapDemo.format(groupRawInterval[1])
-                    + "]\ninstrument_trend_control_signal_rate="
+                    + "\ngroup_raw_null_signal_rate="
+                    + SectorLPPLExhaustionMapDemo.format(groupRawSignals / (double) groupTrials)
+                    + "\ninstrument_trend_control_signal_rate="
                     + SectorLPPLExhaustionMapDemo.format(instrumentTrendSignals / (double) instrumentMetrics.size())
                     + "\ngroup_trend_control_signal_rate="
                     + SectorLPPLExhaustionMapDemo.format(groupTrendSignals / (double) groupMetrics.size())
                     + "\ninstrument_gated_false_positive_rate="
                     + SectorLPPLExhaustionMapDemo.format(instrumentFalsePositives / (double) instrumentTrials)
-                    + " 95%_wilson=[" + SectorLPPLExhaustionMapDemo.format(instrumentInterval[0]) + ','
-                    + SectorLPPLExhaustionMapDemo.format(instrumentInterval[1]) + "]\ngroup_gated_false_positive_rate="
-                    + SectorLPPLExhaustionMapDemo.format(groupFalsePositives / (double) groupTrials) + " 95%_wilson=["
-                    + SectorLPPLExhaustionMapDemo.format(groupInterval[0]) + ','
-                    + SectorLPPLExhaustionMapDemo.format(groupInterval[1]) + "]\n";
+                    + "\ngroup_gated_false_positive_rate="
+                    + SectorLPPLExhaustionMapDemo.format(groupFalsePositives / (double) groupTrials) + "\n";
         }
 
         private String renderNullCsv() {

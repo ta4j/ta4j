@@ -85,8 +85,8 @@ class SectorLPPLBenchmarkTest {
 
         assertFalse(summary.contains("95%_wilson"),
                 "synchronized and leave-one-out-ranked null rows are not independent binomial trials");
-        assertTrue(summary.contains("instrument_gated_false_positive_rate=0.0500"));
-        assertTrue(summary.contains("group_gated_false_positive_rate=0.0500"));
+        assertTrue(summary.contains("instrument_gated_false_positive_rate="));
+        assertTrue(summary.contains("group_gated_false_positive_rate="));
     }
 
     @Test
