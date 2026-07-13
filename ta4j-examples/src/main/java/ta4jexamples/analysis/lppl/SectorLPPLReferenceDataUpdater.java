@@ -31,7 +31,6 @@ import org.apache.logging.log4j.Logger;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -40,24 +39,24 @@ import ta4jexamples.datasources.http.DefaultHttpClientWrapper;
 import ta4jexamples.datasources.http.HttpClientWrapper;
 import ta4jexamples.datasources.http.HttpResponseWrapper;
 
-final class SpdrSectorReferenceDataUpdater {
+final class SectorLPPLReferenceDataUpdater {
 
-    private static final Logger LOG = LogManager.getLogger(SpdrSectorReferenceDataUpdater.class);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Logger LOG = LogManager.getLogger(SectorLPPLReferenceDataUpdater.class);
+    private static final Gson GSON = new Gson();
     private static final ZoneId MARKET_ZONE = ZoneId.of("America/New_York");
     private static final LocalTime DAILY_DATA_SETTLED_TIME = LocalTime.of(18, 0);
 
     private final YahooDailyBarFetcher fetcher;
 
-    SpdrSectorReferenceDataUpdater() {
+    SectorLPPLReferenceDataUpdater() {
         this(null);
     }
 
-    SpdrSectorReferenceDataUpdater(YahooDailyBarFetcher fetcher) {
+    SectorLPPLReferenceDataUpdater(YahooDailyBarFetcher fetcher) {
         this.fetcher = fetcher;
     }
 
-    RefreshSummary refresh(List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe, Settings settings)
+    RefreshSummary refresh(List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> universe, Settings settings)
             throws IOException {
         if (universe == null || universe.isEmpty()) {
             return new RefreshSummary(List.of(), settings.outputDataDirectory(), settings.responseCacheDirectory());
@@ -68,14 +67,14 @@ final class SpdrSectorReferenceDataUpdater {
         YahooDailyBarFetcher effectiveFetcher = fetcher != null ? fetcher
                 : new YahooFinanceAdjustedDailyBarFetcher(settings.responseCacheDirectory());
         List<TickerRefresh> refreshes = new ArrayList<>(universe.size());
-        for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
+        for (SectorLPPLExhaustionMapDemo.InstrumentDefinition definition : universe) {
             refreshes.add(refreshTicker(definition, settings, effectiveFetcher));
         }
         boolean anySkipped = refreshes.stream().anyMatch(TickerRefresh::skipped);
         if (!anySkipped) {
             long distinctEndDates = refreshes.stream().map(TickerRefresh::newLastDate).distinct().count();
             if (distinctEndDates > 1) {
-                throw new IOException("SPDR reference refresh did not produce a common final session");
+                throw new IOException("LPPL reference refresh did not produce a common final session");
             }
         }
         PromotionResult promotion = promoteReferenceData(universe, settings, refreshes);
@@ -83,7 +82,7 @@ final class SpdrSectorReferenceDataUpdater {
                 settings.responseCacheDirectory());
     }
 
-    private TickerRefresh refreshTicker(SpdrSectorLPPLRotationDemo.SectorDefinition definition, Settings settings,
+    private TickerRefresh refreshTicker(SectorLPPLExhaustionMapDemo.InstrumentDefinition definition, Settings settings,
             YahooDailyBarFetcher effectiveFetcher) {
         Path sourcePath = settings.referenceDataDirectory().resolve(definition.resource());
         Path outputPath = settings.outputPath(definition.resource());
@@ -91,47 +90,54 @@ final class SpdrSectorReferenceDataUpdater {
         LocalDate previousLastDate = null;
 
         try {
-            existingBars = readReferenceBars(sourcePath, definition.resource());
-            if (existingBars.isEmpty()) {
-                throw new IOException("No existing SPDR reference bars for " + definition.ticker());
+            if (Files.exists(sourcePath) || SectorLPPLReferenceDataUpdater.class.getClassLoader()
+                    .getResource(definition.resource()) != null) {
+                existingBars = readReferenceBars(sourcePath, definition.resource());
             }
-            ReferenceBar firstExisting = existingBars.get(0);
-            ReferenceBar lastExisting = existingBars.get(existingBars.size() - 1);
-            previousLastDate = lastExisting.localDate();
-            Instant fetchStart = firstExisting.startInstant();
+            if (!existingBars.isEmpty()) {
+                ReferenceBar lastExisting = existingBars.get(existingBars.size() - 1);
+                previousLastDate = lastExisting.localDate();
+            }
+            Instant fetchStart = definition.historyStart().atStartOfDay(MARKET_ZONE).toInstant();
             Instant fetchEnd = settings.now();
             List<ReferenceBar> fetchedBars = effectiveFetcher.fetch(definition.ticker(), fetchStart, fetchEnd)
                     .stream()
                     .filter(bar -> bar.isCompleteFor(settings.now()))
                     .toList();
+            if (fetchedBars.size() < 810) {
+                throw new IOException("Yahoo refresh returned fewer than 810 complete bars for " + definition.ticker());
+            }
             MergeResult merge = replaceAdjustedHistory(existingBars, fetchedBars);
             writeReferenceBars(outputPath, merge.bars());
-            LOG.info("Refreshed SPDR reference data for {}: added={} revised={} bars={}", definition.ticker(),
+            LOG.info("Refreshed LPPL reference data for {}: added={} revised={} bars={}", definition.ticker(),
                     merge.addedBars(), merge.revisedBars(), merge.bars().size());
-            return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
+            return new TickerRefresh(definition.ticker(), definition.group(), outputPath, previousLastDate,
                     merge.lastDate(), existingBars.size(), fetchedBars.size(), merge.bars().size(), merge.addedBars(),
                     merge.revisedBars(), false, "");
         } catch (IOException | RuntimeException exception) {
-            LOG.warn("Unable to refresh SPDR reference data for {}", definition.ticker(), exception);
+            LOG.warn("Unable to refresh LPPL reference data for {}", definition.ticker(), exception);
             if (!existingBars.isEmpty()) {
                 try {
                     writeReferenceBars(outputPath, existingBars);
                 } catch (IOException writeException) {
                     exception.addSuppressed(writeException);
-                    LOG.warn("Unable to restore existing SPDR reference data for {}", definition.ticker(),
+                    LOG.warn("Unable to restore existing LPPL reference data for {}", definition.ticker(),
                             writeException);
                 }
             }
-            return new TickerRefresh(definition.ticker(), definition.sector(), outputPath, previousLastDate,
+            return new TickerRefresh(definition.ticker(), definition.group(), outputPath, previousLastDate,
                     previousLastDate, existingBars.size(), 0, existingBars.size(), 0, 0, true,
                     exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());
         }
     }
 
-    private static MergeResult replaceAdjustedHistory(List<ReferenceBar> existingBars, List<ReferenceBar> fetchedBars)
+    static MergeResult replaceAdjustedHistory(List<ReferenceBar> existingBars, List<ReferenceBar> fetchedBars)
             throws IOException {
-        if (fetchedBars.size() < existingBars.size()
-                || fetchedBars.get(0).localDate().isAfter(existingBars.get(0).localDate())) {
+        if (fetchedBars.isEmpty()) {
+            throw new IOException("Yahoo refresh did not return adjusted history");
+        }
+        if (!existingBars.isEmpty() && (fetchedBars.size() < existingBars.size()
+                || fetchedBars.get(0).localDate().isAfter(existingBars.get(0).localDate()))) {
             throw new IOException("Yahoo refresh did not return the complete adjusted history");
         }
 
@@ -157,7 +163,7 @@ final class SpdrSectorReferenceDataUpdater {
         return new MergeResult(List.copyOf(refreshedByStart.values()), addedBars, revisedBars);
     }
 
-    private static PromotionResult promoteReferenceData(List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe,
+    private static PromotionResult promoteReferenceData(List<SectorLPPLExhaustionMapDemo.InstrumentDefinition> universe,
             Settings settings, List<TickerRefresh> refreshes) throws IOException {
         if (!settings.updateReferenceData() || refreshes.stream().anyMatch(TickerRefresh::skipped)) {
             return new PromotionResult(List.copyOf(refreshes), settings.outputDataDirectory());
@@ -166,15 +172,15 @@ final class SpdrSectorReferenceDataUpdater {
         List<Path> temporaryFiles = new ArrayList<>(universe.size());
         List<Path> targetFiles = new ArrayList<>(universe.size());
         try {
-            for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
+            for (SectorLPPLExhaustionMapDemo.InstrumentDefinition definition : universe) {
                 TickerRefresh refresh = refreshes.stream()
                         .filter(candidate -> candidate.ticker().equals(definition.ticker()))
                         .findFirst()
-                        .orElseThrow(() -> new IOException("Missing SPDR refresh result for " + definition.ticker()));
+                        .orElseThrow(() -> new IOException("Missing LPPL refresh result for " + definition.ticker()));
                 Path target = settings.referenceDataDirectory().resolve(definition.resource());
                 Path targetDirectory = target.getParent();
                 if (targetDirectory == null) {
-                    throw new IOException("SPDR reference target must have a parent directory: " + target);
+                    throw new IOException("LPPL reference target must have a parent directory: " + target);
                 }
                 Files.createDirectories(targetDirectory);
                 Path temporary = Files.createTempFile(targetDirectory, ".lppl-reference-", ".json");
@@ -210,7 +216,7 @@ final class SpdrSectorReferenceDataUpdater {
             for (Path target : targetFiles) {
                 Path targetDirectory = target.getParent();
                 if (targetDirectory == null) {
-                    throw new IOException("SPDR reference target must have a parent directory: " + target);
+                    throw new IOException("LPPL reference target must have a parent directory: " + target);
                 }
                 if (Files.exists(target)) {
                     Path backup = Files.createTempFile(targetDirectory, ".lppl-backup-", ".json");
@@ -254,10 +260,10 @@ final class SpdrSectorReferenceDataUpdater {
         if (Files.exists(path)) {
             json = Files.readString(path, StandardCharsets.UTF_8);
         } else {
-            try (InputStream stream = SpdrSectorReferenceDataUpdater.class.getClassLoader()
+            try (InputStream stream = SectorLPPLReferenceDataUpdater.class.getClassLoader()
                     .getResourceAsStream(fallbackResource)) {
                 if (stream == null) {
-                    throw new IOException("Missing SPDR reference resource: " + fallbackResource);
+                    throw new IOException("Missing LPPL reference resource: " + fallbackResource);
                 }
                 json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             }
@@ -269,7 +275,7 @@ final class SpdrSectorReferenceDataUpdater {
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
         JsonArray candles = root.getAsJsonArray("candles");
         if (candles == null) {
-            throw new IOException("SPDR reference JSON must contain candles");
+            throw new IOException("LPPL reference JSON must contain candles");
         }
 
         List<ReferenceBar> bars = new ArrayList<>(candles.size());
@@ -277,7 +283,7 @@ final class SpdrSectorReferenceDataUpdater {
         for (JsonElement element : candles) {
             ReferenceBar bar = ReferenceBar.fromCoinbaseStyleJson(element.getAsJsonObject());
             if (bar.startEpochSecond() <= previousStart) {
-                throw new IOException("SPDR reference candles must have unique, strictly increasing start times");
+                throw new IOException("LPPL reference candles must have unique, strictly increasing start times");
             }
             bars.add(bar);
             previousStart = bar.startEpochSecond();
@@ -346,7 +352,7 @@ final class SpdrSectorReferenceDataUpdater {
             tickers = tickers == null ? List.of() : List.copyOf(tickers);
         }
 
-        String sourceFor(SpdrSectorLPPLRotationDemo.SectorDefinition definition) {
+        String sourceFor(SectorLPPLExhaustionMapDemo.InstrumentDefinition definition) {
             return tickers.stream()
                     .filter(refresh -> refresh.ticker().equals(definition.ticker()))
                     .map(refresh -> refresh.outputPath().toString())
@@ -356,12 +362,12 @@ final class SpdrSectorReferenceDataUpdater {
 
     }
 
-    record TickerRefresh(String ticker, String sector, Path outputPath, LocalDate previousLastDate,
+    record TickerRefresh(String ticker, String group, Path outputPath, LocalDate previousLastDate,
             LocalDate newLastDate, int existingBars, int fetchedBars, int mergedBars, int addedBars, int revisedBars,
             boolean skipped, String message) {
 
         TickerRefresh withOutputPath(Path outputPath) {
-            return new TickerRefresh(ticker, sector, outputPath, previousLastDate, newLastDate, existingBars,
+            return new TickerRefresh(ticker, group, outputPath, previousLastDate, newLastDate, existingBars,
                     fetchedBars, mergedBars, addedBars, revisedBars, skipped, message);
         }
     }
@@ -391,7 +397,7 @@ final class SpdrSectorReferenceDataUpdater {
             volume = normalizedVolume(volume);
             if (high.compareTo(low) < 0 || high.compareTo(open) < 0 || high.compareTo(close) < 0
                     || low.compareTo(open) > 0 || low.compareTo(close) > 0) {
-                throw new IllegalArgumentException("SPDR reference OHLC values must satisfy low <= open/close <= high");
+                throw new IllegalArgumentException("LPPL reference OHLC values must satisfy low <= open/close <= high");
             }
         }
 
@@ -436,7 +442,7 @@ final class SpdrSectorReferenceDataUpdater {
         private static long requiredLong(JsonObject object, String field) throws IOException {
             JsonElement element = object.get(field);
             if (element == null || element.isJsonNull()) {
-                throw new IOException("Missing required SPDR reference field: " + field);
+                throw new IOException("Missing required LPPL reference field: " + field);
             }
             return element.getAsLong();
         }
@@ -444,35 +450,35 @@ final class SpdrSectorReferenceDataUpdater {
         private static BigDecimal requiredDecimal(JsonObject object, String field) throws IOException {
             JsonElement element = object.get(field);
             if (element == null || element.isJsonNull()) {
-                throw new IOException("Missing required SPDR reference field: " + field);
+                throw new IOException("Missing required LPPL reference field: " + field);
             }
             return new BigDecimal(element.getAsString());
         }
 
         private static BigDecimal normalizedPrice(BigDecimal value, String field) {
             if (value == null || value.signum() <= 0) {
-                throw new IllegalArgumentException("SPDR reference " + field + " must be positive");
+                throw new IllegalArgumentException("LPPL reference " + field + " must be positive");
             }
             return value.setScale(8, RoundingMode.HALF_UP).stripTrailingZeros();
         }
 
         private static BigDecimal normalizedVolume(BigDecimal value) {
             if (value == null || value.signum() < 0) {
-                throw new IllegalArgumentException("SPDR reference volume must be non-negative");
+                throw new IllegalArgumentException("LPPL reference volume must be non-negative");
             }
             return value.setScale(0, RoundingMode.HALF_UP).stripTrailingZeros();
         }
 
         private static BigDecimal price(double value) {
             if (!Double.isFinite(value) || value <= 0.0) {
-                throw new IllegalArgumentException("SPDR Yahoo price must be finite and positive");
+                throw new IllegalArgumentException("LPPL Yahoo price must be finite and positive");
             }
             return BigDecimal.valueOf(value).setScale(8, RoundingMode.HALF_UP).stripTrailingZeros();
         }
 
         private static BigDecimal volume(double value) {
             if (!Double.isFinite(value) || value < 0.0) {
-                throw new IllegalArgumentException("SPDR Yahoo volume must be finite and non-negative");
+                throw new IllegalArgumentException("LPPL Yahoo volume must be finite and non-negative");
             }
             return BigDecimal.valueOf(value).setScale(0, RoundingMode.HALF_UP).stripTrailingZeros();
         }

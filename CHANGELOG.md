@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Added
-- **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. Advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SpdrSectorLPPLRotationDemo.main` runs an offline adjusted-data sector report with explicit local refresh options.
+- **LPPL exhaustion indicators expose simple scores and rich fit diagnostics**: Added `LPPLExhaustionScoreIndicator` as a bounded `[-1, 1]` near-term indicator plus `LPPLExhaustionIndicator` for actionable crash/bubble fit details. `LPPLFit.isQualified(...)` lets structural scans retain credible regimes outside the action horizon, advanced scans can reuse immutable grouped `LPPLCalibrationProfile` tuning, and `SectorLPPLExhaustionMapDemo.main` maps 11 sectors plus semiconductors through three adjusted-data ETF lenses with explicit local refresh options.
 
 ## 0.23.0 (2026-07-13)
 

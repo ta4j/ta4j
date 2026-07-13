@@ -7,9 +7,9 @@ package org.ta4j.core.indicators.lppl;
  * Direction of a Log-Periodic Power Law (LPPL) exhaustion signal.
  *
  * <p>
- * The sign convention matches capital-rotation dashboards: positive values
- * identify crash exhaustion after persistent downside pressure, while negative
- * values identify bubble exhaustion after persistent upside pressure.
+ * The sign convention matches exhaustion dashboards: positive values identify
+ * crash exhaustion after persistent downside pressure, while negative values
+ * identify bubble exhaustion after persistent upside pressure.
  *
  * @since 0.23.1
  */

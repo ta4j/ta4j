@@ -1038,6 +1038,18 @@ if (snapshot.isActionable()) {
 }
 ```
 
+The bounded score intentionally covers the configured near-term action horizon. A
+zero does not prove that no structural LPPL regime exists. Longer-horizon scans can
+retain converged, high-quality model evidence before checking actionability:
+
+```java
+LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults();
+LPPLFit fit = snapshot.dominantFit();
+if (fit.isQualified(profile)) {
+    boolean insideActionHorizon = fit.isActionable(profile);
+}
+```
+
 Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
 
 ```java
@@ -1050,7 +1062,7 @@ LPPLExhaustionScoreIndicator tunedScore = new LPPLExhaustionScoreIndicator(serie
 
 LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
 
-The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example backed by adjusted daily resources through 2026-07-10. Run its `main` class with no arguments for a deterministic offline report. Pass `--refresh` to analyze disposable live-data copies, `--update-resources` for an explicit local committed-data refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. A refresh downloads the complete history for all 11 ETFs so every bar uses Yahoo's current adjustment basis; it is intentionally more network-intensive than an incremental tail update. The demo is not exposed as a GitHub Actions or tagged-JUnit workflow.
+The `ta4j-examples` module includes `SectorLPPLExhaustionMapDemo`, which analyzes all 11 GICS sectors plus semiconductors through cap-weighted, equal-weighted, and alternative ETF lenses. Adjusted daily resources span 2019-01-02 through 2026-07-10. Run its `main` class with no arguments for a deterministic offline map. Pass `--refresh` to analyze disposable live-data copies, `--update-resources` for an explicit local committed-data refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. A refresh downloads complete adjusted history for all 36 ETFs and requires a common fully settled session. The demo is not exposed as a GitHub Actions or tagged-JUnit workflow.
 
 ## Real-world examples
 
@@ -1085,7 +1097,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Dedicated CLI/job entrypoint that scores a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks. Complete calibration can run for 8+ hours.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
-- **[SpdrSectorLPPLRotationDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SpdrSectorLPPLRotationDemo.java)** - Runs LPPL crash/bubble exhaustion scoring across the closed State Street SPDR sector ETF universe using adjusted daily resources, full-history Yahoo refresh copies, and deterministic sector report artifacts.
+- **[SectorLPPLExhaustionMapDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SectorLPPLExhaustionMapDemo.java)** - Maps structural LPPL bubble/crash exhaustion across three ETF lenses for every GICS sector plus semiconductors, while reporting near-term actionability separately.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.

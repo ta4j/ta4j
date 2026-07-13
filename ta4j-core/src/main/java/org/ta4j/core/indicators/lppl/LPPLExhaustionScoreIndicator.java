@@ -19,7 +19,11 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Positive values represent crash exhaustion. Negative values represent bubble
- * exhaustion. Warm-up bars return {@link org.ta4j.core.num.NaN#NaN}.
+ * exhaustion. The score reflects fits inside the configured actionable
+ * critical-time range, so zero does not imply that no structurally qualified
+ * longer-horizon LPPL regime exists. Inspect the rich indicator's fits with
+ * {@link LPPLFit#isQualified(LPPLCalibrationProfile)} for that distinction.
+ * Warm-up bars return {@link org.ta4j.core.num.NaN#NaN}.
  *
  * @since 0.23.1
  */

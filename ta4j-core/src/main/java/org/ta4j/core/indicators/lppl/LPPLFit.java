@@ -78,16 +78,34 @@ public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double 
     }
 
     /**
+     * Tests whether this fit supplies structurally qualified LPPL evidence without
+     * applying the profile's near-term critical-time range.
+     *
+     * <p>
+     * A qualified fit can describe a developing bubble or crash regime while still
+     * being too distant to be actionable. Use {@link #isActionable} when the
+     * configured critical-time horizon is part of the decision.
+     *
+     * @param profile calibration profile used to interpret the fit
+     * @return {@code true} when the fit passes the empirical LPPL quality and
+     *         parameter filters
+     * @since 0.23.1
+     */
+    public boolean isQualified(LPPLCalibrationProfile profile) {
+        return isConverged() && rSquared > 0.0 && rSquared >= profile.minRSquared() && m >= profile.minM()
+                && m <= profile.maxM() && omega >= profile.minOmega() && omega <= profile.maxOmega()
+                && side() != LPPLExhaustionSide.NONE;
+    }
+
+    /**
      * @param profile calibration profile used to interpret the fit
      * @return {@code true} when the fit passes empirical LPPL filters and active
      *         horizon constraints
      * @since 0.23.1
      */
     public boolean isActionable(LPPLCalibrationProfile profile) {
-        return isConverged() && rSquared > 0.0 && rSquared >= profile.minRSquared() && m >= profile.minM()
-                && m <= profile.maxM() && omega >= profile.minOmega() && omega <= profile.maxOmega()
-                && criticalOffset >= profile.activeMinCriticalOffset()
-                && criticalOffset <= profile.activeMaxCriticalOffset() && side() != LPPLExhaustionSide.NONE;
+        return isQualified(profile) && criticalOffset >= profile.activeMinCriticalOffset()
+                && criticalOffset <= profile.activeMaxCriticalOffset();
     }
 
     /**
