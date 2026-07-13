@@ -138,6 +138,9 @@ class SectorLPPLBenchmarkTest {
                 metadata.profileFingerprint(), 20260710L, 199, 21, 750, 0.10, 0.05);
         assertFalse(SectorLPPLBenchmark.matches(SectorLPPLBenchmark.Manifest.from(incomplete, instruments, groups),
                 loaded, profile));
+        instruments.put("XLC", qualified(null));
+        assertFalse(SectorLPPLBenchmark.matches(SectorLPPLBenchmark.Manifest.from(metadata, instruments, groups),
+                loaded, profile));
     }
 
     @Test
