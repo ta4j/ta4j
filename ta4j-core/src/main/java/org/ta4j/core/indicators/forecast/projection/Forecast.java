@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.forecast.projection;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -10,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.function.Function;
 
 import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.num.NaN;
@@ -18,294 +18,334 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Forecast summary captured at one decision index.
+ * Immutable numeric forecast distribution captured at one decision index.
  *
  * <p>
- * Forecast projection indicators return this value model so simulated,
- * regression, or other projection techniques can expose the same mean, median,
- * standard deviation, quantile, horizon, sample count, and stable-state
- * contract.
+ * Use {@link #ofSamples(int, int, List)} for empirical distributions and
+ * {@link #builder(int, int, NumFactory, ForecastSupport)} for model-produced
+ * summaries. All stable values belong to one {@link NumFactory}, and
+ * {@link #support()} makes empirical versus analytic provenance explicit.
  *
- * @param <T> forecast value type
  * @since 0.22.9
  */
-public final class Forecast<T> {
+public final class Forecast {
 
-    /**
-     * Default quantiles included by sample-based forecast factories.
-     *
-     * @since 0.22.9
-     */
+    /** Default quantiles included by sample-based factories. */
     public static final List<Double> DEFAULT_QUANTILE_PROBABILITIES = List.of(0.05, 0.25, 0.5, 0.75, 0.95);
 
     private final int decisionIndex;
     private final int horizon;
-    private final int sampleCount;
-    private final boolean isStable;
-    private final T mean;
-    private final T median;
-    private final T standardDeviation;
-    private final Map<Double, T> quantiles;
+    private final ForecastSupport support;
+    private final Num mean;
+    private final Num median;
+    private final Num standardDeviation;
+    private final Map<Double, Num> quantiles;
 
-    private Forecast(int decisionIndex, int horizon, int sampleCount, boolean isStable, T mean, T median,
-            T standardDeviation, Map<Double, T> quantiles) {
-        if (decisionIndex < 0) {
-            throw new IllegalArgumentException("decisionIndex must be >= 0");
-        }
-        if (horizon <= 0) {
-            throw new IllegalArgumentException("horizon must be > 0");
-        }
-        if (sampleCount < 0) {
-            throw new IllegalArgumentException("sampleCount must be >= 0");
-        }
-        if (isStable && sampleCount == 0) {
-            throw new IllegalArgumentException("stable forecasts must summarize at least one sample");
-        }
-        if (!isStable && sampleCount != 0) {
-            throw new IllegalArgumentException("unstable forecasts must have zero samples");
-        }
+    private Forecast(int decisionIndex, int horizon, ForecastSupport support, Num mean, Num median,
+            Num standardDeviation, Map<Double, Num> quantiles) {
+        validateMetadata(decisionIndex, horizon);
         this.decisionIndex = decisionIndex;
         this.horizon = horizon;
-        this.sampleCount = sampleCount;
-        this.isStable = isStable;
+        this.support = Objects.requireNonNull(support, "support must not be null");
         this.mean = Objects.requireNonNull(mean, "mean must not be null");
         this.median = Objects.requireNonNull(median, "median must not be null");
         this.standardDeviation = Objects.requireNonNull(standardDeviation, "standardDeviation must not be null");
-        this.quantiles = validateQuantiles(quantiles);
+        this.quantiles = immutableQuantiles(quantiles);
     }
 
-    /**
-     * Returns the decision index where the forecast was made.
-     *
-     * @return decision index
-     * @since 0.22.9
-     */
+    /** @return decision index where the forecast was made */
     public int decisionIndex() {
         return decisionIndex;
     }
 
-    /**
-     * Returns the forecast horizon in bars.
-     *
-     * @return horizon
-     * @since 0.22.9
-     */
+    /** @return forecast horizon in bars */
     public int horizon() {
         return horizon;
     }
 
     /**
-     * Returns the number of samples summarized by this forecast.
+     * Returns distribution provenance.
      *
-     * @return sample count
-     * @since 0.22.9
+     * @return unavailable, empirical, or analytic support
+     * @since 0.23.1
+     */
+    public ForecastSupport support() {
+        return support;
+    }
+
+    /**
+     * Compatibility accessor for empirical support size.
+     *
+     * @return empirical represented value count, or zero for analytic and
+     *         unavailable forecasts
+     * @since 0.23.1
      */
     public int sampleCount() {
-        return sampleCount;
+        return support instanceof ForecastSupport.Empirical empirical ? empirical.count() : 0;
     }
 
-    /**
-     * Returns whether the forecast is stable and usable.
-     *
-     * @return stable state
-     * @since 0.22.9
-     */
+    /** @return whether the forecast is stable and usable */
     public boolean isStable() {
-        return isStable;
+        return !(support instanceof ForecastSupport.Unavailable);
     }
 
     /**
-     * Returns the forecast mean.
-     *
-     * @return mean value
-     * @since 0.22.9
+     * @return forecast mean
+     * @since 0.23.1
      */
-    public T mean() {
+    public Num mean() {
         return mean;
     }
 
     /**
-     * Returns the forecast median.
-     *
-     * @return median value
-     * @since 0.22.9
+     * @return forecast median
+     * @since 0.23.1
      */
-    public T median() {
+    public Num median() {
         return median;
     }
 
     /**
-     * Returns the population standard deviation of summarized samples.
-     *
-     * @return standard deviation
-     * @since 0.22.9
+     * @return population standard deviation
+     * @since 0.23.1
      */
-    public T standardDeviation() {
+    public Num standardDeviation() {
         return standardDeviation;
     }
 
     /**
-     * Returns a defensive quantile map copy.
-     *
-     * @return quantile probability to forecast value
-     * @since 0.22.9
+     * @return immutable probability-to-quantile map
+     * @since 0.23.1
      */
-    public Map<Double, T> quantiles() {
+    public Map<Double, Num> quantiles() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(quantiles));
     }
 
-    /**
-     * Alias for {@link #decisionIndex()} used by indicator-style code.
-     *
-     * @return decision index
-     * @since 0.22.9
-     */
+    /** @return alias for {@link #decisionIndex()} */
     public int index() {
         return decisionIndex;
     }
 
     /**
-     * Creates an unstable {@link Num}-based forecast.
+     * Creates an unstable forecast.
      *
      * @param decisionIndex decision index
-     * @param horizon       forecast horizon in bars
-     * @return unstable forecast summary
-     * @since 0.22.9
+     * @param horizon       horizon in bars
+     * @return unstable forecast
+     * @since 0.23.1
      */
-    public static Forecast<Num> unstable(int decisionIndex, int horizon) {
-        return unstable(decisionIndex, horizon, NaN.NaN);
+    public static Forecast unstable(int decisionIndex, int horizon) {
+        return new Forecast(decisionIndex, horizon, ForecastSupport.unavailable(), NaN.NaN, NaN.NaN, NaN.NaN, Map.of());
     }
 
     /**
-     * Creates an unstable forecast using the provided unstable value.
+     * Starts a validated stable-summary builder.
      *
      * @param decisionIndex decision index
-     * @param horizon       forecast horizon in bars
-     * @param unstableValue value used for summary fields
-     * @param <T>           forecast value type
-     * @return unstable forecast summary
-     * @since 0.22.9
+     * @param horizon       horizon in bars
+     * @param numFactory    owning numeric factory
+     * @param support       empirical or analytic support
+     * @return summary builder
+     * @since 0.23.1
      */
-    public static <T> Forecast<T> unstable(int decisionIndex, int horizon, T unstableValue) {
-        T value = Objects.requireNonNull(unstableValue, "unstableValue must not be null");
-        return new Forecast<>(decisionIndex, horizon, 0, false, value, value, value, Map.of());
+    public static Builder builder(int decisionIndex, int horizon, NumFactory numFactory, ForecastSupport support) {
+        return new Builder(decisionIndex, horizon, numFactory, support);
     }
 
     /**
-     * Summarizes samples using the default forecast quantiles.
+     * Summarizes samples using {@link #DEFAULT_QUANTILE_PROBABILITIES}.
      *
      * @param decisionIndex decision index
-     * @param horizon       forecast horizon in bars
-     * @param samples       sample values to summarize
-     * @return stable forecast, or unstable when no valid samples are present
-     * @since 0.22.9
+     * @param horizon       horizon in bars
+     * @param samples       candidate empirical values
+     * @return empirical forecast, or an unstable forecast when no finite samples
+     *         remain
+     * @since 0.23.1
      */
-    public static Forecast<Num> ofSamples(int decisionIndex, int horizon, List<Num> samples) {
+    public static Forecast ofSamples(int decisionIndex, int horizon, List<Num> samples) {
         return ofSamples(decisionIndex, horizon, samples, DEFAULT_QUANTILE_PROBABILITIES);
     }
 
     /**
-     * Summarizes samples using the requested quantiles.
+     * Summarizes finite samples using the requested quantiles.
+     *
+     * <p>
+     * Every retained sample is coerced through the first finite sample's factory.
+     * Returns an unstable forecast when no finite samples remain.
      *
      * @param decisionIndex         decision index
-     * @param horizon               forecast horizon in bars
-     * @param samples               sample values to summarize
-     * @param quantileProbabilities quantile probabilities in {@code [0, 1]}
-     * @return stable forecast, or unstable when no valid samples are present
-     * @since 0.22.9
+     * @param horizon               horizon in bars
+     * @param samples               candidate empirical values
+     * @param quantileProbabilities requested quantile probabilities
+     * @return empirical forecast, or an unstable forecast when no finite samples
+     *         remain
+     * @since 0.23.1
      */
-    public static Forecast<Num> ofSamples(int decisionIndex, int horizon, List<Num> samples,
+    public static Forecast ofSamples(int decisionIndex, int horizon, List<Num> samples,
             List<Double> quantileProbabilities) {
-        List<Num> validSamples = validSamples(samples);
-        if (validSamples.isEmpty()) {
+        List<Num> input = Objects.requireNonNull(samples, "samples must not be null");
+        NumFactory numFactory = null;
+        List<Num> normalized = new ArrayList<>(input.size());
+        for (Num sample : input) {
+            if (!Num.isFinite(sample)) {
+                continue;
+            }
+            if (numFactory == null) {
+                numFactory = sample.getNumFactory();
+            }
+            Num value = coerce(sample, numFactory, "sample");
+            normalized.add(value);
+        }
+        if (normalized.isEmpty()) {
             return unstable(decisionIndex, horizon);
         }
 
-        NumFactory numFactory = validSamples.get(0).getNumFactory();
-        List<Num> sortedSamples = new ArrayList<>(validSamples);
+        List<Num> sortedSamples = new ArrayList<>(normalized);
         sortedSamples.sort(Num::compareTo);
-        SampleSummary summary = SampleSummary.fromValues(validSamples.stream(), numFactory);
-        Num mean = summary.mean();
-        Num standardDeviation = summary.m2().dividedBy(numFactory.numOf(validSamples.size())).sqrt();
-        Num median = percentile(numFactory, sortedSamples, 0.5);
+        SampleMoments moments = sampleMoments(normalized, numFactory);
+        if (moments == null) {
+            return unstable(decisionIndex, horizon);
+        }
         Map<Double, Num> quantiles = new LinkedHashMap<>();
         for (Double probability : validateProbabilities(quantileProbabilities)) {
             quantiles.put(probability, percentile(numFactory, sortedSamples, probability));
         }
-
-        return new Forecast<>(decisionIndex, horizon, validSamples.size(), true, mean, median, standardDeviation,
-                quantiles);
+        return builder(decisionIndex, horizon, numFactory, ForecastSupport.empirical(normalized.size()))
+                .mean(moments.mean())
+                .median(percentile(numFactory, sortedSamples, 0.5))
+                .standardDeviation(moments.standardDeviation())
+                .quantiles(quantiles)
+                .build();
     }
 
-    /**
-     * Returns whether this forecast includes the requested quantile probability.
-     *
-     * @param probability quantile probability in {@code [0, 1]}
-     * @return true if the quantile is available, false otherwise
-     * @since 0.22.9
-     */
+    private static SampleMoments sampleMoments(List<Num> samples, NumFactory numFactory) {
+        SampleSummary summary = SampleSummary.fromValues(samples.stream(), numFactory);
+        Num mean = summary.mean();
+        if (!Num.isFinite(mean)) {
+            return null;
+        }
+        Num count = numFactory.numOf(samples.size());
+        Num variance = summary.m2().dividedBy(count);
+        if (Num.isFinite(variance) && variance.isPositive()) {
+            Num standardDeviation = variance.sqrt();
+            return Num.isFinite(standardDeviation) && !standardDeviation.isZero()
+                    ? new SampleMoments(mean, standardDeviation)
+                    : null;
+        }
+        if (samples.stream().allMatch(sample -> sample.isEqual(mean))) {
+            return new SampleMoments(mean, numFactory.zero());
+        }
+
+        Num scale = numFactory.zero();
+        for (Num sample : samples) {
+            Num magnitude = sample.abs();
+            if (magnitude.isGreaterThan(scale)) {
+                scale = magnitude;
+            }
+        }
+        if (scale.isZero()) {
+            return new SampleMoments(numFactory.zero(), numFactory.zero());
+        }
+
+        Num scaledSquaredDeviations = numFactory.zero();
+        for (Num sample : samples) {
+            Num deviation = sample.minus(mean).dividedBy(scale);
+            scaledSquaredDeviations = scaledSquaredDeviations.plus(deviation.multipliedBy(deviation));
+        }
+        Num scaledVariance = scaledSquaredDeviations.dividedBy(count);
+        Num scaledStandardDeviation = scaledVariance.isZero() ? numFactory.zero() : scaledVariance.sqrt();
+        Num standardDeviation = scale.multipliedBy(scaledStandardDeviation);
+        if (!Num.isFinite(standardDeviation) || standardDeviation.isZero() && !scaledStandardDeviation.isZero()) {
+            return null;
+        }
+        return new SampleMoments(mean, standardDeviation);
+    }
+
+    /** @return whether the requested valid quantile is available */
     public boolean hasQuantile(double probability) {
         validateProbability(probability);
         return quantiles.containsKey(probability);
     }
 
     /**
-     * Returns the value for an included quantile probability.
+     * Returns an available quantile or {@link NaN#NaN}.
      *
-     * @param probability quantile probability in {@code [0, 1]}
-     * @return quantile value, or {@code null} when the valid probability was not
-     *         configured for this forecast
-     * @since 0.22.9
+     * @param probability probability in {@code [0, 1]}
+     * @return quantile value, or {@code NaN.NaN} when absent
+     * @since 0.23.1
      */
-    public T quantile(double probability) {
+    public Num quantile(double probability) {
         validateProbability(probability);
-        return quantiles.get(probability);
+        return quantiles.getOrDefault(probability, NaN.NaN);
     }
 
     /**
-     * Maps all summary values while preserving decision index, horizon, sample
-     * count, and stable state.
+     * Scales the distribution through the origin.
      *
-     * @param mapper value mapper
-     * @param <R>    mapped forecast value type
-     * @return mapped forecast summary
-     * @since 0.22.9
+     * @param factor scale factor
+     * @return scaled distribution
+     * @since 0.23.1
      */
-    public <R> Forecast<R> map(Function<? super T, ? extends R> mapper) {
-        Function<? super T, ? extends R> valueMapper = Objects.requireNonNull(mapper, "mapper must not be null");
-        Map<Double, R> mappedQuantiles = new LinkedHashMap<>();
-        for (Map.Entry<Double, T> entry : quantiles.entrySet()) {
-            mappedQuantiles.put(entry.getKey(),
-                    Objects.requireNonNull(valueMapper.apply(entry.getValue()), "mapped quantile must not be null"));
-        }
-        return new Forecast<>(decisionIndex, horizon, sampleCount, isStable,
-                Objects.requireNonNull(valueMapper.apply(mean), "mapped mean must not be null"),
-                Objects.requireNonNull(valueMapper.apply(median), "mapped median must not be null"),
-                Objects.requireNonNull(valueMapper.apply(standardDeviation),
-                        "mapped standardDeviation must not be null"),
-                mappedQuantiles);
+    public Forecast scale(Num factor) {
+        return affine(factor, mean.getNumFactory().zero());
     }
 
-    private static <T> Map<Double, T> validateQuantiles(Map<Double, T> quantiles) {
-        Map<Double, T> input = Objects.requireNonNull(quantiles, "quantiles must not be null");
-        TreeMap<Double, T> sorted = new TreeMap<>();
-        for (Map.Entry<Double, T> entry : input.entrySet()) {
-            Double probability = Objects.requireNonNull(entry.getKey(), "quantile probability must not be null");
-            validateProbability(probability);
-            sorted.put(probability, Objects.requireNonNull(entry.getValue(), "quantile value must not be null"));
+    /**
+     * Applies {@code scale * value + offset} with correct dispersion and quantile
+     * semantics.
+     *
+     * @param scale  finite scale
+     * @param offset finite offset
+     * @return transformed distribution
+     * @since 0.23.1
+     */
+    public Forecast affine(Num scale, Num offset) {
+        if (!isStable()) {
+            return unstable(decisionIndex, horizon);
         }
-        return Collections.unmodifiableMap(new LinkedHashMap<>(sorted));
+        NumFactory numFactory = mean.getNumFactory();
+        Num normalizedScale = coerce(scale, numFactory, "scale");
+        Num normalizedOffset = coerce(offset, numFactory, "offset");
+        Map<Double, Num> transformedQuantiles = new LinkedHashMap<>();
+        for (Map.Entry<Double, Num> entry : quantiles.entrySet()) {
+            double probability = normalizedScale.isNegative() ? complement(entry.getKey()) : entry.getKey();
+            transformedQuantiles.put(probability,
+                    entry.getValue().multipliedBy(normalizedScale).plus(normalizedOffset));
+        }
+        return builder(decisionIndex, horizon, numFactory, support)
+                .mean(mean.multipliedBy(normalizedScale).plus(normalizedOffset))
+                .median(median.multipliedBy(normalizedScale).plus(normalizedOffset))
+                .standardDeviation(standardDeviation.multipliedBy(normalizedScale.abs()))
+                .quantiles(transformedQuantiles)
+                .build();
     }
 
-    private static List<Num> validSamples(List<Num> samples) {
-        List<Num> input = Objects.requireNonNull(samples, "samples must not be null");
-        List<Num> validSamples = new ArrayList<>(input.size());
-        for (Num sample : input) {
-            if (Num.isFinite(sample)) {
-                validSamples.add(sample);
-            }
+    private static void validateMetadata(int decisionIndex, int horizon) {
+        if (decisionIndex < 0) {
+            throw new IllegalArgumentException("decisionIndex must be >= 0");
         }
-        return validSamples;
+        if (horizon <= 0) {
+            throw new IllegalArgumentException("horizon must be > 0");
+        }
+    }
+
+    private static Num coerce(Num value, NumFactory numFactory, String fieldName) {
+        Num input = Objects.requireNonNull(value, fieldName + " must not be null");
+        if (!Num.isFinite(input)) {
+            throw new IllegalArgumentException(fieldName + " must be finite");
+        }
+        Num normalized = numFactory.numOf(input.bigDecimalValue());
+        if (!Num.isFinite(normalized)) {
+            throw new IllegalArgumentException(fieldName + " cannot be represented by the target NumFactory");
+        }
+        if (normalized.isZero() && !input.isZero()) {
+            throw new IllegalArgumentException(fieldName + " underflows the target NumFactory");
+        }
+        return normalized;
+    }
+
+    private static Map<Double, Num> immutableQuantiles(Map<Double, Num> quantiles) {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(quantiles));
     }
 
     private static List<Double> validateProbabilities(List<Double> probabilities) {
@@ -315,9 +355,9 @@ public final class Forecast<T> {
         }
         TreeMap<Double, Double> sorted = new TreeMap<>();
         for (Double probability : input) {
-            Double validated = Objects.requireNonNull(probability, "quantile probability must not be null");
-            validateProbability(validated);
-            sorted.put(validated, validated);
+            Double value = Objects.requireNonNull(probability, "quantile probability must not be null");
+            validateProbability(value);
+            sorted.put(value, value);
         }
         return List.copyOf(sorted.values());
     }
@@ -326,6 +366,10 @@ public final class Forecast<T> {
         if (Double.isNaN(probability) || probability < 0d || probability > 1d) {
             throw new IllegalArgumentException("quantile probability must be in [0, 1]");
         }
+    }
+
+    private static double complement(double probability) {
+        return BigDecimal.ONE.subtract(BigDecimal.valueOf(probability)).doubleValue();
     }
 
     private static Num percentile(NumFactory numFactory, List<Num> sortedSamples, double probability) {
@@ -340,7 +384,144 @@ public final class Forecast<T> {
         if (lowerIndex == upperIndex) {
             return lower;
         }
-        Num fraction = numFactory.numOf(position - lowerIndex);
-        return lower.plus(upper.minus(lower).multipliedBy(fraction));
+        return lower.plus(upper.minus(lower).multipliedBy(numFactory.numOf(position - lowerIndex)));
+    }
+
+    private record SampleMoments(Num mean, Num standardDeviation) {
+    }
+
+    /**
+     * Builder for validated stable summaries.
+     *
+     * @since 0.23.1
+     */
+    public static final class Builder {
+
+        private final int decisionIndex;
+        private final int horizon;
+        private final NumFactory numFactory;
+        private final ForecastSupport support;
+        private Num mean;
+        private Num median;
+        private Num standardDeviation;
+        private Map<Double, Num> quantiles = Map.of();
+
+        private Builder(int decisionIndex, int horizon, NumFactory numFactory, ForecastSupport support) {
+            validateMetadata(decisionIndex, horizon);
+            this.decisionIndex = decisionIndex;
+            this.horizon = horizon;
+            this.numFactory = Objects.requireNonNull(numFactory, "numFactory must not be null");
+            this.support = Objects.requireNonNull(support, "support must not be null");
+            if (support instanceof ForecastSupport.Unavailable) {
+                throw new IllegalArgumentException("stable summaries cannot use unavailable support");
+            }
+        }
+
+        /**
+         * Sets the required distribution mean.
+         *
+         * @param mean finite mean
+         * @return this builder
+         * @since 0.23.1
+         */
+        public Builder mean(Num mean) {
+            this.mean = mean;
+            return this;
+        }
+
+        /**
+         * Sets the required distribution median.
+         *
+         * @param median finite median
+         * @return this builder
+         * @since 0.23.1
+         */
+        public Builder median(Num median) {
+            this.median = median;
+            return this;
+        }
+
+        /**
+         * Sets the required non-negative population standard deviation.
+         *
+         * @param standardDeviation finite, non-negative population standard deviation
+         * @return this builder
+         * @since 0.23.1
+         */
+        public Builder standardDeviation(Num standardDeviation) {
+            this.standardDeviation = standardDeviation;
+            return this;
+        }
+
+        /**
+         * Sets optional probability-to-value quantiles; the map is copied at build
+         * time.
+         *
+         * @param quantiles probability-to-value quantiles
+         * @return this builder
+         * @since 0.23.1
+         */
+        public Builder quantiles(Map<Double, Num> quantiles) {
+            this.quantiles = Objects.requireNonNull(quantiles, "quantiles must not be null");
+            return this;
+        }
+
+        /**
+         * Builds the normalized, validated forecast.
+         *
+         * @return stable forecast summary
+         * @since 0.23.1
+         */
+        public Forecast build() {
+            Num normalizedMean = coerce(mean, numFactory, "mean");
+            Num normalizedMedian = coerce(median, numFactory, "median");
+            Num normalizedStandardDeviation = coerce(standardDeviation, numFactory, "standardDeviation");
+            if (normalizedStandardDeviation.isNegative()) {
+                throw new IllegalArgumentException("standardDeviation must be >= 0");
+            }
+            TreeMap<Double, Num> sorted = new TreeMap<>();
+            for (Map.Entry<Double, Num> entry : quantiles.entrySet()) {
+                Double probability = Objects.requireNonNull(entry.getKey(), "quantile probability must not be null");
+                validateProbability(probability);
+                sorted.put(probability, coerce(entry.getValue(), numFactory, "quantile value"));
+            }
+            validateCoherence(normalizedMean, normalizedMedian, normalizedStandardDeviation, sorted);
+            return new Forecast(decisionIndex, horizon, support, normalizedMean, normalizedMedian,
+                    normalizedStandardDeviation, sorted);
+        }
+
+        private void validateCoherence(Num normalizedMean, Num normalizedMedian, Num normalizedStandardDeviation,
+                TreeMap<Double, Num> sortedQuantiles) {
+            Num previous = null;
+            for (Num quantile : sortedQuantiles.values()) {
+                if (previous != null && quantile.isLessThan(previous)) {
+                    throw new IllegalArgumentException("quantile values must be nondecreasing");
+                }
+                previous = quantile;
+            }
+            Num p50 = sortedQuantiles.get(0.5d);
+            if (p50 != null && !p50.isEqual(normalizedMedian)) {
+                throw new IllegalArgumentException("median must equal the 0.5 quantile");
+            }
+            for (Map.Entry<Double, Num> entry : sortedQuantiles.entrySet()) {
+                if (entry.getKey() < 0.5d && entry.getValue().isGreaterThan(normalizedMedian)) {
+                    throw new IllegalArgumentException("lower quantiles must not exceed the median");
+                }
+                if (entry.getKey() > 0.5d && entry.getValue().isLessThan(normalizedMedian)) {
+                    throw new IllegalArgumentException("upper quantiles must not be below the median");
+                }
+            }
+            boolean singleValueSupport = support instanceof ForecastSupport.Empirical empirical
+                    && empirical.count() == 1;
+            if (normalizedStandardDeviation.isZero() || singleValueSupport) {
+                if (!normalizedMean.isEqual(normalizedMedian)
+                        || sortedQuantiles.values().stream().anyMatch(value -> !value.isEqual(normalizedMean))) {
+                    throw new IllegalArgumentException("zero-dispersion summaries must contain one location value");
+                }
+                if (singleValueSupport && !normalizedStandardDeviation.isZero()) {
+                    throw new IllegalArgumentException("one-value empirical support must have zero dispersion");
+                }
+            }
+        }
     }
 }
