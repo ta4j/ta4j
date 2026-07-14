@@ -140,6 +140,9 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             if (provisional < 0 || provisional > 1) {
                 throw new IllegalArgumentException("provisional must be zero or one");
             }
+            if ((long) confirmed + provisional > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("total wave count must fit in an int");
+            }
         }
 
         /**
