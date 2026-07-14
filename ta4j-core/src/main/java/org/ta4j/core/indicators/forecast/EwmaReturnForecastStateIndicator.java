@@ -115,20 +115,16 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     @Override
     protected ReturnForecastState calculate(int index) {
         if (index < getCountOfUnstableBars()) {
-            return ReturnForecastState.unstable(index);
+            return ReturnForecastState.unstable(index, 0, ReturnRepresentation.LOG);
         }
         Num mean = meanIndicator.getValue(index);
         Num variance = varianceIndicator.getValue(index);
         if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
-            return ReturnForecastState.unstable(index);
-        }
-        Num volatility = variance.sqrt();
-        if (!Num.isFinite(volatility)) {
-            return ReturnForecastState.unstable(index);
+            return ReturnForecastState.unstable(index, 0, ReturnRepresentation.LOG);
         }
         Num drift = driftMode == DriftMode.ZERO ? getBarSeries().numFactory().zero() : mean;
         int observationCount = initialObservationCount + index - getCountOfUnstableBars();
-        return new ReturnForecastState(index, observationCount, true, mean, drift, variance, volatility);
+        return ReturnForecastState.stable(index, observationCount, ReturnRepresentation.LOG, mean, drift, variance);
     }
 
     /**

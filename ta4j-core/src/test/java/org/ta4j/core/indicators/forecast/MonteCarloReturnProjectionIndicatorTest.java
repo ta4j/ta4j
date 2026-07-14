@@ -18,17 +18,19 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
-import org.ta4j.core.indicators.forecast.state.ForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
+import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, Forecast<Num>> {
+public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTest<LogReturnIndicator, Forecast> {
 
     public MonteCarloReturnProjectionIndicatorTest(NumFactory numFactory) {
         super(numFactory);
@@ -41,7 +43,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
         MonteCarloReturnProjectionIndicator forecast = new MonteCarloReturnProjectionIndicator(state, 5);
 
-        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+        Forecast prediction = forecast.getValue(series.getEndIndex());
 
         assertEquals(ReturnRepresentation.LOG, forecast.getReturnRepresentation());
         assertTrue(prediction.isStable());
@@ -59,7 +61,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL, 2, 50, 3, 42L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT);
 
-        Forecast<Num> prediction = forecast.getValue(3);
+        Forecast prediction = forecast.getValue(3);
 
         assertTrue(prediction.isStable());
         assertEquals(50, prediction.sampleCount());
@@ -80,11 +82,29 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 MonteCarloReturnProjectionIndicator.ShockModel.NORMAL, 2, 100, 4, 7L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA);
 
-        Forecast<Num> expected = first.getValue(6);
+        Forecast expected = first.getValue(6);
         second.getValue(7);
-        Forecast<Num> actual = second.getValue(6);
+        Forecast actual = second.getValue(6);
 
         assertEquivalent(expected, actual);
+    }
+
+    @Test
+    public void forecastAtDecisionIndexIsInvariantToFutureSeriesSuffix() {
+        BarSeries prefix = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 99, 105, 104, 108, 106)
+                .build();
+        BarSeries extended = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 99, 105, 104, 108, 106, 500, 10)
+                .build();
+        MonteCarloReturnProjectionIndicator prefixForecast = forecast(prefix,
+                MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL, 3, 100, 4, 7L,
+                MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA);
+        MonteCarloReturnProjectionIndicator extendedForecast = forecast(extended,
+                MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL, 3, 100, 4, 7L,
+                MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA);
+
+        assertEquivalent(prefixForecast.getValue(6), extendedForecast.getValue(6));
     }
 
     @Test
@@ -99,8 +119,8 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 MonteCarloReturnProjectionIndicator.ShockModel.NORMAL, 1, 100, 4, 11L,
                 MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT);
 
-        Forecast<Num> empiricalPrediction = empirical.getValue(6);
-        Forecast<Num> normalPrediction = normal.getValue(6);
+        Forecast empiricalPrediction = empirical.getValue(6);
+        Forecast normalPrediction = normal.getValue(6);
 
         assertTrue(empiricalPrediction.isStable());
         assertTrue(normalPrediction.isStable());
@@ -129,7 +149,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
                 .build();
 
-        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+        Forecast prediction = forecast.getValue(series.getEndIndex());
 
         assertTrue(prediction.isStable());
         assertEquals(10, prediction.sampleCount());
@@ -147,11 +167,15 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
                 .build();
 
-        Forecast<Num> prediction = forecast.getValue(series.getEndIndex());
+        Forecast prediction = forecast.getValue(series.getEndIndex());
 
         assertTrue(prediction.isStable());
         assertEquals(10, prediction.sampleCount());
-        assertTrue(series.numFactory().produces(prediction.mean()));
+        assertEquals(series.numFactory().one().getClass(), prediction.mean().getClass());
+        if (prediction.mean() instanceof DecimalNum actual
+                && series.numFactory().one() instanceof DecimalNum expected) {
+            assertEquals(expected.getMathContext(), actual.getMathContext());
+        }
     }
 
     @Test
@@ -178,6 +202,20 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         assertFalse(emptyStateForecast.getValue(series.getEndIndex()).isStable());
     }
 
+    @Test
+    public void rejectsStateMomentsWhoseRepresentationDiffersFromTheReturnStream() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        ReturnForecastStateIndicator<CustomReturnState> state = new FixedCustomStateIndicator(returns,
+                series.numFactory(), 0, -1, ReturnRepresentation.DECIMAL);
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .build();
+
+        assertFalse(forecast.getValue(series.getEndIndex()).isStable());
+    }
+
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
             MonteCarloReturnProjectionIndicator.ShockModel shockModel, int horizon, int iterations, int lookback,
             long seed, MonteCarloReturnProjectionIndicator.VolatilityUpdateMode updateMode) {
@@ -201,7 +239,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(values).build();
     }
 
-    private void assertEquivalent(Forecast<Num> expected, Forecast<Num> actual) {
+    private void assertEquivalent(Forecast expected, Forecast actual) {
         assertEquals(expected.isStable(), actual.isStable());
         assertEquals(expected.sampleCount(), actual.sampleCount());
         assertNumEquals(expected.mean(), actual.mean());
@@ -250,7 +288,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         @Override
         public ReturnForecastState getValue(int index) {
             Num zero = getBarSeries().numFactory().zero();
-            return new ReturnForecastState(index, index + 1, true, zero, zero, zero, zero);
+            return ReturnForecastState.stable(index, index + 1, representation, zero, zero, zero);
         }
 
         @Override
@@ -264,8 +302,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         }
     }
 
-    private record CustomReturnState(int index, int observationCount, boolean isStable, Num mean, Num drift,
-            Num variance, Num volatility) implements ForecastState {
+    private record CustomReturnState(ReturnMoments moments) implements ReturnMomentState {
     }
 
     private static final class FixedCustomStateIndicator implements ReturnForecastStateIndicator<CustomReturnState> {
@@ -274,6 +311,7 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         private final NumFactory stateNumFactory;
         private final int stateIndexOffset;
         private final int observationCount;
+        private final ReturnRepresentation momentRepresentation;
 
         private FixedCustomStateIndicator(ReturnIndicator returns) {
             this(returns, returns.getBarSeries().numFactory(), 0, -1);
@@ -285,10 +323,16 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
 
         private FixedCustomStateIndicator(ReturnIndicator returns, NumFactory stateNumFactory, int stateIndexOffset,
                 int observationCount) {
+            this(returns, stateNumFactory, stateIndexOffset, observationCount, ReturnRepresentation.LOG);
+        }
+
+        private FixedCustomStateIndicator(ReturnIndicator returns, NumFactory stateNumFactory, int stateIndexOffset,
+                int observationCount, ReturnRepresentation momentRepresentation) {
             this.returns = returns;
             this.stateNumFactory = stateNumFactory;
             this.stateIndexOffset = stateIndexOffset;
             this.observationCount = observationCount;
+            this.momentRepresentation = momentRepresentation;
         }
 
         @Override
@@ -300,8 +344,11 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         public CustomReturnState getValue(int index) {
             Num zero = stateNumFactory.zero();
             int representedObservations = observationCount < 0 ? index + 1 : observationCount;
-            return new CustomReturnState(index + stateIndexOffset, representedObservations, true, zero, zero, zero,
-                    zero);
+            ReturnMoments moments = representedObservations == 0
+                    ? ReturnMoments.unstable(index + stateIndexOffset, 0, momentRepresentation)
+                    : ReturnMoments.stable(index + stateIndexOffset, representedObservations, momentRepresentation,
+                            zero, zero, zero);
+            return new CustomReturnState(moments);
         }
 
         @Override

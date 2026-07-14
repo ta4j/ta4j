@@ -27,7 +27,7 @@ public class ForwardForecastIndicatorTest extends AbstractIndicatorTest<ForwardF
     @Test
     public void reducesDistribution() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        Forecast<Num> forecastSummary = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)));
+        Forecast forecastSummary = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)));
         ForecastProjectionIndicator forecast = new FixedForecastIndicator(series, 1, Map.of(2, forecastSummary));
         ForwardForecastIndicator median = new ForwardForecastIndicator(forecast, Forecast::median);
         ForwardForecastIndicator p95 = new ForwardForecastIndicator(forecast, value -> value.quantile(0.95));
@@ -38,21 +38,40 @@ public class ForwardForecastIndicatorTest extends AbstractIndicatorTest<ForwardF
         assertTrue(median.getValue(1).isNaN());
     }
 
+    @Test
+    public void rejectsUnavailableAndMismatchedForecastMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        Forecast wrongIndex = Forecast.ofSamples(2, 1, List.of(numOf(2)));
+        Forecast wrongHorizon = Forecast.ofSamples(2, 2, List.of(numOf(3)));
+        ForecastProjectionIndicator forecast = new FixedForecastIndicator(series, 0,
+                Map.of(1, wrongIndex, 2, wrongHorizon));
+        ForwardForecastIndicator median = new ForwardForecastIndicator(forecast, Forecast::median);
+
+        assertTrue(median.getValue(0).isNaN());
+        assertTrue(median.getValue(1).isNaN());
+        assertTrue(median.getValue(2).isNaN());
+    }
+
     private static final class FixedForecastIndicator implements ForecastProjectionIndicator {
 
         private final BarSeries series;
         private final int unstableBars;
-        private final Map<Integer, Forecast<Num>> values;
+        private final Map<Integer, Forecast> values;
 
-        private FixedForecastIndicator(BarSeries series, int unstableBars, Map<Integer, Forecast<Num>> values) {
+        private FixedForecastIndicator(BarSeries series, int unstableBars, Map<Integer, Forecast> values) {
             this.series = series;
             this.unstableBars = unstableBars;
             this.values = values;
         }
 
         @Override
-        public Forecast<Num> getValue(int index) {
-            return values.getOrDefault(index, Forecast.unstable(index, 1, NaN.NaN));
+        public Forecast getValue(int index) {
+            return values.getOrDefault(index, Forecast.unstable(index, 1));
+        }
+
+        @Override
+        public int getHorizon() {
+            return 1;
         }
 
         @Override

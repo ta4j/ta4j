@@ -3,17 +3,19 @@
  */
 package org.ta4j.core.indicators.forecast.state;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 
 /**
- * Standard feature extractors for forecast-state comparison and modeling.
+ * Named, representation-bound feature extractors for return-moment models.
  *
  * <p>
- * Each factory returns a stateless extractor and every extraction returns a
- * defensive array. Built-in extractors require stable states whose selected
- * values can be represented as finite primitive doubles.
+ * Values are raw and unscaled. Distance and regression consumers remain
+ * responsible for fitting and applying their own training-only standardization.
  *
  * @since 0.23.1
  */
@@ -23,69 +25,109 @@ public final class ForecastFeatureExtractors {
     }
 
     /**
-     * Extracts mean, drift, variance, and volatility, in that order.
+     * Extracts {@code [mean, volatility]}.
      *
-     * @param <S> forecast state type
-     * @return four-feature extractor
-     * @since 0.23.1
-     */
-    public static <S extends ForecastState> ForecastFeatureExtractor<S> meanDriftVarianceVolatility() {
-        return state -> {
-            S value = requireStable(state);
-            return new double[] { finiteDouble(value.mean(), "mean"), finiteDouble(value.drift(), "drift"),
-                    finiteDouble(value.variance(), "variance"), finiteDouble(value.volatility(), "volatility") };
-        };
-    }
-
-    /**
-     * Extracts drift and volatility, in that order.
-     *
-     * @param <S> forecast state type
+     * @param representation required return representation
+     * @param <S>            state type
      * @return two-feature extractor
-     * @since 0.23.1
      */
-    public static <S extends ForecastState> ForecastFeatureExtractor<S> driftVolatility() {
-        return state -> {
-            S value = requireStable(state);
-            return new double[] { finiteDouble(value.drift(), "drift"),
-                    finiteDouble(value.volatility(), "volatility") };
-        };
+    public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> meanVolatility(
+            ReturnRepresentation representation) {
+        String returnUnit = unit(representation);
+        return extractor("return-moments/mean-volatility", representation,
+                List.of(new ForecastFeatureSchema.Feature("mean", returnUnit),
+                        new ForecastFeatureSchema.Feature("volatility", returnUnit)),
+                List.of(ReturnMomentState::mean, ReturnMomentState::volatility));
     }
 
     /**
-     * Extracts the default return-state features: mean and volatility.
+     * Extracts {@code [drift, volatility]}.
      *
-     * <p>
-     * Drift is intentionally omitted because the built-in EWMA state defaults to
-     * zero drift and its rolling-mean mode makes drift equal to mean. Use
-     * {@link #driftVolatility()} when drift is an intentional model input, or
-     * {@link #meanDriftVarianceVolatility()} for the full common state surface.
-     *
-     * @param <S> forecast state type
-     * @return return-state feature extractor
-     * @since 0.23.1
+     * @param representation required return representation
+     * @param <S>            state type
+     * @return two-feature extractor
      */
-    public static <S extends ForecastState> ForecastFeatureExtractor<S> returnStateDefaults() {
-        return state -> {
-            S value = requireStable(state);
-            return new double[] { finiteDouble(value.mean(), "mean"), finiteDouble(value.volatility(), "volatility") };
-        };
+    public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> driftVolatility(
+            ReturnRepresentation representation) {
+        String returnUnit = unit(representation);
+        return extractor("return-moments/drift-volatility", representation,
+                List.of(new ForecastFeatureSchema.Feature("drift", returnUnit),
+                        new ForecastFeatureSchema.Feature("volatility", returnUnit)),
+                List.of(ReturnMomentState::drift, ReturnMomentState::volatility));
     }
 
-    private static <S extends ForecastState> S requireStable(S state) {
-        S value = Objects.requireNonNull(state, "state must not be null");
-        if (!value.isStable()) {
-            throw new IllegalArgumentException("state must be stable");
-        }
-        return value;
+    /**
+     * Extracts {@code [mean, drift, variance]} without duplicating dispersion.
+     *
+     * @param representation required return representation
+     * @param <S>            state type
+     * @return three-feature extractor
+     */
+    public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> meanDriftVariance(
+            ReturnRepresentation representation) {
+        String returnUnit = unit(representation);
+        return extractor("return-moments/mean-drift-variance", representation,
+                List.of(new ForecastFeatureSchema.Feature("mean", returnUnit),
+                        new ForecastFeatureSchema.Feature("drift", returnUnit),
+                        new ForecastFeatureSchema.Feature("variance", returnUnit + "^2")),
+                List.of(ReturnMomentState::mean, ReturnMomentState::drift, ReturnMomentState::variance));
+    }
+
+    private static <S extends ReturnMomentState> ForecastFeatureExtractor<S> extractor(String id,
+            ReturnRepresentation representation, List<ForecastFeatureSchema.Feature> features,
+            List<Function<ReturnMomentState, Num>> resolvers) {
+        ReturnRepresentation requiredRepresentation = Objects.requireNonNull(representation,
+                "representation must not be null");
+        ForecastFeatureSchema schema = new ForecastFeatureSchema(id, 1, requiredRepresentation, features);
+        List<Function<ReturnMomentState, Num>> valueResolvers = List.copyOf(resolvers);
+        return new ForecastFeatureExtractor<>() {
+            @Override
+            public ForecastFeatureSchema schema() {
+                return schema;
+            }
+
+            @Override
+            public void extractInto(S state, double[] target, int offset) {
+                S value = Objects.requireNonNull(state, "state must not be null");
+                double[] destination = Objects.requireNonNull(target, "target must not be null");
+                if (!value.isStable()) {
+                    throw new IllegalArgumentException("state must be stable");
+                }
+                if (value.representation() != requiredRepresentation) {
+                    throw new IllegalArgumentException("state representation must match schema representation");
+                }
+                if (offset < 0 || offset > destination.length - schema.dimension()) {
+                    throw new IndexOutOfBoundsException("target does not have room for the schema at offset");
+                }
+                for (int i = 0; i < valueResolvers.size(); i++) {
+                    destination[offset + i] = finiteDouble(valueResolvers.get(i).apply(value),
+                            schema.features().get(i).name());
+                }
+            }
+        };
     }
 
     private static double finiteDouble(Num value, String fieldName) {
         Num number = Objects.requireNonNull(value, fieldName + " must not be null");
+        if (!Num.isFinite(number)) {
+            throw new IllegalArgumentException(fieldName + " must be finite");
+        }
         double primitive = number.doubleValue();
         if (!Double.isFinite(primitive)) {
-            throw new IllegalArgumentException(fieldName + " must be finite as a double");
+            throw new IllegalArgumentException(fieldName + " cannot be represented as a finite double");
+        }
+        if (primitive == 0d && !number.isZero()) {
+            throw new IllegalArgumentException(fieldName + " underflows primitive double precision");
         }
         return primitive;
+    }
+
+    private static String unit(ReturnRepresentation representation) {
+        return switch (Objects.requireNonNull(representation, "representation must not be null")) {
+        case LOG -> "log-return";
+        case DECIMAL -> "decimal-return";
+        case PERCENTAGE -> "percentage-points";
+        case MULTIPLICATIVE -> "multiplicative-return";
+        };
     }
 }

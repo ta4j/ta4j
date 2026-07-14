@@ -1,13 +1,17 @@
 ## Unreleased
 
 ### Added
-- **Forecast models can share state without coupling to one estimator**: Added the `ForecastState` contract, a typed `ReturnForecastStateIndicator<S>` for return-derived estimators, reusable `ForecastFeatureExtractors` with nonredundant default return features, and `Forecast.ofSummary(...)` for finite calibrated or model-produced distribution summaries that do not manufacture sample paths.
+- **Forecast distributions now carry explicit support provenance**: Added `ForecastSupport` for unavailable, empirical, and named analytic distributions, a validated summary builder, safe affine transforms, and representation-aware feature schemas with allocation-free extraction.
+- **Return estimators share one validated moment component**: Added minimal `ForecastState` lifecycle, composable `ReturnMomentState` and `ReturnMoments`, canonical variance-derived volatility, and typed `ReturnForecastStateIndicator<S>` composition for EWMA and richer state models.
+- **Summary-only price conversion is explicit**: Added `LognormalApproximationPriceForecastIndicator` for operators who intentionally want one coherent moment-matched analytic price distribution.
 
 ### Changed
+- **Forecast API corrected before further state-estimation phases**: `Forecast` is now Num-only, `map(...)` and positional `ofSummary(...)` were replaced by safe affine operations and `Forecast.builder(...)`, missing quantiles return `NaN.NaN`, `ForecastProjectionIndicator` declares its horizon, `ReturnForecastState` composes `ReturnMoments`, and feature extractors publish durable names, units, versions, and return representation. This deliberately breaks the forecast API first released in 0.23.0; see the README and wiki migration guide for exact replacements.
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
 
 ### Fixed
-- **Log-return price forecasts expose coherent price-space moments**: Price forecast adapters now use a moment-matched lognormal approximation for mean and standard deviation, preserve zero dispersion for deterministic returns, and continue to return unstable summaries when conversion overflows.
+- **Monte Carlo price summaries describe the simulated paths exactly**: `MonteCarloPriceForecastIndicator` now transforms every terminal cumulative-return path to price before calculating mean, median, standard deviation, quantiles, and empirical support. Nonlinear summary-only conversion no longer creates hybrid distributions.
+- **Forecast numeric boundaries preserve factory configuration**: State, summary, adapter, and sample boundaries now coerce through the owning `NumFactory`, including differing `DecimalNum` precision contexts and factory-correct zero dispersion.
 
 ## 0.23.0 (2026-07-13)
 

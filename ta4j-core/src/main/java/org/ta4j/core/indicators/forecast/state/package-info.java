@@ -6,12 +6,12 @@
  * <p>
  * State indicators estimate latent inputs, such as rolling return mean and
  * volatility, that projection indicators can consume without coupling to a
- * specific estimator implementation. {@link ForecastState} provides the common
- * return-domain summary, while concrete records may add estimator-specific
- * fields. Return-derived estimators implement
- * {@link ReturnForecastStateIndicator} so projections can discover their source
- * return stream and representation. {@link ForecastFeatureExtractor} is the
- * explicit primitive boundary for distance and regression models.
+ * specific estimator implementation. {@link ForecastState} provides only index
+ * and stability lifecycle; {@link ReturnMomentState} composes validated,
+ * representation-aware {@link ReturnMoments} for return models. Return-derived
+ * estimators implement {@link ReturnForecastStateIndicator}. Feature extractors
+ * publish a {@link ForecastFeatureSchema} before crossing the primitive
+ * boundary used by distance and regression models.
  *
  * @since 0.22.9
  */

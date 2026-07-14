@@ -4,26 +4,40 @@
 package org.ta4j.core.indicators.forecast.state;
 
 /**
- * Extracts primitive model features from a stable forecast state.
+ * Extracts a fixed-schema primitive vector from return-moment state.
  *
  * <p>
- * Feature extraction is the explicit boundary where ta4j {@code Num} values
- * become primitive doubles for distance, regression, or linear-algebra APIs.
- * Implementations should return a new array for every invocation. Consumers
- * must treat non-finite or inconsistent feature vectors as unusable.
+ * {@link #extractInto(ReturnMomentState, double[], int)} avoids allocation in
+ * model loops; {@link #features(ReturnMomentState)} is the convenient operator
+ * path. Implementations reject unstable state, representation mismatch, and
+ * values that cannot be faithfully represented as finite primitive doubles.
  *
- * @param <S> forecast state type
+ * @param <S> return-moment state type
  * @since 0.23.1
  */
-@FunctionalInterface
-public interface ForecastFeatureExtractor<S extends ForecastState> {
+public interface ForecastFeatureExtractor<S extends ReturnMomentState> {
+
+    /** @return immutable feature schema */
+    ForecastFeatureSchema schema();
 
     /**
-     * Returns the features representing {@code state}.
+     * Extracts into an existing array.
      *
-     * @param state stable forecast state
-     * @return newly allocated feature vector
-     * @since 0.23.1
+     * @param state  stable state matching {@link #schema()}
+     * @param target destination array
+     * @param offset first destination index
      */
-    double[] features(S state);
+    void extractInto(S state, double[] target, int offset);
+
+    /**
+     * Extracts a newly allocated feature vector.
+     *
+     * @param state stable matching state
+     * @return new fixed-shape vector
+     */
+    default double[] features(S state) {
+        double[] result = new double[schema().dimension()];
+        extractInto(state, result, 0);
+        return result;
+    }
 }

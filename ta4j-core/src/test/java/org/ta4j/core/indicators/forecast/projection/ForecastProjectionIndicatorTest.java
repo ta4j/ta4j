@@ -26,7 +26,7 @@ public class ForecastProjectionIndicatorTest extends AbstractIndicatorTest<Forec
     @Test
     public void projectionMethodsReturnPointIndicators() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        Forecast<Num> forecast = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)), List.of(0.05, 0.5, 0.95));
+        Forecast forecast = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)), List.of(0.05, 0.5, 0.95));
         ForecastProjectionIndicator indicator = new FixedForecastIndicator(series, 1, Map.of(2, forecast));
 
         assertNumEquals(2, indicator.mean().getValue(2));
@@ -38,7 +38,7 @@ public class ForecastProjectionIndicatorTest extends AbstractIndicatorTest<Forec
     @Test
     public void missingQuantileProjectionReturnsNaN() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        Forecast<Num> forecast = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)), List.of(0.5));
+        Forecast forecast = Forecast.ofSamples(2, 1, List.of(numOf(1), numOf(3)), List.of(0.5));
         ForecastProjectionIndicator indicator = new FixedForecastIndicator(series, 0, Map.of(2, forecast));
 
         assertTrue(indicator.quantile(0.95).getValue(2).isNaN());
@@ -48,17 +48,22 @@ public class ForecastProjectionIndicatorTest extends AbstractIndicatorTest<Forec
 
         private final BarSeries series;
         private final int unstableBars;
-        private final Map<Integer, Forecast<Num>> values;
+        private final Map<Integer, Forecast> values;
 
-        private FixedForecastIndicator(BarSeries series, int unstableBars, Map<Integer, Forecast<Num>> values) {
+        private FixedForecastIndicator(BarSeries series, int unstableBars, Map<Integer, Forecast> values) {
             this.series = series;
             this.unstableBars = unstableBars;
             this.values = values;
         }
 
         @Override
-        public Forecast<Num> getValue(int index) {
-            return values.getOrDefault(index, Forecast.unstable(index, 1, NaN.NaN));
+        public Forecast getValue(int index) {
+            return values.getOrDefault(index, Forecast.unstable(index, 1));
+        }
+
+        @Override
+        public int getHorizon() {
+            return 1;
         }
 
         @Override
