@@ -1018,8 +1018,8 @@ Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
 For 1-minute, 5-minute, and other live intraday series, use the causal
-volatility-scaled profile and keep confirmed waves separate from the forming
-terminal wave:
+volatility-scaled profile. The compatible default includes the forming terminal
+wave for live charting while reporting it separately from confirmed waves:
 
 ```java
 ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder()
@@ -1033,7 +1033,15 @@ ElliottAnalysisResult intraday = runner.analyze(series)
         .analysis();
 int confirmedWaves = intraday.waveCount().confirmed();
 int wavesIncludingForming = intraday.waveCount().includingProvisional();
+boolean primaryIsForming = intraday.scenarios()
+        .base()
+        .map(intraday::usesProvisionalTerminal)
+        .orElse(false);
 ```
+
+For trading rules that must act on confirmed detector pivots only, add
+`.includeProvisionalTerminalSwing(false)` to the runner builder. Custom analysis
+runners own their terminal-wave semantics.
 
 See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and runner-based workflow.
 

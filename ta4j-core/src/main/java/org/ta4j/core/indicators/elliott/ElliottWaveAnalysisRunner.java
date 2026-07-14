@@ -50,7 +50,10 @@ import org.ta4j.core.num.NumFactory;
  * For minute and other low-duration live series, apply
  * {@link ElliottLogicProfile#INTRADAY_LIVE}. That profile uses causal
  * ATR-scaled swing detection and exposes the optional forming terminal wave
- * separately via {@link ElliottAnalysisResult#waveCount()}.
+ * separately via {@link ElliottAnalysisResult#waveCount()}. The forming swing
+ * is included by default for compatibility and live charting; trading rules can
+ * select confirmed pivots only with
+ * {@link Builder#includeProvisionalTerminalSwing(boolean)}.
  *
  * <p>
  * If configured with supporting degrees ({@link Builder#higherDegrees(int)} and
@@ -149,6 +152,7 @@ public final class ElliottWaveAnalysisRunner {
     private final double minConfidence;
     private final int maxScenarios;
     private final int scenarioSwingWindow;
+    private final boolean includeProvisionalTerminalSwing;
 
     private ElliottWaveAnalysisRunner(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
@@ -173,6 +177,7 @@ public final class ElliottWaveAnalysisRunner {
                 ? (logicProfile == null ? PatternSet.all() : logicProfile.patternSet())
                 : builder.patternSet;
         this.minConfidence = builder.minConfidence;
+        this.includeProvisionalTerminalSwing = builder.includeProvisionalTerminalSwing;
 
         int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
         this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0
@@ -228,6 +233,7 @@ public final class ElliottWaveAnalysisRunner {
         builder.confidenceModelFactory = confidenceModelFactory;
         builder.patternSet = patternSet;
         builder.minConfidence = minConfidence;
+        builder.includeProvisionalTerminalSwing = includeProvisionalTerminalSwing;
         return new ElliottWaveAnalysisRunner(builder);
     }
 
@@ -1515,7 +1521,9 @@ public final class ElliottWaveAnalysisRunner {
             processed = compressed == null ? List.of() : compressed;
         }
 
-        List<ElliottSwing> scenarioInput = appendTerminalExtensionIfNeeded(processed, series, endIndex, degree);
+        List<ElliottSwing> scenarioInput = includeProvisionalTerminalSwing
+                ? appendTerminalExtensionIfNeeded(processed, series, endIndex, degree)
+                : List.copyOf(processed);
         ElliottAnalysisResult.WaveCount waveCount = new ElliottAnalysisResult.WaveCount(processed.size(),
                 scenarioInput.size() - processed.size());
         List<ElliottSwing> scenarioSwings = recentSwings(scenarioInput, scenarioSwingWindow);
@@ -3520,6 +3528,7 @@ public final class ElliottWaveAnalysisRunner {
         private double minConfidence = ElliottScenarioGenerator.DEFAULT_MIN_CONFIDENCE;
         private int maxScenarios = ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS;
         private int scenarioSwingWindow = DEFAULT_SCENARIO_SWING_WINDOW;
+        private boolean includeProvisionalTerminalSwing = true;
 
         private Builder() {
         }
@@ -3649,6 +3658,27 @@ public final class ElliottWaveAnalysisRunner {
          */
         public Builder swingFilter(final SwingFilter swingFilter) {
             this.swingFilter = swingFilter;
+            return this;
+        }
+
+        /**
+         * Controls whether the built-in analysis pipeline appends the current forming
+         * terminal swing before channel, confidence, and scenario generation.
+         *
+         * <p>
+         * The default is {@code true} for compatibility and for live charting. Trading
+         * rules that must use confirmed detector pivots only can disable the
+         * projection. This setting does not affect a custom
+         * {@link #analysisRunner(AnalysisRunner)}, which owns its complete result
+         * semantics.
+         *
+         * @param include {@code true} to include the forming terminal swing;
+         *                {@code false} to analyze confirmed swings only
+         * @return builder
+         * @since 0.23.1
+         */
+        public Builder includeProvisionalTerminalSwing(final boolean include) {
+            this.includeProvisionalTerminalSwing = include;
             return this;
         }
 

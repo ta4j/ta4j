@@ -277,9 +277,75 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(base.waveCount().provisional()).isEqualTo(1);
         assertThat(base.waveCount().includingProvisional()).isEqualTo(5);
         assertThat(base.waveCount().hasProvisional()).isTrue();
+        assertThat(base.provisionalTerminalSwing()).contains(base.processedSwings().getLast());
+        assertThat(base.usesProvisionalTerminal(null)).isFalse();
         assertThat(result.rankedBaseScenarios())
                 .anyMatch(assessment -> assessment.scenario().currentPhase() == ElliottPhase.WAVE5
                         && assessment.scenario().swings().getLast().toIndex() == series.getEndIndex());
+        assertThat(result.rankedBaseScenarios())
+                .anyMatch(assessment -> base.usesProvisionalTerminal(assessment.scenario()));
+    }
+
+    @Test
+    void confirmedOnlyIntradayPipelineExcludesTerminalProjectionAndCopyPreservesPolicy() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree),
+                new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(144), degree),
+                new ElliottSwing(6, 8, factory.numOf(144), factory.numOf(126), degree));
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), "stub"), List.of());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .includeProvisionalTerminalSwing(false)
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottAnalysisResult base = analysis.analyze(series).analysisFor(degree).orElseThrow().analysis();
+        ElliottAnalysisResult copied = analysis.copy().analyze(series).analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.processedSwings()).containsExactlyElementsOf(swings);
+        assertThat(base.waveCount()).isEqualTo(ElliottAnalysisResult.WaveCount.confirmed(swings.size()));
+        assertThat(base.provisionalTerminalSwing()).isEmpty();
+        assertThat(base.scenarios().all()).allMatch(scenario -> !base.usesProvisionalTerminal(scenario));
+        assertThat(copied.processedSwings()).containsExactlyElementsOf(swings);
+        assertThat(copied.provisionalTerminalSwing()).isEmpty();
+    }
+
+    @Test
+    void provisionalTerminalProvenanceSurvivesScenarioWindowing() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree),
+                new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(144), degree),
+                new ElliottSwing(6, 8, factory.numOf(144), factory.numOf(126), degree));
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .scenarioSwingWindow(3)
+                .build();
+
+        ElliottAnalysisResult base = analysis.analyze(series).analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.processedSwings()).hasSize(3);
+        assertThat(base.waveCount()).isEqualTo(new ElliottAnalysisResult.WaveCount(4, 1));
+        assertThat(base.provisionalTerminalSwing()).contains(base.processedSwings().getLast());
     }
 
     @Test
@@ -350,6 +416,10 @@ class ElliottWaveAnalysisRunnerTest {
         assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(-1, 0));
         assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(1, 2));
         assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 1));
+        IllegalArgumentException missingTerminal = assertThrows(IllegalArgumentException.class,
+                () -> new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), null, null, null, null,
+                        new ElliottAnalysisResult.WaveCount(1, 1), null));
+        assertThat(missingTerminal).hasMessage("a provisional wave requires a processed terminal swing");
 
         ElliottAnalysisResult.WaveCount maximumConfirmed = new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 0);
         ElliottAnalysisResult.WaveCount maximumWithProvisional = new ElliottAnalysisResult.WaveCount(

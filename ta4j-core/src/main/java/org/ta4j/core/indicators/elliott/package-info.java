@@ -81,7 +81,10 @@
  * live series, configure the runner with
  * {@link org.ta4j.core.indicators.elliott.ElliottLogicProfile#INTRADAY_LIVE};
  * its analysis result reports confirmed and provisional terminal waves
- * separately.
+ * separately. The compatible default includes the forming terminal swing for
+ * live charting. Trading rules that require confirmed detector pivots can call
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner.Builder#includeProvisionalTerminalSwing(boolean)}
+ * with {@code false}.
  *
  * <p>
  * <b>Getting Started</b>:

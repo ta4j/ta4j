@@ -83,6 +83,9 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
         channel = channel == null ? new ElliottChannel(NaN, NaN, NaN) : channel;
         trendBias = trendBias == null ? ElliottTrendBias.unknown() : trendBias;
         waveCount = waveCount == null ? WaveCount.confirmed(processedSwings.size()) : waveCount;
+        if (waveCount.hasProvisional() && processedSwings.isEmpty()) {
+            throw new IllegalArgumentException("a provisional wave requires a processed terminal swing");
+        }
         diagnostics = diagnostics == null ? AnalysisDiagnostics.empty() : diagnostics;
     }
 
@@ -92,6 +95,40 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
      */
     public WaveCount waveCount() {
         return waveCount;
+    }
+
+    /**
+     * Returns the forming terminal swing appended by the built-in runner, if one
+     * participated in scenario generation.
+     *
+     * <p>
+     * The returned swing is the final element of the windowed
+     * {@link #processedSwings()} list. {@link WaveCount#confirmed()} continues to
+     * report the full confirmed count before scenario-window clipping.
+     *
+     * @return forming terminal swing, or empty for confirmed-only analysis
+     * @since 0.23.1
+     */
+    public Optional<ElliottSwing> provisionalTerminalSwing() {
+        if (!waveCount.hasProvisional()) {
+            return Optional.empty();
+        }
+        return Optional.of(processedSwings.getLast());
+    }
+
+    /**
+     * Tests whether a scenario uses this result's forming terminal swing.
+     *
+     * @param scenario scenario to inspect
+     * @return {@code true} when the scenario contains the provisional terminal
+     *         swing; {@code false} for null or confirmed-only scenarios
+     * @since 0.23.1
+     */
+    public boolean usesProvisionalTerminal(final ElliottScenario scenario) {
+        if (scenario == null) {
+            return false;
+        }
+        return provisionalTerminalSwing().filter(scenario.swings()::contains).isPresent();
     }
 
     /**
