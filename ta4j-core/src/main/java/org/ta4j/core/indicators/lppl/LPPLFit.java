@@ -12,8 +12,7 @@ import java.util.Objects;
  * The model form is:
  *
  * <pre>
- * log(price(t)) = A + B * dt^m + C1 * dt^m * cos(omega * log(dt))
- *               + C2 * dt^m * sin(omega * log(dt))
+ * log(price(t)) = A + B * dt ^ m + C1 * dt ^ m * cos(omega * log(dt)) + C2 * dt ^ m * sin(omega * log(dt))
  * </pre>
  *
  * where {@code dt = tc - t}. The normalized residual is the one-step residual
@@ -40,9 +39,9 @@ import java.util.Objects;
  * @param normalizedResidual residual normalized into {@code [-1, 1]}
  * @since 0.23.1
  */
-public record LPPLFit(int window, LPPLFitStatus status, double a, double b, double c1, double c2,
-        double criticalTime, double m, double omega, double rss, double rms, double rSquared, int criticalOffset,
-        int evaluations, double predictedLogPrice, double residual, double maxAbsResidual, double normalizedResidual) {
+public record LPPLFit(int window, LPPLFitStatus status, double a, double b, double c1, double c2, double criticalTime,
+        double m, double omega, double rss, double rms, double rSquared, int criticalOffset, int evaluations,
+        double predictedLogPrice, double residual, double maxAbsResidual, double normalizedResidual) {
 
     /**
      * Creates a validated fit result.
@@ -60,10 +59,9 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
         if (evaluations < 0) {
             throw new IllegalArgumentException("evaluations must be non-negative");
         }
-        if (status == LPPLFitStatus.VALID
-                && (!finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, predictedLogPrice, residual,
-                        maxAbsResidual, normalizedResidual)
-                        || maxAbsResidual < 0.0 || normalizedResidual < -1.0 || normalizedResidual > 1.0)) {
+        if (status == LPPLFitStatus.VALID && (!finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared,
+                predictedLogPrice, residual, maxAbsResidual, normalizedResidual) || maxAbsResidual < 0.0
+                || normalizedResidual < -1.0 || normalizedResidual > 1.0)) {
             throw new IllegalArgumentException("valid fits require finite, internally consistent diagnostics");
         }
     }
@@ -73,9 +71,8 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
      * @since 0.23.1
      */
     public boolean isConverged() {
-        return status == LPPLFitStatus.VALID
-                && finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, predictedLogPrice, residual,
-                        maxAbsResidual, normalizedResidual);
+        return status == LPPLFitStatus.VALID && finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared,
+                predictedLogPrice, residual, maxAbsResidual, normalizedResidual);
     }
 
     /**
@@ -115,8 +112,7 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
 
     static LPPLFit invalid(int window, LPPLFitStatus status) {
         return new LPPLFit(window, status, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
-                Double.NaN, Double.NaN, Double.NaN, Double.NaN, -1, 0, Double.NaN, Double.NaN, Double.NaN,
-                Double.NaN);
+                Double.NaN, Double.NaN, Double.NaN, Double.NaN, -1, 0, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
     }
 
     private static boolean finite(double... values) {

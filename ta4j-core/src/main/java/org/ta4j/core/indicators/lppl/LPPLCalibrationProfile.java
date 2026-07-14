@@ -141,8 +141,8 @@ public final class LPPLCalibrationProfile {
      * @since 0.23.1
      */
     public LPPLCalibrationProfile withOptimizerSettings(int maxEvaluations, double minRSquared) {
-        return copy(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset,
-                maxCriticalOffset, criticalOffsetStep, maxEvaluations, minRSquared);
+        return copy(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset, maxCriticalOffset,
+                criticalOffsetStep, maxEvaluations, minRSquared);
     }
 
     /**
@@ -244,8 +244,8 @@ public final class LPPLCalibrationProfile {
     private LPPLCalibrationProfile copy(int window, double minM, double maxM, int mSteps, double minOmega,
             double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
             int maxEvaluations, double minRSquared) {
-        return new LPPLCalibrationProfile(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
-                minCriticalOffset, maxCriticalOffset, criticalOffsetStep, maxEvaluations, minRSquared);
+        return new LPPLCalibrationProfile(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps, minCriticalOffset,
+                maxCriticalOffset, criticalOffsetStep, maxEvaluations, minRSquared);
     }
 
     @Override
@@ -256,12 +256,12 @@ public final class LPPLCalibrationProfile {
         if (!(object instanceof LPPLCalibrationProfile other)) {
             return false;
         }
-        return window == other.window && Double.compare(minM, other.minM) == 0
-                && Double.compare(maxM, other.maxM) == 0 && mSteps == other.mSteps
-                && Double.compare(minOmega, other.minOmega) == 0 && Double.compare(maxOmega, other.maxOmega) == 0
-                && omegaSteps == other.omegaSteps && minCriticalOffset == other.minCriticalOffset
-                && maxCriticalOffset == other.maxCriticalOffset && criticalOffsetStep == other.criticalOffsetStep
-                && maxEvaluations == other.maxEvaluations && Double.compare(minRSquared, other.minRSquared) == 0;
+        return window == other.window && Double.compare(minM, other.minM) == 0 && Double.compare(maxM, other.maxM) == 0
+                && mSteps == other.mSteps && Double.compare(minOmega, other.minOmega) == 0
+                && Double.compare(maxOmega, other.maxOmega) == 0 && omegaSteps == other.omegaSteps
+                && minCriticalOffset == other.minCriticalOffset && maxCriticalOffset == other.maxCriticalOffset
+                && criticalOffsetStep == other.criticalOffsetStep && maxEvaluations == other.maxEvaluations
+                && Double.compare(minRSquared, other.minRSquared) == 0;
     }
 
     @Override
@@ -272,10 +272,10 @@ public final class LPPLCalibrationProfile {
 
     @Override
     public String toString() {
-        return "LPPLCalibrationProfile[window=" + window + ", minM=" + minM + ", maxM=" + maxM + ", mSteps="
-                + mSteps + ", minOmega=" + minOmega + ", maxOmega=" + maxOmega + ", omegaSteps=" + omegaSteps
+        return "LPPLCalibrationProfile[window=" + window + ", minM=" + minM + ", maxM=" + maxM + ", mSteps=" + mSteps
+                + ", minOmega=" + minOmega + ", maxOmega=" + maxOmega + ", omegaSteps=" + omegaSteps
                 + ", minCriticalOffset=" + minCriticalOffset + ", maxCriticalOffset=" + maxCriticalOffset
-                + ", criticalOffsetStep=" + criticalOffsetStep + ", maxEvaluations=" + maxEvaluations
-                + ", minRSquared=" + minRSquared + "]";
+                + ", criticalOffsetStep=" + criticalOffsetStep + ", maxEvaluations=" + maxEvaluations + ", minRSquared="
+                + minRSquared + "]";
     }
 }

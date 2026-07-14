@@ -42,8 +42,7 @@ class LPPLFitIndicatorTest {
         LPPLFitIndicator indicator = new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile());
 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(LPPLTestFixtures.WINDOW);
-        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW - 1).status())
-                .isEqualTo(LPPLFitStatus.INSUFFICIENT_DATA);
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW - 1).status()).isEqualTo(LPPLFitStatus.INSUFFICIENT_DATA);
         assertThat(indicator.getValue(LPPLTestFixtures.WINDOW).status()).isEqualTo(LPPLFitStatus.INVALID_INPUT);
     }
 

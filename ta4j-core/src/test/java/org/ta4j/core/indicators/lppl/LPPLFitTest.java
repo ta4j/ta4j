@@ -13,8 +13,8 @@ class LPPLFitTest {
     @Test
     void qualifiedFitExposesCausalEvaluationDiagnostics() {
         LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
-        LPPLFit fit = new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0,
-                0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5);
+        LPPLFit fit = new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0, 0.5, 8.0, 0.2,
+                0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5);
 
         assertThat(fit.isConverged()).isTrue();
         assertThat(fit.isQualified(profile)).isTrue();
@@ -25,8 +25,8 @@ class LPPLFitTest {
     void invalidOrOutOfProfileFitsAreNotQualified() {
         LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
         LPPLFit invalid = LPPLFit.invalid(profile.window(), LPPLFitStatus.OPTIMIZER_FAILED);
-        LPPLFit weak = new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0,
-                0.5, 8.0, 0.2, 0.05, 0.2, 20, 12, 4.8, 0.2, 0.4, 0.5);
+        LPPLFit weak = new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0, 0.5, 8.0,
+                0.2, 0.05, 0.2, 20, 12, 4.8, 0.2, 0.4, 0.5);
 
         assertThat(invalid.isQualified(profile)).isFalse();
         assertThat(weak.isQualified(profile)).isFalse();
@@ -35,8 +35,7 @@ class LPPLFitTest {
 
     @Test
     void validFitsRejectInconsistentNormalizedDiagnostics() {
-        assertThatThrownBy(() -> new LPPLFit(80, LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0, 0.5,
-                8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.1, 2.0))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LPPLFit(80, LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0, 0.5, 8.0, 0.2,
+                0.05, 0.9, 20, 12, 4.8, 0.2, 0.1, 2.0)).isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -169,8 +169,7 @@ final class LPPLFitCalibrator {
         return min + (max - min) * index / (steps - 1.0);
     }
 
-    private NonlinearFit solveLinear(double[] logPrices, double criticalTime, double m, double omega,
-            int evaluations) {
+    private NonlinearFit solveLinear(double[] logPrices, double criticalTime, double m, double omega, int evaluations) {
         if (!isValidNonlinearPoint(logPrices.length, criticalTime, m, omega)) {
             return null;
         }

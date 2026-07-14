@@ -84,9 +84,9 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
                 profile.maxEvaluations(), profile.minRSquared());
     }
 
-    LPPLFitIndicator(Indicator<Num> priceIndicator, int window, double minM, double maxM, int mSteps,
-            double minOmega, double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset,
-            int criticalOffsetStep, int maxEvaluations, double minRSquared) {
+    LPPLFitIndicator(Indicator<Num> priceIndicator, int window, double minM, double maxM, int mSteps, double minOmega,
+            double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
+            int maxEvaluations, double minRSquared) {
         super(requireSeries(priceIndicator));
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
         this.profile = new LPPLCalibrationProfile(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,

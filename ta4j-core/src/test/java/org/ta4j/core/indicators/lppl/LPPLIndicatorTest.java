@@ -22,8 +22,7 @@ class LPPLIndicatorTest {
         LPPLIndicator indicator = new LPPLIndicator(series, LPPLTestFixtures.compactProfile());
 
         Num value = indicator.getValue(LPPLTestFixtures.WINDOW);
-        LPPLFit fit = new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile())
-                .getValue(LPPLTestFixtures.WINDOW);
+        LPPLFit fit = new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile()).getValue(LPPLTestFixtures.WINDOW);
 
         assertThat(value.isNaN()).isFalse();
         assertThat(value.doubleValue()).isBetween(0.0, 1.0);
