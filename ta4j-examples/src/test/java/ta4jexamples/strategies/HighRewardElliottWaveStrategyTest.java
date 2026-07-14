@@ -17,6 +17,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
@@ -83,6 +84,21 @@ class HighRewardElliottWaveStrategyTest {
         assertEquals("50", parts[9]);
         assertEquals("2", parts[10]);
         assertEquals("4", parts[11]);
+    }
+
+    @Test
+    void testLegacySerializedLabelRoundTripsWithoutLosingParameter() {
+        String legacyLabel = "HighRewardElliottWaveStrategy_BULLISH_PRIMARY_0.7_3_1.5_0.2_5_2_50_2_4_0.2";
+        String currentLabel = "HighRewardElliottWaveStrategy_BULLISH_PRIMARY_0.7_3_1.5_0.2_5_2_50_2_4";
+        NamedStrategy.registerImplementation(HighRewardElliottWaveStrategy.class);
+
+        Strategy restoredLegacy = Strategy.fromJson(series,
+                "{\"type\":\"NamedStrategy\",\"label\":\"" + legacyLabel + "\"}");
+        Strategy restoredCurrent = Strategy.fromJson(series,
+                "{\"type\":\"NamedStrategy\",\"label\":\"" + currentLabel + "\"}");
+
+        assertEquals(legacyLabel, restoredLegacy.getName());
+        assertEquals(currentLabel, restoredCurrent.getName());
     }
 
     @Test
