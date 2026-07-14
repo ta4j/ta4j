@@ -82,6 +82,8 @@ Prefer living on the edge? Use the snapshot repository and version:
 <repository>
   <id>central-portal-snapshots</id>
   <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+  <releases><enabled>false</enabled></releases>
+  <snapshots><enabled>true</enabled></snapshots>
 </repository>
 
 <dependency>
@@ -1151,9 +1153,11 @@ Snapshots are available at:
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
+Snapshots are consumed from this repository directly; they are not expected to appear in normal Maven Central release search. Portal snapshot browsing may also be unavailable independently of publishing. A green snapshot workflow means an isolated Maven consumer resolved the exact newly deployed `ta4j-parent`, `ta4j-core`, and `ta4j-examples` build and matched the core/examples JAR checksums.
+
 ### Stable releases
 
-Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merge the generated `release/<version>` PR with a merge commit, then `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, creates the GitHub Release, and explicitly dispatches the next snapshot publication. `release-health.yml` then verifies repo-state drift on `master` pushes and release handoffs, and it treats snapshot publication as authoritative once `snapshot.yml` has finished so a healthy release does not fail during the async publish-to-snapshot handoff.
+Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merging the generated `release/<version>` PR with a merge commit immediately starts `snapshot.yml` through its `master` push trigger, while `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, and pushes the tag, which triggers `github-release.yml` to create the GitHub Release. Manual publish/recovery runs retain an explicit snapshot dispatch, but the PR path does not duplicate the already-running snapshot publication. `release-health.yml` then verifies repo-state drift and retrieves the current snapshot's exact timestamped POM/JAR; top-level metadata remains informational because it can lag.
 
 The prepare-release workflow also runs a Java-based removal-ready deprecation scanner: first as a release gate for due or overdue removals, then against the new snapshot version to sync managed GitHub cleanup issues with an attached report artifact.
 

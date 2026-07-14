@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Changed
+- **New snapshots are externally consumable before publication reports green**: Every `master` push still starts snapshot publication immediately, concurrent snapshot runs now queue instead of cancelling an active deploy, and release-PR publishing no longer dispatches a duplicate run. The snapshot workflow uses an isolated Maven consumer to resolve the exact timestamped parent/core/examples artifacts and checksum-match the newly deployed core/examples JARs, while release health retrieves the exact version-level core POM/JAR instead of treating lag-prone top-level metadata or Portal browsing as proof.
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
 
 ## 0.23.0 (2026-07-13)
