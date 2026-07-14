@@ -44,6 +44,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     private Bar cachedFirstBar;
     private Bar cachedLastBar;
     private List<Bar> cachedBars = List.of();
+    private long cachedBarHistoryRevision = -1L;
     private int cachedBeginIndex = -1;
     private int cachedEndIndex = -1;
 
@@ -67,13 +68,17 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         }
         final int currentEndIndex = series.getEndIndex();
         final Bar currentLastBar = series.getBar(currentEndIndex);
-        final List<Bar> currentBars = series.getBarData();
+        final long currentBarHistoryRevision = series.getBarHistoryRevision();
+        final boolean tracksBarHistoryRevision = currentBarHistoryRevision >= 0L;
+        final List<Bar> currentBars = tracksBarHistoryRevision ? List.of() : series.getBarData();
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, currentEndIndex));
+        final boolean revisedBarHistory = tracksBarHistoryRevision && cachedBarHistoryRevision >= 0L
+                && currentBarHistoryRevision != cachedBarHistoryRevision;
         final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
                 && (currentEndIndex < cachedEndIndex
                         || (series.getBeginIndex() <= cachedBeginIndex
                                 && series.getBar(series.getBeginIndex()) != cachedFirstBar)
-                        || (currentEndIndex == cachedEndIndex
+                        || revisedBarHistory || (currentEndIndex == cachedEndIndex
                                 && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));
         if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
                 || clampedIndex < cachedIndex) {
@@ -96,6 +101,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         cachedEndIndex = currentEndIndex;
         cachedLastBar = currentLastBar;
         cachedBars = currentBars;
+        cachedBarHistoryRevision = currentBarHistoryRevision;
         return result;
     }
 

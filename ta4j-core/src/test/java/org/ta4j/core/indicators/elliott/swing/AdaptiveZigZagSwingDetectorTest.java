@@ -47,11 +47,24 @@ class AdaptiveZigZagSwingDetectorTest {
 
         SwingDetectorResult initial = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
         series.resetBarReads();
+        series.resetCopiedBars();
 
         SwingDetectorResult repeated = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
 
         assertThat(repeated).isEqualTo(initial);
         assertThat(series.barReads()).isLessThan(20);
+        assertThat(series.copiedBars()).isLessThan(20);
+
+        appendBar(series, 301);
+        series.resetBarReads();
+        series.resetCopiedBars();
+        SwingDetectorResult advanced = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
+        long advancedCopiedBars = series.copiedBars();
+        SwingDetectorResult fresh = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.SUB_MINUETTE);
+
+        assertThat(advanced).isEqualTo(fresh);
+        assertThat(advancedCopiedBars).isLessThan(20);
 
         SwingDetectorResult differentDegree = detector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
         assertThat(differentDegree.swings()).isNotEmpty().allMatch(swing -> swing.degree() == ElliottDegree.PRIMARY);
@@ -157,6 +170,50 @@ class AdaptiveZigZagSwingDetectorTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @Test
+    void rebuildsCachedStateWhenHistoryIsReplacedBeforeSeriesGrowth() {
+        BaseBarSeries series = (BaseBarSeries) buildVolatileRangeSeries();
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector reusedDetector = new AdaptiveZigZagSwingDetector(config);
+        SwingDetectorResult original = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        Bar replacedBar = series.getBar(2);
+        Bar replacement = series.barBuilder()
+                .timePeriod(replacedBar.getTimePeriod())
+                .endTime(replacedBar.getEndTime())
+                .openPrice(135.0)
+                .highPrice(136.0)
+                .lowPrice(134.0)
+                .closePrice(135.0)
+                .volume(1000.0)
+                .build();
+        series.replaceBar(2, replacement);
+        appendBar(series, 151.0);
+
+        SwingDetectorResult expected = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        SwingDetectorResult actual = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(expected).isNotEqualTo(original);
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void rebuildsCachedStateWhenTheLiveBarIsUpdatedThroughTheSeries() {
+        BaseBarSeries series = (BaseBarSeries) buildVolatileRangeSeries();
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector reusedDetector = new AdaptiveZigZagSwingDetector(config);
+        SwingDetectorResult original = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        series.addPrice(60.0);
+
+        SwingDetectorResult expected = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        SwingDetectorResult actual = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(expected).isNotEqualTo(original);
+        assertThat(actual).isEqualTo(expected);
+    }
+
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         ATRIndicator atr = new ATRIndicator(series, 1);
@@ -203,9 +260,23 @@ class AdaptiveZigZagSwingDetectorTest {
         return series;
     }
 
+    private static void appendBar(final BarSeries series, final double close) {
+        Bar lastBar = series.getLastBar();
+        series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .openPrice(close)
+                .highPrice(close + 0.2)
+                .lowPrice(close - 0.2)
+                .closePrice(close)
+                .volume(1000.0)
+                .add();
+    }
+
     private static final class CountingBarSeries extends BaseBarSeries {
 
         private long barReads;
+        private long copiedBars;
 
         private CountingBarSeries() {
             super("AdaptiveZigZagLiveTest", List.of());
@@ -222,12 +293,26 @@ class AdaptiveZigZagSwingDetectorTest {
             return super.getBar(index);
         }
 
+        @Override
+        public List<Bar> getBarData() {
+            copiedBars += getBarCount();
+            return super.getBarData();
+        }
+
         private long barReads() {
             return barReads;
         }
 
         private void resetBarReads() {
             barReads = 0;
+        }
+
+        private long copiedBars() {
+            return copiedBars;
+        }
+
+        private void resetCopiedBars() {
+            copiedBars = 0;
         }
     }
 
