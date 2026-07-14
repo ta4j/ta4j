@@ -67,7 +67,9 @@ public class MonteCarloPriceForecastIndicatorTest
     @Test
     public void stronglyNonnormalPathsMatchDirectPriceSampleSummary() {
         Forecast prediction = explicitHistoricalForecast(-1, 1);
-        Forecast expected = Forecast.ofSamples(2, 1, List.of(numOf(100 * Math.exp(-1)), numOf(100 * Math.exp(1))),
+        Num price = numOf(100);
+        Forecast expected = Forecast.ofSamples(2, 1,
+                List.of(price.multipliedBy(numOf(-1).exp()), price.multipliedBy(numOf(1).exp())),
                 List.of(0.0, 0.5, 1.0));
 
         assertEquivalent(expected, prediction);
