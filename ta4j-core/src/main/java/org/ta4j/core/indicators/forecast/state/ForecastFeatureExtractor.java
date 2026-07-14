@@ -13,7 +13,7 @@ package org.ta4j.core.indicators.forecast.state;
  * must treat non-finite or inconsistent feature vectors as unusable.
  *
  * @param <S> forecast state type
- * @since 0.22.9
+ * @since 0.23.1
  */
 @FunctionalInterface
 public interface ForecastFeatureExtractor<S extends ForecastState> {
@@ -23,7 +23,7 @@ public interface ForecastFeatureExtractor<S extends ForecastState> {
      *
      * @param state stable forecast state
      * @return newly allocated feature vector
-     * @since 0.22.9
+     * @since 0.23.1
      */
     double[] features(S state);
 }

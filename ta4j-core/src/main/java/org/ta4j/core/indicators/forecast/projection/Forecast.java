@@ -228,7 +228,7 @@ public final class Forecast<T> {
      * @param quantiles         quantile probability to forecast value
      * @param <T>               forecast value type
      * @return stable forecast summary
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static <T> Forecast<T> ofSummary(int decisionIndex, int horizon, int sampleCount, T mean, T median,
             T standardDeviation, Map<Double, T> quantiles) {

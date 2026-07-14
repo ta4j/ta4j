@@ -15,7 +15,7 @@ import org.ta4j.core.num.Num;
  * defensive array. Built-in extractors require stable states whose selected
  * values can be represented as finite primitive doubles.
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public final class ForecastFeatureExtractors {
 
@@ -27,7 +27,7 @@ public final class ForecastFeatureExtractors {
      *
      * @param <S> forecast state type
      * @return four-feature extractor
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static <S extends ForecastState> ForecastFeatureExtractor<S> meanDriftVarianceVolatility() {
         return state -> {
@@ -42,7 +42,7 @@ public final class ForecastFeatureExtractors {
      *
      * @param <S> forecast state type
      * @return two-feature extractor
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static <S extends ForecastState> ForecastFeatureExtractor<S> driftVolatility() {
         return state -> {
@@ -63,7 +63,7 @@ public final class ForecastFeatureExtractors {
      *
      * @param <S> forecast state type
      * @return return-state feature extractor
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public static <S extends ForecastState> ForecastFeatureExtractor<S> returnStateDefaults() {
         return state -> {

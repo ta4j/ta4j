@@ -1,12 +1,17 @@
 ## Unreleased
 
+### Added
+- **Forecast models can share state without coupling to one estimator**: Added the `ForecastState` contract, a typed `ReturnForecastStateIndicator<S>` for return-derived estimators, reusable `ForecastFeatureExtractors` with nonredundant default return features, and `Forecast.ofSummary(...)` for finite calibrated or model-produced distribution summaries that do not manufacture sample paths.
+
 ### Changed
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
+
+### Fixed
+- **Log-return price forecasts expose coherent price-space moments**: Price forecast adapters now use a moment-matched lognormal approximation for mean and standard deviation, preserve zero dispersion for deterministic returns, and continue to return unstable summaries when conversion overflows.
 
 ## 0.23.0 (2026-07-13)
 
 ### Added
-- **Forecast models can share state without coupling to one estimator**: Added the `ForecastState` contract, a typed `ReturnForecastStateIndicator<S>` for return-derived estimators, reusable `ForecastFeatureExtractors` with nonredundant default return features, and `Forecast.ofSummary(...)` for finite calibrated or model-produced distribution summaries that do not manufacture sample paths.
 - **Causal swing detection for sharp, rounded, and consensus-confirmed turns**: Added `SwingDetectors.slopeChange(window)` with balanced persistence and half-ATR filtering plus `SwingDetectors.consensus(...)` for tolerant quorum agreement, while ZigZag detection now locates pivots from intrabar highs/lows, confirms reversals from closes with pivot-anchored thresholds, derives matching high/low swing sources directly from state, and resolves fractal plateaus to one deterministic midpoint.
 - **CF-289: Forecast predictions for forward price estimates**: Added a ta4j-core forecast indicator layer with `Forecast` summaries, a `ReturnIndicator` semantic contract, constructor-first EWMA and Monte Carlo price forecasts, explicit return projections for advanced tuning, `forecast.state`, `forecast.projection`, and `forecast.adapters` subpackages for framework contracts and conversion bridges, non-throwing forecast quantile lookup with `hasQuantile(...)`, and projection methods for quantiles, medians, means, and standard deviations as regular `Indicator<Num>` values.
 - **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
@@ -27,7 +32,6 @@
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
 ### Fixed
-- **Log-return price forecasts expose coherent price-space moments**: Price forecast adapters now use a moment-matched lognormal approximation for mean and standard deviation, preserve zero dispersion for deterministic returns, and continue to return unstable summaries when conversion overflows.
 - **Day-of-week rule descriptors are deterministic**: `DayOfWeekRule` now canonicalizes its configured enum set so descriptor and JSON serialization round trips cannot fail or change output when hash iteration order varies between runs.
 - **Source position labels remain accurate in isolated chart renders**: Trading-record
   chart callers can now provide a 1-based source position start, so position bands

@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * finite common values; an unstable state has no observations and uses
  * {@code NaN.NaN} for values that are not yet defined.
  *
- * @since 0.22.9
+ * @since 0.23.1
  */
 public interface ForecastState {
 
@@ -24,7 +24,7 @@ public interface ForecastState {
      * Returns the source index represented by this state.
      *
      * @return source index
-     * @since 0.22.9
+     * @since 0.23.1
      */
     int index();
 
@@ -32,7 +32,7 @@ public interface ForecastState {
      * Returns the number of observations represented by this state.
      *
      * @return observation count, or zero when unstable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     int observationCount();
 
@@ -40,7 +40,7 @@ public interface ForecastState {
      * Returns whether the state is ready for forecast use.
      *
      * @return {@code true} when stable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     boolean isStable();
 
@@ -48,7 +48,7 @@ public interface ForecastState {
      * Returns the estimator's current mean-return summary.
      *
      * @return mean return, or {@code NaN.NaN} when unstable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     Num mean();
 
@@ -56,7 +56,7 @@ public interface ForecastState {
      * Returns the estimator's drift assumption for forward projections.
      *
      * @return drift, or {@code NaN.NaN} when unstable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     Num drift();
 
@@ -64,7 +64,7 @@ public interface ForecastState {
      * Returns the estimator's current return-variance summary.
      *
      * @return non-negative variance, or {@code NaN.NaN} when unstable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     Num variance();
 
@@ -72,7 +72,7 @@ public interface ForecastState {
      * Returns the estimator's current return-volatility summary.
      *
      * @return non-negative volatility, or {@code NaN.NaN} when unstable
-     * @since 0.22.9
+     * @since 0.23.1
      */
     Num volatility();
 }
