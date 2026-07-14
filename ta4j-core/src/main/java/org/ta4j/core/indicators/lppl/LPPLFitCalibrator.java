@@ -207,7 +207,7 @@ final class LPPLFitCalibrator {
         }
     }
 
-    private double[] basisAt(double criticalTime, double m, double omega, double time) {
+    private static double[] basisAt(double criticalTime, double m, double omega, double time) {
         double dt = criticalTime - time;
         if (!Double.isFinite(dt) || dt <= 0.0) {
             return null;
@@ -256,13 +256,7 @@ final class LPPLFitCalibrator {
         }
 
         private double[] basisAtEvaluation() {
-            double dt = criticalTime - window;
-            if (!Double.isFinite(dt) || dt <= 0.0) {
-                return null;
-            }
-            double power = Math.pow(dt, m);
-            double logDt = Math.log(dt);
-            return new double[] { 1.0, power, power * Math.cos(omega * logDt), power * Math.sin(omega * logDt) };
+            return basisAt(criticalTime, m, omega, window);
         }
     }
 }

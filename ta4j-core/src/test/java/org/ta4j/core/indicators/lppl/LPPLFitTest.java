@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,7 +35,7 @@ class LPPLFitTest {
 
     @Test
     void validFitsRejectInconsistentNormalizedDiagnostics() {
-        assertThatThrownBy(() -> new LPPLFit(80, LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, 100.0, 0.5, 8.0, 0.2,
-                0.05, 0.9, 20, 12, 4.8, 0.2, 0.1, 2.0)).isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class, () -> new LPPLFit(80, LPPLFitStatus.VALID, 4.6, -0.03, 0.01,
+                -0.006, 100.0, 0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.1, 2.0));
     }
 }

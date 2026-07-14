@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,11 +42,10 @@ class LPPLCalibrationProfileTest {
 
     @Test
     void rejectsInvalidSearchSettings() {
-        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withWindow(4))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withCriticalTimeSearch(0, 30, 5))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withOptimizerSettings(10, 1.1))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class, () -> LPPLCalibrationProfile.defaults().withWindow(4));
+        assertThrows(IllegalArgumentException.class,
+                () -> LPPLCalibrationProfile.defaults().withCriticalTimeSearch(0, 30, 5));
+        assertThrows(IllegalArgumentException.class,
+                () -> LPPLCalibrationProfile.defaults().withOptimizerSettings(10, 1.1));
     }
 }
