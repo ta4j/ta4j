@@ -249,7 +249,7 @@ final class LPPLFitCalibrator {
         }
 
         private LPPLFit toFit(double predictedEvaluation, double residual, double maxAbsResidual) {
-            double normalizedResidual = maxAbsResidual <= SINGULARITY_THRESHOLD ? 0.0
+            double normalizedResidual = maxAbsResidual == 0.0 ? 0.0
                     : Math.max(-1.0, Math.min(1.0, residual / maxAbsResidual));
             return new LPPLFit(window, LPPLFitStatus.VALID, a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared,
                     criticalOffset, evaluations, predictedEvaluation, residual, maxAbsResidual, normalizedResidual);

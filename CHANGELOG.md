@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Added
-- **Causal LPPL residuals expose a regular numeric indicator and rich fit diagnostics**: Added `LPPLIndicator` for normalized one-step log-price residuals and `LPPLFitIndicator` for inspecting the underlying LPPLS calibration. Fits end before the evaluated bar to avoid look-ahead, invalid or unqualified models return `NaN`, and immutable `LPPLCalibrationProfile` tuning keeps advanced construction readable.
+- **Causal LPPL residuals expose a regular numeric indicator and rich fit diagnostics**: Added `LPPLResidualIndicator` for normalized one-step log-price residuals and `LPPLFitIndicator` for inspecting and reusing the underlying LPPLS calibration. Fits end before the evaluated bar to avoid look-ahead, invalid or unqualified models return `NaN`, finite high-precision prices remain supported, and immutable `LPPLCalibrationProfile` tuning keeps advanced construction readable.
 
 ### Changed
 - **New snapshots are externally consumable before publication reports green**: Every `master` push still starts snapshot publication immediately, concurrent snapshot runs now queue instead of cancelling an active deploy, and release-PR publishing no longer dispatches a duplicate run. The snapshot workflow uses an isolated Maven consumer to resolve the exact timestamped parent/core/examples artifacts and checksum-match the newly deployed core/examples JARs, while release health retrieves the exact version-level core POM/JAR instead of treating lag-prone top-level metadata or Portal browsing as proof.

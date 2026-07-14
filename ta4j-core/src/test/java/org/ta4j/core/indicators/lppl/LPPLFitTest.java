@@ -34,8 +34,47 @@ class LPPLFitTest {
     }
 
     @Test
-    void validFitsRejectInconsistentNormalizedDiagnostics() {
+    void qualifiedFitMustUseTheProfileWindow() {
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
+        LPPLFit fit = validFit(profile, 0.9);
+
+        assertThat(fit.isQualified(profile)).isTrue();
+        assertThat(fit.isQualified(profile.withWindow(profile.window() + 1))).isFalse();
+    }
+
+    @Test
+    void validFitsRejectContradictoryCriticalCoordinates() {
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
+
+        assertThrows(IllegalArgumentException.class, () -> new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6,
+                -0.03, 0.01, -0.006, profile.window() - 1.0, 0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5));
+        assertThrows(IllegalArgumentException.class, () -> new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6,
+                -0.03, 0.01, -0.006, profile.window() + 19.0, 0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5));
+    }
+
+    @Test
+    void validFitsRejectNegativeOrInconsistentDiagnostics() {
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
+
+        assertThrows(IllegalArgumentException.class, () -> new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6,
+                -0.03, 0.01, -0.006, profile.window() + 20.0, 0.5, 8.0, -0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5));
+        assertThrows(IllegalArgumentException.class, () -> new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6,
+                -0.03, 0.01, -0.006, profile.window() + 20.0, 0.5, 8.0, 0.2, 0.06, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.5));
         assertThrows(IllegalArgumentException.class, () -> new LPPLFit(80, LPPLFitStatus.VALID, 4.6, -0.03, 0.01,
-                -0.006, 100.0, 0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.1, 2.0));
+                -0.006, 100.0, 0.5, 8.0, 0.2, 0.05, 0.9, 20, 12, 4.8, 0.2, 0.4, 0.25));
+    }
+
+    @Test
+    void negativeRSquaredRemainsAValidButUnqualifiedDiagnostic() {
+        LPPLCalibrationProfile profile = LPPLTestFixtures.compactProfile();
+        LPPLFit fit = validFit(profile, -0.2);
+
+        assertThat(fit.isConverged()).isTrue();
+        assertThat(fit.isQualified(profile)).isFalse();
+    }
+
+    private static LPPLFit validFit(LPPLCalibrationProfile profile, double rSquared) {
+        return new LPPLFit(profile.window(), LPPLFitStatus.VALID, 4.6, -0.03, 0.01, -0.006, profile.window() + 20.0,
+                0.5, 8.0, 0.2, 0.05, rSquared, 20, 12, 4.8, 0.2, 0.4, 0.5);
     }
 }

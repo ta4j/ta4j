@@ -43,6 +43,8 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
         double m, double omega, double rss, double rms, double rSquared, int criticalOffset, int evaluations,
         double predictedLogPrice, double residual, double maxAbsResidual, double normalizedResidual) {
 
+    private static final double CONSISTENCY_TOLERANCE = 1e-12;
+
     /**
      * Creates a validated fit result.
      *
@@ -59,10 +61,31 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
         if (evaluations < 0) {
             throw new IllegalArgumentException("evaluations must be non-negative");
         }
-        if (status == LPPLFitStatus.VALID && (!finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared,
-                predictedLogPrice, residual, maxAbsResidual, normalizedResidual) || maxAbsResidual < 0.0
-                || normalizedResidual < -1.0 || normalizedResidual > 1.0)) {
-            throw new IllegalArgumentException("valid fits require finite, internally consistent diagnostics");
+        if (status == LPPLFitStatus.VALID) {
+            if (!finite(a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, predictedLogPrice, residual,
+                    maxAbsResidual, normalizedResidual)) {
+                throw new IllegalArgumentException("valid fits require finite diagnostics");
+            }
+            if (criticalTime <= window || m <= 0.0 || m >= 1.0 || omega <= 0.0) {
+                throw new IllegalArgumentException("valid fits require admissible LPPL parameters");
+            }
+            if (rss < 0.0 || rms < 0.0 || rSquared > 1.0 || maxAbsResidual < 0.0
+                    || Math.abs(residual) > maxAbsResidual) {
+                throw new IllegalArgumentException("valid fits require consistent non-negative diagnostics");
+            }
+            int expectedCriticalOffset = (int) Math.round(criticalTime - window);
+            if (criticalOffset < 1 || criticalOffset != expectedCriticalOffset) {
+                throw new IllegalArgumentException("criticalOffset must match criticalTime relative to window");
+            }
+            double expectedRms = Math.sqrt(rss / window);
+            if (!nearlyEqual(rms, expectedRms)) {
+                throw new IllegalArgumentException("rms must equal sqrt(rss / window)");
+            }
+            double expectedNormalizedResidual = maxAbsResidual == 0.0 ? 0.0
+                    : Math.max(-1.0, Math.min(1.0, residual / maxAbsResidual));
+            if (!nearlyEqual(normalizedResidual, expectedNormalizedResidual)) {
+                throw new IllegalArgumentException("normalizedResidual must match residual / maxAbsResidual");
+            }
         }
     }
 
@@ -85,8 +108,8 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
      */
     public boolean isQualified(LPPLCalibrationProfile profile) {
         Objects.requireNonNull(profile, "profile");
-        return isConverged() && rSquared >= profile.minRSquared() && m >= profile.minM() && m <= profile.maxM()
-                && omega >= profile.minOmega() && omega <= profile.maxOmega() && b != 0.0
+        return isConverged() && window == profile.window() && rSquared >= profile.minRSquared() && m >= profile.minM()
+                && m <= profile.maxM() && omega >= profile.minOmega() && omega <= profile.maxOmega() && b != 0.0
                 && criticalOffset >= profile.minCriticalOffset() && criticalOffset <= profile.maxCriticalOffset();
     }
 
@@ -122,5 +145,10 @@ public record LPPLFit(int window, LPPLFitStatus status, double a, double b, doub
             }
         }
         return true;
+    }
+
+    private static boolean nearlyEqual(double left, double right) {
+        double scale = Math.max(1.0, Math.max(Math.abs(left), Math.abs(right)));
+        return Math.abs(left - right) <= CONSISTENCY_TOLERANCE * scale;
     }
 }

@@ -31,8 +31,16 @@ final class LPPLTestFixtures {
     }
 
     static double[] syntheticPrices(double b, double evaluationShock) {
-        double[] prices = new double[WINDOW + 2];
-        double criticalTime = WINDOW + 20.0;
+        return syntheticPrices(WINDOW + 2, WINDOW + 20.0, b, WINDOW, evaluationShock);
+    }
+
+    static double[] syntheticPrices(int length, double criticalTime, double b) {
+        return syntheticPrices(length, criticalTime, b, -1, 0.0);
+    }
+
+    private static double[] syntheticPrices(int length, double criticalTime, double b, int shockIndex,
+            double evaluationShock) {
+        double[] prices = new double[length];
         double a = 4.6;
         double c1 = 0.01;
         double c2 = -0.006;
@@ -44,7 +52,7 @@ final class LPPLTestFixtures {
             double logDt = Math.log(dt);
             double logPrice = a + b * power + c1 * power * Math.cos(omega * logDt)
                     + c2 * power * Math.sin(omega * logDt);
-            if (i == WINDOW) {
+            if (i == shockIndex) {
                 logPrice += evaluationShock;
             }
             prices[i] = Math.exp(logPrice);

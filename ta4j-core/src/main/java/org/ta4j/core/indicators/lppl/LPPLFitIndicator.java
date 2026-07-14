@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * rich diagnostics for the one-step evaluation at {@code index}.
  *
  * <p>
- * Use {@link LPPLIndicator} for the ordinary numeric indicator path.
+ * Use {@link LPPLResidualIndicator} for the ordinary numeric indicator path.
  *
  * @since 0.23.1
  */
@@ -137,11 +137,17 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
 
     private double logPrice(int index) {
         Num value = priceIndicator.getValue(index);
-        if (Num.isNaNOrNull(value)) {
+        if (!Num.isFinite(value) || !value.isPositive()) {
             return Double.NaN;
         }
-        double price = value.doubleValue();
-        return Double.isFinite(price) && price > 0.0 ? Math.log(price) : Double.NaN;
+        Num logValue = value.log();
+        if (!Num.isFinite(logValue)) {
+            return Double.NaN;
+        }
+        // Commons Math calibrates primitive arrays; convert only after logarithmic
+        // compression so finite DecimalNum prices cannot overflow first.
+        double primitiveLogValue = logValue.doubleValue();
+        return Double.isFinite(primitiveLogValue) ? primitiveLogValue : Double.NaN;
     }
 
     /**

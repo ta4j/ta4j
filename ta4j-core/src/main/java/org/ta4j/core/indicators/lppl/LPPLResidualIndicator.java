@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.23.1
  */
-public final class LPPLIndicator extends CachedIndicator<Num> {
+public final class LPPLResidualIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> priceIndicator;
     private final int window;
@@ -46,7 +46,7 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
     private final int maxEvaluations;
     private final double minRSquared;
     private final transient LPPLCalibrationProfile profile;
-    private final transient LPPLFitIndicator fitIndicator;
+    private final transient Indicator<LPPLFit> fitIndicator;
 
     /**
      * Creates an LPPL residual over close prices using default settings.
@@ -54,7 +54,7 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
      * @param series underlying bar series
      * @since 0.23.1
      */
-    public LPPLIndicator(BarSeries series) {
+    public LPPLResidualIndicator(BarSeries series) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")));
     }
 
@@ -65,7 +65,7 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
      * @param profile calibration profile
      * @since 0.23.1
      */
-    public LPPLIndicator(BarSeries series, LPPLCalibrationProfile profile) {
+    public LPPLResidualIndicator(BarSeries series, LPPLCalibrationProfile profile) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), profile);
     }
 
@@ -76,7 +76,7 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
      * @param priceIndicator positive price source
      * @since 0.23.1
      */
-    public LPPLIndicator(Indicator<Num> priceIndicator) {
+    public LPPLResidualIndicator(Indicator<Num> priceIndicator) {
         this(priceIndicator, LPPLCalibrationProfile.defaults());
     }
 
@@ -87,21 +87,21 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
      * @param profile        calibration profile
      * @since 0.23.1
      */
-    public LPPLIndicator(Indicator<Num> priceIndicator, LPPLCalibrationProfile profile) {
+    public LPPLResidualIndicator(Indicator<Num> priceIndicator, LPPLCalibrationProfile profile) {
         this(priceIndicator, Objects.requireNonNull(profile, "profile").window(), profile.minM(), profile.maxM(),
                 profile.mSteps(), profile.minOmega(), profile.maxOmega(), profile.omegaSteps(),
                 profile.minCriticalOffset(), profile.maxCriticalOffset(), profile.criticalOffsetStep(),
                 profile.maxEvaluations(), profile.minRSquared());
     }
 
-    LPPLIndicator(Indicator<Num> priceIndicator, int window, double minM, double maxM, int mSteps, double minOmega,
-            double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
-            int maxEvaluations, double minRSquared) {
+    LPPLResidualIndicator(Indicator<Num> priceIndicator, int window, double minM, double maxM, int mSteps,
+            double minOmega, double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset,
+            int criticalOffsetStep, int maxEvaluations, double minRSquared) {
         this(new LPPLFitIndicator(priceIndicator, window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
                 minCriticalOffset, maxCriticalOffset, criticalOffsetStep, maxEvaluations, minRSquared));
     }
 
-    private LPPLIndicator(LPPLFitIndicator fitIndicator) {
+    private LPPLResidualIndicator(LPPLFitIndicator fitIndicator) {
         super(fitIndicator.getPriceIndicator());
         this.fitIndicator = fitIndicator;
         this.priceIndicator = fitIndicator.getPriceIndicator();
@@ -138,6 +138,38 @@ public final class LPPLIndicator extends CachedIndicator<Num> {
      */
     public Indicator<Num> getPriceIndicator() {
         return priceIndicator;
+    }
+
+    /**
+     * Returns the diagnostic indicator used by this residual indicator.
+     *
+     * <p>
+     * The returned view delegates to the exact cached component used by
+     * {@link #getValue(int)}. Reuse it when both the numeric residual and fit
+     * diagnostics are needed to avoid calibrating the same index twice. The view
+     * does not expose the mutable cache itself.
+     *
+     * @return backing LPPL fit indicator
+     * @since 0.23.1
+     */
+    public Indicator<LPPLFit> getFitIndicator() {
+        return new Indicator<>() {
+
+            @Override
+            public LPPLFit getValue(int index) {
+                return fitIndicator.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return fitIndicator.getCountOfUnstableBars();
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return fitIndicator.getBarSeries();
+            }
+        };
     }
 
     /**
