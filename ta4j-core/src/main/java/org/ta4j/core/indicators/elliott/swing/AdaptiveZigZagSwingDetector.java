@@ -43,6 +43,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     private int cachedIndex = -1;
     private Bar cachedFirstBar;
     private Bar cachedLastBar;
+    private List<Bar> cachedBars = List.of();
     private int cachedBeginIndex = -1;
     private int cachedEndIndex = -1;
 
@@ -66,12 +67,14 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         }
         final int currentEndIndex = series.getEndIndex();
         final Bar currentLastBar = series.getBar(currentEndIndex);
+        final List<Bar> currentBars = series.getBarData();
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, currentEndIndex));
         final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
                 && (currentEndIndex < cachedEndIndex
                         || (series.getBeginIndex() <= cachedBeginIndex
                                 && series.getBar(series.getBeginIndex()) != cachedFirstBar)
-                        || (currentEndIndex == cachedEndIndex && currentLastBar != cachedLastBar));
+                        || (currentEndIndex == cachedEndIndex
+                                && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));
         if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
                 || clampedIndex < cachedIndex) {
             final Indicator<Num> highPrice = new HighPriceIndicator(series);
@@ -92,7 +95,20 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         cachedIndex = clampedIndex;
         cachedEndIndex = currentEndIndex;
         cachedLastBar = currentLastBar;
+        cachedBars = currentBars;
         return result;
+    }
+
+    private boolean hasSameBars(final List<Bar> bars) {
+        if (cachedBars.size() != bars.size()) {
+            return false;
+        }
+        for (int index = 0; index < bars.size(); index++) {
+            if (cachedBars.get(index) != bars.get(index)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

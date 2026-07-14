@@ -349,6 +349,59 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void provisionalTerminalProvenanceRecognizesDecomposedScenarioLegs() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        ElliottSwing first = new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree);
+        ElliottSwing second = new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree);
+        ElliottSwing provisional = new ElliottSwing(4, 8, factory.numOf(108), factory.numOf(144), degree);
+        ElliottScenario decomposed = scenario(factory, "decomposed", ElliottPhase.WAVE3, 0.8,
+                List.of(first, new ElliottSwing(2, 8, factory.numOf(120), factory.numOf(144), degree)),
+                factory.numOf(95), 0.8);
+        ElliottScenario differentTerminal = scenario(factory, "different-terminal", ElliottPhase.WAVE3, 0.8,
+                List.of(first, new ElliottSwing(2, 8, factory.numOf(120), factory.numOf(145), degree)),
+                factory.numOf(95), 0.8);
+        ElliottAnalysisResult result = new ElliottAnalysisResult(degree, 8, List.of(first, second),
+                List.of(first, second, provisional), ElliottScenarioSet.of(List.of(decomposed), 8), Map.of(), null,
+                null, new ElliottAnalysisResult.WaveCount(2, 1), null);
+
+        assertThat(result.usesProvisionalTerminal(decomposed)).isTrue();
+        assertThat(result.usesProvisionalTerminal(differentTerminal)).isFalse();
+    }
+
+    @Test
+    void provisionalTerminalProvenanceSurvivesWindowAnchoring() {
+        BarSeries series = buildTerminalExtensionSeries();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> {
+                    NumFactory factory = window.numFactory();
+                    List<ElliottSwing> swings = List.of(
+                            new ElliottSwing(0, 3, factory.hundred(), factory.numOf(120), degree),
+                            new ElliottSwing(3, 6, factory.numOf(120), factory.numOf(108), degree),
+                            new ElliottSwing(6, 7, factory.numOf(108), factory.numOf(132), degree));
+                    ElliottScenario scenario = scenario(factory, "forming-terminal", ElliottPhase.WAVE3, 0.8, swings,
+                            factory.numOf(98), 0.8);
+                    ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario), window.getEndIndex());
+                    return new ElliottAnalysisResult(degree, window.getEndIndex(), swings, swings, scenarios, Map.of(),
+                            null, scenarios.trendBias(), new ElliottAnalysisResult.WaveCount(2, 1), null);
+                })
+                .build();
+
+        ElliottAnalysisResult anchored = analysis.analyzeWindow(series, 2, 10)
+                .analysisFor(degree)
+                .orElseThrow()
+                .analysis();
+
+        assertThat(anchored.provisionalTerminalSwing()).isPresent();
+        assertThat(anchored.scenarios().all()).anyMatch(anchored::usesProvisionalTerminal);
+    }
+
+    @Test
     void intradayLiveProfileKeepsMinuteSwingsAcrossHistoryThreshold() {
         for (Duration barDuration : List.of(Duration.ofMinutes(1), Duration.ofMinutes(5))) {
             BarSeries series = buildIntradaySeries(barDuration, 251);

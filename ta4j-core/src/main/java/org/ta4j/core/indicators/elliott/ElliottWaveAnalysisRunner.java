@@ -2839,6 +2839,25 @@ public final class ElliottWaveAnalysisRunner {
 
     private ElliottAnalysisResult anchorWindowAnalysisSnapshot(final BarSeries rootSeries,
             final ElliottAnalysisResult analysis, final int startIndex, final int endIndex) {
+        List<ElliottSwing> anchoredProcessedSwings = analysis.processedSwings();
+        if (analysis.waveCount().hasProvisional() && !anchoredProcessedSwings.isEmpty()) {
+            final ElliottSwing terminal = anchoredProcessedSwings.getLast();
+            final int snapBars = anchorWindowSnapBars(startIndex, endIndex);
+            final boolean snapStart = anchoredProcessedSwings.size() == 1
+                    && Math.abs(terminal.fromIndex() - startIndex) <= snapBars;
+            final boolean snapEnd = Math.abs(terminal.toIndex() - endIndex) <= snapBars;
+            if (snapStart || snapEnd) {
+                final List<ElliottSwing> updated = new ArrayList<>(anchoredProcessedSwings);
+                updated.set(updated.size() - 1,
+                        new ElliottSwing(snapStart ? startIndex : terminal.fromIndex(),
+                                snapEnd ? endIndex : terminal.toIndex(),
+                                snapStart ? boundaryPrice(rootSeries, startIndex, !terminal.isRising())
+                                        : terminal.fromPrice(),
+                                snapEnd ? boundaryPrice(rootSeries, endIndex, terminal.isRising()) : terminal.toPrice(),
+                                terminal.degree()));
+                anchoredProcessedSwings = List.copyOf(updated);
+            }
+        }
         final List<ElliottScenario> anchoredScenarios = analysis.scenarios()
                 .all()
                 .stream()
@@ -2846,7 +2865,7 @@ public final class ElliottWaveAnalysisRunner {
                 .toList();
         final ElliottScenarioSet anchoredScenarioSet = ElliottScenarioSet.of(anchoredScenarios, analysis.index());
         return new ElliottAnalysisResult(analysis.degree(), analysis.index(), analysis.rawSwings(),
-                analysis.processedSwings(), anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
+                anchoredProcessedSwings, anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
                 anchoredScenarioSet.trendBias(), analysis.waveCount(), analysis.diagnostics());
     }
 

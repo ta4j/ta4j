@@ -125,10 +125,13 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
      * @since 0.23.1
      */
     public boolean usesProvisionalTerminal(final ElliottScenario scenario) {
-        if (scenario == null) {
+        if (scenario == null || scenario.swings().isEmpty()) {
             return false;
         }
-        return provisionalTerminalSwing().filter(scenario.swings()::contains).isPresent();
+        final ElliottSwing scenarioTerminal = scenario.swings().getLast();
+        return provisionalTerminalSwing().filter(provisional -> scenarioTerminal.degree() == provisional.degree()
+                && scenarioTerminal.toIndex() == provisional.toIndex()
+                && scenarioTerminal.toPrice().compareTo(provisional.toPrice()) == 0).isPresent();
     }
 
     /**
