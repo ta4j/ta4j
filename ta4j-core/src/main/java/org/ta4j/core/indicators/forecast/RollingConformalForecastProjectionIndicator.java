@@ -53,7 +53,7 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
     private final RealizedValue realizedValue;
     private final int horizon;
     private final int calibrationWindow;
-    private final int minimumCalibrationCount;
+    private final int minimumFiniteSampleCount;
     private final double targetCoverage;
     private final int realizationDecisionWarmup;
 
@@ -75,8 +75,9 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
         this.realizedValue = builder.realizedValue;
         this.horizon = builder.baseForecast.getHorizon();
         this.calibrationWindow = builder.calibrationWindow;
-        this.minimumCalibrationCount = builder.minimumCalibrationCount;
         this.targetCoverage = builder.targetCoverage;
+        this.minimumFiniteSampleCount = minimumFiniteSampleCount(builder.minimumCalibrationCount,
+                builder.calibrationWindow, builder.targetCoverage);
         this.realizationDecisionWarmup = builder.realizationDecisionWarmup;
     }
 
@@ -148,13 +149,13 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
                 scores.add(score);
             }
         }
-        if (scores.size() < minimumCalibrationCount) {
+        if (scores.size() < minimumFiniteSampleCount) {
             return Forecast.unstable(index, horizon);
         }
 
         scores.sort(Num::compareTo);
-        int rank = Math.min(scores.size(), (int) Math.ceil((scores.size() + 1d) * targetCoverage));
-        Num adjustment = scores.get(Math.max(1, rank) - 1);
+        int rank = (int) Math.ceil((scores.size() + 1d) * targetCoverage);
+        Num adjustment = scores.get(rank - 1);
         if (adjustment.isPositive() && current.standardDeviation().isZero()) {
             return Forecast.unstable(index, horizon);
         }
@@ -182,7 +183,7 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(baseForecast.getCountOfUnstableBars(), realizationDecisionWarmup) + horizon
-                + minimumCalibrationCount - 1;
+                + minimumFiniteSampleCount - 1;
     }
 
     /**
@@ -253,6 +254,27 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
     }
 
+    private static int minimumFiniteSampleCount(int configuredMinimum, int calibrationWindow, double coverage) {
+        if (!supportsCoverage(calibrationWindow, coverage)) {
+            throw new IllegalArgumentException("calibrationWindow is too small for targetCoverage");
+        }
+        int low = configuredMinimum;
+        int high = calibrationWindow;
+        while (low < high) {
+            int middle = low + (high - low) / 2;
+            if (supportsCoverage(middle, coverage)) {
+                high = middle;
+            } else {
+                low = middle + 1;
+            }
+        }
+        return low;
+    }
+
+    private static boolean supportsCoverage(int scoreCount, double coverage) {
+        return Math.ceil((scoreCount + 1d) * coverage) <= scoreCount;
+    }
+
     private static Indicator<?> validatedAnchor(Builder builder) {
         builder.validate();
         return builder.seriesAnchor;
@@ -311,7 +333,8 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
         }
 
         /**
-         * Sets the minimum valid calibration scores required before output.
+         * Sets a lower bound on the valid calibration scores required before output.
+         * The finite-sample coverage rank may require more scores.
          *
          * @param value positive minimum not greater than the calibration window
          * @return this builder
@@ -343,6 +366,9 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
             if (calibrationWindow < 1 || minimumCalibrationCount < 1 || minimumCalibrationCount > calibrationWindow) {
                 throw new IllegalArgumentException(
                         "calibrationWindow must be >= minimumCalibrationCount and both must be >= 1");
+            }
+            if (!supportsCoverage(calibrationWindow, targetCoverage)) {
+                throw new IllegalArgumentException("calibrationWindow is too small for targetCoverage");
             }
         }
     }

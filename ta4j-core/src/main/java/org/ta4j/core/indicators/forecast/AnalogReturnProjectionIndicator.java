@@ -149,8 +149,8 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
             return Forecast.unstable(index, horizon);
         }
 
-        int firstCandidate = Math.max(getBarSeries().getBeginIndex(), index - lookbackBarCount);
         int lastCandidate = index - horizon;
+        int firstCandidate = Math.max(getBarSeries().getBeginIndex(), lastCandidate - lookbackBarCount + 1);
         List<Candidate> candidates = new ArrayList<>(lookbackBarCount);
         for (int candidateIndex = firstCandidate; candidateIndex <= lastCandidate; candidateIndex++) {
             S candidateState = stateIndicator.getValue(candidateIndex);
@@ -196,9 +196,9 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
      */
     @Override
     public int getCountOfUnstableBars() {
-        int stateWarmup = stateIndicator.getCountOfUnstableBars() + minimumNeighborCount - 1 + horizon;
-        int returnWarmup = returnIndicator.getCountOfUnstableBars() + horizon;
-        return Math.max(stateWarmup, returnWarmup);
+        int firstStateCandidate = stateIndicator.getCountOfUnstableBars();
+        int firstReturnCandidate = Math.max(0, returnIndicator.getCountOfUnstableBars() - 1);
+        return Math.max(firstStateCandidate, firstReturnCandidate) + minimumNeighborCount - 1 + horizon;
     }
 
     /**
@@ -248,6 +248,9 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     }
 
     private Num cumulativeReturn(int candidateIndex) {
+        if (candidateIndex + 1 < returnIndicator.getCountOfUnstableBars()) {
+            return null;
+        }
         NumFactory numFactory = getBarSeries().numFactory();
         Num cumulative = numFactory.zero();
         for (int offset = 1; offset <= horizon; offset++) {
@@ -324,35 +327,58 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
 
         NumFactory numFactory = getBarSeries().numFactory();
         List<WeightedReturn> weightedReturns = new ArrayList<>(neighbors.size());
-        Num mean = numFactory.zero();
+        Num numericWeightTotal = numFactory.zero();
+        Num valueScale = numFactory.zero();
         for (int i = 0; i < neighbors.size(); i++) {
             double primitiveWeight = weights[i] / weightTotal;
-            Num weight = numFactory.numOf(primitiveWeight);
-            if (!Num.isFinite(weight) || weight.isZero() && primitiveWeight != 0d) {
+            Num rawWeight = numFactory.numOf(weights[i]);
+            if (primitiveWeight <= 0d || !Num.isFinite(rawWeight) || rawWeight.isZero()) {
                 return Forecast.unstable(index, horizon);
             }
             Num value = normalize(neighbors.get(i).realizedReturn(), numFactory);
             if (value == null) {
                 return Forecast.unstable(index, horizon);
             }
-            weightedReturns.add(new WeightedReturn(value, primitiveWeight, weight));
-            mean = mean.plus(value.multipliedBy(weight));
+            weightedReturns.add(new WeightedReturn(value, primitiveWeight, rawWeight));
+            numericWeightTotal = numericWeightTotal.plus(rawWeight);
+            Num magnitude = value.abs();
+            if (magnitude.isGreaterThan(valueScale)) {
+                valueScale = magnitude;
+            }
         }
-        if (!Num.isFinite(mean)) {
+        if (!Num.isFinite(numericWeightTotal) || !numericWeightTotal.isPositive()) {
             return Forecast.unstable(index, horizon);
         }
 
-        Num variance = numFactory.zero();
-        for (WeightedReturn weightedReturn : weightedReturns) {
-            Num deviation = weightedReturn.value().minus(mean);
-            variance = variance.plus(deviation.multipliedBy(deviation).multipliedBy(weightedReturn.weight()));
-        }
-        if (!Num.isFinite(variance) || variance.isNegative()) {
-            return Forecast.unstable(index, horizon);
-        }
-        Num standardDeviation = variance.isZero() ? numFactory.zero() : variance.sqrt();
-        if (!Num.isFinite(standardDeviation)) {
-            return Forecast.unstable(index, horizon);
+        Num mean = numFactory.zero();
+        Num standardDeviation = numFactory.zero();
+        if (!valueScale.isZero()) {
+            Num scaledValueTotal = numFactory.zero();
+            for (WeightedReturn weightedReturn : weightedReturns) {
+                scaledValueTotal = scaledValueTotal
+                        .plus(weightedReturn.value().dividedBy(valueScale).multipliedBy(weightedReturn.rawWeight()));
+            }
+            Num scaledMean = scaledValueTotal.dividedBy(numericWeightTotal);
+            mean = scaledMean.multipliedBy(valueScale);
+            if (!Num.isFinite(mean) || mean.isZero() && !scaledMean.isZero()) {
+                return Forecast.unstable(index, horizon);
+            }
+
+            Num scaledSquaredDeviationTotal = numFactory.zero();
+            for (WeightedReturn weightedReturn : weightedReturns) {
+                Num scaledDeviation = weightedReturn.value().dividedBy(valueScale).minus(scaledMean);
+                scaledSquaredDeviationTotal = scaledSquaredDeviationTotal
+                        .plus(scaledDeviation.multipliedBy(scaledDeviation).multipliedBy(weightedReturn.rawWeight()));
+            }
+            Num scaledVariance = scaledSquaredDeviationTotal.dividedBy(numericWeightTotal);
+            if (!Num.isFinite(scaledVariance) || scaledVariance.isNegative()) {
+                return Forecast.unstable(index, horizon);
+            }
+            Num scaledStandardDeviation = scaledVariance.isZero() ? numFactory.zero() : scaledVariance.sqrt();
+            standardDeviation = valueScale.multipliedBy(scaledStandardDeviation);
+            if (!Num.isFinite(standardDeviation) || standardDeviation.isZero() && !scaledStandardDeviation.isZero()) {
+                return Forecast.unstable(index, horizon);
+            }
         }
 
         weightedReturns.sort(Comparator.comparing(WeightedReturn::value));
@@ -432,7 +458,7 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
         }
     }
 
-    private record WeightedReturn(Num value, double primitiveWeight, Num weight) {
+    private record WeightedReturn(Num value, double primitiveWeight, Num rawWeight) {
     }
 
     /**

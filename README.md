@@ -313,15 +313,19 @@ at least 5 usable neighbors, Euclidean distance, `[mean, volatility]`
 log-return features, and candidate-only standardization. The builder can tune
 those choices or accept another fixed, log-return `ForecastFeatureSchema`.
 Candidate `j` is never eligible before `j + horizon`; distance ties resolve by
-the earlier source index. Its empirical support count is the number of selected
-neighbors, not the lookback or state observation count.
+the earlier source index. Candidates inside the state or return source's
+unstable window are excluded. Its empirical support count is the number of
+selected neighbors, not the lookback or state observation count.
 
 Rolling conformal defaults target 90% coverage over 252 recent matured decision
-rows and remain unavailable until 30 valid scores exist. Generic value
-calibration observes an indicator at `decision + horizon`; cumulative-log-return
-calibration sums the supplied log returns over the complete horizon. Calibration
-preserves the base mean, median, standard deviation, and support while widening
-configured lower and upper quantiles. Schema or representation mismatch,
+rows and remain unavailable until 30 valid scores exist. A configured minimum
+is raised when necessary to make the requested finite-sample rank attainable;
+configurations whose rolling window can never attain that rank are rejected.
+Generic value calibration observes an indicator at `decision + horizon`;
+cumulative-log-return calibration sums the supplied log returns over the
+complete horizon. Calibration preserves the base mean, median, standard
+deviation, and support while widening configured lower and upper quantiles.
+Schema or representation mismatch,
 non-finite primitive conversion, insufficient history, invalid forecast
 metadata, or a positive widening radius applied to a zero-dispersion base
 forecast produces an unavailable result rather than a misleading summary.

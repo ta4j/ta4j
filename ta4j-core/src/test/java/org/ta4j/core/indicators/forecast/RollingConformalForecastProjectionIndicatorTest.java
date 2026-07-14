@@ -59,6 +59,24 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
     }
 
     @Test
+    public void targetCoverageWaitsForAnAchievableFiniteSampleRank() {
+        BarSeries series = series(10);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1));
+        FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.9)
+                .calibrationWindow(10)
+                .minimumCalibrationCount(5)
+                .build();
+
+        assertEquals(9, calibrated.getCountOfUnstableBars());
+        assertFalse(calibrated.getValue(8).isStable());
+        assertTrue(calibrated.getValue(9).isStable());
+    }
+
+    @Test
     public void onlyMaturedDecisionsCanEnterCalibration() {
         BarSeries series = series(8);
         FixedForecastIndicator base = new FixedForecastIndicator(series, 2,
@@ -139,11 +157,13 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         FixedIndicator<Num> realized = values(series, 0, 1, 2, 3, 4, 5);
         RollingConformalForecastProjectionIndicator unstable = RollingConformalForecastProjectionIndicator
                 .builder(unstableBase, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(2)
                 .minimumCalibrationCount(2)
                 .build();
         RollingConformalForecastProjectionIndicator invalid = RollingConformalForecastProjectionIndicator
                 .builder(wrongIndexBase, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(2)
                 .minimumCalibrationCount(2)
                 .build();
@@ -160,6 +180,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1);
         RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .builder(base, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(3)
                 .minimumCalibrationCount(3)
                 .build();
@@ -175,6 +196,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         FixedIndicator<Num> realized = values(series, 0, 0, 0, 0, 0);
         RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .builder(base, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(3)
                 .minimumCalibrationCount(3)
                 .build();
@@ -195,6 +217,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         FixedIndicator<Num> realized = values(series, 0, 1, 2, 3, 4, 5);
         RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .builder(base, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(3)
                 .minimumCalibrationCount(3)
                 .build();
@@ -227,6 +250,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
                 numOf(1), numOf(1));
         RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .builder(base, realized)
+                .targetCoverage(0.5)
                 .calibrationWindow(3)
                 .minimumCalibrationCount(3)
                 .build();
@@ -248,6 +272,12 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
 
         assertThrows(IllegalArgumentException.class,
                 () -> RollingConformalForecastProjectionIndicator.builder(base, realized).targetCoverage(1d).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> RollingConformalForecastProjectionIndicator.builder(base, realized)
+                        .targetCoverage(0.9)
+                        .calibrationWindow(5)
+                        .minimumCalibrationCount(5)
+                        .build());
         assertThrows(IllegalArgumentException.class,
                 () -> RollingConformalForecastProjectionIndicator.builder(base, otherRealized));
         assertThrows(IllegalArgumentException.class,

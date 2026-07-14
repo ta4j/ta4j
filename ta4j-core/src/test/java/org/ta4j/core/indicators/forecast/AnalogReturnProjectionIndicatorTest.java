@@ -25,6 +25,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 
 public class AnalogReturnProjectionIndicatorTest
         extends AbstractIndicatorTest<org.ta4j.core.indicators.helpers.LogReturnIndicator, Forecast> {
@@ -80,6 +81,35 @@ public class AnalogReturnProjectionIndicatorTest
         assertNumEquals(10, forecast.median());
         assertNumEquals(10, forecast.quantile(0.05));
         assertNumEquals(20, forecast.quantile(0.95));
+    }
+
+    @Test
+    public void dispersionRemainsAvailableWhenFiniteReturnSquaresOverflow() {
+        Fixture extreme = fixture(new double[] { 0, 1e308, -1e308, 0 }, new double[] { 0, 0, 100, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> extremeProjection = AnalogReturnProjectionIndicator
+                .builder(extreme.states())
+                .lookbackBarCount(3)
+                .neighborCount(2)
+                .minimumNeighborCount(2)
+                .standardizeFeatures(false)
+                .build();
+        Fixture control = fixture(new double[] { 0, 10, -10, 0 }, new double[] { 0, 0, 100, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> controlProjection = AnalogReturnProjectionIndicator
+                .builder(control.states())
+                .lookbackBarCount(3)
+                .neighborCount(2)
+                .minimumNeighborCount(2)
+                .standardizeFeatures(false)
+                .build();
+
+        Forecast extremeForecast = extremeProjection.getValue(3);
+        Forecast controlForecast = controlProjection.getValue(3);
+
+        assertTrue(extremeForecast.isStable());
+        assertNumEquals(0, extremeForecast.mean());
+        assertNumEquals(1e308, extremeForecast.standardDeviation());
+        assertTrue(controlForecast.isStable());
+        assertNumEquals(10, controlForecast.standardDeviation());
     }
 
     @Test
@@ -164,6 +194,61 @@ public class AnalogReturnProjectionIndicatorTest
     }
 
     @Test
+    public void collapsedNonzeroReturnsRemainCoherentAtLowDecimalPrecision() {
+        Fixture fixture = fixture(DecimalNumFactory.getInstance(3), new double[] { 0.123, 0.123, 0.123, 0.123, 0.123 },
+                new double[] { 4, 3, 2, 1, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = configured(fixture, 4);
+
+        Forecast forecast = projection.getValue(4);
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(0.123, forecast.mean());
+        assertNumEquals(0.123, forecast.median());
+        assertNumEquals(0, forecast.standardDeviation());
+    }
+
+    @Test
+    public void collapsedThreeNeighborReturnsRemainExactlyCoherent() {
+        Fixture fixture = fixture(new double[] { 0, 5, 5, 5, 0 }, new double[] { 0, 0, 0, 100, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = AnalogReturnProjectionIndicator
+                .builder(fixture.states())
+                .lookbackBarCount(4)
+                .neighborCount(3)
+                .minimumNeighborCount(3)
+                .standardizeFeatures(false)
+                .build();
+
+        Forecast forecast = projection.getValue(4);
+
+        assertTrue(forecast.isStable());
+        assertEquals(ForecastSupport.empirical(3), forecast.support());
+        assertNumEquals(5, forecast.mean());
+        assertNumEquals(5, forecast.median());
+        assertNumEquals(0, forecast.standardDeviation());
+        assertNumEquals(5, forecast.quantile(0.05));
+        assertNumEquals(5, forecast.quantile(0.95));
+    }
+
+    @Test
+    public void lookbackCountsMaturedCandidateRowsForLongHorizons() {
+        Fixture fixture = fixture(new double[] { 0, 1, 1, 1, 1, 1 }, new double[] { 0, 0, 0, 0, 0, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = AnalogReturnProjectionIndicator
+                .builder(fixture.states())
+                .horizon(5)
+                .lookbackBarCount(3)
+                .neighborCount(1)
+                .minimumNeighborCount(1)
+                .standardizeFeatures(false)
+                .build();
+
+        assertFalse(projection.getValue(4).isStable());
+        Forecast forecast = projection.getValue(5);
+        assertTrue(forecast.isStable());
+        assertEquals(ForecastSupport.empirical(1), forecast.support());
+        assertNumEquals(5, forecast.mean());
+    }
+
+    @Test
     public void invalidSchemaAndSeriesCompositionAreRejected() {
         Fixture fixture = fixture(new double[] { 0, 1, 2 }, new double[] { 0, 1, 2 });
         ForecastFeatureExtractor<ReturnForecastState> decimalExtractor = meanExtractor(ReturnRepresentation.DECIMAL);
@@ -220,6 +305,27 @@ public class AnalogReturnProjectionIndicatorTest
         assertEquals(0, forecast.sampleCount());
     }
 
+    @Test
+    public void returnWarmupIncludesEveryRequiredMatureNeighbor() {
+        double[] returns = new double[16];
+        double[] stateMeans = new double[16];
+        double[] prices = new double[16];
+        java.util.Arrays.fill(prices, 100d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        FixedReturnIndicator returnIndicator = new FixedReturnIndicator(series, returns, 10);
+        FixedStateIndicator states = new FixedStateIndicator(returnIndicator, stateMeans);
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = AnalogReturnProjectionIndicator
+                .builder(states)
+                .lookbackBarCount(15)
+                .neighborCount(5)
+                .minimumNeighborCount(5)
+                .build();
+
+        assertEquals(14, projection.getCountOfUnstableBars());
+        assertFalse(projection.getValue(13).isStable());
+        assertTrue(projection.getValue(14).isStable());
+    }
+
     private AnalogReturnProjectionIndicator<ReturnForecastState> configured(Fixture fixture, int decisionIndex) {
         return AnalogReturnProjectionIndicator.builder(fixture.states())
                 .lookbackBarCount(decisionIndex)
@@ -229,6 +335,10 @@ public class AnalogReturnProjectionIndicatorTest
     }
 
     private Fixture fixture(double[] returns, double[] stateMeans) {
+        return fixture(numFactory, returns, stateMeans);
+    }
+
+    private static Fixture fixture(NumFactory numFactory, double[] returns, double[] stateMeans) {
         double[] prices = new double[returns.length];
         java.util.Arrays.fill(prices, 100d);
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
@@ -279,15 +389,22 @@ public class AnalogReturnProjectionIndicatorTest
     private static final class FixedReturnIndicator extends AbstractIndicator<Num> implements ReturnIndicator {
 
         private final double[] values;
+        private final int unstableBars;
 
         private FixedReturnIndicator(BarSeries series, double[] values) {
+            this(series, values, 0);
+        }
+
+        private FixedReturnIndicator(BarSeries series, double[] values, int unstableBars) {
             super(series);
             this.values = values.clone();
+            this.unstableBars = unstableBars;
         }
 
         @Override
         public Num getValue(int index) {
-            return Double.isNaN(values[index]) ? NaN.NaN : getBarSeries().numFactory().numOf(values[index]);
+            return index < unstableBars || Double.isNaN(values[index]) ? NaN.NaN
+                    : getBarSeries().numFactory().numOf(values[index]);
         }
 
         @Override
@@ -297,7 +414,7 @@ public class AnalogReturnProjectionIndicatorTest
 
         @Override
         public int getCountOfUnstableBars() {
-            return 0;
+            return unstableBars;
         }
     }
 
