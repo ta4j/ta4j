@@ -71,6 +71,38 @@ class AdaptiveZigZagSwingDetectorTest {
         }
     }
 
+    @Test
+    void rebuildsCachedStateWhenTheSeriesHistoryIsReplaced() {
+        BarSeries series = buildVolatileRangeSeries();
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector reusedDetector = new AdaptiveZigZagSwingDetector(config);
+        SwingDetectorResult original = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        assertThat(original.swings()).isNotEmpty();
+
+        series.clear();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2025-01-01T00:00:00Z");
+        for (int index = 0; index < 6; index++) {
+            double close = 100.0 + index;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 0.1)
+                    .lowPrice(close - 0.1)
+                    .closePrice(close)
+                    .volume(1000.0)
+                    .add();
+        }
+
+        SwingDetectorResult expected = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        SwingDetectorResult actual = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(expected.swings()).isEmpty();
+        assertThat(actual).isEqualTo(expected);
+    }
+
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         ATRIndicator atr = new ATRIndicator(series, 1);
