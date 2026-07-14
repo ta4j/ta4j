@@ -12,6 +12,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
  * Causal normalized LPPL prediction residual in the range {@code [-1, 1]}.
@@ -168,6 +169,16 @@ public final class LPPLResidualIndicator extends CachedIndicator<Num> {
             @Override
             public BarSeries getBarSeries() {
                 return fitIndicator.getBarSeries();
+            }
+
+            @Override
+            public String toJson() {
+                return fitIndicator.toJson();
+            }
+
+            @Override
+            public ComponentDescriptor toDescriptor() {
+                return fitIndicator.toDescriptor();
             }
         };
     }

@@ -87,6 +87,22 @@ class LPPLResidualIndicatorTest {
     }
 
     @Test
+    void sharedFitViewPreservesIndicatorSerializationContract() {
+        BarSeries series = LPPLTestFixtures.syntheticSeries(-0.03, -0.08);
+        LPPLResidualIndicator residual = new LPPLResidualIndicator(new ClosePriceIndicator(series),
+                LPPLTestFixtures.compactProfile());
+        Indicator<LPPLFit> fitIndicator = residual.getFitIndicator();
+
+        ComponentDescriptor descriptor = fitIndicator.toDescriptor();
+        Indicator<?> restored = Indicator.fromJson(series, fitIndicator.toJson());
+
+        assertThat(descriptor.getType()).isEqualTo("LPPLFitIndicator");
+        assertThat(restored).isInstanceOf(LPPLFitIndicator.class);
+        assertThat(restored.getValue(LPPLTestFixtures.WINDOW))
+                .isEqualTo(fitIndicator.getValue(LPPLTestFixtures.WINDOW));
+    }
+
+    @Test
     @Tag("benchmark")
     @EnabledIfSystemProperty(named = "ta4j.runBenchmarks", matches = "true")
     void measuresSharedAndSeparateDiagnosticCalibration() {
