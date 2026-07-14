@@ -55,6 +55,22 @@ class AdaptiveZigZagSwingDetectorTest {
         assertThat(differentDegree.swings()).isNotEmpty().allMatch(swing -> swing.degree() == ElliottDegree.PRIMARY);
     }
 
+    @Test
+    void cachedDetectorPreservesCausalityForHistoricalQueries() {
+        CountingBarSeries series = buildLiveSeries(80);
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.25, 0.25, 1);
+        AdaptiveZigZagSwingDetector cachedDetector = new AdaptiveZigZagSwingDetector(config);
+        cachedDetector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
+
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            SwingDetectorResult freshResult = new AdaptiveZigZagSwingDetector(config).detect(series, index,
+                    ElliottDegree.SUB_MINUETTE);
+            SwingDetectorResult cachedResult = cachedDetector.detect(series, index, ElliottDegree.SUB_MINUETTE);
+
+            assertThat(cachedResult).as("historical index %s", index).isEqualTo(freshResult);
+        }
+    }
+
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         ATRIndicator atr = new ATRIndicator(series, 1);
