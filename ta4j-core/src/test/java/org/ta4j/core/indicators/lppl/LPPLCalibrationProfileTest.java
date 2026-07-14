@@ -4,75 +4,49 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
 class LPPLCalibrationProfileTest {
 
     @Test
-    void groupedTuningPreservesUnchangedDefaults() {
+    void defaultsProvideOneCausalFitWindow() {
+        LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults();
+
+        assertThat(profile.window()).isEqualTo(500);
+        assertThat(profile.minCriticalOffset()).isEqualTo(1);
+        assertThat(profile.maxCriticalOffset()).isEqualTo(60);
+        assertThat(profile.minRSquared()).isEqualTo(0.75);
+    }
+
+    @Test
+    void groupedModifiersAreImmutableAndValueBased() {
         LPPLCalibrationProfile defaults = LPPLCalibrationProfile.defaults();
-        LPPLCalibrationProfile profile = defaults.withWindows(80, 40, 80)
+        LPPLCalibrationProfile customized = defaults.withWindow(250)
                 .withExponentSearch(0.2, 0.8, 4)
-                .withFrequencySearch(7.0, 11.0, 6)
-                .withCriticalTimeSearch(2, 40, 2)
-                .withActionableCriticalTimeRange(8, 24)
-                .withOptimizerSettings(90, 0.8);
+                .withFrequencySearch(7.0, 12.0, 6)
+                .withCriticalTimeSearch(2, 90, 3)
+                .withOptimizerSettings(200, 0.8);
+        LPPLCalibrationProfile same = LPPLCalibrationProfile.defaults()
+                .withWindow(250)
+                .withExponentSearch(0.2, 0.8, 4)
+                .withFrequencySearch(7.0, 12.0, 6)
+                .withCriticalTimeSearch(2, 90, 3)
+                .withOptimizerSettings(200, 0.8);
 
-        assertThat(profile.windows()).containsExactly(40, 80);
-        assertThat(profile.minM()).isEqualTo(0.2);
-        assertThat(profile.maxM()).isEqualTo(0.8);
-        assertThat(profile.mSteps()).isEqualTo(4);
-        assertThat(profile.minOmega()).isEqualTo(7.0);
-        assertThat(profile.maxOmega()).isEqualTo(11.0);
-        assertThat(profile.omegaSteps()).isEqualTo(6);
-        assertThat(profile.minCriticalOffset()).isEqualTo(2);
-        assertThat(profile.maxCriticalOffset()).isEqualTo(40);
-        assertThat(profile.criticalOffsetStep()).isEqualTo(2);
-        assertThat(profile.activeMinCriticalOffset()).isEqualTo(8);
-        assertThat(profile.activeMaxCriticalOffset()).isEqualTo(24);
-        assertThat(profile.maxEvaluations()).isEqualTo(90);
-        assertThat(profile.minRSquared()).isEqualTo(0.8);
-        assertThat(defaults.windows()).containsExactly(200, 300, 400, 500);
+        assertThat(defaults.window()).isEqualTo(500);
+        assertThat(customized).isEqualTo(same).hasSameHashCodeAs(same);
+        assertThat(customized.toString()).contains("window=250", "minCriticalOffset=2", "minRSquared=0.8");
     }
 
     @Test
-    void windowsHaveValueSemanticsAndDefensiveCopies() {
-        int[] windows = { 80, 40, 80 };
-        LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults().withWindows(windows);
-        windows[0] = 5;
-
-        LPPLCalibrationProfile equivalent = LPPLCalibrationProfile.defaults().withWindows(40, 80);
-        assertThat(profile.windows()).containsExactly(40, 80);
-        assertThat(profile).isEqualTo(equivalent).hasSameHashCodeAs(equivalent);
-        assertThat(profile.toString()).contains("windows=[40, 80]");
-
-        int[] copy = profile.windows();
-        copy[0] = 5;
-        assertThat(profile.windows()).containsExactly(40, 80);
-    }
-
-    @Test
-    void narrowingCriticalTimeSearchKeepsTheProfileUsable() {
-        LPPLCalibrationProfile overlapping = LPPLCalibrationProfile.defaults().withCriticalTimeSearch(5, 20, 1);
-        LPPLCalibrationProfile disjoint = LPPLCalibrationProfile.defaults().withCriticalTimeSearch(1, 5, 1);
-
-        assertThat(overlapping.activeMinCriticalOffset()).isEqualTo(10);
-        assertThat(overlapping.activeMaxCriticalOffset()).isEqualTo(20);
-        assertThat(disjoint.activeMinCriticalOffset()).isEqualTo(1);
-        assertThat(disjoint.activeMaxCriticalOffset()).isEqualTo(5);
-    }
-
-    @Test
-    void rejectsInvalidGroupedSettings() {
-        LPPLCalibrationProfile defaults = LPPLCalibrationProfile.defaults();
-
-        assertThrows(IllegalArgumentException.class, () -> defaults.withWindows(4));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withExponentSearch(0.9, 0.1, 5));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withFrequencySearch(8.0, 7.0, 3));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withCriticalTimeSearch(1, 30, 0));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withActionableCriticalTimeRange(0, 30));
-        assertThrows(IllegalArgumentException.class, () -> defaults.withOptimizerSettings(0, 0.6));
+    void rejectsInvalidSearchSettings() {
+        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withWindow(4))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withCriticalTimeSearch(0, 30, 5))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> LPPLCalibrationProfile.defaults().withOptimizerSettings(10, 1.1))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

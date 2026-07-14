@@ -1017,53 +1017,42 @@ Num invalidation = facade.invalidationLevel().getValue(index);
 
 See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
-## LPPL exhaustion quickstart
+## LPPL residual quickstart
 
-LPPL exhaustion indicators fit a Log-Periodic Power Law model to rolling log-price windows to surface late-stage bubble and crash setups. For rules and charts, the primary path is a regular bounded numeric indicator:
+`LPPLIndicator` fits a Log-Periodic Power Law model through the bar before the requested index and evaluates the current price against that fixed path. The primary API is a regular normalized numeric indicator:
 
 ```java
 BarSeries series = ...;
 int index = series.getEndIndex();
 
-LPPLExhaustionScoreIndicator score = new LPPLExhaustionScoreIndicator(series);
-Num boundedScore = score.getValue(index); // positive = crash exhaustion, negative = bubble exhaustion
+LPPLIndicator residual = new LPPLIndicator(series);
+Num normalizedResidual = residual.getValue(index); // positive = above the path, negative = below it
 ```
 
-Use the rich indicator when fit status and diagnostics affect the decision:
+Use the rich fit when model status and diagnostics affect the decision:
 
 ```java
-LPPLExhaustionIndicator exhaustion = new LPPLExhaustionIndicator(series);
-LPPLExhaustion snapshot = exhaustion.getValue(index);
-if (snapshot.isActionable()) {
-    LPPLFit dominantFit = snapshot.dominantFit();
+LPPLFitIndicator fits = new LPPLFitIndicator(series, residual.getProfile());
+LPPLFit fit = fits.getValue(index);
+if (fit.isQualified(residual.getProfile())) {
+    double rawLogPriceResidual = fit.residual();
+    double fittedCurrentLogPrice = fit.predictedLogPrice();
 }
 ```
 
-The bounded score intentionally covers the configured near-term action horizon. A
-zero does not prove that no structural LPPL regime exists. Longer-horizon scans can
-retain converged, high-quality model evidence before checking actionability:
-
-```java
-LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults();
-LPPLFit fit = snapshot.dominantFit();
-if (fit.isQualified(profile)) {
-    boolean insideActionHorizon = fit.isActionable(profile);
-}
-```
+The value is the observed-minus-predicted log-price residual divided by the maximum absolute residual across the same fitted path. It is bounded to `[-1, 1]`, but it is not by itself a valuation judgment, bubble label, or crash forecast. Warm-up bars, invalid prices, optimizer failures, and unqualified fits return `NaN` rather than a misleading neutral zero.
 
 Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
 
 ```java
 LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
-        .withWindows(200, 300, 500)
-        .withActionableCriticalTimeRange(10, 30)
+        .withWindow(500)
+        .withCriticalTimeSearch(1, 60, 5)
         .withOptimizerSettings(160, 0.80);
-LPPLExhaustionScoreIndicator tunedScore = new LPPLExhaustionScoreIndicator(series, profile);
+LPPLIndicator tunedResidual = new LPPLIndicator(series, profile);
 ```
 
-LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
-
-The `ta4j-examples` module includes `SectorLPPLExhaustionMapDemo`, which analyzes all 11 GICS sectors plus semiconductors through cap-weighted, equal-weighted, and alternative ETF lenses. Adjusted daily resources span 2019-01-02 through 2026-07-10. Run its `main` class with no arguments for a deterministic offline map. The report uses numeric raw scores, critical-horizon quartiles in trading sessions, actionable-fit shares, and lens-support counts instead of qualitative strength or proximity labels. A bubble or crash conclusion is published only when it beats matched log-linear trends and a committed 199-path randomized-return baseline; `NONE` means no calibrated LPPL conclusion, not fair value or flat expected returns. The benchmark summary reports both the ungated null-signal rate, which exposes how often the raw ruler fires on synthetic data, and the final gated false-positive rate. Pass `--benchmark` to rebuild the deterministic false-positive and 21-session rolling-history baselines, `--refresh` to analyze disposable live-data copies, `--update-resources --benchmark` for an explicit local committed-data and baseline refresh, `--output-dir <path>` to choose the artifact directory, or `--help` for usage. A refresh downloads complete adjusted history for all 36 ETFs and requires a common fully settled session. The demo is not exposed as a GitHub Actions or tagged-JUnit workflow.
+LPPL fitting is sensitive to window selection and split/distribution discontinuities, so equity operators should use adjusted prices and validate the residual against matched trend and randomized-return controls before applying thresholds.
 
 ## Real-world examples
 
@@ -1098,7 +1087,6 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Dedicated CLI/job entrypoint that scores a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks. Complete calibration can run for 8+ hours.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
-- **[SectorLPPLExhaustionMapDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SectorLPPLExhaustionMapDemo.java)** - Maps structural LPPL evidence across three ETF lenses per group and publishes a bubble/crash conclusion only after trend and randomized-return calibration, with numeric horizon and historical-stability diagnostics.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.

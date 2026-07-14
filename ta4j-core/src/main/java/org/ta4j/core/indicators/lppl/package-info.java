@@ -2,8 +2,8 @@
  * SPDX-License-Identifier: MIT
  */
 /**
- * Log-Periodic Power Law (LPPL) singularity indicators for crash and bubble
- * exhaustion analysis.
+ * Causal Log-Periodic Power Law (LPPL) fitting and normalized prediction
+ * residual indicators.
  *
  * @since 0.23.1
  */

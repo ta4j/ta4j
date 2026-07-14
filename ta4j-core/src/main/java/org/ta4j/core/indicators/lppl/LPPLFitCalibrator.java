@@ -31,38 +31,39 @@ final class LPPLFitCalibrator {
     }
 
     /**
-     * Runs a three-dimensional seed grid followed by finite-difference
-     * Levenberg-Marquardt refinement. Runtime grows with the configured exponent,
-     * frequency, and critical-offset steps, then with the optimizer evaluation
-     * budget; callers evaluating many bars should keep those settings deliberately
-     * bounded.
+     * Fits the supplied trailing log prices and evaluates the immediately following
+     * log price. The optimizer never receives the evaluated value.
      */
-    LPPLFit fit(double[] logPrices) {
-        int window = logPrices.length;
+    LPPLFit fit(double[] trainingLogPrices, double evaluationLogPrice) {
+        int window = trainingLogPrices.length;
         if (window < LPPLCalibrationProfile.MINIMUM_WINDOW) {
-            return LPPLFit.invalid(window, LPPLExhaustionStatus.INSUFFICIENT_DATA);
+            return LPPLFit.invalid(window, LPPLFitStatus.INSUFFICIENT_DATA);
         }
-        for (double logPrice : logPrices) {
+        if (!Double.isFinite(evaluationLogPrice)) {
+            return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
+        }
+        for (double logPrice : trainingLogPrices) {
             if (!Double.isFinite(logPrice)) {
-                return LPPLFit.invalid(window, LPPLExhaustionStatus.INVALID_INPUT);
+                return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
             }
         }
 
-        NonlinearFit seed = gridSearch(logPrices);
+        NonlinearFit seed = gridSearch(trainingLogPrices);
         if (seed == null || !seed.isFinite()) {
-            return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
+            return LPPLFit.invalid(window, LPPLFitStatus.OPTIMIZER_FAILED);
         }
 
         try {
-            LeastSquaresOptimizer.Optimum optimum = optimize(logPrices, seed);
+            LeastSquaresOptimizer.Optimum optimum = optimize(trainingLogPrices, seed);
             double[] point = optimum.getPoint().toArray();
-            NonlinearFit finalFit = solveLinear(logPrices, point[0], point[1], point[2], optimum.getEvaluations());
+            NonlinearFit finalFit = solveLinear(trainingLogPrices, point[0], point[1], point[2],
+                    optimum.getEvaluations());
             if (finalFit == null || !finalFit.isFinite()) {
-                return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
+                return LPPLFit.invalid(window, LPPLFitStatus.OPTIMIZER_FAILED);
             }
-            return finalFit.toFit(LPPLExhaustionStatus.VALID);
+            return finalFit.toFit(trainingLogPrices, evaluationLogPrice);
         } catch (MathIllegalStateException | IllegalArgumentException e) {
-            return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
+            return LPPLFit.invalid(window, LPPLFitStatus.OPTIMIZER_FAILED);
         }
     }
 
@@ -127,10 +128,8 @@ final class LPPLFitCalibrator {
     }
 
     private double[] clamp(double[] point, int window) {
-        window = Math.max(5, window);
-        double lastTime = window - 1.0;
-        double minTc = lastTime + profile.minCriticalOffset();
-        double maxTc = lastTime + profile.maxCriticalOffset();
+        double minTc = window + profile.minCriticalOffset();
+        double maxTc = window + profile.maxCriticalOffset();
         return new double[] { clamp(point[0], minTc, maxTc), clamp(point[1], profile.minM(), profile.maxM()),
                 clamp(point[2], profile.minOmega(), profile.maxOmega()) };
     }
@@ -144,9 +143,9 @@ final class LPPLFitCalibrator {
 
     private NonlinearFit gridSearch(double[] logPrices) {
         NonlinearFit bestFit = null;
-        int lastIndex = logPrices.length - 1;
-        double minTc = lastIndex + profile.minCriticalOffset();
-        double maxTc = lastIndex + profile.maxCriticalOffset();
+        int window = logPrices.length;
+        double minTc = window + profile.minCriticalOffset();
+        double maxTc = window + profile.maxCriticalOffset();
         for (double criticalTime = minTc; criticalTime <= maxTc + SINGULARITY_THRESHOLD; criticalTime += profile
                 .criticalOffsetStep()) {
             for (int mIndex = 0; mIndex < profile.mSteps(); mIndex++) {
@@ -170,46 +169,37 @@ final class LPPLFitCalibrator {
         return min + (max - min) * index / (steps - 1.0);
     }
 
-    private NonlinearFit solveLinear(double[] logPrices, double criticalTime, double m, double omega, int evaluations) {
+    private NonlinearFit solveLinear(double[] logPrices, double criticalTime, double m, double omega,
+            int evaluations) {
         if (!isValidNonlinearPoint(logPrices.length, criticalTime, m, omega)) {
             return null;
         }
-        double[][] x = new double[logPrices.length][4];
+        double[][] designValues = new double[logPrices.length][4];
         for (int i = 0; i < logPrices.length; i++) {
-            double dt = criticalTime - i;
-            if (dt <= 0 || !Double.isFinite(dt)) {
+            double[] basis = basisAt(criticalTime, m, omega, i);
+            if (basis == null) {
                 return null;
             }
-            double power = Math.pow(dt, m);
-            double logDt = Math.log(dt);
-            x[i][0] = 1.0;
-            x[i][1] = power;
-            x[i][2] = power * Math.cos(omega * logDt);
-            x[i][3] = power * Math.sin(omega * logDt);
+            designValues[i] = basis;
         }
         try {
-            RealMatrix design = new Array2DRowRealMatrix(x, false);
+            RealMatrix design = new Array2DRowRealMatrix(designValues, false);
             DecompositionSolver solver = new QRDecomposition(design, SINGULARITY_THRESHOLD).getSolver();
             RealVector beta = solver.solve(new ArrayRealVector(logPrices, false));
             double[] coefficients = beta.toArray();
             double[] predicted = design.operate(beta).toArray();
-            double mean = 0.0;
-            for (double logPrice : logPrices) {
-                mean += logPrice;
-            }
-            mean /= logPrices.length;
-
+            double mean = Arrays.stream(logPrices).average().orElse(0.0);
             double rss = 0.0;
             double tss = 0.0;
             for (int i = 0; i < logPrices.length; i++) {
-                double residual = predicted[i] - logPrices[i];
+                double residual = logPrices[i] - predicted[i];
                 rss += residual * residual;
                 double centered = logPrices[i] - mean;
                 tss += centered * centered;
             }
             double rms = Math.sqrt(rss / logPrices.length);
             double rSquared = tss <= SINGULARITY_THRESHOLD ? 0.0 : 1.0 - rss / tss;
-            int criticalOffset = (int) Math.round(criticalTime - (logPrices.length - 1.0));
+            int criticalOffset = (int) Math.round(criticalTime - logPrices.length);
             return new NonlinearFit(logPrices.length, coefficients[0], coefficients[1], coefficients[2],
                     coefficients[3], criticalTime, m, omega, rss, rms, rSquared, criticalOffset, evaluations,
                     predicted);
@@ -218,11 +208,20 @@ final class LPPLFitCalibrator {
         }
     }
 
+    private double[] basisAt(double criticalTime, double m, double omega, double time) {
+        double dt = criticalTime - time;
+        if (!Double.isFinite(dt) || dt <= 0.0) {
+            return null;
+        }
+        double power = Math.pow(dt, m);
+        double logDt = Math.log(dt);
+        return new double[] { 1.0, power, power * Math.cos(omega * logDt), power * Math.sin(omega * logDt) };
+    }
+
     private boolean isValidNonlinearPoint(int window, double criticalTime, double m, double omega) {
-        double lastTime = window - 1.0;
         return Double.isFinite(criticalTime) && Double.isFinite(m) && Double.isFinite(omega)
-                && criticalTime >= lastTime + profile.minCriticalOffset()
-                && criticalTime <= lastTime + profile.maxCriticalOffset() && m >= profile.minM() && m <= profile.maxM()
+                && criticalTime >= window + profile.minCriticalOffset()
+                && criticalTime <= window + profile.maxCriticalOffset() && m >= profile.minM() && m <= profile.maxM()
                 && omega >= profile.minOmega() && omega <= profile.maxOmega();
     }
 
@@ -236,9 +235,35 @@ final class LPPLFitCalibrator {
                     && Double.isFinite(rss) && Double.isFinite(rms) && Double.isFinite(rSquared);
         }
 
-        LPPLFit toFit(LPPLExhaustionStatus status) {
-            return new LPPLFit(window, status, a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, criticalOffset,
-                    evaluations);
+        LPPLFit toFit(double[] trainingLogPrices, double evaluationLogPrice) {
+            double[] basis = basisAtEvaluation();
+            if (basis == null) {
+                return LPPLFit.invalid(window, LPPLFitStatus.OPTIMIZER_FAILED);
+            }
+            double predictedEvaluation = a * basis[0] + b * basis[1] + c1 * basis[2] + c2 * basis[3];
+            double residual = evaluationLogPrice - predictedEvaluation;
+            double maxAbsResidual = Math.abs(residual);
+            for (int i = 0; i < predicted.length; i++) {
+                maxAbsResidual = Math.max(maxAbsResidual, Math.abs(trainingLogPrices[i] - predicted[i]));
+            }
+            return toFit(predictedEvaluation, residual, maxAbsResidual);
+        }
+
+        private LPPLFit toFit(double predictedEvaluation, double residual, double maxAbsResidual) {
+            double normalizedResidual = maxAbsResidual <= SINGULARITY_THRESHOLD ? 0.0
+                    : Math.max(-1.0, Math.min(1.0, residual / maxAbsResidual));
+            return new LPPLFit(window, LPPLFitStatus.VALID, a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared,
+                    criticalOffset, evaluations, predictedEvaluation, residual, maxAbsResidual, normalizedResidual);
+        }
+
+        private double[] basisAtEvaluation() {
+            double dt = criticalTime - window;
+            if (!Double.isFinite(dt) || dt <= 0.0) {
+                return null;
+            }
+            double power = Math.pow(dt, m);
+            double logDt = Math.log(dt);
+            return new double[] { 1.0, power, power * Math.cos(omega * logDt), power * Math.sin(omega * logDt) };
         }
     }
 }
