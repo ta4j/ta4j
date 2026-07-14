@@ -193,6 +193,7 @@ jobs:
           set -euo pipefail
           bash scripts/release/release_helpers.sh snapshot-publication \
             --version "${POM_VERSION}" \
+            --require-artifacts \
             --output snapshot-publication.json \
             --github-output "$GITHUB_OUTPUT"
 
@@ -271,6 +272,10 @@ jobs:
           SNAPSHOT_PUBLICATION_LATEST: ${{ steps.snapshot_publication.outputs.snapshot_publication_latest }}
           SNAPSHOT_PUBLICATION_LAST_UPDATED: ${{ steps.snapshot_publication.outputs.snapshot_publication_last_updated }}
           SNAPSHOT_PUBLICATION_SOURCE: ${{ steps.snapshot_publication.outputs.snapshot_publication_source }}
+          SNAPSHOT_PUBLICATION_RESOLVED_VERSION: ${{ steps.snapshot_publication.outputs.snapshot_publication_resolved_version }}
+          SNAPSHOT_PUBLICATION_ARTIFACT_METADATA_SOURCE: ${{ steps.snapshot_publication.outputs.snapshot_publication_artifact_metadata_source }}
+          SNAPSHOT_PUBLICATION_POM_URL: ${{ steps.snapshot_publication.outputs.snapshot_publication_pom_url }}
+          SNAPSHOT_PUBLICATION_JAR_URL: ${{ steps.snapshot_publication.outputs.snapshot_publication_jar_url }}
           SNAPSHOT_PUBLICATION_ENFORCED: ${{ steps.snapshot_policy.outputs.snapshot_publication_enforced }}
           SNAPSHOT_PUBLICATION_PENDING_REASON: ${{ steps.snapshot_policy.outputs.snapshot_publication_pending_reason }}
           NOTES_PRESENT: ${{ steps.state.outputs.release_notes_present }}
@@ -323,6 +328,18 @@ jobs:
           if [ -z "${SNAPSHOT_PUBLICATION_SOURCE:-}" ]; then
             SNAPSHOT_PUBLICATION_SOURCE="(unknown)"
           fi
+          if [ -z "${SNAPSHOT_PUBLICATION_RESOLVED_VERSION:-}" ]; then
+            SNAPSHOT_PUBLICATION_RESOLVED_VERSION="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_ARTIFACT_METADATA_SOURCE:-}" ]; then
+            SNAPSHOT_PUBLICATION_ARTIFACT_METADATA_SOURCE="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_POM_URL:-}" ]; then
+            SNAPSHOT_PUBLICATION_POM_URL="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_JAR_URL:-}" ]; then
+            SNAPSHOT_PUBLICATION_JAR_URL="(unknown)"
+          fi
           if [ -z "${SNAPSHOT_PUBLICATION_ENFORCED:-}" ]; then
             SNAPSHOT_PUBLICATION_ENFORCED="false"
           fi
@@ -373,7 +390,7 @@ jobs:
 
           if [ "$effective_snapshot_publication" = "false" ]; then
             drift=true
-            reasons+=("current snapshot version not published to Maven snapshot repository")
+            reasons+=("current snapshot version POM/JAR not consumable from Maven snapshot repository")
           fi
 
           if [ "$effective_snapshot_publication" = "unknown" ]; then
@@ -443,8 +460,12 @@ jobs:
           - snapshot publication enforced: ${SNAPSHOT_PUBLICATION_ENFORCED}
           - snapshot published: ${effective_snapshot_publication}
           - snapshot publication note: ${snapshot_publication_note}
-          - snapshot metadata latest: ${SNAPSHOT_PUBLICATION_LATEST}
+          - resolved snapshot version: ${SNAPSHOT_PUBLICATION_RESOLVED_VERSION}
+          - snapshot metadata latest (informational): ${SNAPSHOT_PUBLICATION_LATEST}
           - snapshot metadata last updated: ${SNAPSHOT_PUBLICATION_LAST_UPDATED}
+          - artifact metadata: ${SNAPSHOT_PUBLICATION_ARTIFACT_METADATA_SOURCE}
+          - exact POM: ${SNAPSHOT_PUBLICATION_POM_URL}
+          - exact JAR: ${SNAPSHOT_PUBLICATION_JAR_URL}
 
           Stale Release PRs (>${STALE_DAYS} days):
           - count: ${STALE_COUNT}
@@ -479,6 +500,10 @@ jobs:
             "snapshotMetadataLatest": "${SNAPSHOT_PUBLICATION_LATEST}",
             "snapshotMetadataLastUpdated": "${SNAPSHOT_PUBLICATION_LAST_UPDATED}",
             "snapshotMetadataSource": "${SNAPSHOT_PUBLICATION_SOURCE}",
+            "snapshotResolvedVersion": "${SNAPSHOT_PUBLICATION_RESOLVED_VERSION}",
+            "snapshotArtifactMetadataSource": "${SNAPSHOT_PUBLICATION_ARTIFACT_METADATA_SOURCE}",
+            "snapshotPomUrl": "${SNAPSHOT_PUBLICATION_POM_URL}",
+            "snapshotJarUrl": "${SNAPSHOT_PUBLICATION_JAR_URL}",
             "releaseNotesPresent": "${NOTES_PRESENT}",
             "staleReleasePrCount": "${STALE_COUNT}",
             "mutationPlan": "${mutation_plan}",
@@ -499,6 +524,7 @@ jobs:
             echo "- snapshot ahead of latest tag: ${SNAPSHOT_OK}"
             echo "- snapshot publication enforced: ${SNAPSHOT_PUBLICATION_ENFORCED}"
             echo "- snapshot published: ${effective_snapshot_publication}"
+            echo "- resolved snapshot version: ${SNAPSHOT_PUBLICATION_RESOLVED_VERSION}"
             echo "- stale release PR count: ${STALE_COUNT}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
