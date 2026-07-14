@@ -10,7 +10,9 @@ import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
@@ -33,6 +35,21 @@ class AdaptiveZigZagSwingDetectorTest {
 
         assertThat(adaptive.swings()).isNotEmpty();
         assertThat(adaptive.swings().size()).isGreaterThanOrEqualTo(baseline.size());
+    }
+
+    @Test
+    void reusesIndicatorStateAcrossRepeatedLiveDetection() {
+        CountingBarSeries series = buildLiveSeries(300);
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+        AdaptiveZigZagSwingDetector detector = new AdaptiveZigZagSwingDetector(config);
+
+        SwingDetectorResult initial = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
+        series.resetBarReads();
+
+        SwingDetectorResult repeated = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
+
+        assertThat(repeated).isEqualTo(initial);
+        assertThat(series.barReads()).isLessThan(20);
     }
 
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
@@ -60,6 +77,48 @@ class AdaptiveZigZagSwingDetectorTest {
                     .add();
         }
         return series;
+    }
+
+    private CountingBarSeries buildLiveSeries(final int barCount) {
+        CountingBarSeries series = new CountingBarSeries();
+        Duration period = Duration.ofMinutes(1);
+        Instant time = Instant.parse("2024-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            double close = 100.0 + Math.sin(index * 0.2);
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index + 1L)))
+                    .openPrice(close)
+                    .highPrice(close + 0.2)
+                    .lowPrice(close - 0.2)
+                    .closePrice(close)
+                    .volume(1000.0)
+                    .add();
+        }
+        return series;
+    }
+
+    private static final class CountingBarSeries extends BaseBarSeries {
+
+        private long barReads;
+
+        private CountingBarSeries() {
+            super("AdaptiveZigZagLiveTest", List.of());
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            barReads++;
+            return super.getBar(index);
+        }
+
+        private long barReads() {
+            return barReads;
+        }
+
+        private void resetBarReads() {
+            barReads = 0;
+        }
     }
 
 }
