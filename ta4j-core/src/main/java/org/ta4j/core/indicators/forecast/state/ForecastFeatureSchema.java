@@ -22,7 +22,11 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 public record ForecastFeatureSchema(String id, int version, ReturnRepresentation representation,
         List<Feature> features) {
 
-    /** Creates a validated defensive schema. */
+    /**
+     * Creates a validated defensive schema.
+     *
+     * @since 0.23.1
+     */
     public ForecastFeatureSchema {
         id = requireNonblank(id, "id");
         if (version <= 0) {
@@ -42,7 +46,10 @@ public record ForecastFeatureSchema(String id, int version, ReturnRepresentation
         }
     }
 
-    /** @return fixed feature-vector dimension */
+    /**
+     * @return fixed feature-vector dimension
+     * @since 0.23.1
+     */
     public int dimension() {
         return features.size();
     }
@@ -64,7 +71,11 @@ public record ForecastFeatureSchema(String id, int version, ReturnRepresentation
      */
     public record Feature(String name, String unit) {
 
-        /** Creates a feature descriptor. */
+        /**
+         * Creates a feature descriptor.
+         *
+         * @since 0.23.1
+         */
         public Feature {
             name = requireNonblank(name, "name");
             unit = requireNonblank(unit, "unit");

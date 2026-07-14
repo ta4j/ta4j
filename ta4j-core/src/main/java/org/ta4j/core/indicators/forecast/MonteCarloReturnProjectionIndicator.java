@@ -23,13 +23,24 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
 
     private final MonteCarloSimulation simulation;
 
-    /** Creates a one-bar projection with default settings. */
+    /**
+     * Creates a one-bar projection with default settings.
+     *
+     * @param stateIndicator log-return moment state source
+     * @since 0.22.9
+     */
     public MonteCarloReturnProjectionIndicator(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
-    /** Creates a projection with default settings for the requested horizon. */
+    /**
+     * Creates a projection with default settings for the requested horizon.
+     *
+     * @param stateIndicator log-return moment state source
+     * @param horizon        positive forecast horizon in bars
+     * @since 0.22.9
+     */
     public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             int horizon) {
         this(builder(stateIndicator).horizon(horizon));
@@ -56,22 +67,54 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return simulation.project(index, value -> value);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public Forecast getValue(int index) {
+        if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
+            return Forecast.unstable(index, getHorizon());
+        }
+        return super.getValue(index);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
     @Override
     public int getCountOfUnstableBars() {
         return simulation.getCountOfUnstableBars();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     public int getHorizon() {
         return simulation.getHorizon();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
     @Override
     public ReturnRepresentation getReturnRepresentation() {
         return ReturnRepresentation.LOG;
     }
 
-    /** Shock source for simulated paths. */
+    /**
+     * Shock source for simulated paths.
+     *
+     * @since 0.22.9
+     */
     public enum ShockModel {
         /** Sample raw historical returns. */
         HISTORICAL_BOOTSTRAP,
@@ -81,7 +124,11 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         NORMAL
     }
 
-    /** Volatility behavior inside simulated paths. */
+    /**
+     * Volatility behavior inside simulated paths.
+     *
+     * @since 0.22.9
+     */
     public enum VolatilityUpdateMode {
         /** Keep volatility fixed. */
         CONSTANT,
@@ -89,7 +136,11 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         EWMA
     }
 
-    /** Builder for advanced Monte Carlo settings. */
+    /**
+     * Builder for advanced Monte Carlo settings.
+     *
+     * @since 0.22.9
+     */
     public static final class Builder {
 
         private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
@@ -106,49 +157,97 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
         }
 
-        /** Sets the positive forecast horizon in bars. */
+        /**
+         * Sets the positive forecast horizon in bars.
+         *
+         * @param value horizon in bars
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder horizon(int value) {
             horizon = value;
             return this;
         }
 
-        /** Sets the positive number of simulated terminal paths. */
+        /**
+         * Sets the positive number of simulated terminal paths.
+         *
+         * @param value number of paths
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder iterationCount(int value) {
             iterationCount = value;
             return this;
         }
 
-        /** Sets the positive historical-return lookback. */
+        /**
+         * Sets the positive historical-return lookback.
+         *
+         * @param value lookback in bars
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder lookbackBarCount(int value) {
             lookbackBarCount = value;
             return this;
         }
 
-        /** Sets the deterministic base seed. */
+        /**
+         * Sets the deterministic base seed.
+         *
+         * @param value base seed
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder seed(long value) {
             seed = value;
             return this;
         }
 
-        /** Sets the simulated shock source. */
+        /**
+         * Sets the simulated shock source.
+         *
+         * @param value shock model
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder shockModel(ShockModel value) {
             shockModel = value;
             return this;
         }
 
-        /** Sets within-path volatility behavior. */
+        /**
+         * Sets within-path volatility behavior.
+         *
+         * @param value volatility update mode
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder volatilityUpdateMode(VolatilityUpdateMode value) {
             volatilityUpdateMode = value;
             return this;
         }
 
-        /** Sets the EWMA decay used by within-path volatility updates. */
+        /**
+         * Sets the EWMA decay used by within-path volatility updates.
+         *
+         * @param value decay factor in {@code (0, 1)}
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder volatilityDecayFactor(double value) {
             volatilityDecayFactor = value;
             return this;
         }
 
-        /** Sets the quantile probabilities summarized from terminal paths. */
+        /**
+         * Sets the quantile probabilities summarized from terminal paths.
+         *
+         * @param probabilities probabilities in {@code [0, 1]}
+         * @return this builder
+         * @since 0.22.9
+         */
         public Builder quantiles(double... probabilities) {
             Objects.requireNonNull(probabilities, "probabilities must not be null");
             Double[] boxed = new Double[probabilities.length];
@@ -159,7 +258,12 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             return this;
         }
 
-        /** Builds the validated projection indicator. */
+        /**
+         * Builds the validated projection indicator.
+         *
+         * @return configured projection
+         * @since 0.22.9
+         */
         public MonteCarloReturnProjectionIndicator build() {
             return new MonteCarloReturnProjectionIndicator(this);
         }

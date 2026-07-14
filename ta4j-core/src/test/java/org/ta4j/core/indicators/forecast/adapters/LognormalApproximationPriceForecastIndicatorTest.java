@@ -76,6 +76,49 @@ public class LognormalApproximationPriceForecastIndicatorTest
     }
 
     @Test
+    public void dispersionRemainsRepresentableWhenLogVarianceUnderflows() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(100, 100).build();
+        Forecast source = summary(doubleFactory, 1, doubleFactory.zero(), doubleFactory.numOf(1e-200), Map.of());
+        LognormalApproximationPriceForecastIndicator indicator = new LognormalApproximationPriceForecastIndicator(
+                new ClosePriceIndicator(series),
+                new FixedForecastIndicator(series, ReturnRepresentation.LOG, Map.of(1, source)));
+
+        Forecast forecast = indicator.getValue(1);
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(1e-198, forecast.standardDeviation());
+    }
+
+    @Test
+    public void centralPriceUnderflowMakesApproximationUnavailable() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(1e-300, 1e-300).build();
+        Forecast source = summary(doubleFactory, 1, doubleFactory.numOf(-100), doubleFactory.zero(), Map.of());
+        LognormalApproximationPriceForecastIndicator indicator = new LognormalApproximationPriceForecastIndicator(
+                new ClosePriceIndicator(series),
+                new FixedForecastIndicator(series, ReturnRepresentation.LOG, Map.of(1, source)));
+
+        assertFalse(indicator.getValue(1).isStable());
+    }
+
+    @Test
+    public void removedIndexRetainsRequestedMetadata() {
+        BarSeries series = constantSeries(6, 100);
+        Forecast source = summary(numFactory, 5, numOf(0), numOf(0), Map.of());
+        LognormalApproximationPriceForecastIndicator indicator = new LognormalApproximationPriceForecastIndicator(
+                new ClosePriceIndicator(series),
+                new FixedForecastIndicator(series, ReturnRepresentation.LOG, Map.of(5, source)));
+        series.setMaximumBarCount(3);
+
+        Forecast removed = indicator.getValue(1);
+
+        assertEquals(1, removed.decisionIndex());
+        assertEquals(1, removed.horizon());
+        assertFalse(removed.isStable());
+    }
+
+    @Test
     public void exponentGuardFailsPromptlyAndLaterIndexRecovers() {
         NumFactory decimalFactory = DecimalNumFactory.getInstance(40);
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(100, 100, 100).build();

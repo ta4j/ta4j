@@ -38,6 +38,15 @@ class ForecastTest {
     }
 
     @Test
+    void preservesRepresentableDispersionWhenSquaredDeviationsUnderflow() {
+        Forecast forecast = Forecast.ofSamples(1, 1, List.of(NUM_FACTORY.numOf(-1e-200), NUM_FACTORY.numOf(1e-200)));
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.mean().isZero()).isTrue();
+        assertThat(forecast.standardDeviation()).isEqualByComparingTo(NUM_FACTORY.numOf(1e-200));
+    }
+
+    @Test
     void skipsInvalidSamplesAndSortsQuantiles() {
         Forecast forecast = Forecast.ofSamples(2, 1, List.of(NaN.NaN, NUM_FACTORY.numOf(3), NUM_FACTORY.numOf(1)),
                 List.of(0.95, 0.05));

@@ -11,6 +11,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.IntFunction;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -139,6 +140,16 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void rejectsAStateIndicatorThatMisreportsItsReturnStreamRepresentation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.DECIMAL, numOf(0),
+                numOf(1), numOf(2));
+        FixedReturnStateIndicator stateIndicator = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
+
+        assertThrows(IllegalArgumentException.class, () -> new MonteCarloReturnProjectionIndicator(stateIndicator));
+    }
+
+    @Test
     public void acceptsCustomReturnDerivedForecastState() {
         BarSeries series = constantSeries(6, 100);
         LogReturnIndicator returns = new LogReturnIndicator(series);
@@ -214,6 +225,53 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .build();
 
         assertFalse(forecast.getValue(series.getEndIndex()).isStable());
+    }
+
+    @Test
+    public void treatsMissingMomentsAsUnavailable() {
+        BarSeries series = constantSeries(6, 100);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, numOf(0), numOf(0),
+                numOf(0), numOf(0), numOf(0), numOf(0));
+        FixedMomentStateIndicator state = new FixedMomentStateIndicator(returns, index -> new NullMomentState());
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .build();
+
+        assertFalse(forecast.getValue(series.getEndIndex()).isStable());
+    }
+
+    @Test
+    public void readsCanonicalMomentsInsteadOfOverridableConvenienceAccessors() {
+        BarSeries series = constantSeries(6, 100);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, numOf(0), numOf(0),
+                numOf(0), numOf(0), numOf(0), numOf(0));
+        FixedMomentStateIndicator state = new FixedMomentStateIndicator(returns, index -> {
+            Num zero = series.numFactory().zero();
+            ReturnMoments moments = ReturnMoments.stable(index, index + 1, ReturnRepresentation.LOG, zero, zero, zero);
+            return new MisleadingMomentState(moments);
+        });
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .build();
+
+        assertTrue(forecast.getValue(series.getEndIndex()).isStable());
+    }
+
+    @Test
+    public void removedIndexRetainsRequestedMetadata() {
+        BarSeries series = constantSeries(6, 100);
+        MonteCarloReturnProjectionIndicator forecast = forecast(series,
+                MonteCarloReturnProjectionIndicator.ShockModel.NORMAL, 2, 10, 2, 7L,
+                MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT);
+
+        series.setMaximumBarCount(3);
+        Forecast removed = forecast.getValue(1);
+
+        assertEquals(1, removed.decisionIndex());
+        assertEquals(2, removed.horizon());
+        assertFalse(removed.isStable());
     }
 
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,
@@ -303,6 +361,68 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
     }
 
     private record CustomReturnState(ReturnMoments moments) implements ReturnMomentState {
+    }
+
+    private static final class NullMomentState implements ReturnMomentState {
+
+        @Override
+        public ReturnMoments moments() {
+            return null;
+        }
+    }
+
+    private record MisleadingMomentState(ReturnMoments moments) implements ReturnMomentState {
+
+        @Override
+        public int index() {
+            return moments.index() + 1;
+        }
+
+        @Override
+        public boolean isStable() {
+            return false;
+        }
+
+        @Override
+        public ReturnRepresentation representation() {
+            return ReturnRepresentation.DECIMAL;
+        }
+
+        @Override
+        public Num mean() {
+            return moments.mean().plus(moments.mean().getNumFactory().one());
+        }
+    }
+
+    private static final class FixedMomentStateIndicator implements ReturnForecastStateIndicator<ReturnMomentState> {
+
+        private final ReturnIndicator returns;
+        private final IntFunction<ReturnMomentState> stateFactory;
+
+        private FixedMomentStateIndicator(ReturnIndicator returns, IntFunction<ReturnMomentState> stateFactory) {
+            this.returns = returns;
+            this.stateFactory = stateFactory;
+        }
+
+        @Override
+        public ReturnIndicator getReturnIndicator() {
+            return returns;
+        }
+
+        @Override
+        public ReturnMomentState getValue(int index) {
+            return stateFactory.apply(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return returns.getBarSeries();
+        }
     }
 
     private static final class FixedCustomStateIndicator implements ReturnForecastStateIndicator<CustomReturnState> {

@@ -87,8 +87,52 @@ public class ForecastFeatureExtractorsTest
         assertThrows(IllegalArgumentException.class, () -> extractor.features(underflow));
     }
 
+    @Test
+    public void extractionUsesCanonicalMomentsInsteadOfOverridableDelegates() {
+        ReturnMoments moments = ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, numFactory.one(), numFactory.two(),
+                numOf(16));
+        ForecastFeatureExtractor<MisleadingMomentState> extractor = ForecastFeatureExtractors
+                .meanVolatility(ReturnRepresentation.LOG);
+
+        assertArrayEquals(new double[] { 1, 4 }, extractor.features(new MisleadingMomentState(moments)), 0d);
+    }
+
+    @Test
+    public void extractionRejectsMissingCanonicalMoments() {
+        ForecastFeatureExtractor<NullMomentState> extractor = ForecastFeatureExtractors
+                .meanVolatility(ReturnRepresentation.LOG);
+
+        assertThrows(IllegalArgumentException.class, () -> extractor.features(new NullMomentState()));
+    }
+
     private ReturnForecastState state() {
         return ReturnForecastState.stable(3, 4, ReturnRepresentation.LOG, numFactory.one(), numFactory.two(),
                 numOf(16));
+    }
+
+    private record MisleadingMomentState(ReturnMoments moments) implements ReturnMomentState {
+
+        @Override
+        public boolean isStable() {
+            return false;
+        }
+
+        @Override
+        public ReturnRepresentation representation() {
+            return ReturnRepresentation.DECIMAL;
+        }
+
+        @Override
+        public Num mean() {
+            return moments.mean().plus(moments.mean().getNumFactory().one());
+        }
+    }
+
+    private static final class NullMomentState implements ReturnMomentState {
+
+        @Override
+        public ReturnMoments moments() {
+            return null;
+        }
     }
 }

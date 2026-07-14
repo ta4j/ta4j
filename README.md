@@ -278,6 +278,7 @@ required representation:
 ```java
 ForecastFeatureExtractor<ReturnForecastState> features =
         ForecastFeatureExtractors.meanVolatility(ReturnRepresentation.LOG);
+int index = series.getEndIndex();
 double[] values = features.features(state.getValue(index));
 // schema id: return-moments/mean-volatility; order: mean, volatility
 ```

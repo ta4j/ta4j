@@ -39,12 +39,16 @@ final class MonteCarloSimulation {
             return Forecast.unstable(index, settings.horizon());
         }
         ReturnMomentState rawState = stateIndicator.getValue(index);
-        if (rawState == null || rawState.index() != index || !rawState.isStable()
-                || rawState.representation() != ReturnRepresentation.LOG) {
+        if (rawState == null) {
+            return Forecast.unstable(index, settings.horizon());
+        }
+        ReturnMoments moments = rawState.moments();
+        if (moments == null || moments.index() != index || !moments.isStable()
+                || moments.representation() != ReturnRepresentation.LOG) {
             return Forecast.unstable(index, settings.horizon());
         }
         NumFactory numFactory = returnIndicator.getBarSeries().numFactory();
-        ProjectionState state = ProjectionState.from(rawState.moments(), numFactory);
+        ProjectionState state = ProjectionState.from(moments, numFactory);
         if (state == null) {
             return Forecast.unstable(index, settings.horizon());
         }
@@ -131,7 +135,10 @@ final class MonteCarloSimulation {
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         ReturnForecastStateIndicator<? extends ReturnMomentState> validated = Objects.requireNonNull(stateIndicator,
                 "stateIndicator must not be null");
-        if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
+        ReturnIndicator source = Objects.requireNonNull(validated.getReturnIndicator(),
+                "stateIndicator returnIndicator must not be null");
+        if (source.getReturnRepresentation() != ReturnRepresentation.LOG
+                || validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
         }
         return validated;

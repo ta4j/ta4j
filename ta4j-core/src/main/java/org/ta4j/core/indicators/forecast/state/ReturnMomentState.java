@@ -17,45 +17,76 @@ import org.ta4j.core.num.Num;
  */
 public interface ReturnMomentState extends ForecastState {
 
-    /** @return validated return moments */
+    /**
+     * @return validated return moments
+     * @since 0.23.1
+     */
     ReturnMoments moments();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     default int index() {
         return moments().index();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     default boolean isStable() {
         return moments().isStable();
     }
 
-    /** @return observations incorporated by the estimator */
+    /**
+     * @return observations incorporated by the estimator
+     * @since 0.23.1
+     */
     default int observationCount() {
         return moments().observationCount();
     }
 
-    /** @return return representation */
+    /**
+     * @return return representation
+     * @since 0.23.1
+     */
     default ReturnRepresentation representation() {
         return moments().representation();
     }
 
-    /** @return mean return */
+    /**
+     * @return mean return
+     * @since 0.23.1
+     */
     default Num mean() {
         return moments().mean();
     }
 
-    /** @return forward drift assumption */
+    /**
+     * @return forward drift assumption
+     * @since 0.23.1
+     */
     default Num drift() {
         return moments().drift();
     }
 
-    /** @return canonical return variance */
+    /**
+     * @return canonical return variance
+     * @since 0.23.1
+     */
     default Num variance() {
         return moments().variance();
     }
 
-    /** @return volatility derived from variance */
+    /**
+     * @return volatility derived from variance
+     * @since 0.23.1
+     */
     default Num volatility() {
         return moments().volatility();
     }

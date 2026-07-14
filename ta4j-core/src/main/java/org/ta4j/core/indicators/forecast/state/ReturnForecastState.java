@@ -16,7 +16,11 @@ import org.ta4j.core.num.Num;
  */
 public record ReturnForecastState(ReturnMoments moments) implements ReturnMomentState {
 
-    /** Creates a return forecast state. */
+    /**
+     * Creates a return forecast state.
+     *
+     * @since 0.23.1
+     */
     public ReturnForecastState {
         moments = Objects.requireNonNull(moments, "moments must not be null");
     }
@@ -24,6 +28,12 @@ public record ReturnForecastState(ReturnMoments moments) implements ReturnMoment
     /**
      * Creates stable return state without accepting redundant volatility.
      *
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
+     * @param mean             finite mean return
+     * @param drift            finite forward drift assumption
+     * @param variance         finite, non-negative return variance
      * @return stable return state
      * @since 0.23.1
      */
@@ -36,6 +46,9 @@ public record ReturnForecastState(ReturnMoments moments) implements ReturnMoment
     /**
      * Creates unstable return state.
      *
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
      * @return unstable return state
      * @since 0.23.1
      */

@@ -29,7 +29,11 @@ import org.ta4j.core.num.Num;
 public record ReturnMoments(int index, int observationCount, boolean isStable, ReturnRepresentation representation,
         Num mean, Num drift, Num variance) {
 
-    /** Creates validated return moments. */
+    /**
+     * Creates validated return moments.
+     *
+     * @since 0.23.1
+     */
     public ReturnMoments {
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
@@ -59,6 +63,12 @@ public record ReturnMoments(int index, int observationCount, boolean isStable, R
     /**
      * Creates stable moments.
      *
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
+     * @param mean             finite mean return
+     * @param drift            finite forward drift assumption
+     * @param variance         finite, non-negative return variance
      * @return stable return moments
      * @since 0.23.1
      */
@@ -70,6 +80,9 @@ public record ReturnMoments(int index, int observationCount, boolean isStable, R
     /**
      * Creates unavailable moments while retaining known observation provenance.
      *
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
      * @return unstable return moments
      * @since 0.23.1
      */

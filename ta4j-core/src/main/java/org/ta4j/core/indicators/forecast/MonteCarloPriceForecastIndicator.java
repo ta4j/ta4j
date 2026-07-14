@@ -39,12 +39,21 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
+     *
+     * @param stateIndicator log-return moment state source
+     * @since 0.22.9
      */
     public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
-    /** Creates a forecast and infers price from {@link LogReturnIndicator}. */
+    /**
+     * Creates a forecast and infers price from {@link LogReturnIndicator}.
+     *
+     * @param stateIndicator log-return moment state source
+     * @param horizon        positive forecast horizon in bars
+     * @since 0.22.9
+     */
     public MonteCarloPriceForecastIndicator(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             int horizon) {
         this(builder(stateIndicator).horizon(horizon));
@@ -53,6 +62,8 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     /**
      * Creates a one-bar forecast with an explicit price source.
      *
+     * @param priceIndicator price source
+     * @param stateIndicator log-return moment state source
      * @since 0.23.1
      */
     public MonteCarloPriceForecastIndicator(Indicator<Num> priceIndicator,
@@ -63,6 +74,9 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     /**
      * Creates a forecast with an explicit price source and horizon.
      *
+     * @param priceIndicator price source
+     * @param stateIndicator log-return moment state source
+     * @param horizon        positive forecast horizon in bars
      * @since 0.23.1
      */
     public MonteCarloPriceForecastIndicator(Indicator<Num> priceIndicator,
@@ -80,6 +94,8 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     /**
      * Returns a builder that infers the price source.
      *
+     * @param stateIndicator log-return moment state source
+     * @return exact price projection builder
      * @since 0.23.1
      */
     public static Builder builder(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
@@ -89,6 +105,9 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     /**
      * Returns a builder with an explicit price source.
      *
+     * @param priceIndicator price source
+     * @param stateIndicator log-return moment state source
+     * @return exact price projection builder
      * @since 0.23.1
      */
     public static Builder builder(Indicator<Num> priceIndicator,
@@ -110,15 +129,40 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
                     || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
                 return null;
             }
-            return price.multipliedBy(normalizedReturn.exp());
+            Num growth = normalizedReturn.exp();
+            Num terminalPrice = price.multipliedBy(growth);
+            return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
         });
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public Forecast getValue(int index) {
+        if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
+            return Forecast.unstable(index, getHorizon());
+        }
+        return super.getValue(index);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), simulation.getCountOfUnstableBars());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     public int getHorizon() {
         return simulation.getHorizon();
@@ -144,7 +188,11 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         return validated;
     }
 
-    /** Builder for advanced exact price simulations. */
+    /**
+     * Builder for advanced exact price simulations.
+     *
+     * @since 0.23.1
+     */
     public static final class Builder {
 
         private final Indicator<Num> priceIndicator;
@@ -164,49 +212,97 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
             this.stateIndicator = validateStateIndicator(stateIndicator);
         }
 
-        /** Sets the positive forecast horizon in bars. */
+        /**
+         * Sets the positive forecast horizon in bars.
+         *
+         * @param value horizon in bars
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder horizon(int value) {
             horizon = value;
             return this;
         }
 
-        /** Sets the positive number of simulated terminal prices. */
+        /**
+         * Sets the positive number of simulated terminal prices.
+         *
+         * @param value number of paths
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder iterationCount(int value) {
             iterationCount = value;
             return this;
         }
 
-        /** Sets the positive historical-return lookback. */
+        /**
+         * Sets the positive historical-return lookback.
+         *
+         * @param value lookback in bars
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder lookbackBarCount(int value) {
             lookbackBarCount = value;
             return this;
         }
 
-        /** Sets the deterministic base seed. */
+        /**
+         * Sets the deterministic base seed.
+         *
+         * @param value base seed
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder seed(long value) {
             seed = value;
             return this;
         }
 
-        /** Sets the simulated shock source. */
+        /**
+         * Sets the simulated shock source.
+         *
+         * @param value shock model
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder shockModel(MonteCarloReturnProjectionIndicator.ShockModel value) {
             shockModel = value;
             return this;
         }
 
-        /** Sets within-path volatility behavior. */
+        /**
+         * Sets within-path volatility behavior.
+         *
+         * @param value volatility update mode
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode value) {
             volatilityUpdateMode = value;
             return this;
         }
 
-        /** Sets the EWMA decay used by within-path volatility updates. */
+        /**
+         * Sets the EWMA decay used by within-path volatility updates.
+         *
+         * @param value decay factor in {@code (0, 1)}
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder volatilityDecayFactor(double value) {
             volatilityDecayFactor = value;
             return this;
         }
 
-        /** Sets the quantile probabilities summarized from terminal prices. */
+        /**
+         * Sets the quantile probabilities summarized from terminal prices.
+         *
+         * @param probabilities probabilities in {@code [0, 1]}
+         * @return this builder
+         * @since 0.23.1
+         */
         public Builder quantiles(double... probabilities) {
             Objects.requireNonNull(probabilities, "probabilities must not be null");
             Double[] boxed = new Double[probabilities.length];
@@ -217,7 +313,12 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
             return this;
         }
 
-        /** Builds the validated exact price projection. */
+        /**
+         * Builds the validated exact price projection.
+         *
+         * @return configured price projection
+         * @since 0.23.1
+         */
         public MonteCarloPriceForecastIndicator build() {
             return new MonteCarloPriceForecastIndicator(this);
         }

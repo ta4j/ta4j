@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -27,6 +28,7 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 
 public class MonteCarloPriceForecastIndicatorTest
         extends AbstractIndicatorTest<MonteCarloPriceForecastIndicator, Forecast> {
@@ -108,6 +110,46 @@ public class MonteCarloPriceForecastIndicatorTest
 
         assertThrows(IllegalArgumentException.class,
                 () -> new MonteCarloPriceForecastIndicator(new ClosePriceIndicator(series), state, 1));
+    }
+
+    @Test
+    public void rejectsNonzeroTerminalPricesThatUnderflowToZero() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
+                .withData(1e-300, 1e-300, 1e-300)
+                .build();
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, doubleFactory.zero(),
+                doubleFactory.numOf(-100), doubleFactory.numOf(-100));
+        FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series), state)
+                .horizon(1)
+                .iterationCount(1)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
+                .build();
+
+        assertFalse(forecast.getValue(2).isStable());
+    }
+
+    @Test
+    public void removedIndexRetainsRequestedMetadata() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ZERO);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(state)
+                .horizon(2)
+                .iterationCount(10)
+                .lookbackBarCount(2)
+                .build();
+
+        series.setMaximumBarCount(3);
+        Forecast removed = forecast.getValue(1);
+
+        assertEquals(1, removed.decisionIndex());
+        assertEquals(2, removed.horizon());
+        assertFalse(removed.isStable());
     }
 
     private Forecast explicitHistoricalForecast(double down, double up) {

@@ -17,7 +17,10 @@ package org.ta4j.core.indicators.forecast.state;
  */
 public interface ForecastFeatureExtractor<S extends ReturnMomentState> {
 
-    /** @return immutable feature schema */
+    /**
+     * @return immutable feature schema
+     * @since 0.23.1
+     */
     ForecastFeatureSchema schema();
 
     /**
@@ -26,6 +29,7 @@ public interface ForecastFeatureExtractor<S extends ReturnMomentState> {
      * @param state  stable state matching {@link #schema()}
      * @param target destination array
      * @param offset first destination index
+     * @since 0.23.1
      */
     void extractInto(S state, double[] target, int offset);
 
@@ -34,6 +38,7 @@ public interface ForecastFeatureExtractor<S extends ReturnMomentState> {
      *
      * @param state stable matching state
      * @return new fixed-shape vector
+     * @since 0.23.1
      */
     default double[] features(S state) {
         double[] result = new double[schema().dimension()];

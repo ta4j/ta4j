@@ -38,7 +38,11 @@ import org.ta4j.core.num.NumFactory;
 public final class LognormalApproximationPriceForecastIndicator extends CachedIndicator<Forecast>
         implements ForecastProjectionIndicator {
 
-    /** Analytic support identifier emitted by this adapter. */
+    /**
+     * Analytic support identifier emitted by this adapter.
+     *
+     * @since 0.23.1
+     */
     public static final String SUPPORT_ASSUMPTION = "lognormal-moment-match";
 
     private static final int MAX_EXPONENT = 700;
@@ -51,6 +55,10 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
 
     /**
      * Creates an approximation using the source forecast's quantile probabilities.
+     *
+     * @param priceIndicator              price source
+     * @param logReturnForecastProjection cumulative log-return forecast source
+     * @since 0.23.1
      */
     public LognormalApproximationPriceForecastIndicator(Indicator<Num> priceIndicator,
             ReturnForecastProjectionIndicator logReturnForecastProjection) {
@@ -67,6 +75,9 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
     /**
      * Returns an advanced builder with explicit optional quantiles.
      *
+     * @param priceIndicator              price source
+     * @param logReturnForecastProjection cumulative log-return forecast source
+     * @return approximation builder
      * @since 0.23.1
      */
     public static Builder builder(Indicator<Num> priceIndicator,
@@ -93,16 +104,23 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
             return Forecast.unstable(index, getHorizon());
         }
         Num variance = standardDeviationLogReturn.multipliedBy(standardDeviationLogReturn);
+        boolean varianceUnderflow = variance.isZero() && !standardDeviationLogReturn.isZero();
         Num meanExponent = meanLogReturn.plus(variance.dividedBy(numFactory.two()));
         if (!isSafeExponent(meanExponent, numFactory) || !isSafeExponent(meanLogReturn, numFactory)
                 || !isSafeExponent(variance, numFactory)) {
             return Forecast.unstable(index, getHorizon());
         }
 
-        Num mean = price.multipliedBy(meanExponent.exp());
-        Num median = price.multipliedBy(meanLogReturn.exp());
-        Num expm1Variance = expm1(variance, numFactory);
-        Num standardDeviation = expm1Variance.isZero() ? numFactory.zero() : mean.multipliedBy(expm1Variance.sqrt());
+        Num mean = checkedProduct(price, meanExponent.exp());
+        Num median = checkedProduct(price, meanLogReturn.exp());
+        Num standardDeviation;
+        if (standardDeviationLogReturn.isZero()) {
+            standardDeviation = numFactory.zero();
+        } else if (varianceUnderflow) {
+            standardDeviation = checkedProduct(mean, standardDeviationLogReturn);
+        } else {
+            standardDeviation = checkedProduct(mean, expm1(variance, numFactory).sqrt());
+        }
         if (!Num.isFinite(mean) || !Num.isFinite(median) || !Num.isFinite(standardDeviation)) {
             return Forecast.unstable(index, getHorizon());
         }
@@ -119,7 +137,7 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
             if (!isSafeExponent(exponent, numFactory)) {
                 continue;
             }
-            Num quantile = price.multipliedBy(exponent.exp());
+            Num quantile = checkedProduct(price, exponent.exp());
             if (Num.isFinite(quantile)) {
                 quantiles.put(probability, quantile);
             }
@@ -132,14 +150,37 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
                 .build();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), logReturnForecastProjection.getCountOfUnstableBars());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
     @Override
     public int getHorizon() {
         return logReturnForecastProjection.getHorizon();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public Forecast getValue(int index) {
+        if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
+            return Forecast.unstable(index, getHorizon());
+        }
+        return super.getValue(index);
     }
 
     private static Num expm1(Num value, NumFactory numFactory) {
@@ -153,6 +194,14 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
 
     private static boolean isSafeExponent(Num value, NumFactory numFactory) {
         return Num.isFinite(value) && !value.abs().isGreaterThan(numFactory.numOf(MAX_EXPONENT));
+    }
+
+    private static Num checkedProduct(Num left, Num right) {
+        if (!Num.isFinite(left) || !Num.isFinite(right)) {
+            return null;
+        }
+        Num result = left.multipliedBy(right);
+        return Num.isFinite(result) && (!result.isZero() || left.isZero() || right.isZero()) ? result : null;
     }
 
     private static Num normalize(Num value, NumFactory numFactory) {
@@ -191,6 +240,10 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
         /**
          * Sets optional quantile probabilities. Endpoint probabilities are accepted but
          * omitted because a lognormal distribution has unbounded tails.
+         *
+         * @param probabilities probabilities in {@code [0, 1]}
+         * @return this builder
+         * @since 0.23.1
          */
         public Builder quantiles(double... probabilities) {
             Objects.requireNonNull(probabilities, "probabilities must not be null");
@@ -205,7 +258,12 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
             return this;
         }
 
-        /** Builds the analytic approximation. */
+        /**
+         * Builds the analytic approximation.
+         *
+         * @return configured approximation
+         * @since 0.23.1
+         */
         public LognormalApproximationPriceForecastIndicator build() {
             return new LognormalApproximationPriceForecastIndicator(this);
         }

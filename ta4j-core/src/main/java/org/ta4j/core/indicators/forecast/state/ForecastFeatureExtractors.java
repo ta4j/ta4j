@@ -30,6 +30,7 @@ public final class ForecastFeatureExtractors {
      * @param representation required return representation
      * @param <S>            state type
      * @return two-feature extractor
+     * @since 0.23.1
      */
     public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> meanVolatility(
             ReturnRepresentation representation) {
@@ -37,7 +38,7 @@ public final class ForecastFeatureExtractors {
         return extractor("return-moments/mean-volatility", representation,
                 List.of(new ForecastFeatureSchema.Feature("mean", returnUnit),
                         new ForecastFeatureSchema.Feature("volatility", returnUnit)),
-                List.of(ReturnMomentState::mean, ReturnMomentState::volatility));
+                List.of(ReturnMoments::mean, ReturnMoments::volatility));
     }
 
     /**
@@ -46,6 +47,7 @@ public final class ForecastFeatureExtractors {
      * @param representation required return representation
      * @param <S>            state type
      * @return two-feature extractor
+     * @since 0.23.1
      */
     public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> driftVolatility(
             ReturnRepresentation representation) {
@@ -53,7 +55,7 @@ public final class ForecastFeatureExtractors {
         return extractor("return-moments/drift-volatility", representation,
                 List.of(new ForecastFeatureSchema.Feature("drift", returnUnit),
                         new ForecastFeatureSchema.Feature("volatility", returnUnit)),
-                List.of(ReturnMomentState::drift, ReturnMomentState::volatility));
+                List.of(ReturnMoments::drift, ReturnMoments::volatility));
     }
 
     /**
@@ -62,6 +64,7 @@ public final class ForecastFeatureExtractors {
      * @param representation required return representation
      * @param <S>            state type
      * @return three-feature extractor
+     * @since 0.23.1
      */
     public static <S extends ReturnMomentState> ForecastFeatureExtractor<S> meanDriftVariance(
             ReturnRepresentation representation) {
@@ -70,16 +73,16 @@ public final class ForecastFeatureExtractors {
                 List.of(new ForecastFeatureSchema.Feature("mean", returnUnit),
                         new ForecastFeatureSchema.Feature("drift", returnUnit),
                         new ForecastFeatureSchema.Feature("variance", returnUnit + "^2")),
-                List.of(ReturnMomentState::mean, ReturnMomentState::drift, ReturnMomentState::variance));
+                List.of(ReturnMoments::mean, ReturnMoments::drift, ReturnMoments::variance));
     }
 
     private static <S extends ReturnMomentState> ForecastFeatureExtractor<S> extractor(String id,
             ReturnRepresentation representation, List<ForecastFeatureSchema.Feature> features,
-            List<Function<ReturnMomentState, Num>> resolvers) {
+            List<Function<ReturnMoments, Num>> resolvers) {
         ReturnRepresentation requiredRepresentation = Objects.requireNonNull(representation,
                 "representation must not be null");
         ForecastFeatureSchema schema = new ForecastFeatureSchema(id, 1, requiredRepresentation, features);
-        List<Function<ReturnMomentState, Num>> valueResolvers = List.copyOf(resolvers);
+        List<Function<ReturnMoments, Num>> valueResolvers = List.copyOf(resolvers);
         return new ForecastFeatureExtractor<>() {
             @Override
             public ForecastFeatureSchema schema() {
@@ -90,17 +93,18 @@ public final class ForecastFeatureExtractors {
             public void extractInto(S state, double[] target, int offset) {
                 S value = Objects.requireNonNull(state, "state must not be null");
                 double[] destination = Objects.requireNonNull(target, "target must not be null");
-                if (!value.isStable()) {
+                ReturnMoments moments = value.moments();
+                if (moments == null || !moments.isStable()) {
                     throw new IllegalArgumentException("state must be stable");
                 }
-                if (value.representation() != requiredRepresentation) {
+                if (moments.representation() != requiredRepresentation) {
                     throw new IllegalArgumentException("state representation must match schema representation");
                 }
                 if (offset < 0 || offset > destination.length - schema.dimension()) {
                     throw new IndexOutOfBoundsException("target does not have room for the schema at offset");
                 }
                 for (int i = 0; i < valueResolvers.size(); i++) {
-                    destination[offset + i] = finiteDouble(valueResolvers.get(i).apply(value),
+                    destination[offset + i] = finiteDouble(valueResolvers.get(i).apply(moments),
                             schema.features().get(i).name());
                 }
             }

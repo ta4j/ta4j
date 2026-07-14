@@ -30,7 +30,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     private final ReturnIndicator returnIndicator;
     private final Indicator<Num> meanIndicator;
     private final Indicator<Num> varianceIndicator;
-    private final int initialObservationCount;
+    private final Indicator<Integer> observationCountIndicator;
     private final DriftMode driftMode;
 
     /**
@@ -80,7 +80,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         this.returnIndicator = returnIndicator;
         this.meanIndicator = mean;
         this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, mean, initializationBarCount, decayFactor);
-        this.initialObservationCount = initializationBarCount;
+        this.observationCountIndicator = new ValidObservationCountIndicator(returnIndicator);
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
     }
 
@@ -114,16 +114,16 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
 
     @Override
     protected ReturnForecastState calculate(int index) {
+        int observationCount = observationCountIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
-            return ReturnForecastState.unstable(index, 0, ReturnRepresentation.LOG);
+            return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
         }
         Num mean = meanIndicator.getValue(index);
         Num variance = varianceIndicator.getValue(index);
         if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
-            return ReturnForecastState.unstable(index, 0, ReturnRepresentation.LOG);
+            return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
         }
         Num drift = driftMode == DriftMode.ZERO ? getBarSeries().numFactory().zero() : mean;
-        int observationCount = initialObservationCount + index - getCountOfUnstableBars();
         return ReturnForecastState.stable(index, observationCount, ReturnRepresentation.LOG, mean, drift, variance);
     }
 
@@ -157,6 +157,29 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
          * @since 0.22.9
          */
         ROLLING_MEAN
+    }
+
+    private static final class ValidObservationCountIndicator extends RecursiveCachedIndicator<Integer> {
+
+        private final Indicator<Num> indicator;
+
+        private ValidObservationCountIndicator(Indicator<Num> indicator) {
+            super(indicator);
+            this.indicator = indicator;
+        }
+
+        @Override
+        protected Integer calculate(int index) {
+            if (index < indicator.getCountOfUnstableBars() || !Num.isFinite(indicator.getValue(index))) {
+                return 0;
+            }
+            return index == 0 ? 1 : getValue(index - 1) + 1;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return indicator.getCountOfUnstableBars();
+        }
     }
 
     private static final class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
