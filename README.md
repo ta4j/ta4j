@@ -1071,6 +1071,42 @@ Num invalidation = facade.invalidationLevel().getValue(index);
 
 See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
+## LPPL residual quickstart
+
+`LPPLResidualIndicator` fits a Log-Periodic Power Law model through the bar before the requested index and evaluates the current price against that fixed path. The primary API is a regular normalized numeric indicator:
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+LPPLResidualIndicator residual = new LPPLResidualIndicator(series);
+Num normalizedResidual = residual.getValue(index); // positive = above the path, negative = below it
+```
+
+Use the rich fit when model status and diagnostics affect the decision:
+
+```java
+LPPLFit fit = residual.getFitIndicator().getValue(index);
+if (fit.isQualified(residual.getProfile())) {
+    double rawLogPriceResidual = fit.residual();
+    double fittedCurrentLogPrice = fit.predictedLogPrice();
+}
+```
+
+The value is the observed-minus-predicted log-price residual divided by the maximum absolute residual across the same fitted path. It is bounded to `[-1, 1]`, but it is not by itself a valuation judgment, bubble label, or crash forecast. Warm-up bars, invalid prices, optimizer failures, and unqualified fits return `NaN` rather than a misleading neutral zero. LPPL calibration is substantially more expensive than ordinary rolling arithmetic: reuse `getFitIndicator()` when diagnostics are also needed rather than constructing a second fit indicator for the same series and profile.
+
+Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
+
+```java
+LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
+        .withWindow(500)
+        .withCriticalTimeSearch(1, 60, 5)
+        .withOptimizerSettings(160, 0.80);
+LPPLResidualIndicator tunedResidual = new LPPLResidualIndicator(series, profile);
+```
+
+LPPL fitting is sensitive to window selection and split/distribution discontinuities, so equity operators should use adjusted prices and validate the residual against matched trend and randomized-return controls before applying thresholds.
+
 ## Real-world examples
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
