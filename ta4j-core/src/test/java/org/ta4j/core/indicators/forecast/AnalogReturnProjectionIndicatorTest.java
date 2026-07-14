@@ -147,6 +147,24 @@ public class AnalogReturnProjectionIndicatorTest
     }
 
     @Test
+    public void disablingStandardizationSkipsIrrelevantTrainingMomentOverflow() {
+        Fixture fixture = fixture(new double[] { 0, 1, 2 }, new double[] { -1e154, 1e154, 0 });
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = AnalogReturnProjectionIndicator
+                .builder(fixture.states())
+                .lookbackBarCount(2)
+                .neighborCount(2)
+                .minimumNeighborCount(2)
+                .standardizeFeatures(false)
+                .build();
+
+        Forecast forecast = projection.getValue(2);
+
+        assertTrue(forecast.isStable());
+        assertEquals(ForecastSupport.empirical(2), forecast.support());
+        assertNumEquals(1.5, forecast.mean());
+    }
+
+    @Test
     public void excludesCandidatesWhoseFullHorizonHasNotMatured() {
         Fixture fixture = fixture(new double[] { 0, 0, 0, 3, 4, 92 }, new double[] { 100, 10, 1, 0, 0, 0 });
         AnalogReturnProjectionIndicator<ReturnForecastState> projection = AnalogReturnProjectionIndicator
@@ -270,6 +288,7 @@ public class AnalogReturnProjectionIndicatorTest
         ForecastFeatureExtractor<ReturnForecastState> inconsistent = invalidExtractor(new double[] { 1, 2 });
         ForecastFeatureExtractor<ReturnForecastState> nonFinite = invalidExtractor(
                 new double[] { Double.POSITIVE_INFINITY });
+        ForecastFeatureExtractor<ReturnForecastState> nullFeatures = invalidExtractor(null);
         AnalogReturnProjectionIndicator<ReturnForecastState> inconsistentProjection = AnalogReturnProjectionIndicator
                 .builder(fixture.states())
                 .lookbackBarCount(2)
@@ -284,9 +303,17 @@ public class AnalogReturnProjectionIndicatorTest
                 .minimumNeighborCount(1)
                 .featureExtractor(nonFinite)
                 .build();
+        AnalogReturnProjectionIndicator<ReturnForecastState> nullProjection = AnalogReturnProjectionIndicator
+                .builder(fixture.states())
+                .lookbackBarCount(2)
+                .neighborCount(1)
+                .minimumNeighborCount(1)
+                .featureExtractor(nullFeatures)
+                .build();
 
         assertFalse(inconsistentProjection.getValue(3).isStable());
         assertFalse(nonFiniteProjection.getValue(3).isStable());
+        assertFalse(nullProjection.getValue(3).isStable());
     }
 
     @Test
@@ -378,7 +405,7 @@ public class AnalogReturnProjectionIndicatorTest
 
             @Override
             public double[] features(ReturnForecastState state) {
-                return values.clone();
+                return values == null ? null : values.clone();
             }
         };
     }

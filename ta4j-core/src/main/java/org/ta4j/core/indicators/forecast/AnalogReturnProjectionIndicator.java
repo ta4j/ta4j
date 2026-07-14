@@ -233,7 +233,7 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
         }
         try {
             double[] features = featureExtractor.features(state);
-            if (features.length != featureSchema.dimension()) {
+            if (features == null || features.length != featureSchema.dimension()) {
                 return null;
             }
             for (double feature : features) {
@@ -267,6 +267,17 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     }
 
     private boolean assignDistances(List<Candidate> candidates, double[] currentFeatures) {
+        if (!standardizeFeatures) {
+            for (Candidate candidate : candidates) {
+                double distance = DISTANCE.compute(candidate.features(), currentFeatures);
+                if (!Double.isFinite(distance)) {
+                    return false;
+                }
+                candidate.distance(distance);
+            }
+            return true;
+        }
+
         int dimension = featureSchema.dimension();
         double[] means = new double[dimension];
         double[] sumSquaredDifferences = new double[dimension];
@@ -295,7 +306,7 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
             double[] candidateVector = new double[dimension];
             double[] currentVector = new double[dimension];
             for (int featureIndex = 0; featureIndex < dimension; featureIndex++) {
-                double scale = standardizeFeatures ? scales[featureIndex] : 1d;
+                double scale = scales[featureIndex];
                 if (scale == 0d) {
                     candidateVector[featureIndex] = 0d;
                     currentVector[featureIndex] = 0d;
