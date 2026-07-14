@@ -125,16 +125,19 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
         if (!Num.isFinite(priceLevel) || !priceLevel.isPositive()) {
             return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
         }
+        Num logPriceLevel = priceLevel.log();
+        if (!Num.isFinite(logPriceLevel)) {
+            return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
+        }
         for (int i = 0; i < window; i++) {
-            double centeredLogPrice = centeredLogPrice(startIndex + i, priceLevel);
+            double centeredLogPrice = centeredLogPrice(startIndex + i, priceLevel, logPriceLevel);
             if (!Double.isFinite(centeredLogPrice)) {
                 return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
             }
             trainingLogPrices[i] = centeredLogPrice;
         }
-        double centeredEvaluationLogPrice = centeredLogPrice(index, priceLevel);
-        Num logPriceLevel = priceLevel.log();
-        double primitiveLogPriceLevel = Num.isFinite(logPriceLevel) ? logPriceLevel.doubleValue() : Double.NaN;
+        double centeredEvaluationLogPrice = centeredLogPrice(index, priceLevel, logPriceLevel);
+        double primitiveLogPriceLevel = logPriceLevel.doubleValue();
         if (!Double.isFinite(centeredEvaluationLogPrice) || !Double.isFinite(primitiveLogPriceLevel)) {
             return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
         }
@@ -142,12 +145,22 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
         return restoreLogPriceLevel(centeredFit, primitiveLogPriceLevel);
     }
 
-    private double centeredLogPrice(int index, Num priceLevel) {
+    private double centeredLogPrice(int index, Num priceLevel, Num logPriceLevel) {
         Num value = priceIndicator.getValue(index);
         if (!Num.isFinite(value) || !value.isPositive()) {
             return Double.NaN;
         }
-        Num centeredLogValue = value.dividedBy(priceLevel).log();
+        Num ratio = value.dividedBy(priceLevel);
+        Num centeredLogValue;
+        if (Num.isFinite(ratio) && ratio.isPositive()) {
+            centeredLogValue = ratio.log();
+        } else {
+            Num logValue = value.log();
+            if (!Num.isFinite(logValue)) {
+                return Double.NaN;
+            }
+            centeredLogValue = logValue.minus(logPriceLevel);
+        }
         if (!Num.isFinite(centeredLogValue)) {
             return Double.NaN;
         }

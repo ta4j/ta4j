@@ -17,6 +17,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -86,6 +87,25 @@ class LPPLFitIndicatorTest {
         assertThat(decimal.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
         assertThat(huge.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
         assertThat(tiny.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
+    }
+
+    @Test
+    void finiteDoublePricesRemainValidInputWhenTheirCenteredRatioOverflows() {
+        int valueCount = LPPLTestFixtures.WINDOW + 1;
+        double[] backingPrices = new double[valueCount];
+        List<Num> prices = new ArrayList<>(valueCount);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(backingPrices)
+                .build();
+        for (int index = 0; index < valueCount; index++) {
+            double exponent = -300.0 + 600.0 * index / LPPLTestFixtures.WINDOW;
+            prices.add(series.numFactory().numOf(Math.pow(10.0, exponent)));
+        }
+
+        LPPLFit fit = new LPPLFitIndicator(new MockIndicator(series, prices), LPPLTestFixtures.compactProfile())
+                .getValue(LPPLTestFixtures.WINDOW);
+
+        assertThat(fit.status()).isNotEqualTo(LPPLFitStatus.INVALID_INPUT);
     }
 
     @Test
