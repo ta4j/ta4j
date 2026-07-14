@@ -19,8 +19,11 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureSchema;
+import org.ta4j.core.indicators.forecast.state.ForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
+import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -52,6 +55,27 @@ public class AnalogReturnProjectionIndicatorTest
         assertEquals(ForecastSupport.empirical(30), forecast.support());
         assertNumEquals(0, forecast.mean());
         assertNumEquals(0, forecast.standardDeviation());
+    }
+
+    @Test
+    public void explicitReturnBuilderComposesWithCustomRichState() {
+        double[] prices = { 100, 100, 100, 100 };
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, new double[] { 0, 5, 7, 0 });
+        FixedRegimeStateIndicator states = new FixedRegimeStateIndicator(series, new double[] { 100, 0, 1, 0 });
+        AnalogReturnProjectionIndicator<RegimeReturnState> projection = AnalogReturnProjectionIndicator
+                .builder(states, returns)
+                .lookbackBarCount(3)
+                .neighborCount(1)
+                .minimumNeighborCount(1)
+                .standardizeFeatures(false)
+                .build();
+
+        Forecast forecast = projection.getValue(3);
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(7, forecast.mean());
+        assertEquals(ReturnRepresentation.LOG, projection.getReturnRepresentation());
     }
 
     @Test
@@ -411,6 +435,33 @@ public class AnalogReturnProjectionIndicatorTest
     }
 
     private record Fixture(FixedReturnIndicator returns, FixedStateIndicator states) {
+    }
+
+    private record RegimeReturnState(ReturnMoments moments, Num regimeProbability) implements ReturnMomentState {
+    }
+
+    private static final class FixedRegimeStateIndicator extends AbstractIndicator<RegimeReturnState>
+            implements ForecastStateIndicator<RegimeReturnState> {
+
+        private final double[] means;
+
+        private FixedRegimeStateIndicator(BarSeries series, double[] means) {
+            super(series);
+            this.means = means.clone();
+        }
+
+        @Override
+        public RegimeReturnState getValue(int index) {
+            NumFactory factory = getBarSeries().numFactory();
+            ReturnMoments moments = ReturnMoments.stable(index, index + 1, ReturnRepresentation.LOG,
+                    factory.numOf(means[index]), factory.zero(), factory.zero());
+            return new RegimeReturnState(moments, factory.one());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     private static final class FixedReturnIndicator extends AbstractIndicator<Num> implements ReturnIndicator {

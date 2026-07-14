@@ -133,7 +133,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         FixedForecastIndicator base = new FixedForecastIndicator(series, 2,
                 index -> summary(index, 2, ForecastSupport.analytic("return-model"), 0, 1));
         FixedReturnIndicator returns = new FixedReturnIndicator(series, new double[] { 0, 1, 2, 3, 4, 5, 6 });
-        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+        ReturnForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .cumulativeLogReturnBuilder(base, returns)
                 .targetCoverage(0.5)
                 .calibrationWindow(3)
@@ -143,8 +143,60 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         Forecast forecast = calibrated.getValue(5);
 
         assertTrue(forecast.isStable());
+        assertEquals(ReturnRepresentation.LOG, calibrated.getReturnRepresentation());
         assertNumEquals(-12, forecast.quantile(0.05));
         assertNumEquals(12, forecast.quantile(0.95));
+    }
+
+    @Test
+    public void tailLessBaseRemainsUnavailable() {
+        BarSeries series = series(5);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1, Map.of()));
+        FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.5)
+                .calibrationWindow(3)
+                .minimumCalibrationCount(3)
+                .build();
+
+        assertFalse(calibrated.getValue(4).isStable());
+    }
+
+    @Test
+    public void medianOnlyBaseRemainsUnavailable() {
+        BarSeries series = series(5);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1, Map.of(0.5, numFactory.zero())));
+        FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.5)
+                .calibrationWindow(3)
+                .minimumCalibrationCount(3)
+                .build();
+
+        assertFalse(calibrated.getValue(4).isStable());
+    }
+
+    @Test
+    public void oneSidedTailCanBeCalibrated() {
+        BarSeries series = series(5);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1, Map.of(0.05, numFactory.numOf(-5))));
+        FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.5)
+                .calibrationWindow(3)
+                .minimumCalibrationCount(3)
+                .build();
+
+        Forecast forecast = calibrated.getValue(4);
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(-6, forecast.quantile(0.05));
     }
 
     @Test
@@ -298,9 +350,16 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
     private Forecast summary(int index, int horizon, ForecastSupport support, double median, double deviation) {
         NumFactory factory = numFactory;
         Num center = factory.numOf(median);
-        Num spread = factory.numOf(deviation);
         Map<Double, Num> quantiles = deviation == 0d ? Map.of(0.05, center, 0.5, center, 0.95, center)
                 : Map.of(0.05, center.minus(factory.numOf(5)), 0.5, center, 0.95, center.plus(factory.numOf(5)));
+        return summary(index, horizon, support, median, deviation, quantiles);
+    }
+
+    private Forecast summary(int index, int horizon, ForecastSupport support, double median, double deviation,
+            Map<Double, Num> quantiles) {
+        NumFactory factory = numFactory;
+        Num center = factory.numOf(median);
+        Num spread = factory.numOf(deviation);
         return Forecast.builder(index, horizon, factory, support)
                 .mean(center)
                 .median(center)

@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 
@@ -53,7 +54,7 @@ public final class RollingConformalForecastExample {
                 .neighborCount(20)
                 .minimumNeighborCount(10)
                 .build();
-        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+        ReturnForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
                 .cumulativeLogReturnBuilder(analog, logReturns)
                 .targetCoverage(0.90)
                 .calibrationWindow(60)

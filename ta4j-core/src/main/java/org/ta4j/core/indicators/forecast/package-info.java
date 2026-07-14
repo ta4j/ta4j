@@ -26,7 +26,9 @@
  * terminal path before summarizing it; summary-only conversion is explicitly
  * labeled as an analytic approximation. Analog candidates and conformal scores
  * are usable only after their complete forecast horizons mature, preserving the
- * package-wide no-lookahead contract.
+ * package-wide no-lookahead contract. Cumulative-return calibration preserves
+ * the semantic return-projection contract, and conformal output remains
+ * unavailable when no configured tail quantile can be widened.
  *
  * @since 0.22.9
  */

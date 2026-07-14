@@ -235,6 +235,7 @@ import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
@@ -299,7 +300,7 @@ error radius from matured decisions only:
 ```java
 AnalogReturnProjectionIndicator<ReturnForecastState> analog =
         new AnalogReturnProjectionIndicator<>(state, 5);
-RollingConformalForecastProjectionIndicator calibrated =
+ReturnForecastProjectionIndicator calibrated =
         RollingConformalForecastProjectionIndicator
                 .cumulativeLogReturnBuilder(analog, returns)
                 .build();
@@ -323,12 +324,15 @@ is raised when necessary to make the requested finite-sample rank attainable;
 configurations whose rolling window can never attain that rank are rejected.
 Generic value calibration observes an indicator at `decision + horizon`;
 cumulative-log-return calibration sums the supplied log returns over the
-complete horizon. Calibration preserves the base mean, median, standard
-deviation, and support while widening configured lower and upper quantiles.
+complete horizon and preserves the semantic return-projection contract.
+Calibration preserves the base mean, median, standard deviation, and support
+while widening configured lower and upper quantiles. At least one configured
+non-median quantile is required so a stable result always reflects calibration.
 Schema or representation mismatch,
 non-finite primitive conversion, insufficient history, invalid forecast
-metadata, or a positive widening radius applied to a zero-dispersion base
-forecast produces an unavailable result rather than a misleading summary.
+metadata, a tail-less base forecast, or a positive widening radius applied to a
+zero-dispersion base forecast produces an unavailable result rather than a
+misleading summary.
 
 The runnable
 `ta4jexamples.analysis.forecast.RollingConformalForecastExample` demonstrates

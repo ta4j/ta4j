@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -29,7 +30,8 @@ import org.ta4j.core.num.NumFactory;
  * from the historical forecast median. The selected finite-sample score is
  * subtracted from lower-tail quantiles and added to upper-tail quantiles while
  * mean, median, standard deviation, and {@link Forecast#support() support}
- * remain unchanged.
+ * remain unchanged. A stable result requires at least one configured non-median
+ * quantile to calibrate.
  *
  * <p>
  * Generic value forecasts use the realized indicator value at
@@ -41,6 +43,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * Cumulative log-return forecasts use
  * {@link #cumulativeLogReturnBuilder(ReturnForecastProjectionIndicator, ReturnIndicator)}.
+ * That path preserves the {@link ReturnForecastProjectionIndicator} contract.
  * The projection remains unavailable until 30 valid calibration rows mature by
  * default.
  *
@@ -106,10 +109,10 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
      *
      * @param baseForecast base cumulative log-return forecast
      * @param logReturns   log-return stream from the same series
-     * @return rolling conformal builder
+     * @return semantically typed rolling conformal return builder
      * @since 0.23.1
      */
-    public static Builder cumulativeLogReturnBuilder(ReturnForecastProjectionIndicator baseForecast,
+    public static ReturnBuilder cumulativeLogReturnBuilder(ReturnForecastProjectionIndicator baseForecast,
             ReturnIndicator logReturns) {
         ReturnForecastProjectionIndicator validatedBase = Objects.requireNonNull(baseForecast,
                 "baseForecast must not be null");
@@ -120,14 +123,18 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
         }
         IndicatorUtils.requireSameSeries(validatedBase, validatedReturns);
         int decisionWarmup = Math.max(0, validatedReturns.getCountOfUnstableBars() - 1);
-        return new Builder(validatedBase, validatedReturns, decisionWarmup,
+        Builder delegate = new Builder(validatedBase, validatedReturns, decisionWarmup,
                 decisionIndex -> cumulativeLogReturn(validatedReturns, decisionIndex, validatedBase.getHorizon()));
+        return new ReturnBuilder(delegate);
     }
 
     @Override
     protected Forecast calculate(int index) {
         Forecast current = exactForecast(baseForecast.getValue(index), index);
         if (current == null || !current.isStable()) {
+            return Forecast.unstable(index, horizon);
+        }
+        if (current.quantiles().keySet().stream().noneMatch(probability -> Double.compare(probability, 0.5d) != 0)) {
             return Forecast.unstable(index, horizon);
         }
         NumFactory numFactory = current.mean().getNumFactory();
@@ -283,6 +290,101 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
     @FunctionalInterface
     private interface RealizedValue {
         Num valueAtMaturity(int decisionIndex);
+    }
+
+    private record ReturnProjection(
+            RollingConformalForecastProjectionIndicator delegate) implements ReturnForecastProjectionIndicator {
+
+        @Override
+        public Forecast getValue(int index) {
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return delegate.getBarSeries();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
+
+        @Override
+        public int getHorizon() {
+            return delegate.getHorizon();
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return ReturnRepresentation.LOG;
+        }
+    }
+
+    /**
+     * Builder for cumulative-log-return conformal calibration.
+     *
+     * <p>
+     * The built projection preserves the semantic
+     * {@link ReturnForecastProjectionIndicator} contract and reports
+     * {@link ReturnRepresentation#LOG}.
+     *
+     * @since 0.23.1
+     */
+    public static final class ReturnBuilder {
+
+        private final Builder delegate;
+
+        private ReturnBuilder(Builder delegate) {
+            this.delegate = delegate;
+        }
+
+        /**
+         * Sets the target marginal coverage used for the finite-sample score rank.
+         *
+         * @param value coverage in {@code (0, 1)}
+         * @return this builder
+         * @since 0.23.1
+         */
+        public ReturnBuilder targetCoverage(double value) {
+            delegate.targetCoverage(value);
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of recent matured decision rows inspected.
+         *
+         * @param value positive rolling window size
+         * @return this builder
+         * @since 0.23.1
+         */
+        public ReturnBuilder calibrationWindow(int value) {
+            delegate.calibrationWindow(value);
+            return this;
+        }
+
+        /**
+         * Sets a lower bound on the valid calibration scores required before output.
+         * The finite-sample coverage rank may require more scores.
+         *
+         * @param value positive minimum not greater than the calibration window
+         * @return this builder
+         * @since 0.23.1
+         */
+        public ReturnBuilder minimumCalibrationCount(int value) {
+            delegate.minimumCalibrationCount(value);
+            return this;
+        }
+
+        /**
+         * Builds the validated, semantically typed return projection.
+         *
+         * @return configured cumulative-log-return projection
+         * @since 0.23.1
+         */
+        public ReturnForecastProjectionIndicator build() {
+            return new ReturnProjection(delegate.build());
+        }
     }
 
     /**
