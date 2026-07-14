@@ -237,7 +237,11 @@ test_downstream_dispatches_explicitly_pass_dry_run() {
     "prepare-release dispatch should pass dryRun to publish-release"
 
   local publish_dispatch
-  publish_dispatch="$(workflow_section "$WORKFLOWS/publish-release.yml" 'workflow_id: "snapshot.yml"' 'dryRun: "false"')"
+  publish_dispatch="$(workflow_section "$WORKFLOWS/publish-release.yml" 'Dispatch snapshot publication' 'core.endGroup()')"
+  expect_section_contains "$publish_dispatch" "github.event_name == 'workflow_dispatch'" \
+    "publish-release should dispatch snapshots only for explicit recovery runs"
+  expect_section_contains "$publish_dispatch" 'workflow_id: "snapshot.yml"' \
+    "publish-release should preserve manual recovery snapshot dispatch"
   expect_section_contains "$publish_dispatch" 'dryRun: "false"' \
     "publish-release should explicitly dispatch snapshot publication as non-dry-run"
 
@@ -447,7 +451,9 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   local deploy_section
   deploy_section="$(workflow_section "$WORKFLOWS/snapshot.yml" "Deploy Snapshot" "Snapshot publication summary")"
   expect_section_contains "$deploy_section" "if: steps.dry_run.outputs.dryRun != 'true'" \
-    "snapshot deployment should skip dry-run"
+    "snapshot deployment and exact consumer verification should skip dry-run"
+  expect_section_contains "$deploy_section" "Verify exact snapshot consumption" \
+    "snapshot dry-run boundary should include exact consumer verification"
 
   local health_post_section
   health_post_section="$(workflow_section "$WORKFLOWS/release-health.yml" "Post to Release Scheduler discussion" "with:")"
@@ -455,6 +461,47 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
     "release-health discussion post should skip dry-run"
 
   pass "test_snapshot_and_health_manual_dry_runs_do_not_mutate"
+}
+
+test_snapshot_workflow_guarantees_exact_consumability() {
+  echo "Running test_snapshot_workflow_guarantees_exact_consumability"
+
+  expect_file_contains "$WORKFLOWS/snapshot.yml" "branches:" \
+    "snapshot workflow should retain a branch push trigger"
+  expect_file_contains "$WORKFLOWS/snapshot.yml" "- master" \
+    "snapshot workflow should publish every master push"
+  expect_file_contains "$WORKFLOWS/snapshot.yml" "cancel-in-progress: false" \
+    "snapshot publications should queue instead of cancelling an active deployment"
+
+  local deploy_line consumption_line summary_line
+  deploy_line="$(line_of "$WORKFLOWS/snapshot.yml" "Deploy Snapshot")"
+  consumption_line="$(line_of "$WORKFLOWS/snapshot.yml" "Verify exact snapshot consumption")"
+  summary_line="$(line_of "$WORKFLOWS/snapshot.yml" "Snapshot publication summary")"
+  if (( consumption_line <= deploy_line || consumption_line >= summary_line )); then
+    fail "exact snapshot consumption verification should run after deployment and before the summary"
+  fi
+
+  local consumption_section
+  consumption_section="$(workflow_section "$WORKFLOWS/snapshot.yml" "Verify exact snapshot consumption" "Snapshot publication summary")"
+  expect_section_contains "$consumption_section" "snapshot-consumption" \
+    "snapshot workflow should invoke the isolated Maven consumer"
+  expect_section_contains "$consumption_section" "--max-attempts 20" \
+    "snapshot consumption should use the five-minute bounded retry budget"
+  expect_section_contains "$consumption_section" "--retry-seconds 15" \
+    "snapshot consumption should retry every 15 seconds"
+
+  expect_file_contains "$WORKFLOWS/snapshot.yml" "snapshot-consumption.json" \
+    "snapshot audit artifact should retain structured consumer evidence"
+  expect_file_contains "$WORKFLOWS/snapshot.yml" "snapshot-consumption.log" \
+    "snapshot audit artifact should retain the bounded Maven consumer log"
+  expect_file_contains "$WORKFLOWS/snapshot.yml" '"mavenConsumable"' \
+    "snapshot audit should expose exact Maven consumability"
+  expect_file_contains "$WORKFLOWS/release-health.yml" "--require-artifacts" \
+    "release health should retrieve exact version-level POM/JAR artifacts"
+  expect_file_contains "$WORKFLOWS/release-health.yml" "snapshot metadata latest (informational)" \
+    "release health should not treat top-level latest as authoritative"
+
+  pass "test_snapshot_workflow_guarantees_exact_consumability"
 }
 
 test_line_of_reports_missing_needles_cleanly() {
@@ -564,6 +611,7 @@ test_dry_run_summaries_and_audits_show_rerun_guidance
 test_release_scheduler_ai_modes_protect_manual_debug_budget
 test_release_scheduler_ai_failures_remain_diagnostic_and_red
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
+test_snapshot_workflow_guarantees_exact_consumability
 test_line_of_reports_missing_needles_cleanly
 test_publish_release_existing_tag_only_fails_real_runs
 test_github_release_preserves_workflow_support_checkout

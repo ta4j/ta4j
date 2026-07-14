@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SNAPSHOT_METADATA_URL="https://central.sonatype.com/repository/maven-snapshots/org/ta4j/ta4j-parent/maven-metadata.xml"
+SNAPSHOT_REPOSITORY_URL="https://central.sonatype.com/repository/maven-snapshots/"
+SNAPSHOT_METADATA_URL="${SNAPSHOT_REPOSITORY_URL}org/ta4j/ta4j-parent/maven-metadata.xml"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
+MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
 AI_REQUEST_METADATA_SCHEMA_VERSION=1
 AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=1
 DEFAULT_AI_REQUEST_MAX_BYTES=600000
@@ -45,6 +47,7 @@ Commands:
   artifact-manifest
   snapshot-publication
   snapshot-publication-policy
+  snapshot-consumption
 EOF
 }
 
@@ -1252,6 +1255,7 @@ metadata_file_uri() {
 
 write_snapshot_publication_json() {
   local output="$1" version="$2" published="$3" latest="$4" last_updated="$5" source="$6" error="$7" versions_file="${8:-}"
+  local resolved_version="${9:-}" artifact_metadata_source="${10:-}" pom_url="${11:-}" jar_url="${12:-}"
   local versions_json="[]"
   if [[ -n "$versions_file" && -f "$versions_file" ]]; then
     versions_json="$(jq -R -s 'split("\n") | map(select(length > 0))' "$versions_file")"
@@ -1263,8 +1267,12 @@ write_snapshot_publication_json() {
     --arg lastUpdated "$last_updated" \
     --arg source "$source" \
     --arg error "$error" \
+    --arg resolvedVersion "$resolved_version" \
+    --arg artifactMetadataSource "$artifact_metadata_source" \
+    --arg pomUrl "$pom_url" \
+    --arg jarUrl "$jar_url" \
     --argjson versions "$versions_json" \
-    '{version: $version, published: $published, latest: $latest, lastUpdated: $lastUpdated, source: $source, error: $error, versions: $versions}' > "$output"
+    '{version: $version, published: $published, latest: $latest, lastUpdated: $lastUpdated, source: $source, error: $error, versions: $versions, resolvedVersion: $resolvedVersion, artifactMetadataSource: $artifactMetadataSource, pomUrl: $pomUrl, jarUrl: $jarUrl}' > "$output"
 }
 
 emit_snapshot_publication_outputs() {
@@ -1275,6 +1283,10 @@ emit_snapshot_publication_outputs() {
   append_output "snapshot_publication_last_updated" "$(jq -r '.lastUpdated' "$output")" "$github_output"
   append_output "snapshot_publication_source" "$(jq -r '.source' "$output")" "$github_output"
   append_output "snapshot_publication_error" "$(jq -r '.error' "$output")" "$github_output"
+  append_output "snapshot_publication_resolved_version" "$(jq -r '.resolvedVersion' "$output")" "$github_output"
+  append_output "snapshot_publication_artifact_metadata_source" "$(jq -r '.artifactMetadataSource' "$output")" "$github_output"
+  append_output "snapshot_publication_pom_url" "$(jq -r '.pomUrl' "$output")" "$github_output"
+  append_output "snapshot_publication_jar_url" "$(jq -r '.jarUrl' "$output")" "$github_output"
 }
 
 parse_snapshot_metadata() {
@@ -1288,13 +1300,65 @@ parse_snapshot_metadata() {
   sed -n 's/.*<version>\([^<]*\)<\/version>.*/\1/p' "$metadata" > "$versions_file"
 }
 
+parse_artifact_snapshot_metadata() {
+  local metadata="$1"
+  local output="$2"
+  python3 - "$metadata" > "$output" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+version = (root.findtext("version") or "").strip()
+versioning = root.find("versioning")
+if versioning is None:
+    raise SystemExit("snapshot artifact metadata is missing <versioning>")
+last_updated = (versioning.findtext("lastUpdated") or "").strip()
+values = {}
+snapshot_versions = versioning.find("snapshotVersions")
+if snapshot_versions is not None:
+    for node in snapshot_versions.findall("snapshotVersion"):
+        classifier = (node.findtext("classifier") or "").strip()
+        extension = (node.findtext("extension") or "").strip()
+        value = (node.findtext("value") or "").strip()
+        if not classifier and extension in {"pom", "jar"} and value:
+            values[extension] = value
+if not version or "pom" not in values or "jar" not in values:
+    raise SystemExit("snapshot artifact metadata is missing the version or unclassified pom/jar entries")
+print(f"version={version}")
+print(f"last_updated={last_updated}")
+print(f"pom_value={values['pom']}")
+print(f"jar_value={values['jar']}")
+PY
+}
+
+read_key_value() {
+  local file="$1"
+  local key="$2"
+  awk -F= -v key="$key" '$1 == key { print substr($0, length($1) + 2); exit }' "$file"
+}
+
+download_snapshot_artifact() {
+  local url="$1"
+  local output="$2"
+  local timeout_seconds="$3"
+  curl --fail --silent --show-error --location --max-time "$timeout_seconds" \
+    -H "User-Agent: ta4j-release-automation" "$url" > "$output"
+  [[ -s "$output" ]]
+}
+
 command_snapshot_publication() {
   local version="" metadata_url="$SNAPSHOT_METADATA_URL" metadata_file="" timeout_seconds=30 output="snapshot-publication.json" github_output=""
+  local repository_url="$SNAPSHOT_REPOSITORY_URL" require_artifacts=false artifact_metadata_file="" artifact_pom_file="" artifact_jar_file=""
   while (($#)); do
     case "$1" in
       --version) require_value "$1" "${2:-}"; version="$2"; shift 2 ;;
       --metadata-url) require_value "$1" "${2:-}"; metadata_url="$2"; shift 2 ;;
       --metadata-file) require_value "$1" "${2:-}"; metadata_file="$2"; shift 2 ;;
+      --repository-url) require_value "$1" "${2:-}"; repository_url="$2"; shift 2 ;;
+      --require-artifacts) require_artifacts=true; shift ;;
+      --artifact-metadata-file) require_value "$1" "${2:-}"; artifact_metadata_file="$2"; shift 2 ;;
+      --artifact-pom-file) require_value "$1" "${2:-}"; artifact_pom_file="$2"; shift 2 ;;
+      --artifact-jar-file) require_value "$1" "${2:-}"; artifact_jar_file="$2"; shift 2 ;;
       --timeout-seconds) require_value "$1" "${2:-}"; timeout_seconds="$2"; shift 2 ;;
       --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
       --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
@@ -1302,8 +1366,12 @@ command_snapshot_publication() {
     esac
   done
   [[ -n "$version" ]] || die "--version is required"
+  if [[ -n "$artifact_pom_file" || -n "$artifact_jar_file" ]]; then
+    [[ -n "$artifact_pom_file" && -n "$artifact_jar_file" ]] || die "--artifact-pom-file and --artifact-jar-file must be provided together"
+  fi
 
   local source metadata tmpdir latest_file last_updated_file versions_file latest last_updated published error
+  local artifact_metadata artifact_values artifact_metadata_source artifact_version resolved_version artifact_last_updated pom_value jar_value pom_url jar_url artifact_pom artifact_jar
   if [[ "$version" != *-SNAPSHOT ]]; then
     source="$metadata_url"
     [[ -n "$metadata_file" ]] && source="$(metadata_file_uri "$metadata_file")"
@@ -1349,10 +1417,245 @@ command_snapshot_publication() {
   else
     published=false
   fi
-  write_snapshot_publication_json "$output" "$version" "$published" "$latest" "$last_updated" "$source" "" "$versions_file"
+
+  artifact_metadata_source=""
+  resolved_version=""
+  pom_url=""
+  jar_url=""
+  if [[ "$published" == true && "$require_artifacts" == true ]]; then
+    artifact_metadata="$tmpdir/artifact-metadata.xml"
+    artifact_values="$tmpdir/artifact-values.txt"
+    artifact_pom="$tmpdir/artifact.pom"
+    artifact_jar="$tmpdir/artifact.jar"
+    if [[ -n "$artifact_metadata_file" ]]; then
+      artifact_metadata_source="$(metadata_file_uri "$artifact_metadata_file")"
+      cp "$artifact_metadata_file" "$artifact_metadata" || error="unable to read artifact metadata file"
+    elif [[ "$repository_url" != https://* ]]; then
+      error="--repository-url must use https"
+    else
+      artifact_metadata_source="${repository_url%/}/org/ta4j/ta4j-core/${version}/maven-metadata.xml"
+      curl --fail --silent --show-error --location --max-time "$timeout_seconds" \
+        -H "Accept: application/xml" -H "User-Agent: ta4j-release-automation" \
+        "$artifact_metadata_source" > "$artifact_metadata" 2>"$tmpdir/artifact-metadata.err" || error="$(cat "$tmpdir/artifact-metadata.err")"
+    fi
+    if [[ -z "$error" ]] && ! parse_artifact_snapshot_metadata "$artifact_metadata" "$artifact_values" 2>"$tmpdir/artifact-parse.err"; then
+      error="$(cat "$tmpdir/artifact-parse.err")"
+    fi
+    if [[ -z "$error" ]]; then
+      artifact_version="$(read_key_value "$artifact_values" version)"
+      artifact_last_updated="$(read_key_value "$artifact_values" last_updated)"
+      pom_value="$(read_key_value "$artifact_values" pom_value)"
+      jar_value="$(read_key_value "$artifact_values" jar_value)"
+      resolved_version="$jar_value"
+      pom_url="${repository_url%/}/org/ta4j/ta4j-core/${version}/ta4j-core-${pom_value}.pom"
+      jar_url="${repository_url%/}/org/ta4j/ta4j-core/${version}/ta4j-core-${jar_value}.jar"
+      if [[ "$artifact_version" != "$version" ]]; then
+        error="artifact metadata version '${artifact_version}' does not match '${version}'"
+      elif [[ -n "$artifact_pom_file" && -n "$artifact_jar_file" ]]; then
+        [[ -s "$artifact_pom_file" ]] || error="snapshot POM fixture is missing or empty"
+        [[ -n "$error" || -s "$artifact_jar_file" ]] || error="snapshot JAR fixture is missing or empty"
+      else
+        download_snapshot_artifact "$pom_url" "$artifact_pom" "$timeout_seconds" 2>"$tmpdir/artifact-pom.err" || error="$(cat "$tmpdir/artifact-pom.err")"
+        if [[ -z "$error" ]]; then
+          download_snapshot_artifact "$jar_url" "$artifact_jar" "$timeout_seconds" 2>"$tmpdir/artifact-jar.err" || error="$(cat "$tmpdir/artifact-jar.err")"
+        fi
+      fi
+      [[ -z "$artifact_last_updated" ]] || last_updated="$artifact_last_updated"
+    fi
+    if [[ -n "$error" ]]; then
+      published=false
+    fi
+  fi
+
+  write_snapshot_publication_json "$output" "$version" "$published" "$latest" "$last_updated" "$source" "$error" "$versions_file" \
+    "$resolved_version" "$artifact_metadata_source" "$pom_url" "$jar_url"
   emit_snapshot_publication_outputs "$output" "$github_output"
-  printf 'audit:snapshot_publication version=%s published=%s latest=%s last_updated=%s output=%s\n' \
-    "$version" "$published" "${latest:-unknown}" "${last_updated:-unknown}" "$output"
+  printf 'audit:snapshot_publication version=%s published=%s latest=%s resolved=%s last_updated=%s output=%s\n' \
+    "$version" "$published" "${latest:-unknown}" "${resolved_version:-unknown}" "${last_updated:-unknown}" "$output"
+}
+
+sha256_file() {
+  shasum -a 256 "$1" | awk '{print $1}'
+}
+
+resolved_snapshot_value() {
+  local metadata="$1"
+  [[ -f "$metadata" ]] || return 0
+  python3 - "$metadata" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+snapshot_versions = root.find("./versioning/snapshotVersions")
+if snapshot_versions is not None:
+    values = {}
+    for node in snapshot_versions.findall("snapshotVersion"):
+        if not (node.findtext("classifier") or "").strip():
+            extension = (node.findtext("extension") or "").strip()
+            value = (node.findtext("value") or "").strip()
+            if extension in {"jar", "pom"} and value:
+                values[extension] = value
+    print(values.get("jar") or values.get("pom") or "")
+PY
+}
+
+snapshot_metadata_file() {
+  local artifact_directory="$1"
+  local candidate
+  for candidate in "$artifact_directory"/maven-metadata-*.xml; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 0
+}
+
+command_snapshot_consumption() {
+  local version="" maven_command="./mvnw" repository_url="$SNAPSHOT_REPOSITORY_URL" publisher_root="$PWD"
+  local max_attempts=20 retry_seconds=15 output="snapshot-consumption.json" github_output="" log="snapshot-consumption.log"
+  while (($#)); do
+    case "$1" in
+      --version) require_value "$1" "${2:-}"; version="$2"; shift 2 ;;
+      --maven-command) require_value "$1" "${2:-}"; maven_command="$2"; shift 2 ;;
+      --repository-url) require_value "$1" "${2:-}"; repository_url="$2"; shift 2 ;;
+      --publisher-root) require_value "$1" "${2:-}"; publisher_root="$2"; shift 2 ;;
+      --max-attempts) require_value "$1" "${2:-}"; max_attempts="$2"; shift 2 ;;
+      --retry-seconds) require_value "$1" "${2:-}"; retry_seconds="$2"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
+      --log) require_value "$1" "${2:-}"; log="$2"; shift 2 ;;
+      *) die "Unknown snapshot-consumption option: $1" ;;
+    esac
+  done
+  [[ -n "$version" ]] || die "--version is required"
+  [[ "$version" == *-SNAPSHOT ]] || die "snapshot consumption requires a -SNAPSHOT version: $version"
+  [[ "$repository_url" == https://* ]] || die "--repository-url must use https"
+  [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]] || die "--max-attempts must be a positive integer"
+  [[ "$retry_seconds" =~ ^[0-9]+$ ]] || die "--retry-seconds must be a non-negative integer"
+
+  if [[ "$maven_command" != */* ]]; then
+    maven_command="$(command -v "$maven_command" || true)"
+  elif [[ "$maven_command" != /* ]]; then
+    maven_command="$(cd "$(dirname "$maven_command")" && pwd -P)/$(basename "$maven_command")"
+  fi
+  [[ -x "$maven_command" ]] || die "Maven command is not executable: $maven_command"
+  publisher_root="$(cd "$publisher_root" && pwd -P)"
+
+  local publisher_core="$publisher_root/ta4j-core/target/ta4j-core-${version}.jar"
+  local publisher_examples="$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar"
+  [[ -s "$publisher_core" ]] || die "Published core JAR is missing: $publisher_core"
+  [[ -s "$publisher_examples" ]] || die "Published examples JAR is missing: $publisher_examples"
+
+  local tmpdir consumer_pom local_repo raw_log redacted_log
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/snapshot-consumption.XXXXXX")"
+  consumer_pom="$tmpdir/pom.xml"
+  local_repo="$tmpdir/repository"
+  raw_log="$tmpdir/maven.log"
+  redacted_log="$tmpdir/maven-redacted.log"
+  mkdir -p "$local_repo" "$(dirname "$output")" "$(dirname "$log")"
+  cat > "$consumer_pom" <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.ta4j.verify</groupId>
+  <artifactId>snapshot-consumer</artifactId>
+  <version>1.0.0</version>
+  <repositories>
+    <repository>
+      <id>central-portal-snapshots</id>
+      <url>${repository_url}</url>
+      <releases><enabled>false</enabled></releases>
+      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${version}</version><type>pom</type></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${version}</version></dependency>
+  </dependencies>
+</project>
+EOF
+
+  local publisher_core_sha publisher_examples_sha resolved_core resolved_examples resolved_core_sha="" resolved_examples_sha=""
+  local parent_metadata core_metadata examples_metadata resolved_parent_version="" resolved_core_version="" resolved_examples_version=""
+  local attempts=0 maven_consumable=false start_time elapsed_seconds=0
+  publisher_core_sha="$(sha256_file "$publisher_core")"
+  publisher_examples_sha="$(sha256_file "$publisher_examples")"
+  resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${version}.jar"
+  resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${version}.jar"
+  start_time="$(date +%s)"
+  : > "$raw_log"
+
+  while (( attempts < max_attempts )); do
+    attempts=$((attempts + 1))
+    resolved_parent_version=""
+    resolved_core_version=""
+    resolved_examples_version=""
+    rm -rf "$local_repo/org/ta4j"
+    printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
+    if "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
+      "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
+      if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
+        resolved_core_sha="$(sha256_file "$resolved_core")"
+        resolved_examples_sha="$(sha256_file "$resolved_examples")"
+        if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
+          maven_consumable=true
+          parent_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-parent/${version}")"
+          core_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-core/${version}")"
+          examples_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-examples/${version}")"
+          resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
+          resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
+          resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
+          if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
+            maven_consumable=false
+            printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
+          else
+            break
+          fi
+        else
+          printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
+            "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
+        fi
+      else
+        printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+      fi
+    fi
+    if (( attempts < max_attempts && retry_seconds > 0 )); then
+      sleep "$retry_seconds"
+    fi
+  done
+
+  elapsed_seconds=$(( $(date +%s) - start_time ))
+  redact_log_text < "$raw_log" > "$redacted_log"
+  copy_prefix_with_notice "$redacted_log" "$log" 200000 "[TRUNCATED: snapshot consumption log exceeded 200000 bytes]"
+  jq -S -n \
+    --arg version "$version" \
+    --arg repository "$repository_url" \
+    --arg resolvedParentVersion "$resolved_parent_version" \
+    --arg resolvedCoreVersion "$resolved_core_version" \
+    --arg resolvedExamplesVersion "$resolved_examples_version" \
+    --arg publisherCoreSha256 "$publisher_core_sha" \
+    --arg resolvedCoreSha256 "$resolved_core_sha" \
+    --arg publisherExamplesSha256 "$publisher_examples_sha" \
+    --arg resolvedExamplesSha256 "$resolved_examples_sha" \
+    --argjson attempts "$attempts" \
+    --argjson elapsedSeconds "$elapsed_seconds" \
+    --argjson mavenConsumable "$maven_consumable" \
+    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
+  append_output "maven_consumable" "$maven_consumable" "$github_output"
+  append_output "resolved_parent_version" "$resolved_parent_version" "$github_output"
+  append_output "resolved_core_version" "$resolved_core_version" "$github_output"
+  append_output "resolved_examples_version" "$resolved_examples_version" "$github_output"
+  append_output "snapshot_consumption_attempts" "$attempts" "$github_output"
+  append_output "snapshot_consumption_elapsed_seconds" "$elapsed_seconds" "$github_output"
+  append_output "publisher_core_sha256" "$publisher_core_sha" "$github_output"
+  append_output "resolved_core_sha256" "$resolved_core_sha" "$github_output"
+  append_output "publisher_examples_sha256" "$publisher_examples_sha" "$github_output"
+  append_output "resolved_examples_sha256" "$resolved_examples_sha" "$github_output"
+  printf 'audit:snapshot_consumption version=%s consumable=%s resolved_core=%s attempts=%s elapsed_seconds=%s output=%s\n' \
+    "$version" "$maven_consumable" "${resolved_core_version:-unknown}" "$attempts" "$elapsed_seconds" "$output"
+  rm -rf "$tmpdir"
+  [[ "$maven_consumable" == true ]]
 }
 
 command_snapshot_publication_policy() {
@@ -1402,6 +1705,7 @@ main() {
     artifact-manifest) command_artifact_manifest "$@" ;;
     snapshot-publication) command_snapshot_publication "$@" ;;
     snapshot-publication-policy) command_snapshot_publication_policy "$@" ;;
+    snapshot-consumption) command_snapshot_consumption "$@" ;;
     -h|--help|help) usage ;;
     *) usage; die "Unknown command: $command" ;;
   esac
