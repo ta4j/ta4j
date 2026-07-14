@@ -28,7 +28,8 @@ import org.ta4j.core.num.Num;
  * smoothed, and feeds the result into a ZigZag-based swing detector. Repeated
  * detection on the same series and degree reuses one bounded indicator pipeline
  * so live updates advance the recursive ZigZag state instead of rescanning the
- * full history.
+ * full history. Historical queries that move backward rebuild the pipeline to
+ * preserve causal pivot confirmation.
  *
  * @since 0.22.2
  */
@@ -38,6 +39,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     private WeakReference<BarSeries> cachedSeries = new WeakReference<>(null);
     private ElliottDegree cachedDegree;
     private ElliottSwingIndicator cachedIndicator;
+    private int cachedIndex = -1;
 
     /**
      * Creates a detector using the supplied configuration.
@@ -58,7 +60,8 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree) {
+        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree
+                || clampedIndex < cachedIndex) {
             final Indicator<Num> highPrice = new HighPriceIndicator(series);
             final Indicator<Num> lowPrice = new LowPriceIndicator(series);
             final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
@@ -71,7 +74,9 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             cachedDegree = degree;
             cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
         }
-        return SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
+        final SwingDetectorResult result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
+        cachedIndex = clampedIndex;
+        return result;
     }
 
     /**
