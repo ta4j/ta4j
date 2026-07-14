@@ -550,7 +550,7 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
 
         private static void parseLegacyMinRelativeSwing(final String value) {
             double threshold = parseDouble(value, "minRelativeSwing");
-            if (threshold <= 0.0 || threshold > 1.0) {
+            if (!Double.isFinite(threshold) || threshold <= 0.0 || threshold > 1.0) {
                 throw new IllegalArgumentException("minRelativeSwing must be in (0.0, 1.0]");
             }
         }

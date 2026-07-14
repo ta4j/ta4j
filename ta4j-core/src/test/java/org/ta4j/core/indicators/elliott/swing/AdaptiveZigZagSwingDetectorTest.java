@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
@@ -19,6 +20,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 class AdaptiveZigZagSwingDetectorTest {
@@ -103,6 +105,32 @@ class AdaptiveZigZagSwingDetectorTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @Test
+    void rebuildsCachedStateWhenTheTerminalBarIsReplaced() {
+        BarSeries series = buildVolatileRangeSeries();
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        AdaptiveZigZagSwingDetector reusedDetector = new AdaptiveZigZagSwingDetector(config);
+        SwingDetectorResult original = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        Bar lastBar = series.getLastBar();
+        Bar replacement = series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime())
+                .openPrice(60.0)
+                .highPrice(61.0)
+                .lowPrice(59.0)
+                .closePrice(60.0)
+                .volume(1000.0)
+                .build();
+        series.addBar(replacement, true);
+
+        SwingDetectorResult expected = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
+                ElliottDegree.PRIMARY);
+        SwingDetectorResult actual = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(expected).isNotEqualTo(original);
+        assertThat(actual).isEqualTo(expected);
+    }
+
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
         ClosePriceIndicator price = new ClosePriceIndicator(series);
         ATRIndicator atr = new ATRIndicator(series, 1);
@@ -155,6 +183,11 @@ class AdaptiveZigZagSwingDetectorTest {
 
         private CountingBarSeries() {
             super("AdaptiveZigZagLiveTest", List.of());
+        }
+
+        @Override
+        public BarBuilder barBuilder() {
+            return new MockBarBuilderFactory().createBarBuilder(this);
         }
 
         @Override

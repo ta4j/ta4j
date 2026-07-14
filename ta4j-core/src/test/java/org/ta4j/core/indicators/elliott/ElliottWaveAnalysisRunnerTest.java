@@ -16,12 +16,16 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.indicators.elliott.swing.SwingFilter;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -279,10 +283,7 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
-    void intradayLiveProfileKeepsMinuteSwingsAcrossHistoryThreshold() throws Exception {
-        Method scenarioBudget = ElliottWaveAnalysisRunner.class.getDeclaredMethod("internalScenarioBudget",
-                BarSeries.class);
-        scenarioBudget.setAccessible(true);
+    void intradayLiveProfileKeepsMinuteSwingsAcrossHistoryThreshold() {
         for (Duration barDuration : List.of(Duration.ofMinutes(1), Duration.ofMinutes(5))) {
             BarSeries series = buildIntradaySeries(barDuration, 251);
             ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
@@ -306,9 +307,32 @@ class ElliottWaveAnalysisRunnerTest {
             assertThat(beforeThreshold.waveCount().includingProvisional())
                     .isEqualTo(beforeThreshold.processedSwings().size());
             assertThat(atThreshold.waveCount().includingProvisional()).isEqualTo(atThreshold.processedSwings().size());
-            assertThat(scenarioBudget.invoke(analysis, series))
+            assertThat(analysis.internalScenarioBudget(series))
                     .isEqualTo(ElliottLogicProfile.INTRADAY_LIVE.maxScenarios());
         }
+    }
+
+    @Test
+    void copyKeepsDefaultLiveDetectorStateIndependent() {
+        CountingBarSeries firstSeries = buildCountingIntradaySeries(Duration.ofMinutes(1), 300);
+        BarSeries secondSeries = buildIntradaySeries(Duration.ofMinutes(5), 300);
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.SUB_MINUETTE)
+                .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .build();
+
+        analysis.analyze(firstSeries);
+        firstSeries.resetBarReads();
+        analysis.analyze(firstSeries);
+        long repeatedReads = firstSeries.barReads();
+
+        analysis.copy().analyze(secondSeries);
+        firstSeries.resetBarReads();
+        analysis.analyze(firstSeries);
+
+        assertThat(firstSeries.barReads()).isLessThanOrEqualTo(repeatedReads + 5);
     }
 
     @Test
@@ -2153,6 +2177,17 @@ class ElliottWaveAnalysisRunnerTest {
 
     private BarSeries buildIntradaySeries(final Duration barDuration, final int barCount) {
         BarSeries series = new MockBarSeriesBuilder().withName("Intraday-" + barDuration).build();
+        addIntradayBars(series, barDuration, barCount);
+        return series;
+    }
+
+    private CountingBarSeries buildCountingIntradaySeries(final Duration barDuration, final int barCount) {
+        CountingBarSeries series = new CountingBarSeries();
+        addIntradayBars(series, barDuration, barCount);
+        return series;
+    }
+
+    private void addIntradayBars(final BarSeries series, final Duration barDuration, final int barCount) {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         for (int index = 0; index < barCount; index++) {
             double close = 100.0 + (Math.sin(index * 0.22) * 1.5) + (index * 0.002);
@@ -2166,7 +2201,6 @@ class ElliottWaveAnalysisRunnerTest {
                     .volume(1_000)
                     .add();
         }
-        return series;
     }
 
     private BarSeries buildCurrentCycleStartPressureSeries() {
@@ -2850,6 +2884,34 @@ class ElliottWaveAnalysisRunnerTest {
                     .add();
         }
         return series;
+    }
+
+    private static final class CountingBarSeries extends BaseBarSeries {
+
+        private long barReads;
+
+        private CountingBarSeries() {
+            super("ElliottRunnerLiveTest", List.of());
+        }
+
+        @Override
+        public BarBuilder barBuilder() {
+            return new MockBarBuilderFactory().createBarBuilder(this);
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            barReads++;
+            return super.getBar(index);
+        }
+
+        private long barReads() {
+            return barReads;
+        }
+
+        private void resetBarReads() {
+            barReads = 0;
+        }
     }
 
 }

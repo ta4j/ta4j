@@ -52,8 +52,8 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             List<ElliottSwing> processedSwings, ElliottScenarioSet scenarios,
             Map<String, ElliottConfidenceBreakdown> confidenceBreakdowns, ElliottChannel channel,
             ElliottTrendBias trendBias) {
-        this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias,
-                WaveCount.confirmed(sizeOf(processedSwings)), AnalysisDiagnostics.empty());
+        this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias, null,
+                null);
     }
 
     /**
@@ -65,8 +65,8 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             List<ElliottSwing> processedSwings, ElliottScenarioSet scenarios,
             Map<String, ElliottConfidenceBreakdown> confidenceBreakdowns, ElliottChannel channel,
             ElliottTrendBias trendBias, AnalysisDiagnostics diagnostics) {
-        this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias,
-                WaveCount.confirmed(sizeOf(processedSwings)), diagnostics);
+        this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias, null,
+                diagnostics);
     }
 
     /**
@@ -84,10 +84,6 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
         trendBias = trendBias == null ? ElliottTrendBias.unknown() : trendBias;
         waveCount = waveCount == null ? WaveCount.confirmed(processedSwings.size()) : waveCount;
         diagnostics = diagnostics == null ? AnalysisDiagnostics.empty() : diagnostics;
-    }
-
-    private static int sizeOf(final List<ElliottSwing> swings) {
-        return swings == null ? 0 : swings.size();
     }
 
     /**

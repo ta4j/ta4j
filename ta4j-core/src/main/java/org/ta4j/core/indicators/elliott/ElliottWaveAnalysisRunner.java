@@ -137,6 +137,7 @@ public final class ElliottWaveAnalysisRunner {
     private final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
     private final double baseConfidenceWeight;
     private final boolean usesDefaultAnalysisRunner;
+    private final boolean usesDefaultSwingDetector;
     private final ElliottLogicProfile logicProfile;
 
     // Built-in single-degree analysis pipeline configuration (used by default
@@ -162,7 +163,8 @@ public final class ElliottWaveAnalysisRunner {
                 : logicProfile == null ? builder.scenarioSwingWindow : logicProfile.scenarioSwingWindow();
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
-        this.swingDetector = builder.swingDetector == null ? defaultSwingDetector() : builder.swingDetector;
+        this.usesDefaultSwingDetector = builder.swingDetector == null;
+        this.swingDetector = usesDefaultSwingDetector ? defaultSwingDetector() : builder.swingDetector;
         this.swingFilter = builder.swingFilter;
         this.confidenceModelFactory = builder.confidenceModelFactory == null
                 ? defaultConfidenceModelFactory(logicProfile)
@@ -221,7 +223,7 @@ public final class ElliottWaveAnalysisRunner {
         builder.baseConfidenceWeight = baseConfidenceWeight;
         builder.baseConfidenceWeightExplicit = true;
         builder.logicProfile = logicProfile;
-        builder.swingDetector = swingDetector;
+        builder.swingDetector = usesDefaultSwingDetector ? null : swingDetector;
         builder.swingFilter = swingFilter;
         builder.confidenceModelFactory = confidenceModelFactory;
         builder.patternSet = patternSet;
@@ -1537,7 +1539,7 @@ public final class ElliottWaveAnalysisRunner {
                 trendBias, waveCount, generator.lastDiagnostics());
     }
 
-    private int internalScenarioBudget(final BarSeries series) {
+    int internalScenarioBudget(final BarSeries series) {
         if (!usesDefaultAnalysisRunner || usesVolatilityScaledSwingProcessing() || scenarioSwingWindow != 0
                 || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
             return maxScenarios;

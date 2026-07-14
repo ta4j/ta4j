@@ -121,6 +121,14 @@ class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
+    void testConstructorRejectsNonFiniteLegacyMinRelativeSwing() {
+        for (String value : List.of("NaN", "Infinity", "-Infinity")) {
+            assertThrows(IllegalArgumentException.class, () -> new HighRewardElliottWaveStrategy(series, "BULLISH",
+                    "PRIMARY", "0.7", "3", "1.5", "0.2", "5", "2", "50", "2", "4", value));
+        }
+    }
+
+    @Test
     void testEntryRuleSatisfiedForHighConfidenceImpulse() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
