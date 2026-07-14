@@ -10,7 +10,9 @@
  * composition. {@link ForecastSupport} distinguishes unavailable, empirical,
  * and analytic distributions. The compatibility {@link Forecast#sampleCount()}
  * accessor reports empirical support only; estimator training and calibration
- * observations remain model metadata.
+ * observations remain model metadata. Analog projections therefore report the
+ * selected-neighbor count, while rolling conformal wrappers preserve the base
+ * support unchanged.
  *
  * @since 0.22.9
  */

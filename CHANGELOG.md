@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **State-conditioned analog and rolling conformal forecasts**: Added `AnalogReturnProjectionIndicator` with matured-neighbor guards, training-only feature standardization, deterministic weighted empirical summaries, and `RollingConformalForecastProjectionIndicator` for finite-sample tail calibration over generic realized values or cumulative log returns. A runnable ossified BTC daily example demonstrates the paired workflow.
 - **Forecast distributions now carry explicit support provenance**: Added `ForecastSupport` for unavailable, empirical, and named analytic distributions, a validated summary builder, safe affine transforms, and representation-aware feature schemas with allocation-free extraction.
 - **Return estimators share one validated moment component**: Added minimal `ForecastState` lifecycle, composable `ReturnMomentState` and `ReturnMoments`, canonical variance-derived volatility, and typed `ReturnForecastStateIndicator<S>` composition for EWMA and richer state models.
 - **Summary-only price conversion is explicit**: Added `LognormalApproximationPriceForecastIndicator` for operators who intentionally want one coherent moment-matched analytic price distribution.

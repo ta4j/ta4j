@@ -230,7 +230,10 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
@@ -288,6 +291,44 @@ double[] values = features.features(state.getValue(index));
 Feature schemas publish stable identity, version, order, units, and return
 representation. Values remain raw; the consuming model must fit scaling only
 from its eligible training rows.
+
+For a state-conditioned empirical forecast, analog projection composes directly
+with the same typed state source. Rolling conformal calibration then learns an
+error radius from matured decisions only:
+
+```java
+AnalogReturnProjectionIndicator<ReturnForecastState> analog =
+        new AnalogReturnProjectionIndicator<>(state, 5);
+RollingConformalForecastProjectionIndicator calibrated =
+        RollingConformalForecastProjectionIndicator
+                .cumulativeLogReturnBuilder(analog, returns)
+                .build();
+
+Forecast analogForecast = analog.getValue(series.getEndIndex());
+Forecast calibratedForecast = calibrated.getValue(series.getEndIndex());
+```
+
+Analog defaults use a 1-bar horizon, 252 candidate rows, 30 nearest neighbors,
+at least 5 usable neighbors, Euclidean distance, `[mean, volatility]`
+log-return features, and candidate-only standardization. The builder can tune
+those choices or accept another fixed, log-return `ForecastFeatureSchema`.
+Candidate `j` is never eligible before `j + horizon`; distance ties resolve by
+the earlier source index. Its empirical support count is the number of selected
+neighbors, not the lookback or state observation count.
+
+Rolling conformal defaults target 90% coverage over 252 recent matured decision
+rows and remain unavailable until 30 valid scores exist. Generic value
+calibration observes an indicator at `decision + horizon`; cumulative-log-return
+calibration sums the supplied log returns over the complete horizon. Calibration
+preserves the base mean, median, standard deviation, and support while widening
+configured lower and upper quantiles. Schema or representation mismatch,
+non-finite primitive conversion, insufficient history, invalid forecast
+metadata, or a positive widening radius applied to a zero-dispersion base
+forecast produces an unavailable result rather than a misleading summary.
+
+The runnable
+`ta4jexamples.analysis.forecast.RollingConformalForecastExample` demonstrates
+the advanced builders on the committed BTC-USD daily resource.
 
 ### Forecast API migration from 0.23.0
 

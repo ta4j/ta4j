@@ -81,6 +81,18 @@ raw machine hostname.
 - `ta4jexamples.indicators.CandlestickChart`
 - `ta4jexamples.analysis.CashFlowToChart`
 
+### 6) Forecast modeling and calibration
+
+- `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
+
+Run the ossified BTC daily analog and rolling-conformal walkthrough:
+
+```bash
+./mvnw -pl ta4j-examples -am install
+./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.analysis.forecast.RollingConformalForecastExample
+```
+
 ## Suggested progression
 
 1. `ta4jexamples.Quickstart`
