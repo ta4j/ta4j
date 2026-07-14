@@ -7,6 +7,7 @@ import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
@@ -40,6 +41,9 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     private ElliottDegree cachedDegree;
     private ElliottSwingIndicator cachedIndicator;
     private int cachedIndex = -1;
+    private Bar cachedFirstBar;
+    private int cachedBeginIndex = -1;
+    private int cachedEndIndex = -1;
 
     /**
      * Creates a detector using the supplied configuration.
@@ -60,7 +64,10 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree
+        final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
+                && (series.getEndIndex() < cachedEndIndex || (series.getBeginIndex() <= cachedBeginIndex
+                        && series.getBar(series.getBeginIndex()) != cachedFirstBar));
+        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
                 || clampedIndex < cachedIndex) {
             final Indicator<Num> highPrice = new HighPriceIndicator(series);
             final Indicator<Num> lowPrice = new LowPriceIndicator(series);
@@ -73,9 +80,12 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             cachedSeries = new WeakReference<>(series);
             cachedDegree = degree;
             cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
+            cachedFirstBar = series.getBar(series.getBeginIndex());
+            cachedBeginIndex = series.getBeginIndex();
         }
         final SwingDetectorResult result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
         cachedIndex = clampedIndex;
+        cachedEndIndex = series.getEndIndex();
         return result;
     }
 
