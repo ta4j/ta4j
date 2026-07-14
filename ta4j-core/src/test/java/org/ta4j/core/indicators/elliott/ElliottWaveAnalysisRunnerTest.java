@@ -325,8 +325,7 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(confirmed.hasProvisional()).isFalse();
         assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(-1, 0));
         assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(1, 2));
-        assertThrows(IllegalArgumentException.class,
-                () -> new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 1));
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 1));
 
         ElliottAnalysisResult.WaveCount maximumConfirmed = new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 0);
         ElliottAnalysisResult.WaveCount maximumWithProvisional = new ElliottAnalysisResult.WaveCount(
