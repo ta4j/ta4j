@@ -105,15 +105,15 @@ public interface BarSeries extends Serializable {
     List<Bar> getBarData();
 
     /**
-     * Returns a monotonically increasing revision for changes to already
-     * published bar data.
+     * Returns a monotonically increasing revision for changes to already published
+     * bar data.
      *
      * <p>
-     * Implementations increment the revision when an operation replaces an
-     * existing bar, mutates the current bar through this series, or resets the
-     * retained history. Appending a new bar and removing expired bars do not
-     * change the revision. Implementations that do not track bar-data changes
-     * return {@code -1}.
+     * Implementations increment the revision when an operation replaces an existing
+     * bar, mutates the current bar through this series, or resets the retained
+     * history. Appending a new bar and removing expired bars do not change the
+     * revision. Implementations that do not track bar-data changes return
+     * {@code -1}.
      *
      * <p>
      * Mutations made directly through a retained {@link Bar} reference cannot be
