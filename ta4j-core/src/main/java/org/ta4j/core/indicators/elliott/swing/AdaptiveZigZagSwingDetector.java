@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.elliott.swing;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,6 +35,7 @@ import org.ta4j.core.num.Num;
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {
 
     private final AdaptiveZigZagConfig config;
+    private WeakReference<BarSeries> cachedSeries = new WeakReference<>(null);
     private ElliottDegree cachedDegree;
     private ElliottSwingIndicator cachedIndicator;
 
@@ -56,7 +58,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        if (cachedIndicator == null || cachedIndicator.getBarSeries() != series || cachedDegree != degree) {
+        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree) {
             final Indicator<Num> highPrice = new HighPriceIndicator(series);
             final Indicator<Num> lowPrice = new LowPriceIndicator(series);
             final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
@@ -65,6 +67,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
                     : atr;
             final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
             final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
+            cachedSeries = new WeakReference<>(series);
             cachedDegree = degree;
             cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
         }
