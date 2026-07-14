@@ -104,7 +104,9 @@ public class EwmaReturnForecastStateIndicatorTest
 
         assertTrue(stateIndicator.getValue(2).mean().isNaN());
         assertTrue(stateIndicator.getValue(3).mean().isNaN());
-        assertTrue(stateIndicator.getValue(4).isStable());
+        ReturnForecastState recovered = stateIndicator.getValue(4);
+        assertTrue(recovered.isStable());
+        assertEquals(2, recovered.observationCount());
     }
 
     @Test

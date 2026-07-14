@@ -228,16 +228,20 @@ compare it with the realized value at `i + horizon`.
 ```java
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 LogReturnIndicator returns = new LogReturnIndicator(series);
-ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
 ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
@@ -252,9 +256,57 @@ later realized prices.
 numeric output is a return stream in the declared representation. The initial
 forecast implementation supports log returns, so build the pipeline explicitly
 from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
-`MonteCarloPriceForecastIndicator`. Use `MonteCarloReturnProjectionIndicator`
-and `LogReturnToPriceForecastIndicator` from the forecast adapter package directly only when a model needs
-advanced simulation tuning or a custom explicit price source.
+`MonteCarloPriceForecastIndicator`. Its builder exposes advanced simulation
+tuning without leaving the exact path-based price model, and its explicit-price
+overloads support custom log-return sources whose price indicator cannot be
+inferred. Use `LognormalApproximationPriceForecastIndicator` only when a named
+summary-only lognormal approximation is the intended model.
+
+`ForecastState` exposes only index and stability. Return models compose one
+validated `ReturnMoments` value through `ReturnMomentState`, keeping observation
+count, representation, mean, drift, and canonical variance together while
+deriving volatility. `ReturnForecastStateIndicator<S>` lets projections infer
+the source return stream and verifies the state representation at use time.
+
+`Forecast` is Num-only. `Forecast.ofSamples(...)` creates empirical support;
+model summaries use `Forecast.builder(index, horizon, numFactory, support)` and
+declare empirical or analytic provenance through `ForecastSupport`.
+`sampleCount()` reports empirical represented values and returns zero for
+analytic or unavailable forecasts. Missing direct quantiles return `NaN.NaN`.
+
+At primitive-only distance or regression boundaries, bind a schema to the
+required representation:
+
+```java
+ForecastFeatureExtractor<ReturnForecastState> features =
+        ForecastFeatureExtractors.meanVolatility(ReturnRepresentation.LOG);
+int index = series.getEndIndex();
+double[] values = features.features(state.getValue(index));
+// schema id: return-moments/mean-volatility; order: mean, volatility
+```
+
+Feature schemas publish stable identity, version, order, units, and return
+representation. Values remain raw; the consuming model must fit scaling only
+from its eligible training rows.
+
+### Forecast API migration from 0.23.0
+
+The 0.23.1 forecast correction intentionally replaces the initial 0.23.0
+surface before additional estimator families build on it:
+
+| 0.23.0 | 0.23.1 replacement |
+| --- | --- |
+| `Forecast<Num>` | Num-only `Forecast` |
+| `forecast.map(...)` | `scale(...)`, `affine(...)`, transformed samples, or a domain-specific adapter |
+| `Forecast.ofSummary(...)` | `Forecast.builder(..., ForecastSupport)` |
+| `LogReturnToPriceForecastIndicator` | Exact `MonteCarloPriceForecastIndicator` or explicit `LognormalApproximationPriceForecastIndicator` |
+| Return-shaped `ForecastState` | Minimal `ForecastState` plus `ReturnMomentState` / `ReturnMoments` |
+| Seven-field `ReturnForecastState` construction | `ReturnForecastState.stable(...)` or `.unstable(...)` |
+| Unnamed feature arrays | Representation-bound `ForecastFeatureSchema` extractors |
+
+This is a deliberate compatibility exception: correctness and durable model
+semantics take precedence over preserving the newly introduced 0.23.0 forecast
+signatures.
 
 ### Staged exit rules
 

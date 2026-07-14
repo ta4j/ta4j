@@ -1,9 +1,19 @@
 ## Unreleased
 
+### Added
+- **Forecast distributions now carry explicit support provenance**: Added `ForecastSupport` for unavailable, empirical, and named analytic distributions, a validated summary builder, safe affine transforms, and representation-aware feature schemas with allocation-free extraction.
+- **Return estimators share one validated moment component**: Added minimal `ForecastState` lifecycle, composable `ReturnMomentState` and `ReturnMoments`, canonical variance-derived volatility, and typed `ReturnForecastStateIndicator<S>` composition for EWMA and richer state models.
+- **Summary-only price conversion is explicit**: Added `LognormalApproximationPriceForecastIndicator` for operators who intentionally want one coherent moment-matched analytic price distribution.
+
 ### Changed
 - **Elliott Wave analysis now supports live intraday swing counts**: `ElliottLogicProfile.INTRADAY_LIVE` uses causal ATR-scaled ZigZag detection without macro percentage-of-history or percentage-of-price gates, and `ElliottAnalysisResult.WaveCount` separates confirmed waves from the optional forming terminal wave. `ElliottWaveAnalysisRunner.Builder#includeProvisionalTerminalSwing(false)` provides confirmed-only scenario generation for trading rules, while result helpers identify scenarios that use the compatible forming-wave projection. The high-reward Elliott example now reuses the core scenario indicator, accepts `SUB_MINUETTE` strategy configuration, and no longer discards minute-bar swings behind its former 10%-of-price threshold.
+- **Forecast API corrected before further state-estimation phases**: `Forecast` is now Num-only, `map(...)` and positional `ofSummary(...)` were replaced by safe affine operations and `Forecast.builder(...)`, missing quantiles return `NaN.NaN`, `ForecastProjectionIndicator` declares its horizon, `ReturnForecastState` composes `ReturnMoments`, and feature extractors publish durable names, units, versions, and return representation. This deliberately breaks the forecast API first released in 0.23.0; see the README and wiki migration guide for exact replacements.
 - **New snapshots are externally consumable before publication reports green**: Every `master` push still starts snapshot publication immediately, concurrent snapshot runs now queue instead of cancelling an active deploy, and release-PR publishing no longer dispatches a duplicate run. The snapshot workflow uses an isolated Maven consumer to resolve the exact timestamped parent/core/examples artifacts and checksum-match the newly deployed core/examples JARs, while release health retrieves the exact version-level core POM/JAR instead of treating lag-prone top-level metadata or Portal browsing as proof.
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
+
+### Fixed
+- **Monte Carlo price summaries describe the simulated paths exactly**: `MonteCarloPriceForecastIndicator` now transforms every terminal cumulative-return path to price before calculating mean, median, standard deviation, quantiles, and empirical support. Nonlinear summary-only conversion no longer creates hybrid distributions.
+- **Forecast numeric boundaries preserve factory configuration**: State, summary, adapter, and sample boundaries now coerce through the owning `NumFactory`, including differing `DecimalNum` precision contexts and factory-correct zero dispersion.
 
 ## 0.23.0 (2026-07-13)
 

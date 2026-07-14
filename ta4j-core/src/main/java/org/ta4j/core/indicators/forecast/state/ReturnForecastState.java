@@ -5,56 +5,54 @@ package org.ta4j.core.indicators.forecast.state;
 
 import java.util.Objects;
 
-import org.ta4j.core.num.NaN;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 
 /**
- * Rolling return state used by forecast indicators.
+ * Standard return forecast state backed by validated {@link ReturnMoments}.
  *
- * @param index            state index
- * @param observationCount number of returns incorporated into the state
- * @param isStable         whether the state is stable and usable
- * @param mean             rolling mean return estimate
- * @param drift            drift used by forecasts
- * @param variance         rolling return variance estimate
- * @param volatility       square root of {@code variance}
+ * @param moments common return moments
  * @since 0.22.9
  */
-public record ReturnForecastState(int index, int observationCount, boolean isStable, Num mean, Num drift, Num variance,
-        Num volatility) {
+public record ReturnForecastState(ReturnMoments moments) implements ReturnMomentState {
 
     /**
      * Creates a return forecast state.
      *
-     * @since 0.22.9
+     * @since 0.23.1
      */
     public ReturnForecastState {
-        if (index < 0) {
-            throw new IllegalArgumentException("index must be >= 0");
-        }
-        if (observationCount < 0) {
-            throw new IllegalArgumentException("observationCount must be >= 0");
-        }
-        if (isStable && observationCount == 0) {
-            throw new IllegalArgumentException("stable states must include at least one observation");
-        }
-        if (!isStable && observationCount != 0) {
-            throw new IllegalArgumentException("unstable states must have zero observations");
-        }
-        mean = Objects.requireNonNull(mean, "mean must not be null");
-        drift = Objects.requireNonNull(drift, "drift must not be null");
-        variance = Objects.requireNonNull(variance, "variance must not be null");
-        volatility = Objects.requireNonNull(volatility, "volatility must not be null");
+        moments = Objects.requireNonNull(moments, "moments must not be null");
     }
 
     /**
-     * Creates an unstable state.
+     * Creates stable return state without accepting redundant volatility.
      *
-     * @param index state index
-     * @return unstable state
-     * @since 0.22.9
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
+     * @param mean             finite mean return
+     * @param drift            finite forward drift assumption
+     * @param variance         finite, non-negative return variance
+     * @return stable return state
+     * @since 0.23.1
      */
-    public static ReturnForecastState unstable(int index) {
-        return new ReturnForecastState(index, 0, false, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN);
+    public static ReturnForecastState stable(int index, int observationCount, ReturnRepresentation representation,
+            Num mean, Num drift, Num variance) {
+        return new ReturnForecastState(
+                ReturnMoments.stable(index, observationCount, representation, mean, drift, variance));
+    }
+
+    /**
+     * Creates unstable return state.
+     *
+     * @param index            source index
+     * @param observationCount observations incorporated by the estimator
+     * @param representation   return representation
+     * @return unstable return state
+     * @since 0.23.1
+     */
+    public static ReturnForecastState unstable(int index, int observationCount, ReturnRepresentation representation) {
+        return new ReturnForecastState(ReturnMoments.unstable(index, observationCount, representation));
     }
 }
