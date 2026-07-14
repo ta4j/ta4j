@@ -4,7 +4,6 @@
 package ta4jexamples.strategies;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
@@ -353,7 +352,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
         private final double rsiThreshold;
         private final int macdFastPeriod;
         private final int macdSlowPeriod;
-        private final Double legacyMinRelativeSwing;
 
         /**
          * Creates a configuration with the supplied parameters.
@@ -374,14 +372,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
                 final double minRiskReward, final double minAlternationRatio, final double minTrendBiasStrength,
                 final int trendSmaPeriod, final int rsiPeriod, final double rsiThreshold, final int macdFastPeriod,
                 final int macdSlowPeriod) {
-            this(direction, degree, minConfidence, minRiskReward, minAlternationRatio, minTrendBiasStrength,
-                    trendSmaPeriod, rsiPeriod, rsiThreshold, macdFastPeriod, macdSlowPeriod, null);
-        }
-
-        private Config(final SignalDirection direction, final ElliottDegree degree, final double minConfidence,
-                final double minRiskReward, final double minAlternationRatio, final double minTrendBiasStrength,
-                final int trendSmaPeriod, final int rsiPeriod, final double rsiThreshold, final int macdFastPeriod,
-                final int macdSlowPeriod, final Double legacyMinRelativeSwing) {
             this.direction = Objects.requireNonNull(direction, "direction");
             this.degree = Objects.requireNonNull(degree, "degree");
             if (minConfidence <= 0.0 || minConfidence > 1.0) {
@@ -420,7 +410,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             this.rsiThreshold = rsiThreshold;
             this.macdFastPeriod = macdFastPeriod;
             this.macdSlowPeriod = macdSlowPeriod;
-            this.legacyMinRelativeSwing = legacyMinRelativeSwing;
         }
 
         /**
@@ -464,29 +453,22 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             double rsiThreshold = parseDouble(params[8], "rsiThreshold");
             int macdFast = parseInt(params[9], "macdFastPeriod");
             int macdSlow = parseInt(params[10], "macdSlowPeriod");
-            Double legacyMinRelativeSwing = params.length == LEGACY_PARAMETER_COUNT
-                    ? parseLegacyMinRelativeSwing(params[11])
-                    : null;
+            if (params.length == LEGACY_PARAMETER_COUNT) {
+                parseLegacyMinRelativeSwing(params[11]);
+            }
 
             return new Config(direction, degree, minConfidence, minRiskReward, minAlternation, minTrendBias, trendSma,
-                    rsiPeriod, rsiThreshold, macdFast, macdSlow, legacyMinRelativeSwing);
+                    rsiPeriod, rsiThreshold, macdFast, macdSlow);
         }
 
         /**
          * @return label parts used for NamedStrategy labels
          */
         String[] labelParts() {
-            String[] currentParts = new String[] { direction.name(), degree.name().replace('_', '-'),
-                    formatDouble(minConfidence),
+            return new String[] { direction.name(), degree.name().replace('_', '-'), formatDouble(minConfidence),
                     formatDouble(minRiskReward), formatDouble(minAlternationRatio), formatDouble(minTrendBiasStrength),
                     String.valueOf(trendSmaPeriod), String.valueOf(rsiPeriod), formatDouble(rsiThreshold),
                     String.valueOf(macdFastPeriod), String.valueOf(macdSlowPeriod) };
-            if (legacyMinRelativeSwing == null) {
-                return currentParts;
-            }
-            String[] legacyParts = Arrays.copyOf(currentParts, LEGACY_PARAMETER_COUNT);
-            legacyParts[PARAMETER_COUNT] = formatDouble(legacyMinRelativeSwing);
-            return legacyParts;
         }
 
         /**
@@ -566,12 +548,11 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             return macdSlowPeriod;
         }
 
-        private static double parseLegacyMinRelativeSwing(final String value) {
+        private static void parseLegacyMinRelativeSwing(final String value) {
             double threshold = parseDouble(value, "minRelativeSwing");
             if (threshold <= 0.0 || threshold > 1.0) {
                 throw new IllegalArgumentException("minRelativeSwing must be in (0.0, 1.0]");
             }
-            return threshold;
         }
 
         /**
