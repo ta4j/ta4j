@@ -32,13 +32,15 @@ import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
  * @param confidenceBreakdowns confidence breakdowns keyed by scenario id
  * @param channel              projected Elliott channel
  * @param trendBias            aggregate scenario trend bias
+ * @param waveCount            confirmed and provisional wave counts before
+ *                             scenario-window clipping
  * @param diagnostics          scenario-generation diagnostics for this analysis
  * @since 0.22.2
  */
 public record ElliottAnalysisResult(ElliottDegree degree, int index, List<ElliottSwing> rawSwings,
         List<ElliottSwing> processedSwings, ElliottScenarioSet scenarios,
         Map<String, ElliottConfidenceBreakdown> confidenceBreakdowns, ElliottChannel channel,
-        ElliottTrendBias trendBias, AnalysisDiagnostics diagnostics) {
+        ElliottTrendBias trendBias, WaveCount waveCount, AnalysisDiagnostics diagnostics) {
 
     /**
      * Creates an analysis result with empty diagnostics for backward-compatible
@@ -51,9 +53,27 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             Map<String, ElliottConfidenceBreakdown> confidenceBreakdowns, ElliottChannel channel,
             ElliottTrendBias trendBias) {
         this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias,
-                AnalysisDiagnostics.empty());
+                WaveCount.confirmed(sizeOf(processedSwings)), AnalysisDiagnostics.empty());
     }
 
+    /**
+     * Creates an analysis result whose processed waves are all confirmed.
+     *
+     * @since 0.23.1
+     */
+    public ElliottAnalysisResult(ElliottDegree degree, int index, List<ElliottSwing> rawSwings,
+            List<ElliottSwing> processedSwings, ElliottScenarioSet scenarios,
+            Map<String, ElliottConfidenceBreakdown> confidenceBreakdowns, ElliottChannel channel,
+            ElliottTrendBias trendBias, AnalysisDiagnostics diagnostics) {
+        this(degree, index, rawSwings, processedSwings, scenarios, confidenceBreakdowns, channel, trendBias,
+                WaveCount.confirmed(sizeOf(processedSwings)), diagnostics);
+    }
+
+    /**
+     * Normalizes nullable result collections and validates the wave-count snapshot.
+     *
+     * @since 0.23.1
+     */
     public ElliottAnalysisResult {
         Objects.requireNonNull(degree, "degree");
         rawSwings = rawSwings == null ? List.of() : List.copyOf(rawSwings);
@@ -62,7 +82,20 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
         confidenceBreakdowns = confidenceBreakdowns == null ? Map.of() : Map.copyOf(confidenceBreakdowns);
         channel = channel == null ? new ElliottChannel(NaN, NaN, NaN) : channel;
         trendBias = trendBias == null ? ElliottTrendBias.unknown() : trendBias;
+        waveCount = waveCount == null ? WaveCount.confirmed(processedSwings.size()) : waveCount;
         diagnostics = diagnostics == null ? AnalysisDiagnostics.empty() : diagnostics;
+    }
+
+    private static int sizeOf(final List<ElliottSwing> swings) {
+        return swings == null ? 0 : swings.size();
+    }
+
+    /**
+     * @return confirmed and provisional processed wave counts
+     * @since 0.23.1
+     */
+    public WaveCount waveCount() {
+        return waveCount;
     }
 
     /**
@@ -77,6 +110,64 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             return Optional.empty();
         }
         return Optional.ofNullable(confidenceBreakdowns.get(scenario.id()));
+    }
+
+    /**
+     * Counts the filtered/compressed waves before scenario-window clipping,
+     * separating waves that are safe to treat as confirmed from the optional
+     * terminal wave that is still forming.
+     *
+     * <p>
+     * A provisional terminal wave is useful for live analysis and charting, but
+     * trading rules can use {@link #confirmed()} to avoid acting on an unconfirmed
+     * reversal.
+     *
+     * @param confirmed   number of waves ending at confirmed detector pivots
+     * @param provisional number of appended terminal waves (currently zero or one)
+     * @since 0.23.1
+     */
+    public record WaveCount(int confirmed, int provisional) {
+
+        /**
+         * Validates confirmed and provisional counts.
+         *
+         * @since 0.23.1
+         */
+        public WaveCount {
+            if (confirmed < 0) {
+                throw new IllegalArgumentException("confirmed must be non-negative");
+            }
+            if (provisional < 0 || provisional > 1) {
+                throw new IllegalArgumentException("provisional must be zero or one");
+            }
+        }
+
+        /**
+         * Creates a count containing confirmed waves only.
+         *
+         * @param confirmed number of confirmed waves
+         * @return confirmed-only count
+         * @since 0.23.1
+         */
+        public static WaveCount confirmed(final int confirmed) {
+            return new WaveCount(confirmed, 0);
+        }
+
+        /**
+         * @return confirmed waves plus the optional forming terminal wave
+         * @since 0.23.1
+         */
+        public int includingProvisional() {
+            return confirmed + provisional;
+        }
+
+        /**
+         * @return whether a forming terminal wave is included in scenario analysis
+         * @since 0.23.1
+         */
+        public boolean hasProvisional() {
+            return provisional == 1;
+        }
     }
 
     /**

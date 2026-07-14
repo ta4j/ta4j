@@ -269,9 +269,62 @@ class ElliottWaveAnalysisRunnerTest {
 
         assertThat(base.processedSwings()).hasSize(5);
         assertThat(base.processedSwings().getLast().toIndex()).isEqualTo(series.getEndIndex());
+        assertThat(base.waveCount().confirmed()).isEqualTo(4);
+        assertThat(base.waveCount().provisional()).isEqualTo(1);
+        assertThat(base.waveCount().includingProvisional()).isEqualTo(5);
+        assertThat(base.waveCount().hasProvisional()).isTrue();
         assertThat(result.rankedBaseScenarios())
                 .anyMatch(assessment -> assessment.scenario().currentPhase() == ElliottPhase.WAVE5
                         && assessment.scenario().swings().getLast().toIndex() == series.getEndIndex());
+    }
+
+    @Test
+    void intradayLiveProfileKeepsMinuteSwingsAcrossHistoryThreshold() throws Exception {
+        Method scenarioBudget = ElliottWaveAnalysisRunner.class.getDeclaredMethod("internalScenarioBudget",
+                BarSeries.class);
+        scenarioBudget.setAccessible(true);
+        for (Duration barDuration : List.of(Duration.ofMinutes(1), Duration.ofMinutes(5))) {
+            BarSeries series = buildIntradaySeries(barDuration, 251);
+            ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                    .degree(ElliottDegree.SUB_MINUETTE)
+                    .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                    .higherDegrees(0)
+                    .lowerDegrees(0)
+                    .build();
+
+            ElliottAnalysisResult beforeThreshold = analysis.analyze(series.getSubSeries(0, 249))
+                    .analysisFor(ElliottDegree.SUB_MINUETTE)
+                    .orElseThrow()
+                    .analysis();
+            ElliottAnalysisResult atThreshold = analysis.analyze(series.getSubSeries(0, 250))
+                    .analysisFor(ElliottDegree.SUB_MINUETTE)
+                    .orElseThrow()
+                    .analysis();
+
+            assertThat(beforeThreshold.waveCount().confirmed()).isGreaterThan(5);
+            assertThat(atThreshold.waveCount().confirmed() - beforeThreshold.waveCount().confirmed()).isBetween(0, 1);
+            assertThat(beforeThreshold.waveCount().includingProvisional())
+                    .isEqualTo(beforeThreshold.processedSwings().size());
+            assertThat(atThreshold.waveCount().includingProvisional()).isEqualTo(atThreshold.processedSwings().size());
+            assertThat(scenarioBudget.invoke(analysis, series))
+                    .isEqualTo(ElliottLogicProfile.INTRADAY_LIVE.maxScenarios());
+        }
+    }
+
+    @Test
+    void intradayLiveProfileAdvertisesVolatilityScaledProcessing() {
+        assertThat(ElliottLogicProfile.INTRADAY_LIVE.volatilityScaledSwingProcessing()).isTrue();
+        assertThat(ElliottLogicProfile.ORTHODOX_CLASSICAL.volatilityScaledSwingProcessing()).isFalse();
+    }
+
+    @Test
+    void waveCountSeparatesAndValidatesProvisionalWave() {
+        ElliottAnalysisResult.WaveCount confirmed = ElliottAnalysisResult.WaveCount.confirmed(4);
+
+        assertThat(confirmed.includingProvisional()).isEqualTo(4);
+        assertThat(confirmed.hasProvisional()).isFalse();
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(-1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(1, 2));
     }
 
     @Test
@@ -2084,6 +2137,24 @@ class ElliottWaveAnalysisRunnerTest {
                     .openPrice(close - 1.0)
                     .highPrice(close + 2.0)
                     .lowPrice(close - 3.0)
+                    .closePrice(close)
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildIntradaySeries(final Duration barDuration, final int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName("Intraday-" + barDuration).build();
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            double close = 100.0 + (Math.sin(index * 0.22) * 1.5) + (index * 0.002);
+            series.barBuilder()
+                    .timePeriod(barDuration)
+                    .endTime(start.plus(barDuration.multipliedBy(index + 1L)))
+                    .openPrice(close - 0.05)
+                    .highPrice(close + 0.20)
+                    .lowPrice(close - 0.20)
                     .closePrice(close)
                     .volume(1_000)
                     .add();

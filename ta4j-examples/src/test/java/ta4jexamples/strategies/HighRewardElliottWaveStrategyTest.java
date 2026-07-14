@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
@@ -27,6 +28,9 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.strategy.named.NamedStrategy;
+
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -79,7 +83,29 @@ class HighRewardElliottWaveStrategyTest {
         assertEquals("50", parts[9]);
         assertEquals("2", parts[10]);
         assertEquals("4", parts[11]);
-        assertEquals("0.2", parts[12]);
+    }
+
+    @Test
+    void testSubMinuetteStrategyRetainsFiveMinuteScenarios() {
+        BarSeries intradaySeries = OssifiedElliottWaveSeriesLoader.loadSeries(HighRewardElliottWaveStrategyTest.class,
+                "Binance-ETH-USD-PT5M-20230313_20230315.json", "ETH-5m",
+                LogManager.getLogger(HighRewardElliottWaveStrategyTest.class));
+        assertNotNull(intradaySeries);
+        HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
+                HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.SUB_MINUETTE, 0.25, 1.5, 1.0, 0.0,
+                80, 14, 45.0, 12, 26);
+
+        Indicator<ElliottScenarioSet> scenarios = HighRewardElliottWaveStrategy.buildScenarioIndicator(intradaySeries,
+                config);
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(intradaySeries, "BULLISH",
+                "SUB_MINUETTE", "0.25", "1.5", "1.0", "0.0", "80", "14", "45", "12", "26");
+        List<String> labelTokens = NamedStrategy.splitLabel(strategy.getName());
+        HighRewardElliottWaveStrategy reconstructed = new HighRewardElliottWaveStrategy(intradaySeries,
+                labelTokens.subList(1, labelTokens.size()).toArray(String[]::new));
+
+        assertTrue(scenarios.getValue(intradaySeries.getEndIndex()).base().isPresent());
+        assertTrue(strategy.getName().contains("SUB-MINUETTE"));
+        assertEquals(strategy.getName(), reconstructed.getName());
     }
 
     @Test
@@ -98,7 +124,7 @@ class HighRewardElliottWaveStrategyTest {
     void testEntryRuleSatisfiedForHighConfidenceImpulse() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(120), numFactory.numOf(200));
         ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
@@ -113,7 +139,7 @@ class HighRewardElliottWaveStrategyTest {
     void testEntryRuleRejectedWhenRiskRewardTooLow() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(120), numFactory.numOf(140));
         ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
@@ -128,7 +154,7 @@ class HighRewardElliottWaveStrategyTest {
     void testEntryRuleRejectedWhenNoScenario() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         ElliottScenarioSet scenarioSet = buildEmptyScenarioSet(series);
         Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
@@ -142,7 +168,7 @@ class HighRewardElliottWaveStrategyTest {
     void testExitRuleTriggersOnInvalidation() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(130), numFactory.numOf(200));
         ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
@@ -160,7 +186,7 @@ class HighRewardElliottWaveStrategyTest {
     void testExitRuleTriggersOnCorrectiveStopViolation() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         List<ElliottSwing> swings = List.of(
                 new ElliottSwing(0, 4, numFactory.numOf(100), numFactory.numOf(150), ElliottDegree.PRIMARY),
@@ -197,7 +223,7 @@ class HighRewardElliottWaveStrategyTest {
     void testExitRuleTriggersWhenNoScenario() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
-                50.0, 2, 4, 0.2);
+                50.0, 2, 4);
 
         ElliottScenarioSet scenarioSet = buildEmptyScenarioSet(series);
         Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);

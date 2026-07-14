@@ -5,7 +5,6 @@ package ta4jexamples.strategies;
 
 import java.math.BigDecimal;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -13,7 +12,6 @@ import java.util.stream.Collectors;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -22,9 +20,8 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottScenarioGenerator;
+import org.ta4j.core.indicators.elliott.ElliottScenarioIndicator;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
-import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
@@ -63,6 +60,13 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  * </ul>
  *
  * <p>
+ * Swing extraction uses the core ATR-scaled ZigZag scenario indicator, so
+ * minute bars are not subject to a fixed percentage-of-price minimum move.
+ * Configure {@link ElliottDegree#MINUETTE} or
+ * {@link ElliottDegree#SUB_MINUETTE} for appropriately sized intraday
+ * histories.
+ *
+ * <p>
  * Exit criteria:
  * <ul>
  * <li>Scenario invalidation or completion</li>
@@ -94,12 +98,11 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
     private static final int DEFAULT_MACD_SIGNAL = 9;
 
     private static final int DEFAULT_ATR_PERIOD = 14;
-    private static final double DEFAULT_MIN_RELATIVE_SWING = 0.10;
     private static final double ANALYZER_MIN_CONFIDENCE = 0.20;
-    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
 
     private static final double MAX_WAVE_DURATION_MULTIPLIER = 1.5;
-    private static final int PARAMETER_COUNT = 12;
+    private static final int PARAMETER_COUNT = 11;
+    private static final int LEGACY_PARAMETER_COUNT = 12;
 
     /**
      * Builds the strategy with default parameters.
@@ -112,6 +115,11 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
 
     /**
      * Builds the strategy using serialized label parameters.
+     *
+     * <p>
+     * The current form has 11 parameters and uses ATR-scaled ZigZag swings. Legacy
+     * 12-parameter labels are accepted after validating, but no longer applying,
+     * their final fixed percentage-of-price swing threshold.
      *
      * @param series bar series to analyze
      * @param params serialized parameters (see
@@ -273,16 +281,13 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
      * @param config strategy configuration
      * @return scenario indicator
      */
-    private static Indicator<ElliottScenarioSet> buildScenarioIndicator(final BarSeries series, final Config config) {
+    static Indicator<ElliottScenarioSet> buildScenarioIndicator(final BarSeries series, final Config config) {
         ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, config.degree());
         ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
         double minConfidence = Math.min(config.minConfidence(), ANALYZER_MIN_CONFIDENCE);
         ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(), minConfidence,
                 ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS);
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
-                config.minRelativeSwing(), 0);
-        return new ScenarioSetIndicator(series, swingIndicator, channelIndicator, generator, compressor,
-                DEFAULT_SCENARIO_SWING_WINDOW);
+        return new ElliottScenarioIndicator(swingIndicator, channelIndicator, generator);
     }
 
     /**
@@ -347,7 +352,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
         private final double rsiThreshold;
         private final int macdFastPeriod;
         private final int macdSlowPeriod;
-        private final double minRelativeSwing;
 
         /**
          * Creates a configuration with the supplied parameters.
@@ -363,12 +367,11 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
          * @param rsiThreshold         RSI threshold for momentum
          * @param macdFastPeriod       MACD fast period
          * @param macdSlowPeriod       MACD slow period
-         * @param minRelativeSwing     minimum relative swing magnitude
          */
         Config(final SignalDirection direction, final ElliottDegree degree, final double minConfidence,
                 final double minRiskReward, final double minAlternationRatio, final double minTrendBiasStrength,
                 final int trendSmaPeriod, final int rsiPeriod, final double rsiThreshold, final int macdFastPeriod,
-                final int macdSlowPeriod, final double minRelativeSwing) {
+                final int macdSlowPeriod) {
             this.direction = Objects.requireNonNull(direction, "direction");
             this.degree = Objects.requireNonNull(degree, "degree");
             if (minConfidence <= 0.0 || minConfidence > 1.0) {
@@ -398,9 +401,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             if (macdFastPeriod >= macdSlowPeriod) {
                 throw new IllegalArgumentException("macdFastPeriod must be less than macdSlowPeriod");
             }
-            if (minRelativeSwing <= 0.0 || minRelativeSwing > 1.0) {
-                throw new IllegalArgumentException("minRelativeSwing must be in (0.0, 1.0]");
-            }
             this.minConfidence = minConfidence;
             this.minRiskReward = minRiskReward;
             this.minAlternationRatio = minAlternationRatio;
@@ -410,7 +410,6 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             this.rsiThreshold = rsiThreshold;
             this.macdFastPeriod = macdFastPeriod;
             this.macdSlowPeriod = macdSlowPeriod;
-            this.minRelativeSwing = minRelativeSwing;
         }
 
         /**
@@ -419,8 +418,7 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
         static Config defaults() {
             return new Config(DEFAULT_DIRECTION, DEFAULT_DEGREE, DEFAULT_MIN_CONFIDENCE, DEFAULT_MIN_RISK_REWARD,
                     DEFAULT_MIN_ALTERNATION_RATIO, DEFAULT_MIN_TREND_BIAS_STRENGTH, DEFAULT_TREND_SMA_PERIOD,
-                    DEFAULT_RSI_PERIOD, DEFAULT_RSI_THRESHOLD, DEFAULT_MACD_FAST, DEFAULT_MACD_SLOW,
-                    DEFAULT_MIN_RELATIVE_SWING);
+                    DEFAULT_RSI_PERIOD, DEFAULT_RSI_THRESHOLD, DEFAULT_MACD_FAST, DEFAULT_MACD_SLOW);
         }
 
         /**
@@ -436,11 +434,12 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             if (params.length == 0) {
                 return defaults();
             }
-            if (params.length != PARAMETER_COUNT) {
-                throw new IllegalArgumentException("Expected " + PARAMETER_COUNT
-                        + " parameters (direction, degree, minConfidence, minRiskReward, minAlternationRatio, "
+            if (params.length != PARAMETER_COUNT && params.length != LEGACY_PARAMETER_COUNT) {
+                throw new IllegalArgumentException("Expected " + PARAMETER_COUNT + " parameters (or "
+                        + LEGACY_PARAMETER_COUNT
+                        + " legacy parameters): direction, degree, minConfidence, minRiskReward, minAlternationRatio, "
                         + "minTrendBiasStrength, trendSmaPeriod, rsiPeriod, rsiThreshold, macdFastPeriod, "
-                        + "macdSlowPeriod, minRelativeSwing), but got " + params.length);
+                        + "macdSlowPeriod; got " + params.length);
             }
 
             SignalDirection direction = parseEnum(params[0], SignalDirection.class, "direction");
@@ -454,20 +453,22 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             double rsiThreshold = parseDouble(params[8], "rsiThreshold");
             int macdFast = parseInt(params[9], "macdFastPeriod");
             int macdSlow = parseInt(params[10], "macdSlowPeriod");
-            double minRelativeSwing = parseDouble(params[11], "minRelativeSwing");
+            if (params.length == LEGACY_PARAMETER_COUNT) {
+                parseLegacyMinRelativeSwing(params[11]);
+            }
 
             return new Config(direction, degree, minConfidence, minRiskReward, minAlternation, minTrendBias, trendSma,
-                    rsiPeriod, rsiThreshold, macdFast, macdSlow, minRelativeSwing);
+                    rsiPeriod, rsiThreshold, macdFast, macdSlow);
         }
 
         /**
          * @return label parts used for NamedStrategy labels
          */
         String[] labelParts() {
-            return new String[] { direction.name(), degree.name(), formatDouble(minConfidence),
+            return new String[] { direction.name(), degree.name().replace('_', '-'), formatDouble(minConfidence),
                     formatDouble(minRiskReward), formatDouble(minAlternationRatio), formatDouble(minTrendBiasStrength),
                     String.valueOf(trendSmaPeriod), String.valueOf(rsiPeriod), formatDouble(rsiThreshold),
-                    String.valueOf(macdFastPeriod), String.valueOf(macdSlowPeriod), formatDouble(minRelativeSwing) };
+                    String.valueOf(macdFastPeriod), String.valueOf(macdSlowPeriod) };
         }
 
         /**
@@ -547,11 +548,11 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
             return macdSlowPeriod;
         }
 
-        /**
-         * @return minimum relative swing magnitude
-         */
-        double minRelativeSwing() {
-            return minRelativeSwing;
+        private static void parseLegacyMinRelativeSwing(final String value) {
+            double threshold = parseDouble(value, "minRelativeSwing");
+            if (threshold <= 0.0 || threshold > 1.0) {
+                throw new IllegalArgumentException("minRelativeSwing must be in (0.0, 1.0]");
+            }
         }
 
         /**
@@ -595,7 +596,7 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
          */
         private static <E extends Enum<E>> E parseEnum(final String value, final Class<E> type, final String label) {
             try {
-                return Enum.valueOf(type, value);
+                return Enum.valueOf(type, value.replace('-', '_'));
             } catch (IllegalArgumentException ex) {
                 Set<String> allowed = enumNames(type);
                 throw new IllegalArgumentException(
@@ -619,72 +620,4 @@ public final class HighRewardElliottWaveStrategy extends NamedStrategy {
         }
     }
 
-    /**
-     * Cached indicator that assembles scenario sets for each bar index.
-     */
-    private static final class ScenarioSetIndicator extends CachedIndicator<ElliottScenarioSet> {
-
-        private final ElliottSwingIndicator swingIndicator;
-        private final ElliottChannelIndicator channelIndicator;
-        private final ElliottScenarioGenerator generator;
-        private final ElliottSwingCompressor compressor;
-        private final int scenarioSwingWindow;
-
-        /**
-         * Creates a scenario indicator with the supplied dependencies.
-         *
-         * @param series              bar series
-         * @param swingIndicator      swing detector indicator
-         * @param channelIndicator    channel indicator for scoring
-         * @param generator           scenario generator
-         * @param compressor          optional swing compressor
-         * @param scenarioSwingWindow max number of swings to score
-         */
-        private ScenarioSetIndicator(final BarSeries series, final ElliottSwingIndicator swingIndicator,
-                final ElliottChannelIndicator channelIndicator, final ElliottScenarioGenerator generator,
-                final ElliottSwingCompressor compressor, final int scenarioSwingWindow) {
-            super(series);
-            this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-            this.channelIndicator = Objects.requireNonNull(channelIndicator, "channelIndicator");
-            this.generator = Objects.requireNonNull(generator, "generator");
-            this.compressor = compressor;
-            this.scenarioSwingWindow = scenarioSwingWindow;
-        }
-
-        /**
-         * Computes the scenario set for the provided index.
-         *
-         * @param index bar index
-         * @return scenario set for the index
-         */
-        @Override
-        protected ElliottScenarioSet calculate(final int index) {
-            final BarSeries series = getBarSeries();
-            if (series.isEmpty()) {
-                throw new IllegalArgumentException("series cannot be empty");
-            }
-            int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-            List<ElliottSwing> swings = swingIndicator.getValue(clampedIndex);
-            if (compressor != null) {
-                swings = compressor.compress(swings);
-            }
-            if (swings.isEmpty()) {
-                return ElliottScenarioSet.empty(clampedIndex);
-            }
-            List<ElliottSwing> recent = swings;
-            if (scenarioSwingWindow > 0 && swings.size() > scenarioSwingWindow) {
-                recent = List.copyOf(swings.subList(swings.size() - scenarioSwingWindow, swings.size()));
-            }
-            return generator.generate(recent, swingIndicator.getDegree(), channelIndicator.getValue(clampedIndex),
-                    clampedIndex);
-        }
-
-        /**
-         * @return the number of unstable bars for the underlying swing indicator
-         */
-        @Override
-        public int getCountOfUnstableBars() {
-            return swingIndicator.getCountOfUnstableBars();
-        }
-    }
 }

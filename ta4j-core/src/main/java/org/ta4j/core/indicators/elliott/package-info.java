@@ -77,7 +77,11 @@
  * invalidations). Use
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner} when you
  * want a one-shot analysis pipeline and optionally want to validate base-degree
- * scenarios against supporting degrees to reduce ambiguity.
+ * scenarios against supporting degrees to reduce ambiguity. For low-duration
+ * live series, configure the runner with
+ * {@link org.ta4j.core.indicators.elliott.ElliottLogicProfile#INTRADAY_LIVE};
+ * its analysis result reports confirmed and provisional terminal waves
+ * separately.
  *
  * <p>
  * <b>Getting Started</b>:

@@ -133,35 +133,34 @@ public class HighRewardElliottWaveBacktest {
 
     private record StrategySpec(String direction, String degree, double minConfidence, double minRiskReward,
             double minAlternationRatio, double minTrendBiasStrength, int trendSmaPeriod, int rsiPeriod,
-            double rsiThreshold, int macdFastPeriod, int macdSlowPeriod, double minRelativeSwing) {
+            double rsiThreshold, int macdFastPeriod, int macdSlowPeriod) {
 
         static StrategySpec defaultSpec() {
-            return new StrategySpec("BULLISH", "PRIMARY", 0.35, 2.0, 1.50, 0.10, 100, 14, 50.0, 12, 26, 0.10);
+            return new StrategySpec("BULLISH", "PRIMARY", 0.35, 2.0, 1.50, 0.10, 100, 14, 50.0, 12, 26);
         }
 
         static StrategySpec relaxedSpec() {
-            return new StrategySpec("BULLISH", "MINOR", 0.30, 1.8, 1.05, 0.05, 80, 14, 48.0, 12, 26, 0.08);
+            return new StrategySpec("BULLISH", "MINOR", 0.30, 1.8, 1.05, 0.05, 80, 14, 48.0, 12, 26);
         }
 
         static StrategySpec exploratorySpec() {
-            return new StrategySpec("BULLISH", "MINOR", 0.25, 1.5, 1.00, 0.00, 80, 14, 45.0, 12, 26, 0.05);
+            return new StrategySpec("BULLISH", "MINOR", 0.25, 1.5, 1.00, 0.00, 80, 14, 45.0, 12, 26);
         }
 
         static StrategySpec strictSpec() {
-            return new StrategySpec("BULLISH", "PRIMARY", 0.50, 2.5, 1.40, 0.20, 200, 14, 50.0, 12, 26, 0.15);
+            return new StrategySpec("BULLISH", "PRIMARY", 0.50, 2.5, 1.40, 0.20, 200, 14, 50.0, 12, 26);
         }
 
         String[] toParameters() {
             return new String[] { direction, degree, format(minConfidence), format(minRiskReward),
                     format(minAlternationRatio), format(minTrendBiasStrength), String.valueOf(trendSmaPeriod),
                     String.valueOf(rsiPeriod), format(rsiThreshold), String.valueOf(macdFastPeriod),
-                    String.valueOf(macdSlowPeriod), format(minRelativeSwing) };
+                    String.valueOf(macdSlowPeriod) };
         }
 
         String label() {
-            return String.format("dir=%s deg=%s conf=%s rr=%s alt=%s bias=%s swing=%s", direction, degree,
-                    format(minConfidence), format(minRiskReward), format(minAlternationRatio),
-                    format(minTrendBiasStrength), format(minRelativeSwing));
+            return String.format("dir=%s deg=%s conf=%s rr=%s alt=%s bias=%s", direction, degree, format(minConfidence),
+                    format(minRiskReward), format(minAlternationRatio), format(minTrendBiasStrength));
         }
 
         private static String format(double value) {

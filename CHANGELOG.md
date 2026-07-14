@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Changed
+- **Elliott Wave analysis now supports live intraday swing counts**: `ElliottLogicProfile.INTRADAY_LIVE` uses causal ATR-scaled ZigZag detection without macro percentage-of-history or percentage-of-price gates, and `ElliottAnalysisResult.WaveCount` separates confirmed waves from the optional forming terminal wave. The high-reward Elliott example now reuses the core scenario indicator, accepts `SUB_MINUETTE` strategy configuration, and no longer discards minute-bar swings behind its former 10%-of-price threshold.
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
 
 ## 0.23.0 (2026-07-13)
