@@ -121,33 +121,51 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
         }
         double[] trainingLogPrices = new double[window];
         int startIndex = index - window;
-        for (int i = 0; i < window; i++) {
-            double logPrice = logPrice(startIndex + i);
-            if (!Double.isFinite(logPrice)) {
-                return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
-            }
-            trainingLogPrices[i] = logPrice;
-        }
-        double evaluationLogPrice = logPrice(index);
-        if (!Double.isFinite(evaluationLogPrice)) {
+        Num priceLevel = priceIndicator.getValue(startIndex);
+        if (!Num.isFinite(priceLevel) || !priceLevel.isPositive()) {
             return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
         }
-        return calibrator.fit(trainingLogPrices, evaluationLogPrice);
+        for (int i = 0; i < window; i++) {
+            double centeredLogPrice = centeredLogPrice(startIndex + i, priceLevel);
+            if (!Double.isFinite(centeredLogPrice)) {
+                return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
+            }
+            trainingLogPrices[i] = centeredLogPrice;
+        }
+        double centeredEvaluationLogPrice = centeredLogPrice(index, priceLevel);
+        Num logPriceLevel = priceLevel.log();
+        double primitiveLogPriceLevel = Num.isFinite(logPriceLevel) ? logPriceLevel.doubleValue() : Double.NaN;
+        if (!Double.isFinite(centeredEvaluationLogPrice) || !Double.isFinite(primitiveLogPriceLevel)) {
+            return LPPLFit.invalid(window, LPPLFitStatus.INVALID_INPUT);
+        }
+        LPPLFit centeredFit = calibrator.fit(trainingLogPrices, centeredEvaluationLogPrice);
+        return restoreLogPriceLevel(centeredFit, primitiveLogPriceLevel);
     }
 
-    private double logPrice(int index) {
+    private double centeredLogPrice(int index, Num priceLevel) {
         Num value = priceIndicator.getValue(index);
         if (!Num.isFinite(value) || !value.isPositive()) {
             return Double.NaN;
         }
-        Num logValue = value.log();
-        if (!Num.isFinite(logValue)) {
+        Num centeredLogValue = value.dividedBy(priceLevel).log();
+        if (!Num.isFinite(centeredLogValue)) {
             return Double.NaN;
         }
         // Commons Math calibrates primitive arrays; convert only after logarithmic
-        // compression so finite DecimalNum prices cannot overflow first.
-        double primitiveLogValue = logValue.doubleValue();
+        // compression and level centering so finite DecimalNum prices retain their
+        // relative path even when their raw primitive values overflow.
+        double primitiveLogValue = centeredLogValue.doubleValue();
         return Double.isFinite(primitiveLogValue) ? primitiveLogValue : Double.NaN;
+    }
+
+    private LPPLFit restoreLogPriceLevel(LPPLFit fit, double logPriceLevel) {
+        if (!fit.isConverged()) {
+            return fit;
+        }
+        return new LPPLFit(fit.window(), fit.status(), fit.a() + logPriceLevel, fit.b(), fit.c1(), fit.c2(),
+                fit.criticalTime(), fit.m(), fit.omega(), fit.rss(), fit.rms(), fit.rSquared(), fit.criticalOffset(),
+                fit.evaluations(), fit.predictedLogPrice() + logPriceLevel, fit.residual(), fit.maxAbsResidual(),
+                fit.normalizedResidual());
     }
 
     /**

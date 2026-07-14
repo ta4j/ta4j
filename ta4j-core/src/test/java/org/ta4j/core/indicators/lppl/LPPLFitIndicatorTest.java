@@ -84,8 +84,8 @@ class LPPLFitIndicatorTest {
         assertThat(huge.status()).isEqualTo(LPPLFitStatus.VALID);
         assertThat(tiny.status()).isEqualTo(LPPLFitStatus.VALID);
         assertThat(decimal.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
-        assertThat(huge.normalizedResidual()).isFinite().isBetween(-1.0, 1.0);
-        assertThat(tiny.normalizedResidual()).isFinite().isBetween(-1.0, 1.0);
+        assertThat(huge.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
+        assertThat(tiny.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
     }
 
     @Test
