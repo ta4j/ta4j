@@ -3,6 +3,7 @@ set -euo pipefail
 
 SNAPSHOT_REPOSITORY_URL="https://central.sonatype.com/repository/maven-snapshots/"
 SNAPSHOT_METADATA_URL="${SNAPSHOT_REPOSITORY_URL}org/ta4j/ta4j-parent/maven-metadata.xml"
+SNAPSHOT_REPOSITORY_ID="central-portal-snapshots"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
 MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
 AI_REQUEST_METADATA_SCHEMA_VERSION=1
@@ -1501,13 +1502,8 @@ PY
 
 snapshot_metadata_file() {
   local artifact_directory="$1"
-  local candidate
-  for candidate in "$artifact_directory"/maven-metadata-*.xml; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+  local metadata="$artifact_directory/maven-metadata-${SNAPSHOT_REPOSITORY_ID}.xml"
+  [[ -f "$metadata" ]] && printf '%s\n' "$metadata"
   return 0
 }
 
@@ -1562,7 +1558,7 @@ command_snapshot_consumption() {
   <version>1.0.0</version>
   <repositories>
     <repository>
-      <id>central-portal-snapshots</id>
+      <id>${SNAPSHOT_REPOSITORY_ID}</id>
       <url>${repository_url}</url>
       <releases><enabled>false</enabled></releases>
       <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
@@ -1591,6 +1587,8 @@ EOF
     resolved_parent_version=""
     resolved_core_version=""
     resolved_examples_version=""
+    resolved_core_sha=""
+    resolved_examples_sha=""
     rm -rf "$local_repo/org/ta4j"
     printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
     if "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \

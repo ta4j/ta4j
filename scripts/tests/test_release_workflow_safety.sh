@@ -485,6 +485,12 @@ test_snapshot_workflow_guarantees_exact_consumability() {
   consumption_section="$(workflow_section "$WORKFLOWS/snapshot.yml" "Verify exact snapshot consumption" "Snapshot publication summary")"
   expect_section_contains "$consumption_section" "snapshot-consumption" \
     "snapshot workflow should invoke the isolated Maven consumer"
+  expect_section_contains "$consumption_section" 'SNAPSHOT_VERSION: ${{ steps.version.outputs.snapshotVersion }}' \
+    "snapshot workflow should map the computed version through the step environment"
+  expect_section_contains "$consumption_section" '--version "$SNAPSHOT_VERSION"' \
+    "snapshot workflow should pass the environment-mapped version to the shell helper"
+  expect_section_not_contains "$consumption_section" '--version "${{ steps.version.outputs.snapshotVersion }}"' \
+    "snapshot workflow should not interpolate an Actions expression directly into shell code"
   expect_section_contains "$consumption_section" "--max-attempts 20" \
     "snapshot consumption should use the five-minute bounded retry budget"
   expect_section_contains "$consumption_section" "--retry-seconds 15" \

@@ -110,6 +110,10 @@ if (( attempt < STUB_SUCCESS_ATTEMPT )); then
   echo "snapshot not propagated" >&2
   exit 1
 fi
+if [[ "${STUB_FAIL_ATTEMPT:-}" == "$attempt" ]]; then
+  echo "snapshot resolution failed" >&2
+  exit 1
+fi
 
 for artifact in ta4j-parent ta4j-core ta4j-examples; do
   directory="$local_repo/org/ta4j/$artifact/$STUB_VERSION"
@@ -136,6 +140,9 @@ for artifact in ta4j-parent ta4j-core ta4j-examples; do
   </versioning>
 </metadata>
 XML
+  if [[ "${STUB_ADD_AMBIGUOUS_METADATA:-}" == "true" ]]; then
+    printf '<metadata><versioning/></metadata>\n' > "$directory/maven-metadata-000-local.xml"
+  fi
 done
 EOF
   chmod +x "$path"
@@ -532,6 +539,66 @@ test_snapshot_consumption_checksum_mismatch() {
   pass "test_snapshot_consumption_checksum_mismatch"
 }
 
+test_snapshot_consumption_clears_checksums_after_later_failure() {
+  echo "Running test_snapshot_consumption_clears_checksums_after_later_failure"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher"
+  local maven_stub="$TMP/mvn-stub"
+  local output_file="$TMP/snapshot-consumption.json"
+  local github_output="$TMP/github-output.txt"
+  local log="$TMP/snapshot-consumption.log"
+  local wrong_core="$TMP/wrong-core.jar"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+  printf 'older core\n' > "$wrong_core"
+
+  export STUB_FAIL_ATTEMPT=2
+  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 2 \
+    "$wrong_core" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$output_file" "$github_output" "$log"; then
+    unset STUB_FAIL_ATTEMPT
+    fail "snapshot consumption should fail when the final resolution attempt fails"
+  fi
+  unset STUB_FAIL_ATTEMPT
+
+  expect_output_value "$github_output" "maven_consumable" "false"
+  expect_output_value "$github_output" "resolved_core_sha256" ""
+  expect_output_value "$github_output" "resolved_examples_sha256" ""
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_clears_checksums_after_later_failure"
+}
+
+test_snapshot_consumption_ignores_ambiguous_metadata_files() {
+  echo "Running test_snapshot_consumption_ignores_ambiguous_metadata_files"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher"
+  local maven_stub="$TMP/mvn-stub"
+  local output_file="$TMP/snapshot-consumption.json"
+  local github_output="$TMP/github-output.txt"
+  local log="$TMP/snapshot-consumption.log"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+
+  export STUB_ADD_AMBIGUOUS_METADATA=true
+  run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$output_file" "$github_output" "$log"
+  unset STUB_ADD_AMBIGUOUS_METADATA
+
+  expect_output_value "$github_output" "maven_consumable" "true"
+  expect_output_value "$github_output" "resolved_core_version" "0.23.1-20260714.120000-1"
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_ignores_ambiguous_metadata_files"
+}
+
 test_snapshot_consumption_retries_missing_local_metadata() {
   echo "Running test_snapshot_consumption_retries_missing_local_metadata"
 
@@ -619,6 +686,8 @@ test_snapshot_consumption_immediate_success
 test_snapshot_consumption_retries_until_success
 test_snapshot_consumption_retry_exhaustion
 test_snapshot_consumption_checksum_mismatch
+test_snapshot_consumption_clears_checksums_after_later_failure
+test_snapshot_consumption_ignores_ambiguous_metadata_files
 test_snapshot_consumption_retries_missing_local_metadata
 test_snapshot_consumption_rejects_missing_publisher_module
 test_snapshot_consumption_rejects_release_version

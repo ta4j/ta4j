@@ -199,10 +199,12 @@ jobs:
       - name: Verify exact snapshot consumption
         id: consumption
         if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          SNAPSHOT_VERSION: ${{ steps.version.outputs.snapshotVersion }}
         run: |
           set -euo pipefail
           bash scripts/release/release_helpers.sh snapshot-consumption \
-            --version "${{ steps.version.outputs.snapshotVersion }}" \
+            --version "$SNAPSHOT_VERSION" \
             --maven-command "$GITHUB_WORKSPACE/mvnw" \
             --publisher-root "$GITHUB_WORKSPACE" \
             --repository-url "https://central.sonatype.com/repository/maven-snapshots/" \
