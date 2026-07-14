@@ -4,8 +4,10 @@
 /**
  * Forecast conversion adapters.
  * <p>
- * Adapter indicators bridge forecast domains or API shapes, for example by
- * converting cumulative log-return forecasts into price forecasts.
+ * Adapter indicators bridge forecast domains or API shapes. Summary-only
+ * nonlinear conversions are named as approximations and derive every returned
+ * field from one coherent analytic distribution. Empirical Monte Carlo price
+ * forecasts instead transform terminal paths in the primary forecast package.
  *
  * @since 0.22.9
  */

@@ -12,7 +12,15 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.9
  */
-public interface ForecastProjectionIndicator extends Indicator<Forecast<Num>> {
+public interface ForecastProjectionIndicator extends Indicator<Forecast> {
+
+    /**
+     * Returns the configured forecast horizon.
+     *
+     * @return positive horizon in bars
+     * @since 0.23.1
+     */
+    int getHorizon();
 
     /**
      * Returns a point indicator for the forecast mean.
