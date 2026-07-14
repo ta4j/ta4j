@@ -24,13 +24,18 @@ import org.ta4j.core.num.Num;
  * <p>
  * Use this detector when a fixed reversal threshold is too rigid for changing
  * volatility regimes. It derives reversal thresholds from ATR, optionally
- * smoothed, and feeds the result into a ZigZag-based swing detector.
+ * smoothed, and feeds the result into a ZigZag-based swing detector. Repeated
+ * detection on the same series and degree reuses one bounded indicator pipeline
+ * so live updates advance the recursive ZigZag state instead of rescanning the
+ * full history.
  *
  * @since 0.22.2
  */
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {
 
     private final AdaptiveZigZagConfig config;
+    private ElliottDegree cachedDegree;
+    private ElliottSwingIndicator cachedIndicator;
 
     /**
      * Creates a detector using the supplied configuration.
@@ -43,23 +48,27 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     }
 
     @Override
-    public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
+    public synchronized SwingDetectorResult detect(final BarSeries series, final int index,
+            final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         if (series.isEmpty()) {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final Indicator<Num> highPrice = new HighPriceIndicator(series);
-        final Indicator<Num> lowPrice = new LowPriceIndicator(series);
-        final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
-        final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
-                ? new SMAIndicator(atr, config.smoothingPeriod())
-                : atr;
-        final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
-        final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
-        final ElliottSwingIndicator indicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
-        return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
+        if (cachedIndicator == null || cachedIndicator.getBarSeries() != series || cachedDegree != degree) {
+            final Indicator<Num> highPrice = new HighPriceIndicator(series);
+            final Indicator<Num> lowPrice = new LowPriceIndicator(series);
+            final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
+            final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
+                    ? new SMAIndicator(atr, config.smoothingPeriod())
+                    : atr;
+            final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
+            final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
+            cachedDegree = degree;
+            cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
+        }
+        return SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
     }
 
     /**

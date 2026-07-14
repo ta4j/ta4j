@@ -50,6 +50,9 @@ class AdaptiveZigZagSwingDetectorTest {
 
         assertThat(repeated).isEqualTo(initial);
         assertThat(series.barReads()).isLessThan(20);
+
+        SwingDetectorResult differentDegree = detector.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+        assertThat(differentDegree.swings()).isNotEmpty().allMatch(swing -> swing.degree() == ElliottDegree.PRIMARY);
     }
 
     private List<ElliottSwing> baselineZigZagSwings(BarSeries series, int endIndex) {
