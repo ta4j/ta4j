@@ -103,7 +103,8 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     @Test
     public void sequentialWindowsDoNotReadEverySourceValueTwice() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
-        CountingIndicator source = new CountingIndicator(series, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5));
+        CountingIndicator source = new CountingIndicator(series, numFactory.one(), numFactory.two(), numOf(3), numOf(4),
+                numOf(5));
         VarianceIndicator variance = VarianceIndicator.ofPopulation(source, 4);
 
         variance.getValue(3);
