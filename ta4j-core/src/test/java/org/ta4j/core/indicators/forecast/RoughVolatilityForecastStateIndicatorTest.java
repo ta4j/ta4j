@@ -138,6 +138,26 @@ public class RoughVolatilityForecastStateIndicatorTest
     }
 
     @Test
+    public void factoryNormalizationKeepsBoundedHurstStrictlyBelowOneHalf() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(1);
+        Fixture fixture = fixture(lowPrecision, ReturnRepresentation.LOG, 0.1, 0.3, 0.5, 1, 2, 3, 10, 100);
+        RoughVolatilityForecastStateIndicator indicator = RoughVolatilityForecastStateIndicator
+                .builder(fixture.returns())
+                .initializationBarCount(2)
+                .decayFactor(0.5d)
+                .roughnessWindow(6)
+                .volOfVolWindow(4)
+                .horizon(3)
+                .build();
+
+        RoughVolatilityForecastState state = indicator.getValue(7);
+
+        assertTrue(state.isStable());
+        assertTrue(state.roughnessHurst().isPositive());
+        assertTrue(state.roughnessHurst().isLessThan(lowPrecision.numOf(0.5d)));
+    }
+
+    @Test
     public void invalidReturnsRemainUnavailableUntilEveryRequiredWindowRecovers() {
         Fixture fixture = fixture(ReturnRepresentation.LOG, 0.01, 0.02, Double.NaN, 0.03, 0.04, 0.05, 0.06, 0.07);
         RoughVolatilityForecastStateIndicator indicator = configured(fixture.returns(), 2);

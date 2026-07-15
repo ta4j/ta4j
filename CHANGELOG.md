@@ -16,6 +16,7 @@
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
 
 ### Fixed
+- **Rolling variance stays coherent at low Decimal precision**: `VarianceIndicator` now uses an anchored one-pass recurrence, so constant transcendental values retain zero dispersion without doubling source reads for every rolling window.
 - **Monte Carlo price summaries describe the simulated paths exactly**: `MonteCarloPriceForecastIndicator` now transforms every terminal cumulative-return path to price before calculating mean, median, standard deviation, quantiles, and empirical support. Nonlinear summary-only conversion no longer creates hybrid distributions.
 - **Forecast numeric boundaries preserve factory configuration**: State, summary, adapter, and sample boundaries now coerce through the owning `NumFactory`, including differing `DecimalNum` precision contexts and factory-correct zero dispersion.
 

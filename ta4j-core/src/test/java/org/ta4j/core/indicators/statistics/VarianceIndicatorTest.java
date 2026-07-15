@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -97,5 +98,42 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         VarianceIndicator variance = VarianceIndicator.ofPopulation(source, 3);
 
         assertNumEquals(0, variance.getValue(2));
+    }
+
+    @Test
+    public void sequentialWindowsDoNotReadEverySourceValueTwice() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        CountingIndicator source = new CountingIndicator(series, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5));
+        VarianceIndicator variance = VarianceIndicator.ofPopulation(source, 4);
+
+        variance.getValue(3);
+        source.resetReadCount();
+        assertNumEquals(1.25, variance.getValue(4));
+
+        assertTrue("A sequential variance window reread the source " + source.readCount() + " times",
+                source.readCount() <= 6);
+    }
+
+    private static final class CountingIndicator extends FixedIndicator<Num> {
+
+        private int readCount;
+
+        private CountingIndicator(BarSeries series, Num... values) {
+            super(series, values);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            readCount++;
+            return super.getValue(index);
+        }
+
+        private int readCount() {
+            return readCount;
+        }
+
+        private void resetReadCount() {
+            readCount = 0;
+        }
     }
 }

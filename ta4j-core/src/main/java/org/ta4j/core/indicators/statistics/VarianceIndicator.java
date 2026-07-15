@@ -81,21 +81,21 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         final int numberOfObservations = index - startIndex + 1;
         NumFactory numFactory = getBarSeries().numFactory();
         Num anchor = indicator.getValue(startIndex);
-        Num offsetTotal = numFactory.zero();
-        for (int i = startIndex; i <= index; i++) {
-            offsetTotal = offsetTotal.plus(indicator.getValue(i).minus(anchor));
-        }
-        Num averageOffset = offsetTotal.dividedBy(numFactory.numOf(numberOfObservations));
-        Num variance = numFactory.zero();
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(anchor).minus(averageOffset).pow(2);
-            variance = variance.plus(pow);
+        Num averageOffset = numFactory.zero();
+        Num squaredDeviationTotal = numFactory.zero();
+        int observationCount = 1;
+        for (int i = startIndex + 1; i <= index; i++) {
+            Num offset = indicator.getValue(i).minus(anchor);
+            observationCount++;
+            Num difference = offset.minus(averageOffset);
+            averageOffset = averageOffset.plus(difference.dividedBy(numFactory.numOf(observationCount)));
+            squaredDeviationTotal = squaredDeviationTotal.plus(difference.multipliedBy(offset.minus(averageOffset)));
         }
         final int divisor = sampleType.isSample() ? numberOfObservations - 1 : numberOfObservations;
         if (divisor <= 0) {
             return numFactory.zero();
         }
-        return variance.dividedBy(numFactory.numOf(divisor));
+        return squaredDeviationTotal.dividedBy(numFactory.numOf(divisor));
     }
 
     @Override

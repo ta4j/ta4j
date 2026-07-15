@@ -173,7 +173,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         }
 
         NumFactory numFactory = getBarSeries().numFactory();
-        Num roughnessHurst = numFactory.numOf(hurst);
+        Num roughnessHurst = normalizedHurst(hurst, numFactory);
         Num volOfVol = proxyVariance.isZero() ? numFactory.zero() : proxyVariance.sqrt();
         double normalizedHurst = finitePrimitive(roughnessHurst);
         List<Num> horizonVariances = horizonVariances(baseState.variance(), normalizedHurst, numFactory);
@@ -248,6 +248,18 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
             result.add(variance);
         }
         return List.copyOf(result);
+    }
+
+    private static Num normalizedHurst(double hurst, NumFactory numFactory) {
+        Num upperBound = numFactory.numOf(0.5d);
+        for (int decrement = 0; decrement <= 48; decrement++) {
+            double candidate = Math.max(MIN_HURST, hurst - decrement * MIN_HURST);
+            Num normalized = numFactory.numOf(candidate);
+            if (Num.isFinite(normalized) && normalized.isPositive() && normalized.isLessThan(upperBound)) {
+                return normalized;
+            }
+        }
+        return NaN.NaN;
     }
 
     private static double finitePrimitive(Num value) {
