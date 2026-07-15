@@ -42,7 +42,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 
 /**
- * Coinbase Data Source Backtest - Advanced Risk Management &amp; Transaction Costs
+ * Coinbase Data Source Backtest - Advanced Risk Management &amp; Transaction
+ * Costs
  * <p>
  * This example demonstrates advanced ta4j features focused on real-world
  * trading considerations:
