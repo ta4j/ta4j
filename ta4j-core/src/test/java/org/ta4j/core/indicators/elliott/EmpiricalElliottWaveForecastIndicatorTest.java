@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.Settings;
 import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.WaveForecast;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
@@ -88,9 +90,34 @@ class EmpiricalElliottWaveForecastIndicatorTest {
         assertThatThrownBy(() -> new Settings(ElliottDegree.SUB_MINUETTE, 100, 4, 5, 2.0d, 0.2d))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("minimumSamples");
+        assertThatThrownBy(() -> new Settings(ElliottDegree.SUB_MINUETTE, 4, 5, 5, 2.0d, 0.2d))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trainingLookbackBars");
         assertThatThrownBy(() -> new Settings(ElliottDegree.SUB_MINUETTE, 100, 5, 2, Double.NaN, 0.2d))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("maximumAnalogDistance");
+        assertThat(new Settings(ElliottDegree.SUB_MINUETTE, 5, 5, 5, 2.0d, 0.2d).trainingLookbackBars()).isEqualTo(5);
+    }
+
+    @Test
+    void rejectsContradictoryPublicWaveForecastState() {
+        BarSeries series = patternedSeries(10);
+        Forecast summary = Forecast.ofSamples(9, 1, List.of(series.numFactory().one(), series.numFactory().two()));
+        Map<ElliottPhase, Num> probabilities = Map.of(ElliottPhase.WAVE1, series.numFactory().numOf(0.25d),
+                ElliottPhase.WAVE2, series.numFactory().numOf(0.75d));
+
+        assertThatThrownBy(() -> new WaveForecast(summary, probabilities, ElliottPhase.WAVE1,
+                probabilities.get(ElliottPhase.WAVE1))).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mostLikelyPhase");
+        assertThatThrownBy(
+                () -> new WaveForecast(summary, probabilities, ElliottPhase.WAVE2, series.numFactory().numOf(0.80d)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("probability");
+
+        WaveForecast valid = new WaveForecast(summary, probabilities, ElliottPhase.WAVE2,
+                probabilities.get(ElliottPhase.WAVE2));
+        assertThat(valid.mostLikelyPhase()).isEqualTo(ElliottPhase.WAVE2);
+        assertThat(valid.probability()).isEqualByComparingTo(probabilities.get(ElliottPhase.WAVE2));
     }
 
     private static BarSeries patternedSeries(final int count) {

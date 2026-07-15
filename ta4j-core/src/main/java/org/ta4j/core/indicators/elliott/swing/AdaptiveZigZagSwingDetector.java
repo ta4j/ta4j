@@ -66,18 +66,20 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         if (series.isEmpty()) {
             return new SwingDetectorResult(List.of(), List.of());
         }
+        final int currentBeginIndex = series.getBeginIndex();
         final int currentEndIndex = series.getEndIndex();
         final Bar currentLastBar = series.getBar(currentEndIndex);
         final long currentBarHistoryRevision = series.getBarHistoryRevision();
         final boolean tracksBarHistoryRevision = currentBarHistoryRevision >= 0L;
-        final List<Bar> currentBars = tracksBarHistoryRevision ? List.of() : series.getBarData();
-        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, currentEndIndex));
+        // Revision-unaware implementations may expose a stable mutable list. Preserve
+        // the comparison baseline so in-place replacements invalidate the cache.
+        final List<Bar> currentBars = tracksBarHistoryRevision ? List.of() : List.copyOf(series.getBarData());
+        final int clampedIndex = Math.max(currentBeginIndex, Math.min(index, currentEndIndex));
         final boolean revisedBarHistory = tracksBarHistoryRevision && cachedBarHistoryRevision >= 0L
                 && currentBarHistoryRevision != cachedBarHistoryRevision;
         final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
-                && (currentEndIndex < cachedEndIndex
-                        || (series.getBeginIndex() <= cachedBeginIndex
-                                && series.getBar(series.getBeginIndex()) != cachedFirstBar)
+                && (currentEndIndex < cachedEndIndex || currentBeginIndex != cachedBeginIndex
+                        || (currentBeginIndex <= cachedBeginIndex && series.getBar(currentBeginIndex) != cachedFirstBar)
                         || revisedBarHistory || (currentEndIndex == cachedEndIndex
                                 && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));
         if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
@@ -93,8 +95,8 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
             cachedSeries = new WeakReference<>(series);
             cachedDegree = degree;
             cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
-            cachedFirstBar = series.getBar(series.getBeginIndex());
-            cachedBeginIndex = series.getBeginIndex();
+            cachedFirstBar = series.getBar(currentBeginIndex);
+            cachedBeginIndex = currentBeginIndex;
         }
         final SwingDetectorResult result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
         cachedIndex = clampedIndex;

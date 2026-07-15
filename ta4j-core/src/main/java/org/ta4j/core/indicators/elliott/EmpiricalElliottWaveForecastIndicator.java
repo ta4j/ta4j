@@ -25,13 +25,15 @@ import org.ta4j.core.num.NumFactory;
  * empirically observed analogs.
  *
  * <p>
- * The indicator first lets the regular Elliott scenario pipeline label prior
- * bars. It then compares the current bar's ATR-normalized one-, three-, and
- * five-bar returns, range, and relative volume with those earlier labelled
- * bars. The nearest qualifying observations form an empirical phase
- * distribution for the current decision bar and a standard {@link Forecast}
- * summary of wave numbers. Bars at or after the decision index never enter the
- * training set.
+ * The built-in pipeline uses the deterministic Elliott phase tracker to label
+ * prior bars, then requires a same-phase bullish scenario to corroborate each
+ * label at the configured confidence. This avoids treating the scenario set's
+ * completeness-biased base ranking as the historical phase. The indicator then
+ * compares the current bar's ATR-normalized one-, three-, and five-bar returns,
+ * range, and relative volume with those earlier labelled bars. The nearest
+ * qualifying observations form an empirical phase distribution for the current
+ * decision bar and a standard {@link Forecast} summary of wave numbers. Bars at
+ * or after the decision index never enter the training set.
  *
  * <p>
  * No forecast is emitted until the historical window contains the configured
@@ -51,6 +53,7 @@ public final class EmpiricalElliottWaveForecastIndicator
     private static final int FORECAST_HORIZON = 1;
 
     private final Indicator<ElliottScenarioSet> scenarioIndicator;
+    private final Indicator<ElliottPhase> phaseIndicator;
     private final ATRIndicator atr;
     private final Settings settings;
 
@@ -72,13 +75,20 @@ public final class EmpiricalElliottWaveForecastIndicator
      * @since 0.23.1
      */
     public EmpiricalElliottWaveForecastIndicator(final BarSeries series, final Settings settings) {
-        this(series, scenarioIndicator(series, Objects.requireNonNull(settings, "settings").degree()), settings);
+        this(series, builtInSources(series, Objects.requireNonNull(settings, "settings").degree()), settings);
+    }
+
+    private EmpiricalElliottWaveForecastIndicator(final BarSeries series, final BuiltInSources sources,
+            final Settings settings) {
+        this(series, sources.scenarioIndicator(), sources.phaseIndicator(), settings);
     }
 
     /**
      * Builds a forecast from a supplied scenario source. This overload is useful
      * when an application already owns the scenario pipeline or needs a controlled
-     * historical label source.
+     * historical label source. Supplied scenario sources use their base scenario's
+     * phase as the label because they do not expose a corresponding deterministic
+     * phase tracker.
      *
      * @param series            backing bar series
      * @param scenarioIndicator causal historical scenario source
@@ -87,18 +97,28 @@ public final class EmpiricalElliottWaveForecastIndicator
      */
     public EmpiricalElliottWaveForecastIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator, final Settings settings) {
+        this(series, scenarioIndicator, null, settings);
+    }
+
+    private EmpiricalElliottWaveForecastIndicator(final BarSeries series,
+            final Indicator<ElliottScenarioSet> scenarioIndicator, final Indicator<ElliottPhase> phaseIndicator,
+            final Settings settings) {
         super(Objects.requireNonNull(series, "series"));
         this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
         if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
             throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
         }
+        if (phaseIndicator != null && !IndicatorUtils.isSameSeries(series, phaseIndicator.getBarSeries())) {
+            throw new IllegalArgumentException("phaseIndicator must use the same BarSeries instance");
+        }
+        this.phaseIndicator = phaseIndicator;
         this.settings = Objects.requireNonNull(settings, "settings");
         this.atr = new ATRIndicator(series, ATR_BAR_COUNT);
     }
 
-    private static ElliottScenarioIndicator scenarioIndicator(final BarSeries series, final ElliottDegree degree) {
+    private static BuiltInSources builtInSources(final BarSeries series, final ElliottDegree degree) {
         ElliottSwingIndicator swings = ElliottSwingIndicator.zigZag(Objects.requireNonNull(series, "series"), degree);
-        return new ElliottScenarioIndicator(swings);
+        return new BuiltInSources(new ElliottScenarioIndicator(swings), new ElliottPhaseIndicator(swings));
     }
 
     @Override
@@ -116,8 +136,15 @@ public final class EmpiricalElliottWaveForecastIndicator
         List<Analog> analogs = new ArrayList<>();
         for (int candidateIndex = firstCandidate; candidateIndex < index; candidateIndex++) {
             ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(candidateIndex);
-            ElliottScenario scenario = scenarioSet.base().orElse(null);
+            ElliottPhase phase = phaseIndicator == null
+                    ? scenarioSet.base().map(ElliottScenario::currentPhase).orElse(ElliottPhase.NONE)
+                    : phaseIndicator.getValue(candidateIndex);
+            ElliottScenario scenario = phaseIndicator == null ? scenarioSet.base().orElse(null)
+                    : scenarioSet.byPhase(phase).base().orElse(null);
             if (!qualifies(scenario)) {
+                continue;
+            }
+            if (!phase.isImpulse()) {
                 continue;
             }
             FeatureVector candidate = features(candidateIndex);
@@ -126,7 +153,7 @@ public final class EmpiricalElliottWaveForecastIndicator
             }
             double distance = current.distance(candidate);
             if (distance <= settings.maximumAnalogDistance()) {
-                analogs.add(new Analog(distance, scenario.currentPhase()));
+                analogs.add(new Analog(distance, phase));
             }
         }
         analogs.sort(Comparator.comparingDouble(Analog::distance));
@@ -203,7 +230,11 @@ public final class EmpiricalElliottWaveForecastIndicator
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(atr.getCountOfUnstableBars(), scenarioIndicator.getCountOfUnstableBars()) + FEATURE_LOOKBACK
+        int structuralUnstableBars = scenarioIndicator.getCountOfUnstableBars();
+        if (phaseIndicator != null) {
+            structuralUnstableBars = Math.max(structuralUnstableBars, phaseIndicator.getCountOfUnstableBars());
+        }
+        return Math.max(atr.getCountOfUnstableBars(), structuralUnstableBars) + FEATURE_LOOKBACK
                 + settings.minimumSamples();
     }
 
@@ -232,6 +263,9 @@ public final class EmpiricalElliottWaveForecastIndicator
             if (minimumSamples <= 0 || minimumSamples > neighborCount) {
                 throw new IllegalArgumentException("minimumSamples must be in [1, neighborCount]");
             }
+            if (trainingLookbackBars < minimumSamples) {
+                throw new IllegalArgumentException("trainingLookbackBars must be >= minimumSamples");
+            }
             if (!Double.isFinite(maximumAnalogDistance) || maximumAnalogDistance <= 0.0d) {
                 throw new IllegalArgumentException("maximumAnalogDistance must be finite and > 0");
             }
@@ -255,6 +289,11 @@ public final class EmpiricalElliottWaveForecastIndicator
     /**
      * Empirical Elliott phase forecast for one decision bar.
      *
+     * <p>
+     * Stable instances require an impulse modal phase whose probability matches the
+     * corresponding modal entry in {@code phaseProbabilities}. Unstable instances
+     * carry no phase distribution.
+     *
      * @param waveNumberForecast numeric summary of sampled impulse wave numbers
      * @param phaseProbabilities empirical probability for each impulse phase
      * @param mostLikelyPhase    modal impulse phase
@@ -269,6 +308,38 @@ public final class EmpiricalElliottWaveForecastIndicator
             phaseProbabilities = Map.copyOf(Objects.requireNonNull(phaseProbabilities, "phaseProbabilities"));
             Objects.requireNonNull(mostLikelyPhase, "mostLikelyPhase");
             Objects.requireNonNull(probability, "probability");
+            if (!waveNumberForecast.isStable()) {
+                if (!phaseProbabilities.isEmpty() || mostLikelyPhase != ElliottPhase.NONE
+                        || !Num.isNaNOrNull(probability)) {
+                    throw new IllegalArgumentException(
+                            "an unstable wave forecast must have no phase probabilities or most likely phase");
+                }
+            } else {
+                if (!mostLikelyPhase.isImpulse()) {
+                    throw new IllegalArgumentException(
+                            "mostLikelyPhase must be an impulse phase for a stable forecast");
+                }
+                Num modalProbability = phaseProbabilities.get(mostLikelyPhase);
+                if (!Num.isFinite(modalProbability)) {
+                    throw new IllegalArgumentException("mostLikelyPhase must have a finite probability");
+                }
+                for (Map.Entry<ElliottPhase, Num> entry : phaseProbabilities.entrySet()) {
+                    if (!entry.getKey().isImpulse()) {
+                        throw new IllegalArgumentException("phaseProbabilities must contain impulse phases only");
+                    }
+                    Num candidateProbability = entry.getValue();
+                    if (!Num.isFinite(candidateProbability) || candidateProbability.isNegative()
+                            || candidateProbability.isGreaterThan(candidateProbability.getNumFactory().one())) {
+                        throw new IllegalArgumentException("phase probabilities must be finite and in [0, 1]");
+                    }
+                    if (candidateProbability.isGreaterThan(modalProbability)) {
+                        throw new IllegalArgumentException("mostLikelyPhase must identify a modal phase");
+                    }
+                }
+                if (!Num.isFinite(probability) || probability.compareTo(modalProbability) != 0) {
+                    throw new IllegalArgumentException("probability must match the mostLikelyPhase probability");
+                }
+            }
         }
 
         /**
@@ -309,6 +380,10 @@ public final class EmpiricalElliottWaveForecastIndicator
     }
 
     private record Analog(double distance, ElliottPhase phase) {
+    }
+
+    private record BuiltInSources(Indicator<ElliottScenarioSet> scenarioIndicator,
+            Indicator<ElliottPhase> phaseIndicator) {
     }
 
     private record FeatureVector(double oneBarReturn, double threeBarReturn, double fiveBarReturn, double range,

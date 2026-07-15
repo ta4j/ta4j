@@ -230,7 +230,7 @@ public final class HighRewardElliottWaveStrategy extends BaseStrategy {
             boolean currentPeakReversal = current.isStable() && PEAK_PHASES.contains(current.mostLikelyPhase())
                     && meetsProbability(current, minimumProbability) && downwardTurn;
             boolean transitionedFromPeak = previous.isStable() && PEAK_PHASES.contains(previous.mostLikelyPhase())
-                    && meetsProbability(previous, minimumProbability)
+                    && meetsProbability(previous, minimumProbability) && current.isStable()
                     && current.mostLikelyPhase() != previous.mostLikelyPhase();
             boolean satisfied = currentPeakReversal || transitionedFromPeak;
             traceIsSatisfied(index, satisfied);

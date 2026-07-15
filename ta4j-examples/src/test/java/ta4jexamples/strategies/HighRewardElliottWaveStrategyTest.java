@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -27,7 +28,30 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+
 class HighRewardElliottWaveStrategyTest {
+
+    @Test
+    void builtInForecastCanReachStrategyEntryPhasesOnIncludedFiveMinuteSeries() throws Exception {
+        try (InputStream stream = getClass().getClassLoader()
+                .getResourceAsStream("Binance-ETH-USD-PT5M-20230313_20230315.json")) {
+            assertTrue(stream != null, "bundled five-minute series must be available");
+            BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
+            EmpiricalElliottWaveForecastIndicator indicator = new EmpiricalElliottWaveForecastIndicator(series);
+            boolean sawEntryPhase = false;
+            for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+                WaveForecast value = indicator.getValue(index);
+                if (value.isStable() && List.of(ElliottPhase.WAVE1, ElliottPhase.WAVE2, ElliottPhase.WAVE4)
+                        .contains(value.mostLikelyPhase())) {
+                    sawEntryPhase = true;
+                    break;
+                }
+            }
+            assertTrue(sawEntryPhase,
+                    "the built-in forecast must expose at least one phase that the strategy can enter");
+        }
+    }
 
     @Test
     void exposesOnlyTypedConstructionAndNoLegacyLabelBridge() {
@@ -103,6 +127,29 @@ class HighRewardElliottWaveStrategyTest {
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, settings(), forecast);
 
         assertFalse(strategy.getExitRule().isSatisfied(index, openRecord(series, index - 1)));
+    }
+
+    @Test
+    void doesNotTreatAnUnavailableForecastAsAPeakTransition() {
+        BarSeries series = series(100.0d, 101.0d, 102.0d);
+        int index = series.getEndIndex();
+        FixedForecastIndicator forecast = new FixedForecastIndicator(series,
+                Map.of(index - 1, stableForecast(series, index - 1, ElliottPhase.WAVE3, 0.80d)));
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, settings(), forecast);
+
+        assertFalse(strategy.getExitRule().isSatisfied(index, openRecord(series, index - 1)));
+    }
+
+    @Test
+    void exitsWhenAStableForecastTransitionsFromAPeakPhase() {
+        BarSeries series = series(100.0d, 101.0d, 102.0d);
+        int index = series.getEndIndex();
+        FixedForecastIndicator forecast = new FixedForecastIndicator(series,
+                Map.of(index - 1, stableForecast(series, index - 1, ElliottPhase.WAVE3, 0.80d), index,
+                        stableForecast(series, index, ElliottPhase.WAVE4, 0.80d)));
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, settings(), forecast);
+
+        assertTrue(strategy.getExitRule().isSatisfied(index, openRecord(series, index - 1)));
     }
 
     @Test
