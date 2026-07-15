@@ -33,11 +33,28 @@ import org.ta4j.core.num.NumFactory;
  * }</pre>
  *
  * <p>
+ * Advanced construction changes explicit model assumptions without repeating
+ * the semantic return source:
+ *
+ * <pre>{@code
+ * RoughVolatilityForecastStateIndicator states = RoughVolatilityForecastStateIndicator.builder(logReturns)
+ *         .initializationBarCount(90)
+ *         .decayFactor(0.97)
+ *         .roughnessWindow(180)
+ *         .volOfVolWindow(90)
+ *         .horizon(10)
+ *         .build();
+ * }</pre>
+ *
+ * <p>
  * Roughness is estimated by regressing log variograms of
  * {@code log(abs(return) + 1e-8)} over lags one through ten. The bounded Hurst
  * estimate produces cumulative horizon variance
  * {@code currentVariance * horizon^(2 * H)}. Primitive conversion is confined
- * to the regression and fractional-exponent boundaries.
+ * to the regression and fractional-exponent boundaries. State remains unstable
+ * until every configured window is complete and finite. A non-finite return
+ * makes each affected rolling window unavailable; later clean windows recover
+ * automatically.
  *
  * @since 0.23.1
  */
