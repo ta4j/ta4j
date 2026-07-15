@@ -46,7 +46,11 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottScenarioSet} holds ranked
  * alternative scenarios.
  * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
- * directional bias across scenarios.</li>
+ * directional bias across scenarios. For one-minute and five-minute trading,
+ * {@link org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator}
+ * converts only previously observed bullish impulse scenarios into a causal
+ * nearest-analog phase distribution; it remains unstable when history contains
+ * no qualifying structure.</li>
  * <li><b>Pluggable one-shot analysis</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner}
  * orchestrates swing detection, scenario generation, and confidence profiles,
@@ -84,7 +88,12 @@
  * separately. The compatible default includes the forming terminal swing for
  * live charting. Trading rules that require confirmed detector pivots can call
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner.Builder#includeProvisionalTerminalSwing(boolean)}
- * with {@code false}.
+ * with {@code false}. Use
+ * {@link org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator}
+ * when a trading rule needs an empirical phase probability rather than a
+ * chart-only forming count. Its training candidates always precede the decision
+ * bar, and its default ATR-normalized features are sized for one-minute and
+ * five-minute bars.
  *
  * <p>
  * <b>Getting Started</b>:
