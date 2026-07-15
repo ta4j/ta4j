@@ -81,6 +81,8 @@ public class OnlineChangePointForecastStateTest extends AbstractIndicatorTest<On
                 () -> OnlineChangePointForecastState.stable(moments, numOf(0.2), 2, List.of(second, map)));
         assertThrows(IllegalArgumentException.class,
                 () -> OnlineChangePointForecastState.stable(moments, numOf(0.2), 8, List.of(map, map)));
+        assertThrows(IllegalArgumentException.class,
+                () -> OnlineChangePointForecastState.stable(moments, numOf(0.2), 9, List.of(posterior(9, 0.7, 1, 4))));
         assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastState.stable(moments, numOf(0.2), 8,
                 List.of(posterior(8, 0.7, 1, 4), posterior(2, 0.4, 0.5, 5))));
         assertThrows(IllegalArgumentException.class,

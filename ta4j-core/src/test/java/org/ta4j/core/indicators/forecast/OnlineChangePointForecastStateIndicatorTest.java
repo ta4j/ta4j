@@ -22,6 +22,7 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
 import org.ta4j.core.indicators.forecast.state.RunLengthPosterior;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -176,6 +177,19 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
+    public void publishingCompletePosteriorDoesNotInvalidateLogSpaceFilter() {
+        double[] values = new double[80];
+        Arrays.fill(values, 0, 40, -1e140d);
+        Arrays.fill(values, 40, values.length, 1e140d);
+        Fixture fixture = fixture(ReturnRepresentation.LOG, values);
+        OnlineChangePointForecastStateIndicator topOnly = configured(fixture.returns(), 60, 5, 5, 3);
+        OnlineChangePointForecastStateIndicator complete = configured(fixture.returns(), 60, 61, 5, 3);
+
+        assertTrue(topOnly.getValue(79).isStable());
+        assertTrue(complete.getValue(79).isStable());
+    }
+
+    @Test
     public void invalidInputResetsAndRequiresCompleteWarmupAgain() {
         Fixture fixture = fixture(ReturnRepresentation.LOG, 0.01, 0.02, 0.03, 0.04, 0.05, Double.NaN, 0.06, 0.07, 0.08,
                 0.09, 0.10);
@@ -246,6 +260,21 @@ public class OnlineChangePointForecastStateIndicatorTest
         OnlineChangePointForecastStateIndicator indicator = configured(new LogReturnIndicator(series), 10, 5, 3, 2);
 
         series.setMaximumBarCount(4);
+
+        OnlineChangePointForecastState retained = indicator.getValue(14);
+        assertTrue(retained.isStable());
+        assertEquals(3, retained.observationCount());
+    }
+
+    @Test
+    public void retainedHistoryRewarmsTheCompleteReturnLookback() {
+        double[] prices = new double[15];
+        Arrays.setAll(prices, index -> 100d * Math.exp(index * 0.01d));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        LogReturnIndicator returns = new LogReturnIndicator(new ClosePriceIndicator(series), 3);
+        OnlineChangePointForecastStateIndicator indicator = configured(returns, 10, 5, 3, 2);
+
+        series.setMaximumBarCount(6);
 
         OnlineChangePointForecastState retained = indicator.getValue(14);
         assertTrue(retained.isStable());

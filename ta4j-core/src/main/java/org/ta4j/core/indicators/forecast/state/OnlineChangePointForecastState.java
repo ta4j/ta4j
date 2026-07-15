@@ -81,6 +81,9 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
             RunLengthPosterior previous = null;
             for (RunLengthPosterior posterior : topRunLengths) {
                 RunLengthPosterior input = Objects.requireNonNull(posterior, "posterior must not be null");
+                if (input.runLength() > moments.observationCount()) {
+                    throw new IllegalArgumentException("posterior run length must not exceed observation count");
+                }
                 RunLengthPosterior normalized = new RunLengthPosterior(input.runLength(),
                         normalize(input.probability(), numFactory, "posterior probability"),
                         normalize(input.mean(), numFactory, "posterior mean"),

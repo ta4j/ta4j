@@ -202,6 +202,9 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             for (int position = 0; position < publishedCount; position++) {
                 int runLength = orderedRunLengths.get(position);
                 double probability = Math.exp(frame.logProbabilities[runLength]);
+                if (probability == 0d && Double.isFinite(frame.logProbabilities[runLength])) {
+                    probability = Double.MIN_VALUE;
+                }
                 double variance = frame.scales[runLength] / (frame.shapes[runLength] - 1d);
                 RunLengthPosterior posterior = new RunLengthPosterior(runLength,
                         normalizedNum(probability, numFactory, "posterior probability"),
@@ -481,8 +484,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         protected PosteriorFrame calculate(int index) {
             Num value = source.getValue(index);
             double observation = finitePrimitive(value);
-            if (index < historyStart || historyStart > 0 && index == historyStart
-                    || index < source.getCountOfUnstableBars() || !Double.isFinite(observation)) {
+            int sourceUnstableBars = source.getCountOfUnstableBars();
+            if (index < historyStart || index - historyStart < sourceUnstableBars || !Double.isFinite(observation)) {
                 return PosteriorFrame.unavailable();
             }
             PosteriorFrame previous = index == historyStart
