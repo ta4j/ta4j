@@ -95,6 +95,26 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
     }
 
     @Test
+    public void declaredBaseWarmupExcludesPrematureForecastsFromCalibration() {
+        BarSeries series = series(7);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1, 3,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1));
+        FixedIndicator<Num> realized = values(series, 0, 100, 100, 100, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.5)
+                .calibrationWindow(5)
+                .minimumCalibrationCount(2)
+                .build();
+
+        Forecast forecast = calibrated.getValue(5);
+
+        assertTrue(forecast.isStable());
+        assertNumEquals(-6, forecast.quantile(0.05));
+        assertNumEquals(6, forecast.quantile(0.95));
+    }
+
+    @Test
     public void onlyMaturedDecisionsCanEnterCalibration() {
         BarSeries series = series(8);
         FixedForecastIndicator base = new FixedForecastIndicator(series, 2,
