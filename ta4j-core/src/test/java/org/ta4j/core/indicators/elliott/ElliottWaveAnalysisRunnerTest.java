@@ -16,12 +16,16 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.indicators.elliott.swing.SwingFilter;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -269,9 +273,212 @@ class ElliottWaveAnalysisRunnerTest {
 
         assertThat(base.processedSwings()).hasSize(5);
         assertThat(base.processedSwings().getLast().toIndex()).isEqualTo(series.getEndIndex());
+        assertThat(base.waveCount().confirmed()).isEqualTo(4);
+        assertThat(base.waveCount().provisional()).isEqualTo(1);
+        assertThat(base.waveCount().includingProvisional()).isEqualTo(5);
+        assertThat(base.waveCount().hasProvisional()).isTrue();
+        assertThat(base.provisionalTerminalSwing()).contains(base.processedSwings().getLast());
+        assertThat(base.usesProvisionalTerminal(null)).isFalse();
         assertThat(result.rankedBaseScenarios())
                 .anyMatch(assessment -> assessment.scenario().currentPhase() == ElliottPhase.WAVE5
                         && assessment.scenario().swings().getLast().toIndex() == series.getEndIndex());
+        assertThat(result.rankedBaseScenarios())
+                .anyMatch(assessment -> base.usesProvisionalTerminal(assessment.scenario()));
+    }
+
+    @Test
+    void confirmedOnlyIntradayPipelineExcludesTerminalProjectionAndCopyPreservesPolicy() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree),
+                new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(144), degree),
+                new ElliottSwing(6, 8, factory.numOf(144), factory.numOf(126), degree));
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), "stub"), List.of());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .includeProvisionalTerminalSwing(false)
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottAnalysisResult base = analysis.analyze(series).analysisFor(degree).orElseThrow().analysis();
+        ElliottAnalysisResult copied = analysis.copy().analyze(series).analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.processedSwings()).containsExactlyElementsOf(swings);
+        assertThat(base.waveCount()).isEqualTo(ElliottAnalysisResult.WaveCount.confirmed(swings.size()));
+        assertThat(base.provisionalTerminalSwing()).isEmpty();
+        assertThat(base.scenarios().all()).allMatch(scenario -> !base.usesProvisionalTerminal(scenario));
+        assertThat(copied.processedSwings()).containsExactlyElementsOf(swings);
+        assertThat(copied.provisionalTerminalSwing()).isEmpty();
+    }
+
+    @Test
+    void provisionalTerminalProvenanceSurvivesScenarioWindowing() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree),
+                new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(144), degree),
+                new ElliottSwing(6, 8, factory.numOf(144), factory.numOf(126), degree));
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .scenarioSwingWindow(3)
+                .build();
+
+        ElliottAnalysisResult base = analysis.analyze(series).analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.processedSwings()).hasSize(3);
+        assertThat(base.waveCount()).isEqualTo(new ElliottAnalysisResult.WaveCount(4, 1));
+        assertThat(base.provisionalTerminalSwing()).contains(base.processedSwings().getLast());
+    }
+
+    @Test
+    void provisionalTerminalProvenanceRecognizesDecomposedScenarioLegs() {
+        BarSeries series = buildTerminalExtensionSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        ElliottSwing first = new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree);
+        ElliottSwing second = new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), degree);
+        ElliottSwing provisional = new ElliottSwing(4, 8, factory.numOf(108), factory.numOf(144), degree);
+        ElliottScenario decomposed = scenario(factory, "decomposed", ElliottPhase.WAVE3, 0.8,
+                List.of(first, new ElliottSwing(2, 8, factory.numOf(120), factory.numOf(144), degree)),
+                factory.numOf(95), 0.8);
+        ElliottScenario differentTerminal = scenario(factory, "different-terminal", ElliottPhase.WAVE3, 0.8,
+                List.of(first, new ElliottSwing(2, 8, factory.numOf(120), factory.numOf(145), degree)),
+                factory.numOf(95), 0.8);
+        ElliottAnalysisResult result = new ElliottAnalysisResult(degree, 8, List.of(first, second),
+                List.of(first, second, provisional), ElliottScenarioSet.of(List.of(decomposed), 8), Map.of(), null,
+                null, new ElliottAnalysisResult.WaveCount(2, 1), null);
+
+        assertThat(result.usesProvisionalTerminal(decomposed)).isTrue();
+        assertThat(result.usesProvisionalTerminal(differentTerminal)).isFalse();
+    }
+
+    @Test
+    void provisionalTerminalProvenanceSurvivesWindowAnchoring() {
+        BarSeries series = buildTerminalExtensionSeries();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> {
+                    NumFactory factory = window.numFactory();
+                    List<ElliottSwing> swings = List.of(
+                            new ElliottSwing(0, 3, factory.hundred(), factory.numOf(120), degree),
+                            new ElliottSwing(3, 6, factory.numOf(120), factory.numOf(108), degree),
+                            new ElliottSwing(6, 7, factory.numOf(108), factory.numOf(132), degree));
+                    ElliottScenario scenario = scenario(factory, "forming-terminal", ElliottPhase.WAVE3, 0.8, swings,
+                            factory.numOf(98), 0.8);
+                    ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario), window.getEndIndex());
+                    return new ElliottAnalysisResult(degree, window.getEndIndex(), swings, swings, scenarios, Map.of(),
+                            null, scenarios.trendBias(), new ElliottAnalysisResult.WaveCount(2, 1), null);
+                })
+                .build();
+
+        ElliottAnalysisResult anchored = analysis.analyzeWindow(series, 2, 10)
+                .analysisFor(degree)
+                .orElseThrow()
+                .analysis();
+
+        assertThat(anchored.provisionalTerminalSwing()).isPresent();
+        assertThat(anchored.scenarios().all()).anyMatch(anchored::usesProvisionalTerminal);
+    }
+
+    @Test
+    void intradayLiveProfileKeepsMinuteSwingsAcrossHistoryThreshold() {
+        for (Duration barDuration : List.of(Duration.ofMinutes(1), Duration.ofMinutes(5))) {
+            BarSeries series = buildIntradaySeries(barDuration, 251);
+            ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                    .degree(ElliottDegree.SUB_MINUETTE)
+                    .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                    .higherDegrees(0)
+                    .lowerDegrees(0)
+                    .build();
+
+            ElliottAnalysisResult beforeThreshold = analysis.analyze(series.getSubSeries(0, 249))
+                    .analysisFor(ElliottDegree.SUB_MINUETTE)
+                    .orElseThrow()
+                    .analysis();
+            ElliottAnalysisResult atThreshold = analysis.analyze(series.getSubSeries(0, 250))
+                    .analysisFor(ElliottDegree.SUB_MINUETTE)
+                    .orElseThrow()
+                    .analysis();
+
+            assertThat(beforeThreshold.waveCount().confirmed()).isGreaterThan(5);
+            assertThat(atThreshold.waveCount().confirmed() - beforeThreshold.waveCount().confirmed()).isBetween(0, 1);
+            assertThat(beforeThreshold.waveCount().includingProvisional())
+                    .isEqualTo(beforeThreshold.processedSwings().size());
+            assertThat(atThreshold.waveCount().includingProvisional()).isEqualTo(atThreshold.processedSwings().size());
+            assertThat(analysis.internalScenarioBudget(series))
+                    .isEqualTo(ElliottLogicProfile.INTRADAY_LIVE.maxScenarios());
+        }
+    }
+
+    @Test
+    void copyKeepsDefaultLiveDetectorStateIndependent() {
+        CountingBarSeries firstSeries = buildCountingIntradaySeries(Duration.ofMinutes(1), 300);
+        BarSeries secondSeries = buildIntradaySeries(Duration.ofMinutes(5), 300);
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.SUB_MINUETTE)
+                .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .build();
+
+        analysis.analyze(firstSeries);
+        firstSeries.resetBarReads();
+        analysis.analyze(firstSeries);
+        long repeatedReads = firstSeries.barReads();
+
+        analysis.copy().analyze(secondSeries);
+        firstSeries.resetBarReads();
+        analysis.analyze(firstSeries);
+
+        assertThat(firstSeries.barReads()).isLessThanOrEqualTo(repeatedReads + 5);
+    }
+
+    @Test
+    void intradayLiveProfileAdvertisesVolatilityScaledProcessing() {
+        assertThat(ElliottLogicProfile.INTRADAY_LIVE.volatilityScaledSwingProcessing()).isTrue();
+        assertThat(ElliottLogicProfile.ORTHODOX_CLASSICAL.volatilityScaledSwingProcessing()).isFalse();
+    }
+
+    @Test
+    void waveCountSeparatesAndValidatesProvisionalWave() {
+        ElliottAnalysisResult.WaveCount confirmed = ElliottAnalysisResult.WaveCount.confirmed(4);
+
+        assertThat(confirmed.includingProvisional()).isEqualTo(4);
+        assertThat(confirmed.hasProvisional()).isFalse();
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(-1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(1, 2));
+        assertThrows(IllegalArgumentException.class, () -> new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 1));
+        IllegalArgumentException missingTerminal = assertThrows(IllegalArgumentException.class,
+                () -> new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), null, null, null, null,
+                        new ElliottAnalysisResult.WaveCount(1, 1), null));
+        assertThat(missingTerminal).hasMessage("a provisional wave requires a processed terminal swing");
+
+        ElliottAnalysisResult.WaveCount maximumConfirmed = new ElliottAnalysisResult.WaveCount(Integer.MAX_VALUE, 0);
+        ElliottAnalysisResult.WaveCount maximumWithProvisional = new ElliottAnalysisResult.WaveCount(
+                Integer.MAX_VALUE - 1, 1);
+        assertThat(maximumConfirmed.includingProvisional()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(maximumWithProvisional.includingProvisional()).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
@@ -2091,6 +2298,34 @@ class ElliottWaveAnalysisRunnerTest {
         return series;
     }
 
+    private BarSeries buildIntradaySeries(final Duration barDuration, final int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName("Intraday-" + barDuration).build();
+        addIntradayBars(series, barDuration, barCount);
+        return series;
+    }
+
+    private CountingBarSeries buildCountingIntradaySeries(final Duration barDuration, final int barCount) {
+        CountingBarSeries series = new CountingBarSeries();
+        addIntradayBars(series, barDuration, barCount);
+        return series;
+    }
+
+    private void addIntradayBars(final BarSeries series, final Duration barDuration, final int barCount) {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            double close = 100.0 + (Math.sin(index * 0.22) * 1.5) + (index * 0.002);
+            series.barBuilder()
+                    .timePeriod(barDuration)
+                    .endTime(start.plus(barDuration.multipliedBy(index + 1L)))
+                    .openPrice(close - 0.05)
+                    .highPrice(close + 0.20)
+                    .lowPrice(close - 0.20)
+                    .closePrice(close)
+                    .volume(1_000)
+                    .add();
+        }
+    }
+
     private BarSeries buildCurrentCycleStartPressureSeries() {
         BarSeries series = new MockBarSeriesBuilder().withName("CurrentCycleStartPressure").build();
         Duration period = Duration.ofDays(1);
@@ -2772,6 +3007,34 @@ class ElliottWaveAnalysisRunnerTest {
                     .add();
         }
         return series;
+    }
+
+    private static final class CountingBarSeries extends BaseBarSeries {
+
+        private long barReads;
+
+        private CountingBarSeries() {
+            super("ElliottRunnerLiveTest", List.of());
+        }
+
+        @Override
+        public BarBuilder barBuilder() {
+            return new MockBarBuilderFactory().createBarBuilder(this);
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            barReads++;
+            return super.getBar(index);
+        }
+
+        private long barReads() {
+            return barReads;
+        }
+
+        private void resetBarReads() {
+            barReads = 0;
+        }
     }
 
 }

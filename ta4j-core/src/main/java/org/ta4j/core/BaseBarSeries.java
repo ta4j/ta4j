@@ -68,6 +68,7 @@ public class BaseBarSeries implements BarSeries {
      * The number of removed bars.
      */
     private int removedBarsCount = 0;
+    private long barHistoryRevision;
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -255,10 +256,23 @@ public class BaseBarSeries implements BarSeries {
     /**
      * {@inheritDoc}
      *
+     * @since 0.23.1
+     */
+    @Override
+    public long getBarHistoryRevision() {
+        return this.barHistoryRevision;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.22.9
      */
     @Override
     public void clear() {
+        if (!this.bars.isEmpty()) {
+            this.barHistoryRevision++;
+        }
         this.bars.clear();
         this.seriesBeginIndex = -1;
         this.seriesEndIndex = -1;
@@ -318,6 +332,7 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             if (replace) {
                 this.bars.set(this.bars.size() - 1, bar);
+                this.barHistoryRevision++;
                 return;
             }
             if (this.seriesEndIndex == Integer.MAX_VALUE) {
@@ -370,6 +385,7 @@ public class BaseBarSeries implements BarSeries {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
         this.bars.set(innerIndex, bar);
+        this.barHistoryRevision++;
     }
 
     @Override
@@ -380,11 +396,13 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
         getLastBar().addTrade(tradeVolume, tradePrice);
+        this.barHistoryRevision++;
     }
 
     @Override
     public void addPrice(final Num price) {
         getLastBar().addPrice(price);
+        this.barHistoryRevision++;
     }
 
     /**
