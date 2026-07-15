@@ -30,10 +30,11 @@ import org.ta4j.core.num.NumFactory;
  * label at the configured confidence. This avoids treating the scenario set's
  * completeness-biased base ranking as the historical phase. The indicator then
  * compares the current bar's ATR-normalized one-, three-, and five-bar returns,
- * range, and relative volume with those earlier labelled bars. The nearest
- * qualifying observations form an empirical phase distribution for the current
- * decision bar and a standard {@link Forecast} summary of wave numbers. Bars at
- * or after the decision index never enter the training set.
+ * range, and relative volume with earlier feature observations and the phase
+ * observed one bar after each observation. The nearest qualifying observations
+ * form an empirical next-phase distribution and a standard {@link Forecast}
+ * summary of wave numbers. Labels at or after the decision index never enter
+ * the training set.
  *
  * <p>
  * No forecast is emitted until the historical window contains the configured
@@ -134,11 +135,12 @@ public final class EmpiricalElliottWaveForecastIndicator
         int firstCandidate = Math.max(getBarSeries().getBeginIndex() + FEATURE_LOOKBACK,
                 index - settings.trainingLookbackBars());
         List<Analog> analogs = new ArrayList<>();
-        for (int candidateIndex = firstCandidate; candidateIndex < index; candidateIndex++) {
-            ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(candidateIndex);
+        for (int candidateIndex = firstCandidate; candidateIndex < index - FORECAST_HORIZON; candidateIndex++) {
+            int labelIndex = candidateIndex + FORECAST_HORIZON;
+            ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(labelIndex);
             ElliottPhase phase = phaseIndicator == null
                     ? scenarioSet.base().map(ElliottScenario::currentPhase).orElse(ElliottPhase.NONE)
-                    : phaseIndicator.getValue(candidateIndex);
+                    : phaseIndicator.getValue(labelIndex);
             ElliottScenario scenario = phaseIndicator == null ? scenarioSet.base().orElse(null)
                     : scenarioSet.byPhase(phase).base().orElse(null);
             if (!qualifies(scenario)) {
@@ -290,9 +292,10 @@ public final class EmpiricalElliottWaveForecastIndicator
      * Empirical Elliott phase forecast for one decision bar.
      *
      * <p>
-     * Stable instances require an impulse modal phase whose probability matches the
-     * corresponding modal entry in {@code phaseProbabilities}. Unstable instances
-     * carry no phase distribution.
+     * Stable instances require a normalized impulse-phase distribution whose modal
+     * entry matches {@code mostLikelyPhase} and {@code probability}. The weighted
+     * wave number must also match {@link Forecast#mean()}. Unstable instances carry
+     * no phase distribution.
      *
      * @param waveNumberForecast numeric summary of sampled impulse wave numbers
      * @param phaseProbabilities empirical probability for each impulse phase
@@ -323,6 +326,9 @@ public final class EmpiricalElliottWaveForecastIndicator
                 if (!Num.isFinite(modalProbability)) {
                     throw new IllegalArgumentException("mostLikelyPhase must have a finite probability");
                 }
+                NumFactory numFactory = waveNumberForecast.mean().getNumFactory();
+                Num probabilityMass = numFactory.zero();
+                Num expectedWaveNumber = numFactory.zero();
                 for (Map.Entry<ElliottPhase, Num> entry : phaseProbabilities.entrySet()) {
                     if (!entry.getKey().isImpulse()) {
                         throw new IllegalArgumentException("phaseProbabilities must contain impulse phases only");
@@ -332,12 +338,25 @@ public final class EmpiricalElliottWaveForecastIndicator
                             || candidateProbability.isGreaterThan(candidateProbability.getNumFactory().one())) {
                         throw new IllegalArgumentException("phase probabilities must be finite and in [0, 1]");
                     }
+                    if (!numFactory.produces(candidateProbability)) {
+                        throw new IllegalArgumentException("phase probabilities must use the forecast NumFactory");
+                    }
+                    probabilityMass = probabilityMass.plus(candidateProbability);
+                    expectedWaveNumber = expectedWaveNumber
+                            .plus(candidateProbability.multipliedBy(numFactory.numOf(entry.getKey().impulseIndex())));
                     if (candidateProbability.isGreaterThan(modalProbability)) {
                         throw new IllegalArgumentException("mostLikelyPhase must identify a modal phase");
                     }
                 }
                 if (!Num.isFinite(probability) || probability.compareTo(modalProbability) != 0) {
                     throw new IllegalArgumentException("probability must match the mostLikelyPhase probability");
+                }
+                Num tolerance = numFactory.numOf(1.0e-9d);
+                if (probabilityMass.minus(numFactory.one()).abs().isGreaterThan(tolerance)) {
+                    throw new IllegalArgumentException("phase probabilities must sum to 1");
+                }
+                if (expectedWaveNumber.minus(waveNumberForecast.mean()).abs().isGreaterThan(tolerance)) {
+                    throw new IllegalArgumentException("phase probabilities must match the numeric forecast mean");
                 }
             }
         }

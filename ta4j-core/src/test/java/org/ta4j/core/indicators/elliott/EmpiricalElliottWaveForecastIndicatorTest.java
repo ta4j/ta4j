@@ -74,6 +74,21 @@ class EmpiricalElliottWaveForecastIndicatorTest {
     }
 
     @Test
+    void labelsAnalogsAtTheForecastHorizon() {
+        BarSeries series = flatSeries(100);
+        FixedScenarioIndicator scenarios = new FixedScenarioIndicator(series, null, new AtomicInteger());
+        Settings settings = new Settings(ElliottDegree.SUB_MINUETTE, 20, 1, 1, 100.0d, 0.0d);
+        EmpiricalElliottWaveForecastIndicator indicator = new EmpiricalElliottWaveForecastIndicator(series, scenarios,
+                settings);
+
+        WaveForecast forecast = indicator.getValue(series.getEndIndex());
+
+        assertThat(forecast.isStable()).isTrue();
+        assertThat(forecast.waveNumberForecast().horizon()).isEqualTo(1);
+        assertThat(forecast.mostLikelyPhase()).isEqualTo(ElliottPhase.WAVE1);
+    }
+
+    @Test
     void reportsWarmupFromFeaturesScenariosAndMinimumSamples() {
         BarSeries series = patternedSeries(100);
         FixedScenarioIndicator scenarios = new FixedScenarioIndicator(series, ElliottPhase.WAVE1, new AtomicInteger());
@@ -102,7 +117,8 @@ class EmpiricalElliottWaveForecastIndicatorTest {
     @Test
     void rejectsContradictoryPublicWaveForecastState() {
         BarSeries series = patternedSeries(10);
-        Forecast summary = Forecast.ofSamples(9, 1, List.of(series.numFactory().one(), series.numFactory().two()));
+        Forecast summary = Forecast.ofSamples(9, 1, List.of(series.numFactory().one(), series.numFactory().two(),
+                series.numFactory().two(), series.numFactory().two()));
         Map<ElliottPhase, Num> probabilities = Map.of(ElliottPhase.WAVE1, series.numFactory().numOf(0.25d),
                 ElliottPhase.WAVE2, series.numFactory().numOf(0.75d));
 
@@ -113,6 +129,15 @@ class EmpiricalElliottWaveForecastIndicatorTest {
                 () -> new WaveForecast(summary, probabilities, ElliottPhase.WAVE2, series.numFactory().numOf(0.80d)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("probability");
+        Map<ElliottPhase, Num> excessiveMass = Map.of(ElliottPhase.WAVE1, series.numFactory().numOf(0.75d),
+                ElliottPhase.WAVE2, series.numFactory().numOf(0.75d));
+        assertThatThrownBy(() -> new WaveForecast(summary, excessiveMass, ElliottPhase.WAVE1,
+                excessiveMass.get(ElliottPhase.WAVE1))).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("sum to 1");
+        Forecast mismatchedSummary = Forecast.ofSamples(9, 1, List.of(series.numFactory().one()));
+        assertThatThrownBy(() -> new WaveForecast(mismatchedSummary, probabilities, ElliottPhase.WAVE2,
+                probabilities.get(ElliottPhase.WAVE2))).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("numeric forecast mean");
 
         WaveForecast valid = new WaveForecast(summary, probabilities, ElliottPhase.WAVE2,
                 probabilities.get(ElliottPhase.WAVE2));
@@ -130,6 +155,20 @@ class EmpiricalElliottWaveForecastIndicatorTest {
                     .lowPrice(close - 0.4d)
                     .closePrice(close)
                     .volume(100.0d + i % 7)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries flatSeries(final int count) {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < count; index++) {
+            series.barBuilder()
+                    .openPrice(100.0d)
+                    .highPrice(100.5d)
+                    .lowPrice(99.5d)
+                    .closePrice(100.0d)
+                    .volume(100.0d)
                     .add();
         }
         return series;

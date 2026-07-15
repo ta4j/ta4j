@@ -78,7 +78,7 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
         final boolean revisedBarHistory = tracksBarHistoryRevision && cachedBarHistoryRevision >= 0L
                 && currentBarHistoryRevision != cachedBarHistoryRevision;
         final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
-                && (currentEndIndex < cachedEndIndex || currentBeginIndex != cachedBeginIndex
+                && (currentEndIndex < cachedEndIndex
                         || (currentBeginIndex <= cachedBeginIndex && series.getBar(currentBeginIndex) != cachedFirstBar)
                         || revisedBarHistory || (currentEndIndex == cachedEndIndex
                                 && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));

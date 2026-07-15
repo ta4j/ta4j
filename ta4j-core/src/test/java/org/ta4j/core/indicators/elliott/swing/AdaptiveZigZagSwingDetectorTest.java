@@ -88,26 +88,21 @@ class AdaptiveZigZagSwingDetectorTest {
     }
 
     @Test
-    void cachedDetectorMatchesFreshAsRollingWindowAdvances() {
-        BarSeries series = new MockBarSeriesBuilder().withName("AdaptiveZigZagRollingTest").build();
+    void rollingWindowAdvancesCachedStateWithoutAFullRescan() {
+        CountingBarSeries series = buildLiveSeries(80);
         series.setMaximumBarCount(80);
-        Duration period = Duration.ofMinutes(1);
-        Instant time = Instant.parse("2024-01-01T00:00:00Z");
-        for (int index = 0; index < 80; index++) {
-            addOscillatingBar(series, period, time, index);
-        }
         AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.25, 0.25, 1);
         AdaptiveZigZagSwingDetector reusedDetector = new AdaptiveZigZagSwingDetector(config);
         reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
 
-        for (int index = 80; index < 100; index++) {
-            addOscillatingBar(series, period, time, index);
-            SwingDetectorResult fresh = new AdaptiveZigZagSwingDetector(config).detect(series, series.getEndIndex(),
-                    ElliottDegree.SUB_MINUETTE);
-            SwingDetectorResult reused = reusedDetector.detect(series, series.getEndIndex(),
-                    ElliottDegree.SUB_MINUETTE);
-            assertThat(reused).as("rolling end index %s", index).isEqualTo(fresh);
-        }
+        appendBar(series, 101.0d);
+        series.resetBarReads();
+        series.resetCopiedBars();
+        SwingDetectorResult advanced = reusedDetector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
+
+        assertThat(advanced.swings()).isNotEmpty();
+        assertThat(series.barReads()).isLessThan(series.getBarCount() / 2L);
+        assertThat(series.copiedBars()).isLessThan(20);
     }
 
     @Test
@@ -331,20 +326,6 @@ class AdaptiveZigZagSwingDetectorTest {
         series.barBuilder()
                 .timePeriod(lastBar.getTimePeriod())
                 .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
-                .openPrice(close)
-                .highPrice(close + 0.2)
-                .lowPrice(close - 0.2)
-                .closePrice(close)
-                .volume(1000.0)
-                .add();
-    }
-
-    private static void addOscillatingBar(final BarSeries series, final Duration period, final Instant time,
-            final int index) {
-        double close = 100.0 + Math.sin(index * 0.45) * 4.0;
-        series.barBuilder()
-                .timePeriod(period)
-                .endTime(time.plus(period.multipliedBy(index + 1L)))
                 .openPrice(close)
                 .highPrice(close + 0.2)
                 .lowPrice(close - 0.2)

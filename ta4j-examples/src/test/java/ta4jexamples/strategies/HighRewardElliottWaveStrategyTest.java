@@ -180,12 +180,22 @@ class HighRewardElliottWaveStrategyTest {
 
     private static WaveForecast stableForecast(final BarSeries series, final int index, final ElliottPhase phase,
             final double probability) {
+        ElliottPhase alternative = phase == ElliottPhase.WAVE1 ? ElliottPhase.WAVE2 : ElliottPhase.WAVE1;
+        int sampleCount = 100;
+        int modalSamples = (int) Math.round(probability * sampleCount);
         EnumMap<ElliottPhase, Num> probabilities = new EnumMap<>(ElliottPhase.class);
         for (ElliottPhase candidate : List.of(ElliottPhase.WAVE1, ElliottPhase.WAVE2, ElliottPhase.WAVE3,
                 ElliottPhase.WAVE4, ElliottPhase.WAVE5)) {
-            probabilities.put(candidate, series.numFactory().numOf(candidate == phase ? probability : 0.0d));
+            double candidateProbability = candidate == phase ? probability
+                    : candidate == alternative ? 1.0d - probability : 0.0d;
+            probabilities.put(candidate, series.numFactory().numOf(candidateProbability));
         }
-        Forecast summary = Forecast.ofSamples(index, 1, List.of(series.numFactory().numOf(phase.impulseIndex())));
+        List<Num> samples = new java.util.ArrayList<>(sampleCount);
+        for (int sample = 0; sample < sampleCount; sample++) {
+            ElliottPhase samplePhase = sample < modalSamples ? phase : alternative;
+            samples.add(series.numFactory().numOf(samplePhase.impulseIndex()));
+        }
+        Forecast summary = Forecast.ofSamples(index, 1, samples);
         return new WaveForecast(summary, probabilities, phase, probabilities.get(phase));
     }
 
