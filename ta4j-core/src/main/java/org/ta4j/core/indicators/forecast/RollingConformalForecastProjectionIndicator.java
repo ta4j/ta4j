@@ -142,7 +142,9 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
         }
         NumFactory numFactory = current.mean().getNumFactory();
         int lastMaturedDecision = index - horizon;
-        int firstDecision = Math.max(getBarSeries().getBeginIndex(), lastMaturedDecision - calibrationWindow + 1);
+        int firstUsableDecision = Math.max(baseForecast.getCountOfUnstableBars(), realizationDecisionWarmup);
+        int firstDecision = Math.max(Math.max(getBarSeries().getBeginIndex(), firstUsableDecision),
+                lastMaturedDecision - calibrationWindow + 1);
         List<Num> scores = new ArrayList<>(calibrationWindow);
         for (int decisionIndex = firstDecision; decisionIndex <= lastMaturedDecision; decisionIndex++) {
             Forecast historical = exactForecast(baseForecast.getValue(decisionIndex), decisionIndex);
