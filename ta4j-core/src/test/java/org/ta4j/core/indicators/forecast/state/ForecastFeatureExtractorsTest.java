@@ -76,7 +76,7 @@ public class ForecastFeatureExtractorsTest
     public void changePointSchemaOssifiesSpecializedShapeUnitsAndPrimitiveBoundaries() {
         ForecastFeatureExtractor<OnlineChangePointForecastState> extractor = ForecastFeatureExtractors.changePoint();
         OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(
-                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, numOf(1), numOf(1), numOf(16)), numOf(0.25), 8,
+                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, numOf(1), numOf(1), numOf(16)), numOf(0.25), 8,
                 List.of(new RunLengthPosterior(8, numOf(0.7), numOf(1), numOf(16)),
                         new RunLengthPosterior(2, numOf(0.2), numOf(0.5), numOf(20))));
 
@@ -98,7 +98,7 @@ public class ForecastFeatureExtractorsTest
 
         NumFactory highPrecision = DecimalNumFactory.getInstance(40);
         OnlineChangePointForecastState underflow = OnlineChangePointForecastState.stable(
-                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, highPrecision.one(), highPrecision.one(),
+                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, highPrecision.one(), highPrecision.one(),
                         highPrecision.numOf(16)),
                 highPrecision.numOf("1E-10000"), 8,
                 List.of(new RunLengthPosterior(8, highPrecision.one(), highPrecision.one(), highPrecision.numOf(16))));
