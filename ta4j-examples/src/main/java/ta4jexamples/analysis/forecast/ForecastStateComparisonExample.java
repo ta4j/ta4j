@@ -9,7 +9,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
@@ -17,13 +19,12 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
- * Compares default EWMA and rough-volatility state over an ossified BTC-USD
- * daily series.
+ * Compares default EWMA, rough-volatility, and online change-point state over
+ * an ossified BTC-USD daily series.
  *
  * <p>
- * Later state-estimation phases extend this example with change-point and
- * reservoir diagnostics while retaining the same source series and decision
- * index.
+ * The reservoir phase extends this example again while retaining the same
+ * source series and decision index.
  *
  * @since 0.23.1
  */
@@ -47,15 +48,22 @@ public final class ForecastStateComparisonExample {
         LogReturnIndicator returns = new LogReturnIndicator(series);
         EwmaReturnForecastStateIndicator ewma = new EwmaReturnForecastStateIndicator(returns);
         RoughVolatilityForecastStateIndicator rough = new RoughVolatilityForecastStateIndicator(returns);
+        OnlineChangePointForecastStateIndicator changePoint = new OnlineChangePointForecastStateIndicator(returns);
 
         int index = series.getEndIndex();
         ReturnForecastState ewmaState = ewma.getValue(index);
         RoughVolatilityForecastState roughState = rough.getValue(index);
+        OnlineChangePointForecastState changePointState = changePoint.getValue(index);
         LOG.info("BTC EWMA state index={} stable={} observations={} mean={} volatility={}", index, ewmaState.isStable(),
                 ewmaState.observationCount(), ewmaState.mean(), ewmaState.volatility());
         LOG.info(
                 "BTC rough state index={} stable={} observations={} mean={} volatility={} hurst={} volOfVol={} horizonVariances={}",
                 index, roughState.isStable(), roughState.observationCount(), roughState.mean(), roughState.volatility(),
                 roughState.roughnessHurst(), roughState.volOfVol(), roughState.horizonVarianceForecasts());
+        LOG.info(
+                "BTC change-point state index={} stable={} observations={} mean={} volatility={} recentChangeProbability={} mostLikelyRunLength={} topRunLengths={}",
+                index, changePointState.isStable(), changePointState.observationCount(), changePointState.mean(),
+                changePointState.volatility(), changePointState.recentChangeProbability(),
+                changePointState.mostLikelyRunLength(), changePointState.topRunLengths());
     }
 }

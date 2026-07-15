@@ -73,6 +73,39 @@ public class ForecastFeatureExtractorsTest
     }
 
     @Test
+    public void changePointSchemaOssifiesSpecializedShapeUnitsAndPrimitiveBoundaries() {
+        ForecastFeatureExtractor<OnlineChangePointForecastState> extractor = ForecastFeatureExtractors.changePoint();
+        OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(
+                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, numOf(1), numOf(1), numOf(16)), numOf(0.25), 8,
+                List.of(new RunLengthPosterior(8, numOf(0.7), numOf(1), numOf(16)),
+                        new RunLengthPosterior(2, numOf(0.2), numOf(0.5), numOf(20))));
+
+        assertEquals("change-point/default", extractor.schema().id());
+        assertEquals(1, extractor.schema().version());
+        assertEquals(ReturnRepresentation.LOG, extractor.schema().representation());
+        assertEquals(4, extractor.schema().dimension());
+        assertEquals("mean", extractor.schema().features().get(0).name());
+        assertEquals("log-return", extractor.schema().features().get(0).unit());
+        assertEquals("volatility", extractor.schema().features().get(1).name());
+        assertEquals("log-return", extractor.schema().features().get(1).unit());
+        assertEquals("recent_change_probability", extractor.schema().features().get(2).name());
+        assertEquals("probability", extractor.schema().features().get(2).unit());
+        assertEquals("most_likely_run_length", extractor.schema().features().get(3).name());
+        assertEquals("observations", extractor.schema().features().get(3).unit());
+        assertArrayEquals(new double[] { 1, 4, 0.25, 8 }, extractor.features(state), 0d);
+        assertThrows(IllegalArgumentException.class,
+                () -> extractor.features(OnlineChangePointForecastState.unstable(3, 4)));
+
+        NumFactory highPrecision = DecimalNumFactory.getInstance(40);
+        OnlineChangePointForecastState underflow = OnlineChangePointForecastState.stable(
+                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, highPrecision.one(), highPrecision.one(),
+                        highPrecision.numOf(16)),
+                highPrecision.numOf("1E-10000"), 8,
+                List.of(new RunLengthPosterior(8, highPrecision.one(), highPrecision.one(), highPrecision.numOf(16))));
+        assertThrows(IllegalArgumentException.class, () -> extractor.features(underflow));
+    }
+
+    @Test
     public void extractionSupportsCallerOwnedArraysAndDefensiveConvenienceArrays() {
         ForecastFeatureExtractor<ReturnForecastState> extractor = ForecastFeatureExtractors
                 .meanVolatility(ReturnRepresentation.LOG);

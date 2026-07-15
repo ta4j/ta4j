@@ -232,6 +232,7 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -239,6 +240,7 @@ import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
+import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
@@ -327,6 +329,51 @@ The schema remains raw and training-only standardization stays owned by the
 analog projection. Use rough state when volatility persistence and multi-horizon
 risk shape matter; prefer the smaller EWMA state when only current location and
 scale are needed.
+
+For online regime uncertainty, the default constructor runs a constant-hazard
+Bayesian change-point filter over the same log-return source:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        new OnlineChangePointForecastStateIndicator(returns);
+OnlineChangePointForecastState regime =
+        changePointStates.getValue(series.getEndIndex());
+```
+
+The estimator becomes stable after 20 consecutive valid returns, expects a
+100-observation regime, retains run lengths through 252, and reports the five
+most likely hypotheses. `recentChangeProbability()` is the complete posterior
+mass over run lengths zero through five; it is deliberately not the run-length
+zero probability. That probability equals the hazard before tail truncation and
+can increase slightly after truncation and renormalization, but it does not
+respond usefully to a shift. A non-finite return resets the model and requires a
+complete warm-up again.
+
+Advanced construction exposes model assumptions without adding a separate
+configuration type:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        OnlineChangePointForecastStateIndicator.builder(returns)
+                .expectedRunLength(150)
+                .maximumRunLength(500)
+                .topRunLengthCount(8)
+                .minimumObservationCount(30)
+                .recentChangeWindow(10)
+                .build();
+
+AnalogReturnProjectionIndicator<OnlineChangePointForecastState> regimeAnalog =
+        AnalogReturnProjectionIndicator.builder(changePointStates)
+                .featureExtractor(ForecastFeatureExtractors.changePoint())
+                .build();
+// schema: [mean, volatility, recent_change_probability, most_likely_run_length]
+```
+
+Posterior entries keep their probabilities from the complete run-length
+distribution, so the published top list generally sums to less than one. Use
+change-point state when abrupt regime shifts and run-length uncertainty matter;
+avoid treating it as a trade signal or performance claim without walk-forward
+validation.
 
 For a state-conditioned empirical forecast, analog projection composes directly
 with the same typed state source. Rolling conformal calibration then learns an

@@ -14,6 +14,8 @@
  * {@link org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator},
  * richer volatility state through
  * {@link org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator},
+ * Bayesian regime state through
+ * {@link org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator},
  * projection indicators such as
  * {@link org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator},
  * state-conditioned empirical projections such as
