@@ -115,7 +115,7 @@ class HighRewardElliottWaveStrategyTest {
                 ElliottPhase.WAVE4, ElliottPhase.WAVE5)) {
             probabilities.put(candidate, series.numFactory().numOf(candidate == phase ? probability : 0.0d));
         }
-        Forecast<Num> summary = Forecast.ofSamples(index, 1, List.of(series.numFactory().numOf(phase.impulseIndex())));
+        Forecast summary = Forecast.ofSamples(index, 1, List.of(series.numFactory().numOf(phase.impulseIndex())));
         return new WaveForecast(summary, probabilities, phase, probabilities.get(phase));
     }
 

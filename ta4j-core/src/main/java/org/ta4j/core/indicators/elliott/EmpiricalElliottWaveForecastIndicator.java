@@ -165,7 +165,7 @@ public final class EmpiricalElliottWaveForecastIndicator
                 highestCount = count;
             }
         }
-        Forecast<Num> waveNumberForecast = Forecast.ofSamples(index, FORECAST_HORIZON, waveNumbers);
+        Forecast waveNumberForecast = Forecast.ofSamples(index, FORECAST_HORIZON, waveNumbers);
         return new WaveForecast(waveNumberForecast, probabilities, mostLikely,
                 probabilities.getOrDefault(mostLikely, numFactory.zero()));
     }
@@ -260,7 +260,7 @@ public final class EmpiricalElliottWaveForecastIndicator
      * @param probability        probability of the modal phase
      * @since 0.23.1
      */
-    public record WaveForecast(Forecast<Num> waveNumberForecast, Map<ElliottPhase, Num> phaseProbabilities,
+    public record WaveForecast(Forecast waveNumberForecast, Map<ElliottPhase, Num> phaseProbabilities,
             ElliottPhase mostLikelyPhase, Num probability) {
 
         public WaveForecast {
