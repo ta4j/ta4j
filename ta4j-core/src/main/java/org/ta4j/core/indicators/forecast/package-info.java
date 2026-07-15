@@ -12,6 +12,8 @@
  * The root package contains the primary forecast indicators users normally
  * instantiate: hidden-state estimators such as
  * {@link org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator},
+ * richer volatility state through
+ * {@link org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator},
  * projection indicators such as
  * {@link org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator},
  * state-conditioned empirical projections such as
@@ -28,7 +30,10 @@
  * are usable only after their complete forecast horizons mature, preserving the
  * package-wide no-lookahead contract. Cumulative-return calibration preserves
  * the semantic return-projection contract, and conformal output remains
- * unavailable when no configured tail quantile can be widened.
+ * unavailable when no configured tail quantile can be widened. Rough-volatility
+ * state reuses canonical EWMA moments and adds bounded log-variogram roughness,
+ * log-volatility variability, and deterministic cumulative horizon variances
+ * without changing the projection contracts.
  *
  * @since 0.22.9
  */

@@ -233,6 +233,7 @@ import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
@@ -240,6 +241,7 @@ import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
@@ -292,6 +294,39 @@ double[] values = features.features(state.getValue(index));
 Feature schemas publish stable identity, version, order, units, and return
 representation. Values remain raw; the consuming model must fit scaling only
 from its eligible training rows.
+
+For a richer volatility state, the shortest path remains one constructor and
+the existing semantic return contract:
+
+```java
+RoughVolatilityForecastStateIndicator roughStates =
+        new RoughVolatilityForecastStateIndicator(returns);
+RoughVolatilityForecastState rough = roughStates.getValue(series.getEndIndex());
+```
+
+The default estimator reuses EWMA return moments, estimates roughness from a
+120-bar log-variogram window, measures log-volatility vol-of-vol over 60 bars,
+and emits cumulative variance forecasts for horizons one through five. Advanced
+construction can tune those windows, the horizon count, EWMA initialization,
+decay, and the existing EWMA drift mode. It becomes stable only when every
+required window is finite; an invalid return keeps it unavailable until all
+affected windows recover.
+
+Use specialized roughness in analog distance only when that modeling choice is
+intentional:
+
+```java
+AnalogReturnProjectionIndicator<RoughVolatilityForecastState> roughAnalog =
+        AnalogReturnProjectionIndicator.builder(roughStates)
+                .featureExtractor(ForecastFeatureExtractors.roughVolatility())
+                .build();
+// schema: [mean, volatility, roughness_hurst, vol_of_vol]
+```
+
+The schema remains raw and training-only standardization stays owned by the
+analog projection. Use rough state when volatility persistence and multi-horizon
+risk shape matter; prefer the smaller EWMA state when only current location and
+scale are needed.
 
 For a state-conditioned empirical forecast, analog projection composes directly
 with the same typed state source. Rolling conformal calibration then learns an

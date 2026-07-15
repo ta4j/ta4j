@@ -76,6 +76,50 @@ public final class ForecastFeatureExtractors {
                 List.of(ReturnMoments::mean, ReturnMoments::drift, ReturnMoments::variance));
     }
 
+    /**
+     * Extracts the rough-volatility default shape
+     * {@code [mean, volatility, roughness_hurst, vol_of_vol]}.
+     *
+     * <p>
+     * Return location and volatility use raw log-return units. Hurst and vol-of-vol
+     * are dimensionless because vol-of-vol is measured from the logarithmic
+     * volatility proxy.
+     *
+     * @return four-feature rough-volatility extractor
+     * @since 0.23.1
+     */
+    public static ForecastFeatureExtractor<RoughVolatilityForecastState> roughVolatility() {
+        ForecastFeatureSchema schema = new ForecastFeatureSchema("rough-volatility/default", 1,
+                ReturnRepresentation.LOG,
+                List.of(new ForecastFeatureSchema.Feature("mean", "log-return"),
+                        new ForecastFeatureSchema.Feature("volatility", "log-return"),
+                        new ForecastFeatureSchema.Feature("roughness_hurst", "dimensionless"),
+                        new ForecastFeatureSchema.Feature("vol_of_vol", "dimensionless")));
+        return new ForecastFeatureExtractor<>() {
+            @Override
+            public ForecastFeatureSchema schema() {
+                return schema;
+            }
+
+            @Override
+            public void extractInto(RoughVolatilityForecastState state, double[] target, int offset) {
+                RoughVolatilityForecastState value = Objects.requireNonNull(state, "state must not be null");
+                double[] destination = Objects.requireNonNull(target, "target must not be null");
+                ReturnMoments moments = value.moments();
+                if (!moments.isStable() || moments.representation() != ReturnRepresentation.LOG) {
+                    throw new IllegalArgumentException("state must contain stable log-return moments");
+                }
+                if (offset < 0 || offset > destination.length - schema.dimension()) {
+                    throw new IndexOutOfBoundsException("target does not have room for the schema at offset");
+                }
+                destination[offset] = finiteDouble(moments.mean(), "mean");
+                destination[offset + 1] = finiteDouble(moments.volatility(), "volatility");
+                destination[offset + 2] = finiteDouble(value.roughnessHurst(), "roughness_hurst");
+                destination[offset + 3] = finiteDouble(value.volOfVol(), "vol_of_vol");
+            }
+        };
+    }
+
     private static <S extends ReturnMomentState> ForecastFeatureExtractor<S> extractor(String id,
             ReturnRepresentation representation, List<ForecastFeatureSchema.Feature> features,
             List<Function<ReturnMoments, Num>> resolvers) {
