@@ -76,7 +76,7 @@ public class ForecastFeatureExtractorsTest
     public void changePointSchemaOssifiesSpecializedShapeUnitsAndPrimitiveBoundaries() {
         ForecastFeatureExtractor<OnlineChangePointForecastState> extractor = ForecastFeatureExtractors.changePoint();
         OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(
-                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, numFactory.one(), numFactory.one(), numOf(16)),
+                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, numFactory.one(), numFactory.one(), numOf(16)), 5,
                 numOf(0.25), 8, List.of(new RunLengthPosterior(8, numOf(0.7), numFactory.one(), numOf(16)),
                         new RunLengthPosterior(2, numOf(0.2), numOf(0.5), numOf(20))));
 
@@ -94,15 +94,25 @@ public class ForecastFeatureExtractorsTest
         assertEquals("observations", extractor.schema().features().get(3).unit());
         assertArrayEquals(new double[] { 1, 4, 0.25, 8 }, extractor.features(state), 0d);
         assertThrows(IllegalArgumentException.class,
-                () -> extractor.features(OnlineChangePointForecastState.unstable(3, 4)));
+                () -> extractor.features(OnlineChangePointForecastState.unstable(3, 4, 5)));
 
         NumFactory highPrecision = DecimalNumFactory.getInstance(40);
         OnlineChangePointForecastState underflow = OnlineChangePointForecastState.stable(
                 ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, highPrecision.one(), highPrecision.one(),
                         highPrecision.numOf(16)),
-                highPrecision.numOf("1E-10000"), 8,
+                5, highPrecision.numOf("1E-10000"), 8,
                 List.of(new RunLengthPosterior(8, highPrecision.one(), highPrecision.one(), highPrecision.numOf(16))));
         assertThrows(IllegalArgumentException.class, () -> extractor.features(underflow));
+
+        ForecastFeatureExtractor<OnlineChangePointForecastState> tenBarExtractor = ForecastFeatureExtractors
+                .changePoint(10);
+        OnlineChangePointForecastState tenBarState = OnlineChangePointForecastState.stable(
+                ReturnMoments.stable(20, 12, ReturnRepresentation.LOG, numFactory.one(), numFactory.one(), numOf(16)),
+                10, numOf(0.75), 8, List.of(new RunLengthPosterior(8, numOf(0.7), numFactory.one(), numOf(16))));
+        assertEquals("change-point/recent-change/10", tenBarExtractor.schema().id());
+        assertArrayEquals(new double[] { 1, 4, 0.75, 8 }, tenBarExtractor.features(tenBarState), 0d);
+        assertThrows(IllegalArgumentException.class, () -> extractor.features(tenBarState));
+        assertThrows(IllegalArgumentException.class, () -> ForecastFeatureExtractors.changePoint(0));
     }
 
     @Test

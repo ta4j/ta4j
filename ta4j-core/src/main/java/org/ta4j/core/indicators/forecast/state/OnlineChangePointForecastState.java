@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.forecast.state;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -19,10 +21,12 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * {@link #recentChangeProbability()} is the complete posterior mass assigned to
- * run lengths within the estimator's configured recent-change window. The
+ * run lengths from zero through {@link #recentChangeWindow()}, inclusive. The
  * ordered {@link #topRunLengths()} list retains complete-posterior
  * probabilities and is not renormalized as a subset. Common moments match the
- * first, most likely component.
+ * first, most likely component. Posterior-mass invariants account for the
+ * owning {@link NumFactory}'s decimal quantization without accepting
+ * differences larger than that representation can explain.
  *
  * <p>
  * An unstable state retains known consecutive-observation provenance, uses
@@ -31,13 +35,14 @@ import org.ta4j.core.num.NumFactory;
  *
  * @param moments                 validated log-return moments for the most
  *                                likely component
- * @param recentChangeProbability posterior mass inside the configured recent
- *                                window
+ * @param recentChangeWindow      inclusive run-length boundary represented by
+ *                                the recent-change probability
+ * @param recentChangeProbability posterior mass inside the recent-change window
  * @param mostLikelyRunLength     maximum-a-posteriori run length
  * @param topRunLengths           probability-descending posterior summaries
  * @since 0.23.1
  */
-public record OnlineChangePointForecastState(ReturnMoments moments, Num recentChangeProbability,
+public record OnlineChangePointForecastState(ReturnMoments moments, int recentChangeWindow, Num recentChangeProbability,
         int mostLikelyRunLength, List<RunLengthPosterior> topRunLengths) implements ReturnMomentState {
 
     /**
@@ -49,6 +54,9 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
         moments = Objects.requireNonNull(moments, "moments must not be null");
         if (moments.representation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("change-point moments must use ReturnRepresentation.LOG");
+        }
+        if (recentChangeWindow < 1) {
+            throw new IllegalArgumentException("recentChangeWindow must be >= 1");
         }
         recentChangeProbability = Objects.requireNonNull(recentChangeProbability,
                 "recentChangeProbability must not be null");
@@ -78,6 +86,12 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
             List<RunLengthPosterior> normalizedPosteriors = new ArrayList<>(topRunLengths.size());
             Set<Integer> seenRunLengths = new HashSet<>();
             Num probabilityTotal = numFactory.zero();
+            Num listedRecentProbability = numFactory.zero();
+            Num listedOlderProbability = numFactory.zero();
+            Num baseTolerance = numFactory.numOf(1e-12d);
+            Num probabilityTotalTolerance = baseTolerance;
+            Num listedRecentTolerance = baseTolerance.plus(quantizationTolerance(recentChangeProbability, numFactory));
+            Num listedOlderTolerance = listedRecentTolerance;
             RunLengthPosterior previous = null;
             for (RunLengthPosterior posterior : topRunLengths) {
                 RunLengthPosterior input = Objects.requireNonNull(posterior, "posterior must not be null");
@@ -97,11 +111,38 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
                 }
                 normalizedPosteriors.add(normalized);
                 probabilityTotal = probabilityTotal.plus(normalized.probability());
+                Num componentTolerance = quantizationTolerance(normalized.probability(), numFactory);
+                probabilityTotalTolerance = probabilityTotalTolerance.plus(componentTolerance)
+                        .plus(quantizationTolerance(probabilityTotal, numFactory));
+                if (normalized.runLength() <= recentChangeWindow) {
+                    listedRecentProbability = listedRecentProbability.plus(normalized.probability());
+                    listedRecentTolerance = listedRecentTolerance.plus(componentTolerance)
+                            .plus(quantizationTolerance(listedRecentProbability, numFactory));
+                } else {
+                    listedOlderProbability = listedOlderProbability.plus(normalized.probability());
+                    listedOlderTolerance = listedOlderTolerance.plus(componentTolerance)
+                            .plus(quantizationTolerance(listedOlderProbability, numFactory));
+                }
                 previous = normalized;
             }
-            Num probabilityTolerance = numFactory.numOf(1e-12d);
-            if (probabilityTotal.isGreaterThan(numFactory.one().plus(probabilityTolerance))) {
+            Num completeSupportTolerance = baseTolerance
+                    .plus(quantizationTolerance(recentChangeProbability, numFactory));
+            if (recentChangeWindow >= moments.observationCount()
+                    && recentChangeProbability.isLessThan(numFactory.one().minus(completeSupportTolerance))) {
+                throw new IllegalArgumentException(
+                        "recentChangeProbability must be one when the window contains every possible run length");
+            }
+            if (probabilityTotal.isGreaterThan(numFactory.one().plus(probabilityTotalTolerance))) {
                 throw new IllegalArgumentException("posterior summary probabilities must not exceed one");
+            }
+            if (listedRecentProbability.isGreaterThan(recentChangeProbability.plus(listedRecentTolerance))) {
+                throw new IllegalArgumentException(
+                        "listed recent posterior mass must not exceed recentChangeProbability");
+            }
+            Num olderProbability = numFactory.one().minus(recentChangeProbability);
+            if (listedOlderProbability.isGreaterThan(olderProbability.plus(listedOlderTolerance))) {
+                throw new IllegalArgumentException(
+                        "listed older posterior mass must not exceed one minus recentChangeProbability");
             }
             RunLengthPosterior mostLikely = normalizedPosteriors.get(0);
             if (mostLikely.runLength() != mostLikelyRunLength) {
@@ -118,33 +159,36 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
      * Creates stable online change-point state.
      *
      * @param moments                 stable MAP component moments
+     * @param recentChangeWindow      inclusive recent-change run-length boundary
      * @param recentChangeProbability posterior mass in the recent-change window
      * @param mostLikelyRunLength     MAP run length
      * @param topRunLengths           ordered posterior summaries
      * @return stable state
      * @since 0.23.1
      */
-    public static OnlineChangePointForecastState stable(ReturnMoments moments, Num recentChangeProbability,
-            int mostLikelyRunLength, List<RunLengthPosterior> topRunLengths) {
+    public static OnlineChangePointForecastState stable(ReturnMoments moments, int recentChangeWindow,
+            Num recentChangeProbability, int mostLikelyRunLength, List<RunLengthPosterior> topRunLengths) {
         ReturnMoments validated = Objects.requireNonNull(moments, "moments must not be null");
         if (!validated.isStable()) {
             throw new IllegalArgumentException("moments must be stable");
         }
-        return new OnlineChangePointForecastState(validated, recentChangeProbability, mostLikelyRunLength,
-                topRunLengths);
+        return new OnlineChangePointForecastState(validated, recentChangeWindow, recentChangeProbability,
+                mostLikelyRunLength, topRunLengths);
     }
 
     /**
      * Creates unavailable state while preserving valid-run provenance.
      *
-     * @param index            source index
-     * @param observationCount consecutive valid observations since the last reset
+     * @param index              source index
+     * @param observationCount   consecutive valid observations since the last reset
+     * @param recentChangeWindow inclusive recent-change run-length boundary
      * @return unstable log-return change-point state
      * @since 0.23.1
      */
-    public static OnlineChangePointForecastState unstable(int index, int observationCount) {
+    public static OnlineChangePointForecastState unstable(int index, int observationCount, int recentChangeWindow) {
         return new OnlineChangePointForecastState(
-                ReturnMoments.unstable(index, observationCount, ReturnRepresentation.LOG), NaN.NaN, -1, List.of());
+                ReturnMoments.unstable(index, observationCount, ReturnRepresentation.LOG), recentChangeWindow, NaN.NaN,
+                -1, List.of());
     }
 
     private static boolean orderedAfter(RunLengthPosterior previous, RunLengthPosterior current) {
@@ -167,5 +211,14 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
             throw new IllegalArgumentException(fieldName + " underflows the moments factory");
         }
         return normalized;
+    }
+
+    private static Num quantizationTolerance(Num value, NumFactory numFactory) {
+        if (!(value instanceof DecimalNum decimal) || value.isZero()) {
+            return numFactory.zero();
+        }
+        BigDecimal magnitude = decimal.bigDecimalValue().abs();
+        int unitExponent = magnitude.precision() - magnitude.scale() - decimal.getMathContext().getPrecision();
+        return numFactory.numOf(BigDecimal.ONE.scaleByPowerOfTen(unitExponent));
     }
 }

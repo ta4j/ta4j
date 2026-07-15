@@ -57,6 +57,12 @@ import org.ta4j.core.num.NumFactory;
  * window. A non-finite input resets the filter, and the full valid-run warm-up
  * is required again.
  *
+ * <p>
+ * Following the Adams-MacKay indexing convention, run length zero has prior
+ * sufficient statistics and an empty associated run. The current observation is
+ * incorporated into growth components only; this keeps the component parameters
+ * aligned with the predictive probabilities used by the recurrence.
+ *
  * @since 0.23.1
  */
 public final class OnlineChangePointForecastStateIndicator extends AbstractIndicator<OnlineChangePointForecastState>
@@ -72,6 +78,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     private final double priorMeanPrecision;
     private final double priorShape;
     private final double priorScale;
+    private final int unstableBarCount;
     private transient volatile PosteriorModel posteriorModel;
 
     /**
@@ -110,6 +117,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         this.priorMeanPrecision = builder.priorMeanPrecision;
         this.priorShape = builder.priorShape;
         this.priorScale = builder.priorScale;
+        this.unstableBarCount = Math.addExact(returnIndicator.getCountOfUnstableBars(), minimumObservationCount - 1);
         int historyStart = getBarSeries().getRemovedBarsCount();
         this.posteriorModel = new PosteriorModel(historyStart, newPosteriorIndicator(historyStart));
     }
@@ -146,6 +154,17 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     }
 
     /**
+     * Returns the inclusive run-length boundary represented by each state's recent
+     * change probability.
+     *
+     * @return configured recent-change window
+     * @since 0.23.1
+     */
+    public int getRecentChangeWindow() {
+        return recentChangeWindow;
+    }
+
+    /**
      * Returns state at the requested source index.
      *
      * @param index source index
@@ -157,14 +176,14 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     public OnlineChangePointForecastState getValue(int index) {
         int historyStart = getBarSeries().getRemovedBarsCount();
         if (index < historyStart) {
-            return OnlineChangePointForecastState.unstable(index, 0);
+            return OnlineChangePointForecastState.unstable(index, 0, recentChangeWindow);
         }
         PosteriorFrameIndicator model = posteriorModel(historyStart);
         PosteriorFrame frame = model.getValue(index);
         if (getBarSeries().getRemovedBarsCount() != historyStart) {
             historyStart = getBarSeries().getRemovedBarsCount();
             if (index < historyStart) {
-                return OnlineChangePointForecastState.unstable(index, 0);
+                return OnlineChangePointForecastState.unstable(index, 0, recentChangeWindow);
             }
             model = posteriorModel(historyStart);
             frame = model.getValue(index);
@@ -179,12 +198,12 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
      */
     @Override
     public int getCountOfUnstableBars() {
-        return returnIndicator.getCountOfUnstableBars() + minimumObservationCount - 1;
+        return unstableBarCount;
     }
 
     private OnlineChangePointForecastState toState(int index, PosteriorFrame frame) {
         if (!frame.isAvailable() || frame.observationCount < minimumObservationCount) {
-            return OnlineChangePointForecastState.unstable(index, frame.observationCount);
+            return OnlineChangePointForecastState.unstable(index, frame.observationCount, recentChangeWindow);
         }
         try {
             NumFactory numFactory = getBarSeries().numFactory();
@@ -202,9 +221,12 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
                 int runLength = orderedRunLengths.get(position);
                 double probability = Math.exp(frame.logProbabilities[runLength]);
                 if (probability == 0d && Double.isFinite(frame.logProbabilities[runLength])) {
-                    probability = Double.MIN_VALUE;
+                    throw new ArithmeticException("posterior probability underflowed primitive precision");
                 }
                 double variance = frame.scales[runLength] / (frame.shapes[runLength] - 1d);
+                if (variance == 0d && frame.scales[runLength] > 0d) {
+                    throw new ArithmeticException("posterior variance underflowed primitive precision");
+                }
                 RunLengthPosterior posterior = new RunLengthPosterior(runLength,
                         normalizedNum(probability, numFactory, "posterior probability"),
                         normalizedNum(frame.means[runLength], numFactory, "posterior mean"),
@@ -224,10 +246,10 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             Num recentChangeProbability = normalizedNum(recentProbability, numFactory, "recent change probability");
             ReturnMoments moments = ReturnMoments.stable(index, frame.observationCount, ReturnRepresentation.LOG,
                     mostLikely.mean(), mostLikely.mean(), mostLikely.variance());
-            return OnlineChangePointForecastState.stable(moments, recentChangeProbability, mostLikely.runLength(),
-                    topRunLengths);
+            return OnlineChangePointForecastState.stable(moments, recentChangeWindow, recentChangeProbability,
+                    mostLikely.runLength(), topRunLengths);
         } catch (IllegalArgumentException | ArithmeticException exception) {
-            return OnlineChangePointForecastState.unstable(index, frame.observationCount);
+            return OnlineChangePointForecastState.unstable(index, frame.observationCount, recentChangeWindow);
         }
     }
 
@@ -338,7 +360,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         /**
          * Sets the consecutive valid observations required for stable state.
          *
-         * @param value positive warm-up count
+         * @param value positive warm-up count whose combination with the source warm-up
+         *              fits in an {@code int}
          * @return this builder
          * @since 0.23.1
          */
@@ -386,7 +409,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         /**
          * Sets the Inverse-Gamma shape.
          *
-         * @param value finite shape greater than one
+         * @param value finite shape greater than one that produces a representable
+         *              predictive density
          * @return this builder
          * @since 0.23.1
          */
@@ -398,7 +422,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         /**
          * Sets the positive Inverse-Gamma scale.
          *
-         * @param value finite positive scale
+         * @param value finite positive scale that produces representable prior variance
+         *              and predictive density
          * @return this builder
          * @since 0.23.1
          */
@@ -433,6 +458,15 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             if (minimumObservationCount < 1) {
                 throw new IllegalArgumentException("minimumObservationCount must be >= 1");
             }
+            int sourceUnstableBars = returnIndicator.getCountOfUnstableBars();
+            if (sourceUnstableBars < 0) {
+                throw new IllegalArgumentException("returnIndicator unstable bar count must be >= 0");
+            }
+            try {
+                Math.addExact(sourceUnstableBars, minimumObservationCount - 1);
+            } catch (ArithmeticException exception) {
+                throw new IllegalArgumentException("combined unstable bar count exceeds Integer.MAX_VALUE", exception);
+            }
             if (recentChangeWindow < 1 || recentChangeWindow > maximumRunLength) {
                 throw new IllegalArgumentException("recentChangeWindow must be in [1, maximumRunLength]");
             }
@@ -447,6 +481,13 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             }
             if (!Double.isFinite(priorScale) || priorScale <= 0d) {
                 throw new IllegalArgumentException("priorScale must be finite and > 0");
+            }
+            double priorVariance = priorScale / (priorShape - 1d);
+            double priorPredictiveLogDensity = PosteriorFrameIndicator.studentTLogDensity(priorMean, priorMean,
+                    priorMeanPrecision, priorShape, priorScale);
+            if (!Double.isFinite(priorVariance) || priorVariance <= 0d || !Double.isFinite(priorPredictiveLogDensity)) {
+                throw new IllegalArgumentException(
+                        "prior parameters must produce representable variance and predictive density");
             }
         }
     }
@@ -509,8 +550,10 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             double[] shapes = new double[resultSize];
             double[] scales = new double[resultSize];
             Arrays.fill(logWeights, Double.NEGATIVE_INFINITY);
-            updateComponent(observation, priorMean, priorMeanPrecision, priorShape, priorScale, 0, means, precisions,
-                    shapes, scales);
+            means[0] = priorMean;
+            precisions[0] = priorMeanPrecision;
+            shapes[0] = priorShape;
+            scales[0] = priorScale;
 
             for (int runLength = 0; runLength < previous.size(); runLength++) {
                 double logPredictive = studentTLogDensity(observation, previous.means[runLength],

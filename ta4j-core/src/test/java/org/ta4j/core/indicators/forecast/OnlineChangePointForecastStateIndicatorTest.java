@@ -12,6 +12,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -72,6 +73,7 @@ public class OnlineChangePointForecastStateIndicatorTest
 
         assertSame(fixture.returns(), indicator.getReturnIndicator());
         assertEquals(ReturnRepresentation.LOG, indicator.getReturnRepresentation());
+        assertEquals(5, indicator.getRecentChangeWindow());
         assertEquals(4, indicator.getCountOfUnstableBars());
         assertTrue(state.isStable());
         assertEquals(20, state.observationCount());
@@ -92,7 +94,7 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
-    public void newRegimeComponentIncludesTheCurrentObservation() {
+    public void runLengthZeroRetainsPriorWhileGrowthIncludesCurrentObservation() {
         Fixture fixture = fixture(ReturnRepresentation.LOG, 0.25d);
         OnlineChangePointForecastStateIndicator indicator = OnlineChangePointForecastStateIndicator
                 .builder(fixture.returns())
@@ -115,9 +117,13 @@ public class OnlineChangePointForecastStateIndicatorTest
                 .filter(posterior -> posterior.runLength() == 1)
                 .findFirst()
                 .orElseThrow();
-        assertNumEquals(growthComponent.mean(), resetComponent.mean(), 1e-12);
-        assertNumEquals(growthComponent.variance(), resetComponent.variance(), 1e-12);
-        assertNumEquals(numFactory.numOf(0.25d), resetComponent.mean(), 1e-3);
+        double expectedGrowthMean = 0.25d / 1.0001d;
+        double expectedGrowthScale = 1e-4d + 1e-4d / (2d * 1.0001d) * 0.25d * 0.25d;
+        assertNumEquals(numFactory.zero(), resetComponent.mean(), 0d);
+        assertNumEquals(numFactory.numOf(1e-4d), resetComponent.variance(), 1e-12);
+        assertNumEquals(numFactory.numOf(expectedGrowthMean), growthComponent.mean(), 1e-12);
+        assertNumEquals(numFactory.numOf(expectedGrowthScale / 1.5d), growthComponent.variance(), 1e-12);
+        assertFalse(resetComponent.mean().isEqual(growthComponent.mean()));
     }
 
     @Test
@@ -212,7 +218,25 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
-    public void publishingCompletePosteriorDoesNotInvalidateLogSpaceFilter() {
+    public void posteriorVarianceUnderflowReturnsUnavailableRatherThanZeroDispersion() {
+        Fixture fixture = fixture(ReturnRepresentation.LOG, 0d, 0d, 0d, 0d);
+        OnlineChangePointForecastStateIndicator indicator = OnlineChangePointForecastStateIndicator
+                .builder(fixture.returns())
+                .maximumRunLength(4)
+                .topRunLengthCount(5)
+                .minimumObservationCount(1)
+                .recentChangeWindow(1)
+                .priorShape(1.1d)
+                .priorScale(Double.MIN_VALUE)
+                .build();
+
+        assertTrue(indicator.getValue(0).isStable());
+        assertFalse(indicator.getValue(3).isStable());
+        assertFalse(Num.isFinite(indicator.getValue(3).variance()));
+    }
+
+    @Test
+    public void underflowedPublishedProbabilityMakesStateUnavailableButTopOnlyRemainsUsable() {
         double[] values = new double[80];
         Arrays.fill(values, 0, 40, -1e140d);
         Arrays.fill(values, 40, values.length, 1e140d);
@@ -221,7 +245,62 @@ public class OnlineChangePointForecastStateIndicatorTest
         OnlineChangePointForecastStateIndicator complete = configured(fixture.returns(), 60, 61, 5, 3);
 
         assertTrue(topOnly.getValue(79).isStable());
-        assertTrue(complete.getValue(79).isStable());
+        assertFalse(complete.getValue(79).isStable());
+    }
+
+    @Test
+    public void completePosteriorRemainsAvailableAtSupportedLowDecimalPrecision() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(3);
+        double[] prices = new double[30];
+        Arrays.setAll(prices, index -> index + 1d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(lowPrecision).withData(prices).build();
+        Num[] values = new Num[30];
+        Arrays.fill(values, lowPrecision.numOf(0.01d));
+        ReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, values);
+        OnlineChangePointForecastStateIndicator indicator = OnlineChangePointForecastStateIndicator.builder(returns)
+                .maximumRunLength(20)
+                .topRunLengthCount(21)
+                .minimumObservationCount(5)
+                .recentChangeWindow(5)
+                .build();
+        OnlineChangePointForecastStateIndicator partial = OnlineChangePointForecastStateIndicator.builder(returns)
+                .maximumRunLength(20)
+                .topRunLengthCount(5)
+                .minimumObservationCount(5)
+                .recentChangeWindow(5)
+                .build();
+
+        OnlineChangePointForecastState state = indicator.getValue(19);
+        OnlineChangePointForecastState partialState = partial.getValue(19);
+
+        assertTrue(state.isStable());
+        assertEquals(21, state.topRunLengths().size());
+        assertEquals(1d, state.topRunLengths().stream().mapToDouble(value -> value.probability().doubleValue()).sum(),
+                0.01d);
+        assertTrue(partialState.isStable());
+        assertEquals(5, partialState.topRunLengths().size());
+    }
+
+    @Test
+    public void variedCompletePosteriorsRemainAvailableAtSupportedLowDecimalPrecision() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(3);
+        Random random = new Random(9137L);
+        for (int sample = 0; sample < 200; sample++) {
+            double[] prices = new double[30];
+            Arrays.setAll(prices, index -> index + 1d);
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(lowPrecision).withData(prices).build();
+            Num[] values = new Num[30];
+            Arrays.setAll(values, index -> lowPrecision.numOf(random.nextGaussian() * 0.05d));
+            ReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, values);
+            OnlineChangePointForecastStateIndicator indicator = OnlineChangePointForecastStateIndicator.builder(returns)
+                    .maximumRunLength(20)
+                    .topRunLengthCount(21)
+                    .minimumObservationCount(5)
+                    .recentChangeWindow(5)
+                    .build();
+
+            assertTrue("sample " + sample, indicator.getValue(19).isStable());
+        }
     }
 
     @Test
@@ -324,7 +403,7 @@ public class OnlineChangePointForecastStateIndicatorTest
         OnlineChangePointForecastStateIndicator states = configured(fixture.returns(), 20, 5, 3, 2);
         AnalogReturnProjectionIndicator<OnlineChangePointForecastState> projection = AnalogReturnProjectionIndicator
                 .builder(states)
-                .featureExtractor(ForecastFeatureExtractors.changePoint())
+                .featureExtractor(ForecastFeatureExtractors.changePoint(states.getRecentChangeWindow()))
                 .lookbackBarCount(20)
                 .neighborCount(4)
                 .minimumNeighborCount(2)
@@ -363,6 +442,23 @@ public class OnlineChangePointForecastStateIndicatorTest
                 () -> OnlineChangePointForecastStateIndicator.builder(log.returns()).priorShape(1).build());
         assertThrows(IllegalArgumentException.class,
                 () -> OnlineChangePointForecastStateIndicator.builder(log.returns()).priorScale(0).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> OnlineChangePointForecastStateIndicator.builder(log.returns())
+                        .priorShape(Double.MAX_VALUE)
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> OnlineChangePointForecastStateIndicator.builder(log.returns())
+                        .priorShape(10d)
+                        .priorScale(Double.MIN_VALUE)
+                        .build());
+
+        Num[] values = { numFactory.zero(), numFactory.zero(), numFactory.zero(), numFactory.zero() };
+        ReturnIndicator delayed = new FixedReturnIndicator(log.returns().getBarSeries(), ReturnRepresentation.LOG, 2,
+                values);
+        assertThrows(IllegalArgumentException.class,
+                () -> OnlineChangePointForecastStateIndicator.builder(delayed)
+                        .minimumObservationCount(Integer.MAX_VALUE)
+                        .build());
     }
 
     private OnlineChangePointForecastStateIndicator configured(ReturnIndicator returns, int maximumRunLength,
@@ -401,15 +497,27 @@ public class OnlineChangePointForecastStateIndicatorTest
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
 
         private final ReturnRepresentation representation;
+        private final int unstableBarCount;
 
         private FixedReturnIndicator(BarSeries series, ReturnRepresentation representation, Num... values) {
+            this(series, representation, 0, values);
+        }
+
+        private FixedReturnIndicator(BarSeries series, ReturnRepresentation representation, int unstableBarCount,
+                Num... values) {
             super(series, values);
             this.representation = representation;
+            this.unstableBarCount = unstableBarCount;
         }
 
         @Override
         public ReturnRepresentation getReturnRepresentation() {
             return representation;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return unstableBarCount;
         }
     }
 }

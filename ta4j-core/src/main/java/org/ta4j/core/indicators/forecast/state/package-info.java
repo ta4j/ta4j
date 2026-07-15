@@ -16,8 +16,9 @@
  * pattern: common moments remain reusable while model-specific roughness,
  * vol-of-vol, and horizon variance fields stay typed and defensively immutable.
  * {@link OnlineChangePointForecastState} applies the same composition pattern
- * to recent-change probability and immutable, typed {@link RunLengthPosterior}
- * summaries without exposing the filter's internal arrays.
+ * to window-qualified recent-change probability and immutable, typed
+ * {@link RunLengthPosterior} summaries without exposing the filter's internal
+ * arrays.
  *
  * @since 0.22.9
  */

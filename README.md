@@ -347,7 +347,8 @@ mass over run lengths zero through five; it is deliberately not the run-length
 zero probability. That probability equals the hazard before tail truncation and
 can increase slightly after truncation and renormalization, but it does not
 respond usefully to a shift. A non-finite return resets the model and requires a
-complete warm-up again.
+complete warm-up again. Each state retains `recentChangeWindow()` so the
+probability remains interpretable after it leaves the indicator.
 
 Advanced construction exposes model assumptions without adding a separate
 configuration type:
@@ -364,13 +365,18 @@ OnlineChangePointForecastStateIndicator changePointStates =
 
 AnalogReturnProjectionIndicator<OnlineChangePointForecastState> regimeAnalog =
         AnalogReturnProjectionIndicator.builder(changePointStates)
-                .featureExtractor(ForecastFeatureExtractors.changePoint())
+                .featureExtractor(ForecastFeatureExtractors.changePoint(
+                        changePointStates.getRecentChangeWindow()))
                 .build();
 // schema: [mean, volatility, recent_change_probability, most_likely_run_length]
 ```
 
 Posterior entries keep their probabilities from the complete run-length
-distribution, so the published top list generally sums to less than one. Use
+distribution, so the published top list generally sums to less than one. The
+default extractor keeps `change-point/default`; custom windows use
+`change-point/recent-change/<window>` and reject mismatched state. Run length
+zero retains the prior sufficient statistics; the current observation enters
+growth components in the canonical Adams-MacKay recurrence. Use
 change-point state when abrupt regime shifts and run-length uncertainty matter;
 avoid treating it as a trade signal or performance claim without walk-forward
 validation.
