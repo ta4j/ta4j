@@ -77,6 +77,24 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
     }
 
     @Test
+    public void declaredBaseWarmupPreventsPrematureStableOutput() {
+        BarSeries series = series(7);
+        FixedForecastIndicator base = new FixedForecastIndicator(series, 1, 3,
+                index -> summary(index, 1, ForecastSupport.empirical(3), 0, 1));
+        FixedIndicator<Num> realized = values(series, 0, 1, 1, 1, 1, 1, 1);
+        RollingConformalForecastProjectionIndicator calibrated = RollingConformalForecastProjectionIndicator
+                .builder(base, realized)
+                .targetCoverage(0.5)
+                .calibrationWindow(2)
+                .minimumCalibrationCount(2)
+                .build();
+
+        assertEquals(5, calibrated.getCountOfUnstableBars());
+        assertFalse(calibrated.getValue(4).isStable());
+        assertTrue(calibrated.getValue(5).isStable());
+    }
+
+    @Test
     public void onlyMaturedDecisionsCanEnterCalibration() {
         BarSeries series = series(8);
         FixedForecastIndicator base = new FixedForecastIndicator(series, 2,
@@ -372,11 +390,18 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
             implements ReturnForecastProjectionIndicator {
 
         private final int horizon;
+        private final int unstableBars;
         private final IntFunction<Forecast> forecasts;
 
         private FixedForecastIndicator(BarSeries series, int horizon, IntFunction<Forecast> forecasts) {
+            this(series, horizon, 0, forecasts);
+        }
+
+        private FixedForecastIndicator(BarSeries series, int horizon, int unstableBars,
+                IntFunction<Forecast> forecasts) {
             super(series);
             this.horizon = horizon;
+            this.unstableBars = unstableBars;
             this.forecasts = forecasts;
         }
 
@@ -397,7 +422,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
 
         @Override
         public int getCountOfUnstableBars() {
-            return 0;
+            return unstableBars;
         }
     }
 
