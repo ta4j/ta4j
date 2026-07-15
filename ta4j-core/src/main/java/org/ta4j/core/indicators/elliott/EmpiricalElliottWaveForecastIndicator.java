@@ -29,8 +29,9 @@ import org.ta4j.core.num.NumFactory;
  * bars. It then compares the current bar's ATR-normalized one-, three-, and
  * five-bar returns, range, and relative volume with those earlier labelled
  * bars. The nearest qualifying observations form an empirical phase
- * distribution and a standard {@link Forecast} summary of wave numbers. Bars at
- * or after the decision index never enter the training set.
+ * distribution for the current decision bar and a standard {@link Forecast}
+ * summary of wave numbers. Bars at or after the decision index never enter the
+ * training set.
  *
  * <p>
  * No forecast is emitted until the historical window contains the configured

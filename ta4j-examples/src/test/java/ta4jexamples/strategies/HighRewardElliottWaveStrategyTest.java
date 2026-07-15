@@ -69,6 +69,17 @@ class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
+    void doesNotTreatMidWaveUpwardDriftAsABottom() {
+        BarSeries series = series(98.0d, 99.0d, 100.0d);
+        int index = series.getEndIndex();
+        FixedForecastIndicator forecast = new FixedForecastIndicator(series,
+                Map.of(index, stableForecast(series, index, ElliottPhase.WAVE2, 0.80d)));
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, settings(), forecast);
+
+        assertFalse(strategy.getEntryRule().isSatisfied(index, new BaseTradingRecord()));
+    }
+
+    @Test
     void exitsAtConfirmedWaveOneThreeAndFivePeaks() {
         for (ElliottPhase phase : List.of(ElliottPhase.WAVE1, ElliottPhase.WAVE3, ElliottPhase.WAVE5)) {
             BarSeries series = series(100.0d, 103.0d, 102.0d);
@@ -80,6 +91,18 @@ class HighRewardElliottWaveStrategyTest {
 
             assertTrue(strategy.getExitRule().isSatisfied(index, openRecord(series, index - 1)), phase.name());
         }
+    }
+
+    @Test
+    void doesNotTreatMidWaveDownwardDriftAsAPeak() {
+        BarSeries series = series(104.0d, 103.0d, 102.0d);
+        int index = series.getEndIndex();
+        FixedForecastIndicator forecast = new FixedForecastIndicator(series,
+                Map.of(index - 1, stableForecast(series, index - 1, ElliottPhase.WAVE3, 0.80d), index,
+                        stableForecast(series, index, ElliottPhase.WAVE3, 0.80d)));
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, settings(), forecast);
+
+        assertFalse(strategy.getExitRule().isSatisfied(index, openRecord(series, index - 1)));
     }
 
     @Test

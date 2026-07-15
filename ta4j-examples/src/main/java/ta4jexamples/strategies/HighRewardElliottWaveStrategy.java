@@ -36,19 +36,21 @@ import org.ta4j.core.rules.WaitForRule;
  * pattern. One-minute and five-minute crypto bars repeatedly alternate between
  * expansion and retracement. When the causal Elliott pipeline recognized that
  * structure in earlier bars, similar ATR-normalized return, range, and volume
- * conditions provide an empirical distribution over the next likely impulse
- * phase. The strategy acts only when that distribution is sufficiently
- * concentrated; no historical structure means no forecast and no trade.
+ * conditions provide an empirical distribution over the likely impulse phase at
+ * the current decision bar. The strategy acts only when that distribution is
+ * sufficiently concentrated; no historical structure means no forecast and no
+ * trade.
  *
  * <p>
  * Long entries target the asymmetric parts of a bullish impulse: the beginning
  * of wave 1 and confirmed turns from the bottoms of waves 2 and 4. Wave phase
- * alone is insufficient, so the entry bar must also turn upward. Exits target
- * confirmed peaks or transitions out of waves 1, 3, and 5. Because any wave
- * interpretation can fail abruptly, those thesis exits are OR-composed with a
- * fixed stop, profit target, trailing gain protection, ATR trailing stop, and
- * maximum holding time. The wave forecast seeks opportunity; the composite
- * stack controls the cost of being wrong.
+ * alone is insufficient, so the entry must also confirm a three-bar local
+ * trough. Exits require a corresponding local crest or a phase transition out
+ * of waves 1, 3, and 5. Because any wave interpretation can fail abruptly,
+ * those thesis exits are OR-composed with a fixed stop, profit target, trailing
+ * gain protection, ATR trailing stop, and maximum holding time. The wave
+ * forecast seeks opportunity; the composite stack controls the cost of being
+ * wrong.
  *
  * <p>
  * This example intentionally has no legacy serialized-label constructor or
@@ -186,12 +188,13 @@ public final class HighRewardElliottWaveStrategy extends BaseStrategy {
 
         @Override
         public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
-            if (index <= close.getBarSeries().getBeginIndex()) {
+            if (index <= close.getBarSeries().getBeginIndex() + 1) {
                 return false;
             }
             WaveForecast current = forecast.getValue(index);
             ElliottPhase phase = current.mostLikelyPhase();
-            boolean upwardTurn = close.getValue(index).isGreaterThan(close.getValue(index - 1));
+            boolean upwardTurn = close.getValue(index).isGreaterThan(close.getValue(index - 1))
+                    && close.getValue(index - 1).isLessThanOrEqual(close.getValue(index - 2));
             boolean satisfied = current.isStable() && ENTRY_PHASES.contains(phase)
                     && meetsProbability(current, minimumProbability) && upwardTurn;
             traceIsSatisfied(index, satisfied);
@@ -217,14 +220,15 @@ public final class HighRewardElliottWaveStrategy extends BaseStrategy {
 
         @Override
         public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
-            if (index <= close.getBarSeries().getBeginIndex()) {
+            if (index <= close.getBarSeries().getBeginIndex() + 1) {
                 return false;
             }
             WaveForecast current = forecast.getValue(index);
             WaveForecast previous = forecast.getValue(index - 1);
+            boolean downwardTurn = close.getValue(index).isLessThan(close.getValue(index - 1))
+                    && close.getValue(index - 1).isGreaterThanOrEqual(close.getValue(index - 2));
             boolean currentPeakReversal = current.isStable() && PEAK_PHASES.contains(current.mostLikelyPhase())
-                    && meetsProbability(current, minimumProbability)
-                    && close.getValue(index).isLessThan(close.getValue(index - 1));
+                    && meetsProbability(current, minimumProbability) && downwardTurn;
             boolean transitionedFromPeak = previous.isStable() && PEAK_PHASES.contains(previous.mostLikelyPhase())
                     && meetsProbability(previous, minimumProbability)
                     && current.mostLikelyPhase() != previous.mostLikelyPhase();
