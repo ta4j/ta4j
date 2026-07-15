@@ -22,6 +22,7 @@ import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -105,6 +106,27 @@ public class RoughVolatilityForecastStateIndicatorTest
     }
 
     @Test
+    public void horizonTermStructureUsesThePublishedFactoryNormalizedHurst() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(2);
+        double[] values = { 0.006861265232875077, 0.007339558476995448, 0.0069607957350965805, 0.007663456496143692,
+                0.008237036502068093, 0.007956710727302023, 0.008252665826692583, 0.008304753891375239,
+                0.00784609879723065, 0.007249432430059512, 0.006652761799220903, 0.006416085270374187 };
+        Fixture fixture = fixture(lowPrecision, ReturnRepresentation.LOG, values);
+        RoughVolatilityForecastState state = RoughVolatilityForecastStateIndicator.builder(fixture.returns())
+                .initializationBarCount(2)
+                .decayFactor(0.5d)
+                .roughnessWindow(12)
+                .volOfVolWindow(3)
+                .horizon(1_000)
+                .build()
+                .getValue(11);
+
+        Num expectedFactor = lowPrecision.numOf(Math.pow(1_000d, 2d * state.roughnessHurst().doubleValue()));
+        assertTrue(state.isStable());
+        assertNumEquals(state.variance().multipliedBy(expectedFactor), state.horizonVarianceForecasts().get(999));
+    }
+
+    @Test
     public void specializedSchemaComposesWithAnalogProjection() {
         Fixture fixture = fixture(ReturnRepresentation.LOG, 0.01, 0.02, -0.01, 0.03, -0.02, 0.04, 0.01, 0.05, -0.01,
                 0.02, 0.06, -0.03, 0.01, 0.04, -0.02, 0.03, 0.05, -0.01, 0.02, 0.04);
@@ -155,11 +177,15 @@ public class RoughVolatilityForecastStateIndicatorTest
     }
 
     private Fixture fixture(ReturnRepresentation representation, double... values) {
+        return fixture(numFactory, representation, values);
+    }
+
+    private Fixture fixture(NumFactory factory, ReturnRepresentation representation, double... values) {
         double[] prices = new double[values.length];
         Arrays.setAll(prices, index -> index + 1d);
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(prices).build();
         Num[] numbers = Arrays.stream(values)
-                .mapToObj(value -> Double.isNaN(value) ? NaN.NaN : numOf(value))
+                .mapToObj(value -> Double.isNaN(value) ? NaN.NaN : factory.numOf(value))
                 .toArray(Num[]::new);
         return new Fixture(new FixedReturnIndicator(series, representation, numbers));
     }

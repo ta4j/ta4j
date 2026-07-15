@@ -126,8 +126,10 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         NumFactory numFactory = getBarSeries().numFactory();
         Num roughnessHurst = numFactory.numOf(hurst);
         Num volOfVol = proxyVariance.isZero() ? numFactory.zero() : proxyVariance.sqrt();
-        List<Num> horizonVariances = horizonVariances(baseState.variance(), hurst, numFactory);
-        if (!Num.isFinite(roughnessHurst) || !Num.isFinite(volOfVol) || horizonVariances.isEmpty()) {
+        double normalizedHurst = finitePrimitive(roughnessHurst);
+        List<Num> horizonVariances = horizonVariances(baseState.variance(), normalizedHurst, numFactory);
+        if (!Num.isFinite(roughnessHurst) || !Double.isFinite(normalizedHurst) || !Num.isFinite(volOfVol)
+                || horizonVariances.isEmpty()) {
             return RoughVolatilityForecastState.unstable(index, observationCount);
         }
 
