@@ -164,6 +164,7 @@ public class RollingConformalForecastProjectionIndicatorTest extends AbstractInd
         assertEquals(ReturnRepresentation.LOG, calibrated.getReturnRepresentation());
         assertNumEquals(-12, forecast.quantile(0.05));
         assertNumEquals(12, forecast.quantile(0.95));
+        assertNumEquals(-12, calibrated.quantile(0.05).getValue(5));
     }
 
     @Test
