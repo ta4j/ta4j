@@ -31,7 +31,7 @@ public class OnlineChangePointForecastStateTest extends AbstractIndicatorTest<On
         ReturnMoments moments = moments(ReturnRepresentation.LOG);
         NumFactory otherFactory = DecimalNumFactory.getInstance(40);
         List<RunLengthPosterior> input = new ArrayList<>(List.of(
-                new RunLengthPosterior(8, otherFactory.numOf(0.7), otherFactory.numOf(1), otherFactory.numOf(4)),
+                new RunLengthPosterior(8, otherFactory.numOf(0.7), otherFactory.one(), otherFactory.numOf(4)),
                 new RunLengthPosterior(2, otherFactory.numOf(0.2), otherFactory.numOf(0.5), otherFactory.numOf(5))));
 
         OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(moments, otherFactory.numOf(0.25),

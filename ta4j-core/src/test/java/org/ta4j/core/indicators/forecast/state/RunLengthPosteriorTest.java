@@ -37,11 +37,17 @@ public class RunLengthPosteriorTest extends AbstractIndicatorTest<RunLengthPoste
 
     @Test
     public void constructorRejectsInvalidPosteriorValues() {
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(-1, numOf(0.5), numOf(0), numOf(1)));
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(0, numOf(0), numOf(0), numOf(1)));
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(0, numOf(1.1), numOf(0), numOf(1)));
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(0, NaN.NaN, numOf(0), numOf(1)));
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(0, numOf(0.5), NaN.NaN, numOf(1)));
-        assertThrows(IllegalArgumentException.class, () -> new RunLengthPosterior(0, numOf(0.5), numOf(0), numOf(-1)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(-1, numOf(0.5), numFactory.zero(), numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(0, numFactory.zero(), numFactory.zero(), numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(0, numOf(1.1), numFactory.zero(), numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(0, NaN.NaN, numFactory.zero(), numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(0, numOf(0.5), NaN.NaN, numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunLengthPosterior(0, numOf(0.5), numFactory.zero(), numOf(-1)));
     }
 }

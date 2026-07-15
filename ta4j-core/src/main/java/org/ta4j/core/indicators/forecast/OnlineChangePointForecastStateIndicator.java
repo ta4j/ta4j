@@ -72,8 +72,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     private final double priorMeanPrecision;
     private final double priorShape;
     private final double priorScale;
-    private transient volatile PosteriorFrameIndicator posteriorIndicator;
-    private transient volatile int posteriorHistoryStart;
+    private transient volatile PosteriorModel posteriorModel;
 
     /**
      * Creates online change-point state with operator defaults.
@@ -111,8 +110,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         this.priorMeanPrecision = builder.priorMeanPrecision;
         this.priorShape = builder.priorShape;
         this.priorScale = builder.priorScale;
-        this.posteriorHistoryStart = getBarSeries().getRemovedBarsCount();
-        this.posteriorIndicator = newPosteriorIndicator(posteriorHistoryStart);
+        int historyStart = getBarSeries().getRemovedBarsCount();
+        this.posteriorModel = new PosteriorModel(historyStart, newPosteriorIndicator(historyStart));
     }
 
     /**
@@ -233,17 +232,17 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     }
 
     private PosteriorFrameIndicator posteriorModel(int historyStart) {
-        PosteriorFrameIndicator current = posteriorIndicator;
-        if (current != null && posteriorHistoryStart == historyStart) {
-            return current;
+        PosteriorModel current = posteriorModel;
+        if (current != null && current.historyStart() == historyStart) {
+            return current.indicator();
         }
         synchronized (this) {
-            if (posteriorIndicator == null || posteriorHistoryStart != historyStart) {
-                PosteriorFrameIndicator replacement = newPosteriorIndicator(historyStart);
-                posteriorIndicator = replacement;
-                posteriorHistoryStart = historyStart;
+            current = posteriorModel;
+            if (current == null || current.historyStart() != historyStart) {
+                current = new PosteriorModel(historyStart, newPosteriorIndicator(historyStart));
+                posteriorModel = current;
             }
-            return posteriorIndicator;
+            return current.indicator();
         }
     }
 
@@ -547,11 +546,24 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         private static void updateComponent(double observation, double mean, double precision, double shape,
                 double scale, int target, double[] means, double[] precisions, double[] shapes, double[] scales) {
             double updatedPrecision = precision + 1d;
-            double difference = observation - mean;
-            means[target] = (precision * mean + observation) / updatedPrecision;
+            double meanWeight = precision / updatedPrecision;
+            double observationWeight = 1d / updatedPrecision;
+            means[target] = meanWeight * mean + observationWeight * observation;
             precisions[target] = updatedPrecision;
             shapes[target] = shape + 0.5d;
-            scales[target] = scale + precision * difference * difference / (2d * updatedPrecision);
+            scales[target] = scale + scaledSquaredDifference(observation, mean, precision, updatedPrecision);
+        }
+
+        private static double scaledSquaredDifference(double observation, double mean, double precision,
+                double updatedPrecision) {
+            double magnitude = Math.max(Math.abs(observation), Math.abs(mean));
+            if (magnitude == 0d) {
+                return 0d;
+            }
+            double scaledDifference = observation / magnitude - mean / magnitude;
+            double rootWeight = Math.sqrt(precision / updatedPrecision) / Math.sqrt(2d);
+            double rootIncrement = magnitude * rootWeight * Math.abs(scaledDifference);
+            return rootIncrement * rootIncrement;
         }
 
         private static boolean validComponent(double mean, double precision, double shape, double scale) {
@@ -562,23 +574,27 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         private static double studentTLogDensity(double observation, double mean, double precision, double shape,
                 double scale) {
             double degreesOfFreedom = 2d * shape;
-            double predictiveScaleSquared = scale * (precision + 1d) / (shape * precision);
-            if (!Double.isFinite(degreesOfFreedom) || degreesOfFreedom <= 0d || !Double.isFinite(predictiveScaleSquared)
-                    || predictiveScaleSquared <= 0d) {
+            double logPredictiveScaleSquared = Math.log(scale) + Math.log(precision + 1d) - Math.log(shape)
+                    - Math.log(precision);
+            if (!Double.isFinite(degreesOfFreedom) || degreesOfFreedom <= 0d
+                    || !Double.isFinite(logPredictiveScaleSquared)) {
                 return Double.NaN;
             }
-            double difference = observation - mean;
-            double logRatio;
-            if (difference == 0d) {
-                logRatio = Double.NEGATIVE_INFINITY;
-            } else {
-                logRatio = 2d * Math.log(Math.abs(difference)) - Math.log(degreesOfFreedom)
-                        - Math.log(predictiveScaleSquared);
-            }
+            double logDifference = logAbsoluteDifference(observation, mean);
+            double logRatio = logDifference == Double.NEGATIVE_INFINITY ? Double.NEGATIVE_INFINITY
+                    : 2d * logDifference - Math.log(degreesOfFreedom) - logPredictiveScaleSquared;
             double logKernel = logOnePlusExp(logRatio);
             return Gamma.logGamma((degreesOfFreedom + 1d) * 0.5d) - Gamma.logGamma(degreesOfFreedom * 0.5d)
-                    - 0.5d * (Math.log(degreesOfFreedom * Math.PI) + Math.log(predictiveScaleSquared))
+                    - 0.5d * (Math.log(degreesOfFreedom) + Math.log(Math.PI) + logPredictiveScaleSquared)
                     - 0.5d * (degreesOfFreedom + 1d) * logKernel;
+        }
+
+        private static double logAbsoluteDifference(double left, double right) {
+            if (left == right) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            double magnitude = Math.max(Math.abs(left), Math.abs(right));
+            return Math.log(magnitude) + Math.log(Math.abs(left / magnitude - right / magnitude));
         }
 
         private static double logOnePlusExp(double value) {
@@ -659,5 +675,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         private boolean isAvailable() {
             return size() > 0;
         }
+    }
+
+    private record PosteriorModel(int historyStart, PosteriorFrameIndicator indicator) {
     }
 }

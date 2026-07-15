@@ -76,8 +76,8 @@ public class ForecastFeatureExtractorsTest
     public void changePointSchemaOssifiesSpecializedShapeUnitsAndPrimitiveBoundaries() {
         ForecastFeatureExtractor<OnlineChangePointForecastState> extractor = ForecastFeatureExtractors.changePoint();
         OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(
-                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, numOf(1), numOf(1), numOf(16)), numOf(0.25), 8,
-                List.of(new RunLengthPosterior(8, numOf(0.7), numOf(1), numOf(16)),
+                ReturnMoments.stable(7, 8, ReturnRepresentation.LOG, numFactory.one(), numFactory.one(), numOf(16)),
+                numOf(0.25), 8, List.of(new RunLengthPosterior(8, numOf(0.7), numFactory.one(), numOf(16)),
                         new RunLengthPosterior(2, numOf(0.2), numOf(0.5), numOf(20))));
 
         assertEquals("change-point/default", extractor.schema().id());

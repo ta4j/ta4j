@@ -177,6 +177,41 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
+    public void finitePosteriorArithmeticAvoidsIntermediateOverflow() {
+        OnlineChangePointForecastState largeScale = OnlineChangePointForecastStateIndicator
+                .builder(fixture(ReturnRepresentation.LOG, 0.1d).returns())
+                .minimumObservationCount(1)
+                .priorMeanPrecision(1d)
+                .priorShape(100d)
+                .priorScale(1e308d)
+                .build()
+                .getValue(0);
+        OnlineChangePointForecastState largeMean = OnlineChangePointForecastStateIndicator
+                .builder(fixture(ReturnRepresentation.LOG, 1e308d).returns())
+                .minimumObservationCount(1)
+                .priorMean(1e308d)
+                .priorMeanPrecision(2d)
+                .priorScale(1d)
+                .build()
+                .getValue(0);
+        OnlineChangePointForecastState scaledDifference = OnlineChangePointForecastStateIndicator
+                .builder(fixture(ReturnRepresentation.LOG, 1e160d).returns())
+                .minimumObservationCount(1)
+                .priorMean(-1e160d)
+                .priorMeanPrecision(1e-20d)
+                .priorScale(1d)
+                .build()
+                .getValue(0);
+
+        assertTrue(largeScale.isStable());
+        assertTrue(Num.isFinite(largeScale.variance()));
+        assertTrue(largeMean.isStable());
+        assertTrue(Num.isFinite(largeMean.mean()));
+        assertTrue(scaledDifference.isStable());
+        assertTrue(Num.isFinite(scaledDifference.variance()));
+    }
+
+    @Test
     public void publishingCompletePosteriorDoesNotInvalidateLogSpaceFilter() {
         double[] values = new double[80];
         Arrays.fill(values, 0, 40, -1e140d);
