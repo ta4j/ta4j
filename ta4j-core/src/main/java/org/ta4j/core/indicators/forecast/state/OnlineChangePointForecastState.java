@@ -144,6 +144,21 @@ public record OnlineChangePointForecastState(ReturnMoments moments, int recentCh
                 throw new IllegalArgumentException(
                         "listed older posterior mass must not exceed one minus recentChangeProbability");
             }
+            boolean completePosteriorListed = moments.observationCount() < Integer.MAX_VALUE
+                    && normalizedPosteriors.size() == moments.observationCount() + 1;
+            if (completePosteriorListed) {
+                if (probabilityTotal.isLessThan(numFactory.one().minus(probabilityTotalTolerance))) {
+                    throw new IllegalArgumentException("complete posterior summary probabilities must equal one");
+                }
+                if (listedRecentProbability.isLessThan(recentChangeProbability.minus(listedRecentTolerance))) {
+                    throw new IllegalArgumentException(
+                            "complete listed recent posterior mass must equal recentChangeProbability");
+                }
+                if (listedOlderProbability.isLessThan(olderProbability.minus(listedOlderTolerance))) {
+                    throw new IllegalArgumentException(
+                            "complete listed older posterior mass must equal one minus recentChangeProbability");
+                }
+            }
             RunLengthPosterior mostLikely = normalizedPosteriors.get(0);
             if (mostLikely.runLength() != mostLikelyRunLength) {
                 throw new IllegalArgumentException("mostLikelyRunLength must match the first posterior");

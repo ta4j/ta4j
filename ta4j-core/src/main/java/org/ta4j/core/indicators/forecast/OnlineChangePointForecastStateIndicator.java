@@ -174,21 +174,17 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
      */
     @Override
     public OnlineChangePointForecastState getValue(int index) {
-        int historyStart = getBarSeries().getRemovedBarsCount();
-        if (index < historyStart) {
-            return OnlineChangePointForecastState.unstable(index, 0, recentChangeWindow);
-        }
-        PosteriorFrameIndicator model = posteriorModel(historyStart);
-        PosteriorFrame frame = model.getValue(index);
-        if (getBarSeries().getRemovedBarsCount() != historyStart) {
-            historyStart = getBarSeries().getRemovedBarsCount();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            int historyStart = getBarSeries().getRemovedBarsCount();
             if (index < historyStart) {
                 return OnlineChangePointForecastState.unstable(index, 0, recentChangeWindow);
             }
-            model = posteriorModel(historyStart);
-            frame = model.getValue(index);
+            PosteriorFrame frame = posteriorModel(historyStart).getValue(index);
+            if (getBarSeries().getRemovedBarsCount() == historyStart) {
+                return toState(index, frame);
+            }
         }
-        return toState(index, frame);
+        return OnlineChangePointForecastState.unstable(index, 0, recentChangeWindow);
     }
 
     /**

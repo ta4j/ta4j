@@ -367,6 +367,23 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
+    public void repeatedHistoryTruncationDuringCalculationReturnsUnavailable() {
+        double[] prices = new double[15];
+        Arrays.setAll(prices, index -> 100d * Math.exp(index * 0.01d));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        Num[] values = new Num[prices.length];
+        Arrays.fill(values, numFactory.zero());
+        ReturnIndicator returns = new TruncatingReturnIndicator(series, 14, values);
+        OnlineChangePointForecastStateIndicator indicator = configured(returns, 10, 5, 1, 2);
+
+        OnlineChangePointForecastState state = indicator.getValue(14);
+
+        assertFalse(state.isStable());
+        assertEquals(0, state.observationCount());
+        assertEquals(12, series.getRemovedBarsCount());
+    }
+
+    @Test
     public void retainedHistoryDoesNotCountReturnWhosePredecessorWasRemoved() {
         double[] prices = new double[15];
         Arrays.setAll(prices, index -> 100d * Math.exp(index * 0.01d));
@@ -518,6 +535,37 @@ public class OnlineChangePointForecastStateIndicatorTest
         @Override
         public int getCountOfUnstableBars() {
             return unstableBarCount;
+        }
+    }
+
+    private static final class TruncatingReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
+
+        private final BarSeries series;
+        private final int triggerIndex;
+        private int triggerCount;
+
+        private TruncatingReturnIndicator(BarSeries series, int triggerIndex, Num... values) {
+            super(series, values);
+            this.series = series;
+            this.triggerIndex = triggerIndex;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            if (index == triggerIndex) {
+                triggerCount++;
+                if (triggerCount == 1) {
+                    series.setMaximumBarCount(5);
+                } else if (triggerCount == 2) {
+                    series.setMaximumBarCount(3);
+                }
+            }
+            return super.getValue(index);
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return ReturnRepresentation.LOG;
         }
     }
 }

@@ -15,6 +15,7 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -41,8 +42,12 @@ public class OnlineChangePointForecastStateTest extends AbstractIndicatorTest<On
         assertTrue(state.isStable());
         assertEquals(7, state.index());
         assertEquals(8, state.observationCount());
-        assertEquals(moments.variance().getClass(), state.recentChangeProbability().getClass());
-        assertEquals(moments.variance().getClass(), state.topRunLengths().get(0).probability().getClass());
+        assertSameNumericFactory(moments.variance(), state.recentChangeProbability());
+        for (RunLengthPosterior posterior : state.topRunLengths()) {
+            assertSameNumericFactory(moments.variance(), posterior.probability());
+            assertSameNumericFactory(moments.variance(), posterior.mean());
+            assertSameNumericFactory(moments.variance(), posterior.variance());
+        }
         assertNumEquals(0.25, state.recentChangeProbability());
         assertEquals(5, state.recentChangeWindow());
         assertEquals(8, state.mostLikelyRunLength());
@@ -96,7 +101,37 @@ public class OnlineChangePointForecastStateTest extends AbstractIndicatorTest<On
         assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastState.stable(moments, 5, numOf(0.5),
                 8, List.of(posterior(8, 0.7, 1, 4))));
         assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastState.stable(moments, 5, numOf(0.5),
-                2, List.of(posterior(2, 0.4, 1, 4), posterior(8, 0.6, 0.5, 5))));
+                8, List.of(posterior(8, 0.6, 1, 4), posterior(2, 0.4, 0.5, 5))));
+    }
+
+    @Test
+    public void completePosteriorListMustAccountForAllRecentAndOlderMass() {
+        ReturnMoments completeMoments = ReturnMoments.stable(7, 2, ReturnRepresentation.LOG, numOf(1), numOf(1),
+                numOf(4));
+
+        assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastState.stable(completeMoments, 1,
+                numOf(0.6), 0, List.of(posterior(0, 0.4, 1, 4), posterior(2, 0.3, 0.5, 5), posterior(1, 0.2, 0.4, 6))));
+        assertThrows(IllegalArgumentException.class, () -> OnlineChangePointForecastState.stable(completeMoments, 1,
+                numOf(0.6), 2, List.of(posterior(2, 0.4, 1, 4), posterior(0, 0.3, 0.5, 5), posterior(1, 0.2, 0.4, 6))));
+    }
+
+    @Test
+    public void completePosteriorListAllowsFactoryCoherentQuantization() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(3);
+        NumFactory highPrecision = DecimalNumFactory.getInstance(40);
+        ReturnMoments completeMoments = ReturnMoments.stable(7, 2, ReturnRepresentation.LOG, lowPrecision.one(),
+                lowPrecision.one(), lowPrecision.numOf(4));
+
+        OnlineChangePointForecastState state = OnlineChangePointForecastState.stable(completeMoments, 1,
+                highPrecision.numOf("0.6668"), 0,
+                List.of(new RunLengthPosterior(0, highPrecision.numOf("0.3334"), highPrecision.one(),
+                        highPrecision.numOf(4)),
+                        new RunLengthPosterior(1, highPrecision.numOf("0.3334"), highPrecision.numOf("0.5"),
+                                highPrecision.numOf(5)),
+                        new RunLengthPosterior(2, highPrecision.numOf("0.3334"), highPrecision.numOf("0.4"),
+                                highPrecision.numOf(6))));
+
+        assertNumEquals(0.667, state.recentChangeProbability());
     }
 
     @Test
@@ -170,5 +205,12 @@ public class OnlineChangePointForecastStateTest extends AbstractIndicatorTest<On
 
     private RunLengthPosterior posterior(int runLength, double probability, double mean, double variance) {
         return new RunLengthPosterior(runLength, numOf(probability), numOf(mean), numOf(variance));
+    }
+
+    private void assertSameNumericFactory(Num expected, Num actual) {
+        assertEquals(expected.getClass(), actual.getClass());
+        if (expected instanceof DecimalNum expectedDecimal && actual instanceof DecimalNum actualDecimal) {
+            assertEquals(expectedDecimal.getMathContext(), actualDecimal.getMathContext());
+        }
     }
 }
