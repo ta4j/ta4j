@@ -91,6 +91,35 @@ public class OnlineChangePointForecastStateIndicatorTest
     }
 
     @Test
+    public void newRegimeComponentIncludesTheCurrentObservation() {
+        Fixture fixture = fixture(ReturnRepresentation.LOG, 0.25d);
+        OnlineChangePointForecastStateIndicator indicator = OnlineChangePointForecastStateIndicator
+                .builder(fixture.returns())
+                .minimumObservationCount(1)
+                .maximumRunLength(4)
+                .topRunLengthCount(2)
+                .recentChangeWindow(1)
+                .build();
+
+        OnlineChangePointForecastState state = indicator.getValue(0);
+
+        assertTrue(state.isStable());
+        RunLengthPosterior resetComponent = state.topRunLengths()
+                .stream()
+                .filter(posterior -> posterior.runLength() == 0)
+                .findFirst()
+                .orElseThrow();
+        RunLengthPosterior growthComponent = state.topRunLengths()
+                .stream()
+                .filter(posterior -> posterior.runLength() == 1)
+                .findFirst()
+                .orElseThrow();
+        assertNumEquals(growthComponent.mean(), resetComponent.mean(), 1e-12);
+        assertNumEquals(growthComponent.variance(), resetComponent.variance(), 1e-12);
+        assertNumEquals(numFactory.numOf(0.25d), resetComponent.mean(), 1e-3);
+    }
+
+    @Test
     public void sharpMeanShiftRaisesRecentChangeProbability() {
         double[] values = new double[80];
         Arrays.fill(values, 0, 40, 0d);
@@ -205,8 +234,22 @@ public class OnlineChangePointForecastStateIndicatorTest
         assertEquals(1, removed.index());
         assertEquals(0, removed.observationCount());
         assertFalse(removed.isStable());
-        assertEquals(3, retained.observationCount());
+        assertEquals(2, retained.observationCount());
         assertFalse(retained.isStable());
+    }
+
+    @Test
+    public void retainedHistoryDoesNotCountReturnWhosePredecessorWasRemoved() {
+        double[] prices = new double[15];
+        Arrays.setAll(prices, index -> 100d * Math.exp(index * 0.01d));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        OnlineChangePointForecastStateIndicator indicator = configured(new LogReturnIndicator(series), 10, 5, 3, 2);
+
+        series.setMaximumBarCount(4);
+
+        OnlineChangePointForecastState retained = indicator.getValue(14);
+        assertTrue(retained.isStable());
+        assertEquals(3, retained.observationCount());
     }
 
     @Test

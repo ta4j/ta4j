@@ -96,7 +96,8 @@ public record OnlineChangePointForecastState(ReturnMoments moments, Num recentCh
                 probabilityTotal = probabilityTotal.plus(normalized.probability());
                 previous = normalized;
             }
-            if (probabilityTotal.isGreaterThan(numFactory.one())) {
+            Num probabilityTolerance = numFactory.numOf(1e-12d);
+            if (probabilityTotal.isGreaterThan(numFactory.one().plus(probabilityTolerance))) {
                 throw new IllegalArgumentException("posterior summary probabilities must not exceed one");
             }
             RunLengthPosterior mostLikely = normalizedPosteriors.get(0);

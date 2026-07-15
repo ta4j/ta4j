@@ -481,7 +481,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         protected PosteriorFrame calculate(int index) {
             Num value = source.getValue(index);
             double observation = finitePrimitive(value);
-            if (index < historyStart || index < source.getCountOfUnstableBars() || !Double.isFinite(observation)) {
+            if (index < historyStart || historyStart > 0 && index == historyStart
+                    || index < source.getCountOfUnstableBars() || !Double.isFinite(observation)) {
                 return PosteriorFrame.unavailable();
             }
             PosteriorFrame previous = index == historyStart
@@ -506,10 +507,8 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             double[] shapes = new double[resultSize];
             double[] scales = new double[resultSize];
             Arrays.fill(logWeights, Double.NEGATIVE_INFINITY);
-            means[0] = priorMean;
-            precisions[0] = priorMeanPrecision;
-            shapes[0] = priorShape;
-            scales[0] = priorScale;
+            updateComponent(observation, priorMean, priorMeanPrecision, priorShape, priorScale, 0, means, precisions,
+                    shapes, scales);
 
             for (int runLength = 0; runLength < previous.size(); runLength++) {
                 double logPredictive = studentTLogDensity(observation, previous.means[runLength],
@@ -522,15 +521,9 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
                 int grownRunLength = runLength + 1;
                 if (grownRunLength < resultSize) {
                     logWeights[grownRunLength] = previousWeight + logSurvival;
-                    double precision = previous.precisions[runLength];
-                    double mean = previous.means[runLength];
-                    double updatedPrecision = precision + 1d;
-                    double difference = observation - mean;
-                    means[grownRunLength] = (precision * mean + observation) / updatedPrecision;
-                    precisions[grownRunLength] = updatedPrecision;
-                    shapes[grownRunLength] = previous.shapes[runLength] + 0.5d;
-                    scales[grownRunLength] = previous.scales[runLength]
-                            + precision * difference * difference / (2d * updatedPrecision);
+                    updateComponent(observation, previous.means[runLength], previous.precisions[runLength],
+                            previous.shapes[runLength], previous.scales[runLength], grownRunLength, means, precisions,
+                            shapes, scales);
                 }
             }
 
@@ -546,6 +539,16 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
                 }
             }
             return new PosteriorFrame(previous.observationCount + 1, logWeights, means, precisions, shapes, scales);
+        }
+
+        private static void updateComponent(double observation, double mean, double precision, double shape,
+                double scale, int target, double[] means, double[] precisions, double[] shapes, double[] scales) {
+            double updatedPrecision = precision + 1d;
+            double difference = observation - mean;
+            means[target] = (precision * mean + observation) / updatedPrecision;
+            precisions[target] = updatedPrecision;
+            shapes[target] = shape + 0.5d;
+            scales[target] = scale + precision * difference * difference / (2d * updatedPrecision);
         }
 
         private static boolean validComponent(double mean, double precision, double shape, double scale) {
