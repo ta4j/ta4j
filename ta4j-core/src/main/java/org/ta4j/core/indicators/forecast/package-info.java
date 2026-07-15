@@ -17,8 +17,10 @@
  * and the constructor-first price forecast facade
  * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}.
  * Framework contracts, state records, point-projection adapters, and explicit
- * conversion bridges live in the {@code state}, {@code projection}, and
- * {@code adapters} subpackages.
+ * analytic conversion bridges live in the {@code state}, {@code projection},
+ * and {@code adapters} subpackages. Monte Carlo price forecasts transform every
+ * terminal path before summarizing it; summary-only conversion is explicitly
+ * labeled as an analytic approximation.
  *
  * @since 0.22.9
  */
