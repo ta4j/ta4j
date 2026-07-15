@@ -246,6 +246,21 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     /**
      * {@inheritDoc}
      *
+     * @since 0.23.1
+     */
+    @Override
+    public long getBarHistoryRevision() {
+        this.readLock.lock();
+        try {
+            return super.getBarHistoryRevision();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.22.9
      */
     @Override

@@ -1105,7 +1105,7 @@ Time gaps are omitted; no empty bars are inserted. If your pipeline expects cont
 The Elliott Wave suite exposes two minimal entry points:
 
 - `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
-- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+- `ElliottWaveAnalysisRunner` for one-shot analysis runs with pluggable detectors and confidence profiles
 
 ```java
 BarSeries series = ...;
@@ -1118,7 +1118,33 @@ ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
 Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
-See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
+For 1-minute, 5-minute, and other live intraday series, use the causal
+volatility-scaled profile. The compatible default includes the forming terminal
+wave for live charting while reporting it separately from confirmed waves:
+
+```java
+ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder()
+        .degree(ElliottDegree.SUB_MINUETTE)
+        .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+        .build();
+
+ElliottAnalysisResult intraday = runner.analyze(series)
+        .analysisFor(ElliottDegree.SUB_MINUETTE)
+        .orElseThrow()
+        .analysis();
+int confirmedWaves = intraday.waveCount().confirmed();
+int wavesIncludingForming = intraday.waveCount().includingProvisional();
+boolean primaryIsForming = intraday.scenarios()
+        .base()
+        .map(intraday::usesProvisionalTerminal)
+        .orElse(false);
+```
+
+For trading rules that must act on confirmed detector pivots only, add
+`.includeProvisionalTerminalSwing(false)` to the runner builder. Custom analysis
+runners own their terminal-wave semantics.
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and runner-based workflow.
 
 ## LPPL residual quickstart
 

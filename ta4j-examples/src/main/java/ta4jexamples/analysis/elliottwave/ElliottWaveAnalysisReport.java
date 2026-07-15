@@ -51,9 +51,8 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.Gson;
 
 /**
- * Domain model capturing all Elliott Wave analysis results currently logged via
- * {@link ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)}
- * and {@link ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)}.
+ * Domain model capturing the Elliott Wave analysis results produced by
+ * {@link ElliottWaveIndicatorSuiteDemo}.
  * <p>
  * This class provides structured access to analysis results including swing
  * snapshots, phase information, ratio and channel data, confluence scores,

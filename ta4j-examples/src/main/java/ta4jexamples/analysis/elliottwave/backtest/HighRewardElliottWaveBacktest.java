@@ -4,7 +4,6 @@
 package ta4jexamples.analysis.elliottwave.backtest;
 
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,13 +21,16 @@ import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.strategies.HighRewardElliottWaveStrategy;
 
 /**
- * Backtests the high-reward Elliott Wave strategy using ossified datasets.
+ * Backtests the empirical intraday Elliott Wave strategy using ossified
+ * one-minute or five-minute datasets.
  *
  * @since 0.22.2
  */
@@ -36,7 +38,7 @@ public class HighRewardElliottWaveBacktest {
 
     private static final Logger LOG = LogManager.getLogger(HighRewardElliottWaveBacktest.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
-    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-ETH-USD-PT4H-20160518_20251028.json";
+    private static final String DEFAULT_OHLCV_RESOURCE = "Binance-ETH-USD-PT5M-20230313_20230315.json";
 
     private static final List<StrategySpec> DEFAULT_SPECS = List.of(StrategySpec.defaultSpec(),
             StrategySpec.relaxedSpec(), StrategySpec.exploratorySpec(), StrategySpec.strictSpec());
@@ -63,7 +65,7 @@ public class HighRewardElliottWaveBacktest {
     }
 
     private static void runBacktest(BarSeries series, StrategySpec spec) {
-        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, spec.toParameters());
+        HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, spec.settings());
         BarSeriesManager manager = new BarSeriesManager(series);
         TradingRecord record = manager.run(strategy);
 
@@ -131,41 +133,31 @@ public class HighRewardElliottWaveBacktest {
         });
     }
 
-    private record StrategySpec(String direction, String degree, double minConfidence, double minRiskReward,
-            double minAlternationRatio, double minTrendBiasStrength, int trendSmaPeriod, int rsiPeriod,
-            double rsiThreshold, int macdFastPeriod, int macdSlowPeriod, double minRelativeSwing) {
+    private record StrategySpec(String label, HighRewardElliottWaveStrategy.Settings settings) {
 
         static StrategySpec defaultSpec() {
-            return new StrategySpec("BULLISH", "PRIMARY", 0.35, 2.0, 1.50, 0.10, 100, 14, 50.0, 12, 26, 0.10);
+            return spec("balanced", 0.55d, 1.5d, 4.0d, 3.0d, 360);
         }
 
         static StrategySpec relaxedSpec() {
-            return new StrategySpec("BULLISH", "MINOR", 0.30, 1.8, 1.05, 0.05, 80, 14, 48.0, 12, 26, 0.08);
+            return spec("broad analogs", 0.45d, 1.8d, 4.5d, 3.5d, 480);
         }
 
         static StrategySpec exploratorySpec() {
-            return new StrategySpec("BULLISH", "MINOR", 0.25, 1.5, 1.00, 0.00, 80, 14, 45.0, 12, 26, 0.05);
+            return spec("fast turns", 0.50d, 1.2d, 3.0d, 2.5d, 240);
         }
 
         static StrategySpec strictSpec() {
-            return new StrategySpec("BULLISH", "PRIMARY", 0.50, 2.5, 1.40, 0.20, 200, 14, 50.0, 12, 26, 0.15);
+            return spec("concentrated", 0.70d, 1.0d, 5.0d, 2.5d, 300);
         }
 
-        String[] toParameters() {
-            return new String[] { direction, degree, format(minConfidence), format(minRiskReward),
-                    format(minAlternationRatio), format(minTrendBiasStrength), String.valueOf(trendSmaPeriod),
-                    String.valueOf(rsiPeriod), format(rsiThreshold), String.valueOf(macdFastPeriod),
-                    String.valueOf(macdSlowPeriod), format(minRelativeSwing) };
-        }
-
-        String label() {
-            return String.format("dir=%s deg=%s conf=%s rr=%s alt=%s bias=%s swing=%s", direction, degree,
-                    format(minConfidence), format(minRiskReward), format(minAlternationRatio),
-                    format(minTrendBiasStrength), format(minRelativeSwing));
-        }
-
-        private static String format(double value) {
-            return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+        private static StrategySpec spec(String label, double probability, double fixedStop, double target,
+                double atrMultiplier, int timeoutBars) {
+            EmpiricalElliottWaveForecastIndicator.Settings forecast = new EmpiricalElliottWaveForecastIndicator.Settings(
+                    ElliottDegree.SUB_MINUETTE, 2_880, 48, 12, 5.0d, 0.20d);
+            HighRewardElliottWaveStrategy.Settings settings = new HighRewardElliottWaveStrategy.Settings(forecast,
+                    probability, fixedStop, target, 1.25d, 120, 14, atrMultiplier, timeoutBars);
+            return new StrategySpec(label, settings);
         }
     }
 }

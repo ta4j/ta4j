@@ -39,8 +39,6 @@ import java.util.regex.Pattern;
  * This class serves as the single source of truth for README content. It
  * generates chart images, extracts code snippets from source code using special
  * comment markers, and synchronizes the README with the latest code examples.
- * </p>
- *
  * <p>
  * <strong>How it works:</strong>
  * <ul>
@@ -54,8 +52,6 @@ import java.util.regex.Pattern;
  * update the README:
  * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=update-readme}</li>
  * </ul>
- * </p>
- *
  * <p>
  * <strong>Usage:</strong>
  * <ul>
@@ -66,7 +62,6 @@ import java.util.regex.Pattern;
  * <li>View snippets only:
  * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.ReadmeContentManager -Dexec.args=snippets}</li>
  * </ul>
- * </p>
  */
 public class ReadmeContentManager {
 
