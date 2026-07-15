@@ -8,6 +8,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 
+import java.util.List;
+
 import org.junit.Test;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -41,6 +43,33 @@ public class ForecastFeatureExtractorsTest
         assertArrayEquals(new double[] { 1, 2, 16 }, full.features(state()), 0d);
         assertThrows(UnsupportedOperationException.class,
                 () -> meanVolatility.schema().features().add(new ForecastFeatureSchema.Feature("x", "x")));
+    }
+
+    @Test
+    public void roughVolatilitySchemaOssifiesSpecializedShapeAndPrimitiveBoundaries() {
+        ForecastFeatureExtractor<RoughVolatilityForecastState> extractor = ForecastFeatureExtractors.roughVolatility();
+        RoughVolatilityForecastState state = RoughVolatilityForecastState.stable(
+                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, numOf(1), numOf(2), numOf(16)), numOf(0.1),
+                numOf(0.25), List.of(numOf(16), numOf(20)));
+
+        assertEquals("rough-volatility/default", extractor.schema().id());
+        assertEquals(1, extractor.schema().version());
+        assertEquals(ReturnRepresentation.LOG, extractor.schema().representation());
+        assertEquals(4, extractor.schema().dimension());
+        assertEquals("mean", extractor.schema().features().get(0).name());
+        assertEquals("volatility", extractor.schema().features().get(1).name());
+        assertEquals("roughness_hurst", extractor.schema().features().get(2).name());
+        assertEquals("vol_of_vol", extractor.schema().features().get(3).name());
+        assertArrayEquals(new double[] { 1, 4, 0.1, 0.25 }, extractor.features(state), 1e-12);
+        assertThrows(IllegalArgumentException.class,
+                () -> extractor.features(RoughVolatilityForecastState.unstable(3, 4)));
+
+        NumFactory highPrecision = DecimalNumFactory.getInstance(40);
+        RoughVolatilityForecastState overflow = RoughVolatilityForecastState.stable(
+                ReturnMoments.stable(3, 4, ReturnRepresentation.LOG, highPrecision.one(), highPrecision.two(),
+                        highPrecision.numOf(16)),
+                highPrecision.numOf(0.1), highPrecision.numOf("1E+10000"), List.of(highPrecision.numOf(16)));
+        assertThrows(IllegalArgumentException.class, () -> extractor.features(overflow));
     }
 
     @Test

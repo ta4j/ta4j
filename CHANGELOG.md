@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Rough-volatility return state**: Added `RoughVolatilityForecastStateIndicator` with constructor-first defaults, shared EWMA return moments, bounded log-variogram Hurst estimation, log-volatility vol-of-vol, deterministic cumulative horizon variances, and a fixed representation-aware feature schema for analog composition. The accompanying BTC daily example compares default EWMA and rough state without making performance claims.
 - **State-conditioned analog and rolling conformal forecasts**: Added `AnalogReturnProjectionIndicator` with matured-neighbor guards, training-only feature standardization, deterministic weighted empirical summaries, and `RollingConformalForecastProjectionIndicator` for finite-sample tail calibration over generic realized values or semantically typed cumulative log returns. Calibration refuses tail-less base forecasts rather than reporting a stable no-op, and a runnable ossified BTC daily example demonstrates the paired workflow.
 - **Causal LPPL residuals expose a regular numeric indicator and rich fit diagnostics**: Added `LPPLResidualIndicator` for normalized one-step log-price residuals and `LPPLFitIndicator` for inspecting and reusing the underlying LPPLS calibration. Fits end before the evaluated bar to avoid look-ahead, invalid or unqualified models return `NaN`, finite high-precision prices remain supported, and immutable `LPPLCalibrationProfile` tuning keeps advanced construction readable.
 - **Forecast distributions now carry explicit support provenance**: Added `ForecastSupport` for unavailable, empirical, and named analytic distributions, a validated summary builder, safe affine transforms, and representation-aware feature schemas with allocation-free extraction.
@@ -15,6 +16,7 @@
 - **Shared local and hosted quality gates**: `scripts/run-full-build-quiet.sh` and its PowerShell counterpart now run repository script fixtures, actionlint validation, and the all-non-demo test scope used by pull-request CI. The local default repairs license headers and formatting before verification, while hosted workflows reuse the entrypoint with `--validate-only` to reject omitted repairs without modifying the checkout. Workflow, script-contract, integration-test, SpotBugs, and JaCoCo findings now use the same underlying gate before and after push.
 
 ### Fixed
+- **Rolling variance stays coherent at low Decimal precision**: `VarianceIndicator` now uses an anchored one-pass recurrence, so constant transcendental values retain zero dispersion without doubling source reads for every rolling window.
 - **Monte Carlo price summaries describe the simulated paths exactly**: `MonteCarloPriceForecastIndicator` now transforms every terminal cumulative-return path to price before calculating mean, median, standard deviation, quantiles, and empirical support. Nonlinear summary-only conversion no longer creates hybrid distributions.
 - **Forecast numeric boundaries preserve factory configuration**: State, summary, adapter, and sample boundaries now coerce through the owning `NumFactory`, including differing `DecimalNum` precision contexts and factory-correct zero dispersion.
 
