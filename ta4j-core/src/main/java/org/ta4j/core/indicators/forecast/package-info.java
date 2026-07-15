@@ -14,13 +14,21 @@
  * {@link org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator},
  * projection indicators such as
  * {@link org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator},
+ * state-conditioned empirical projections such as
+ * {@link org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator},
+ * rolling calibration through
+ * {@link org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator},
  * and the constructor-first price forecast facade
  * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}.
  * Framework contracts, state records, point-projection adapters, and explicit
  * analytic conversion bridges live in the {@code state}, {@code projection},
  * and {@code adapters} subpackages. Monte Carlo price forecasts transform every
  * terminal path before summarizing it; summary-only conversion is explicitly
- * labeled as an analytic approximation.
+ * labeled as an analytic approximation. Analog candidates and conformal scores
+ * are usable only after their complete forecast horizons mature, preserving the
+ * package-wide no-lookahead contract. Cumulative-return calibration preserves
+ * the semantic return-projection contract, and conformal output remains
+ * unavailable when no configured tail quantile can be widened.
  *
  * @since 0.22.9
  */
