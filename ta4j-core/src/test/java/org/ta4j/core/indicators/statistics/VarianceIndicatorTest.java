@@ -11,7 +11,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -84,5 +86,16 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(0.5, variance.getValue(8));
         assertNumEquals(3.5, variance.getValue(9));
         assertNumEquals(10.5, variance.getValue(10));
+    }
+
+    @Test
+    public void constantTranscendentalValuesHaveZeroLowPrecisionVariance() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(2);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(lowPrecision).withData(1, 2, 3).build();
+        Num value = lowPrecision.numOf("1E-8").log();
+        Indicator<Num> source = new FixedIndicator<>(series, value, value, value);
+        VarianceIndicator variance = VarianceIndicator.ofPopulation(source, 3);
+
+        assertNumEquals(0, variance.getValue(2));
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -21,6 +22,7 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
@@ -32,6 +34,23 @@ public class RoughVolatilityForecastStateIndicatorTest
 
     public RoughVolatilityForecastStateIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        double[] prices = new double[20];
+        Arrays.setAll(prices, index -> Math.exp(0.01d * index));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        RoughVolatilityForecastStateIndicator indicator = RoughVolatilityForecastStateIndicator
+                .builder(new LogReturnIndicator(series))
+                .initializationBarCount(4)
+                .decayFactor(0.8d)
+                .driftMode(EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN)
+                .roughnessWindow(6)
+                .volOfVolWindow(4)
+                .horizon(3)
+                .build();
+        return List.of(serializationFixture(series, indicator, 0, 6, 19));
     }
 
     @Test
@@ -48,6 +67,20 @@ public class RoughVolatilityForecastStateIndicatorTest
         assertNumEquals(0.01d, state.roughnessHurst());
         assertNumEquals(0d, state.volOfVol());
         assertEquals(3, state.horizonVarianceForecasts().size());
+        state.horizonVarianceForecasts().forEach(value -> assertNumEquals(0d, value));
+    }
+
+    @Test
+    public void constantReturnsRemainStableWithLowPrecisionProxyArithmetic() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(2);
+        Fixture fixture = fixture(lowPrecision, ReturnRepresentation.LOG, 0, 0, 0, 0, 0, 0, 0, 0);
+        RoughVolatilityForecastStateIndicator indicator = configured(fixture.returns(), 3);
+
+        RoughVolatilityForecastState state = indicator.getValue(7);
+
+        assertTrue(state.isStable());
+        assertNumEquals(0.01d, state.roughnessHurst());
+        assertNumEquals(0d, state.volOfVol());
         state.horizonVarianceForecasts().forEach(value -> assertNumEquals(0d, value));
     }
 
@@ -77,6 +110,31 @@ public class RoughVolatilityForecastStateIndicatorTest
                 state.horizonVarianceForecasts().get(1));
         assertNumEquals(state.variance().doubleValue() * Math.pow(3d, 2d * hurst),
                 state.horizonVarianceForecasts().get(2));
+    }
+
+    @Test
+    public void unsupportedLowPrecisionLogReturnsUnavailableStateInsteadOfThrowing() {
+        NumFactory lowPrecision = DecimalNumFactory.getInstance(1);
+        double[] returns = new double[8];
+        Arrays.setAll(returns, index -> Math.exp(-5d + 0.2d * index) - 1e-8d);
+        Fixture fixture = fixture(lowPrecision, ReturnRepresentation.LOG, returns);
+        RoughVolatilityForecastStateIndicator indicator = RoughVolatilityForecastStateIndicator
+                .builder(fixture.returns())
+                .initializationBarCount(2)
+                .decayFactor(0.5d)
+                .roughnessWindow(6)
+                .volOfVolWindow(4)
+                .horizon(3)
+                .build();
+
+        RoughVolatilityForecastState state = indicator.getValue(7);
+
+        assertEquals(7, state.index());
+        assertEquals(ReturnRepresentation.LOG, state.representation());
+        assertFalse(state.isStable());
+        assertTrue(state.roughnessHurst().isNaN());
+        assertTrue(state.volOfVol().isNaN());
+        assertTrue(state.horizonVarianceForecasts().isEmpty());
     }
 
     @Test
@@ -143,6 +201,21 @@ public class RoughVolatilityForecastStateIndicatorTest
 
         assertTrue(forecast.isStable());
         assertEquals(3, forecast.sampleCount());
+    }
+
+    @Test
+    public void removedIndexRetainsRequestedStateMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 102, 103, 104, 105, 106, 107)
+                .build();
+        RoughVolatilityForecastStateIndicator indicator = configured(new LogReturnIndicator(series), 2);
+
+        series.setMaximumBarCount(3);
+        RoughVolatilityForecastState removed = indicator.getValue(1);
+
+        assertEquals(1, removed.index());
+        assertEquals(0, removed.observationCount());
+        assertFalse(removed.isStable());
     }
 
     @Test

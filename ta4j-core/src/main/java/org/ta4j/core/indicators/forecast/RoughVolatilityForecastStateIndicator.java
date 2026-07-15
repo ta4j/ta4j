@@ -68,11 +68,15 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
     private static final double MAX_HURST = 0.49d;
 
     private final ReturnIndicator returnIndicator;
-    private final EwmaReturnForecastStateIndicator momentIndicator;
-    private final LogVolatilityProxyIndicator proxyIndicator;
-    private final VarianceIndicator proxyVarianceIndicator;
+    private final int initializationBarCount;
+    private final double decayFactor;
+    private final EwmaReturnForecastStateIndicator.DriftMode driftMode;
     private final int roughnessWindow;
+    private final int volOfVolWindow;
     private final int horizon;
+    private final transient EwmaReturnForecastStateIndicator momentIndicator;
+    private final transient LogVolatilityProxyIndicator proxyIndicator;
+    private final transient VarianceIndicator proxyVarianceIndicator;
 
     /**
      * Creates rough-volatility state with operator defaults.
@@ -84,15 +88,30 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         this(builder(returnIndicator));
     }
 
+    RoughVolatilityForecastStateIndicator(ReturnIndicator returnIndicator, int initializationBarCount,
+            double decayFactor, EwmaReturnForecastStateIndicator.DriftMode driftMode, int roughnessWindow,
+            int volOfVolWindow, int horizon) {
+        this(builder(returnIndicator).initializationBarCount(initializationBarCount)
+                .decayFactor(decayFactor)
+                .driftMode(driftMode)
+                .roughnessWindow(roughnessWindow)
+                .volOfVolWindow(volOfVolWindow)
+                .horizon(horizon));
+    }
+
     private RoughVolatilityForecastStateIndicator(Builder builder) {
         super(validatedReturnIndicator(builder));
         this.returnIndicator = builder.returnIndicator;
+        this.initializationBarCount = builder.initializationBarCount;
+        this.decayFactor = builder.decayFactor;
+        this.driftMode = builder.driftMode;
+        this.roughnessWindow = builder.roughnessWindow;
+        this.volOfVolWindow = builder.volOfVolWindow;
+        this.horizon = builder.horizon;
         this.momentIndicator = new EwmaReturnForecastStateIndicator(returnIndicator, builder.initializationBarCount,
                 builder.decayFactor, builder.driftMode);
         this.proxyIndicator = new LogVolatilityProxyIndicator(returnIndicator);
         this.proxyVarianceIndicator = VarianceIndicator.ofPopulation(proxyIndicator, builder.volOfVolWindow);
-        this.roughnessWindow = builder.roughnessWindow;
-        this.horizon = builder.horizon;
     }
 
     /**
@@ -124,6 +143,19 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
     @Override
     public ReturnRepresentation getReturnRepresentation() {
         return ReturnRepresentation.LOG;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public RoughVolatilityForecastState getValue(int index) {
+        if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
+            return RoughVolatilityForecastState.unstable(index, 0);
+        }
+        return super.getValue(index);
     }
 
     @Override
@@ -372,8 +404,12 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
             if (!Num.isFinite(value)) {
                 return NaN.NaN;
             }
-            Num proxy = value.abs().plus(epsilon).log();
-            return Num.isFinite(proxy) ? proxy : NaN.NaN;
+            try {
+                Num proxy = value.abs().plus(epsilon).log();
+                return Num.isFinite(proxy) ? proxy : NaN.NaN;
+            } catch (ArithmeticException exception) {
+                return NaN.NaN;
+            }
         }
 
         @Override

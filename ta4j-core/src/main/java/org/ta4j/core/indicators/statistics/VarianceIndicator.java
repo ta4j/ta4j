@@ -7,8 +7,8 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Variance indicator.
@@ -23,7 +23,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
     private final SampleType sampleType;
 
     /**
@@ -50,7 +49,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
         this.barCount = Math.max(barCount, 1);
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
-        this.sma = new SMAIndicator(indicator, this.barCount);
     }
 
     /**
@@ -81,11 +79,16 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(0, index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
-        Num average = sma.getValue(index);
+        NumFactory numFactory = getBarSeries().numFactory();
+        Num anchor = indicator.getValue(startIndex);
+        Num offsetTotal = numFactory.zero();
         for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
+            offsetTotal = offsetTotal.plus(indicator.getValue(i).minus(anchor));
+        }
+        Num averageOffset = offsetTotal.dividedBy(numFactory.numOf(numberOfObservations));
+        Num variance = numFactory.zero();
+        for (int i = startIndex; i <= index; i++) {
+            Num pow = indicator.getValue(i).minus(anchor).minus(averageOffset).pow(2);
             variance = variance.plus(pow);
         }
         final int divisor = sampleType.isSample() ? numberOfObservations - 1 : numberOfObservations;
