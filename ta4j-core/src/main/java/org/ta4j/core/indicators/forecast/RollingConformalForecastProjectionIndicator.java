@@ -130,6 +130,9 @@ public final class RollingConformalForecastProjectionIndicator extends CachedInd
 
     @Override
     protected Forecast calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return Forecast.unstable(index, horizon);
+        }
         Forecast current = exactForecast(baseForecast.getValue(index), index);
         if (current == null || !current.isStable()) {
             return Forecast.unstable(index, horizon);
