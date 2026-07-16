@@ -44,6 +44,9 @@ public final class SamplingFrequencyIndexes {
     public SamplingFrequencyIndexes(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
         this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
+        if (this.samplingFrequency == SamplingFrequency.TRADE) {
+            throw new IllegalArgumentException("SamplingFrequency.TRADE requires a trading record");
+        }
     }
 
     /**
@@ -96,6 +99,7 @@ public final class SamplingFrequencyIndexes {
         case WEEK -> !sameIsoWeek(now, next);
         case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
         case BAR -> true;
+        case TRADE -> throw new IllegalStateException("SamplingFrequency.TRADE requires a trading record");
         };
     }
 

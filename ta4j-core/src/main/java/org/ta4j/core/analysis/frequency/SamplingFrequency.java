@@ -9,5 +9,12 @@ package org.ta4j.core.analysis.frequency;
  * @since 0.22.2
  */
 public enum SamplingFrequency {
-    BAR, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH
+    BAR, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH,
+
+    /**
+     * Samples one return per included position interval.
+     *
+     * @since 0.23.1
+     */
+    TRADE
 }
