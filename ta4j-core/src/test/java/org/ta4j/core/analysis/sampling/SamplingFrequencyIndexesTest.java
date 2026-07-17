@@ -89,8 +89,20 @@ public class SamplingFrequencyIndexesTest {
 
     @Test
     public void constructorRejectsTradeSampling() {
-        assertThrows(IllegalArgumentException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> new SamplingFrequencyIndexes(SamplingFrequency.TRADE, ZoneOffset.UTC));
+
+        assertEquals("SamplingFrequency.TRADE requires a trading record; use a TradingRecord-aware sampling API",
+                exception.getMessage());
+    }
+
+    @Test
+    public void constructorRejectsTradeSamplingBeforeRequiringGroupingZone() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new SamplingFrequencyIndexes(SamplingFrequency.TRADE, null));
+
+        assertEquals("SamplingFrequency.TRADE requires a trading record; use a TradingRecord-aware sampling API",
+                exception.getMessage());
     }
 
     private static BarSeries buildDailySeries() {

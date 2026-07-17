@@ -50,10 +50,12 @@ import org.ta4j.core.num.NumFactory;
  * <li>{@link SamplingFrequency#SECOND}/{@link SamplingFrequency#MINUTE}/{@link SamplingFrequency#HOUR}/{@link SamplingFrequency#DAY}/{@link SamplingFrequency#WEEK}/{@link SamplingFrequency#MONTH}:
  * returns are computed between period endpoints detected from bar
  * {@code endTime} after converting it to {@link #groupingZoneId}. Period
- * boundaries follow ISO week semantics for {@code WEEKLY}.</li>
+ * boundaries follow ISO week semantics for {@code WEEK}.</li>
  * <li>{@link SamplingFrequency#TRADE}: one return per included position
  * interval. Open positions are included only when
- * {@link OpenPositionHandling#MARK_TO_MARKET} is effective.</li>
+ * {@link OpenPositionHandling#MARK_TO_MARKET} is effective; the
+ * {@link #groupingZoneId} is not used because entry and exit indices define the
+ * sample boundaries.</li>
  * </ul>
  * For time-based sampling, the first sampled return is anchored at the series
  * begin index, even when evaluating a single {@link Position}, so the first
