@@ -47,7 +47,7 @@ public interface AnalysisCriterion {
      * @return JSON representation
      * @throws IllegalArgumentException if this criterion has constructor state that
      *                                  cannot be represented safely
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toJson() {
         return AnalysisCriterionSerialization.toJson(this);
@@ -59,7 +59,7 @@ public interface AnalysisCriterion {
      * @return component descriptor for this criterion
      * @throws IllegalArgumentException if this criterion has constructor state that
      *                                  cannot be represented safely
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default ComponentDescriptor toDescriptor() {
         return AnalysisCriterionSerialization.describe(this);
@@ -72,7 +72,7 @@ public interface AnalysisCriterion {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  criterion without dropping constructor state
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression() {
         return AnalysisCriterionSerialization.toExpression(this);
@@ -86,7 +86,7 @@ public interface AnalysisCriterion {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  criterion without dropping constructor state
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression(NamedAssetRegistry registry) {
         return AnalysisCriterionSerialization.toExpression(this, registry);
@@ -97,7 +97,7 @@ public interface AnalysisCriterion {
      *
      * @param json JSON payload
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static AnalysisCriterion fromJson(String json) {
         return AnalysisCriterionSerialization.fromJson(json);
@@ -109,7 +109,7 @@ public interface AnalysisCriterion {
      *
      * @param expression shorthand expression
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static AnalysisCriterion fromExpression(String expression) {
         return AnalysisCriterionSerialization.fromExpression(expression);
@@ -122,7 +122,7 @@ public interface AnalysisCriterion {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static AnalysisCriterion fromExpression(String expression, NamedAssetRegistry registry) {
         return AnalysisCriterionSerialization.fromExpression(expression, registry);

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.numeric;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -323,7 +324,7 @@ public class BinaryOperationIndicatorTest extends AbstractIndicatorTest<BinaryOp
 
         var result = BinaryOperationIndicator.sum(left, right);
 
-        assertEquals(series, result.getBarSeries());
+        assertTrue(isSameSeries(series, result.getBarSeries()));
     }
 
     @Test

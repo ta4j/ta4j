@@ -9,8 +9,6 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -60,8 +58,8 @@ public class BaseTradingStatement implements TradingStatement {
         this.performanceReport = performanceReport;
         this.tradingRecord = tradingRecord;
         this.strategy = strategy;
-        this.criterionScores = criterionScores == null || criterionScores.isEmpty() ? Collections.emptyMap()
-                : Collections.unmodifiableMap(new HashMap<>(criterionScores));
+        this.criterionScores = criterionScores == null || criterionScores.isEmpty() ? Map.of()
+                : Map.copyOf(criterionScores);
     }
 
     /**
@@ -119,7 +117,7 @@ public class BaseTradingStatement implements TradingStatement {
 
     @Override
     public Map<AnalysisCriterion, Num> getCriterionScores() {
-        return criterionScores;
+        return Map.copyOf(criterionScores);
     }
 
     @Override

@@ -27,6 +27,9 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
     /** The period low. */
     private final Indicator<Num> periodLow;
 
+    /** The time frame. */
+    private final int barCount;
+
     /**
      * Constructor.
      *
@@ -35,6 +38,7 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
      */
     public IchimokuLineIndicator(BarSeries series, int barCount) {
         super(series);
+        this.barCount = barCount;
         this.periodHigh = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         this.periodLow = new LowestValueIndicator(new LowPriceIndicator(series), barCount);
     }
@@ -49,5 +53,9 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
+    }
+
+    int getBarCount() {
+        return barCount;
     }
 }

@@ -16,34 +16,42 @@ import static org.ta4j.core.num.NaN.NaN;
  * Net Momentum Indicator.
  *
  * <p>
- * This indicator measures the cumulative deviation of an oscillating indicator
- * from its neutral pivot point over a specified timeframe. It helps identify:
+ * This indicator models oscillator extremes as a finite psychological battery
+ * over a specified timeframe. For RSI-style inputs, readings below the neutral
+ * pivot charge positive rebound energy, while readings above the pivot deplete
+ * it. It helps identify:
  * <ul>
- * <li>Persistent momentum bias (bullish/bearish energy)</li>
- * <li>Potential mean reversion opportunities at extremes</li>
- * <li>Divergences between price action and momentum</li>
+ * <li>Potential troughs when rebound battery crosses back above zero after
+ * downside pressure</li>
+ * <li>Potential tops when rebound energy is worked off and crosses below
+ * zero</li>
+ * <li>Divergences between price action and remaining oscillator fuel</li>
  * </ul>
  *
  * <p>
  * The calculation process:
  * <ol>
  * <li>Applies Kalman filter smoothing to the input oscillator</li>
- * <li>Calculates deviation from the neutral pivot value</li>
- * <li>Maintains a running total over the specified timeframe</li>
+ * <li>Calculates inverted distance from the neutral pivot value</li>
+ * <li>Adds a pivot-normalized squared distance term so extremes count more than
+ * repeated mild deviations</li>
+ * <li>Maintains a running battery balance over the specified timeframe</li>
  * <li>Optionally applies exponential decay so that momentum can reset through
  * time/sideways action</li>
  * </ol>
  *
  * <p>
  * Why use this over the raw oscillator? The raw oscillator shows the
- * instantaneous state, while the Net Momentum integrates both the magnitude and
- * the duration spent above/below the neutral pivot (e.g., RSI 50). This
- * distinguishes persistent pressure from fleeting spikes and provides a more
- * stable signal for regime detection.
+ * instantaneous state, while the Net Momentum integrates both the non-linear
+ * magnitude and the duration spent away from the neutral pivot (e.g., RSI 50).
+ * This distinguishes a real store of regime fuel from fleeting pivot noise and
+ * provides a more stable signal for swing-scale regime exhaustion.
  * <ul>
  * <li>Two periods can end with the same oscillator value, but the one that
- * accumulated more time and distance above the pivot will have higher net
- * momentum.</li>
+ * accumulated more time and distance below the pivot will have higher rebound
+ * battery.</li>
+ * <li>A larger extreme contributes more than multiple mild deviations; for
+ * example, an RSI move to 90 has more impact than two readings at 70.</li>
  * <li>Kalman smoothing reduces whipsaw before accumulation, improving the
  * usefulness of the running total for decision-making.</li>
  * </ul>
@@ -51,16 +59,13 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * Practical scenarios where Net Momentum adds insight beyond the oscillator:
  * <ul>
- * <li><b>Regime filter</b>: Sustained positive readings indicate a bullish
- * environment; sustained negative readings a bearish one. The zero line can act
- * as a trend filter for enabling/disabling strategies.</li>
- * <li><b>Breakout readiness</b>: A steady rise from negative to positive while
- * price is still range-bound can foreshadow directional breaks.</li>
- * <li><b>Continuation vs. exhaustion</b>: New price highs with
- * flattening/falling net momentum warn of waning fuel; rising net momentum
- * confirms trend continuation.</li>
- * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative values
- * versus a rolling history highlight stretched conditions that often
+ * <li><b>Rebound readiness</b>: A steady rise through zero after downside RSI
+ * pressure often marks a local trough or the early transition away from
+ * one.</li>
+ * <li><b>Exhaustion timing</b>: A fall through zero after upside RSI pressure
+ * often marks a local top or the late transition into one.</li>
+ * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative battery
+ * values versus a rolling history highlight stretched conditions that often
  * mean-revert.</li>
  * <li><b>Noise reduction in ranges</b>: Oscillators often whipsaw around the
  * pivot in ranges; net momentum tends to hover near zero, reducing false
@@ -76,13 +81,12 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * RSI-specific intuition (pivot at 50):
  * <ul>
- * <li>Brief RSI readings just above 50 produce small net momentum; RSI between
- * 55–70 for many bars produces large positive net momentum (persistent buying
- * pressure).</li>
- * <li>Two series can end at RSI = 60; the one that spent more time and distance
- * above 50 will show higher net momentum.</li>
- * <li>Zero-line crosses and slope changes in net momentum can be used as robust
- * filters or timing aids compared to single RSI threshold checks.</li>
+ * <li>Brief RSI readings just below 50 produce small positive charge; RSI
+ * between 0 and 30 for many bars produces large positive rebound battery.</li>
+ * <li>Readings above 50 subtract from that battery; a cross below zero suggests
+ * the prior rebound fuel has been worked off.</li>
+ * <li>Zero-line crosses and slope changes can be used as swing-turn timing aids
+ * compared to single RSI threshold checks.</li>
  * </ul>
  *
  * <p>
@@ -100,6 +104,9 @@ import static org.ta4j.core.num.NaN.NaN;
  * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
  * }</pre>
  *
+ * <p>
+ * Battery-model adaptation by TheCookieLab.
+ *
  * @see RSIIndicator
  * @see KalmanFilterIndicator
  *
@@ -116,6 +123,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
     private final int timeFrame;
     private final Num decayFactor;
     private final Num decayFactorAtWindowLimit;
+    private final Num convexityScale;
     private final Num zero;
     private final int unstableBars;
 
@@ -133,7 +141,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
      *                                  is null
      */
     public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue) {
-        this(oscillatingIndicator, timeFrame, neutralPivotValue, DEFAULT_DECAY_FACTOR);
+        this(validatedConfig(oscillatingIndicator, timeFrame, neutralPivotValue, DEFAULT_DECAY_FACTOR));
     }
 
     /**
@@ -156,38 +164,58 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
      */
     public NetMomentumIndicator(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue,
             Number decayFactor) {
-        super(Objects.requireNonNull(oscillatingIndicator, "Oscillating indicator must not be null"));
+        this(validatedConfig(oscillatingIndicator, timeFrame, neutralPivotValue, decayFactor));
+    }
 
+    private NetMomentumIndicator(Config config) {
+        super(config.oscillatingIndicator());
+        this.oscillatingIndicator = config.oscillatingIndicator();
+        this.timeFrame = config.timeFrame();
+        this.smoothedIndicator = config.smoothedIndicator();
+        this.deltaFromNeutralIndicator = config.deltaFromNeutralIndicator();
+        this.decayFactor = config.decayFactor();
+        this.decayFactorAtWindowLimit = config.decayFactorAtWindowLimit();
+        this.convexityScale = config.convexityScale();
+        this.zero = config.zero();
+        this.unstableBars = config.unstableBars();
+    }
+
+    private static Config validatedConfig(Indicator<Num> oscillatingIndicator, int timeFrame, Number neutralPivotValue,
+            Number decayFactor) {
+        Indicator<Num> validatedOscillatingIndicator = Objects.requireNonNull(oscillatingIndicator,
+                "Oscillating indicator must not be null");
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
         Objects.requireNonNull(decayFactor, "Decay factor must not be null");
-
-        double rawPivot = neutralPivotValue.doubleValue();
-        if (Double.isNaN(rawPivot) || Double.isInfinite(rawPivot)) {
-            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
-        }
 
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");
         }
 
-        this.oscillatingIndicator = oscillatingIndicator;
-        this.timeFrame = timeFrame;
-        this.smoothedIndicator = new KalmanFilterIndicator(oscillatingIndicator);
-        this.deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator, neutralPivotValue);
+        KalmanFilterIndicator smoothedIndicator = new KalmanFilterIndicator(validatedOscillatingIndicator);
+        Indicator<Num> deltaFromNeutralIndicator = BinaryOperationIndicator.difference(smoothedIndicator,
+                neutralPivotValue);
 
         double rawDecay = decayFactor.doubleValue();
         if (Double.isNaN(rawDecay) || Double.isInfinite(rawDecay) || rawDecay < 0.0 || rawDecay > 1.0) {
             throw new IllegalArgumentException("Decay factor must be between 0 and 1 inclusive");
         }
 
-        NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
-        this.decayFactor = numFactory.numOf(decayFactor);
-        this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
-        this.zero = numFactory.zero();
-        int smoothingUnstable = Math.max(oscillatingIndicator.getCountOfUnstableBars(),
+        NumFactory numFactory = validatedOscillatingIndicator.getBarSeries().numFactory();
+        Num neutralPivot = numFactory.numOf(neutralPivotValue);
+        double rawPivot = neutralPivot.doubleValue();
+        if (Num.isNaNOrNull(neutralPivot) || Double.isInfinite(rawPivot)) {
+            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
+        }
+        Num validatedDecayFactor = numFactory.numOf(decayFactor);
+        Num decayFactorAtWindowLimit = validatedDecayFactor.pow(timeFrame);
+        Num convexityScale = neutralPivot.abs().max(numFactory.one());
+        Num zero = numFactory.zero();
+        int smoothingUnstable = Math.max(validatedOscillatingIndicator.getCountOfUnstableBars(),
                 smoothedIndicator.getCountOfUnstableBars());
         int windowUnstable = Math.max(0, timeFrame - 1);
-        this.unstableBars = smoothingUnstable + windowUnstable;
+        int unstableBars = smoothingUnstable + windowUnstable;
+        return new Config(validatedOscillatingIndicator, smoothedIndicator, deltaFromNeutralIndicator, timeFrame,
+                validatedDecayFactor, decayFactorAtWindowLimit, convexityScale, zero, unstableBars);
     }
 
     /**
@@ -230,7 +258,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         }
 
-        Num delta = deltaFromNeutralIndicator.getValue(index);
+        Num delta = contribution(index);
         if (Num.isNaNOrNull(delta)) {
             return NaN;
         }
@@ -247,8 +275,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index >= timeFrame) {
             int expiredIndex = index - timeFrame;
-            Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero
-                    : deltaFromNeutralIndicator.getValue(expiredIndex);
+            Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero : contribution(expiredIndex);
             if (Num.isNaNOrNull(expiredContribution)) {
                 expiredContribution = zero;
             }
@@ -259,8 +286,24 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         return decayedWithCurrent;
     }
 
+    private Num contribution(int index) {
+        Num rawDistance = deltaFromNeutralIndicator.getValue(index);
+        if (Num.isNaNOrNull(rawDistance)) {
+            return NaN;
+        }
+
+        Num distance = rawDistance.abs();
+        Num convexDistance = distance.plus(distance.pow(2).dividedBy(convexityScale));
+        return rawDistance.isNegative() ? convexDistance : convexDistance.negate();
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
+    }
+
+    private record Config(Indicator<Num> oscillatingIndicator, KalmanFilterIndicator smoothedIndicator,
+            Indicator<Num> deltaFromNeutralIndicator, int timeFrame, Num decayFactor, Num decayFactorAtWindowLimit,
+            Num convexityScale, Num zero, int unstableBars) {
     }
 }

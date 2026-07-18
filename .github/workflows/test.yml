@@ -1,4 +1,4 @@
-name: Run Unit Tests
+name: Run Verify
 
 permissions:
   contents: read
@@ -17,15 +17,15 @@ concurrency:
 
 jobs:
   test:
-    name: Build and Test
+    name: Build and Verify
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -36,8 +36,14 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
 
-      - name: Build and run tests with Maven
-        run: xvfb-run mvn -B test
+      - name: Set up Go for the pinned actionlint fallback
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Run the canonical quality gate without modifying the checkout
+        run: xvfb-run scripts/run-full-build-quiet.sh --validate-only

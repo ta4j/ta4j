@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.donchian;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -43,9 +45,9 @@ public class DonchianChannelFacadeTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void testCreation() {
         final DonchianChannelFacade facade = new DonchianChannelFacade(series, 3);
-        assertEquals(series, facade.upper().getBarSeries());
-        assertEquals(series, facade.middle().getBarSeries());
-        assertEquals(series, facade.lower().getBarSeries());
+        assertTrue(isSameSeries(series, facade.upper().getBarSeries()));
+        assertTrue(isSameSeries(series, facade.middle().getBarSeries()));
+        assertTrue(isSameSeries(series, facade.lower().getBarSeries()));
     }
 
     @Test

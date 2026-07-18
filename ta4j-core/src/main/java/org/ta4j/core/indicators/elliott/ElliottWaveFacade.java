@@ -8,10 +8,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Facade class that creates and coordinates a complete set of Elliott Wave
@@ -90,8 +90,8 @@ public final class ElliottWaveFacade {
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
             final Optional<ElliottSwingCompressor> compressor) {
-        this.series = Objects.requireNonNull(series, "series cannot be null");
-        this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator cannot be null");
+        this.series = snapshotSeries(series);
+        this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator cannot be null").copy();
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.fibTolerance = Objects.requireNonNull(fibTolerance, "fibTolerance cannot be null");
         this.compressor = Objects.requireNonNull(compressor, "compressor cannot be null");
@@ -117,10 +117,11 @@ public final class ElliottWaveFacade {
      * @param series       source bar series
      * @param window       number of bars to inspect before and after a pivot
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -162,9 +163,9 @@ public final class ElliottWaveFacade {
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
      * @param degree            swing degree metadata
-     * @param fibTolerance      optional custom Fibonacci tolerance for phase
-     *                          validation (default: 0.05). When provided, the phase
-     *                          indicator will use a custom
+     * @param fibTolerance      optional custom Fibonacci tolerance for phase and
+     *                          scenario validation (default: 0.05). When provided,
+     *                          phase and scenario indicators will use a custom
      *                          {@link ElliottFibonacciValidator} with this
      *                          tolerance instead of the default validator.
      * @param compressor        optional swing compressor for filtered wave
@@ -206,10 +207,11 @@ public final class ElliottWaveFacade {
      *
      * @param series       source bar series
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -246,9 +248,9 @@ public final class ElliottWaveFacade {
      *
      * @param swingIndicator custom swing indicator
      * @param priceIndicator price reference for confluence analysis
-     * @param fibTolerance   optional custom Fibonacci tolerance for phase
-     *                       validation (default: 0.05). When provided, the phase
-     *                       indicator will use a custom
+     * @param fibTolerance   optional custom Fibonacci tolerance for phase and
+     *                       scenario validation (default: 0.05). When provided,
+     *                       phase and scenario indicators will use a custom
      *                       {@link ElliottFibonacciValidator} with this tolerance
      *                       instead of the default validator.
      * @param compressor     optional swing compressor for filtered wave counting.
@@ -273,7 +275,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public BarSeries series() {
-        return series;
+        return snapshotSeries(series);
     }
 
     /**
@@ -281,7 +283,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottSwingIndicator swing() {
-        return swingIndicator;
+        return swingIndicator.copy();
     }
 
     /**
@@ -295,12 +297,13 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottPhaseIndicator phase() {
+        return phaseInternal().copy();
+    }
+
+    private ElliottPhaseIndicator phaseInternal() {
         if (phaseIndicator == null) {
             if (fibTolerance.isPresent()) {
-                final NumFactory numFactory = series.numFactory();
-                final ElliottFibonacciValidator validator = new ElliottFibonacciValidator(numFactory,
-                        fibTolerance.get());
-                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
+                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, customFibValidator());
             } else {
                 phaseIndicator = new ElliottPhaseIndicator(swingIndicator);
             }
@@ -309,10 +312,22 @@ public final class ElliottWaveFacade {
     }
 
     /**
+     * @return a Fibonacci validator carrying the configured custom tolerance; only
+     *         valid to call when {@code fibTolerance} is present
+     */
+    private ElliottFibonacciValidator customFibValidator() {
+        return new ElliottFibonacciValidator(series.numFactory(), fibTolerance.get());
+    }
+
+    /**
      * @return the ratio indicator (lazily created)
      * @since 0.22.0
      */
     public ElliottRatioIndicator ratio() {
+        return ratioInternal().copy();
+    }
+
+    private ElliottRatioIndicator ratioInternal() {
         if (ratioIndicator == null) {
             ratioIndicator = new ElliottRatioIndicator(swingIndicator);
         }
@@ -324,6 +339,10 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottChannelIndicator channel() {
+        return channelInternal().copy();
+    }
+
+    private ElliottChannelIndicator channelInternal() {
         if (channelIndicator == null) {
             channelIndicator = new ElliottChannelIndicator(swingIndicator);
         }
@@ -335,6 +354,10 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator waveCount() {
+        return waveCountInternal().copy();
+    }
+
+    private ElliottWaveCountIndicator waveCountInternal() {
         if (waveCountIndicator == null) {
             waveCountIndicator = new ElliottWaveCountIndicator(swingIndicator);
         }
@@ -358,12 +381,16 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator filteredWaveCount() {
+        return filteredWaveCountInternal().copy();
+    }
+
+    private ElliottWaveCountIndicator filteredWaveCountInternal() {
         if (filteredWaveCountIndicator == null) {
             if (compressor.isPresent()) {
                 filteredWaveCountIndicator = new ElliottWaveCountIndicator(swingIndicator, compressor.get());
             } else {
                 // If no compressor configured, return basic wave count
-                filteredWaveCountIndicator = waveCount();
+                filteredWaveCountIndicator = waveCountInternal();
             }
         }
         return filteredWaveCountIndicator;
@@ -374,8 +401,12 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottConfluenceIndicator confluence() {
+        return confluenceInternal().copy();
+    }
+
+    private ElliottConfluenceIndicator confluenceInternal() {
         if (confluenceIndicator == null) {
-            confluenceIndicator = new ElliottConfluenceIndicator(priceIndicator, ratio(), channel());
+            confluenceIndicator = new ElliottConfluenceIndicator(priceIndicator, ratioInternal(), channelInternal());
         }
         return confluenceIndicator;
     }
@@ -385,8 +416,12 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottInvalidationIndicator invalidation() {
+        return invalidationInternal().copy();
+    }
+
+    private ElliottInvalidationIndicator invalidationInternal() {
         if (invalidationIndicator == null) {
-            invalidationIndicator = new ElliottInvalidationIndicator(phase());
+            invalidationIndicator = new ElliottInvalidationIndicator(phaseInternal());
         }
         return invalidationIndicator;
     }
@@ -397,8 +432,18 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottScenarioIndicator scenarios() {
+        return scenariosInternal().copy();
+    }
+
+    private ElliottScenarioIndicator scenariosInternal() {
         if (scenarioIndicator == null) {
-            scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+            if (fibTolerance.isPresent()) {
+                final ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(),
+                        customFibValidator());
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channelInternal(), generator);
+            } else {
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channelInternal());
+            }
         }
         return scenarioIndicator;
     }
@@ -408,8 +453,12 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottProjectionIndicator projection() {
+        return projectionInternal().copy();
+    }
+
+    private ElliottProjectionIndicator projectionInternal() {
         if (projectionIndicator == null) {
-            projectionIndicator = new ElliottProjectionIndicator(scenarios());
+            projectionIndicator = new ElliottProjectionIndicator(scenariosInternal());
         }
         return projectionIndicator;
     }
@@ -419,8 +468,12 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottInvalidationLevelIndicator invalidationLevel() {
+        return invalidationLevelInternal().copy();
+    }
+
+    private ElliottInvalidationLevelIndicator invalidationLevelInternal() {
         if (invalidationLevelIndicator == null) {
-            invalidationLevelIndicator = new ElliottInvalidationLevelIndicator(scenarios());
+            invalidationLevelIndicator = new ElliottInvalidationLevelIndicator(scenariosInternal());
         }
         return invalidationLevelIndicator;
     }
@@ -430,8 +483,12 @@ public final class ElliottWaveFacade {
      * @since 0.22.2
      */
     public ElliottTrendBiasIndicator trendBias() {
+        return trendBiasInternal().copy();
+    }
+
+    private ElliottTrendBiasIndicator trendBiasInternal() {
         if (trendBiasIndicator == null) {
-            trendBiasIndicator = new ElliottTrendBiasIndicator(scenarios());
+            trendBiasIndicator = new ElliottTrendBiasIndicator(scenariosInternal());
         }
         return trendBiasIndicator;
     }
@@ -444,7 +501,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public Optional<ElliottScenario> primaryScenario(final int index) {
-        return scenarios().primaryScenario(index);
+        return scenariosInternal().primaryScenario(index);
     }
 
     /**
@@ -455,7 +512,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public List<ElliottScenario> alternativeScenarios(final int index) {
-        return scenarios().alternatives(index);
+        return scenariosInternal().alternatives(index);
     }
 
     /**
@@ -467,7 +524,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public Num confidenceForPhase(final int index, final ElliottPhase phase) {
-        final ElliottScenarioSet scenarioSet = scenarios().getValue(index);
+        final ElliottScenarioSet scenarioSet = scenariosInternal().getValue(index);
         return scenarioSet.byPhase(phase)
                 .base()
                 .map(ElliottScenario::confidenceScore)
@@ -482,7 +539,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public boolean hasScenarioConsensus(final int index) {
-        return scenarios().hasStrongConsensus(index);
+        return scenariosInternal().hasStrongConsensus(index);
     }
 
     /**
@@ -493,7 +550,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottPhase scenarioConsensus(final int index) {
-        return scenarios().consensus(index);
+        return scenariosInternal().consensus(index);
     }
 
     /**
@@ -504,6 +561,15 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public String scenarioSummary(final int index) {
-        return scenarios().getValue(index).summary();
+        return scenariosInternal().getValue(index).summary();
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        final BarSeries source = Objects.requireNonNull(barSeries, "series cannot be null");
+        return new BaseBarSeriesBuilder().withName(source.getName())
+                .withNumFactory(source.numFactory())
+                .withBars(source.getBarData())
+                .withMaxBarCount(source.getMaximumBarCount())
+                .build();
     }
 }

@@ -34,7 +34,7 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      * @param atrCoefficient the coefficient to multiply ATR
      */
     public AverageTrueRangeTrailingStopGainRule(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        this(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient, Integer.MAX_VALUE);
+        this(validatedConfig(series, atrBarCount, atrCoefficient, Integer.MAX_VALUE));
     }
 
     /**
@@ -48,7 +48,7 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient, int barCount) {
-        super(referencePrice, createStopGainThreshold(series, atrBarCount, atrCoefficient), barCount);
+        this(validatedConfig(referencePrice, createStopGainThreshold(series, atrBarCount, atrCoefficient), barCount));
     }
 
     /**
@@ -61,7 +61,8 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this(series, referencePrice, atrBarCount, atrCoefficient, Integer.MAX_VALUE);
+        this(validatedConfig(referencePrice, createStopGainThreshold(series, atrBarCount, atrCoefficient),
+                Integer.MAX_VALUE));
     }
 
     /**
@@ -74,7 +75,7 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        this(referencePrice, atrIndicator, atrCoefficient, Integer.MAX_VALUE);
+        this(validatedConfig(referencePrice, createStopGainThreshold(atrIndicator, atrCoefficient), Integer.MAX_VALUE));
     }
 
     /**
@@ -89,12 +90,33 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient, int barCount) {
-        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator),
-                requirePositiveAtrCoefficient(atrCoefficient)), barCount);
+        this(validatedConfig(referencePrice, createStopGainThreshold(atrIndicator, atrCoefficient), barCount));
+    }
+
+    private AverageTrueRangeTrailingStopGainRule(Config config) {
+        super(config.referencePrice(), config.stopGainThreshold(), config.barCount());
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold,
+            int barCount) {
+        if (referencePrice == null) {
+            throw new IllegalArgumentException("referencePrice must not be null");
+        }
+        return new Config(referencePrice, stopGainThreshold, barCount);
+    }
+
+    private static Config validatedConfig(BarSeries series, int atrBarCount, Number atrCoefficient, int barCount) {
+        return validatedConfig(new ClosePriceIndicator(series),
+                createStopGainThreshold(series, atrBarCount, atrCoefficient), barCount);
     }
 
     private static Indicator<Num> createStopGainThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
         return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount),
+                requirePositiveAtrCoefficient(atrCoefficient));
+    }
+
+    private static Indicator<Num> createStopGainThreshold(ATRIndicator atrIndicator, Number atrCoefficient) {
+        return BinaryOperationIndicator.product(requireNonNull(atrIndicator),
                 requirePositiveAtrCoefficient(atrCoefficient));
     }
 
@@ -103,5 +125,8 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
             throw new IllegalArgumentException("atrCoefficient must be positive");
         }
         return atrCoefficient;
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold, int barCount) {
     }
 }

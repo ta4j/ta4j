@@ -26,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
  * AverageReturnPerBar = pow({@link NetReturnCriterion net return}, 1/ {@link NumberOfBarsCriterion number of bars})
  * </pre>
  */
-public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
+public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion implements ReturnCriterion {
 
     private final NetReturnCriterion netReturn;
     private final ReturnRepresentation returnRepresentation;

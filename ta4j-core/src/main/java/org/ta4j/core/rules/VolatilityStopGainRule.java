@@ -32,7 +32,7 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      * @param coefficient         the coefficient to multiply volatility
      */
     public VolatilityStopGainRule(BarSeries series, Indicator<Num> volatilityIndicator, Number coefficient) {
-        this(new ClosePriceIndicator(series), volatilityIndicator, coefficient);
+        this(validatedConfig(series, volatilityIndicator, coefficient));
     }
 
     /**
@@ -43,7 +43,7 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      *                            standard deviation)
      */
     public VolatilityStopGainRule(BarSeries series, Indicator<Num> volatilityIndicator) {
-        this(new ClosePriceIndicator(series), volatilityIndicator, 1);
+        this(validatedConfig(series, volatilityIndicator, 1));
     }
 
     /**
@@ -56,7 +56,7 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      */
     public VolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
             Number coefficient) {
-        super(referencePrice, createStopGainThreshold(volatilityIndicator, coefficient));
+        this(validatedConfig(referencePrice, volatilityIndicator, coefficient));
     }
 
     /**
@@ -67,7 +67,23 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      *                            standard deviation)
      */
     public VolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator) {
-        this(referencePrice, volatilityIndicator, 1);
+        this(validatedConfig(referencePrice, volatilityIndicator, 1));
+    }
+
+    private VolatilityStopGainRule(Config config) {
+        super(config.referencePrice(), config.stopGainThreshold());
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
+            Number coefficient) {
+        if (referencePrice == null) {
+            throw new IllegalArgumentException("referencePrice must not be null");
+        }
+        return new Config(referencePrice, createStopGainThreshold(volatilityIndicator, coefficient));
+    }
+
+    private static Config validatedConfig(BarSeries series, Indicator<Num> volatilityIndicator, Number coefficient) {
+        return validatedConfig(new ClosePriceIndicator(series), volatilityIndicator, coefficient);
     }
 
     /**
@@ -85,5 +101,8 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
             throw new IllegalArgumentException("coefficient must be positive");
         }
         return BinaryOperationIndicator.product(volatilityIndicator, coefficient);
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
     }
 }

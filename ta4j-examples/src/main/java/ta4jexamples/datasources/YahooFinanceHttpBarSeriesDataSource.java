@@ -548,7 +548,11 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     // Try to extract ticker from filename
-                    String filename = cacheFile.getFileName().toString();
+                    Path fileNamePath = cacheFile.getFileName();
+                    if (fileNamePath == null) {
+                        return null;
+                    }
+                    String filename = fileNamePath.toString();
                     // Format: {sourceName}-TICKER-INTERVAL-START-END[_NOTES].json
                     // Remove extension
                     String baseName = filename.replace(".json", "");
@@ -610,6 +614,10 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
             }
         }
         throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
+    }
+
+    void pauseBetweenPaginatedRequests() throws InterruptedException {
+        Thread.sleep(100);
     }
 
     /**
@@ -846,7 +854,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
 
             // Add a small delay between requests to avoid rate limiting
             try {
-                Thread.sleep(100); // 100ms delay between requests
+                pauseBetweenPaginatedRequests();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOG.warn("Interrupted during pagination delay");

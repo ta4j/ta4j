@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
@@ -94,7 +95,7 @@ class CachedBuffer<T> {
      * Readers speculatively read the cache without locking and validate the read by
      * checking the stamp did not change.
      */
-    private volatile long writeStamp;
+    private final AtomicLong writeStamp = new AtomicLong();
 
     /**
      * The ring buffer storing cached values. Uses {@link #NOT_COMPUTED} to
@@ -257,11 +258,14 @@ class CachedBuffer<T> {
      */
     void put(int index, T value) {
         lock.writeLock().lock();
-        onWriteLockAcquired();
         try {
-            store(index, value);
+            onWriteLockAcquired();
+            try {
+                store(index, value);
+            } finally {
+                onBeforeWriteLockReleased();
+            }
         } finally {
-            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -281,15 +285,18 @@ class CachedBuffer<T> {
      */
     void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator) {
         lock.writeLock().lock();
-        onWriteLockAcquired();
         try {
-            int fillStart = Math.max(startIndex, highestResultIndex + 1);
-            for (int i = fillStart; i < targetIndex; i++) {
-                T value = calculator.apply(i);
-                store(i, value);
+            onWriteLockAcquired();
+            try {
+                int fillStart = Math.max(startIndex, highestResultIndex + 1);
+                for (int i = fillStart; i < targetIndex; i++) {
+                    T value = calculator.apply(i);
+                    store(i, value);
+                }
+            } finally {
+                onBeforeWriteLockReleased();
             }
         } finally {
-            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -299,11 +306,14 @@ class CachedBuffer<T> {
      */
     void clear() {
         lock.writeLock().lock();
-        onWriteLockAcquired();
         try {
-            clearInternal();
+            onWriteLockAcquired();
+            try {
+                clearInternal();
+            } finally {
+                onBeforeWriteLockReleased();
+            }
         } finally {
-            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -315,24 +325,27 @@ class CachedBuffer<T> {
      */
     void invalidateFrom(int index) {
         lock.writeLock().lock();
-        onWriteLockAcquired();
         try {
-            if (firstCachedIndex < 0 || index > highestResultIndex) {
-                return;
-            }
-            if (index < 0 || index <= firstCachedIndex) {
-                clearInternal();
-                return;
-            }
+            onWriteLockAcquired();
+            try {
+                if (firstCachedIndex < 0 || index > highestResultIndex) {
+                    return;
+                }
+                if (index < 0 || index <= firstCachedIndex) {
+                    clearInternal();
+                    return;
+                }
 
-            // Clear slots from index to highestResultIndex
-            for (int i = index; i <= highestResultIndex; i++) {
-                int slot = indexToSlot(i);
-                buffer[slot] = NOT_COMPUTED;
+                // Clear slots from index to highestResultIndex
+                for (int i = index; i <= highestResultIndex; i++) {
+                    int slot = indexToSlot(i);
+                    buffer[slot] = NOT_COMPUTED;
+                }
+                highestResultIndex = index - 1;
+            } finally {
+                onBeforeWriteLockReleased();
             }
-            highestResultIndex = index - 1;
         } finally {
-            onBeforeWriteLockReleased();
             lock.writeLock().unlock();
         }
     }
@@ -366,18 +379,18 @@ class CachedBuffer<T> {
     }
 
     long getWriteStamp() {
-        return writeStamp;
+        return writeStamp.get();
     }
 
     private void onWriteLockAcquired() {
         if (lock.getWriteHoldCount() == 1) {
-            writeStamp++;
+            writeStamp.incrementAndGet();
         }
     }
 
     private void onBeforeWriteLockReleased() {
         if (lock.getWriteHoldCount() == 1) {
-            writeStamp++;
+            writeStamp.incrementAndGet();
         }
     }
 
@@ -386,7 +399,7 @@ class CachedBuffer<T> {
             return NOT_COMPUTED;
         }
 
-        long stamp1 = writeStamp;
+        long stamp1 = writeStamp.get();
         if ((stamp1 & 1L) != 0L) {
             return NOT_COMPUTED;
         }
@@ -415,7 +428,7 @@ class CachedBuffer<T> {
             return NOT_COMPUTED;
         }
 
-        long stamp2 = writeStamp;
+        long stamp2 = writeStamp.get();
         if (stamp1 != stamp2 || (stamp2 & 1L) != 0L) {
             return NOT_COMPUTED;
         }

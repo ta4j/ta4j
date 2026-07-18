@@ -1,4 +1,4 @@
-# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-21%2B-orange)
+# ta4j  [![Run Verify](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-25%2B-orange)
 
 ***Technical Analysis for Java***
 
@@ -12,8 +12,9 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 - [Why Ta4j?](#why-ta4j)
 - [Install in seconds](#install-in-seconds)
-- [Build commands: Maven Wrapper or Maven](#build-commands-maven-wrapper-or-maven)
+- [Build commands: Maven](#build-commands-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
+- [Forecast predictions](#forecast-predictions)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
 - [Features at a glance](#features-at-a-glance)
@@ -50,7 +51,7 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 
 ### Why Java developers choose Ta4j
 
-- **Pure Java, zero friction**: Works anywhere Java 21+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
+- **Pure Java, zero friction**: Works anywhere Java 25+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe, Production-ready**: Ta4j favors explicit models, strong typing, and predictable performance over exploratory scripting. Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
@@ -67,7 +68,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.6</version>
+  <version>0.23.0</version>
 </dependency>
 ```
 
@@ -81,12 +82,14 @@ Prefer living on the edge? Use the snapshot repository and version:
 <repository>
   <id>central-portal-snapshots</id>
   <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+  <releases><enabled>false</enabled></releases>
+  <snapshots><enabled>true</enabled></snapshots>
 </repository>
 
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.7-SNAPSHOT</version>
+  <version>0.23.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -100,7 +103,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.6</version>
+  <version>0.23.0</version>
 </dependency>
 ```
 
@@ -114,7 +117,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.7-SNAPSHOT</version>
+  <version>0.23.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -122,14 +125,19 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
-## Build commands: Maven Wrapper or Maven
+## Build commands: Maven
 
-Ta4j supports both approaches:
+Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to Maven 3.9.16, so contributors do not need a separate Maven install.
 
-- **Maven Wrapper (recommended):** Uses the repository-pinned Maven version and avoids requiring a global Maven installation.
-  Linux/macOS/Git Bash: `./mvnw ...`
-  Windows CMD/PowerShell: `mvnw.cmd ...`
-- **System Maven (optional):** Use `mvn ...` if you prefer your local Maven installation.
+- **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
+- **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`. The local default runs actionlint and repository script fixtures, repairs license headers and formatting, then runs all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback. Review any source changes it makes before committing.
+- **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
+- **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
+- **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
+- **JaCoCo-only local gate:** Use `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
+- **Focused coverage report:** Use `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
+
+Run the quiet build script before opening or updating a pull request.
 
 ## Try it now
 
@@ -141,23 +149,15 @@ git clone https://github.com/ta4j/ta4j.git
 cd ta4j
 
 # Build the project first (Linux/macOS/Git Bash)
-./mvnw clean install -DskipTests
-# Windows CMD/PowerShell: mvnw.cmd clean install -DskipTests
+mvn clean install -DskipTests
 
 # Run the Quickstart example (Quickstart is configured as the default)
 ./mvnw -pl ta4j-examples exec:java
-# Windows CMD/PowerShell: mvnw.cmd -pl ta4j-examples exec:java
 ```
-
-Prefer system Maven? Use the same commands with `mvn` instead of `./mvnw` or `mvnw.cmd`.
 
 **Alternative:** To run a different example class:
 ```bash
-# On Linux/Mac/Git Bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
-
-# On Windows CMD (use quotes)
-mvnw.cmd -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
 This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
@@ -172,7 +172,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 **💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
 ```bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+./mvnw -pl ta4j-examples exec:java
 ```
 
 **Key concepts:**
@@ -217,6 +217,291 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+## Forecast predictions
+
+Forecast indicators produce forward-looking estimates at a decision index while
+staying inside the normal ta4j `Indicator` model. A forecast made at index `i`
+only reads source values through `i`; evaluation code can later
+compare it with the realized value at `i + horizon`.
+
+```java
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
+import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.num.Num;
+
+BarSeries series = ...;
+LogReturnIndicator returns = new LogReturnIndicator(series);
+ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
+ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
+
+Indicator<Num> medianNextClose = nextCloseForecast.median();
+Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
+```
+
+Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
+projection indicators so research runs can be repeated and evaluated against
+later realized prices.
+
+`ReturnIndicator` is a semantic contract: implementations promise that their
+numeric output is a return stream in the declared representation. The initial
+forecast implementation supports log returns, so build the pipeline explicitly
+from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
+`MonteCarloPriceForecastIndicator`. Its builder exposes advanced simulation
+tuning without leaving the exact path-based price model, and its explicit-price
+overloads support custom log-return sources whose price indicator cannot be
+inferred. Use `LognormalApproximationPriceForecastIndicator` only when a named
+summary-only lognormal approximation is the intended model.
+
+`ForecastState` exposes only index and stability. Return models compose one
+validated `ReturnMoments` value through `ReturnMomentState`, keeping observation
+count, representation, mean, drift, and canonical variance together while
+deriving volatility. `ReturnForecastStateIndicator<S>` lets projections infer
+the source return stream and verifies the state representation at use time.
+
+`Forecast` is Num-only. `Forecast.ofSamples(...)` creates empirical support;
+model summaries use `Forecast.builder(index, horizon, numFactory, support)` and
+declare empirical or analytic provenance through `ForecastSupport`.
+`sampleCount()` reports empirical represented values and returns zero for
+analytic or unavailable forecasts. Missing direct quantiles return `NaN.NaN`.
+
+At primitive-only distance or regression boundaries, bind a schema to the
+required representation:
+
+```java
+ForecastFeatureExtractor<ReturnForecastState> features =
+        ForecastFeatureExtractors.meanVolatility(ReturnRepresentation.LOG);
+int index = series.getEndIndex();
+double[] values = features.features(state.getValue(index));
+// schema id: return-moments/mean-volatility; order: mean, volatility
+```
+
+Feature schemas publish stable identity, version, order, units, and return
+representation. Values remain raw; the consuming model must fit scaling only
+from its eligible training rows.
+
+For a richer volatility state, the shortest path remains one constructor and
+the existing semantic return contract:
+
+```java
+RoughVolatilityForecastStateIndicator roughStates =
+        new RoughVolatilityForecastStateIndicator(returns);
+RoughVolatilityForecastState rough = roughStates.getValue(series.getEndIndex());
+```
+
+The default estimator reuses EWMA return moments, estimates roughness from a
+120-bar log-variogram window, measures log-volatility vol-of-vol over 60 bars,
+and emits cumulative variance forecasts for horizons one through five. Advanced
+construction can tune those windows, the horizon count, EWMA initialization,
+decay, and the existing EWMA drift mode. It becomes stable only when every
+required window is finite; an invalid return keeps it unavailable until all
+affected windows recover.
+
+Use specialized roughness in analog distance only when that modeling choice is
+intentional:
+
+```java
+AnalogReturnProjectionIndicator<RoughVolatilityForecastState> roughAnalog =
+        AnalogReturnProjectionIndicator.builder(roughStates)
+                .featureExtractor(ForecastFeatureExtractors.roughVolatility())
+                .build();
+// schema: [mean, volatility, roughness_hurst, vol_of_vol]
+```
+
+The schema remains raw and training-only standardization stays owned by the
+analog projection. Use rough state when volatility persistence and multi-horizon
+risk shape matter; prefer the smaller EWMA state when only current location and
+scale are needed.
+
+For online regime uncertainty, the default constructor runs a constant-hazard
+Bayesian change-point filter over the same log-return source:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        new OnlineChangePointForecastStateIndicator(returns);
+OnlineChangePointForecastState regime =
+        changePointStates.getValue(series.getEndIndex());
+```
+
+The estimator becomes stable after 20 consecutive valid returns, expects a
+100-observation regime, retains run lengths through 252, and reports the five
+most likely hypotheses. `recentChangeProbability()` is the complete posterior
+mass over run lengths zero through five; it is deliberately not the run-length
+zero probability. That probability equals the hazard before tail truncation and
+can increase slightly after truncation and renormalization, but it does not
+respond usefully to a shift. A non-finite return resets the model and requires a
+complete warm-up again. Each state retains `recentChangeWindow()` so the
+probability remains interpretable after it leaves the indicator.
+
+Advanced construction exposes model assumptions without adding a separate
+configuration type:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        OnlineChangePointForecastStateIndicator.builder(returns)
+                .expectedRunLength(150)
+                .maximumRunLength(500)
+                .topRunLengthCount(8)
+                .minimumObservationCount(30)
+                .recentChangeWindow(10)
+                .build();
+
+AnalogReturnProjectionIndicator<OnlineChangePointForecastState> regimeAnalog =
+        AnalogReturnProjectionIndicator.builder(changePointStates)
+                .featureExtractor(ForecastFeatureExtractors.changePoint(
+                        changePointStates.getRecentChangeWindow()))
+                .build();
+// schema: [mean, volatility, recent_change_probability, most_likely_run_length]
+```
+
+Posterior entries keep their probabilities from the complete run-length
+distribution, so the published top list generally sums to less than one. The
+default extractor keeps `change-point/default`; custom windows use
+`change-point/recent-change/<window>` and reject mismatched state. Run length
+zero retains the prior sufficient statistics; the current observation enters
+growth components in the canonical Adams-MacKay recurrence. Use
+change-point state when abrupt regime shifts and run-length uncertainty matter;
+avoid treating it as a trade signal or performance claim without walk-forward
+validation.
+
+For a state-conditioned empirical forecast, analog projection composes directly
+with the same typed state source. Rolling conformal calibration then learns an
+error radius from matured decisions only:
+
+```java
+AnalogReturnProjectionIndicator<ReturnForecastState> analog =
+        new AnalogReturnProjectionIndicator<>(state, 5);
+ReturnForecastProjectionIndicator calibrated =
+        RollingConformalForecastProjectionIndicator
+                .cumulativeLogReturnBuilder(analog, returns)
+                .build();
+
+Forecast analogForecast = analog.getValue(series.getEndIndex());
+Forecast calibratedForecast = calibrated.getValue(series.getEndIndex());
+```
+
+Analog defaults use a 1-bar horizon, 252 candidate rows, 30 nearest neighbors,
+at least 5 usable neighbors, Euclidean distance, `[mean, volatility]`
+log-return features, and candidate-only standardization. The builder can tune
+those choices or accept another fixed, log-return `ForecastFeatureSchema`.
+Candidate `j` is never eligible before `j + horizon`; distance ties resolve by
+the earlier source index. Candidates inside the state or return source's
+unstable window are excluded. Its empirical support count is the number of
+selected neighbors, not the lookback or state observation count.
+
+Rolling conformal defaults target 90% coverage over 252 recent matured decision
+rows and remain unavailable until 30 valid scores exist. A configured minimum
+is raised when necessary to make the requested finite-sample rank attainable;
+configurations whose rolling window can never attain that rank are rejected.
+Generic value calibration observes an indicator at `decision + horizon`;
+cumulative-log-return calibration sums the supplied log returns over the
+complete horizon and preserves the semantic return-projection contract.
+Calibration preserves the base mean, median, standard deviation, and support
+while widening configured lower and upper quantiles. At least one configured
+non-median quantile is required so a stable result always reflects calibration.
+Schema or representation mismatch,
+non-finite primitive conversion, insufficient history, invalid forecast
+metadata, a tail-less base forecast, or a positive widening radius applied to a
+zero-dispersion base forecast produces an unavailable result rather than a
+misleading summary.
+
+The runnable
+`ta4jexamples.analysis.forecast.RollingConformalForecastExample` demonstrates
+the advanced builders on the committed BTC-USD daily resource.
+
+### Forecast API migration from 0.23.0
+
+The 0.23.1 forecast correction intentionally replaces the initial 0.23.0
+surface before additional estimator families build on it:
+
+| 0.23.0 | 0.23.1 replacement |
+| --- | --- |
+| `Forecast<Num>` | Num-only `Forecast` |
+| `forecast.map(...)` | `scale(...)`, `affine(...)`, transformed samples, or a domain-specific adapter |
+| `Forecast.ofSummary(...)` | `Forecast.builder(..., ForecastSupport)` |
+| `LogReturnToPriceForecastIndicator` | Exact `MonteCarloPriceForecastIndicator` or explicit `LognormalApproximationPriceForecastIndicator` |
+| Return-shaped `ForecastState` | Minimal `ForecastState` plus `ReturnMomentState` / `ReturnMoments` |
+| Seven-field `ReturnForecastState` construction | `ReturnForecastState.stable(...)` or `.unstable(...)` |
+| Unnamed feature arrays | Representation-bound `ForecastFeatureSchema` extractors |
+
+This is a deliberate compatibility exception: correctness and durable model
+semantics take precedence over preserving the newly introduced 0.23.0 forecast
+signatures.
+
+### Staged exit rules
+
+When an exit needs a thesis invalidation, a profit target, and a timeout, compose
+the always-active exits with `TriggeredRule` stages. This keeps the immediate
+stop and timeout live while a profit target can arm a second rule, such as a
+trailing stop, instead of exiting immediately.
+
+```java
+BarSeries series = ...;
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+Rule invalidation = new StopLossRule(close, 10.0);              // touches 10% loss threshold
+Rule timeout = new OpenedPositionMinimumBarCountRule(5);        // 5 bars after entry
+Rule targetReached = new StopGainRule(close, 10.0);             // touch at +10%
+Rule trailingExit = new TrailingStopLossRule(close, series.numFactory().numOf(5));
+
+Rule exit = new TriggeredRule(
+        invalidation.or(timeout),
+        new TriggeredRule.Stage(
+                targetReached,
+                trailingExit,
+                TriggeredRule.UNBOUNDED_WINDOW,
+                false,
+                TriggeredRule.ResetPolicy.ON_POSITION_CHANGE));
+```
+
+Use `StopGainRule`, `StopLossRule`, `OverOrEqualIndicatorRule`, and
+`UnderOrEqualIndicatorRule` when a touch or beyond the boundary is enough. Use
+`CrossedUpIndicatorRule` or `CrossedDownIndicatorRule` when the signal must be a
+fresh cross from the previous bar.
+
+### Regime and edge primitives
+
+Ta4j also includes reusable building blocks for regime-aware and edge-aware
+strategy construction, so you can model stretch, compression, trend state, and
+post-loss gating without burying that logic inside one custom strategy class:
+
+```java
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+EMAIndicator mediumEma = new EMAIndicator(close, 20);
+
+StretchZScoreIndicator stretch = new StretchZScoreIndicator(close, mediumEma, 20);
+CompressionIndicator compression = new CompressionIndicator(series, 20, 40);
+TrendScoreIndicator trendScore = new TrendScoreIndicator(series, 12, 26, 9, 14, 40);
+TrendConclusionIndicator trendConclusion = new TrendConclusionIndicator(series, 20, 12, 26, 9, 14, 20, 40);
+
+Rule cooledOffAfterLoss = new LossTriggeredCooldownRule(series, 3);
+
+Rule entry = new UnderIndicatorRule(stretch, -1.5)
+        .and(new OverIndicatorRule(compression, 70))
+        .and(new OverIndicatorRule(trendScore, 15))
+        .and(cooledOffAfterLoss);
+```
+
+If you already have a boolean signal source, `EntryEdgeIndicator`,
+`EdgeDecaySlopeIndicator`, and `EdgeHealthyRule` let you score that signal's
+realized edge over a rolling horizon and turn it into a reusable entry gate.
 
 ## Sourcing market data
 
@@ -392,6 +677,58 @@ Want a runnable side-by-side demo? `ta4j-examples` now includes
 slippage fills on the same strategy and then shows the same setup with provided
 and factory-configured `BaseTradingRecord` flows.
 
+### Analyze indicator relationships
+
+For structural price analysis, choose the detector by turn shape. OHLC-aware
+ZigZag detection confirms sharp reversals after a price-distance threshold;
+fractal detection confirms local extrema after a fixed right-side window; and
+`SlopeChangeSwingDetector` confirms slower, rounded turns after a sustained
+rolling-slope reversal. `SwingDetectors.consensus(...)` can require a quorum
+of nearby pivots from several configurations when consistency matters more than
+the earliest possible confirmation. All returned detector pivots are based only
+on bars available at the requested index.
+
+```java
+SwingDetector roundedTurns = SwingDetectors.slopeChange(5);
+SwingDetector stableStructure = SwingDetectors.consensus(2, 2,
+        SwingDetectors.fractal(3), roundedTurns);
+```
+
+For sparse event studies, start with a windowed event-synchronization score:
+compare events such as Net Momentum zero crossings against newly confirmed
+ZigZag swing highs or lows inside a tolerance window. After the event timing is
+credible, use rolling statistics to inspect continuous, lagged, non-linear, or
+regime-conditioned relationships.
+
+```java
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.BooleanTransformIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.LaggedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.MutualInformationIndicator;
+import org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.SpearmanRankCorrelationIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+NetMomentumIndicator momentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
+RecentZigZagSwingHighIndicator swingHigh = new RecentZigZagSwingHighIndicator(series);
+
+Indicator<Boolean> positiveMomentum = BooleanTransformIndicator.isPositive(momentum);
+Indicator<Boolean> confirmedSwingHigh = new BooleanTransformIndicator<>(swingHigh, value -> !value.isNaN());
+
+LaggedCorrelationIndicator momentumLeadsPrice = new LaggedCorrelationIndicator(momentum, close, 50, 3);
+SpearmanRankCorrelationIndicator monotonicMomentumPrice = new SpearmanRankCorrelationIndicator(momentum, close, 50);
+RegimeSegmentedCorrelationIndicator bullishRegimeCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, positiveMomentum, 50);
+MutualInformationIndicator swingStateInformation = new MutualInformationIndicator(momentum, swingHigh, 80, 6);
+RegimeSegmentedCorrelationIndicator confirmedSwingCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, confirmedSwingHigh, 80);
+```
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:
@@ -415,6 +752,29 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         series.numFactory().numOf(1),  // position size: 1 unit
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
+
+// Or size each entry dynamically. PositionSizer.fixed() is the default unit
+// amount; balance(...) invests the current realized balance with entry-fee
+// awareness; and kelly(...) applies the Kelly fraction to that balance.
+// For custom TradeExecutionModel implementations, dynamic sizing uses:
+// (1) estimateEntryTarget(...) to estimate where/at what price the entry would fill
+// (2) a fallback to conservative next-open estimation when no custom override is provided
+//     for that model.
+// Custom models should override estimateEntryTarget(...) when execution timing or price
+// differs from next-open behavior.
+PositionSizer unitAmount = PositionSizer.fixed();
+PositionSizer allInBalance = PositionSizer.balance(10_000);
+PositionSizer halfKelly = PositionSizer.kelly(10_000, 0.55, 1.8, 0.5);
+PositionSizer quarterBalance = PositionSizer.balance(10_000,
+    (context, balance) -> context.maxAffordableAmount(balance.multipliedBy(context.numOf(0.25))));
+
+BacktestExecutionResult dynamicallySizedResult = new BacktestExecutor(series)
+    .executeWithRuntimeReport(strategies, allInBalance, Trade.TradeType.BUY);
+
+// The same sizer works with top-K and walk-forward execution. It sizes
+// entries; exits close the currently open amount.
+// Reused PositionSizer instances should be stateless or thread-safe because
+// executor and top-K variants can evaluate strategies in parallel.
 
 // Weight net profit at 70% and return over max drawdown at 30%.
 // Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
@@ -693,6 +1053,12 @@ For command-line or agent workflows, split comma-separated shorthand lists with
 `NamedAssetRegistry#splitTopLevel(...)` instead of `String#split(",")`; nested
 forms such as `Custom("a,b",SMA(7))` then remain intact.
 
+Indicator round-tripping depends on each indicator descriptor preserving the
+constructor inputs needed to rebuild that indicator. Indicators that create
+helper indicators internally should keep their constructor arguments in
+serializable fields and treat rebuilt helper graphs as transient implementation
+state; round-trip coverage is being expanded across indicator tests.
+
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
@@ -724,6 +1090,9 @@ BarSeries liveSeries = new BaseBarSeriesBuilder()
 
 // Build your strategy (same code as backtesting!)
 Strategy strategy = buildStrategy(liveSeries);
+TradingRecord tradingRecord = new BaseTradingRecord(strategy.getStartingType());
+int lastEntryBarIndex = -1;
+int lastExitBarIndex = -1;
 
 // Main trading loop: check for signals on each new bar
 while (true) {
@@ -734,19 +1103,49 @@ while (true) {
     int endIndex = liveSeries.getEndIndex();
     
     // Check entry/exit signals (same API as backtesting)
-    if (strategy.shouldEnter(endIndex)) {
-        placeBuyOrder();  // Your order execution logic
-    } else if (strategy.shouldExit(endIndex)) {
+    if (strategy.shouldEnter(endIndex, tradingRecord) && lastEntryBarIndex != endIndex) {
+        placeBuyOrder();  // Place order with your exchange adapter
+        // After broker confirmation/fill:
+        boolean entered = tradingRecord.enter(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (entered) {
+            lastEntryBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("enter", endIndex);
+        }
+    } else if (strategy.shouldExit(endIndex, tradingRecord) && lastExitBarIndex != endIndex) {
         placeSellOrder(); // Your order execution logic
+        // After broker confirmation/fill:
+        boolean exited = tradingRecord.exit(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (exited) {
+            lastExitBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("exit", endIndex);
+        }
     }
     
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
 }
 ```
+Notes:
+- `shouldEnter(index, tradingRecord)` and `shouldExit(index, tradingRecord)` are the recommended live overloads.
+- Check the return values of `tradingRecord.enter(...)` and `tradingRecord.exit(...)`; a `false` means your record did not accept the transition and requires reconciliation.
+- Use symmetric deduplication guards for both entry and exit paths (`lastEntryBarIndex` / `lastExitBarIndex`) to avoid duplicate orders on repeated signals.
+- ta4j evaluates whatever bar you provide at `index`: replacing the last bar means live-candle evaluation; evaluating only after appending a finished bar means closed-candle evaluation.
+- Keep `tradingRecord` synchronized with confirmed fills (or use `TradingRecord.operate(fill)` for partial fills) so ta4j does not repeatedly signal entry while it still believes no position is open.
+- See the wiki deep-dive: [Live Candle vs Closed Candle Evaluation](https://ta4j.github.io/ta4j-wiki/Live-Candle-vs-Closed-Candle-Evaluation.html).
+
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
+
+**Execution path references:**
+- Single strategy backtests: [`BarSeriesManager`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BarSeriesManager.html)
+- Large batch runs and ranking: [`BacktestExecutor`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BacktestExecutor.html)
+- Fill timing/slippage/stop-limit behavior: [`TradeExecutionModel`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/TradeExecutionModel.html)
+- Fill-aware position state: [`BaseTradingRecord`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/BaseTradingRecord.html)
 
 ### Migration note: Trade and TradingRecord surfaces
 
@@ -832,6 +1231,16 @@ Notes:
   `TradingRecord.operate(fill)`, contrasts that with grouped `Trade.fromFills(...)` recording, and shows how
   `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` change partial-exit matching.
 
+## Production readiness checklist
+
+Before promoting a strategy from research to live execution, verify:
+
+- Your execution assumptions match reality: [Backtesting](https://ta4j.github.io/ta4j-wiki/Backtesting.html)
+- You pass a realism gate: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- You have startup/recovery/reconciliation procedures: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- You have symptom-first debug paths for incidents: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Your example and command links are valid in CI: [`scripts/docs-integrity-check.sh`](scripts/docs-integrity-check.sh)
+
 ## Streaming trade ingestion (gap handling)
 
 When you need to aggregate raw trades into time bars, use `ConcurrentBarSeries` with a `TimeBarBuilderFactory`:
@@ -865,7 +1274,7 @@ Time gaps are omitted; no empty bars are inserted. If your pipeline expects cont
 The Elliott Wave suite exposes two minimal entry points:
 
 - `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
-- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+- `ElliottWaveAnalysisRunner` for one-shot analysis runs with pluggable detectors and confidence profiles
 
 ```java
 BarSeries series = ...;
@@ -878,11 +1287,75 @@ ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
 Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
-See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
+For 1-minute, 5-minute, and other live intraday series, use the causal
+volatility-scaled profile. The compatible default includes the forming terminal
+wave for live charting while reporting it separately from confirmed waves:
+
+```java
+ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder()
+        .degree(ElliottDegree.SUB_MINUETTE)
+        .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+        .build();
+
+ElliottAnalysisResult intraday = runner.analyze(series)
+        .analysisFor(ElliottDegree.SUB_MINUETTE)
+        .orElseThrow()
+        .analysis();
+int confirmedWaves = intraday.waveCount().confirmed();
+int wavesIncludingForming = intraday.waveCount().includingProvisional();
+boolean primaryIsForming = intraday.scenarios()
+        .base()
+        .map(intraday::usesProvisionalTerminal)
+        .orElse(false);
+```
+
+For trading rules that must act on confirmed detector pivots only, add
+`.includeProvisionalTerminalSwing(false)` to the runner builder. Custom analysis
+runners own their terminal-wave semantics.
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and runner-based workflow.
+
+## LPPL residual quickstart
+
+`LPPLResidualIndicator` fits a Log-Periodic Power Law model through the bar before the requested index and evaluates the current price against that fixed path. The primary API is a regular normalized numeric indicator:
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+LPPLResidualIndicator residual = new LPPLResidualIndicator(series);
+Num normalizedResidual = residual.getValue(index); // positive = above the path, negative = below it
+```
+
+Use the rich fit when model status and diagnostics affect the decision:
+
+```java
+LPPLFit fit = residual.getFitIndicator().getValue(index);
+if (fit.isQualified(residual.getProfile())) {
+    double rawLogPriceResidual = fit.residual();
+    double fittedCurrentLogPrice = fit.predictedLogPrice();
+}
+```
+
+The value is the observed-minus-predicted log-price residual divided by the maximum absolute residual across the same fitted path. It is bounded to `[-1, 1]`, but it is not by itself a valuation judgment, bubble label, or crash forecast. Warm-up bars, invalid prices, optimizer failures, and unqualified fits return `NaN` rather than a misleading neutral zero. LPPL calibration is substantially more expensive than ordinary rolling arithmetic: reuse `getFitIndicator()` when diagnostics are also needed rather than constructing a second fit indicator for the same series and profile.
+
+Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
+
+```java
+LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
+        .withWindow(500)
+        .withCriticalTimeSearch(1, 60, 5)
+        .withOptimizerSettings(160, 0.80);
+LPPLResidualIndicator tunedResidual = new LPPLResidualIndicator(series, profile);
+```
+
+LPPL fitting is sensitive to window selection and split/distribution discontinuities, so equity operators should use adjusted prices and validate the residual against matched trend and randomized-return controls before applying thresholds.
 
 ## Real-world examples
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
+
+- **[Examples index and learning tracks](ta4j-examples/README.md)** - Recommended progression from first strategy to live-style workflows
 
 ### Strategy Examples
 - **[RSI2Strategy](ta4j-examples/src/main/java/ta4jexamples/strategies/RSI2Strategy.java)** - Mean reversion strategy using RSI with entry/exit rules
@@ -904,14 +1377,15 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
 - **[ElliottWaveIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveIndicatorSuiteDemo.java)** - Canonical Elliott Wave scenario analysis with confidence scoring, structured reporting, and annotated charts. Defaults to an ossified classpath dataset when run without arguments; optional command-line arguments can load Yahoo Finance or Coinbase data.
-- **[ElliottWavePresetDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWavePresetDemo.java)** - Consolidated preset launcher with fixed ossified presets (`btc`, `eth`, `sp500`) and flexible live mode where you can provide any ticker.
+- **[ElliottWavePresetDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWavePresetDemo.java)** - Consolidated preset launcher with fixed ossified presets (`btc`, `eth`, `sp500`) and flexible live mode where daily runs produce a five-outlook macro snapshot for the supplied ticker. See the [wiki snapshot guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Quickstart.html#run-a-live-five-outlook-snapshot) for the GitHub Actions monitoring workflow and local command.
 - **[ElliottWaveAdaptiveSwingAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveAdaptiveSwingAnalysis.java)** - Demonstrates adaptive/composite swing detection for scenario generation.
 - **[ElliottWavePatternProfileDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWavePatternProfileDemo.java)** - Compares default and pattern-aware confidence profiles.
 - **[ElliottWaveMultiDegreeAnalysisDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveMultiDegreeAnalysisDemo.java)** - Shows cross-degree validation and scenario recommendation.
+- **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Dedicated CLI/job entrypoint that scores a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks. Complete calibration can run for 8+ hours.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
-- **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
@@ -921,18 +1395,9 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
 - **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
 
-**💡 Tip**: Run any example with `./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name; on Windows use `mvnw.cmd`).
+**💡 Tip**: Run any example with `./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
 
 ## Performance
-
-<!-- TODO: Add performance benchmarks and metrics -->
-<!-- Consider including:
-- Backtesting performance (strategies/second, bars/second)
-- Memory usage patterns
-- Comparison with other technical analysis libraries
-- Num type performance characteristics (DecimalNum vs DoubleNum)
-- Real-world usage statistics if available
--->
 
 Ta4j is designed for performance and scalability:
 
@@ -941,7 +1406,13 @@ Ta4j is designed for performance and scalability:
 - **Memory-efficient** - Support for moving windows and sub-series to minimize memory footprint
 - **Parallel-friendly** - Strategies can be backtested independently for easy parallelization
 
-For detailed performance characteristics and benchmarks, see the [wiki's performance guide](https://ta4j.github.io/ta4j-wiki/) (TODO: add link when available).
+For performance tuning guidance, start with:
+
+- [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
+- [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
+- [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
+- `scripts/benchmark-backtest-throughput.sh` for controlled `HEAD^` vs `HEAD` comparisons using `matrix_performance.json` cells/min and hypotheses/min
+- [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support
 
@@ -951,28 +1422,54 @@ Get help, share ideas, and connect with other Ta4j users:
 - **📖 [Documentation Wiki](https://ta4j.github.io/ta4j-wiki/)** - Comprehensive guides covering indicators, strategies, backtesting, and more
 - **📚 [Javadoc API Reference](https://ta4j.github.io/ta4j/)** - Complete API documentation with examples
 - **🐛 [GitHub Issues](https://github.com/ta4j/ta4j/issues)** - Report bugs, request features, or ask questions
-- **💡 [Usage Examples](https://github.com/ta4j/ta4j/tree/master/ta4j-examples/src/main/java/ta4jexamples)** - Browse runnable code examples in the repository
+- **💡 [Usage Examples](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/README.md)** - Follow curated learning tracks and runnable commands
+
+## Canonical doc map
+
+Use this map when deciding where to read next:
+
+- Entry and quick orientation: this `README.md`
+- Core API decision entrypoints: [`ta4j-core/README.md`](ta4j-core/README.md)
+- Runnable progression and commands: [`ta4j-examples/README.md`](ta4j-examples/README.md)
+- End-to-end path from data to operations: [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- Production operations: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- Validation discipline: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- Incident debugging: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Governance and freshness policy: [Documentation Governance](https://ta4j.github.io/ta4j-wiki/Documentation-Governance.html)
+- API migration and compatibility guidance: [Migration and Version Compatibility](https://ta4j.github.io/ta4j-wiki/Migration-and-Version-Compatibility.html)
+
+### Canonical onboarding lane (first 60 minutes)
+
+For the curated onboarding path, use:
+
+- [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- [`ta4j-examples/README.md`](ta4j-examples/README.md) for runnable progression
 
 ## What's next?
 
 **New to technical analysis?**
-- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/) to learn core concepts
+- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/Getting-started.html) to learn core concepts
 - Explore the [`ta4j-examples`](ta4j-examples) module - each example is runnable and well-commented
 - Try modifying the quick start example above: change indicator parameters, add new rules, or test different exit conditions
 
 **Ready to go deeper?**
-- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/) for Renko bricks, Ichimoku clouds, breakout strategies, and more
-- Learn about [portfolio metrics](https://ta4j.github.io/ta4j-wiki/) for multi-asset strategies
-- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/) like walk-forward analysis
+- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/Trading-strategies.html) for richer rule composition patterns
+- Learn about [portfolio metrics and risk criteria](https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html)
+- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/Walk-Forward-Research.html) like walk-forward analysis
+- Use the [backtesting realism checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html) before promoting strategies
+- Follow the [live trading runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html) for startup/recovery/reconciliation guidance
+- Troubleshoot with the [symptom-driven hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
 
 **Need help?**
 - See the [Community & Support](#community--support) section above for all available resources
 
 ## Contributing
 
-- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://ta4j.github.io/ta4j-wiki/How-to-contribute).
+- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://github.com/ta4j/ta4j/blob/master/.github/CONTRIBUTING.md).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+- Run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1` before opening or updating a pull request. The local default repairs license headers and formatting before verification; hosted CI calls the same entrypoint with `--validate-only` to reject uncommitted repairs without modifying its checkout. Both paths include actionlint, repository script fixtures, all non-demo tests, blocking SpotBugs, and advisory JaCoCo, while preserving the raw Maven log.
+- For faster local quality loops, use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` or `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full verification command.
 
 ## Release & snapshot publishing
 
@@ -988,9 +1485,15 @@ Snapshots are available at:
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
+Snapshots are consumed from this repository directly; they are not expected to appear in normal Maven Central release search. Portal snapshot browsing may also be unavailable independently of publishing. A green snapshot workflow means an isolated Maven consumer resolved the exact newly deployed `ta4j-parent`, `ta4j-core`, and `ta4j-examples` build and matched the core/examples JAR checksums.
+
 ### Stable releases
 
-Releases are also automated via GitHub workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merging the generated `release/<version>` PR with a merge commit immediately starts `snapshot.yml` through its `master` push trigger, while `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, and pushes the tag, which triggers `github-release.yml` to create the GitHub Release. Manual publish/recovery runs retain an explicit snapshot dispatch, but the PR path does not duplicate the already-running snapshot publication. `release-health.yml` then verifies repo-state drift and retrieves the current snapshot's exact timestamped POM/JAR; top-level metadata remains informational because it can lag.
+
+The prepare-release workflow also runs a Java-based removal-ready deprecation scanner: first as a release gate for due or overdue removals, then against the new snapshot version to sync managed GitHub cleanup issues with an attached report artifact.
+
+For operator details, recovery mode, required variables/secrets, and audit artifacts, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 
 
 ## Warranty

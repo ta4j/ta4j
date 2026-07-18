@@ -63,7 +63,8 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion() {
-        this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -74,7 +75,8 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation) {
-        this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -85,8 +87,8 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(double threshold) {
-        this(ReturnRepresentation.DECIMAL, threshold, EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(ReturnRepresentation.DECIMAL, threshold, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -98,7 +100,8 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(double threshold, ReturnRepresentation returnRepresentation) {
-        this(returnRepresentation, threshold, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(returnRepresentation, threshold, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -108,7 +111,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(EquityCurveMode equityCurveMode) {
-        this(ReturnRepresentation.DECIMAL, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(ReturnRepresentation.DECIMAL, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -120,7 +123,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
-        this(returnRepresentation, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+        this(validateSettings(returnRepresentation, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET));
     }
 
     /**
@@ -130,7 +133,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(OpenPositionHandling openPositionHandling) {
-        this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(validateSettings(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling));
     }
 
     /**
@@ -143,7 +146,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, OpenPositionHandling openPositionHandling) {
-        this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(validateSettings(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling));
     }
 
     /**
@@ -157,7 +160,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      */
     public OmegaRatioCriterion(double threshold, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(ReturnRepresentation.DECIMAL, threshold, equityCurveMode, openPositionHandling);
+        this(validateSettings(ReturnRepresentation.DECIMAL, threshold, equityCurveMode, openPositionHandling));
     }
 
     /**
@@ -173,13 +176,13 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, double threshold,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        super(equityCurveMode, openPositionHandling);
-        this.returnRepresentation = Objects.requireNonNull(returnRepresentation,
-                "returnRepresentation must not be null");
-        if (!Double.isFinite(threshold)) {
-            throw new IllegalArgumentException("threshold must be finite");
-        }
-        this.threshold = threshold;
+        this(validateSettings(returnRepresentation, threshold, equityCurveMode, openPositionHandling));
+    }
+
+    private OmegaRatioCriterion(ValidatedSettings settings) {
+        super(settings.equityCurveMode(), settings.openPositionHandling());
+        this.returnRepresentation = settings.returnRepresentation();
+        this.threshold = settings.threshold();
     }
 
     @Override
@@ -248,5 +251,23 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return NaN.NaN;
         }
         return returnRepresentation.toRepresentationFromRateOfReturn(omegaRatio);
+    }
+
+    private static ValidatedSettings validateSettings(ReturnRepresentation returnRepresentation, double threshold,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        ReturnRepresentation validatedReturnRepresentation = Objects.requireNonNull(returnRepresentation,
+                "returnRepresentation must not be null");
+        EquityCurveMode validatedEquityCurveMode = Objects.requireNonNull(equityCurveMode, "equityCurveMode");
+        OpenPositionHandling validatedOpenPositionHandling = Objects.requireNonNull(openPositionHandling,
+                "openPositionHandling");
+        if (!Double.isFinite(threshold)) {
+            throw new IllegalArgumentException("threshold must be finite");
+        }
+        return new ValidatedSettings(validatedReturnRepresentation, threshold, validatedEquityCurveMode,
+                validatedOpenPositionHandling);
+    }
+
+    private record ValidatedSettings(ReturnRepresentation returnRepresentation, double threshold,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
     }
 }

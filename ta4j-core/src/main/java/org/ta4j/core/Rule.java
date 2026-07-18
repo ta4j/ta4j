@@ -15,8 +15,36 @@ import org.ta4j.core.serialization.RuleSerialization;
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
  * strategy}. A trading rule can consist of a combination of other rules.
+ *
+ * <p>
+ * Rules encapsulate the logic for trading decisions (e.g., crossing indicators,
+ * stop-loss thresholds, or boolean conditions). They are evaluated per bar
+ * index using {@link #isSatisfied(int, TradingRecord)}. Complex logic is built
+ * by composing primitive rules with logical operators like {@link #and(Rule)},
+ * {@link #or(Rule)}, or {@link #negation()}.
+ * </p>
  */
 public interface Rule {
+
+    /**
+     * Controls trace logging behavior for rule evaluation.
+     *
+     * <p>
+     * SLF4J TRACE logging is the off switch. This selector only changes the amount
+     * of detail emitted during an evaluation where the relevant logger is already
+     * TRACE-enabled.
+     *
+     * @since 0.22.7
+     */
+    enum TraceMode {
+        /**
+         * Emit one trace event for the evaluated rule while suppressing child-rule
+         * trace events inside the same scoped evaluation.
+         */
+        SUMMARY,
+        /** Emit trace logs for this rule and all children in an evaluation scope. */
+        VERBOSE
+    }
 
     /**
      * Serializes this rule to JSON.
@@ -33,7 +61,7 @@ public interface Rule {
      * Converts this rule into a structured descriptor.
      *
      * @return component descriptor for the rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default ComponentDescriptor toDescriptor() {
         return RuleSerialization.describe(this);
@@ -46,7 +74,7 @@ public interface Rule {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression() {
         return RuleSerialization.toExpression(this);
@@ -60,7 +88,7 @@ public interface Rule {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression(NamedAssetRegistry registry) {
         return RuleSerialization.toExpression(this, registry);
@@ -86,7 +114,7 @@ public interface Rule {
      * @param series     bar series context
      * @param expression shorthand expression
      * @return reconstructed rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static Rule fromExpression(BarSeries series, String expression) {
         return RuleSerialization.fromExpression(series, expression);
@@ -100,7 +128,7 @@ public interface Rule {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return reconstructed rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
         return RuleSerialization.fromExpression(series, expression, registry);
@@ -145,7 +173,7 @@ public interface Rule {
      *         otherwise
      */
     default boolean isSatisfied(int index) {
-        return isSatisfied(index, null);
+        return isSatisfied(index, (TradingRecord) null);
     }
 
     /**
@@ -155,6 +183,39 @@ public interface Rule {
      *         otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
+
+    /**
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link TraceMode#VERBOSE}
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TraceMode traceMode) {
+        return isSatisfiedWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link TraceMode#VERBOSE}
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
+        return isSatisfied(index, tradingRecord);
+    }
 
     /**
      * Sets a human friendly name for this rule. Implementations that support naming

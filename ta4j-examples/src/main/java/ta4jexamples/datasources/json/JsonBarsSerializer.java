@@ -9,8 +9,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.utils.DeprecationNotifier;
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * @deprecated
@@ -36,24 +40,13 @@ public class JsonBarsSerializer {
     @Deprecated(since = "0.19", forRemoval = true)
     public static void persistSeries(BarSeries series, String filename) {
         warnDeprecatedUse();
-        GsonBarSeries exportableSeries = GsonBarSeries.from(series);
+        LegacyJsonBarSeriesPayload exportableSeries = LegacyJsonBarSeriesPayload.from(series);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        FileWriter writer = null;
-        try {
-            writer = new FileWriter(filename);
+        try (Writer writer = Files.newBufferedWriter(Path.of(filename), StandardCharsets.UTF_8)) {
             gson.toJson(exportableSeries, writer);
             LOG.debug("Bar series '{}' successfully saved to '{}'", series.getName(), filename);
         } catch (IOException e) {
             LOG.error("Unable to store bars in JSON", e);
-        } finally {
-            if (writer != null) {
-                try {
-                    writer.flush();
-                    writer.close();
-                } catch (IOException e) {
-                    LOG.warn("Unable to flush and/or close file writer", e);
-                }
-            }
         }
     }
 
@@ -61,23 +54,18 @@ public class JsonBarsSerializer {
     public static BarSeries loadSeries(String filename) {
         warnDeprecatedUse();
         Gson gson = new Gson();
-        FileReader reader = null;
         BarSeries result = null;
-        try {
-            reader = new FileReader(filename);
-            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+        try (Reader reader = Files.newBufferedReader(Path.of(filename), StandardCharsets.UTF_8)) {
+            LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
-            result = loadedSeries.toBarSeries();
-            LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
-        } catch (FileNotFoundException e) {
-            LOG.error("Unable to load bars from JSON", e);
-        } finally {
-            try {
-                if (reader != null)
-                    reader.close();
-            } catch (IOException e) {
-                LOG.warn("Unable to close file reader", e);
+            result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
+            if (result == null) {
+                LOG.warn("Failed to parse JSON, loadedSeries is null");
+                return null;
             }
+            LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
+        } catch (IOException e) {
+            LOG.error("Unable to load bars from JSON", e);
         }
         return result;
     }
@@ -107,28 +95,19 @@ public class JsonBarsSerializer {
         }
 
         Gson gson = new Gson();
-        InputStreamReader reader = null;
         BarSeries result = null;
-        try {
-            reader = new InputStreamReader(inputStream);
-            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+        try (Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
+            LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
-            if (loadedSeries == null) {
+            result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
+            if (result == null) {
                 LOG.warn("Failed to parse JSON, loadedSeries is null");
                 return null;
             }
 
-            result = loadedSeries.toBarSeries();
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (Exception e) {
             LOG.error("Unable to load bars from JSON", e);
-        } finally {
-            try {
-                if (reader != null)
-                    reader.close();
-            } catch (IOException e) {
-                LOG.warn("Error closing input stream reader", e);
-            }
         }
         return result;
     }

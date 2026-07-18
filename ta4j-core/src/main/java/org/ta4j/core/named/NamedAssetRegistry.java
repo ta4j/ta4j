@@ -31,7 +31,7 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  * Aliases are scoped by {@link NamedAssetKind}, so the same alias may be reused
  * for different component families when the meaning is clear from context.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public final class NamedAssetRegistry {
 
@@ -60,7 +60,7 @@ public final class NamedAssetRegistry {
      * {@link ServiceLoader}.
      *
      * @return immutable default registry
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static NamedAssetRegistry defaultRegistry() {
         NamedAssetRegistry existing = DEFAULT_REGISTRY.get();
@@ -82,7 +82,7 @@ public final class NamedAssetRegistry {
      * Creates a new mutable builder. The built registry is immutable.
      *
      * @return builder
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Builder builder() {
         return new Builder();
@@ -94,7 +94,7 @@ public final class NamedAssetRegistry {
      * @param kind       owning asset family
      * @param expression shorthand expression
      * @return canonical descriptor
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public ComponentDescriptor toDescriptor(NamedAssetKind kind, String expression) {
         return toDescriptor(kind, expression, kind.name().toLowerCase());
@@ -107,7 +107,7 @@ public final class NamedAssetRegistry {
      * @param expression shorthand expression
      * @param location   location used in validation errors
      * @return canonical descriptor
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public ComponentDescriptor toDescriptor(NamedAssetKind kind, String expression, String location) {
         Objects.requireNonNull(kind, "kind");
@@ -122,7 +122,7 @@ public final class NamedAssetRegistry {
      * @param descriptor descriptor to render
      * @return shorthand expression when a registered formatter recognizes the
      *         descriptor
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public Optional<String> toExpression(NamedAssetKind kind, ComponentDescriptor descriptor) {
         Objects.requireNonNull(kind, "kind");
@@ -143,7 +143,7 @@ public final class NamedAssetRegistry {
      *
      * @param text list text
      * @return immutable list of top-level entries
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public List<String> splitTopLevel(String text) {
         if (text == null || text.isBlank()) {
@@ -422,7 +422,7 @@ public final class NamedAssetRegistry {
     /**
      * Builder for immutable named asset registries.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static final class Builder {
 
@@ -439,7 +439,7 @@ public final class NamedAssetRegistry {
          * Adds ta4j's built-in shorthand bindings.
          *
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder withDefaults() {
             registerIndicator("ClosePrice", List.of(), args -> {
@@ -546,7 +546,7 @@ public final class NamedAssetRegistry {
          * @param parameterNames documented parameter names
          * @param factory        descriptor factory
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerIndicator(String alias, List<String> parameterNames, DescriptorFactory factory) {
             return register(NamedAssetKind.INDICATOR, alias, parameterNames, factory);
@@ -560,7 +560,7 @@ public final class NamedAssetRegistry {
          * @param factory        descriptor factory
          * @param formatter      optional compact formatter
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerIndicator(String alias, List<String> parameterNames, DescriptorFactory factory,
                 DescriptorFormatter formatter) {
@@ -574,7 +574,7 @@ public final class NamedAssetRegistry {
          * @param parameterNames documented parameter names
          * @param factory        descriptor factory
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerRule(String alias, List<String> parameterNames, DescriptorFactory factory) {
             return register(NamedAssetKind.RULE, alias, parameterNames, factory);
@@ -588,7 +588,7 @@ public final class NamedAssetRegistry {
          * @param factory        descriptor factory
          * @param formatter      optional compact formatter
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerRule(String alias, List<String> parameterNames, DescriptorFactory factory,
                 DescriptorFormatter formatter) {
@@ -602,7 +602,7 @@ public final class NamedAssetRegistry {
          * @param parameterNames documented parameter names
          * @param factory        descriptor factory
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerStrategy(String alias, List<String> parameterNames, DescriptorFactory factory) {
             return register(NamedAssetKind.STRATEGY, alias, parameterNames, factory);
@@ -616,7 +616,7 @@ public final class NamedAssetRegistry {
          * @param factory        descriptor factory
          * @param formatter      optional compact formatter
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerStrategy(String alias, List<String> parameterNames, DescriptorFactory factory,
                 DescriptorFormatter formatter) {
@@ -630,7 +630,7 @@ public final class NamedAssetRegistry {
          * @param parameterNames documented parameter names
          * @param factory        descriptor factory
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerAnalysisCriterion(String alias, List<String> parameterNames, DescriptorFactory factory) {
             return register(NamedAssetKind.ANALYSIS_CRITERION, alias, parameterNames, factory);
@@ -644,7 +644,7 @@ public final class NamedAssetRegistry {
          * @param factory        descriptor factory
          * @param formatter      optional compact formatter
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder registerAnalysisCriterion(String alias, List<String> parameterNames, DescriptorFactory factory,
                 DescriptorFormatter formatter) {
@@ -659,7 +659,7 @@ public final class NamedAssetRegistry {
          * @param parameterNames documented parameter names
          * @param factory        descriptor factory
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder register(NamedAssetKind kind, String alias, List<String> parameterNames,
                 DescriptorFactory factory) {
@@ -675,7 +675,7 @@ public final class NamedAssetRegistry {
          * @param factory        descriptor factory
          * @param formatter      optional compact formatter
          * @return this builder
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public Builder register(NamedAssetKind kind, String alias, List<String> parameterNames,
                 DescriptorFactory factory, DescriptorFormatter formatter) {
@@ -697,7 +697,7 @@ public final class NamedAssetRegistry {
          * Builds an immutable registry.
          *
          * @return registry
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public NamedAssetRegistry build() {
             return new NamedAssetRegistry(bindings);
@@ -723,7 +723,7 @@ public final class NamedAssetRegistry {
     /**
      * Factory that expands parsed expression arguments into a descriptor.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @FunctionalInterface
     public interface DescriptorFactory {
@@ -733,7 +733,7 @@ public final class NamedAssetRegistry {
          *
          * @param arguments parsed arguments
          * @return descriptor
-         * @since 0.22.7
+         * @since 0.23.1
          */
         ComponentDescriptor create(Arguments arguments);
     }
@@ -741,7 +741,7 @@ public final class NamedAssetRegistry {
     /**
      * Formatter that renders descriptors back to compact expressions when possible.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @FunctionalInterface
     public interface DescriptorFormatter {
@@ -750,7 +750,7 @@ public final class NamedAssetRegistry {
          * Formatter that never matches.
          *
          * @return no-op formatter
-         * @since 0.22.7
+         * @since 0.23.1
          */
         static DescriptorFormatter none() {
             return (descriptor, registry) -> Optional.empty();
@@ -762,7 +762,7 @@ public final class NamedAssetRegistry {
          * @param descriptor descriptor
          * @param registry   registry for nested descriptor formatting
          * @return expression when matched
-         * @since 0.22.7
+         * @since 0.23.1
          */
         Optional<String> format(ComponentDescriptor descriptor, NamedAssetRegistry registry);
     }
@@ -770,7 +770,7 @@ public final class NamedAssetRegistry {
     /**
      * Typed view over parsed shorthand arguments.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static final class Arguments {
 
@@ -789,7 +789,7 @@ public final class NamedAssetRegistry {
 
         /**
          * @return number of parsed arguments
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public int size() {
             return arguments.size();
@@ -797,7 +797,7 @@ public final class NamedAssetRegistry {
 
         /**
          * @return alias currently being expanded
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public String alias() {
             return binding.alias();
@@ -807,7 +807,7 @@ public final class NamedAssetRegistry {
          * Requires an exact argument count.
          *
          * @param expected expected count
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public void requireCount(int expected) {
             if (arguments.size() != expected) {
@@ -821,7 +821,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return positive integer
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public int positiveInt(int index) {
             int value = intValue(index);
@@ -837,7 +837,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return integer
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public int intValue(int index) {
             String text = literalText(index);
@@ -860,7 +860,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return string argument
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public String stringValue(int index) {
             return literalText(index);
@@ -871,7 +871,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return normalized number text
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public String finiteNumberText(int index) {
             String text = literalText(index);
@@ -887,7 +887,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return indicator descriptor
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public ComponentDescriptor indicatorDescriptor(int index) {
             return descriptorValue(index, NamedAssetKind.INDICATOR);
@@ -898,7 +898,7 @@ public final class NamedAssetRegistry {
          *
          * @param index argument index
          * @return rule descriptor
-         * @since 0.22.7
+         * @since 0.23.1
          */
         public ComponentDescriptor ruleDescriptor(int index) {
             return descriptorValue(index, NamedAssetKind.RULE);

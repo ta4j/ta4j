@@ -4,10 +4,13 @@
 package org.ta4j.core.analysis;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -44,6 +47,22 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(2));
         assertNumEquals(1, cashFlow.getValue(3));
         assertNumEquals(1, cashFlow.getValue(4));
+    }
+
+    @Test
+    public void getBarSeriesReturnsDefensiveSnapshots() {
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
+        int originalSize = cashFlow.getSize();
+        BarSeries firstReturnedSeries = cashFlow.getBarSeries();
+
+        appendOneBar(sampleBarSeries, 4);
+        appendOneBar(firstReturnedSeries, 5);
+
+        assertEquals(originalSize, cashFlow.getSize());
+        assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
+        assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
+        assertNotSame(firstReturnedSeries, cashFlow.getBarSeries());
     }
 
     @Test
@@ -513,9 +532,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(0, new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
-        record.recordFill(1, new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
 
         var cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
@@ -528,6 +547,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(expectedAt1, cashFlow.getValue(1));
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
+    }
+
+    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
+        Duration period = targetSeries.getLastBar().getTimePeriod();
+        targetSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
+                .openPrice(closePrice)
+                .highPrice(closePrice)
+                .lowPrice(closePrice)
+                .closePrice(closePrice)
+                .volume(1)
+                .add();
     }
 
     private record FixedHoldingCostModel(double fee) implements CostModel {

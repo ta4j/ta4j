@@ -81,33 +81,15 @@ public class BaseBar implements Bar {
     public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount, long trades) {
 
-        // set timePeriod
-        if (timePeriod != null) {
-            if (beginTime != null && endTime != null
-                    && timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
-                throw new IllegalArgumentException(
-                        "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
-            }
-            this.timePeriod = timePeriod;
-        } else {
-            this.timePeriod = beginTime != null && endTime != null ? Duration.between(beginTime, endTime)
-                    : Objects.requireNonNull(timePeriod, "Time period cannot be null");
-        }
+        this(resolvedTimes(timePeriod, beginTime, endTime), openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades);
+    }
 
-        // set beginTime
-        if (beginTime == null && endTime != null) {
-            this.beginTime = endTime.minus(timePeriod);
-        } else {
-            this.beginTime = Objects.requireNonNull(beginTime, "Begin time cannot be null");
-        }
-
-        // set endTime
-        if (beginTime != null && endTime == null) {
-            this.endTime = beginTime.plus(timePeriod);
-        } else {
-            this.endTime = Objects.requireNonNull(endTime, "End time cannot be null");
-        }
-
+    private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
+            Num amount, long trades) {
+        this.timePeriod = times.timePeriod();
+        this.beginTime = times.beginTime();
+        this.endTime = times.endTime();
         this.openPrice = openPrice;
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
@@ -115,6 +97,45 @@ public class BaseBar implements Bar {
         this.volume = volume;
         this.amount = amount;
         this.trades = trades;
+    }
+
+    private static ResolvedTimes resolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
+        final Duration resolvedTimePeriod;
+        if (timePeriod != null) {
+            if (beginTime != null && endTime != null
+                    && timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
+                throw new IllegalArgumentException(
+                        "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
+            }
+            resolvedTimePeriod = timePeriod;
+        } else if (beginTime != null && endTime != null) {
+            resolvedTimePeriod = Duration.between(beginTime, endTime);
+        } else {
+            throw new NullPointerException("Time period cannot be null");
+        }
+
+        final Instant resolvedBeginTime;
+        if (beginTime == null && endTime != null) {
+            resolvedBeginTime = endTime.minus(resolvedTimePeriod);
+        } else if (beginTime != null) {
+            resolvedBeginTime = beginTime;
+        } else {
+            throw new NullPointerException("Begin time cannot be null");
+        }
+
+        final Instant resolvedEndTime;
+        if (beginTime != null && endTime == null) {
+            resolvedEndTime = beginTime.plus(resolvedTimePeriod);
+        } else if (endTime != null) {
+            resolvedEndTime = endTime;
+        } else {
+            throw new NullPointerException("End time cannot be null");
+        }
+
+        return new ResolvedTimes(resolvedTimePeriod, resolvedBeginTime, resolvedEndTime);
+    }
+
+    private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
     @Override
@@ -210,7 +231,7 @@ public class BaseBar implements Bar {
     public boolean equals(Object obj) {
         if (this == obj)
             return true;
-        if (!(obj instanceof BaseBar))
+        if (obj == null || getClass() != obj.getClass())
             return false;
         final BaseBar other = (BaseBar) obj;
         return Objects.equals(beginTime, other.beginTime) && Objects.equals(endTime, other.endTime)

@@ -29,6 +29,7 @@ import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -446,11 +447,78 @@ class ChartBuilderTest {
     }
 
     @Test
+    void chartPlanReturnsDefensiveSeriesSnapshots() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(new ClosePriceIndicator(series))
+                .toPlan();
+        int originalCount = series.getBarCount();
+        BarSeries firstReturnedSeries = plan.primarySeries();
+
+        appendOneBar(series, 500);
+        appendOneBar(firstReturnedSeries, 600);
+
+        assertEquals(originalCount, plan.primarySeries().getBarCount());
+        assertEquals(originalCount, plan.definition().basePlot().series().getBarCount());
+        assertEquals(originalCount, plan.definition().subplots().get(0).series().getBarCount());
+        assertNotSame(series, plan.primarySeries());
+        assertNotSame(firstReturnedSeries, plan.primarySeries());
+    }
+
+    @Test
+    void overlayDefinitionReturnsDefensiveStyleCopies() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(new ClosePriceIndicator(series))
+                .withLineColor(Color.BLUE)
+                .toPlan();
+        ChartBuilder.OverlayDefinition overlay = plan.definition().basePlot().overlays().get(0);
+
+        ChartBuilder.OverlayStyle firstStyle = overlay.style();
+        ChartBuilder.OverlayStyle secondStyle = overlay.style();
+
+        assertNotSame(firstStyle, secondStyle);
+        firstStyle.setColor(Color.RED);
+        assertEquals(Color.BLUE, overlay.style().color(), "Mutating returned overlay style must not change the plan");
+    }
+
+    @Test
+    void horizontalMarkerDefinitionReturnsDefensiveStyleCopies() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(new RSIIndicator(new ClosePriceIndicator(series), 14))
+                .withHorizontalMarker(50.0)
+                .withLineColor(Color.GREEN)
+                .toPlan();
+        ChartBuilder.HorizontalMarkerDefinition marker = plan.definition().subplots().get(0).horizontalMarkers().get(0);
+
+        ChartBuilder.OverlayStyle firstStyle = marker.style();
+        ChartBuilder.OverlayStyle secondStyle = marker.style();
+
+        assertNotSame(firstStyle, secondStyle);
+        firstStyle.setColor(Color.RED);
+        assertEquals(Color.GREEN, marker.style().color(), "Mutating returned marker style must not change the plan");
+    }
+
+    @Test
     void toPlanAlsoConsumesBuilder() {
         ChartBuilder.ChartStage stage = chartWorkflow.builder().withSeries(series);
         stage.toPlan();
         assertThrows(IllegalStateException.class, stage::toChart,
                 "Invoking toPlan should consume the builder like other terminal operations");
+    }
+
+    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
+        Duration period = targetSeries.getLastBar().getTimePeriod();
+        targetSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
+                .openPrice(closePrice)
+                .highPrice(closePrice)
+                .lowPrice(closePrice)
+                .closePrice(closePrice)
+                .volume(1)
+                .add();
     }
 
     @Test

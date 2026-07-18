@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -15,6 +16,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -142,5 +148,38 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertNumEquals(indicator.getValue(i), restored.getValue(i));
         }
+    }
+
+    @Test
+    public void getTRIndicatorReturnsIndependentHelper() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+        ATRIndicator indicator = new ATRIndicator(series, 3);
+
+        TRIndicator first = indicator.getTRIndicator();
+        TRIndicator second = indicator.getTRIndicator();
+
+        assertNotSame(first, second);
+        assertTrue(IndicatorUtils.isSameSeries(series, first.getBarSeries()));
+        assertNumEquals(first.getValue(series.getEndIndex()), second.getValue(series.getEndIndex()));
+    }
+
+    @Test
+    public void customTrueRangeUnstableBarsAreRetained() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
+        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
+        series.barBuilder().openPrice(0).closePrice(16).highPrice(18).lowPrice(15).add();
+        series.barBuilder().openPrice(0).closePrice(14).highPrice(17).lowPrice(13).add();
+        series.barBuilder().openPrice(0).closePrice(18).highPrice(19).lowPrice(16).add();
+        Indicator<Num> delayedClose = new SMAIndicator(new ClosePriceIndicator(series), 2);
+        TRIndicator trueRange = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                delayedClose);
+
+        ATRIndicator indicator = new ATRIndicator(trueRange, 3);
+
+        assertEquals(5, indicator.getCountOfUnstableBars());
+        assertTrue(Num.isNaNOrNull(indicator.getValue(4)));
+        assertFalse(Num.isNaNOrNull(indicator.getValue(5)));
     }
 }

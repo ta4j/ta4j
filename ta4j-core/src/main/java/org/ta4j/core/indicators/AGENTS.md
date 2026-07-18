@@ -16,7 +16,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 ## Numerical safety
 
 - Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results.
-- Validate both `Num.isNaN()` and `Double.isNaN(value.doubleValue())` where relevant because `DoubleNumFactory` can surface raw `Double.NaN`.
+- `Indicator<Num>` calculations should preserve `Num` through rolling windows, comparisons, accumulation, and return conversion. Limit `doubleValue()` to explicit `DoubleNum` validation, external interop, or unavoidable primitive-only math.
+- Validate both `Num.isNaN()` and raw `Double`/`Float` delegate NaN or infinity where relevant because primitive-backed factories can surface non-finite values.
+- Finite-value checks must not reject finite `DecimalNum` values just because their primitive `double` representation overflows.
 - Guard both current values and neighbors used in calculation; prefer returning `NaN` over propagating invalid data silently.
 - Keep flat/plateau handling symmetric for highs and lows when scanning neighboring bars.
 - For EMA-like smoothing, prefer extending `AbstractEMAIndicator` to preserve NaN reset behavior and unstable-period handling.
@@ -40,7 +42,11 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## NetMomentumIndicator specifics
 
-- Preserve decay semantics: `decay = 1` keeps legacy running-total behavior; values below `1` apply exponential fade.
+- Preserve battery semantics: below-pivot oscillator pressure contributes positive rebound energy,
+  above-pivot pressure contributes negative depletion, and distance from the pivot is convex-weighted.
+- Preserve decay semantics: `decay = 1` keeps the undecayed windowed battery sum; values below `1`
+  apply exponential fade.
 - Keep the recursive weighted-sum formulation intact (do not reintroduce `RunningTotalIndicator`).
-- For deterministic expectations, use the steady-state reference formula `delta * (1 - decay^window) / (1 - decay)`.
+- For deterministic expectations, use the steady-state reference formula
+  `contribution * (1 - decay^window) / (1 - decay)`.
 - Prefer `NetMomentumIndicator.forRsi(...)` and `NetMomentumIndicator.forRsiWithDecay(...)` in tests/examples to avoid constructor ambiguity.

@@ -20,6 +20,7 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -44,6 +45,7 @@ import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -120,6 +122,96 @@ class TradingChartFactoryTest {
         assertFalse(domainMarkers.isEmpty(), "Should have position markers");
         assertTrue(domainMarkers.stream().anyMatch(marker -> marker instanceof IntervalMarker),
                 "Should use IntervalMarker for positions");
+    }
+
+    @Test
+    void tradingRecordLabelsDefaultToFirstSourcePosition() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B1 @");
+        assertTradeLabelPrefixPresent(plot, "S1 @");
+        assertEquals(List.of("Position 1"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void tradingRecordLabelsUseSuppliedSourcePositionStart() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertEquals(List.of("Position 2"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void defaultSourcePositionStartKeepsMultiPositionLabelsSequential() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        addPosition(record, 5, 7, amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B1 @");
+        assertTradeLabelPrefixPresent(plot, "S1 @");
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertEquals(List.of("Position 1", "Position 2"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void sourcePositionStartKeepsMultiPositionLabelsSequentialIncludingOpenPosition() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        record.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX,
+                2);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertTradeLabelPrefixPresent(plot, "B3 @");
+        assertEquals(List.of("Position 2", "Position 3"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void sourcePositionStartRejectsValuesBelowOne() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> factory
+                .createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0));
+
+        assertEquals("Source position start must be at least 1", exception.getMessage());
+    }
+
+    @Test
+    void sourcePositionStartRejectsRangesThatOverflowWithAnOpenPosition() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        record.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX,
+                        Integer.MAX_VALUE));
+
+        assertEquals("Source position start cannot represent every rendered position", exception.getMessage());
     }
 
     @Test
@@ -376,6 +468,78 @@ class TradingChartFactoryTest {
         assertTrue(labelDatasetIndex >= 0, "Label dataset should be present on the plot");
         assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(labelDatasetIndex),
                 "Label dataset should render with the line/shape renderer");
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(labelDatasetIndex);
+        assertFalse(renderer.getItemLineVisible(0, 0),
+                "Sparse label overlays should render markers and annotations without connecting lines");
+    }
+
+    @Test
+    void testBarSeriesLabelOverlayUsesExplicitAnnotationColors() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+        List<BarLabel> labels = List.of(
+                new BarLabel(5, series.getBar(5).getClosePrice(), "Bull", LabelPlacement.ABOVE, Color.GREEN),
+                new BarLabel(8, series.getBar(8).getClosePrice(), "Bear", LabelPlacement.BELOW, Color.RED));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLineColor(Color.ORANGE)
+                .withOpacity(1.0f)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        List<XYTextAnnotation> annotations = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .toList();
+
+        assertEquals(2, annotations.size(), "Each non-blank label should render as an annotation");
+        assertEquals(Color.GREEN,
+                annotations.stream()
+                        .filter(annotation -> "Bull".equals(annotation.getText()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getPaint());
+        assertEquals(Color.RED,
+                annotations.stream()
+                        .filter(annotation -> "Bear".equals(annotation.getText()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getPaint());
+    }
+
+    @Test
+    void testBarSeriesLabelOverlayAppliesPerLabelFontScale() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+        List<BarLabel> labels = List.of(
+                new BarLabel(5, series.getBar(5).getClosePrice(), "Wave 1", LabelPlacement.ABOVE, Color.GREEN, 3.0));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        XYTextAnnotation annotation = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .filter(candidate -> "Wave 1".equals(candidate.getText()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(36.0, annotation.getFont().getSize2D(), 0.001);
     }
 
     @Test
@@ -1141,6 +1305,17 @@ class TradingChartFactoryTest {
                 .filter(IntervalMarker.class::isInstance)
                 .map(IntervalMarker.class::cast)
                 .collect(Collectors.toList());
+    }
+
+    private void assertTradeLabelPrefixPresent(XYPlot plot, String expectedPrefix) {
+        List<String> annotationTexts = plot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .map(XYTextAnnotation::getText)
+                .toList();
+        assertTrue(annotationTexts.stream().anyMatch(text -> text.startsWith(expectedPrefix)),
+                () -> "Expected trade label prefix " + expectedPrefix + " but found " + annotationTexts);
     }
 
     // ========== NaN Gap Handling Tests ==========

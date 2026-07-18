@@ -4,6 +4,8 @@
 package ta4jexamples.analysis.elliottwave;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -41,5 +43,31 @@ class ElliottWavePresetDemoTest {
         assertEquals("PRIMARY", args[3], "Unexpected degree");
         assertEquals(Long.toString(EXPECTED_START_TIME.getEpochSecond()), args[4], "Unexpected start epoch");
         assertEquals(Long.toString(FIXED_END_TIME.getEpochSecond()), args[5], "Unexpected end epoch");
+    }
+
+    @Test
+    void shouldUseDailyMacroPresetForDailyIntervals() {
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT1D"));
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT24H"));
+    }
+
+    @Test
+    void shouldNotUseDailyMacroPresetForIntradayOrMissingIntervals() {
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT4H"));
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset(null));
+    }
+
+    @Test
+    void runHelpReturnsSuccessWithoutLoadingData() {
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "--help" }));
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "help" }));
+    }
+
+    @Test
+    void runInvalidArgumentsReturnUsageStatus() {
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "unknown" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "zero" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "0" }));
     }
 }

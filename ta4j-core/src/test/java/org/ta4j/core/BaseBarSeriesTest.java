@@ -113,6 +113,38 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testBarHistoryRevisionTracksPublishedDataChanges() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+        Bar lastBar = seriesWithBars.getLastBar();
+
+        seriesWithBars.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .openPrice(lastBar.getClosePrice())
+                .highPrice(lastBar.getClosePrice())
+                .lowPrice(lastBar.getClosePrice())
+                .closePrice(lastBar.getClosePrice())
+                .volume(numFactory.zero())
+                .add();
+        assertEquals(initialRevision, seriesWithBars.getBarHistoryRevision());
+
+        seriesWithBars.replaceBar(1, testBars.get(1));
+        assertEquals(initialRevision + 1, seriesWithBars.getBarHistoryRevision());
+
+        seriesWithBars.addBar(seriesWithBars.getLastBar(), true);
+        assertEquals(initialRevision + 2, seriesWithBars.getBarHistoryRevision());
+
+        seriesWithBars.addPrice(numFactory.numOf(42));
+        assertEquals(initialRevision + 3, seriesWithBars.getBarHistoryRevision());
+
+        seriesWithBars.addTrade(numFactory.one(), numFactory.numOf(43));
+        assertEquals(initialRevision + 4, seriesWithBars.getBarHistoryRevision());
+
+        seriesWithBars.clear();
+        assertEquals(initialRevision + 5, seriesWithBars.getBarHistoryRevision());
+    }
+
+    @Test
     public void testFullConstructor() {
         BaseBarSeries series = new BaseBarSeries("TestName", testBars, 1, 3, true, numFactory, barBuilderFactory);
 
@@ -186,6 +218,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         List<Bar> barData = seriesWithBars.getBarData();
         assertNotNull(barData);
         assertEquals(5, barData.size());
+        assertThrows(UnsupportedOperationException.class, () -> barData.add(testBars.get(0)));
 
         // Test that it returns a copy (immutability)
         List<Bar> originalData = seriesWithBars.getBarData();

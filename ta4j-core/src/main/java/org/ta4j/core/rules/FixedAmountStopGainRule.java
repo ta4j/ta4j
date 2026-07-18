@@ -36,7 +36,7 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
      * @param gainAmount     the absolute gain amount
      */
     public FixedAmountStopGainRule(Indicator<Num> priceIndicator, Number gainAmount) {
-        this(priceIndicator, toNumGainAmount(priceIndicator, gainAmount));
+        this(validatedConfig(priceIndicator, toNumGainAmount(priceIndicator, gainAmount)));
     }
 
     /**
@@ -46,36 +46,47 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
      * @param gainAmount     the absolute gain amount
      */
     public FixedAmountStopGainRule(Indicator<Num> priceIndicator, Num gainAmount) {
+        this(validatedConfig(priceIndicator, gainAmount));
+    }
+
+    private FixedAmountStopGainRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.gainAmount = config.gainAmount();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Num gainAmount) {
         if (priceIndicator == null) {
             throw new IllegalArgumentException("priceIndicator must not be null");
         }
         if (Num.isNaNOrNull(gainAmount) || gainAmount.isZero() || gainAmount.isNegative()) {
             throw new IllegalArgumentException("gainAmount must be positive");
         }
-        this.priceIndicator = priceIndicator;
-        this.gainAmount = gainAmount;
+        return new Config(priceIndicator, gainAmount);
     }
 
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            var currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = currentPrice
-                            .isGreaterThanOrEqual(StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true));
-                } else {
-                    satisfied = currentPrice
-                            .isLessThanOrEqual(StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false));
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num stopPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, buy);
+        boolean satisfied = buy ? currentPrice.isGreaterThanOrEqual(stopPrice)
+                : currentPrice.isLessThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceBelowStop" : "priceAboveStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "gainAmount",
+                gainAmount, reason);
         return satisfied;
     }
 
@@ -99,14 +110,6 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
         return StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, position.getEntry().isBuy());
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
-        }
-    }
-
     private static Num toNumGainAmount(Indicator<Num> priceIndicator, Number gainAmount) {
         if (priceIndicator == null) {
             throw new IllegalArgumentException("priceIndicator must not be null");
@@ -115,5 +118,8 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
             throw new IllegalArgumentException("gainAmount must be positive");
         }
         return priceIndicator.getBarSeries().numFactory().numOf(gainAmount);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num gainAmount) {
     }
 }

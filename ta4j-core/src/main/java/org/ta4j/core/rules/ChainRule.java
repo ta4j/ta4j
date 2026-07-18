@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Objects;
 
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
@@ -19,7 +19,7 @@ import org.ta4j.core.rules.helper.ChainLink;
 public class ChainRule extends AbstractRule {
 
     private final Rule initialRule;
-    private LinkedList<ChainLink> rulesInChain = new LinkedList<>();
+    private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
     /**
      * @param initialRule the first rule that has to be satisfied before
@@ -28,8 +28,11 @@ public class ChainRule extends AbstractRule {
      *                    initial rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
-        this.initialRule = initialRule;
-        this.rulesInChain.addAll(Arrays.asList(chainLinks));
+        this.initialRule = Objects.requireNonNull(initialRule, "initialRule cannot be null");
+        Objects.requireNonNull(chainLinks, "chainLinks cannot be null");
+        for (ChainLink chainLink : chainLinks) {
+            this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
+        }
     }
 
     @Override
@@ -37,12 +40,14 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (!initialRule.isSatisfied(index, tradingRecord)) {
-            traceIsSatisfied(index, false);
+        if (!evaluateChildRule(initialRule, "initialRule", index, tradingRecord)) {
+            if (isTraceEnabled()) {
+                traceIsSatisfied(index, false, traceContext("initialRule", false));
+            }
             return false;
         }
-        traceIsSatisfied(index, true);
 
+        int linkIndex = 0;
         for (ChainLink link : rulesInChain) {
             boolean satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
@@ -54,7 +59,8 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = link.getRule().isSatisfied(resultingIndex, tradingRecord);
+                satisfiedWithinThreshold = evaluateChildRule(link.getRule(), "chainRule" + linkIndex, resultingIndex,
+                        tradingRecord);
 
                 if (satisfiedWithinThreshold) {
                     break;
@@ -64,12 +70,18 @@ public class ChainRule extends AbstractRule {
             }
 
             if (!satisfiedWithinThreshold) {
-                traceIsSatisfied(index, false);
+                if (isTraceEnabled()) {
+                    traceIsSatisfied(index, false, traceContext("initialRule", true, "failedChainRule", linkIndex,
+                            "threshold", link.getThreshold()));
+                }
                 return false;
             }
+            linkIndex++;
         }
 
-        traceIsSatisfied(index, true);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, true, traceContext("initialRule", true, "chainRules", rulesInChain.size()));
+        }
         return true;
     }
 }

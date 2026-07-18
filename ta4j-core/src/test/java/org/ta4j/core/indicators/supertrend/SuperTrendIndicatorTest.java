@@ -289,13 +289,19 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
 
         SuperTrendLowerBandIndicator lowerBand = indicator.getSuperTrendLowerBandIndicator();
         SuperTrendUpperBandIndicator upperBand = indicator.getSuperTrendUpperBandIndicator();
+        SuperTrendLowerBandIndicator secondLowerBand = indicator.getSuperTrendLowerBandIndicator();
+        SuperTrendUpperBandIndicator secondUpperBand = indicator.getSuperTrendUpperBandIndicator();
 
         assertThat(lowerBand).isNotNull();
         assertThat(upperBand).isNotNull();
+        assertThat(lowerBand).isNotSameAs(secondLowerBand);
+        assertThat(upperBand).isNotSameAs(secondUpperBand);
 
         // Verify they return valid values after unstable period
         assertThat(Num.isNaNOrNull(lowerBand.getValue(2))).isFalse();
         assertThat(Num.isNaNOrNull(upperBand.getValue(2))).isFalse();
+        assertThat(lowerBand.getValue(2)).isEqualByComparingTo(secondLowerBand.getValue(2));
+        assertThat(upperBand.getValue(2)).isEqualByComparingTo(secondUpperBand.getValue(2));
     }
 
     @Test

@@ -3,6 +3,7 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -11,7 +12,10 @@ import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
+
+import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo;
 
 /**
  * Consolidated preset launcher for Elliott Wave demos.
@@ -45,6 +49,7 @@ public class ElliottWavePresetDemo {
     private static final Logger LOG = LogManager.getLogger(ElliottWavePresetDemo.class);
     private static final String DEFAULT_BAR_DURATION = "PT1D";
     private static final long DEFAULT_LOOKBACK_DAYS = 1825L;
+    private static final Path DEFAULT_MACRO_CHART_DIRECTORY = Path.of("temp", "charts");
 
     /**
      * Runs a preset Elliott Wave demo.
@@ -52,49 +57,59 @@ public class ElliottWavePresetDemo {
      * @param args command-line arguments; see class-level usage documentation
      */
     public static void main(String[] args) {
+        final int status = run(args);
+        if (status != 0) {
+            System.exit(status);
+        }
+    }
+
+    static int run(String[] args) {
         if (args == null || args.length == 0) {
             logUsage();
-            return;
+            return 0;
         }
 
         final String mode = normalize(args[0]);
         switch (mode) {
+        case "help", "--help", "-h":
+            logUsage();
+            return 0;
         case "ossified":
-            runOssified(args);
-            return;
+            return runOssified(args);
         case "live":
-            runLive(args);
-            return;
+            return runLive(args);
         default:
             LOG.error("Unknown mode '{}'. Expected 'ossified' or 'live'.", args[0]);
             logUsage();
+            return 2;
         }
     }
 
-    private static void runOssified(String[] args) {
+    private static int runOssified(String[] args) {
         if (args.length < 2) {
             LOG.error("Missing ossified preset. Expected one of: btc, eth, sp500");
             logUsage();
-            return;
+            return 2;
         }
 
         Optional<OssifiedPreset> preset = OssifiedPreset.fromToken(args[1]);
         if (preset.isEmpty()) {
             LOG.error("Unknown ossified preset '{}'. Expected one of: btc, eth, sp500", args[1]);
             logUsage();
-            return;
+            return 2;
         }
 
         OssifiedPreset selected = preset.orElseThrow();
         ElliottWaveIndicatorSuiteDemo.runOssifiedResource(ElliottWavePresetDemo.class, selected.resource(),
                 selected.seriesName(), selected.degreeOverride().orElse(null));
+        return 0;
     }
 
-    private static void runLive(String[] args) {
+    private static int runLive(String[] args) {
         if (args.length < 3) {
             LOG.error("Live mode expects at least dataSource and ticker");
             logUsage();
-            return;
+            return 2;
         }
 
         final String dataSource = Objects.requireNonNull(args[1], "dataSource");
@@ -107,12 +122,12 @@ public class ElliottWavePresetDemo {
                 lookbackDays = Long.parseLong(args[4]);
             } catch (NumberFormatException ex) {
                 LOG.error("Invalid lookbackDays '{}': expected a positive integer", args[4]);
-                return;
+                return 2;
             }
         }
         if (lookbackDays <= 0) {
             LOG.error("Invalid lookbackDays '{}': must be > 0", lookbackDays);
-            return;
+            return 2;
         }
 
         ElliottDegree degree = null;
@@ -121,12 +136,47 @@ public class ElliottWavePresetDemo {
                 degree = ElliottDegree.valueOf(args[5].trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ex) {
                 LOG.error("Invalid degree '{}'", args[5]);
-                return;
+                return 2;
             }
+        }
+
+        if (shouldUseDailyMacroPreset(barDuration)) {
+            if (degree != null) {
+                LOG.info(
+                        "Ignoring explicit degree '{}' for daily macro preset; the validated macro profile selects its own structural interpretation.",
+                        degree);
+            }
+            Instant endTime = Instant.now();
+            Instant startTime = endTime.minus(Duration.ofDays(lookbackDays));
+            final Duration parsedDuration;
+            try {
+                parsedDuration = parseBarDuration(barDuration);
+            } catch (IllegalArgumentException ex) {
+                LOG.error("Invalid barDuration '{}': {}", barDuration, ex.getMessage());
+                return 2;
+            }
+            BarSeries series = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(dataSource, ticker,
+                    parsedDuration, startTime, endTime);
+            if (series == null || series.isEmpty()) {
+                LOG.error("Unable to load live daily macro series from {} {} {}", dataSource, ticker, barDuration);
+                return 1;
+            }
+            ElliottWaveMacroCycleDemo.runLivePreset(series, DEFAULT_MACRO_CHART_DIRECTORY, dataSource,
+                    normalizeInstrumentForReport(ticker), lookbackDays);
+            return 0;
         }
 
         String[] suiteArgs = buildLiveSuiteArgs(dataSource, ticker, barDuration, lookbackDays, Instant.now(), degree);
         ElliottWaveIndicatorSuiteDemo.main(suiteArgs);
+        return 0;
+    }
+
+    static boolean shouldUseDailyMacroPreset(String barDuration) {
+        if (barDuration == null) {
+            return false;
+        }
+        String normalizedDuration = barDuration.trim().toUpperCase(Locale.ROOT);
+        return "PT1D".equals(normalizedDuration) || "PT24H".equals(normalizedDuration);
     }
 
     static String[] buildLiveSuiteArgs(String dataSource, String ticker, String barDuration, long lookbackDays,
@@ -150,8 +200,33 @@ public class ElliottWavePresetDemo {
 
     private static void logUsage() {
         LOG.info("Usage:");
+        LOG.info("  help");
         LOG.info("  ossified <btc|eth|sp500>");
         LOG.info("  live <Coinbase|YahooFinance> <ticker> [barDuration] [lookbackDays] [degree]");
+        LOG.info("Daily live runs with PT1D or PT24H write a five-outlook macro snapshot package to {}.",
+                DEFAULT_MACRO_CHART_DIRECTORY);
+        LOG.info("Example: live Coinbase BTC-USD PT1D 1825");
+        LOG.info(
+                "Non-daily live runs stay on the generic indicator-suite path and honor the optional degree argument.");
+    }
+
+    private static Duration parseBarDuration(String barDuration) {
+        Objects.requireNonNull(barDuration, "barDuration");
+        String normalized = barDuration.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("PT") && normalized.endsWith("D")) {
+            final String dayString = normalized.substring(2, normalized.length() - 1);
+            try {
+                final int days = Integer.parseInt(dayString);
+                return Duration.ofHours(days * 24L);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid day count in barDuration: " + barDuration, e);
+            }
+        }
+        return Duration.parse(normalized);
+    }
+
+    private static String normalizeInstrumentForReport(String ticker) {
+        return ticker == null ? "" : ticker.trim().replace('/', '-').toUpperCase(Locale.ROOT);
     }
 
     private static String normalize(String value) {

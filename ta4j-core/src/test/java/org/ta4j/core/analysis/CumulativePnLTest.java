@@ -4,11 +4,14 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -36,6 +39,22 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(5, pnl.getSize());
         assertNumEquals(0, pnl.getValue(0));
         assertNumEquals(0, pnl.getValue(4));
+    }
+
+    @Test
+    public void getBarSeriesReturnsDefensiveSnapshots() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
+        int originalSize = pnl.getSize();
+        BarSeries firstReturnedSeries = pnl.getBarSeries();
+
+        appendOneBar(series, 115);
+        appendOneBar(firstReturnedSeries, 120);
+
+        assertEquals(originalSize, pnl.getSize());
+        assertEquals(originalSize, pnl.getBarSeries().getBarCount());
+        assertNotSame(series, pnl.getBarSeries());
+        assertNotSame(firstReturnedSeries, pnl.getBarSeries());
     }
 
     @Test
@@ -188,9 +207,9 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(0, new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
-        record.recordFill(1, new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
 
         var pnl = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET,
@@ -256,5 +275,18 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         for (int i = 0; i < expected.getSize(); i++) {
             assertNumEquals(expected.getValue(i), actual.getValue(i));
         }
+    }
+
+    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
+        Duration period = targetSeries.getLastBar().getTimePeriod();
+        targetSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
+                .openPrice(closePrice)
+                .highPrice(closePrice)
+                .lowPrice(closePrice)
+                .closePrice(closePrice)
+                .volume(1)
+                .add();
     }
 }

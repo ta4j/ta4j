@@ -31,7 +31,7 @@ import org.ta4j.core.named.NamedAssetRegistry;
  * when it can be mapped safely, and unsupported stateful criteria are rejected
  * rather than silently emitted as default instances.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public final class AnalysisCriterionSerialization {
 
@@ -51,7 +51,7 @@ public final class AnalysisCriterionSerialization {
      * @return JSON representation
      * @throws IllegalArgumentException if the criterion has constructor state that
      *                                  cannot be represented safely
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toJson(AnalysisCriterion criterion) {
         return ComponentSerialization.toJson(describe(criterion));
@@ -64,7 +64,7 @@ public final class AnalysisCriterionSerialization {
      * @return descriptor
      * @throws IllegalArgumentException if the criterion has constructor state that
      *                                  cannot be represented safely
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static ComponentDescriptor describe(AnalysisCriterion criterion) {
         Objects.requireNonNull(criterion, "criterion");
@@ -82,7 +82,7 @@ public final class AnalysisCriterionSerialization {
      *
      * @param json JSON payload
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static AnalysisCriterion fromJson(String json) {
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
@@ -94,7 +94,7 @@ public final class AnalysisCriterionSerialization {
      *
      * @param descriptor descriptor
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static AnalysisCriterion fromDescriptor(ComponentDescriptor descriptor) {
         Objects.requireNonNull(descriptor, "descriptor");
@@ -108,7 +108,7 @@ public final class AnalysisCriterionSerialization {
      *
      * @param criterion criterion instance
      * @return compact expression
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(AnalysisCriterion criterion) {
         return toExpression(criterion, NamedAssetRegistry.defaultRegistry());
@@ -121,7 +121,7 @@ public final class AnalysisCriterionSerialization {
      * @param criterion criterion instance
      * @param registry  named asset registry
      * @return compact expression
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(AnalysisCriterion criterion, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -137,7 +137,7 @@ public final class AnalysisCriterionSerialization {
      *
      * @param expression shorthand expression
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static AnalysisCriterion fromExpression(String expression) {
         return fromExpression(expression, NamedAssetRegistry.defaultRegistry());
@@ -150,7 +150,7 @@ public final class AnalysisCriterionSerialization {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return reconstructed criterion
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static AnalysisCriterion fromExpression(String expression, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");

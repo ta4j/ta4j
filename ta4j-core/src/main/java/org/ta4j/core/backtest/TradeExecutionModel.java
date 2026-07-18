@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
 
 /**
@@ -12,8 +13,31 @@ import org.ta4j.core.num.Num;
  *
  * Used for backtesting. Instructs {@link BarSeriesManager} on how to execute
  * trades.
+ *
+ * <p>
+ * Selection guidance:
+ * </p>
+ * <ul>
+ * <li>Use {@link TradeOnNextOpenModel} for conservative signal-at-close,
+ * fill-next-open simulation.</li>
+ * <li>Use {@link TradeOnCurrentCloseModel} when your strategy intentionally
+ * fills on bar close.</li>
+ * <li>Use {@link SlippageExecutionModel} when you need directional price-impact
+ * assumptions.</li>
+ * <li>Use {@link StopLimitExecutionModel} when pending-order lifecycle and
+ * partial fills matter.</li>
+ * </ul>
  */
 public interface TradeExecutionModel {
+
+    /**
+     * Represents the estimated execution bar and fill price for one dynamic sizing
+     * context lookup.
+     *
+     * @since 0.22.9
+     */
+    record ExecutionTarget(int index, Num price) {
+    }
 
     /**
      * Common price-source contract for execution models.
@@ -59,6 +83,27 @@ public interface TradeExecutionModel {
      */
     default void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord) {
         // Default no-op for immediate execution models.
+    }
+
+    /**
+     * Estimates the bar index and price used by dynamic position sizing for a
+     * strategy signal.
+     *
+     * <p>
+     * The returned context is only required by {@link BarSeriesManager} when a
+     * {@link PositionSizer} is used. Implementations that execute on a different
+     * bar or price than next-open must override this method.
+     * </p>
+     *
+     * @param signalIndex signal index emitted by the strategy
+     * @param barSeries   bar series being backtested
+     * @param tradeType   trade type of the prospective entry
+     * @return an execution target used for sizing, or {@code null} if no target can
+     *         be resolved
+     * @since 0.22.9
+     */
+    default ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        return ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries, PriceSource.NEXT_OPEN);
     }
 
     /**

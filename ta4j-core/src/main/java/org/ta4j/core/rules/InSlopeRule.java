@@ -64,7 +64,7 @@ public class InSlopeRule extends AbstractRule {
      * @param minSlope minimum slope between reference and previous indicator
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope) {
-        this(ref, 1, minSlope, NaN);
+        this(validateConfig(ref, 1, minSlope, NaN));
     }
 
     /**
@@ -77,7 +77,7 @@ public class InSlopeRule extends AbstractRule {
      *                 indicator
      */
     public InSlopeRule(Indicator<Num> ref, Num minSlope, Num maxSlope) {
-        this(ref, 1, minSlope, maxSlope);
+        this(validateConfig(ref, 1, minSlope, maxSlope));
     }
 
     /**
@@ -91,7 +91,7 @@ public class InSlopeRule extends AbstractRule {
      *                 indicator values, provided as a string
      */
     public InSlopeRule(Indicator<Num> ref, String minSlope, String maxSlope) {
-        this(ref, 1, parseSlope(ref, minSlope), parseSlope(ref, maxSlope));
+        this(validateConfig(ref, 1, parseSlope(ref, minSlope), parseSlope(ref, maxSlope)));
     }
 
     /**
@@ -103,7 +103,7 @@ public class InSlopeRule extends AbstractRule {
      *                    indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num maxSlope) {
-        this(ref, nthPrevious, NaN, maxSlope);
+        this(validateConfig(ref, nthPrevious, NaN, maxSlope));
     }
 
     /**
@@ -117,13 +117,14 @@ public class InSlopeRule extends AbstractRule {
      *                    indicator
      */
     public InSlopeRule(Indicator<Num> ref, int nthPrevious, Num minSlope, Num maxSlope) {
-        this.reference = Objects.requireNonNull(ref, "ref");
-        if (nthPrevious < 1) {
-            throw new IllegalArgumentException("nthPrevious must be >= 1");
-        }
-        this.nthPrevious = nthPrevious;
-        this.minSlope = normalizeSlope(minSlope);
-        this.maxSlope = normalizeSlope(maxSlope);
+        this(validateConfig(ref, nthPrevious, minSlope, maxSlope));
+    }
+
+    private InSlopeRule(ValidatedConfig config) {
+        this.reference = config.reference();
+        this.nthPrevious = config.nthPrevious();
+        this.minSlope = config.minSlope();
+        this.maxSlope = config.maxSlope();
         this.difference = BinaryOperationIndicator.difference(reference,
                 new PreviousValueIndicator(reference, nthPrevious));
     }
@@ -137,8 +138,33 @@ public class InSlopeRule extends AbstractRule {
         final boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
         final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            int previousIndex = index - nthPrevious;
+            Num currentValue = reference.getValue(index);
+            Num previousValue = previousIndex < 0 ? NaN : reference.getValue(previousIndex);
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentValue", currentValue, "previousIndex", previousIndex, "previousValue",
+                            previousValue, "slope", val, "minSlope", minSlope, "maxSlope", maxSlope, "nthPrevious",
+                            nthPrevious, "reason", reason(satisfied, isNaN, minSlopeSatisfied, maxSlopeSatisfied)));
+        }
         return satisfied;
+    }
+
+    private static String reason(boolean satisfied, boolean isNaN, boolean minSlopeSatisfied,
+            boolean maxSlopeSatisfied) {
+        if (isNaN) {
+            return "noSlopeBounds";
+        }
+        if (satisfied) {
+            return "withinSlopeRange";
+        }
+        if (!minSlopeSatisfied) {
+            return "belowMinSlope";
+        }
+        if (!maxSlopeSatisfied) {
+            return "aboveMaxSlope";
+        }
+        return "outsideSlopeRange";
     }
 
     private static Num parseSlope(Indicator<Num> ref, String slope) {
@@ -150,5 +176,16 @@ public class InSlopeRule extends AbstractRule {
 
     private static Num normalizeSlope(Num slope) {
         return slope == null ? NaN : slope;
+    }
+
+    private static ValidatedConfig validateConfig(Indicator<Num> ref, int nthPrevious, Num minSlope, Num maxSlope) {
+        Indicator<Num> validatedReference = Objects.requireNonNull(ref, "ref");
+        if (nthPrevious < 1) {
+            throw new IllegalArgumentException("nthPrevious must be >= 1");
+        }
+        return new ValidatedConfig(validatedReference, nthPrevious, normalizeSlope(minSlope), normalizeSlope(maxSlope));
+    }
+
+    private record ValidatedConfig(Indicator<Num> reference, int nthPrevious, Num minSlope, Num maxSlope) {
     }
 }

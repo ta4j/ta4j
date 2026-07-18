@@ -83,6 +83,18 @@ public final class WalkForwardHoldoutValidator {
      */
     public record Report(String candidateId, int horizonBars, Map<String, Num> metricValues, boolean passed,
             List<String> notes) {
+        public Report {
+            metricValues = Map.copyOf(Objects.requireNonNull(metricValues, "metricValues must not be null"));
+            notes = List.copyOf(Objects.requireNonNull(notes, "notes must not be null"));
+        }
+
+        public Map<String, Num> metricValues() {
+            return Map.copyOf(metricValues);
+        }
+
+        public List<String> notes() {
+            return List.copyOf(notes);
+        }
     }
 
     private static Num normalizeThreshold(Num threshold, Num actual) {

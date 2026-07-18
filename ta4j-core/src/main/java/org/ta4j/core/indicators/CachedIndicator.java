@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
@@ -53,6 +54,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
+    private final long lastBarWaitTimeoutMs;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -95,9 +97,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        super(series);
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
+    }
+
+    CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
+        this(validatedConfig(series, lastBarWaitTimeoutMs));
+    }
+
+    private CachedIndicator(Config config) {
+        super(config.series());
+        this.cache = new CachedBuffer<>(config.cacheLimit());
+        this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
+    }
+
+    private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
+        if (lastBarWaitTimeoutMs <= 0) {
+            throw new IllegalArgumentException("Last-bar wait timeout must be positive");
+        }
         int limit = series.getMaximumBarCount();
-        this.cache = new CachedBuffer<>(limit);
+        return new Config(series, limit, lastBarWaitTimeoutMs);
     }
 
     /**
@@ -106,7 +124,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param indicator a related indicator (with a bar series)
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
+        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+    }
+
+    private record Config(BarSeries series, int cacheLimit, long lastBarWaitTimeoutMs) {
+    }
+
+    private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
+        return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
     }
 
     /**
@@ -118,17 +143,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();
-        if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            T result = calculate(index);
-            if (log.isTraceEnabled()) {
-                log.trace("{}({}): {}", this, index, result);
-            }
-            return result;
-        }
-
         final int removedBarsCount = series.getRemovedBarsCount();
         final int endIndex = series.getEndIndex();
 
@@ -317,7 +331,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // Wait with timeout to prevent indefinite hangs if the owning thread
                     // dies or encounters an unexpected issue. After timeout, we compute
                     // independently rather than blocking forever.
-                    lastBarLock.wait(LAST_BAR_WAIT_TIMEOUT_MS);
+                    lastBarLock.wait(lastBarWaitTimeoutMs);
                     // Only mark as timed out if the computation is still in progress.
                     // If notifyAll() woke us because computation finished, we should
                     // loop back and re-check for a cache hit (or become the new owner).

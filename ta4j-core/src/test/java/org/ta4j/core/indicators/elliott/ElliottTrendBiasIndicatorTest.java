@@ -37,6 +37,20 @@ class ElliottTrendBiasIndicatorTest {
     }
 
     @Test
+    void accessorReturnsOwnedScenarioCopy() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 101, 102).build();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bull", 0.8, true)), series.getEndIndex());
+        ElliottScenarioIndicator scenarioIndicator = new StubScenarioIndicator(series, set);
+
+        ElliottTrendBiasIndicator indicator = new ElliottTrendBiasIndicator(scenarioIndicator, 0.1);
+
+        ElliottScenarioIndicator exposedScenarioIndicator = indicator.getScenarioIndicator();
+
+        assertThat(exposedScenarioIndicator).isNotSameAs(scenarioIndicator);
+        assertThat(exposedScenarioIndicator.getValue(series.getEndIndex())).isEqualTo(set);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void serializationRoundTrip() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -89,6 +103,11 @@ class ElliottTrendBiasIndicatorTest {
         @Override
         protected ElliottScenarioSet calculate(final int index) {
             return set;
+        }
+
+        @Override
+        ElliottScenarioIndicator copy() {
+            return new StubScenarioIndicator(getBarSeries(), set);
         }
     }
 }

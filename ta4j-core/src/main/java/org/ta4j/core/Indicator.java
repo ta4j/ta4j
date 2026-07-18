@@ -18,6 +18,12 @@ import java.util.stream.Stream;
  * <p>
  * Returns a value of type <b>T</b> for each index of the bar series.
  *
+ * <p>
+ * Indicators transform price/volume data (or other indicators) into new data
+ * series (e.g., Moving Averages, RSI). They calculate values lazily or eagerly
+ * and are the fundamental building blocks for {@link Rule rules}. Values are
+ * retrieved per-index via {@link #getValue(int)}.
+ *
  * @param <T> the type of the returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> {
@@ -156,7 +162,7 @@ public interface Indicator<T> {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression() {
         return IndicatorSerialization.toExpression(this);
@@ -170,7 +176,7 @@ public interface Indicator<T> {
      * @return compact shorthand expression
      * @throws IllegalArgumentException if no registered shorthand can represent the
      *                                  indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     default String toExpression(NamedAssetRegistry registry) {
         return IndicatorSerialization.toExpression(this, registry);
@@ -233,7 +239,7 @@ public interface Indicator<T> {
      * @param series     backing series to attach to the reconstructed indicator
      * @param expression shorthand expression
      * @return indicator instance
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static Indicator<?> fromExpression(BarSeries series, String expression) {
         return IndicatorSerialization.fromExpression(series, expression);
@@ -247,7 +253,7 @@ public interface Indicator<T> {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return indicator instance
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static Indicator<?> fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
         return IndicatorSerialization.fromExpression(series, expression, registry);

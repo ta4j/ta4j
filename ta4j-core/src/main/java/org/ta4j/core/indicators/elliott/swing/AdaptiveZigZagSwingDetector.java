@@ -3,9 +3,11 @@
  */
 package org.ta4j.core.indicators.elliott.swing;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
@@ -13,7 +15,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.num.Num;
 
@@ -23,13 +26,27 @@ import org.ta4j.core.num.Num;
  * <p>
  * Use this detector when a fixed reversal threshold is too rigid for changing
  * volatility regimes. It derives reversal thresholds from ATR, optionally
- * smoothed, and feeds the result into a ZigZag-based swing detector.
+ * smoothed, and feeds the result into a ZigZag-based swing detector. Repeated
+ * detection on the same series and degree reuses one bounded indicator pipeline
+ * so live updates advance the recursive ZigZag state instead of rescanning the
+ * full history. Historical queries that move backward rebuild the pipeline to
+ * preserve causal pivot confirmation.
  *
  * @since 0.22.2
  */
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {
 
     private final AdaptiveZigZagConfig config;
+    private WeakReference<BarSeries> cachedSeries = new WeakReference<>(null);
+    private ElliottDegree cachedDegree;
+    private ElliottSwingIndicator cachedIndicator;
+    private int cachedIndex = -1;
+    private Bar cachedFirstBar;
+    private Bar cachedLastBar;
+    private List<Bar> cachedBars = List.of();
+    private long cachedBarHistoryRevision = -1L;
+    private int cachedBeginIndex = -1;
+    private int cachedEndIndex = -1;
 
     /**
      * Creates a detector using the supplied configuration.
@@ -42,22 +59,64 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     }
 
     @Override
-    public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
+    public synchronized SwingDetectorResult detect(final BarSeries series, final int index,
+            final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         if (series.isEmpty()) {
             return new SwingDetectorResult(List.of(), List.of());
         }
-        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final Indicator<Num> price = new ClosePriceIndicator(series);
-        final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
-        final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
-                ? new SMAIndicator(atr, config.smoothingPeriod())
-                : atr;
-        final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
-        final ZigZagStateIndicator state = new ZigZagStateIndicator(price, threshold);
-        final ElliottSwingIndicator indicator = ElliottSwingIndicator.zigZag(state, price, degree);
-        return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
+        final int currentBeginIndex = series.getBeginIndex();
+        final int currentEndIndex = series.getEndIndex();
+        final Bar currentLastBar = series.getBar(currentEndIndex);
+        final long currentBarHistoryRevision = series.getBarHistoryRevision();
+        final boolean tracksBarHistoryRevision = currentBarHistoryRevision >= 0L;
+        // Revision-unaware implementations may expose a stable mutable list. Preserve
+        // the comparison baseline so in-place replacements invalidate the cache.
+        final List<Bar> currentBars = tracksBarHistoryRevision ? List.of() : List.copyOf(series.getBarData());
+        final int clampedIndex = Math.max(currentBeginIndex, Math.min(index, currentEndIndex));
+        final boolean revisedBarHistory = tracksBarHistoryRevision && cachedBarHistoryRevision >= 0L
+                && currentBarHistoryRevision != cachedBarHistoryRevision;
+        final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
+                && (currentEndIndex < cachedEndIndex
+                        || (currentBeginIndex <= cachedBeginIndex && series.getBar(currentBeginIndex) != cachedFirstBar)
+                        || revisedBarHistory || (currentEndIndex == cachedEndIndex
+                                && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));
+        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
+                || clampedIndex < cachedIndex) {
+            final Indicator<Num> highPrice = new HighPriceIndicator(series);
+            final Indicator<Num> lowPrice = new LowPriceIndicator(series);
+            final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
+            final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
+                    ? new SMAIndicator(atr, config.smoothingPeriod())
+                    : atr;
+            final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
+            final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
+            cachedSeries = new WeakReference<>(series);
+            cachedDegree = degree;
+            cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
+            cachedFirstBar = series.getBar(currentBeginIndex);
+            cachedBeginIndex = currentBeginIndex;
+        }
+        final SwingDetectorResult result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
+        cachedIndex = clampedIndex;
+        cachedEndIndex = currentEndIndex;
+        cachedLastBar = currentLastBar;
+        cachedBars = currentBars;
+        cachedBarHistoryRevision = currentBarHistoryRevision;
+        return result;
+    }
+
+    private boolean hasSameBars(final List<Bar> bars) {
+        if (cachedBars.size() != bars.size()) {
+            return false;
+        }
+        for (int index = 0; index < bars.size(); index++) {
+            if (cachedBars.get(index) != bars.get(index)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

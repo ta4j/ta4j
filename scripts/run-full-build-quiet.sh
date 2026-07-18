@@ -120,9 +120,125 @@ MAVEN_FLAGS=(
     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
 )
 
+usage() {
+    cat <<'EOF'
+Usage: scripts/run-full-build-quiet.sh [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
+
+The default local invocation repairs license headers and formatting before it
+runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
+--validate-only to reject those defects without modifying its checkout. Maven
+output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+Explicit --goals invocations remain focused and skip repository preflight checks.
+
+Examples:
+  scripts/run-full-build-quiet.sh
+  scripts/run-full-build-quiet.sh --validate-only
+  scripts/run-full-build-quiet.sh --preflight-only
+  scripts/run-full-build-quiet.sh -- -pl ta4j-core
+  scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
+EOF
+}
+
+run_repository_preflight() {
+    if [[ -d "$REPO_ROOT/.github/workflows" ]]; then
+        echo "Running actionlint..."
+        if command -v actionlint >/dev/null 2>&1 && actionlint -version 2>&1 | grep -Fq "1.7.12"; then
+            actionlint
+        elif command -v go >/dev/null 2>&1; then
+            go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+        else
+            echo "actionlint 1.7.12 or Go is required for hosted CI parity." >&2
+            return 1
+        fi
+    fi
+
+    local fixture
+    for fixture in "$REPO_ROOT"/scripts/tests/test_*.sh; do
+        if [[ ! -f "$fixture" ]]; then
+            continue
+        fi
+        echo "Running ${fixture#"$REPO_ROOT"/}..."
+        bash "$fixture"
+    done
+}
+
+GOALS=(clean license:format formatter:format verify)
 EXTRA_MAVEN_ARGS=()
-if (($# > 0)); then
-    EXTRA_MAVEN_ARGS=("$@")
+DEFAULT_GATE="true"
+PREFLIGHT_ONLY="false"
+VALIDATE_ONLY="false"
+while (($# > 0)); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --goals)
+            shift
+            if (($# == 0)) || [[ -z "$1" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$1"
+            DEFAULT_GATE="false"
+            shift
+            ;;
+        --goals=*)
+            goal_value="${1#--goals=}"
+            if [[ -z "$goal_value" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$goal_value"
+            DEFAULT_GATE="false"
+            shift
+            ;;
+        --preflight-only)
+            PREFLIGHT_ONLY="true"
+            shift
+            ;;
+        --validate-only)
+            VALIDATE_ONLY="true"
+            shift
+            ;;
+        --)
+            shift
+            EXTRA_MAVEN_ARGS+=("$@")
+            break
+            ;;
+        *)
+            EXTRA_MAVEN_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
+    echo "--validate-only cannot be combined with --goals" >&2
+    exit 2
+fi
+
+if [[ "$VALIDATE_ONLY" == "true" ]]; then
+    GOALS=(clean license:check formatter:validate verify)
+fi
+
+if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
+    run_repository_preflight
+    echo "Repository preflight checks passed."
+fi
+
+if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
+    exit 0
+fi
+
+if [[ "$DEFAULT_GATE" == "true" ]]; then
+    EXTRA_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo" "${EXTRA_MAVEN_ARGS[@]}")
+fi
+
+if ((${#GOALS[@]} == 0)); then
+    echo "At least one Maven goal is required" >&2
+    exit 2
 fi
 
 if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
@@ -133,7 +249,6 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
     printf '\n'
 fi
 
-GOALS=(clean license:format formatter:format test install)
 MAVEN_CMD_PREFIX=(mvn)
 if [[ -x "./mvnw" ]]; then
     MAVEN_CMD_PREFIX=("./mvnw")
@@ -151,7 +266,12 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
 fi
 MVN_CMD+=("${GOALS[@]}")
 
-echo "Running ta4j full build quietly..."
+printf 'Maven goals:'
+for goal in "${GOALS[@]}"; do
+    printf ' %q' "$goal"
+done
+printf '\n'
+echo "Running ta4j Maven build quietly..."
 echo "Full log: $LOG_FILE_FOR_DISPLAY"
 echo
 
@@ -167,25 +287,6 @@ format_elapsed() {
     else
         printf '%ds' "$seconds"
     fi
-}
-
-should_print_line() {
-    local text="$1"
-    case "$text" in
-        *"[ERROR]"*|*"[WARNING]"*|*"BUILD SUCCESS"*|*"BUILD FAILURE"*|*"Failed to execute goal"*|*"Reactor Summary"*)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
-trim_whitespace() {
-    local value="$1"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    printf '%s' "$value"
 }
 
 run_with_timeout() {
@@ -239,10 +340,14 @@ heartbeat_worker() {
     local start_time="$2"
     local heartbeat_interval="$3"
     while kill -0 "$build_pid" >/dev/null 2>&1; do
-        sleep "$heartbeat_interval"
-        if ! kill -0 "$build_pid" >/dev/null 2>&1; then
-            break
-        fi
+        local slept=0
+        while ((slept < heartbeat_interval)); do
+            sleep 1
+            if ! kill -0 "$build_pid" >/dev/null 2>&1; then
+                return 0
+            fi
+            slept=$((slept + 1))
+        done
         local now
         now="$(date +%s)"
         local last_visible="$start_time"
@@ -267,24 +372,6 @@ run_maven_build() {
     "${MVN_CMD[@]}"
 }
 
-emit_suppressed_duplicates() {
-    if [[ ! -s "$SUPPRESSED_DUPLICATES_FILE" ]]; then
-        return 0
-    fi
-    echo
-    echo "[quiet-build] Suppressed duplicate warnings:"
-    local line
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if grep -Fqx -- "$line" "$SUPPRESSED_REPORTED_FILE"; then
-            continue
-        fi
-        local count
-        count=$(grep -Fxc -- "$line" "$SUPPRESSED_DUPLICATES_FILE" || true)
-        echo "[quiet-build]   (${count} more) $(trim_whitespace "$line")"
-        printf '%s\n' "$line" >>"$SUPPRESSED_REPORTED_FILE"
-    done <"$SUPPRESSED_DUPLICATES_FILE"
-}
-
 extract_test_summary() {
     local total_run=0
     local total_failures=0
@@ -296,10 +383,10 @@ extract_test_summary() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$line" =~ ^\[(INFO|WARNING)\][[:space:]]+Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+)[[:space:]]*$ ]]; then
             has_aggregated="true"
-            total_run=$((total_run + ${BASH_REMATCH[2]}))
-            total_failures=$((total_failures + ${BASH_REMATCH[3]}))
-            total_errors=$((total_errors + ${BASH_REMATCH[4]}))
-            total_skipped=$((total_skipped + ${BASH_REMATCH[5]}))
+            total_run=$((total_run + BASH_REMATCH[2]))
+            total_failures=$((total_failures + BASH_REMATCH[3]))
+            total_errors=$((total_errors + BASH_REMATCH[4]))
+            total_skipped=$((total_skipped + BASH_REMATCH[5]))
         elif [[ "$line" =~ Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+) ]]; then
             fallback_summary="Tests run: ${BASH_REMATCH[1]}, Failures: ${BASH_REMATCH[2]}, Errors: ${BASH_REMATCH[3]}, Skipped: ${BASH_REMATCH[4]}"
         fi
@@ -314,24 +401,228 @@ extract_test_summary() {
     fi
 }
 
+print_reactor_summary() {
+    awk '
+        function clean(line) {
+            sub(/^\[(INFO|WARNING|ERROR)\][[:space:]]*/, "", line)
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            return line
+        }
+        /Reactor Summary/ {
+            capturing = 1
+            next
+        }
+        capturing && /BUILD (SUCCESS|FAILURE)/ {
+            capturing = 0
+            next
+        }
+        capturing {
+            text = clean($0)
+            if (text == "" || text ~ /^-+$/) {
+                next
+            }
+            rows[++row_count] = text
+        }
+        END {
+            if (row_count > 0) {
+                print "Reactor summary:"
+                for (i = 1; i <= row_count; i++) {
+                    print "  " rows[i]
+                }
+            }
+        }
+    ' "$LOG_FILE"
+}
+
+print_warning_summary() {
+    local limit="${1:-12}"
+    awk -v limit="$limit" '
+        function clean(line) {
+            sub(/^\[(WARNING|WARN)\][[:space:]]*/, "", line)
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            return line
+        }
+        function is_warning(line) {
+            return line ~ /\[(WARNING|WARN)\]/ || line ~ /(^|[[:space:]])WARN([[:space:]:]|$)/ || line ~ /(^|[[:space:]])WARNING:/
+        }
+        is_warning($0) {
+            text = clean($0)
+            if (text == "") {
+                next
+            }
+            if (text ~ /Tests run:/) {
+                next
+            }
+            if (!(text in count)) {
+                order[++unique_count] = text
+            }
+            count[text]++
+        }
+        END {
+            if (unique_count == 0) {
+                exit
+            }
+            print "Warnings summary:"
+            for (i = 1; i <= unique_count && i <= limit; i++) {
+                text = order[i]
+                suffix = count[text] > 1 ? " (" count[text] "x)" : ""
+                print "  " text suffix
+            }
+            if (unique_count > limit) {
+                print "  ... " (unique_count - limit) " more unique warning(s); see full log"
+            }
+        }
+    ' "$LOG_FILE"
+}
+
+print_unexpected_summary() {
+    local limit="${1:-12}"
+    awk -v limit="$limit" '
+        function clean(line) {
+            sub(/^\[(INFO|WARNING|WARN|ERROR)\][[:space:]]*/, "", line)
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            return line
+        }
+        function is_warning(line) {
+            return line ~ /\[(WARNING|WARN)\]/ || line ~ /(^|[[:space:]])WARN([[:space:]:]|$)/ || line ~ /(^|[[:space:]])WARNING:/
+        }
+        function is_stack_or_exception(line) {
+            return line ~ /(Exception|exception|Throwable|Caused by:|Suppressed:|OutOfMemoryError|StackOverflowError)/ ||
+                   line ~ /^[[:space:]]+at[[:space:]]+[^[:space:]]+\([^)]*\)$/ ||
+                   line ~ /^[[:space:]]*\.\.\. [0-9]+ more$/
+        }
+        function is_unexpected(line) {
+            low = tolower(line)
+            return line ~ /\[ERROR\]/ ||
+                   line ~ /(^|[[:space:]])ERROR([[:space:]:]|$)/ ||
+                   low ~ /unexpected|fatal|timed out|permission denied|no such file/ ||
+                   line ~ /BUILD FAILURE|Failed to execute goal|There are test failures|failed tests/ ||
+                   is_stack_or_exception(line)
+        }
+        is_unexpected($0) {
+            if (is_warning($0)) {
+                next
+            }
+            text = clean($0)
+            if (text == "" || text ~ /^-+$/ || text == "BUILD SUCCESS") {
+                next
+            }
+            if (!(text in count)) {
+                order[++unique_count] = text
+            }
+            count[text]++
+        }
+        END {
+            if (unique_count == 0) {
+                exit
+            }
+            print "Unexpected output summary:"
+            for (i = 1; i <= unique_count && i <= limit; i++) {
+                text = order[i]
+                suffix = count[text] > 1 ? " (" count[text] "x)" : ""
+                print "  " text suffix
+            }
+            if (unique_count > limit) {
+                print "  ... " (unique_count - limit) " more unique unexpected line(s); see full log"
+            }
+        }
+    ' "$LOG_FILE"
+}
+
+print_failure_digest() {
+    awk '
+        function clean(line) {
+            sub(/^\[(INFO|WARNING|WARN|ERROR)\][[:space:]]*/, "", line)
+            sub(/^[[:space:]]+/, "", line)
+            sub(/[[:space:]]+$/, "", line)
+            return line
+        }
+        function add_unique(section, value) {
+            if (value == "" || value ~ /^-+$/) {
+                return
+            }
+            key = section SUBSEP value
+            if (seen[key]++) {
+                return
+            }
+            rows[section, ++counts[section]] = value
+        }
+        function emit(title, section, limit, i) {
+            if (counts[section] < 1) {
+                return
+            }
+            print title ":"
+            for (i = 1; i <= counts[section] && i <= limit; i++) {
+                print "  " rows[section, i]
+            }
+            if (counts[section] > limit) {
+                print "  ... " (counts[section] - limit) " more; see full log"
+            }
+        }
+        function is_stack_or_exception(line) {
+            return line ~ /(Exception|exception|Throwable|Caused by:|Suppressed:|OutOfMemoryError|StackOverflowError)/ ||
+                   line ~ /^[[:space:]]+at[[:space:]]+[^[:space:]]+\([^)]*\)$/ ||
+                   line ~ /^[[:space:]]*\.\.\. [0-9]+ more$/
+        }
+        /Reactor Summary/ {
+            capturing_reactor = 1
+            next
+        }
+        capturing_reactor && /BUILD (SUCCESS|FAILURE)/ {
+            capturing_reactor = 0
+        }
+        {
+            text = clean($0)
+            low = tolower($0)
+            if (capturing_reactor && $0 ~ / FAILURE /) {
+                add_unique("modules", text)
+            }
+            if ($0 ~ /Failed to execute goal/) {
+                add_unique("goals", text)
+            }
+            if ($0 ~ /Tests run:[[:space:]]*[0-9]+,[[:space:]]*Failures:[[:space:]]*([1-9][0-9]*)/ ||
+                $0 ~ /Tests run:[[:space:]]*[0-9]+,[[:space:]]*Failures:[[:space:]]*[0-9]+,[[:space:]]*Errors:[[:space:]]*([1-9][0-9]*)/ ||
+                low ~ /surefire-reports|failsafe-reports|there are test failures|failed tests/) {
+                add_unique("tests", text)
+            }
+            if (low ~ /(pmd|spotbugs|jacoco)/ && low ~ /(fail|violat|coverage|error|check)/) {
+                add_unique("quality", text)
+            }
+            if (is_stack_or_exception($0)) {
+                add_unique("exceptions", text)
+            }
+            if ($0 ~ /^\[ERROR\]/ && text != "" && text !~ /^-+$/) {
+                error_tail[++error_count] = text
+            }
+        }
+        END {
+            print "Failure digest:"
+            emit("Failed modules", "modules", 12)
+            emit("Failed goals", "goals", 8)
+            emit("Test/report hints", "tests", 12)
+            emit("Quality gate hints", "quality", 12)
+            emit("Exception/stack-trace hints", "exceptions", 12)
+            if (error_count > 0) {
+                print "Maven error tail:"
+                start = error_count > 25 ? error_count - 24 : 1
+                for (i = start; i <= error_count; i++) {
+                    print "  " error_tail[i]
+                }
+            }
+        }
+    ' "$LOG_FILE"
+}
+
 LAST_VISIBLE_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-last-visible.XXXXXX")"
 TMP_FILES+=("$LAST_VISIBLE_FILE")
 BUILD_START_TIME="$(date +%s)"
 echo "$BUILD_START_TIME" >"$LAST_VISIBLE_FILE"
 
-SEEN_VISIBLE_LINES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-seen-visible.XXXXXX")"
-TMP_FILES+=("$SEEN_VISIBLE_LINES_FILE")
-
-SUPPRESSED_DUPLICATES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-duplicates.XXXXXX")"
-TMP_FILES+=("$SUPPRESSED_DUPLICATES_FILE")
-
-SUPPRESSED_REPORTED_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-reported.XXXXXX")"
-TMP_FILES+=("$SUPPRESSED_REPORTED_FILE")
-
-OUTPUT_FIFO="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
-TMP_FILES+=("$OUTPUT_FIFO")
-rm -f "$OUTPUT_FIFO"
-mkfifo "$OUTPUT_FIFO"
+RAW_OUTPUT_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
+TMP_FILES+=("$RAW_OUTPUT_FILE")
 
 TIMEOUT_MARKER_FILE=""
 if ((BUILD_TIMEOUT_SECONDS > 0)); then
@@ -340,62 +631,59 @@ if ((BUILD_TIMEOUT_SECONDS > 0)); then
 fi
 
 : >"$LOG_FILE"
-: >"$SEEN_VISIBLE_LINES_FILE"
-: >"$SUPPRESSED_DUPLICATES_FILE"
-: >"$SUPPRESSED_REPORTED_FILE"
-
 set +o pipefail
 set +e
-run_maven_build >"$OUTPUT_FIFO" 2>&1 &
+run_maven_build >"$RAW_OUTPUT_FILE" 2>&1 &
 build_runner_pid=$!
 
 heartbeat_worker "$build_runner_pid" "$BUILD_START_TIME" "$HEARTBEAT_INTERVAL_SECONDS" &
 heartbeat_pid=$!
 
-while IFS= read -r line || [[ -n "$line" ]]; do
-    printf '%s\n' "$line" >>"$LOG_FILE"
-    if ! should_print_line "$line"; then
-        continue
-    fi
-    if [[ "$line" == *"Tests run:"* && "$line" == *"Time elapsed"* ]]; then
-        continue
-    fi
-    if grep -Fqx -- "$line" "$SEEN_VISIBLE_LINES_FILE"; then
-        printf '%s\n' "$line" >>"$SUPPRESSED_DUPLICATES_FILE"
-    else
-        printf '%s\n' "$line" >>"$SEEN_VISIBLE_LINES_FILE"
-        printf '%s\n' "$line"
-        update_last_visible
-    fi
-done <"$OUTPUT_FIFO"
-filter_status=$?
-
 wait "$build_runner_pid"
 mvn_status=$?
-set -e
-set -o pipefail
 
 kill "$heartbeat_pid" >/dev/null 2>&1 || true
 wait "$heartbeat_pid" >/dev/null 2>&1 || true
 
-emit_suppressed_duplicates
+while IFS= read -r line || [[ -n "$line" ]]; do
+    printf '%s\n' "$line" >>"$LOG_FILE"
+    if [[ "$line" == *"BUILD SUCCESS"* || "$line" == *"BUILD FAILURE"* ]]; then
+        printf '%s\n' "$line"
+        update_last_visible
+    fi
+done <"$RAW_OUTPUT_FILE"
+filter_status=$?
+
+set -e
+set -o pipefail
 
 if ((mvn_status != 0 || filter_status != 0)); then
     echo
     if ((mvn_status == 124)); then
         echo "Maven build timed out after ${BUILD_TIMEOUT_SECONDS}s. Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
-        exit 1
+        echo "Full build log saved to: $LOG_FILE_FOR_DISPLAY"
+        exit 124
     fi
-    echo "Maven build failed (mvn=$mvn_status, filter=$filter_status). Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
+    echo "Maven build failed (mvn=$mvn_status, filter=$filter_status)."
+    print_failure_digest
+    print_warning_summary 12
+    print_unexpected_summary 12
+    echo "Full build log saved to: $LOG_FILE_FOR_DISPLAY"
+    if ((mvn_status != 0)); then
+        exit "$mvn_status"
+    fi
     exit 1
 fi
 
 summary="$(extract_test_summary)"
 
 echo
+print_reactor_summary
 if [[ -n "$summary" ]]; then
     echo "$summary"
 else
     echo "Tests run summary not found in log; see $LOG_FILE_FOR_DISPLAY"
 fi
+print_warning_summary 12
+print_unexpected_summary 12
 echo "Full build log saved to: $LOG_FILE_FOR_DISPLAY"

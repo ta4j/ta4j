@@ -41,6 +41,10 @@ public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
         return highestPrice.getCountOfUnstableBars();
     }
 
+    DonchianChannelUpperIndicator copy() {
+        return new DonchianChannelUpperIndicator(getBarSeries(), barCount);
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + "barCount: " + barCount;

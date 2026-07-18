@@ -41,6 +41,16 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
      * @param barCount   the number of bars to look back for the calculation
      */
     public TrailingFixedAmountStopLossRule(Indicator<Num> indicator, Num lossAmount, int barCount) {
+        this(validatedConfig(indicator, lossAmount, barCount));
+    }
+
+    private TrailingFixedAmountStopLossRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.barCount = config.barCount();
+        this.lossAmount = config.lossAmount();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, Num lossAmount, int barCount) {
         if (indicator == null) {
             throw new IllegalArgumentException("indicator must not be null");
         }
@@ -50,9 +60,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.priceIndicator = indicator;
-        this.barCount = barCount;
-        this.lossAmount = lossAmount;
+        return new Config(indicator, lossAmount, barCount);
     }
 
     /**
@@ -63,7 +71,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
      * @param barCount   the number of bars to look back for the calculation
      */
     public TrailingFixedAmountStopLossRule(Indicator<Num> indicator, Number lossAmount, int barCount) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(lossAmount), barCount);
+        this(validatedConfig(indicator, toNumLossAmount(indicator, lossAmount), barCount));
     }
 
     /**
@@ -73,7 +81,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
      * @param lossAmount the absolute loss amount
      */
     public TrailingFixedAmountStopLossRule(Indicator<Num> indicator, Num lossAmount) {
-        this(indicator, lossAmount, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, lossAmount, Integer.MAX_VALUE));
     }
 
     /**
@@ -83,44 +91,51 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
      * @param lossAmount the absolute loss amount
      */
     public TrailingFixedAmountStopLossRule(Indicator<Num> indicator, Number lossAmount) {
-        this(indicator, lossAmount, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, toNumLossAmount(indicator, lossAmount), Integer.MAX_VALUE));
     }
 
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        int lookback = getValueIndicatorBarCount(index, positionIndex);
+        if (lookback <= 0) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num extremePrice;
+        Num stopPrice;
+        boolean satisfied;
+        String extremeField;
+        if (buy) {
+            extremePrice = new HighestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, true);
+            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
+            extremeField = "highestPrice";
+        } else {
+            extremePrice = new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, false);
+            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
+            extremeField = "lowestPrice";
+        }
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, lookback, "lossAmount", lossAmount, reason);
         return satisfied;
-    }
-
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPriceFromDistance(highestCloseNum, lossAmount, true);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPriceFromDistance(lowestCloseNum, lossAmount, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     /**
@@ -153,11 +168,16 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         return Math.min(index - positionIndex + 1, this.barCount);
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
+    private static Num toNumLossAmount(Indicator<Num> indicator, Number lossAmount) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("indicator must not be null");
         }
+        if (lossAmount == null) {
+            throw new IllegalArgumentException("lossAmount must be positive");
+        }
+        return indicator.getBarSeries().numFactory().numOf(lossAmount);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num lossAmount, int barCount) {
     }
 }

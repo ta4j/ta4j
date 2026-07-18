@@ -24,6 +24,12 @@ import org.ta4j.core.num.Num;
  * high-frequency.
  *
  * <p>
+ * After threshold-based filtering, adjacent swings with the same direction are
+ * collapsed back into one dominant swing. This preserves the alternating pivot
+ * stream expected by later Elliott scenario generation when a small
+ * counter-trend swing is filtered away.
+ *
+ * <p>
  * This class does not detect swings itself; it operates on the output of
  * {@link ElliottSwingIndicator} or
  * {@link org.ta4j.core.indicators.elliott.swing.SwingDetector}.
@@ -41,7 +47,7 @@ public class ElliottSwingCompressor {
      * @since 0.22.0
      */
     public ElliottSwingCompressor() {
-        this((Num) null, 0);
+        this(new Config(null, 0));
     }
 
     /**
@@ -59,11 +65,19 @@ public class ElliottSwingCompressor {
      * @since 0.22.0
      */
     public ElliottSwingCompressor(final Num minimumAmplitude, final int minimumBars) {
-        this.minimumAmplitude = minimumAmplitude;
+        this(validatedConfig(minimumAmplitude, minimumBars));
+    }
+
+    private ElliottSwingCompressor(final Config config) {
+        this.minimumAmplitude = config.minimumAmplitude();
+        this.minimumLength = config.minimumLength();
+    }
+
+    private static Config validatedConfig(final Num minimumAmplitude, final int minimumBars) {
         if (minimumBars < 0) {
             throw new IllegalArgumentException("minimumBars must be non-negative");
         }
-        this.minimumLength = minimumBars;
+        return new Config(minimumAmplitude, minimumBars);
     }
 
     /**
@@ -85,21 +99,25 @@ public class ElliottSwingCompressor {
      * @since 0.22.0
      */
     public ElliottSwingCompressor(final Indicator<Num> indicator, final double percentage, final int minBars) {
-        Objects.requireNonNull(indicator, "indicator cannot be null");
+        this(validatedConfig(indicator, percentage, minBars));
+    }
+
+    private static Config validatedConfig(final Indicator<Num> indicator, final double percentage, final int minBars) {
+        final Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator cannot be null");
         if (percentage <= 0.0 || percentage > 1.0) {
             throw new IllegalArgumentException("percentage must be in range (0.0, 1.0]");
         }
         if (minBars < 0) {
             throw new IllegalArgumentException("minBars must be non-negative");
         }
-        BarSeries series = indicator.getBarSeries();
+        BarSeries series = validatedIndicator.getBarSeries();
         if (series.isEmpty()) {
             throw new IllegalArgumentException("series cannot be empty");
         }
         int endIndex = series.getEndIndex();
-        Num currentPrice = indicator.getValue(endIndex);
-        this.minimumAmplitude = currentPrice.multipliedBy(series.numFactory().numOf(percentage));
-        this.minimumLength = minBars;
+        Num currentPrice = validatedIndicator.getValue(endIndex);
+        Num minimumAmplitude = currentPrice.multipliedBy(series.numFactory().numOf(percentage));
+        return new Config(minimumAmplitude, minBars);
     }
 
     /**
@@ -121,15 +139,19 @@ public class ElliottSwingCompressor {
      * @since 0.22.0
      */
     public ElliottSwingCompressor(final BarSeries series) {
-        Objects.requireNonNull(series, "series cannot be null");
-        if (series.isEmpty()) {
+        this(validatedConfig(series));
+    }
+
+    private static Config validatedConfig(final BarSeries series) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series cannot be null");
+        if (validatedSeries.isEmpty()) {
             throw new IllegalArgumentException("series cannot be empty");
         }
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        int endIndex = series.getEndIndex();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(validatedSeries);
+        int endIndex = validatedSeries.getEndIndex();
         Num currentPrice = closePrice.getValue(endIndex);
-        this.minimumAmplitude = currentPrice.multipliedBy(series.numFactory().numOf(0.01));
-        this.minimumLength = 2;
+        Num minimumAmplitude = currentPrice.multipliedBy(validatedSeries.numFactory().numOf(0.01));
+        return new Config(minimumAmplitude, 2);
     }
 
     /**
@@ -160,6 +182,45 @@ public class ElliottSwingCompressor {
         if (filtered.isEmpty()) {
             return List.of();
         }
-        return Collections.unmodifiableList(filtered);
+        return Collections.unmodifiableList(collapseAdjacentSameDirection(filtered));
+    }
+
+    private List<ElliottSwing> collapseAdjacentSameDirection(final List<ElliottSwing> swings) {
+        if (swings.size() < 2) {
+            return swings;
+        }
+
+        final List<ElliottSwing> collapsed = new ArrayList<>(swings.size());
+        ElliottSwing current = swings.getFirst();
+        for (int index = 1; index < swings.size(); index++) {
+            final ElliottSwing candidate = swings.get(index);
+            if (current.isRising() == candidate.isRising()) {
+                current = mergeSameDirectionCluster(current, candidate);
+                continue;
+            }
+            collapsed.add(current);
+            current = candidate;
+        }
+        collapsed.add(current);
+        return collapsed;
+    }
+
+    private ElliottSwing mergeSameDirectionCluster(final ElliottSwing current, final ElliottSwing candidate) {
+        if (current.isRising()) {
+            if (candidate.toPrice().isGreaterThan(current.toPrice())
+                    || candidate.toPrice().isEqual(current.toPrice())) {
+                return new ElliottSwing(current.fromIndex(), candidate.toIndex(), current.fromPrice(),
+                        candidate.toPrice(), current.degree());
+            }
+            return current;
+        }
+        if (candidate.toPrice().isLessThan(current.toPrice()) || candidate.toPrice().isEqual(current.toPrice())) {
+            return new ElliottSwing(current.fromIndex(), candidate.toIndex(), current.fromPrice(), candidate.toPrice(),
+                    current.degree());
+        }
+        return current;
+    }
+
+    private record Config(Num minimumAmplitude, int minimumLength) {
     }
 }

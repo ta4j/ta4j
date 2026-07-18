@@ -106,7 +106,7 @@ public final class RuleSerialization {
      * @return compact expression
      * @throws IllegalArgumentException if no shorthand binding can represent the
      *                                  rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(Rule rule) {
         return toExpression(rule, NamedAssetRegistry.defaultRegistry());
@@ -121,7 +121,7 @@ public final class RuleSerialization {
      * @return compact expression
      * @throws IllegalArgumentException if no shorthand binding can represent the
      *                                  rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(Rule rule, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -138,7 +138,7 @@ public final class RuleSerialization {
      * @param series     bar series to use for indicator construction
      * @param expression shorthand expression
      * @return reconstructed rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Rule fromExpression(BarSeries series, String expression) {
         return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
@@ -152,7 +152,7 @@ public final class RuleSerialization {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return reconstructed rule
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -935,7 +935,9 @@ public final class RuleSerialization {
             // Handle arrays
             if (paramType.isArray()) {
                 Class<?> componentType = paramType.getComponentType();
-                if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
+                if (componentType.equals(boolean.class) || componentType.equals(Boolean.class)) {
+                    return context.resolveBooleanArray(paramName, paramType);
+                } else if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
                     String enumTypeKey = "__enumType_" + paramName;
@@ -947,6 +949,11 @@ public final class RuleSerialization {
                     return deserializeChainLinks(value, context);
                 }
             }
+        } catch (IllegalArgumentException e) {
+            if (paramType.isArray() && paramType.getComponentType().equals(ChainLink.class)) {
+                throw e;
+            }
+            return null; // Can't resolve, try next match
         } catch (Exception e) {
             return null; // Can't resolve, try next match
         }
@@ -962,20 +969,20 @@ public final class RuleSerialization {
         for (int i = 0; i < list.size(); i++) {
             Object entry = list.get(i);
             if (entry == null) {
-                links[i] = null;
-                continue;
+                throw new IllegalArgumentException("Chain link entry cannot be null");
             }
             if (!(entry instanceof Map<?, ?> map)) {
                 throw new IllegalArgumentException("Chain link entry must be an object but was " + entry);
             }
-            Rule linkRule = null;
             Object ruleValue = map.get("rule");
-            if (ruleValue != null) {
-                ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
-                if (ruleDescriptor != null) {
-                    linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
-                }
+            if (ruleValue == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
             }
+            ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
+            if (ruleDescriptor == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
+            }
+            Rule linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
             int threshold = 0;
             Object thresholdValue = map.get("threshold");
             if (thresholdValue != null) {
@@ -1101,6 +1108,20 @@ public final class RuleSerialization {
             for (int i = 0; i < list.size(); i++) {
                 Object element = list.get(i);
                 Object converted = convertNumber(element, componentType);
+                Array.set(array, i, converted);
+            }
+            return array;
+        }
+
+        private Object resolveBooleanArray(String name, Class<?> targetType) {
+            Object raw = descriptor.getParameters().get(name);
+            if (!(raw instanceof List<?> list)) {
+                throw new IllegalArgumentException("Missing boolean array parameter: " + name);
+            }
+            Class<?> componentType = targetType.getComponentType();
+            Object array = Array.newInstance(componentType, list.size());
+            for (int i = 0; i < list.size(); i++) {
+                Object converted = convertBoolean(list.get(i));
                 Array.set(array, i, converted);
             }
             return array;
@@ -1405,6 +1426,10 @@ public final class RuleSerialization {
                         return Optional.empty();
                     }
                     Class<?> componentType = type.getComponentType();
+                    if (componentType.equals(boolean.class) || componentType.equals(Boolean.class)) {
+                        arguments.add(Argument.boolArray(name, type, match.value));
+                        continue;
+                    }
                     if (componentType.isEnum()) {
                         arguments.add(Argument.enumArray(name, type, match.value));
                         continue;
@@ -1630,7 +1655,7 @@ public final class RuleSerialization {
 
     private enum ArgumentKind {
         SERIES, RULE, RULE_ARRAY, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY,
-        INT_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY, CHAIN_LINKS
+        INT_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY, ENUM_ARRAY, CHAIN_LINKS
     }
 
     private static final class Argument {
@@ -1683,6 +1708,10 @@ public final class RuleSerialization {
 
         private static Argument bool(String name, Class<?> targetType, Boolean value) {
             return new Argument(ArgumentKind.BOOLEAN, name, targetType, value, name);
+        }
+
+        private static Argument boolArray(String name, Class<?> targetType, Object value) {
+            return new Argument(ArgumentKind.BOOLEAN_ARRAY, name, targetType, value, name);
         }
 
         private static Argument number(String name, Class<?> targetType, Object value) {
@@ -1774,6 +1803,9 @@ public final class RuleSerialization {
             case BOOLEAN:
                 context.parameters.put(name, value);
                 break;
+            case BOOLEAN_ARRAY:
+                context.parameters.put(name, serializeBooleanArray(value));
+                break;
             case NUMBER:
             case INT:
             case LONG:
@@ -1821,6 +1853,15 @@ public final class RuleSerialization {
             return serialized;
         }
 
+        private static List<Object> serializeBooleanArray(Object array) {
+            int length = Array.getLength(array);
+            List<Object> serialized = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                serialized.add(Array.get(array, i));
+            }
+            return serialized;
+        }
+
         private static List<String> serializeEnumArray(Object array) {
             int length = Array.getLength(array);
             List<String> serialized = new ArrayList<>(length);
@@ -1840,18 +1881,13 @@ public final class RuleSerialization {
             List<Map<String, Object>> serialized = new ArrayList<>(links.length);
             for (ChainLink link : links) {
                 if (link == null) {
-                    serialized.add(null);
-                    continue;
+                    throw new IllegalArgumentException("Chain link entry cannot be null");
                 }
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("threshold", serializeNumber(link.getThreshold()));
-                Rule linkRule = link.getRule();
-                if (linkRule != null) {
-                    ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
-                    payload.put("rule", ComponentSerialization.toJson(descriptor));
-                } else {
-                    payload.put("rule", null);
-                }
+                Rule linkRule = Objects.requireNonNull(link.getRule(), "chain link rule cannot be null");
+                ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
+                payload.put("rule", ComponentSerialization.toJson(descriptor));
                 serialized.add(payload);
             }
             return serialized;

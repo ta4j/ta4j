@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.elliott.confidence;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -33,11 +32,15 @@ public record ConfidenceFactorResult(String name, ConfidenceFactorCategory categ
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(score, "score");
         Objects.requireNonNull(weight, "weight");
-        diagnostics = diagnostics == null ? Map.of() : Collections.unmodifiableMap(diagnostics);
+        diagnostics = diagnostics == null ? Map.of() : Map.copyOf(diagnostics);
         if (Num.isNaNOrNull(weight) || Double.isNaN(weight.doubleValue()) || Double.isInfinite(weight.doubleValue())
                 || weight.isNegative()) {
             throw new IllegalArgumentException("weight must be finite and >= 0");
         }
+    }
+
+    public Map<String, Number> diagnostics() {
+        return Map.copyOf(diagnostics);
     }
 
     /**

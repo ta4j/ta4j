@@ -12,7 +12,7 @@ package org.ta4j.core.named;
  * add deterministic startup-time bindings and must not retain the supplied
  * builder for later mutation.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public interface NamedAssetProvider {
 
@@ -20,7 +20,7 @@ public interface NamedAssetProvider {
      * Adds bindings to the supplied registry builder.
      *
      * @param builder registry builder that is being assembled
-     * @since 0.22.7
+     * @since 0.23.1
      */
     void registerNamedAssets(NamedAssetRegistry.Builder builder);
 }

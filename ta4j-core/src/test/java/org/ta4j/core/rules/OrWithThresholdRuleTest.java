@@ -4,12 +4,15 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class OrWithThresholdRuleTest {
@@ -17,12 +20,21 @@ public class OrWithThresholdRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
+        ruleTraceTestLogger = new TraceTestLogger();
+        ruleTraceTestLogger.open();
+
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
     }
 
     @Test
@@ -188,13 +200,19 @@ public class OrWithThresholdRuleTest {
     @Test
     public void getRule1ReturnsFirstRule() {
         OrWithThresholdRule rule = new OrWithThresholdRule(satisfiedRule, unsatisfiedRule, 1);
-        assertTrue(rule.getRule1() == satisfiedRule);
+        Rule returnedRule = rule.getRule1();
+
+        assertNotSame(satisfiedRule, returnedRule);
+        assertTrue(returnedRule.isSatisfied(0));
     }
 
     @Test
     public void getRule2ReturnsSecondRule() {
         OrWithThresholdRule rule = new OrWithThresholdRule(satisfiedRule, unsatisfiedRule, 1);
-        assertTrue(rule.getRule2() == unsatisfiedRule);
+        Rule returnedRule = rule.getRule2();
+
+        assertNotSame(unsatisfiedRule, returnedRule);
+        assertFalse(returnedRule.isSatisfied(0));
     }
 
     @Test
@@ -202,5 +220,42 @@ public class OrWithThresholdRuleTest {
         Rule composite = new OrWithThresholdRule(satisfiedRule, BooleanRule.TRUE, 3);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, composite);
+    }
+
+    @Test
+    public void traceLoggingVerboseModeEmitsThresholdSummaryAndChildren() {
+        FixedRule rule1 = new FixedRule(5);
+        rule1.setName("Threshold Rule 1");
+        FixedRule rule2 = new FixedRule(7);
+        rule2.setName("Threshold Rule 2");
+        OrWithThresholdRule rule = new OrWithThresholdRule(rule1, rule2, 4);
+        rule.setName("Threshold Or");
+
+        ruleTraceTestLogger.clear();
+        rule.isSatisfied(7);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Verbose mode should log threshold OR", logContent.contains("Threshold Or#isSatisfied"));
+        assertTrue("Verbose mode should include threshold value", logContent.contains("threshold=4"));
+        assertTrue("Verbose mode should include first child result", logContent.contains("rule1=true"));
+        assertTrue("Verbose mode should log first child", logContent.contains("Threshold Rule 1#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingSummaryModeEmitsInsufficientBarsFailureContext() {
+        OrWithThresholdRule rule = new OrWithThresholdRule(satisfiedRule, satisfiedRule, 4);
+        rule.setName("Threshold Or Failure");
+
+        ruleTraceTestLogger.clear();
+        rule.isSatisfiedWithTraceMode(2, null, Rule.TraceMode.SUMMARY);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Summary mode should log threshold OR failure",
+                logContent.contains("Threshold Or Failure#isSatisfied"));
+        assertTrue("Summary mode should include threshold", logContent.contains("threshold=4"));
+        assertTrue("Summary mode should include window start", logContent.contains("windowStart=0"));
+        assertTrue("Summary mode should include window end", logContent.contains("windowEnd=2"));
+        assertTrue("Summary mode should include insufficient bars reason",
+                logContent.contains("reason=insufficientBars"));
     }
 }

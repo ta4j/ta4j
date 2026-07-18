@@ -32,20 +32,17 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
- * Quickstart for ta4j - Your first trading strategy!
- * <p>
- * This example demonstrates:
+ * Quickstart example for ta4j.
+ *
+ * This class demonstrates how to:
  * <ul>
- * <li>Loading historical price data</li>
- * <li>Creating technical indicators (Simple Moving Averages)</li>
- * <li>Building entry and exit rules</li>
- * <li>Running a backtest</li>
- * <li>Analyzing performance metrics</li>
- * <li>Visualizing the strategy with charts</li>
+ * <li>Load a {@link BarSeries} from a CSV file.</li>
+ * <li>Build a trading {@link Strategy} using primitive {@link Rule rules} and
+ * indicators.</li>
+ * <li>Run a backtest over the series using {@link BarSeriesManager}.</li>
+ * <li>Analyze the resulting {@link TradingRecord} with various criteria.</li>
+ * <li>Display the results in a generated chart.</li>
  * </ul>
- * <p>
- * Run this example to see a complete trading strategy in action with visual
- * output!
  */
 public class Quickstart {
 

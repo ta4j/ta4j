@@ -7,7 +7,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,7 +32,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public SlippageExecutionModel(Num slippageRatio) {
-        this(slippageRatio, PriceSource.NEXT_OPEN);
+        this(validatedConfig(slippageRatio, PriceSource.NEXT_OPEN));
     }
 
     /**
@@ -43,17 +43,25 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public SlippageExecutionModel(Num slippageRatio, PriceSource priceSource) {
-        Objects.requireNonNull(slippageRatio, "slippageRatio");
-        Objects.requireNonNull(priceSource, "priceSource");
-        if (slippageRatio.isNaN() || slippageRatio.isNegative()) {
+        this(validatedConfig(slippageRatio, priceSource));
+    }
+
+    private SlippageExecutionModel(Config config) {
+        this.slippageRatio = config.slippageRatio();
+        this.priceSource = config.priceSource();
+    }
+
+    private static Config validatedConfig(Num slippageRatio, PriceSource priceSource) {
+        Num validatedSlippageRatio = Objects.requireNonNull(slippageRatio, "slippageRatio");
+        PriceSource validatedPriceSource = Objects.requireNonNull(priceSource, "priceSource");
+        if (validatedSlippageRatio.isNaN() || validatedSlippageRatio.isNegative()) {
             throw new IllegalArgumentException("slippageRatio must be positive or zero");
         }
-        Num one = slippageRatio.getNumFactory().one();
-        if (slippageRatio.isGreaterThanOrEqual(one)) {
+        Num one = validatedSlippageRatio.getNumFactory().one();
+        if (validatedSlippageRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("slippageRatio must be less than 1");
         }
-        this.slippageRatio = slippageRatio;
-        this.priceSource = priceSource;
+        return new Config(validatedSlippageRatio, validatedPriceSource);
     }
 
     /**
@@ -74,13 +82,23 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries, priceSource);
+        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
+        ExecutionTarget executionTarget = estimateEntryTarget(index, barSeries, tradeType);
         if (executionTarget == null) {
             return;
         }
-        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
-        Num slippedPrice = applySlippage(executionTarget.price(), tradeType, slippageRatio);
-        tradingRecord.operate(executionTarget.index(), slippedPrice, amount);
+        tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
+    }
+
+    @Override
+    public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
+                priceSource);
+        if (referenceTarget == null) {
+            return null;
+        }
+        Num slippedPrice = applySlippage(referenceTarget.price(), tradeType, slippageRatio);
+        return new ExecutionTarget(referenceTarget.index(), slippedPrice);
     }
 
     private static Num applySlippage(Num price, TradeType tradeType, Num slippageRatio) {
@@ -89,5 +107,8 @@ public class SlippageExecutionModel implements TradeExecutionModel {
             return price.multipliedBy(one.plus(slippageRatio));
         }
         return price.multipliedBy(one.minus(slippageRatio));
+    }
+
+    private record Config(Num slippageRatio, PriceSource priceSource) {
     }
 }

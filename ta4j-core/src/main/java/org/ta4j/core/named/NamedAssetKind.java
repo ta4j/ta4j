@@ -10,7 +10,7 @@ package org.ta4j.core.named;
  * can name a single indicator while {@code SMA(7,21)} can name a strategy macro
  * without forcing indicators to support multi-output values.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public enum NamedAssetKind {
 

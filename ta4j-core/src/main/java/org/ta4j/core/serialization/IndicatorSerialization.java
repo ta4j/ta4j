@@ -72,6 +72,7 @@ public final class IndicatorSerialization {
     private static final String INDICATOR_PACKAGE = "org.ta4j.core.indicators";
     private static final String PACKAGE_PATH = INDICATOR_PACKAGE.replace('.', '/');
     private static final ConcurrentMap<String, List<Class<?>>> INDICATOR_TYPES = new ConcurrentHashMap<>();
+    private static final Object INDICATOR_TYPES_LOCK = new Object();
     private static final Set<String> IGNORED_CHILD_INDICATORS = Set.of();
 
     private static final Set<String> IGNORED_CHILD_FIELDS = Set.of();
@@ -112,12 +113,12 @@ public final class IndicatorSerialization {
      *                                         problems
      */
     public static ComponentDescriptor describe(Indicator<?> indicator) {
+        if (indicator == null) {
+            throw new IndicatorSerializationException("Indicator cannot be null");
+        }
         try {
-            Objects.requireNonNull(indicator, "indicator");
             IdentityHashMap<Indicator<?>, ComponentDescriptor> visited = new IdentityHashMap<>();
             return describe(indicator, visited);
-        } catch (NullPointerException e) {
-            throw new IndicatorSerializationException("Indicator cannot be null", e);
         } catch (RuntimeException e) {
             if (e instanceof IndicatorSerializationException) {
                 throw e;
@@ -159,7 +160,7 @@ public final class IndicatorSerialization {
      * @return compact expression
      * @throws IllegalArgumentException if no shorthand binding can represent the
      *                                  indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(Indicator<?> indicator) {
         return toExpression(indicator, NamedAssetRegistry.defaultRegistry());
@@ -174,7 +175,7 @@ public final class IndicatorSerialization {
      * @return compact expression
      * @throws IllegalArgumentException if no shorthand binding can represent the
      *                                  indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toExpression(Indicator<?> indicator, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -191,7 +192,7 @@ public final class IndicatorSerialization {
      * @param series     bar series to attach to the indicator
      * @param expression shorthand expression
      * @return reconstructed indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Indicator<?> fromExpression(BarSeries series, String expression) {
         return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
@@ -205,7 +206,7 @@ public final class IndicatorSerialization {
      * @param expression shorthand expression
      * @param registry   named asset registry
      * @return reconstructed indicator
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Indicator<?> fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -225,12 +226,11 @@ public final class IndicatorSerialization {
      *                                         loading issues
      */
     public static Indicator<?> fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
+        if (series == null || descriptor == null) {
+            throw new IndicatorSerializationException("Series and descriptor cannot be null");
+        }
         try {
-            Objects.requireNonNull(series, "series");
-            Objects.requireNonNull(descriptor, "descriptor");
             return instantiate(series, descriptor);
-        } catch (NullPointerException e) {
-            throw new IndicatorSerializationException("Series and descriptor cannot be null", e);
         } catch (RuntimeException e) {
             if (e instanceof IndicatorSerializationException) {
                 throw e;
@@ -591,7 +591,13 @@ public final class IndicatorSerialization {
             return null;
         }
         if (targetType == boolean.class || targetType == Boolean.class) {
-            return convertBooleanValue(value);
+            if (value instanceof Boolean bool) {
+                return bool;
+            }
+            if (value instanceof String string) {
+                return Boolean.parseBoolean(string);
+            }
+            return null;
         }
         if (targetType.isArray()) {
             return convertNumericArrayValue(value, targetType, series);
@@ -682,16 +688,6 @@ public final class IndicatorSerialization {
         } catch (NumberFormatException ex) {
             return null;
         }
-    }
-
-    private static Boolean convertBooleanValue(Object value) {
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        if (value instanceof String string) {
-            return Boolean.parseBoolean(string);
-        }
-        return null;
     }
 
     private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {
@@ -941,7 +937,7 @@ public final class IndicatorSerialization {
         if (!INDICATOR_TYPES.isEmpty()) {
             return;
         }
-        synchronized (INDICATOR_TYPES) {
+        synchronized (INDICATOR_TYPES_LOCK) {
             if (!INDICATOR_TYPES.isEmpty()) {
                 return;
             }

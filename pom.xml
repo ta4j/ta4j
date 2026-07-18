@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.22.7-SNAPSHOT</version>
+    <version>0.23.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -64,20 +64,25 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Build -->
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
+        <ta4j.excludedTestTags>integration,analysis-demo</ta4j.excludedTestTags>
+        <spotbugs.version>4.9.8.3</spotbugs.version>
+        <jacoco.version>0.8.14</jacoco.version>
+        <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
         <commons-math3.version>3.6.1</commons-math3.version>
-        <gson.version>2.13.2</gson.version>
+        <gson.version>2.14.0</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
-        <junit-jupiter.version>6.0.2</junit-jupiter.version>
+        <junit-jupiter.version>6.0.3</junit-jupiter.version>
         <log4j2.version>2.25.4</log4j2.version>
-        <mockito.version>5.21.0</mockito.version>
+        <mockito.version>5.23.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.5.1</poi.version>
-        <slf4j.version>2.0.17</slf4j.version>
+        <slf4j.version>2.0.18</slf4j.version>
     </properties>
 
     <dependencyManagement>
@@ -163,6 +168,25 @@
     </dependencyManagement>
 
     <profiles>
+
+        <!-- Run Elliott-wave analysis demo tests intentionally with explicit opt-in -->
+        <profile>
+            <id>analysis-demo</id>
+            <properties>
+                <ta4j.excludedTestTags></ta4j.excludedTestTags>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>analysis-demo</groups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
         <!-- Only when performing a release (i.e. not for snapshots) -->
         <profile>
@@ -258,6 +282,85 @@
     </profiles>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.version}</version>
+                    <configuration>
+                        <quiet>true</quiet>
+                        <xmlOutput>true</xmlOutput>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotbugs-check</id>
+                            <phase>verify</phase>
+                            <configuration>
+                                <failOnError>true</failOnError>
+                            </configuration>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <configuration>
+                        <rules>
+                            <rule>
+                                <element>BUNDLE</element>
+                                <limits>
+                                    <limit>
+                                        <counter>LINE</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.line.minimum}</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>BRANCH</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.branch.minimum}</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>jacoco-prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-report</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-check</id>
+                            <phase>verify</phase>
+                            <configuration>
+                                <haltOnFailure>false</haltOnFailure>
+                            </configuration>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.3</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
 
             <plugin>
@@ -277,7 +380,7 @@
                                     <version>[3.9.0,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>[21,)</version>
+                                    <version>[25,)</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -305,8 +408,10 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
                 <configuration>
+                    <excludedGroups>${ta4j.excludedTestTags}</excludedGroups>
                     <useModulePath>false</useModulePath>
                     <argLine>
+                        @{argLine}
                         -XX:+EnableDynamicAgentLoading
                         -Xshare:off
                         -Djdk.instrument.traceUsage=false
@@ -352,6 +457,14 @@
                 <version>2.29.0</version>
                 <configuration>
                     <configFile>${project.basedir}/code-formatter.xml</configFile>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
 

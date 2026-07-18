@@ -15,8 +15,10 @@ import java.math.MathContext;
  * <p>
  * It uses a precision of up to {@value #EPS} decimal places.
  *
- * @apiNote the delegate should never become a NaN value. No self NaN checks are
- *          provided.
+ * <p>
+ * <b>API note:</b> The delegate should never become a NaN value. No self NaN
+ * checks are provided.
+ * </p>
  */
 public class DoubleNum implements Num {
 
@@ -297,7 +299,7 @@ public class DoubleNum implements Num {
 
     @Override
     public int compareTo(final Num o) {
-        if (this == NaN || o == NaN) {
+        if (o.isNaN()) {
             return 0;
         }
         final DoubleNum doubleNumO = (DoubleNum) o;

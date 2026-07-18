@@ -31,6 +31,10 @@ public final class ZigZagState {
     private final ZigZagTrend trend;
     private final int lastExtremeIndex;
     private final Num lastExtremePrice;
+    private final int initialHighIndex;
+    private final Num initialHighPrice;
+    private final int initialLowIndex;
+    private final Num initialLowPrice;
 
     /**
      * Constructs a new ZigZagState.
@@ -55,6 +59,13 @@ public final class ZigZagState {
      */
     public ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
             int lastExtremeIndex, Num lastExtremePrice) {
+        this(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, lastExtremeIndex, lastExtremePrice,
+                lastExtremeIndex, lastExtremePrice, lastExtremeIndex, lastExtremePrice);
+    }
+
+    ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
+            int lastExtremeIndex, Num lastExtremePrice, int initialHighIndex, Num initialHighPrice, int initialLowIndex,
+            Num initialLowPrice) {
         this.lastHighIndex = lastHighIndex;
         this.lastHighPrice = lastHighPrice;
         this.lastLowIndex = lastLowIndex;
@@ -62,6 +73,10 @@ public final class ZigZagState {
         this.trend = trend;
         this.lastExtremeIndex = lastExtremeIndex;
         this.lastExtremePrice = lastExtremePrice;
+        this.initialHighIndex = initialHighIndex;
+        this.initialHighPrice = initialHighPrice;
+        this.initialLowIndex = initialLowIndex;
+        this.initialLowPrice = initialLowPrice;
     }
 
     /**
@@ -116,9 +131,10 @@ public final class ZigZagState {
     /**
      * Returns the bar index of the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the bar index of the current extreme point
      */
@@ -129,13 +145,30 @@ public final class ZigZagState {
     /**
      * Returns the price value at the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the price value at the current extreme point
      */
     public Num getLastExtremePrice() {
         return lastExtremePrice;
+    }
+
+    int getInitialHighIndex() {
+        return initialHighIndex;
+    }
+
+    Num getInitialHighPrice() {
+        return initialHighPrice;
+    }
+
+    int getInitialLowIndex() {
+        return initialLowIndex;
+    }
+
+    Num getInitialLowPrice() {
+        return initialLowPrice;
     }
 }

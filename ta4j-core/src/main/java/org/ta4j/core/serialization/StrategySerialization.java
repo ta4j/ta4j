@@ -96,7 +96,7 @@ public final class StrategySerialization {
      *
      * @param strategy strategy instance
      * @return compact JSON v2 representation
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toCompactJson(Strategy strategy) {
         return toCompactJson(strategy, NamedAssetRegistry.defaultRegistry());
@@ -109,7 +109,7 @@ public final class StrategySerialization {
      * @param strategy strategy instance
      * @param registry named asset registry
      * @return compact JSON v2 representation
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static String toCompactJson(Strategy strategy, NamedAssetRegistry registry) {
         Objects.requireNonNull(strategy, "strategy");
@@ -199,7 +199,7 @@ public final class StrategySerialization {
      * @param json     canonical or v2 JSON payload
      * @param registry named asset registry
      * @return reconstructed strategy
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static Strategy fromJson(BarSeries series, String json, NamedAssetRegistry registry) {
         Objects.requireNonNull(registry, "registry");
@@ -832,10 +832,6 @@ public final class StrategySerialization {
         } catch (IllegalArgumentException ex) {
             return TradeType.BUY;
         }
-    }
-
-    private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor) {
-        return instantiateRule(series, descriptor, null);
     }
 
     private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor,
