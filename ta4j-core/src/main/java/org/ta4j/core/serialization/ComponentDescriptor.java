@@ -82,13 +82,13 @@ public final class ComponentDescriptor {
         }
         try {
             // Try fully qualified name first
-            return Class.forName(type);
+            return Class.forName(type, false, ComponentDescriptor.class.getClassLoader());
         } catch (ClassNotFoundException e) {
             // Try simple name in standard packages
             String[] standardPackages = { "org.ta4j.core.rules", "org.ta4j.core.indicators", "org.ta4j.core.strategy" };
             for (String pkg : standardPackages) {
                 try {
-                    return Class.forName(pkg + "." + type);
+                    return Class.forName(pkg + "." + type, false, ComponentDescriptor.class.getClassLoader());
                 } catch (ClassNotFoundException ignored) {
                     // Continue to next package
                 }

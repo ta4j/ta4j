@@ -22,6 +22,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -808,6 +809,42 @@ public class RuleSerializationTest {
         Rule restored = Rule.fromJson(series, json);
         assertThat(restored.getName()).isEqualTo("my-custom-rule");
         assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");
+    }
+
+    @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"type\":\"BooleanRule\"";
+
+        assertThrows(com.google.gson.JsonParseException.class, () -> Rule.fromJson(series, json));
+    }
+
+    @Test
+    public void fromDescriptorRejectsFractionalIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 1.9))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void fromDescriptorRejectsOverflowingIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 2147483648L))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
     }
 
     private static final class ConstructorPreferenceRule extends AbstractRule {
