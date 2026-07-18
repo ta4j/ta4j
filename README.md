@@ -1004,6 +1004,9 @@ String compactStrategyJson = """
         """;
 Strategy strategy = Strategy.fromJson(series, compactStrategyJson);
 String compactJson = strategy.toCompactJson(); // optional v2 output; toJson() stays canonical
+
+Strategy macroStrategy = Strategy.fromExpression(series, "SMA(7,21)");
+String strategyExpression = macroStrategy.toExpression(); // "SMA(7,21)"
 ```
 
 Named shorthand is kind-specific. `SMA(7)` is a single indicator over close
@@ -1025,6 +1028,11 @@ The shorthand grammar is deliberately bounded and strict:
 | Analysis criteria | Default forms of `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
 | Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
 
+Malformed JSON-looking descriptor payloads fail as syntax errors. Plain labels
+remain accepted only for non-JSON text. Numeric constructor arguments in
+canonical descriptor JSON follow the same finite JSON-number contract as v2
+shorthand, and integer parameters such as bar counts must be exact integers.
+
 Custom shorthand is registered up front with an immutable `NamedAssetRegistry`:
 ```java
 NamedAssetRegistry registry = NamedAssetRegistry.builder()
@@ -1045,6 +1053,9 @@ AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
 Custom bindings read parsed arguments through typed helpers such as
 `positiveInt(...)`, `finiteNumberText(...)`, `stringValue(...)`,
 `indicatorDescriptor(...)`, and `ruleDescriptor(...)`.
+Indicator aliases used in numeric comparison rules must resolve to indicators
+whose runtime values are `Num`; boolean indicators should be composed through
+boolean-aware rules instead of `Over(...)` / `Under(...)` style comparisons.
 Parameterized analysis criteria serialize through canonical descriptor JSON;
 compact aliases are reserved for descriptors a registry formatter can represent
 without dropping constructor state.

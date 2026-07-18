@@ -7,7 +7,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -548,54 +547,12 @@ public final class AnalysisCriterionSerialization {
         if (targetType == ZoneId.class) {
             return ZoneId.of(value.toString());
         }
-        BigDecimal decimal;
-        try {
-            decimal = new BigDecimal(value.toString());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-        if (targetType == int.class || targetType == Integer.class) {
-            return exactInt(decimal);
-        }
-        if (targetType == long.class || targetType == Long.class) {
-            return exactLong(decimal);
-        }
-        if (targetType == double.class || targetType == Double.class) {
-            double converted = decimal.doubleValue();
-            return Double.isFinite(converted) ? converted : null;
-        }
-        if (targetType == float.class || targetType == Float.class) {
-            float converted = decimal.floatValue();
-            return Float.isFinite(converted) ? converted : null;
-        }
-        if (targetType == BigDecimal.class) {
-            return decimal;
-        }
-        if (Number.class.isAssignableFrom(targetType)) {
-            return decimal;
-        }
-        return null;
+        return JsonNumberConversions.convertJsonNumber(value, targetType);
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private static Object enumValue(Class<?> targetType, Object value) {
         return Enum.valueOf((Class<? extends Enum>) targetType, value.toString());
-    }
-
-    private static Integer exactInt(BigDecimal decimal) {
-        try {
-            return decimal.intValueExact();
-        } catch (ArithmeticException ex) {
-            return null;
-        }
-    }
-
-    private static Long exactLong(BigDecimal decimal) {
-        try {
-            return decimal.longValueExact();
-        } catch (ArithmeticException ex) {
-            return null;
-        }
     }
 
     private record SerializableState(Map<String, Object> values, boolean complete) {

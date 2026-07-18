@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.BooleanIndicatorRule;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -355,6 +356,17 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void strategyExpressionRoundTripsBuiltInMacro() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
+
+        Strategy restored = Strategy.fromExpression(series, "SMA(2,3)");
+
+        assertThat(restored.toExpression()).isEqualTo("SMA(2,3)");
+        assertThat(restored.toJson()).contains("\"type\":\"CrossedUpIndicatorRule\"");
+        assertThat(restored.toJson()).contains("\"type\":\"CrossedDownIndicatorRule\"");
+    }
+
+    @Test
     public void compactJsonUsesNamedRuleShorthandWithoutChangingCanonicalJson() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -483,6 +495,14 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"version\":2,\"entryRule\":";
+
+        assertThrows(com.google.gson.JsonParseException.class, () -> Strategy.fromJson(series, json));
+    }
+
+    @Test
     public void versionTwoPayloadRejectsUnexpectedStrategyField() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         String v2Json = """
@@ -559,6 +579,35 @@ public class StrategySerializationTest {
                 () -> Strategy.fromJson(series, v2Json));
 
         assertThat(exception).hasMessageContaining("entryRule.type");
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsNonNumericCustomIndicatorAliasInNumericRule() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        NamedAssetRegistry registry = NamedAssetRegistry.builder()
+                .withDefaults()
+                .registerIndicator("Flag", List.of(), args -> {
+                    args.requireCount(0);
+                    return ComponentDescriptor.builder()
+                            .withType(FixedBooleanIndicator.class.getSimpleName())
+                            .withParameters(Map.of("values", List.of(true, true, true)))
+                            .build();
+                })
+                .build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadCustomIndicator",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["Flag", 50] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json, registry));
+
+        assertThat(exception).hasMessageContaining("Expected numeric indicator")
+                .hasMessageContaining("entryRule.args[0]");
     }
 
     @Test

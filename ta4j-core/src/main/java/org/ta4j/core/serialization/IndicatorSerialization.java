@@ -611,46 +611,17 @@ public final class IndicatorSerialization {
             return Enum.valueOf(enumClass, value.toString());
         }
         if (Num.class.isAssignableFrom(targetType)) {
-            return series.numFactory().numOf(value.toString());
+            BigDecimal decimal = JsonNumberConversions.parseFiniteJsonNumber(value.toString(), "numeric parameter");
+            return series.numFactory().numOf(decimal.toString());
         }
         if (targetType == Object.class) {
-            try {
-                return series.numFactory().numOf(value.toString());
-            } catch (NumberFormatException ex) {
-                return value;
+            Object converted = JsonNumberConversions.convertJsonNumber(value, targetType);
+            if (converted != null) {
+                return series.numFactory().numOf(converted.toString());
             }
+            return value;
         }
-        Number coerced = coerceNumber(value);
-        if (coerced == null) {
-            return null;
-        }
-        if (targetType == int.class || targetType == Integer.class) {
-            return coerced.intValue();
-        }
-        if (targetType == long.class || targetType == Long.class) {
-            return coerced.longValue();
-        }
-        if (targetType == double.class || targetType == Double.class) {
-            return coerced.doubleValue();
-        }
-        if (targetType == float.class || targetType == Float.class) {
-            return coerced.floatValue();
-        }
-        if (targetType == short.class || targetType == Short.class) {
-            return coerced.shortValue();
-        }
-        if (targetType == byte.class || targetType == Byte.class) {
-            return coerced.byteValue();
-        }
-        if (Number.class.isAssignableFrom(targetType)) {
-            if (targetType.isInstance(coerced)) {
-                return coerced;
-            }
-            if (targetType == BigDecimal.class) {
-                return new BigDecimal(coerced.toString());
-            }
-        }
-        return null;
+        return JsonNumberConversions.convertJsonNumber(value, targetType);
     }
 
     private static Object convertNumericArrayValue(Object value, Class<?> arrayType, BarSeries series) {
@@ -677,17 +648,6 @@ public final class IndicatorSerialization {
             Array.set(array, i, converted);
         }
         return array;
-    }
-
-    private static Number coerceNumber(Object value) {
-        if (value instanceof Number number) {
-            return number;
-        }
-        try {
-            return new BigDecimal(value.toString());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 
     private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {

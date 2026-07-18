@@ -142,6 +142,66 @@ public final class StrategySerialization {
     }
 
     /**
+     * Renders a strategy as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @param strategy strategy instance
+     * @return compact strategy shorthand expression
+     * @since 0.23.1
+     */
+    public static String toExpression(Strategy strategy) {
+        return toExpression(strategy, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders a strategy as a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param strategy strategy instance
+     * @param registry named asset registry
+     * @return compact strategy shorthand expression
+     * @since 0.23.1
+     */
+    public static String toExpression(Strategy strategy, NamedAssetRegistry registry) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(strategy);
+        return registry.toExpression(NamedAssetKind.STRATEGY, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named strategy shorthand registered for descriptor: " + descriptor.getType()));
+    }
+
+    /**
+     * Builds a strategy from compact named shorthand using ta4j's default named
+     * asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    public static Strategy fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Builds a strategy from compact named shorthand using the supplied named asset
+     * registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    public static Strategy fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.STRATEGY, expression);
+        return fromDescriptor(series, descriptor);
+    }
+
+    /**
      * Converts a {@link Strategy} into a {@link ComponentDescriptor} hierarchy.
      *
      * @param strategy strategy instance
@@ -471,6 +531,14 @@ public final class StrategySerialization {
         if (indicator == null) {
             throw new IllegalArgumentException("Missing indicator expression at " + location);
         }
+        BarSeries series = indicator.getBarSeries();
+        if (series != null && series.getBeginIndex() <= series.getEndIndex()) {
+            Object value = indicator.getValue(series.getBeginIndex());
+            if (value != null && !(value instanceof Num)) {
+                throw new IllegalArgumentException("Expected numeric indicator at " + location + " but "
+                        + indicator.getClass().getSimpleName() + " returned " + value.getClass().getSimpleName());
+            }
+        }
         return (Indicator<Num>) indicator;
     }
 
@@ -631,15 +699,7 @@ public final class StrategySerialization {
     }
 
     private static BigDecimal parseFiniteNumber(String value, String location) {
-        String trimmed = value == null ? "" : value.trim();
-        if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
-        }
-        try {
-            return new BigDecimal(trimmed);
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
-        }
+        return JsonNumberConversions.parseFiniteJsonNumber(value, location);
     }
 
     private static void requireNonNegativeInt(int value, String location) {

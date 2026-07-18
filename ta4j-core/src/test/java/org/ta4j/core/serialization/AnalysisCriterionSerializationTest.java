@@ -52,6 +52,13 @@ public class AnalysisCriterionSerializationTest {
     }
 
     @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        String json = "{\"type\":\"SharpeRatioCriterion\"";
+
+        assertThrows(com.google.gson.JsonParseException.class, () -> AnalysisCriterion.fromJson(json));
+    }
+
+    @Test
     public void nonDefaultCriterionStateRoundTripsThroughCanonicalJson() {
         AnalysisCriterion original = new NumberOfPositionsCriterion(false);
 

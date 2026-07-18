@@ -281,6 +281,33 @@ public interface Strategy {
     }
 
     /**
+     * Renders {@code this} strategy as a compact named shorthand expression using
+     * ta4j's default named asset registry.
+     *
+     * @return compact strategy shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  strategy
+     * @since 0.23.1
+     */
+    default String toExpression() {
+        return StrategySerialization.toExpression(this);
+    }
+
+    /**
+     * Renders {@code this} strategy as a compact named shorthand expression using
+     * the supplied named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact strategy shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  strategy
+     * @since 0.23.1
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return StrategySerialization.toExpression(this, registry);
+    }
+
+    /**
      * Converts {@code this} strategy into a structured descriptor that can be
      * embedded inside other component metadata.
      *
@@ -334,5 +361,32 @@ public interface Strategy {
      */
     static Strategy fromJson(BarSeries series, String json, NamedAssetRegistry registry) {
         return StrategySerialization.fromJson(series, json, registry);
+    }
+
+    /**
+     * Reconstructs a strategy from a compact named strategy expression using ta4j's
+     * default named asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    static Strategy fromExpression(BarSeries series, String expression) {
+        return StrategySerialization.fromExpression(series, expression);
+    }
+
+    /**
+     * Reconstructs a strategy from a compact named strategy expression using the
+     * supplied named asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    static Strategy fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        return StrategySerialization.fromExpression(series, expression, registry);
     }
 }

@@ -989,8 +989,10 @@ public final class RuleSerialization {
                 Object converted = convertNumber(thresholdValue, Integer.class);
                 if (converted instanceof Number number) {
                     threshold = number.intValue();
-                } else {
+                } else if (converted != null) {
                     threshold = Integer.parseInt(String.valueOf(converted));
+                } else {
+                    throw new IllegalArgumentException("Invalid chain link threshold: " + thresholdValue);
                 }
             }
             links[i] = new ChainLink(linkRule, threshold);
@@ -1087,7 +1089,8 @@ public final class RuleSerialization {
             if (value == null) {
                 throw new IllegalArgumentException("Missing numeric parameter: " + name);
             }
-            return series.numFactory().numOf(String.valueOf(value));
+            return series.numFactory()
+                    .numOf(JsonNumberConversions.parseFiniteJsonNumber(String.valueOf(value), name).toString());
         }
 
         private Object resolveNumber(String name, Class<?> targetType) {
@@ -1108,6 +1111,10 @@ public final class RuleSerialization {
             for (int i = 0; i < list.size(); i++) {
                 Object element = list.get(i);
                 Object converted = convertNumber(element, componentType);
+                if (converted == null) {
+                    throw new IllegalArgumentException(
+                            "Invalid numeric array parameter '" + name + "' at index " + i + ": " + element);
+                }
                 Array.set(array, i, converted);
             }
             return array;
@@ -1215,82 +1222,10 @@ public final class RuleSerialization {
     }
 
     private static Object convertNumber(Object value, Class<?> targetType) {
-        if (targetType.equals(Number.class) || targetType.equals(Object.class)) {
-            if (value instanceof Number) {
-                return value;
-            }
-            try {
-                return Double.parseDouble(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(int.class) || targetType.equals(Integer.class)) {
-            if (value instanceof Number number) {
-                return number.intValue();
-            }
-            try {
-                return Integer.parseInt(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Integer: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(long.class) || targetType.equals(Long.class)) {
-            if (value instanceof Number number) {
-                return number.longValue();
-            }
-            try {
-                return Long.parseLong(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Long: " + e.getMessage(),
-                        e);
-            }
-        }
-        if (targetType.equals(double.class) || targetType.equals(Double.class)) {
-            if (value instanceof Number number) {
-                return number.doubleValue();
-            }
-            try {
-                return Double.parseDouble(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(float.class) || targetType.equals(Float.class)) {
-            if (value instanceof Number number) {
-                return number.floatValue();
-            }
-            try {
-                return Float.parseFloat(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Float: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(short.class) || targetType.equals(Short.class)) {
-            if (value instanceof Number number) {
-                return number.shortValue();
-            }
-            try {
-                return Short.parseShort(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Short: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(byte.class) || targetType.equals(Byte.class)) {
-            if (value instanceof Number number) {
-                return number.byteValue();
-            }
-            try {
-                return Byte.parseByte(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Byte: " + e.getMessage(),
-                        e);
-            }
+        Object converted = JsonNumberConversions.convertJsonNumber(value, targetType);
+        if (converted != null || targetType.equals(Number.class) || targetType.equals(Object.class)
+                || Number.class.isAssignableFrom(targetType) || targetType.isPrimitive()) {
+            return converted;
         }
         throw new IllegalStateException("Unsupported numeric target type: " + targetType.getName());
     }
