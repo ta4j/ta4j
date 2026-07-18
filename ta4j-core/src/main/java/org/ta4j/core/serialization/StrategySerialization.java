@@ -6,25 +6,54 @@ package org.ta4j.core.serialization;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Locale;
+import java.util.regex.Pattern;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.StopGainRule;
+import org.ta4j.core.rules.StopLossRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 
 /**
  * Serializes and deserializes {@link Strategy} instances into structured
  * {@link ComponentDescriptor} payloads.
+ * <p>
+ * Deserialization also accepts an opt-in {@code version: 2} authoring envelope
+ * and normalizes it back into the canonical descriptor representation before
+ * reconstruction.
  *
  * @since 0.19
  */
@@ -36,6 +65,23 @@ public final class StrategySerialization {
     private static final String UNSTABLE_BARS_KEY = "unstableBars";
     private static final String STARTING_TYPE_KEY = "startingType";
     private static final String ARGS_KEY = "__args";
+    private static final String VERSION_KEY = "version";
+    private static final String STRATEGY_KEY = "strategy";
+    private static final String NAME_KEY = "name";
+    private static final String TYPE_KEY = "type";
+    private static final String ENTRY_RULE_KEY = "entryRule";
+    private static final String EXIT_RULE_KEY = "exitRule";
+    private static final String RULES_KEY = "rules";
+    private static final String LABEL_KEY = "label";
+    private static final String PARAMETERS_KEY = "parameters";
+    private static final String COMPONENTS_KEY = "components";
+    private static final String V2_ARGS_KEY = "args";
+    private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
+    private static final int SUPPORTED_V2_VERSION = 2;
+    private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
+    private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
+    private static final Pattern JSON_NUMBER_LITERAL = Pattern
+            .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
     private StrategySerialization() {
     }
@@ -48,6 +94,111 @@ public final class StrategySerialization {
      */
     public static String toJson(Strategy strategy) {
         return ComponentSerialization.toJson(describe(strategy));
+    }
+
+    /**
+     * Serializes a {@link Strategy} to the compact opt-in strategy JSON v2 form
+     * using the default named asset registry.
+     *
+     * @param strategy strategy instance
+     * @return compact JSON v2 representation
+     * @since 0.23.1
+     */
+    public static String toCompactJson(Strategy strategy) {
+        return toCompactJson(strategy, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Serializes a {@link Strategy} to the compact opt-in strategy JSON v2 form
+     * using the supplied named asset registry.
+     *
+     * @param strategy strategy instance
+     * @param registry named asset registry
+     * @return compact JSON v2 representation
+     * @since 0.23.1
+     */
+    public static String toCompactJson(Strategy strategy, NamedAssetRegistry registry) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(registry, "registry");
+
+        ComponentDescriptor descriptor = describe(strategy);
+        JsonObject object = new JsonObject();
+        object.addProperty(VERSION_KEY, SUPPORTED_V2_VERSION);
+
+        Optional<String> strategyExpression = registry.toExpression(NamedAssetKind.STRATEGY, descriptor);
+        if (strategyExpression.isPresent()) {
+            object.addProperty(STRATEGY_KEY, strategyExpression.get());
+            addStrategyOverrides(object, descriptor, strategyExpression.get(), registry);
+            return object.toString();
+        }
+
+        if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()) {
+            object.addProperty(NAME_KEY, descriptor.getLabel());
+        }
+        addParameterOverrides(object, descriptor.getParameters());
+        object.add(ENTRY_RULE_KEY, compactRuleElement(extractChild(descriptor, ENTRY_LABEL), registry));
+        object.add(EXIT_RULE_KEY, compactRuleElement(extractChild(descriptor, EXIT_LABEL), registry));
+        return object.toString();
+    }
+
+    /**
+     * Renders a strategy as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @param strategy strategy instance
+     * @return compact strategy shorthand expression
+     * @since 0.23.1
+     */
+    public static String toExpression(Strategy strategy) {
+        return toExpression(strategy, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders a strategy as a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param strategy strategy instance
+     * @param registry named asset registry
+     * @return compact strategy shorthand expression
+     * @since 0.23.1
+     */
+    public static String toExpression(Strategy strategy, NamedAssetRegistry registry) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(strategy);
+        return registry.toExpression(NamedAssetKind.STRATEGY, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named strategy shorthand registered for descriptor: " + descriptor.getType()));
+    }
+
+    /**
+     * Builds a strategy from compact named shorthand using ta4j's default named
+     * asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    public static Strategy fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Builds a strategy from compact named shorthand using the supplied named asset
+     * registry.
+     *
+     * @param series     backing series to attach to the reconstructed strategy
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    public static Strategy fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.STRATEGY, expression);
+        return fromDescriptor(series, descriptor);
     }
 
     /**
@@ -97,12 +248,470 @@ public final class StrategySerialization {
      * Rebuilds a strategy from a JSON payload.
      *
      * @param series bar series to attach to the strategy
-     * @param json   JSON representation generated by {@link #toJson(Strategy)}
+     * @param json   canonical JSON representation generated by
+     *               {@link #toJson(Strategy)} or an opt-in {@code version: 2}
+     *               authoring payload
      * @return reconstructed strategy
      */
     public static Strategy fromJson(BarSeries series, String json) {
+        return fromJson(series, json, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds a strategy from canonical descriptor JSON or an opt-in
+     * {@code version: 2} authoring payload using the supplied named asset registry.
+     *
+     * @param series   bar series to attach to the strategy
+     * @param json     canonical or v2 JSON payload
+     * @param registry named asset registry
+     * @return reconstructed strategy
+     * @since 0.23.1
+     */
+    public static Strategy fromJson(BarSeries series, String json, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor v2Descriptor = tryParseV2Descriptor(series, json, registry);
+        if (v2Descriptor != null) {
+            return fromDescriptor(series, v2Descriptor);
+        }
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
         return fromDescriptor(series, descriptor);
+    }
+
+    private static ComponentDescriptor tryParseV2Descriptor(BarSeries series, String json,
+            NamedAssetRegistry registry) {
+        if (json == null || json.trim().isEmpty()) {
+            return null;
+        }
+        if (!json.contains(VERSION_TOKEN)) {
+            return null;
+        }
+
+        JsonElement root;
+        try {
+            root = JsonParser.parseString(json);
+        } catch (JsonSyntaxException ex) {
+            return null;
+        }
+
+        if (!root.isJsonObject()) {
+            return null;
+        }
+
+        JsonObject object = root.getAsJsonObject();
+        if (!object.has(VERSION_KEY)) {
+            return null;
+        }
+        if (!looksLikeV2Envelope(object)) {
+            return null;
+        }
+
+        int version = readRequiredInt(object.get(VERSION_KEY), VERSION_KEY);
+        if (version != SUPPORTED_V2_VERSION) {
+            throw new IllegalArgumentException("Unsupported strategy JSON version: " + version);
+        }
+
+        Strategy strategy = buildV2Strategy(series, object, registry);
+        return describe(strategy);
+    }
+
+    private static Strategy buildV2Strategy(BarSeries series, JsonObject object, NamedAssetRegistry registry) {
+        if (object.has(STRATEGY_KEY) && !object.get(STRATEGY_KEY).isJsonNull()) {
+            requireOnlyFields(object, "strategy", VERSION_KEY, STRATEGY_KEY, NAME_KEY, UNSTABLE_BARS_KEY,
+                    STARTING_TYPE_KEY);
+            String expression = readRequiredString(object, STRATEGY_KEY);
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.STRATEGY, expression, STRATEGY_KEY);
+            return fromDescriptor(series, applyV2StrategyOverrides(descriptor, object));
+        }
+
+        requireOnlyFields(object, "strategy", VERSION_KEY, TYPE_KEY, NAME_KEY, UNSTABLE_BARS_KEY, STARTING_TYPE_KEY,
+                ENTRY_RULE_KEY, EXIT_RULE_KEY);
+        String strategyType = readOptionalString(object, TYPE_KEY);
+        if (strategyType != null && !DEFAULT_V2_STRATEGY_TYPE.equals(strategyType)
+                && !BaseStrategy.class.getName().equals(strategyType)) {
+            throw new IllegalArgumentException("Unsupported v2 strategy type: " + strategyType);
+        }
+
+        String name = readOptionalString(object, NAME_KEY);
+        Rule entryRule = buildV2Rule(series, object.get(ENTRY_RULE_KEY), ENTRY_RULE_KEY, registry);
+        Rule exitRule = buildV2Rule(series, object.get(EXIT_RULE_KEY), EXIT_RULE_KEY, registry);
+        int unstableBars = readOptionalInt(object, UNSTABLE_BARS_KEY, 0);
+        requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
+        TradeType startingType = readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY);
+
+        if (startingType == TradeType.BUY) {
+            return new BaseStrategy(name, entryRule, exitRule, unstableBars);
+        }
+        return new BaseStrategy(name, entryRule, exitRule, unstableBars, startingType);
+    }
+
+    private static Rule buildV2Rule(BarSeries series, JsonElement element, String location,
+            NamedAssetRegistry registry) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Expected rule at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.RULE, element.getAsString(),
+                    location);
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
+        JsonObject object = requireObject(element, location);
+        if (looksLikeCanonicalRuleDescriptor(object)) {
+            ComponentDescriptor descriptor = ComponentSerialization.parse(object.toString());
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
+        String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
+        JsonElement rulesElement = object.get(RULES_KEY);
+        if (rulesElement != null && !rulesElement.isJsonNull()) {
+            requireOnlyFields(object, location, TYPE_KEY, RULES_KEY);
+            JsonArray rulesArray = requireArray(rulesElement, location + "." + RULES_KEY);
+            if (rulesArray.size() != 2) {
+                throw new IllegalArgumentException(
+                        "V2 composite rules require exactly 2 child rules at " + location + "." + RULES_KEY);
+            }
+            Rule left = buildV2Rule(series, rulesArray.get(0), location + "." + RULES_KEY + "[0]", registry);
+            Rule right = buildV2Rule(series, rulesArray.get(1), location + "." + RULES_KEY + "[1]", registry);
+            return switch (type) {
+            case "And", "AndRule" -> new AndRule(left, right);
+            case "Or", "OrRule" -> new OrRule(left, right);
+            default -> throw new IllegalArgumentException("Unsupported v2 composite rule type: " + type);
+            };
+        }
+
+        requireOnlyFields(object, location, TYPE_KEY, V2_ARGS_KEY);
+        JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
+        return switch (type) {
+        case "CrossedUp", "CrossedUpIndicatorRule" -> buildCrossedUpRule(series, args, location, registry);
+        case "CrossedDown", "CrossedDownIndicatorRule" -> buildCrossedDownRule(series, args, location, registry);
+        case "Over", "OverIndicatorRule" -> buildOverRule(series, args, location, registry);
+        case "Under", "UnderIndicatorRule" -> buildUnderRule(series, args, location, registry);
+        case "StopLoss", "StopLossRule" -> buildStopLossRule(series, args, location);
+        case "StopGain", "StopGainRule" -> buildStopGainRule(series, args, location);
+        default -> throw new IllegalArgumentException("Unsupported v2 rule type: " + type);
+        };
+    }
+
+    private static Rule buildCrossedUpRule(BarSeries series, JsonArray args, String location,
+            NamedAssetRegistry registry) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
+            return new CrossedUpIndicatorRule(indicator, secondIndicator);
+        }
+        return new CrossedUpIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildCrossedDownRule(BarSeries series, JsonArray args, String location,
+            NamedAssetRegistry registry) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
+            return new CrossedDownIndicatorRule(indicator, secondIndicator);
+        }
+        return new CrossedDownIndicatorRule(indicator,
+                parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildOverRule(BarSeries series, JsonArray args, String location, NamedAssetRegistry registry) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
+            return new OverIndicatorRule(indicator, secondIndicator);
+        }
+        return new OverIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildUnderRule(BarSeries series, JsonArray args, String location, NamedAssetRegistry registry) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
+            return new UnderIndicatorRule(indicator, secondIndicator);
+        }
+        return new UnderIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildStopLossRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 1, location);
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        return new StopLossRule(closePriceIndicator, parseNumericArgument(args.get(0), location + ".args[0]"));
+    }
+
+    private static Rule buildStopGainRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 1, location);
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        return new StopGainRule(closePriceIndicator, parseNumericArgument(args.get(0), location + ".args[0]"));
+    }
+
+    private static Indicator<Num> buildV2Indicator(BarSeries series, JsonElement element, String location,
+            NamedAssetRegistry registry) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing indicator expression at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.INDICATOR, element.getAsString(),
+                    location);
+            return castNumIndicator(IndicatorSerialization.fromDescriptor(series, descriptor), location);
+        }
+        if (!element.isJsonObject()) {
+            throw new IllegalArgumentException("Unsupported v2 indicator payload at " + location + ": " + element);
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
+        String normalizedType = normalizeIndicatorType(type);
+
+        if ("ClosePriceIndicator".equals(normalizedType)) {
+            requireOnlyFields(object, location, TYPE_KEY);
+            return new ClosePriceIndicator(series);
+        }
+
+        requireOnlyFields(object, location, TYPE_KEY, V2_ARGS_KEY);
+        JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
+        if (args.size() == 1) {
+            Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
+            int barCount = readRequiredInt(args.get(0), location + ".args[0]");
+            return instantiateParameterizedIndicator(normalizedType, closePriceIndicator, barCount, location,
+                    location + ".args[0]");
+        }
+        if (args.size() == 2) {
+            Indicator<Num> baseIndicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
+            int barCount = readRequiredInt(args.get(1), location + ".args[1]");
+            return instantiateParameterizedIndicator(normalizedType, baseIndicator, barCount, location,
+                    location + ".args[1]");
+        }
+
+        throw new IllegalArgumentException("Unsupported v2 indicator arg count at " + location + ": " + args.size());
+    }
+
+    private static Indicator<Num> instantiateParameterizedIndicator(String type, Indicator<Num> baseIndicator,
+            int barCount, String location, String barCountLocation) {
+        return switch (type) {
+        case "SMAIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new SMAIndicator(baseIndicator, barCount);
+        }
+        case "EMAIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new EMAIndicator(baseIndicator, barCount);
+        }
+        case "RSIIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new RSIIndicator(baseIndicator, barCount);
+        }
+        default -> throw new IllegalArgumentException("Unsupported v2 indicator type at " + location + ": " + type);
+        };
+    }
+
+    private static String normalizeIndicatorType(String type) {
+        if (type == null) {
+            return null;
+        }
+        return switch (type) {
+        case "SMA" -> "SMAIndicator";
+        case "EMA" -> "EMAIndicator";
+        case "RSI" -> "RSIIndicator";
+        case "ClosePrice" -> "ClosePriceIndicator";
+        default -> type;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Indicator<Num> castNumIndicator(Indicator<?> indicator, String location) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("Missing indicator expression at " + location);
+        }
+        BarSeries series = indicator.getBarSeries();
+        if (series != null && series.getBeginIndex() <= series.getEndIndex()) {
+            Object value = indicator.getValue(series.getBeginIndex());
+            if (value != null && !(value instanceof Num)) {
+                throw new IllegalArgumentException("Expected numeric indicator at " + location + " but "
+                        + indicator.getClass().getSimpleName() + " returned " + value.getClass().getSimpleName());
+            }
+        }
+        return (Indicator<Num>) indicator;
+    }
+
+    private static boolean looksLikeIndicator(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return false;
+        }
+        if (element.isJsonObject()) {
+            return true;
+        }
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            return false;
+        }
+        String value = element.getAsString().trim();
+        String numericValue = value.endsWith("%") ? value.substring(0, value.length() - 1).trim() : value;
+        return !JSON_NUMBER_LITERAL.matcher(numericValue).matches();
+    }
+
+    private static Number parseNumericArgument(JsonElement element, String location) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing numeric argument at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return parseFiniteNumber(element.getAsString(), location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            String text = element.getAsString().trim();
+            if (text.endsWith("%")) {
+                text = text.substring(0, text.length() - 1).trim();
+            }
+            return parseFiniteNumber(text, location);
+        }
+        throw new IllegalArgumentException("Unsupported numeric argument at " + location + ": " + element);
+    }
+
+    private static JsonObject requireObject(JsonElement element, String location) {
+        if (element == null || element.isJsonNull() || !element.isJsonObject()) {
+            throw new IllegalArgumentException("Expected object at " + location);
+        }
+        return element.getAsJsonObject();
+    }
+
+    private static JsonArray requireArray(JsonElement element, String location) {
+        if (element == null || element.isJsonNull() || !element.isJsonArray()) {
+            throw new IllegalArgumentException("Expected array at " + location);
+        }
+        return element.getAsJsonArray();
+    }
+
+    private static String readRequiredString(JsonObject object, String key) {
+        return readRequiredString(object, key, key);
+    }
+
+    private static String readRequiredString(JsonObject object, String key, String location) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull() || !element.isJsonPrimitive()
+                || !element.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException("Expected string at " + location);
+        }
+        String value = element.getAsString().trim();
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("Expected non-blank string at " + location);
+        }
+        return value;
+    }
+
+    private static String readOptionalString(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException("Expected string at " + key);
+        }
+        String value = element.getAsString().trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static int readOptionalInt(JsonObject object, String key, int defaultValue) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return defaultValue;
+        }
+        return readRequiredInt(element, key);
+    }
+
+    private static int readRequiredInt(JsonElement element, String location) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing integer value at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return parseInt(element.getAsString(), location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return parseInt(element.getAsString().trim(), location);
+        }
+        throw new IllegalArgumentException("Expected integer value at " + location);
+    }
+
+    private static int parseInt(String value, String location) {
+        String trimmed = value == null ? "" : value.trim();
+        if (!isIntegerLiteral(trimmed)) {
+            throw new IllegalArgumentException("Expected integer value at " + location + ": " + trimmed);
+        }
+        try {
+            return Integer.parseInt(trimmed);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Expected integer value at " + location + ": " + trimmed, ex);
+        }
+    }
+
+    private static TradeType readOptionalTradeType(JsonObject object, String key, TradeType defaultValue) {
+        String value = readOptionalString(object, key);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return TradeType.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unsupported trade type at " + key + ": " + value, ex);
+        }
+    }
+
+    private static void ensureArgCount(JsonArray args, int expectedCount, String location) {
+        if (args.size() != expectedCount) {
+            throw new IllegalArgumentException(
+                    "Expected " + expectedCount + " args at " + location + " but found " + args.size());
+        }
+    }
+
+    private static void requireOnlyFields(JsonObject object, String location, String... allowedKeys) {
+        for (String key : object.keySet()) {
+            boolean allowed = false;
+            for (String allowedKey : allowedKeys) {
+                if (allowedKey.equals(key)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new IllegalArgumentException("Unexpected field at " + location + "." + key);
+            }
+        }
+    }
+
+    private static boolean looksLikeCanonicalRuleDescriptor(JsonObject object) {
+        return !object.has(V2_ARGS_KEY) && !object.has(RULES_KEY)
+                && (object.has(LABEL_KEY) || object.has(PARAMETERS_KEY) || object.has(COMPONENTS_KEY));
+    }
+
+    private static boolean looksLikeV2Envelope(JsonObject object) {
+        return object.has(STRATEGY_KEY) || object.has(NAME_KEY) || object.has(ENTRY_RULE_KEY)
+                || object.has(EXIT_RULE_KEY);
+    }
+
+    private static boolean isIntegerLiteral(String value) {
+        return value != null && JSON_INTEGER_LITERAL.matcher(value).matches();
+    }
+
+    private static BigDecimal parseFiniteNumber(String value, String location) {
+        return JsonNumberConversions.parseFiniteJsonNumber(value, location);
+    }
+
+    private static void requireNonNegativeInt(int value, String location) {
+        if (value < 0) {
+            throw new IllegalArgumentException("Expected integer value >= 0 at " + location + ": " + value);
+        }
+    }
+
+    private static void requirePositiveInt(int value, String location) {
+        if (value <= 0) {
+            throw new IllegalArgumentException("Expected integer value > 0 at " + location + ": " + value);
+        }
     }
 
     /**
@@ -186,6 +795,81 @@ public final class StrategySerialization {
         ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
         if (!descriptor.getParameters().isEmpty()) {
             builder.withParameters(descriptor.getParameters());
+        }
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
+        }
+        return builder.build();
+    }
+
+    private static JsonElement compactRuleElement(ComponentDescriptor descriptor, NamedAssetRegistry registry) {
+        Optional<String> expression = registry.toExpression(NamedAssetKind.RULE, descriptor);
+        if (expression.isPresent()) {
+            return new com.google.gson.JsonPrimitive(expression.get());
+        }
+        return JsonParser.parseString(ComponentSerialization.toJson(descriptor));
+    }
+
+    private static void addStrategyOverrides(JsonObject object, ComponentDescriptor descriptor, String expression,
+            NamedAssetRegistry registry) {
+        ComponentDescriptor defaults = registry.toDescriptor(NamedAssetKind.STRATEGY, expression, STRATEGY_KEY);
+        if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()
+                && !descriptor.getLabel().equals(defaults.getLabel())) {
+            object.addProperty(NAME_KEY, descriptor.getLabel());
+        } else if ((descriptor.getLabel() == null || descriptor.getLabel().isBlank()) && defaults.getLabel() != null
+                && !defaults.getLabel().isBlank()) {
+            object.add(NAME_KEY, JsonNull.INSTANCE);
+        }
+        Object unstableBars = descriptor.getParameters().get(UNSTABLE_BARS_KEY);
+        Object defaultUnstableBars = defaults.getParameters().get(UNSTABLE_BARS_KEY);
+        if (unstableBars != null
+                && !Objects.equals(String.valueOf(unstableBars), String.valueOf(defaultUnstableBars))) {
+            object.addProperty(UNSTABLE_BARS_KEY, extractUnstableBars(unstableBars));
+        }
+        Object startingType = descriptor.getParameters().get(STARTING_TYPE_KEY);
+        Object defaultStartingType = defaults.getParameters().get(STARTING_TYPE_KEY);
+        TradeType effectiveStartingType = extractStartingType(startingType);
+        TradeType effectiveDefaultStartingType = extractStartingType(defaultStartingType);
+        if (effectiveStartingType != effectiveDefaultStartingType) {
+            object.addProperty(STARTING_TYPE_KEY, effectiveStartingType.name());
+        }
+    }
+
+    private static void addParameterOverrides(JsonObject object, Map<String, Object> parameters) {
+        Object unstableBars = parameters.get(UNSTABLE_BARS_KEY);
+        if (unstableBars != null) {
+            int value = extractUnstableBars(unstableBars);
+            if (value != 0) {
+                object.addProperty(UNSTABLE_BARS_KEY, value);
+            }
+        }
+        Object startingType = parameters.get(STARTING_TYPE_KEY);
+        if (startingType != null) {
+            object.addProperty(STARTING_TYPE_KEY, String.valueOf(startingType));
+        }
+    }
+
+    private static ComponentDescriptor applyV2StrategyOverrides(ComponentDescriptor descriptor, JsonObject object) {
+        String name = descriptor.getLabel();
+        if (object.has(NAME_KEY)) {
+            name = object.get(NAME_KEY).isJsonNull() ? null : readRequiredString(object, NAME_KEY);
+        }
+        Map<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
+        if (object.has(UNSTABLE_BARS_KEY) && !object.get(UNSTABLE_BARS_KEY).isJsonNull()) {
+            int unstableBars = readRequiredInt(object.get(UNSTABLE_BARS_KEY), UNSTABLE_BARS_KEY);
+            requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
+            parameters.put(UNSTABLE_BARS_KEY, unstableBars);
+        }
+        if (object.has(STARTING_TYPE_KEY) && !object.get(STARTING_TYPE_KEY).isJsonNull()) {
+            parameters.put(STARTING_TYPE_KEY, readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY).name());
+        }
+
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
+        if (name != null && !name.isBlank()) {
+            builder.withLabel(name);
+        }
+        if (!parameters.isEmpty()) {
+            builder.withParameters(parameters);
         }
         for (ComponentDescriptor component : descriptor.getComponents()) {
             builder.addComponent(component);
