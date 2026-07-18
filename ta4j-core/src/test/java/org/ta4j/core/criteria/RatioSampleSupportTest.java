@@ -37,7 +37,7 @@ public class RatioSampleSupportTest {
     }
 
     @Parameterized.Parameters(name = "NumFactory: {index} (0=DoubleNum, 1=DecimalNum)")
-    public static List<NumFactory> function() {
+    public static List<NumFactory> numFactories() {
         return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }
 
