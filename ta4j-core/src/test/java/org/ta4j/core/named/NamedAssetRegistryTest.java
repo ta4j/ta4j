@@ -38,7 +38,28 @@ public class NamedAssetRegistryTest {
 
         assertThat(strategy.getType()).isEqualTo("BaseStrategy");
         assertThat(strategy.getComponents()).hasSize(2);
+        ComponentDescriptor entry = strategy.getComponents().get(0);
+        ComponentDescriptor exit = strategy.getComponents().get(1);
+        assertThat(entry.getType()).isEqualTo("CrossedUpIndicatorRule");
+        assertThat(exit.getType()).isEqualTo("CrossedDownIndicatorRule");
+        assertThat(entry.getComponents().get(0).getParameters()).containsEntry("barCount", 7);
+        assertThat(entry.getComponents().get(1).getParameters()).containsEntry("barCount", 21);
+        assertThat(exit.getComponents().get(0).getParameters()).containsEntry("barCount", 7);
+        assertThat(exit.getComponents().get(1).getParameters()).containsEntry("barCount", 21);
         assertThat(exception).hasMessageContaining("indicator.args[0]");
+    }
+
+    @Test
+    public void smaCrossDownKeepsFastThenSlowOperandOrder() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.RULE, "SmaCrossDown(7,21)");
+
+        assertThat(descriptor.getType()).isEqualTo("CrossedDownIndicatorRule");
+        assertThat(descriptor.getComponents()).hasSize(2);
+        assertThat(descriptor.getComponents().get(0).getParameters()).containsEntry("barCount", 7);
+        assertThat(descriptor.getComponents().get(1).getParameters()).containsEntry("barCount", 21);
+        assertThat(registry.toExpression(NamedAssetKind.RULE, descriptor)).contains("SmaCrossDown(7,21)");
     }
 
     @Test

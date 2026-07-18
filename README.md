@@ -1017,7 +1017,7 @@ The shorthand grammar is deliberately bounded and strict:
 | JSON area | Accepted values |
 | --- | --- |
 | Expression grammar | `Alias`, `Alias(arg,...)`, nested expressions, quoted strings, bare enum/string tokens, and finite JSON-style numbers |
-| Strategy metadata | `name`, optional `type` (`BaseStrategy`), optional `strategy` macro, optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
+| Strategy metadata | Optional `name`, optional `type` (`BaseStrategy`), optional `strategy` macro, optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
 | Strategy rules | Required `entryRule` and `exitRule` objects or rule expression strings unless `strategy` is supplied |
 | Composite rules | `And(...)` / `AndRule` and `Or(...)` / `OrRule`, each with exactly two child rules |
 | Leaf rules | `CrossedUp(...)`, `CrossedDown(...)`, `Over(...)`, `Under(...)`, `SmaCrossUp(...)`, `SmaCrossDown(...)`, `StopGain(...)`, and `StopLoss(...)` |

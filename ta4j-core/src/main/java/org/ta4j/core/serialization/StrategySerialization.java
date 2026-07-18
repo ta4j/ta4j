@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -264,7 +265,7 @@ public final class StrategySerialization {
             throw new IllegalArgumentException("Unsupported v2 strategy type: " + strategyType);
         }
 
-        String name = readRequiredString(object, NAME_KEY);
+        String name = readOptionalString(object, NAME_KEY);
         Rule entryRule = buildV2Rule(series, object.get(ENTRY_RULE_KEY), ENTRY_RULE_KEY, registry);
         Rule exitRule = buildV2Rule(series, object.get(EXIT_RULE_KEY), EXIT_RULE_KEY, registry);
         int unstableBars = readOptionalInt(object, UNSTABLE_BARS_KEY, 0);
@@ -751,6 +752,9 @@ public final class StrategySerialization {
         if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()
                 && !descriptor.getLabel().equals(defaults.getLabel())) {
             object.addProperty(NAME_KEY, descriptor.getLabel());
+        } else if ((descriptor.getLabel() == null || descriptor.getLabel().isBlank())
+                && defaults.getLabel() != null && !defaults.getLabel().isBlank()) {
+            object.add(NAME_KEY, JsonNull.INSTANCE);
         }
         Object unstableBars = descriptor.getParameters().get(UNSTABLE_BARS_KEY);
         Object defaultUnstableBars = defaults.getParameters().get(UNSTABLE_BARS_KEY);
@@ -781,8 +785,10 @@ public final class StrategySerialization {
     }
 
     private static ComponentDescriptor applyV2StrategyOverrides(ComponentDescriptor descriptor, JsonObject object) {
-        String name = object.has(NAME_KEY) && !object.get(NAME_KEY).isJsonNull() ? readRequiredString(object, NAME_KEY)
-                : descriptor.getLabel();
+        String name = descriptor.getLabel();
+        if (object.has(NAME_KEY)) {
+            name = object.get(NAME_KEY).isJsonNull() ? null : readRequiredString(object, NAME_KEY);
+        }
         Map<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
         if (object.has(UNSTABLE_BARS_KEY) && !object.get(UNSTABLE_BARS_KEY).isJsonNull()) {
             int unstableBars = readRequiredInt(object.get(UNSTABLE_BARS_KEY), UNSTABLE_BARS_KEY);

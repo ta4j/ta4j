@@ -237,8 +237,8 @@ public final class NamedAssetRegistry {
         ComponentDescriptor exit = ComponentDescriptor.builder()
                 .withType("CrossedDownIndicatorRule")
                 .withLabel("exit")
-                .addComponent(slowSma)
                 .addComponent(fastSma)
+                .addComponent(slowSma)
                 .build();
         return ComponentDescriptor.builder()
                 .withType(BaseStrategy.class.getSimpleName())
@@ -478,11 +478,11 @@ public final class NamedAssetRegistry {
                         args.positiveInt(1));
                 return ComponentDescriptor.builder()
                         .withType("CrossedDownIndicatorRule")
-                        .addComponent(slow)
                         .addComponent(fast)
+                        .addComponent(slow)
                         .build();
             }, (descriptor, registry) -> smaCrossRuleExpression("SmaCrossDown", "CrossedDownIndicatorRule", descriptor,
-                    true));
+                    false));
             registerRule("And", List.of("left", "right"), args -> compositeRule("AndRule", args),
                     (descriptor, registry) -> compositeRuleExpression("And", "AndRule", descriptor, registry));
             registerRule("AndRule", List.of("left", "right"), args -> compositeRule("AndRule", args),

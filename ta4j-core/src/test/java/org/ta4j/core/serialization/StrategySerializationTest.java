@@ -336,6 +336,22 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void compactJsonRoundTripsUnnamedRuleAuthoredStrategy() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator fast = new SMAIndicator(close, 2);
+        SMAIndicator slow = new SMAIndicator(close, 3);
+        Strategy original = new BaseStrategy(new CrossedUpIndicatorRule(fast, slow), new StopLossRule(close, 1.5), 1);
+
+        String compactJson = original.toCompactJson();
+        Strategy restored = Strategy.fromJson(series, compactJson);
+
+        assertThat(compactJson).doesNotContain("\"name\"");
+        assertThat(restored.getName()).isNull();
+        assertThat(restored.toJson()).isEqualTo(original.toJson());
+    }
+
+    @Test
     public void compactJsonUsesStrategyMacroWhenAvailable() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -350,6 +366,24 @@ public class StrategySerializationTest {
         assertThat(compactJson).contains("\"strategy\":\"SMA(2,3)\"");
         assertThat(compactJson).contains("\"name\":\"Macro_Crossover\"");
         assertThat(compactJson).contains("\"unstableBars\":1");
+        assertThat(restored.toJson()).isEqualTo(original.toJson());
+    }
+
+    @Test
+    public void compactJsonStrategyMacroPreservesUnnamedStrategy() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator fast = new SMAIndicator(close, 2);
+        SMAIndicator slow = new SMAIndicator(close, 3);
+        Strategy original = new BaseStrategy(new CrossedUpIndicatorRule(fast, slow),
+                new CrossedDownIndicatorRule(fast, slow), 1);
+
+        String compactJson = original.toCompactJson();
+        Strategy restored = Strategy.fromJson(series, compactJson);
+
+        assertThat(compactJson).contains("\"strategy\":\"SMA(2,3)\"");
+        assertThat(compactJson).contains("\"name\":null");
+        assertThat(restored.getName()).isNull();
         assertThat(restored.toJson()).isEqualTo(original.toJson());
     }
 
