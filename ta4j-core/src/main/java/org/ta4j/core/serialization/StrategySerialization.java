@@ -752,8 +752,8 @@ public final class StrategySerialization {
         if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()
                 && !descriptor.getLabel().equals(defaults.getLabel())) {
             object.addProperty(NAME_KEY, descriptor.getLabel());
-        } else if ((descriptor.getLabel() == null || descriptor.getLabel().isBlank())
-                && defaults.getLabel() != null && !defaults.getLabel().isBlank()) {
+        } else if ((descriptor.getLabel() == null || descriptor.getLabel().isBlank()) && defaults.getLabel() != null
+                && !defaults.getLabel().isBlank()) {
             object.add(NAME_KEY, JsonNull.INSTANCE);
         }
         Object unstableBars = descriptor.getParameters().get(UNSTABLE_BARS_KEY);
