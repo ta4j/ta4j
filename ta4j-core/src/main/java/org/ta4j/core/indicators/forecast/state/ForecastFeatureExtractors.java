@@ -120,6 +120,75 @@ public final class ForecastFeatureExtractors {
         };
     }
 
+    /**
+     * Extracts the online change-point default shape
+     * {@code [mean, volatility, recent_change_probability, most_likely_run_length]}.
+     *
+     * <p>
+     * Return location and volatility use raw log-return units. Recent change
+     * probability is a probability in {@code [0, 1]}, and most likely run length is
+     * measured in observations.
+     *
+     * <p>
+     * This convenience is bound to the default recent-change window of five. Use
+     * {@link #changePoint(int)} for a differently configured estimator.
+     *
+     * @return four-feature online change-point extractor for window five
+     * @since 0.23.1
+     */
+    public static ForecastFeatureExtractor<OnlineChangePointForecastState> changePoint() {
+        return changePoint(5);
+    }
+
+    /**
+     * Extracts the online change-point shape for a specific recent-change window.
+     * The extractor rejects states produced with a different window so persisted
+     * feature rows cannot silently mix incompatible probability meanings.
+     *
+     * @param recentChangeWindow inclusive run-length boundary represented by the
+     *                           probability feature
+     * @return four-feature online change-point extractor bound to the window
+     * @since 0.23.1
+     */
+    public static ForecastFeatureExtractor<OnlineChangePointForecastState> changePoint(int recentChangeWindow) {
+        if (recentChangeWindow < 1) {
+            throw new IllegalArgumentException("recentChangeWindow must be >= 1");
+        }
+        String schemaId = recentChangeWindow == 5 ? "change-point/default"
+                : "change-point/recent-change/" + recentChangeWindow;
+        ForecastFeatureSchema schema = new ForecastFeatureSchema(schemaId, 1, ReturnRepresentation.LOG,
+                List.of(new ForecastFeatureSchema.Feature("mean", "log-return"),
+                        new ForecastFeatureSchema.Feature("volatility", "log-return"),
+                        new ForecastFeatureSchema.Feature("recent_change_probability", "probability"),
+                        new ForecastFeatureSchema.Feature("most_likely_run_length", "observations")));
+        return new ForecastFeatureExtractor<>() {
+            @Override
+            public ForecastFeatureSchema schema() {
+                return schema;
+            }
+
+            @Override
+            public void extractInto(OnlineChangePointForecastState state, double[] target, int offset) {
+                OnlineChangePointForecastState value = Objects.requireNonNull(state, "state must not be null");
+                double[] destination = Objects.requireNonNull(target, "target must not be null");
+                ReturnMoments moments = value.moments();
+                if (!moments.isStable() || moments.representation() != ReturnRepresentation.LOG) {
+                    throw new IllegalArgumentException("state must contain stable log-return moments");
+                }
+                if (value.recentChangeWindow() != recentChangeWindow) {
+                    throw new IllegalArgumentException("state recent-change window must match the feature schema");
+                }
+                if (offset < 0 || offset > destination.length - schema.dimension()) {
+                    throw new IndexOutOfBoundsException("target does not have room for the schema at offset");
+                }
+                destination[offset] = finiteDouble(moments.mean(), "mean");
+                destination[offset + 1] = finiteDouble(moments.volatility(), "volatility");
+                destination[offset + 2] = finiteDouble(value.recentChangeProbability(), "recent_change_probability");
+                destination[offset + 3] = value.mostLikelyRunLength();
+            }
+        };
+    }
+
     private static <S extends ReturnMomentState> ForecastFeatureExtractor<S> extractor(String id,
             ReturnRepresentation representation, List<ForecastFeatureSchema.Feature> features,
             List<Function<ReturnMoments, Num>> resolvers) {
