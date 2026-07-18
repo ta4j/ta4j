@@ -124,7 +124,7 @@ EOF
 run_quiet_build() {
   export PATH="$TMP/bin:$PATH"
   export FAKE_MAVEN_ARGS="$TMP/maven-args.txt"
-  export QUIET_BUILD_TIMEOUT_SECONDS=0
+  export QUIET_BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
   export BASH_ENV=/dev/null
   "$@"
 }

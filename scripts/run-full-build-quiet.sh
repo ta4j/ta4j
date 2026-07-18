@@ -169,6 +169,59 @@ run_repository_preflight() {
     local -a fixture_pids=()
     local -a fixture_outputs=()
     local output_file
+    local previous_sigint_trap previous_sigterm_trap previous_exit_trap
+    previous_sigint_trap="$(trap -p SIGINT || true)"
+    previous_sigterm_trap="$(trap -p SIGTERM || true)"
+    previous_exit_trap="$(trap -p EXIT || true)"
+
+    restore_preflight_fixture_traps() {
+        if [[ -n "$previous_sigint_trap" ]]; then
+            eval "$previous_sigint_trap"
+        else
+            trap - SIGINT
+        fi
+        if [[ -n "$previous_sigterm_trap" ]]; then
+            eval "$previous_sigterm_trap"
+        else
+            trap - SIGTERM
+        fi
+        if [[ -n "$previous_exit_trap" ]]; then
+            eval "$previous_exit_trap"
+        else
+            trap - EXIT
+        fi
+    }
+
+    cleanup_preflight_fixture_pids() {
+        local pid
+        for pid in "${fixture_pids[@]:-}"; do
+            if kill -0 "$pid" >/dev/null 2>&1; then
+                kill "$pid" >/dev/null 2>&1 || true
+            fi
+        done
+        for pid in "${fixture_pids[@]:-}"; do
+            wait "$pid" >/dev/null 2>&1 || true
+        done
+    }
+
+    preflight_fixture_signal_cleanup() {
+        local exit_status="$1"
+        cleanup_preflight_fixture_pids
+        restore_preflight_fixture_traps
+        cleanup
+        exit "$exit_status"
+    }
+
+    preflight_fixture_exit_cleanup() {
+        cleanup_preflight_fixture_pids
+        restore_preflight_fixture_traps
+        cleanup
+    }
+
+    trap 'preflight_fixture_signal_cleanup 130' SIGINT
+    trap 'preflight_fixture_signal_cleanup 143' SIGTERM
+    trap preflight_fixture_exit_cleanup EXIT
+
     for fixture in "${fixtures[@]}"; do
         output_file="$(mktemp "${TMPDIR:-/tmp}/ta4j-preflight-fixture.XXXXXX")"
         TMP_FILES+=("$output_file")
@@ -184,6 +237,7 @@ run_repository_preflight() {
             status=1
         fi
     done
+    restore_preflight_fixture_traps
 
     for index in "${!fixtures[@]}"; do
         fixture="${fixtures[$index]}"
@@ -331,8 +385,13 @@ run_with_timeout() {
 
     (
         local elapsed=0
+        local sleep_pid=""
+        trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
         while ((elapsed < timeout_seconds)); do
-            sleep 1
+            sleep 1 &
+            sleep_pid="$!"
+            wait "$sleep_pid" >/dev/null 2>&1 || exit 0
+            sleep_pid=""
             if ! kill -0 "$command_pid" >/dev/null 2>&1; then
                 exit 0
             fi

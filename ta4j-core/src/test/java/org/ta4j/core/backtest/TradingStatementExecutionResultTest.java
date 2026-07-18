@@ -314,11 +314,7 @@ public class TradingStatementExecutionResultTest {
 
     private TradingStatementExecutionResult.WeightedCriterion weightedCriterion(AnalysisCriterion criterion,
             double multiplier) {
-        return TradingStatementExecutionResult.WeightedCriterion.of(criterion, numOf(multiplier));
-    }
-
-    private Num numOf(Number number) {
-        return numFactory.numOf(number);
+        return TradingStatementExecutionResult.WeightedCriterion.of(criterion, numFactory.numOf(multiplier));
     }
 
     private MappedCriterion mappedCriterion(TradingStatementExecutionResult<?> result, boolean higherIsBetter,

@@ -202,7 +202,7 @@ assert_maven_evaluation_contract() {
 }
 
 run_test() {
-  TMP="$(mktemp -d)"
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/central-metadata-test.XXXXXX")"
   pushd "$TMP" >/dev/null || exit 1
   export PATH="$TMP/bin:$PATH"
   export BASH_ENV=/dev/null
