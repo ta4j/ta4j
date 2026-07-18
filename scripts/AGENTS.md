@@ -9,6 +9,8 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 - Preserve quiet-build behavior: full log under `.agents/logs/` and concise aggregated stdout with command banner, heartbeat, build result, reactor/test summaries, bounded warning/error/exception/unexpected-output digests, and log path.
 - Keep Maven argument pass-through intact for focused modules, tagged tests, and quality-tool flags, for example `scripts/run-full-build-quiet.sh -- -pl ta4j-core` and `scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration`.
 - Use `mktemp` templates ending in `XXXXXX` for macOS portability.
+- Repository preflight fixtures run in parallel through `run-full-build-quiet.sh`; keep new `scripts/tests/test_*.sh` fixtures isolated, deterministic, temp-directory scoped, and safe under `BASH_ENV=/dev/null`.
+- In script fixtures, fake expensive tools such as Maven, GitHub, network calls, and cross-shell launches when the assertion is command shape, output parsing, or failure handling. Reserve real tool execution for the actual release/build workflow or an explicit opt-in smoke.
 
 ## Scoped AGENTS discovery helper
 

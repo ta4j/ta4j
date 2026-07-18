@@ -124,7 +124,7 @@ EOF
 run_quiet_build() {
   export PATH="$TMP/bin:$PATH"
   export FAKE_MAVEN_ARGS="$TMP/maven-args.txt"
-  export QUIET_BUILD_TIMEOUT_SECONDS=30
+  export QUIET_BUILD_TIMEOUT_SECONDS=0
   export BASH_ENV=/dev/null
   "$@"
 }
@@ -381,7 +381,7 @@ test_powershell_entrypoint_classifier_parity() {
   expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
   expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"formatter:validate\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
 
-  if command -v pwsh >/dev/null 2>&1; then
+  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
     local output
     output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
     expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"

@@ -153,14 +153,45 @@ run_repository_preflight() {
         fi
     fi
 
+    local -a fixtures=()
     local fixture
     for fixture in "$REPO_ROOT"/scripts/tests/test_*.sh; do
         if [[ ! -f "$fixture" ]]; then
             continue
         fi
-        echo "Running ${fixture#"$REPO_ROOT"/}..."
-        bash "$fixture"
+        fixtures+=("$fixture")
     done
+
+    if ((${#fixtures[@]} == 0)); then
+        return 0
+    fi
+
+    local -a fixture_pids=()
+    local -a fixture_outputs=()
+    local output_file
+    for fixture in "${fixtures[@]}"; do
+        output_file="$(mktemp "${TMPDIR:-/tmp}/ta4j-preflight-fixture.XXXXXX")"
+        TMP_FILES+=("$output_file")
+        fixture_outputs+=("$output_file")
+        (cd "$REPO_ROOT" && BASH_ENV=/dev/null bash "$fixture") >"$output_file" 2>&1 &
+        fixture_pids+=("$!")
+    done
+
+    local status=0
+    local index
+    for index in "${!fixture_pids[@]}"; do
+        if ! wait "${fixture_pids[$index]}"; then
+            status=1
+        fi
+    done
+
+    for index in "${!fixtures[@]}"; do
+        fixture="${fixtures[$index]}"
+        echo "Running ${fixture#"$REPO_ROOT"/}..."
+        cat "${fixture_outputs[$index]}"
+    done
+
+    return "$status"
 }
 
 GOALS=(clean license:format formatter:format verify)
@@ -323,6 +354,9 @@ run_with_timeout() {
     local command_status=$?
     set -e
 
+    if kill -0 "$timeout_watcher_pid" >/dev/null 2>&1; then
+        kill "$timeout_watcher_pid" >/dev/null 2>&1 || true
+    fi
     wait "$timeout_watcher_pid" >/dev/null 2>&1 || true
 
     if [[ -s "$timeout_marker_file" ]]; then
@@ -339,10 +373,15 @@ heartbeat_worker() {
     local build_pid="$1"
     local start_time="$2"
     local heartbeat_interval="$3"
+    local sleep_pid=""
+    trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
     while kill -0 "$build_pid" >/dev/null 2>&1; do
         local slept=0
         while ((slept < heartbeat_interval)); do
-            sleep 1
+            sleep 1 &
+            sleep_pid="$!"
+            wait "$sleep_pid" >/dev/null 2>&1 || exit 0
+            sleep_pid=""
             if ! kill -0 "$build_pid" >/dev/null 2>&1; then
                 return 0
             fi

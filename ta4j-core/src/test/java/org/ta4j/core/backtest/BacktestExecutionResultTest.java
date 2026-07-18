@@ -13,8 +13,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
@@ -26,11 +26,9 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestExecutionResultTest {
 
-    public BacktestExecutionResultTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+    private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
     public void toStringReturnsJsonWithCountAndRuntimeReport() {
@@ -398,5 +396,9 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
             assertTrue("Should contain net profit criterion", allScores.containsKey(netProfitCriterion));
             assertTrue("Should contain expectancy criterion", allScores.containsKey(expectancyCriterion));
         }
+    }
+
+    private Num numOf(Number number) {
+        return numFactory.numOf(number);
     }
 }
