@@ -6,6 +6,7 @@ package org.ta4j.core.serialization;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -71,10 +72,14 @@ public final class StrategySerialization {
     private static final String ENTRY_RULE_KEY = "entryRule";
     private static final String EXIT_RULE_KEY = "exitRule";
     private static final String RULES_KEY = "rules";
+    private static final String LABEL_KEY = "label";
+    private static final String PARAMETERS_KEY = "parameters";
+    private static final String COMPONENTS_KEY = "components";
     private static final String V2_ARGS_KEY = "args";
     private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
     private static final int SUPPORTED_V2_VERSION = 2;
     private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
+    private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
@@ -251,14 +256,15 @@ public final class StrategySerialization {
 
     private static Strategy buildV2Strategy(BarSeries series, JsonObject object, NamedAssetRegistry registry) {
         if (object.has(STRATEGY_KEY) && !object.get(STRATEGY_KEY).isJsonNull()) {
-            rejectUnexpectedField(object, ENTRY_RULE_KEY, ENTRY_RULE_KEY);
-            rejectUnexpectedField(object, EXIT_RULE_KEY, EXIT_RULE_KEY);
-            rejectUnexpectedField(object, TYPE_KEY, TYPE_KEY);
+            requireOnlyFields(object, "strategy", VERSION_KEY, STRATEGY_KEY, NAME_KEY, UNSTABLE_BARS_KEY,
+                    STARTING_TYPE_KEY);
             String expression = readRequiredString(object, STRATEGY_KEY);
             ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.STRATEGY, expression, STRATEGY_KEY);
             return fromDescriptor(series, applyV2StrategyOverrides(descriptor, object));
         }
 
+        requireOnlyFields(object, "strategy", VERSION_KEY, TYPE_KEY, NAME_KEY, UNSTABLE_BARS_KEY, STARTING_TYPE_KEY,
+                ENTRY_RULE_KEY, EXIT_RULE_KEY);
         String strategyType = readOptionalString(object, TYPE_KEY);
         if (strategyType != null && !DEFAULT_V2_STRATEGY_TYPE.equals(strategyType)
                 && !BaseStrategy.class.getName().equals(strategyType)) {
@@ -289,10 +295,14 @@ public final class StrategySerialization {
             return RuleSerialization.fromDescriptor(series, descriptor);
         }
         JsonObject object = requireObject(element, location);
+        if (looksLikeCanonicalRuleDescriptor(object)) {
+            ComponentDescriptor descriptor = ComponentSerialization.parse(object.toString());
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
         String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
         JsonElement rulesElement = object.get(RULES_KEY);
         if (rulesElement != null && !rulesElement.isJsonNull()) {
-            rejectUnexpectedField(object, V2_ARGS_KEY, location + "." + V2_ARGS_KEY);
+            requireOnlyFields(object, location, TYPE_KEY, RULES_KEY);
             JsonArray rulesArray = requireArray(rulesElement, location + "." + RULES_KEY);
             if (rulesArray.size() != 2) {
                 throw new IllegalArgumentException(
@@ -307,6 +317,7 @@ public final class StrategySerialization {
             };
         }
 
+        requireOnlyFields(object, location, TYPE_KEY, V2_ARGS_KEY);
         JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
         return switch (type) {
         case "CrossedUp", "CrossedUpIndicatorRule" -> buildCrossedUpRule(series, args, location, registry);
@@ -401,10 +412,11 @@ public final class StrategySerialization {
         String normalizedType = normalizeIndicatorType(type);
 
         if ("ClosePriceIndicator".equals(normalizedType)) {
-            rejectUnexpectedField(object, V2_ARGS_KEY, location + "." + V2_ARGS_KEY);
+            requireOnlyFields(object, location, TYPE_KEY);
             return new ClosePriceIndicator(series);
         }
 
+        requireOnlyFields(object, location, TYPE_KEY, V2_ARGS_KEY);
         JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
         if (args.size() == 1) {
             Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
@@ -473,8 +485,8 @@ public final class StrategySerialization {
             return false;
         }
         String value = element.getAsString().trim();
-        return "ClosePrice".equals(value) || "ClosePrice()".equals(value) || "ClosePriceIndicator".equals(value)
-                || value.contains("(");
+        String numericValue = value.endsWith("%") ? value.substring(0, value.length() - 1).trim() : value;
+        return !JSON_NUMBER_LITERAL.matcher(numericValue).matches();
     }
 
     private static Number parseNumericArgument(JsonElement element, String location) {
@@ -482,21 +494,16 @@ public final class StrategySerialization {
             throw new IllegalArgumentException("Missing numeric argument at " + location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return parseFiniteDouble(element.getAsString(), location);
+            return parseFiniteNumber(element.getAsString(), location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
             String text = element.getAsString().trim();
             if (text.endsWith("%")) {
                 text = text.substring(0, text.length() - 1).trim();
             }
-            return parseFiniteDouble(text, location);
+            return parseFiniteNumber(text, location);
         }
         throw new IllegalArgumentException("Unsupported numeric argument at " + location + ": " + element);
-    }
-
-    private static JsonObject readRequiredObject(JsonObject object, String key) {
-        JsonElement element = object.get(key);
-        return requireObject(element, key);
     }
 
     private static JsonObject requireObject(JsonElement element, String location) {
@@ -594,10 +601,24 @@ public final class StrategySerialization {
         }
     }
 
-    private static void rejectUnexpectedField(JsonObject object, String key, String location) {
-        if (object.has(key)) {
-            throw new IllegalArgumentException("Unexpected field at " + location);
+    private static void requireOnlyFields(JsonObject object, String location, String... allowedKeys) {
+        for (String key : object.keySet()) {
+            boolean allowed = false;
+            for (String allowedKey : allowedKeys) {
+                if (allowedKey.equals(key)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new IllegalArgumentException("Unexpected field at " + location + "." + key);
+            }
         }
+    }
+
+    private static boolean looksLikeCanonicalRuleDescriptor(JsonObject object) {
+        return !object.has(V2_ARGS_KEY) && !object.has(RULES_KEY)
+                && (object.has(LABEL_KEY) || object.has(PARAMETERS_KEY) || object.has(COMPONENTS_KEY));
     }
 
     private static boolean looksLikeV2Envelope(JsonObject object) {
@@ -606,33 +627,16 @@ public final class StrategySerialization {
     }
 
     private static boolean isIntegerLiteral(String value) {
-        if (value == null || value.isEmpty()) {
-            return false;
-        }
-        int start = value.charAt(0) == '-' || value.charAt(0) == '+' ? 1 : 0;
-        if (start == value.length()) {
-            return false;
-        }
-        for (int index = start; index < value.length(); index++) {
-            char character = value.charAt(index);
-            if (character < '0' || character > '9') {
-                return false;
-            }
-        }
-        return true;
+        return value != null && JSON_INTEGER_LITERAL.matcher(value).matches();
     }
 
-    private static double parseFiniteDouble(String value, String location) {
+    private static BigDecimal parseFiniteNumber(String value, String location) {
         String trimmed = value == null ? "" : value.trim();
         if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
         }
         try {
-            double parsed = Double.parseDouble(trimmed);
-            if (!Double.isFinite(parsed)) {
-                throw new NumberFormatException("non-finite numeric value");
-            }
-            return parsed;
+            return new BigDecimal(trimmed);
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
@@ -764,9 +768,10 @@ public final class StrategySerialization {
         }
         Object startingType = descriptor.getParameters().get(STARTING_TYPE_KEY);
         Object defaultStartingType = defaults.getParameters().get(STARTING_TYPE_KEY);
-        if (startingType != null
-                && !Objects.equals(String.valueOf(startingType), String.valueOf(defaultStartingType))) {
-            object.addProperty(STARTING_TYPE_KEY, String.valueOf(startingType));
+        TradeType effectiveStartingType = extractStartingType(startingType);
+        TradeType effectiveDefaultStartingType = extractStartingType(defaultStartingType);
+        if (effectiveStartingType != effectiveDefaultStartingType) {
+            object.addProperty(STARTING_TYPE_KEY, effectiveStartingType.name());
         }
     }
 

@@ -160,16 +160,19 @@ public final class AnalysisCriterionSerialization {
 
     private static String simplifyCriterionType(Class<?> type) {
         String packageName = type.getPackageName();
-        if (packageName != null && packageName.startsWith(CRITERIA_PACKAGE)) {
-            return type.getSimpleName();
+        for (String candidatePackage : CRITERIA_PACKAGES) {
+            if (candidatePackage.equals(packageName)) {
+                return type.getSimpleName();
+            }
         }
         return type.getName();
     }
 
     private static Map<String, Object> describeParameters(AnalysisCriterion criterion) {
-        Map<String, Object> currentState = serializableState(criterion);
+        SerializableState currentState = serializableState(criterion);
         Optional<AnalysisCriterion> defaultCriterion = instantiateDefault(criterion.getClass());
-        if (defaultCriterion.isPresent() && currentState.equals(serializableState(defaultCriterion.get()))) {
+        if (defaultCriterion.isPresent() && currentState.complete()
+                && currentState.equals(serializableState(defaultCriterion.get()))) {
             return Map.of();
         }
         List<Constructor<?>> constructors = constructorsByParameterCount(criterion.getClass());
@@ -190,14 +193,18 @@ public final class AnalysisCriterionSerialization {
     }
 
     private static boolean rebuildsSerializableState(Class<? extends AnalysisCriterion> criterionType,
-            Map<String, Object> parameters, Map<String, Object> expectedState) {
+            Map<String, Object> parameters, SerializableState expectedState) {
+        if (!expectedState.complete()) {
+            return false;
+        }
         try {
             ComponentDescriptor descriptor = ComponentDescriptor.builder()
                     .withType(criterionType.getName())
                     .withParameters(parameters)
                     .build();
             AnalysisCriterion rebuilt = instantiate(criterionType, descriptor);
-            return expectedState.equals(serializableState(rebuilt));
+            SerializableState rebuiltState = serializableState(rebuilt);
+            return rebuiltState.complete() && expectedState.equals(rebuiltState);
         } catch (RuntimeException ex) {
             return false;
         }
@@ -305,18 +312,22 @@ public final class AnalysisCriterionSerialization {
         return Optional.empty();
     }
 
-    private static Map<String, Object> serializableState(Object source) {
+    private static SerializableState serializableState(Object source) {
         LinkedHashMap<String, Object> values = new LinkedHashMap<>();
-        collectSerializableState(source, "", new IdentityHashMap<>(), 0, values);
-        return values;
+        boolean complete = collectSerializableState(source, "", new IdentityHashMap<>(), 0, values);
+        return new SerializableState(Map.copyOf(values), complete);
     }
 
-    private static void collectSerializableState(Object source, String prefix, IdentityHashMap<Object, Boolean> visited,
-            int depth, Map<String, Object> values) {
-        if (source == null || visited.containsKey(source) || depth > 2) {
-            return;
+    private static boolean collectSerializableState(Object source, String prefix,
+            IdentityHashMap<Object, Boolean> visited, int depth, Map<String, Object> values) {
+        if (source == null || visited.containsKey(source)) {
+            return true;
+        }
+        if (depth > 2) {
+            return false;
         }
         visited.put(source, Boolean.TRUE);
+        boolean complete = true;
         for (Class<?> type = source.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
             for (Field field : type.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
@@ -327,10 +338,13 @@ public final class AnalysisCriterionSerialization {
                 if (value != null && isDescriptorParameterValue(value)) {
                     values.put(key, descriptorParameterValue(value));
                 } else if (value != null && shouldSearchNestedValue(value)) {
-                    collectSerializableState(value, key + ".", visited, depth + 1, values);
+                    complete &= collectSerializableState(value, key + ".", visited, depth + 1, values);
+                } else if (value != null) {
+                    complete = false;
                 }
             }
         }
+        return complete;
     }
 
     private static Object readField(Field field, Object source) {
@@ -417,7 +431,7 @@ public final class AnalysisCriterionSerialization {
             throw new IllegalArgumentException("Analysis criterion descriptor missing type");
         }
         try {
-            Class<?> clazz = Class.forName(type);
+            Class<?> clazz = Class.forName(type, false, AnalysisCriterionSerialization.class.getClassLoader());
             if (AnalysisCriterion.class.isAssignableFrom(clazz)) {
                 return (Class<? extends AnalysisCriterion>) clazz;
             }
@@ -426,7 +440,8 @@ public final class AnalysisCriterionSerialization {
         }
         for (String packageName : CRITERIA_PACKAGES) {
             try {
-                Class<?> clazz = Class.forName(packageName + "." + type);
+                Class<?> clazz = Class.forName(packageName + "." + type, false,
+                        AnalysisCriterionSerialization.class.getClassLoader());
                 if (AnalysisCriterion.class.isAssignableFrom(clazz)) {
                     return (Class<? extends AnalysisCriterion>) clazz;
                 }
@@ -439,6 +454,7 @@ public final class AnalysisCriterionSerialization {
 
     private static AnalysisCriterion instantiate(Class<? extends AnalysisCriterion> criterionType,
             ComponentDescriptor descriptor) {
+        initializeCriterionClass(criterionType);
         List<Constructor<?>> orderedConstructors = constructorsByParameterCount(criterionType);
         orderedConstructors.sort((left, right) -> Integer.compare(right.getParameterCount(), left.getParameterCount()));
         for (Constructor<?> constructor : orderedConstructors) {
@@ -457,6 +473,14 @@ public final class AnalysisCriterionSerialization {
         }
         throw new IllegalArgumentException(
                 "No compatible constructor found for analysis criterion: " + criterionType.getName());
+    }
+
+    private static void initializeCriterionClass(Class<? extends AnalysisCriterion> criterionType) {
+        try {
+            Class.forName(criterionType.getName(), true, criterionType.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalStateException("Failed to initialize analysis criterion: " + criterionType.getName(), ex);
+        }
     }
 
     private static Object[] matchConstructor(Constructor<?> constructor, Map<String, Object> parameters) {
@@ -572,5 +596,8 @@ public final class AnalysisCriterionSerialization {
         } catch (ArithmeticException ex) {
             return null;
         }
+    }
+
+    private record SerializableState(Map<String, Object> values, boolean complete) {
     }
 }

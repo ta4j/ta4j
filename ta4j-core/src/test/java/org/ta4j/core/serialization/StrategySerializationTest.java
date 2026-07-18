@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
@@ -20,6 +21,8 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.named.NamedAssetRegistry;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -370,6 +373,26 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void compactJsonStrategyMacroPreservesExplicitBuyOverrideWhenMacroDefaultsShort() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
+        NamedAssetRegistry registry = NamedAssetRegistry.builder()
+                .registerStrategy("ShortMacro", List.of(), args -> shortMacroDescriptor(),
+                        (descriptor, ignoredRegistry) -> "BaseStrategy".equals(descriptor.getType())
+                                ? Optional.of("ShortMacro")
+                                : Optional.empty())
+                .build();
+        Strategy original = new BaseStrategy("Short Macro", new SerializableRule(true), new SerializableRule(false));
+
+        String compactJson = original.toCompactJson(registry);
+        Strategy restored = Strategy.fromJson(series, compactJson, registry);
+
+        assertThat(compactJson).contains("\"strategy\":\"ShortMacro\"");
+        assertThat(compactJson).contains("\"startingType\":\"BUY\"");
+        assertThat(restored.getStartingType()).isEqualTo(TradeType.BUY);
+        assertThat(restored.toJson()).isEqualTo(original.toJson());
+    }
+
+    @Test
     public void compactJsonStrategyMacroPreservesUnnamedStrategy() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -421,6 +444,67 @@ public class StrategySerializationTest {
                 () -> Strategy.fromJson(series, v2Json));
 
         assertThat(exception).hasMessageContaining("Unsupported v2 rule type: XorRule");
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsUnexpectedStrategyField() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "UnexpectedStrategyField",
+                  "unstableBar": 1,
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(2)", 50] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("strategy.unstableBar");
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsUnexpectedRuleField() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "UnexpectedRuleField",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(2)", 50], "threshold": 50 },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.threshold");
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsUnexpectedIndicatorField() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "UnexpectedIndicatorField",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [
+                      { "type": "RSI", "args": [2], "period": 14 },
+                      50
+                    ]
+                  },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.args[0].period");
     }
 
     @Test
@@ -516,6 +600,33 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoPayloadRejectsNonJsonIntegerObjectValues() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        for (String barCount : List.of("+7", "07")) {
+            String v2Json = """
+                    {
+                      "version": 2,
+                      "name": "BadInteger",
+                      "entryRule": {
+                        "type": "OverIndicatorRule",
+                        "args": [
+                          { "type": "SMA", "args": ["%s"] },
+                          50
+                        ]
+                      },
+                      "exitRule": { "type": "StopLossRule", "args": ["1.5%%"] }
+                    }
+                    """.formatted(barCount);
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> Strategy.fromJson(series, v2Json));
+
+            assertThat(exception).hasMessageContaining("entryRule.args[0].args[0]").hasMessageContaining(barCount);
+        }
+    }
+
+    @Test
     public void versionTwoPayloadDecimalObjectIndicatorBarCountThrows() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         String v2Json = """
@@ -578,7 +689,7 @@ public class StrategySerializationTest {
     public void versionTwoPayloadNonFiniteNumericArgumentsThrow() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
 
-        for (String numericValue : List.of("\"NaN\"", "\"Infinity\"", "\"1e309\"", "1e309")) {
+        for (String numericValue : List.of("\"NaN\"", "\"Infinity\"")) {
             String v2Json = """
                     {
                       "version": 2,
@@ -593,6 +704,53 @@ public class StrategySerializationTest {
 
             assertThat(exception).hasMessageContaining("entryRule.args[1]");
         }
+    }
+
+    @Test
+    public void versionTwoPayloadPreservesAuthoredNumericPrecision() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(40))
+                .withData(1, 2, 3)
+                .build();
+        String threshold = "9007199254740993";
+        String stopLoss = "1.5000000000000000001";
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "PreciseNumbers",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["ClosePrice", "%s"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["%s%%"] }
+                }
+                """.formatted(threshold, stopLoss);
+
+        Strategy restored = Strategy.fromJson(series, v2Json);
+
+        assertThat(restored.toJson()).contains("\"value\":\"" + threshold + "\"");
+        assertThat(restored.toJson()).contains("\"lossPercentage\":\"" + stopLoss + "\"");
+    }
+
+    @Test
+    public void versionTwoPayloadTreatsCustomZeroArgIndicatorAliasesAsIndicators() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        NamedAssetRegistry registry = NamedAssetRegistry.builder()
+                .withDefaults()
+                .registerIndicator("VWAP", List.of(), args -> {
+                    args.requireCount(0);
+                    return ComponentDescriptor.builder().withType("ClosePriceIndicator").build();
+                })
+                .build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "CustomAlias",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["SMA(2)", "VWAP"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        Strategy restored = Strategy.fromJson(series, v2Json, registry);
+
+        assertThat(restored.toJson()).contains("\"type\":\"OverIndicatorRule\"");
+        assertThat(restored.toJson()).contains("\"type\":\"ClosePriceIndicator\"");
     }
 
     @Test
@@ -681,6 +839,20 @@ public class StrategySerializationTest {
         TradingRecord record = new BaseTradingRecord();
         assertThat(restored.shouldEnter(3, record)).isTrue();
         assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
+    @Test
+    public void versionTwoPayloadAcceptsCanonicalRuleDescriptorObjects() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Strategy original = new BaseStrategy("CanonicalRuleFallback", new SerializableRule(true),
+                new StopLossRule(close, 1.5), 1);
+
+        String compactJson = original.toCompactJson();
+        Strategy restored = Strategy.fromJson(series, compactJson);
+
+        assertThat(compactJson).contains(SerializableRule.class.getName());
+        assertThat(restored.toJson()).isEqualTo(original.toJson());
     }
 
     @Test
@@ -1187,5 +1359,23 @@ public class StrategySerializationTest {
             token = token.substring(1);
         }
         return Integer.parseInt(token);
+    }
+
+    private static ComponentDescriptor shortMacroDescriptor() {
+        return ComponentDescriptor.builder()
+                .withType("BaseStrategy")
+                .withLabel("Short Macro")
+                .withParameters(Map.of("unstableBars", 0, "startingType", "SELL"))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("entry")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
     }
 }
