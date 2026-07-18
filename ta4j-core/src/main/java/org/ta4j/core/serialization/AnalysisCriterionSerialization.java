@@ -350,7 +350,7 @@ public final class AnalysisCriterionSerialization {
 
     private static boolean isDescriptorParameterValue(Object value) {
         return value instanceof String || value instanceof Number || value instanceof Boolean
-                || value instanceof Enum<?> || value instanceof ZoneId || value instanceof BigDecimal;
+                || value instanceof Enum<?> || value instanceof ZoneId;
     }
 
     private static boolean isCompatibleParameterValue(Class<?> parameterType, Object value) {
@@ -358,8 +358,11 @@ public final class AnalysisCriterionSerialization {
         if (boxedType.isInstance(value)) {
             return true;
         }
-        if (boxedType == String.class || Number.class.isAssignableFrom(boxedType)) {
-            return value instanceof String || value instanceof Number || value instanceof BigDecimal;
+        if (boxedType == String.class) {
+            return value instanceof String;
+        }
+        if (Number.class.isAssignableFrom(boxedType)) {
+            return value instanceof Number;
         }
         if (boxedType.isEnum()) {
             return value instanceof Enum<?> enumValue && boxedType.isInstance(enumValue);
