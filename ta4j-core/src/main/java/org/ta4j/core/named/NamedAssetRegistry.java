@@ -878,8 +878,7 @@ public final class NamedAssetRegistry {
             if (text.endsWith("%")) {
                 text = text.substring(0, text.length() - 1).trim();
             }
-            parseFiniteDouble(text, argLocation(index));
-            return trimNumber(text);
+            return normalizeFiniteNumber(text, argLocation(index));
         }
 
         /**
@@ -1203,28 +1202,16 @@ public final class NamedAssetRegistry {
         return value != null && JSON_INTEGER_LITERAL.matcher(value).matches();
     }
 
-    private static double parseFiniteDouble(String value, String location) {
+    private static String normalizeFiniteNumber(String value, String location) {
         String trimmed = value == null ? "" : value.trim();
         if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
         }
         try {
-            double parsed = Double.parseDouble(trimmed);
-            if (!Double.isFinite(parsed)) {
-                throw new NumberFormatException("non-finite numeric value");
-            }
-            return parsed;
-        } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
-        }
-    }
-
-    private static String trimNumber(String text) {
-        try {
-            BigDecimal decimal = new BigDecimal(text);
+            BigDecimal decimal = new BigDecimal(trimmed);
             return decimal.stripTrailingZeros().toPlainString();
         } catch (NumberFormatException ex) {
-            return text;
+            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
     }
 }

@@ -6,6 +6,7 @@ package org.ta4j.core.named;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -110,6 +111,20 @@ public class NamedAssetRegistryTest {
 
         assertThat(plusPrefixed).hasMessageContaining("indicator.args[0]").hasMessageContaining("+7");
         assertThat(leadingZero).hasMessageContaining("indicator.args[0]").hasMessageContaining("07");
+    }
+
+    @Test
+    public void finiteNumberArgumentsAcceptNumbersOutsideDoubleRange() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+        String authored = "1e309";
+        String normalized = new BigDecimal(authored).stripTrailingZeros().toPlainString();
+
+        ComponentDescriptor over = registry.toDescriptor(NamedAssetKind.RULE, "Over(ClosePrice," + authored + ")");
+        ComponentDescriptor stopLoss = registry.toDescriptor(NamedAssetKind.RULE, "StopLoss(" + authored + "%)");
+
+        assertThat(over.getComponents().get(1).getType()).isEqualTo("ConstantIndicator");
+        assertThat(over.getComponents().get(1).getParameters()).containsEntry("value", normalized);
+        assertThat(stopLoss.getParameters()).containsEntry("lossPercentage", normalized);
     }
 
     @Test

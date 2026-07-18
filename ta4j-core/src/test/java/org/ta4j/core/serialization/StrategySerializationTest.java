@@ -299,6 +299,42 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoRuleStringShorthandAcceptsNumbersOutsideDoubleRange() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(40))
+                .withData(1, 2, 3)
+                .build();
+        String authored = "1e309";
+        String shorthandJson = """
+                {
+                  "version": 2,
+                  "name": "Huge_Number_Shorthand",
+                  "entryRule": "Over(ClosePrice,%s)",
+                  "exitRule": "StopLoss(%s%%)"
+                }
+                """.formatted(authored, authored);
+        String objectJson = """
+                {
+                  "version": 2,
+                  "name": "Huge_Number_Shorthand",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["ClosePrice", "%s"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["%s%%"] }
+                }
+                """.formatted(authored, authored);
+
+        Strategy shorthandRestored = Strategy.fromJson(series, shorthandJson);
+        Strategy objectRestored = Strategy.fromJson(series, objectJson);
+        String shorthandCanonicalJson = shorthandRestored.toJson();
+        String objectCanonicalJson = objectRestored.toJson();
+
+        assertThat(shorthandCanonicalJson).contains("\"value\":");
+        assertThat(shorthandCanonicalJson).contains("\"lossPercentage\":");
+        assertThat(shorthandCanonicalJson).doesNotContain("Infinity");
+        assertThat(objectCanonicalJson).contains("\"value\":");
+        assertThat(objectCanonicalJson).contains("\"lossPercentage\":");
+        assertThat(objectCanonicalJson).doesNotContain("Infinity");
+    }
+
+    @Test
     public void versionTwoPayloadAcceptsTopLevelStrategyMacro() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 4, 3, 5).build();
         String v2Json = """
