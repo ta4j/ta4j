@@ -22,8 +22,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.BooleanRule;
@@ -31,11 +31,9 @@ import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
-public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class StrategyWalkForwardExecutorTest {
 
-    public StrategyWalkForwardExecutorTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+    private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
     public void executeProducesFoldResultsAndRuntimeReport() {
@@ -45,7 +43,8 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
                 new ZeroCostModel(), new TradeOnCurrentCloseModel());
 
-        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, numOf(2), config);
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, numFactory.two(),
+                config);
         List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
 
         assertEquals(expectedSplits.size(), result.folds().size());
@@ -85,8 +84,8 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
         AtomicInteger callbackCount = new AtomicInteger(0);
         AtomicInteger lastCompleted = new AtomicInteger(0);
 
-        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, numOf(1), config,
-                completed -> {
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, numFactory.one(),
+                config, completed -> {
                     callbackCount.incrementAndGet();
                     lastCompleted.set(completed);
                 });

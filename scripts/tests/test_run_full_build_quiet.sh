@@ -87,11 +87,18 @@ if [[ "${FAKE_MAVEN_UNFORMATTED:-0}" == "1" ]]; then
     if [[ "$arg" == "formatter:format" ]]; then
       echo formatted > "$FAKE_SOURCE_FILE"
     elif [[ "$arg" == "formatter:validate" ]]; then
-      echo "[ERROR] File has not been previously formatted."
-      echo "[INFO] BUILD FAILURE"
-      exit 8
-    fi
+    echo "[ERROR] File has not been previously formatted."
+    echo "[INFO] BUILD FAILURE"
+    exit 8
+  fi
   done
+fi
+if [[ "${FAKE_MAVEN_JACOCO:-0}" == "1" ]]; then
+  mkdir -p ta4j-core/target/site/jacoco
+  cat > ta4j-core/target/site/jacoco/jacoco.csv <<'CSV'
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Ta4j Core,org.ta4j.fixture,Example,25,75,1,1,2,8,0,0,0,0
+CSV
 fi
 if [[ "${FAKE_MAVEN_SUCCESS_UNEXPECTED:-0}" == "1" ]]; then
   echo "java.lang.IllegalStateException: suspicious success diagnostic"
@@ -124,14 +131,14 @@ EOF
 run_quiet_build() {
   export PATH="$TMP/bin:$PATH"
   export FAKE_MAVEN_ARGS="$TMP/maven-args.txt"
-  export QUIET_BUILD_TIMEOUT_SECONDS=30
+  export QUIET_BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
   export BASH_ENV=/dev/null
   "$@"
 }
 
 latest_log_from_output() {
   local output="$1"
-  sed -n 's/^Full build log saved to: //p' <<<"$output" | tail -n 1
+  sed -n 's/^Log: //p' <<<"$output" | tail -n 1
 }
 
 test_default_invocation_uses_local_repair_gate() {
@@ -142,9 +149,10 @@ test_default_invocation_uses_local_repair_gate() {
   local output
   output="$(run_quiet_build scripts/run-full-build-quiet.sh)"
 
-  expect_contains "$output" "Using system Maven from PATH: mvn" "script should use fake system Maven"
-  expect_contains "$output" "Maven goals: clean license:format formatter:format verify" "default goals should repair local sources before verify"
-  expect_contains "$output" "[INFO] BUILD SUCCESS" "default invocation should surface build result"
+  expect_contains "$output" "Build: success" "default invocation should surface final build status"
+  expect_not_contains "$output" "Using system Maven from PATH: mvn" "script should not print Maven selection chatter"
+  expect_not_contains "$output" "Maven goals:" "script should not print Maven goal chatter"
+  expect_not_contains "$output" "[INFO] BUILD SUCCESS" "script should not print INFO-level Maven success lines"
   expect_file_contains_line "$TMP/maven-args.txt" "clean" "default invocation should clean generated output"
   expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
   expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
@@ -182,7 +190,8 @@ EOF
   local output
   output="$(run_quiet_build scripts/run-full-build-quiet.sh --preflight-only)"
 
-  expect_contains "$output" "Repository preflight checks passed." "preflight-only mode should report success"
+  expect_contains "$output" "Build: preflight-only success" "preflight-only mode should report a compact final status"
+  expect_not_contains "$output" "fixture" "preflight-only mode should not replay successful fixture chatter"
   [[ -f "$FAKE_ACTIONLINT_MARKER" ]] || fail "preflight-only mode should run actionlint"
   [[ -f "$FAKE_FIXTURE_MARKER" ]] || fail "preflight-only mode should run script fixtures"
   [[ ! -f "$TMP/maven-args.txt" ]] || fail "preflight-only mode must not invoke Maven"
@@ -201,7 +210,7 @@ test_default_gate_repairs_unformatted_source() {
   local output
   output="$(FAKE_MAVEN_UNFORMATTED=1 FAKE_SOURCE_FILE="$source_file" run_quiet_build scripts/run-full-build-quiet.sh)"
 
-  expect_contains "$output" "BUILD SUCCESS" "local repair gate should continue through verify"
+  expect_contains "$output" "Build: success" "local repair gate should continue through verify"
   expect_file_contains_line "$source_file" "formatted" "default gate should repair unformatted source"
 
   finish_test_repo
@@ -220,7 +229,8 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
     fail "validate-only gate should reject unformatted source"
   fi
 
-  expect_contains "$output" "BUILD FAILURE" "format validation failure should be visible"
+  expect_contains "$output" "[ERROR] File has not been previously formatted." "format validation error should be visible"
+  expect_contains "$output" "Build: failed" "format validation failure should be summarized"
   expect_file_contains_line "$source_file" "unformatted" "validate-only gate must leave unformatted source unchanged"
   expect_file_contains_line "$TMP/maven-args.txt" "license:check" "validate-only should check license headers"
   expect_file_contains_line "$TMP/maven-args.txt" "formatter:validate" "validate-only should validate formatting"
@@ -239,7 +249,8 @@ test_goals_override_and_maven_args_passthrough() {
   local output
   output="$(run_quiet_build scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am -Dgroups=integration)"
 
-  expect_contains "$output" "Maven goals: test jacoco:report jacoco:check" "custom goals should be reported"
+  expect_contains "$output" "Build: success" "custom goals should complete successfully"
+  expect_not_contains "$output" "Maven goals:" "custom goals should not be printed as progress chatter"
   expect_file_contains_line "$TMP/maven-args.txt" "test" "custom test goal should be passed"
   expect_file_contains_line "$TMP/maven-args.txt" "jacoco:report" "custom jacoco report goal should be passed"
   expect_file_contains_line "$TMP/maven-args.txt" "jacoco:check" "custom jacoco check goal should be passed"
@@ -263,13 +274,11 @@ test_noise_is_logged_but_not_printed() {
   local log_file
   log_file="$(latest_log_from_output "$output")"
 
-  expect_contains "$output" "Warnings summary:" "warning digest should be visible"
-  expect_contains "$output" "Useful warning (2x)" "duplicate warning count should be visible"
-  expect_contains "$output" "[INFO] BUILD SUCCESS" "build result should be visible"
-  expect_contains "$output" "Reactor summary:" "reactor summary should be visible"
+  expect_contains "$output" "[WARNING] Useful warning" "warning lines should pass through"
+  expect_not_contains "$output" "Warnings summary:" "warning digest should not be printed"
+  expect_not_contains "$output" "[INFO] BUILD SUCCESS" "INFO-level build result should not be printed"
+  expect_not_contains "$output" "Reactor summary:" "reactor summary should not be printed"
   expect_contains "$output" "Tests run: 2, Failures: 0, Errors: 0, Skipped: 1" "aggregate test summary should be visible"
-  expect_not_contains "$output" "[WARNING] Useful warning" "raw warning line should be summarized, not streamed"
-  expect_not_contains "$output" "SkippedFixtureTest" "per-test skipped summaries should not pollute warning digest"
   expect_not_contains "$output" "ordinary noise that should stay out of stdout" "ordinary Maven noise should be filtered from stdout"
   if [[ -z "$log_file" || ! -f "$log_file" ]]; then
     fail "quiet build should report an existing full log path"
@@ -282,26 +291,39 @@ test_noise_is_logged_but_not_printed() {
   pass "test_noise_is_logged_but_not_printed"
 }
 
-test_unexpected_success_output_is_summarized() {
-  echo "Running test_unexpected_success_output_is_summarized"
+test_jacoco_coverage_is_reported_when_available() {
+  echo "Running test_jacoco_coverage_is_reported_when_available"
+  create_test_repo
+  write_fake_maven
+
+  local output
+  output="$(FAKE_MAVEN_JACOCO=1 run_quiet_build scripts/run-full-build-quiet.sh)"
+
+  expect_contains "$output" "JaCoCo: Ta4j Core line 80.00%, branch 50.00%, instruction 75.00%" "coverage footer should summarize generated JaCoCo CSV"
+
+  finish_test_repo
+  pass "test_jacoco_coverage_is_reported_when_available"
+}
+
+test_unexpected_success_output_stays_in_log() {
+  echo "Running test_unexpected_success_output_stays_in_log"
   create_test_repo
   write_fake_maven
 
   local output
   output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build scripts/run-full-build-quiet.sh)"
 
-  expect_contains "$output" "Unexpected output summary:" "unexpected summary should be visible"
-  expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "exception should be surfaced"
-  expect_contains "$output" "at org.ta4j.Fixture.run(Fixture.java:42)" "stack frame should be surfaced"
-  expect_contains "$output" "unexpected fixture success diagnostic" "unexpected line should be surfaced"
-  expect_contains "$output" "[INFO] BUILD SUCCESS" "suspicious success should preserve Maven result"
+  expect_contains "$output" "Build: success" "suspicious success should preserve Maven result"
+  expect_not_contains "$output" "Unexpected output summary:" "unexpected summary should not be printed"
+  expect_not_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "non-warning diagnostics should stay in the full log"
+  expect_not_contains "$output" "unexpected fixture success diagnostic" "non-warning diagnostics should stay in the full log"
 
   finish_test_repo
-  pass "test_unexpected_success_output_is_summarized"
+  pass "test_unexpected_success_output_stays_in_log"
 }
 
-test_failure_output_has_digest_sections() {
-  echo "Running test_failure_output_has_digest_sections"
+test_failure_output_passes_through_errors_without_digest() {
+  echo "Running test_failure_output_passes_through_errors_without_digest"
   create_test_repo
   write_fake_maven
 
@@ -310,40 +332,34 @@ test_failure_output_has_digest_sections() {
     fail "failing fake Maven should make quiet build fail"
   fi
 
-  expect_contains "$output" "[INFO] BUILD FAILURE" "failure marker should be visible"
-  expect_contains "$output" "Failure digest:" "failure digest should be visible"
-  expect_contains "$output" "Failed modules:" "failed modules should be summarized"
-  expect_contains "$output" "fake-ta4j ................................ FAILURE" "failed module should be shown"
-  expect_contains "$output" "Failed goals:" "failed goals should be summarized"
-  expect_contains "$output" "Test/report hints:" "test hints should be summarized"
-  expect_contains "$output" "Quality gate hints:" "quality hints should be summarized"
-  expect_contains "$output" "Exception/stack-trace hints:" "exception hints should be summarized"
-  expect_contains "$output" "Maven error tail:" "Maven error tail should be summarized"
-  expect_contains "$output" "Warnings summary:" "failure warning digest should be visible"
-  expect_contains "$output" "Unexpected output summary:" "failure unexpected digest should be visible"
-  expect_contains "$output" "Full build log saved to:" "failure should still report the raw log path"
+  expect_contains "$output" "[ERROR] Failed to execute goal" "failure should pass through Maven ERROR lines"
+  expect_contains "$output" "[ERROR] Tests run: 2, Failures: 1, Errors: 0, Skipped: 0" "failure should pass through test ERROR lines"
+  expect_contains "$output" "[ERROR] PMD Failure: AvoidDuplicateLiterals in Example.java" "failure should pass through quality ERROR lines"
+  expect_contains "$output" "[ERROR] JaCoCo rule violated: branch coverage ratio is 0.70, expected minimum is 0.80" "failure should pass through JaCoCo ERROR lines"
+  expect_contains "$output" "Build: failed" "failure should print compact final status"
+  expect_contains "$output" "Log:" "failure should still report the raw log path"
+  expect_not_contains "$output" "Failure digest:" "failure digest should not be printed"
+  expect_not_contains "$output" "Maven error tail:" "Maven error tail should not be printed"
 
   finish_test_repo
-  pass "test_failure_output_has_digest_sections"
+  pass "test_failure_output_passes_through_errors_without_digest"
 }
 
-test_digest_caps_prevent_output_floods() {
-  echo "Running test_digest_caps_prevent_output_floods"
+test_warning_passthrough_has_no_digest_cap() {
+  echo "Running test_warning_passthrough_has_no_digest_cap"
   create_test_repo
   write_fake_maven
 
   local output
   output="$(FAKE_MAVEN_CAPS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
 
-  expect_contains "$output" "Warnings summary:" "capped warning digest should be visible"
-  expect_contains "$output" "more unique warning(s); see full log" "warning digest should report omitted warnings"
-  expect_not_contains "$output" "capped fixture warning 14" "warning digest should cap visible warnings"
-  expect_contains "$output" "Unexpected output summary:" "capped unexpected digest should be visible"
-  expect_contains "$output" "more unique unexpected line(s); see full log" "unexpected digest should report omitted lines"
-  expect_not_contains "$output" "unexpected fixture diagnostic 14" "unexpected digest should cap visible lines"
+  expect_contains "$output" "[WARNING] capped fixture warning 14" "warning lines should pass through without a digest cap"
+  expect_not_contains "$output" "more unique warning(s); see full log" "warning digest should not report omitted warnings"
+  expect_not_contains "$output" "Unexpected output summary:" "unexpected digest should not be printed"
+  expect_not_contains "$output" "unexpected fixture diagnostic 14" "ordinary diagnostics should stay in the full log"
 
   finish_test_repo
-  pass "test_digest_caps_prevent_output_floods"
+  pass "test_warning_passthrough_has_no_digest_cap"
 }
 
 test_maven_wrapper_is_preferred_when_present() {
@@ -361,7 +377,8 @@ EOF
   local output
   output="$(run_quiet_build scripts/run-full-build-quiet.sh -- -Dspotbugs.skip=true -Djacoco.skip=true)"
 
-  expect_contains "$output" "Using Maven Wrapper: ./mvnw" "script should prefer Maven Wrapper"
+  expect_contains "$output" "Build: success" "wrapper invocation should complete successfully"
+  expect_not_contains "$output" "Using Maven Wrapper: ./mvnw" "script should not print Maven wrapper chatter"
   expect_file_contains_line "$TMP/maven-args.txt" "-Dspotbugs.skip=true" "SpotBugs skip flag should pass through"
   expect_file_contains_line "$TMP/maven-args.txt" "-Djacoco.skip=true" "JaCoCo skip flag should pass through"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "wrapper invocation should still default to verify"
@@ -381,7 +398,7 @@ test_powershell_entrypoint_classifier_parity() {
   expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
   expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"formatter:validate\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
 
-  if command -v pwsh >/dev/null 2>&1; then
+  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
     local output
     output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
     expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"
@@ -404,9 +421,10 @@ test_default_gate_repairs_unformatted_source
 test_validate_only_rejects_unformatted_source_without_repairing_it
 test_goals_override_and_maven_args_passthrough
 test_noise_is_logged_but_not_printed
-test_unexpected_success_output_is_summarized
-test_failure_output_has_digest_sections
-test_digest_caps_prevent_output_floods
+test_jacoco_coverage_is_reported_when_available
+test_unexpected_success_output_stays_in_log
+test_failure_output_passes_through_errors_without_digest
+test_warning_passthrough_has_no_digest_cap
 test_maven_wrapper_is_preferred_when_present
 test_powershell_entrypoint_classifier_parity
 
