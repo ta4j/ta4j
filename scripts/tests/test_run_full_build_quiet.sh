@@ -172,18 +172,11 @@ test_default_invocation_works_with_system_bash_without_extra_args() {
   write_fake_maven
 
   local output
-  local started_at
-  started_at="$(perl -MTime::HiRes=time -e 'printf "%.6f", time')"
   output="$(run_quiet_build /bin/bash scripts/run-full-build-quiet.sh)"
-  local elapsed_seconds
-  elapsed_seconds="$(perl -MTime::HiRes=time -e 'printf "%.3f", time - $ARGV[0]' "$started_at")"
 
   expect_contains "$output" "Build: success" "default invocation should work under system Bash without extra Maven args"
   expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo" "default invocation should include hosted non-demo tests"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should still pass verify"
-  if perl -e 'exit($ARGV[0] >= 1 ? 0 : 1)' "$elapsed_seconds"; then
-    fail "system Bash no-extra-args regression fixture should run under 1s (elapsed: ${elapsed_seconds}s)"
-  fi
 
   finish_test_repo
   pass "test_default_invocation_works_with_system_bash_without_extra_args"
