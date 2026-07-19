@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -42,4 +47,11 @@ public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
         assertFalse(bep.getValue(3));
         assertFalse(bep.getValue(4));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new BullishEngulfingIndicator(series), stableIndexes(series)));
+    }
+
 }

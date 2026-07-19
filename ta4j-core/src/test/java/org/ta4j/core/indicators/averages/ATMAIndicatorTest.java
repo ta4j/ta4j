@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.*;
 
@@ -49,6 +54,14 @@ public class ATMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(atma.getCountOfUnstableBars()).isEqualTo(4);
         assertThat(Num.isNaNOrNull(atma.getValue(3))).isTrue();
         assertNumEquals(3, atma.getValue(4));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new ATMAIndicator(close, 7), stableIndexes(series)));
     }
 
 }

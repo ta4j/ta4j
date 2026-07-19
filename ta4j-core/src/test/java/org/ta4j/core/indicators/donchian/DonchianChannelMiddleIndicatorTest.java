@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.donchian;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 
@@ -76,4 +81,12 @@ public class DonchianChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ba
         assertEquals(upper.getValue(8), upperCopy.getValue(8));
         assertEquals(expected.getValue(8), subject.getValue(8));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List
+                .of(serializationFixture(series, new DonchianChannelMiddleIndicator(series, 9), stableIndexes(series)));
+    }
+
 }

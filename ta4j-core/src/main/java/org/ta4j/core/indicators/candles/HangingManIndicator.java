@@ -18,8 +18,8 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
     private static final double DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 2d;
     private static final double DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 1d;
 
-    private final RealBodyIndicator realBodyIndicator;
-    private final UpTrendIndicator trendIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient UpTrendIndicator trendIndicator;
     private final double bodyToBottomWickRatio;
     private final double bodyToUpperWickRatio;
 

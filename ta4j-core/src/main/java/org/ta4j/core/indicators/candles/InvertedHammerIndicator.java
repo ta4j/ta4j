@@ -15,8 +15,8 @@ public class InvertedHammerIndicator extends CachedIndicator<Boolean> {
     private static final double DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 1d;
     private static final double DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 2d;
 
-    private final RealBodyIndicator realBodyIndicator;
-    private final DownTrendIndicator trendIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient DownTrendIndicator trendIndicator;
     private final double bodyToBottomWickRatio;
     private final double bodyToUpperWickRatio;
 
