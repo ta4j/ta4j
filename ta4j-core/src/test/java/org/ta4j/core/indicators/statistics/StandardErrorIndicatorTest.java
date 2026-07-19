@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -84,4 +89,14 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
             assertNumEquals(withOne.getValue(i), withNegative.getValue(i), 1.0e-12);
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new StandardErrorIndicator(close, 8, SampleType.SAMPLE),
+                stableIndexes(series)));
+    }
+
 }

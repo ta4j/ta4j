@@ -48,12 +48,12 @@ public class SqueezeProIndicator extends CachedIndicator<Num> {
         NONE, LOW, MID, HIGH
     }
 
-    private final Indicator<Num> closePrice;
-    private final Indicator<Num> priceSma;
-    private final Indicator<Num> priceStdDev;
-    private final Indicator<Num> trueRangeSma;
-    private final Indicator<Num> detrendedPrice;
-    private final Indicator<Num> momentum;
+    private final transient Indicator<Num> closePrice;
+    private final transient Indicator<Num> priceSma;
+    private final transient Indicator<Num> priceStdDev;
+    private final transient Indicator<Num> trueRangeSma;
+    private final transient Indicator<Num> detrendedPrice;
+    private final transient Indicator<Num> momentum;
 
     private final Num bollingerBandK;
     private final Num keltnerShiftFactorHigh;

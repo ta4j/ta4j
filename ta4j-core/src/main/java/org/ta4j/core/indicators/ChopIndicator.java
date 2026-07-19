@@ -36,12 +36,13 @@ import org.ta4j.core.num.Num;
  */
 public class ChopIndicator extends CachedIndicator<Num> {
 
-    private final ATRIndicator atrIndicator;
-    private final int timeFrame;
-    private final Num log10n;
-    private final HighestValueIndicator hvi;
-    private final LowestValueIndicator lvi;
-    private final Num scaleUpTo;
+    private final int ciTimeFrame;
+    private final int scaleTo;
+    private final transient ATRIndicator atrIndicator;
+    private final transient Num log10n;
+    private final transient HighestValueIndicator hvi;
+    private final transient LowestValueIndicator lvi;
+    private final transient Num scaleUpTo;
 
     /**
      * Constructor.
@@ -53,10 +54,11 @@ public class ChopIndicator extends CachedIndicator<Num> {
      */
     public ChopIndicator(BarSeries barSeries, int ciTimeFrame, int scaleTo) {
         super(barSeries);
+        this.ciTimeFrame = ciTimeFrame;
+        this.scaleTo = scaleTo;
         this.atrIndicator = new ATRIndicator(barSeries, 1); // ATR(1) = Average True Range (Period of 1)
         this.hvi = new HighestValueIndicator(new HighPriceIndicator(barSeries), ciTimeFrame);
         this.lvi = new LowestValueIndicator(new LowPriceIndicator(barSeries), ciTimeFrame);
-        this.timeFrame = ciTimeFrame;
         this.log10n = getBarSeries().numFactory().numOf(Math.log10(ciTimeFrame));
         this.scaleUpTo = getBarSeries().numFactory().numOf(scaleTo);
     }
@@ -64,7 +66,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
     @Override
     public Num calculate(int index) {
         Num summ = atrIndicator.getValue(index);
-        for (int i = 1; i < timeFrame; ++i) {
+        for (int i = 1; i < ciTimeFrame; ++i) {
             summ = summ.plus(atrIndicator.getValue(index - i));
         }
         Num a = summ.dividedBy((hvi.getValue(index).minus(lvi.getValue(index))));
@@ -74,7 +76,7 @@ public class ChopIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        int atrUnstableBars = atrIndicator.getCountOfUnstableBars() + timeFrame - 1;
+        int atrUnstableBars = atrIndicator.getCountOfUnstableBars() + ciTimeFrame - 1;
         int highLowUnstableBars = Math.max(hvi.getCountOfUnstableBars(), lvi.getCountOfUnstableBars());
         return Math.max(atrUnstableBars, highLowUnstableBars);
     }

@@ -22,10 +22,10 @@ import org.ta4j.core.num.Num;
 public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
     /** The period high. */
-    private final Indicator<Num> periodHigh;
+    private final transient Indicator<Num> periodHigh;
 
     /** The period low. */
-    private final Indicator<Num> periodLow;
+    private final transient Indicator<Num> periodLow;
 
     /** The time frame. */
     private final int barCount;
