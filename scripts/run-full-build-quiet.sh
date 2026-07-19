@@ -373,7 +373,11 @@ if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
 fi
 
 if [[ "$DEFAULT_GATE" == "true" ]]; then
-    EXTRA_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo" "${EXTRA_MAVEN_ARGS[@]}")
+    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo")
+    if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
+        DEFAULT_MAVEN_ARGS+=("${EXTRA_MAVEN_ARGS[@]}")
+    fi
+    EXTRA_MAVEN_ARGS=("${DEFAULT_MAVEN_ARGS[@]}")
 fi
 
 if ((${#GOALS[@]} == 0)); then

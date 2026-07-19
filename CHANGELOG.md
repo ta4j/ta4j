@@ -22,6 +22,11 @@
 - **Quiet quality gates complete faster without losing checks**: Repository script fixtures now run in parallel under the quiet build preflight, metadata validation fixtures fake Maven effective-model lookups instead of launching Maven repeatedly, and structural backtest-result tests avoid duplicate numeric-factory parameterization while execution-sensitive coverage remains cross-factory. The shell quiet build now keeps successful fixture chatter and Maven INFO banners out of stdout, passing through only WARN/ERROR-level log lines before a compact elapsed-time, test, coverage, and log-path footer.
 
 ### Fixed
+- **Quiet build works under system Bash with no extra Maven args**: The default
+  `scripts/run-full-build-quiet.sh` path now preserves the hosted non-demo test
+  tag without expanding an empty pass-through argument array under macOS
+  `/bin/bash`, so maintainers can run the local gate directly without an early
+  `EXTRA_MAVEN_ARGS[@]: unbound variable` exit.
 - **Serialization validation now fails at the authored boundary**: Malformed descriptor JSON now reports JSON syntax errors instead of becoming a label-only descriptor, canonical indicator/rule/criterion numeric constructor arguments use finite JSON-number validation with exact integer conversion, and strategy v2 rejects custom indicator aliases that produce non-numeric indicator values inside numeric comparison rules.
 - **Rolling variance stays coherent at low Decimal precision**: `VarianceIndicator` now uses an anchored one-pass recurrence, so constant transcendental values retain zero dispersion without doubling source reads for every rolling window.
 - **Monte Carlo price summaries describe the simulated paths exactly**: `MonteCarloPriceForecastIndicator` now transforms every terminal cumulative-return path to price before calculating mean, median, standard deviation, quantiles, and empirical support. Nonlinear summary-only conversion no longer creates hybrid distributions.

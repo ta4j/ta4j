@@ -166,6 +166,22 @@ test_default_invocation_uses_local_repair_gate() {
   pass "test_default_invocation_uses_local_repair_gate"
 }
 
+test_default_invocation_works_with_system_bash_without_extra_args() {
+  echo "Running test_default_invocation_works_with_system_bash_without_extra_args"
+  create_test_repo
+  write_fake_maven
+
+  local output
+  output="$(run_quiet_build /bin/bash scripts/run-full-build-quiet.sh)"
+
+  expect_contains "$output" "Build: success" "default invocation should work under system Bash without extra Maven args"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo" "default invocation should include hosted non-demo tests"
+  expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should still pass verify"
+
+  finish_test_repo
+  pass "test_default_invocation_works_with_system_bash_without_extra_args"
+}
+
 test_preflight_only_runs_repository_checks_without_maven() {
   echo "Running test_preflight_only_runs_repository_checks_without_maven"
   create_test_repo
@@ -416,6 +432,7 @@ test_powershell_entrypoint_classifier_parity() {
 }
 
 test_default_invocation_uses_local_repair_gate
+test_default_invocation_works_with_system_bash_without_extra_args
 test_preflight_only_runs_repository_checks_without_maven
 test_default_gate_repairs_unformatted_source
 test_validate_only_rejects_unformatted_source_without_repairing_it
