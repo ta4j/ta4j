@@ -628,8 +628,8 @@ Turn ideas into numbers. Add trading costs for realism and measure what matters:
 ```java
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
-import org.ta4j.core.cost.LinearTransactionCostModel;
-import org.ta4j.core.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 
 // Run backtest with realistic trading costs
 // Transaction cost: 0.1% per trade (typical for crypto exchanges)
@@ -638,6 +638,9 @@ TradingRecord record = new BarSeriesManager(series,
         new LinearTransactionCostModel(0.001),      // 0.1% fee per trade
         new LinearBorrowingCostModel(0.0001))       // 0.01% borrowing cost
         .run(strategy);
+
+// Leveraged-long assumptions can opt in explicitly:
+// new LinearBorrowingCostModel(0.0001, LinearBorrowingCostModel.Applicability.BOTH)
 
 // Calculate performance metrics
 System.out.printf("Trades executed: %d%n", record.getTradeCount());
