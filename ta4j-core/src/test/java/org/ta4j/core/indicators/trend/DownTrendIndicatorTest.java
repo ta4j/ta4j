@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.trend;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -45,4 +50,11 @@ public class DownTrendIndicatorTest extends AbstractIndicatorTest<Indicator<Bool
 
         assertEquals(expectedUnstableBars, indicator.getCountOfUnstableBars());
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new DownTrendIndicator(series, 7, 20.0), stableIndexes(series)));
+    }
+
 }

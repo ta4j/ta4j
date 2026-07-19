@@ -17,8 +17,8 @@ import org.ta4j.core.num.Num;
 public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final AroonUpIndicator aroonUpIndicator;
-    private final AroonDownIndicator aroonDownIndicator;
+    private final transient AroonUpIndicator aroonUpIndicator;
+    private final transient AroonDownIndicator aroonDownIndicator;
 
     /**
      * Constructor.

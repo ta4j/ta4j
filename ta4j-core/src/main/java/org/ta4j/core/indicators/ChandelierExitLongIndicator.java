@@ -19,9 +19,10 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
 
-    private final HighestValueIndicator high;
-    private final ATRIndicator atr;
+    private final int barCount;
     private final Num k;
+    private final transient HighestValueIndicator high;
+    private final transient ATRIndicator atr;
 
     /**
      * Constructor with:
@@ -46,9 +47,10 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
      */
     public ChandelierExitLongIndicator(BarSeries series, int barCount, double k) {
         super(series);
+        this.barCount = barCount;
+        this.k = getBarSeries().numFactory().numOf(k);
         this.high = new HighestValueIndicator(new HighPriceIndicator(series), barCount);
         this.atr = new ATRIndicator(series, barCount);
-        this.k = getBarSeries().numFactory().numOf(k);
     }
 
     @Override

@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.indicators.aroon;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -220,4 +226,13 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
             assertNumEquals(aroonOscillatorIndicator.getValue(i), oscillatorNumeric.getValue(i));
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new AroonFacade(series, 8).up(), stableIndexes(series)),
+                serializationFixture(series, new AroonFacade(series, 8).down(), stableIndexes(series)),
+                serializationFixture(series, new AroonFacade(series, 8).oscillator(), stableIndexes(series)));
+    }
+
 }
