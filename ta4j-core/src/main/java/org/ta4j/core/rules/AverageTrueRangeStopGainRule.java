@@ -75,5 +75,12 @@ public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
     }
 
     private record Config(Indicator<Num> referencePrice, ATRIndicator atrIndicator, Number atrCoefficient) {
+
+        private Config {
+            if (atrCoefficient == null || Double.isNaN(atrCoefficient.doubleValue())
+                    || atrCoefficient.doubleValue() <= 0) {
+                throw new IllegalArgumentException("atrCoefficient must be positive");
+            }
+        }
     }
 }

@@ -635,7 +635,7 @@ public final class RuleSerialization {
                 // Check if component type matches parameter type
                 if (isAssignableFrom(paramType, component)) {
                     Object componentValue = resolveComponent(component, paramType, context);
-                    if (componentValue != null) {
+                    if (componentValue != null && paramType.isInstance(componentValue)) {
                         arguments[i] = componentValue;
                         argumentTypes[i] = paramType;
                         componentsUsed[j] = true;
@@ -1470,6 +1470,9 @@ public final class RuleSerialization {
         }
 
         private static boolean indicatorAccepts(Parameter parameter, Indicator<?> indicator) {
+            if (!parameter.getType().isInstance(indicator)) {
+                return false;
+            }
             Type parameterized = parameter.getParameterizedType();
             if (parameterized instanceof ParameterizedType type) {
                 Type[] arguments = type.getActualTypeArguments();

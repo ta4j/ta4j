@@ -102,5 +102,11 @@ public class VolatilityTrailingStopGainRule extends BaseVolatilityTrailingStopGa
 
     private record Config(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator, Number coefficient,
             int barCount) {
+
+        private Config {
+            if (coefficient == null || Double.isNaN(coefficient.doubleValue()) || coefficient.doubleValue() <= 0) {
+                throw new IllegalArgumentException("coefficient must be positive");
+            }
+        }
     }
 }

@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
@@ -94,5 +95,15 @@ public class VolatilityStopLossRuleTest extends AbstractIndicatorTest<Object, Ob
 
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        BarSeries series = StopRuleTestSupport.series(numFactory, 100, 95, 89);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        ConstantIndicator<Num> volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopLossRule(closePrice, volatility, 0));
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopLossRule(closePrice, volatility, -1));
     }
 }
