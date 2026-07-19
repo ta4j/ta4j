@@ -23,6 +23,10 @@ import org.ta4j.core.num.Num;
  */
 public class VolatilityStopLossRule extends BaseVolatilityStopLossRule {
 
+    private final Indicator<Num> referencePrice;
+    private final Indicator<Num> volatilityIndicator;
+    private final Number coefficient;
+
     /**
      * Constructor with default close price as reference.
      *
@@ -56,7 +60,7 @@ public class VolatilityStopLossRule extends BaseVolatilityStopLossRule {
      */
     public VolatilityStopLossRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
             Number coefficient) {
-        super(referencePrice, BinaryOperationIndicator.product(volatilityIndicator, coefficient));
+        this(new Config(referencePrice, volatilityIndicator, coefficient));
     }
 
     /**
@@ -68,5 +72,16 @@ public class VolatilityStopLossRule extends BaseVolatilityStopLossRule {
      */
     public VolatilityStopLossRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator) {
         this(referencePrice, volatilityIndicator, 1);
+    }
+
+    private VolatilityStopLossRule(Config config) {
+        super(config.referencePrice(),
+                BinaryOperationIndicator.product(config.volatilityIndicator(), config.coefficient()));
+        this.referencePrice = config.referencePrice();
+        this.volatilityIndicator = config.volatilityIndicator();
+        this.coefficient = config.coefficient();
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator, Number coefficient) {
     }
 }

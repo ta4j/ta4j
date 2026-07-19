@@ -8,6 +8,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -439,6 +440,9 @@ public final class RuleSerialization {
     private static int parameterSpecificity(Class<?> type) {
         if (type.equals(BarSeries.class)) {
             return 80;
+        }
+        if (type.equals(ATRIndicator.class)) {
+            return 100;
         }
         if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
             return 70;
@@ -1278,6 +1282,9 @@ public final class RuleSerialization {
         private static int parameterSpecificity(Class<?> type) {
             if (type.equals(BarSeries.class)) {
                 return 80;
+            }
+            if (type.equals(ATRIndicator.class)) {
+                return 100;
             }
             if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
                 return 70;

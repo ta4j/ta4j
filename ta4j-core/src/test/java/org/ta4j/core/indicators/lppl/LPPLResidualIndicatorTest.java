@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -104,7 +103,6 @@ class LPPLResidualIndicatorTest {
 
     @Test
     @Tag("benchmark")
-    @EnabledIfSystemProperty(named = "ta4j.runBenchmarks", matches = "true")
     void measuresSharedAndSeparateDiagnosticCalibration() {
         double[] prices = new double[510];
         for (int i = 0; i < prices.length; i++) {

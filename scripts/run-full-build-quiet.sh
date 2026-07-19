@@ -158,7 +158,7 @@ Examples:
   scripts/run-full-build-quiet.sh --preflight-only
   scripts/run-full-build-quiet.sh -- -pl ta4j-core
   scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
 EOF
 }
 
@@ -373,7 +373,7 @@ if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
 fi
 
 if [[ "$DEFAULT_GATE" == "true" ]]; then
-    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo")
+    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless")
     if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
         DEFAULT_MAVEN_ARGS+=("${EXTRA_MAVEN_ARGS[@]}")
     fi
@@ -494,11 +494,11 @@ extract_test_summary() {
 print_jacoco_coverage() {
     local -a coverage_reports=()
     local report
-    while IFS= read -r report; do
+    for report in "$REPO_ROOT"/*/target/site/jacoco/jacoco.csv; do
         if [[ -f "$report" ]]; then
             coverage_reports+=("$report")
         fi
-    done < <(find "$REPO_ROOT" -path "*/target/site/jacoco/jacoco.csv" -type f 2>/dev/null | sort)
+    done
 
     if ((${#coverage_reports[@]} == 0)); then
         return 0

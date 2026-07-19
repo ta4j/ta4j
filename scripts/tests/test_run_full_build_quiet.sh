@@ -99,6 +99,11 @@ if [[ "${FAKE_MAVEN_JACOCO:-0}" == "1" ]]; then
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
 Ta4j Core,org.ta4j.fixture,Example,25,75,1,1,2,8,0,0,0,0
 CSV
+  mkdir -p .agents/worktrees/stale/ta4j-core/target/site/jacoco
+  cat > .agents/worktrees/stale/ta4j-core/target/site/jacoco/jacoco.csv <<'CSV'
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Stale Worktree,org.ta4j.fixture,Example,90,10,9,1,9,1,0,0,0,0
+CSV
 fi
 if [[ "${FAKE_MAVEN_SUCCESS_UNEXPECTED:-0}" == "1" ]]; then
   echo "java.lang.IllegalStateException: suspicious success diagnostic"
@@ -157,7 +162,7 @@ test_default_invocation_uses_local_repair_gate() {
   expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
   expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should pass verify"
-  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo" "default invocation should include hosted non-demo tests"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "default invocation should include hosted non-demo tests"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:check" "default invocation should not duplicate hosted license validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:validate" "default invocation should not duplicate hosted format validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not add a non-CI lifecycle phase"
@@ -175,7 +180,7 @@ test_default_invocation_works_with_system_bash_without_extra_args() {
   output="$(run_quiet_build /bin/bash scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "default invocation should work under system Bash without extra Maven args"
-  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo" "default invocation should include hosted non-demo tests"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "default invocation should include hosted non-demo tests"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should still pass verify"
 
   finish_test_repo
@@ -316,6 +321,7 @@ test_jacoco_coverage_is_reported_when_available() {
   output="$(FAKE_MAVEN_JACOCO=1 run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "JaCoCo: Ta4j Core line 80.00%, branch 50.00%, instruction 75.00%" "coverage footer should summarize generated JaCoCo CSV"
+  expect_not_contains "$output" "JaCoCo: Stale Worktree" "coverage footer should ignore nested worktree JaCoCo CSV files"
 
   finish_test_repo
   pass "test_jacoco_coverage_is_reported_when_available"

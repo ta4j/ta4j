@@ -70,8 +70,8 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo`
-- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
+- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=`
 - `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
@@ -106,6 +106,10 @@ Version 1 supports Coinbase instruments only. For scheduled analysis-demo runs,
 `TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED=true` with
 `TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT=weekly`, and set
 `TA4J_ANALYSIS_DEMO_INSTRUMENT` to override the scheduled instrument.
+The `benchmark` tag is for opt-in performance harness methods. The
+`requires-display` tag is for Swing/AWT tests that must create a real window,
+and `requires-headless` is for checks that intentionally exercise no-display
+behavior.
 
 ## API lifecycle and @since policy
 

@@ -20,7 +20,6 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -45,7 +44,6 @@ import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -126,8 +124,6 @@ class TradingChartFactoryTest {
 
     @Test
     void tradingRecordLabelsDefaultToFirstSourcePosition() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
                 TimeAxisMode.BAR_INDEX);
         XYPlot plot = (XYPlot) chart.getPlot();
@@ -140,8 +136,6 @@ class TradingChartFactoryTest {
 
     @Test
     void tradingRecordLabelsUseSuppliedSourcePositionStart() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
                 TimeAxisMode.BAR_INDEX, 2);
         XYPlot plot = (XYPlot) chart.getPlot();
@@ -154,8 +148,6 @@ class TradingChartFactoryTest {
 
     @Test
     void defaultSourcePositionStartKeepsMultiPositionLabelsSequential() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BaseTradingRecord record = new BaseTradingRecord();
         Num amount = barSeries.numFactory().numOf(1);
         addPosition(record, 1, 3, amount);
@@ -174,8 +166,6 @@ class TradingChartFactoryTest {
 
     @Test
     void sourcePositionStartKeepsMultiPositionLabelsSequentialIncludingOpenPosition() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BaseTradingRecord record = new BaseTradingRecord();
         Num amount = barSeries.numFactory().numOf(1);
         addPosition(record, 1, 3, amount);

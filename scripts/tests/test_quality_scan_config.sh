@@ -127,7 +127,7 @@ test_ci_reuses_canonical_local_gates() {
   expect_file_contains "$ACTIONLINT_WORKFLOW" "scripts/run-full-build-quiet.sh --preflight-only" "hosted workflow lint should reuse local preflight"
   expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:format formatter:format verify)" "local default should repair source before verify"
   expect_file_contains "$QUIET_BUILD" "GOALS=(clean license:check formatter:validate verify)" "validate-only mode should preserve hosted non-mutating goals"
-  expect_file_contains "$QUIET_BUILD" "-Dta4j.excludedTestTags=analysis-demo" "local default should include hosted non-demo tests"
+  expect_file_contains "$QUIET_BUILD" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "local default should include hosted non-demo tests"
   expect_file_contains "$QUIET_BUILD" "actionlint@v1.7.12" "local fallback should pin the hosted actionlint version"
   expect_file_not_contains "$WORKFLOW" "spotbugs.skip" "CI should not skip SpotBugs"
 
@@ -150,7 +150,7 @@ test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
   expect_file_contains "$ROOT/README.md" "Use \`scripts/run-full-build-quiet.sh\` on macOS/Linux/Git Bash/WSL or \`scripts/run-full-build-quiet.ps1\` on Windows PowerShell with Git Bash available on \`PATH\`" "README should point contributors at the canonical local/hosted gate and its Bash requirement"
-  expect_file_contains "$ROOT/README.md" "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "README should document the non-mutating Maven-only equivalent"
+  expect_file_contains "$ROOT/README.md" "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "README should document the non-mutating Maven-only equivalent"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.sh" "README should document the quiet Bash verify wrapper"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.ps1" "README should document the quiet PowerShell verify wrapper"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "README should document the standalone SpotBugs loop with clean compilation"

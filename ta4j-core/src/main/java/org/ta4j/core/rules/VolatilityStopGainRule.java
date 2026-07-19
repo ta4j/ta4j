@@ -23,6 +23,10 @@ import org.ta4j.core.num.Num;
  */
 public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
 
+    private final Indicator<Num> referencePrice;
+    private final Indicator<Num> volatilityIndicator;
+    private final Number coefficient;
+
     /**
      * Constructor with default close price as reference.
      *
@@ -72,6 +76,9 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
 
     private VolatilityStopGainRule(Config config) {
         super(config.referencePrice(), config.stopGainThreshold());
+        this.referencePrice = config.referencePrice();
+        this.volatilityIndicator = config.volatilityIndicator();
+        this.coefficient = config.coefficient();
     }
 
     private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
@@ -79,7 +86,8 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
-        return new Config(referencePrice, createStopGainThreshold(volatilityIndicator, coefficient));
+        return new Config(referencePrice, volatilityIndicator, coefficient,
+                createStopGainThreshold(volatilityIndicator, coefficient));
     }
 
     private static Config validatedConfig(BarSeries series, Indicator<Num> volatilityIndicator, Number coefficient) {
@@ -103,6 +111,7 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
         return BinaryOperationIndicator.product(volatilityIndicator, coefficient);
     }
 
-    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator, Number coefficient,
+            Indicator<Num> stopGainThreshold) {
     }
 }

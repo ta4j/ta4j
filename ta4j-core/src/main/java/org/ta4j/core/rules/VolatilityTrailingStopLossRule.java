@@ -23,6 +23,11 @@ import org.ta4j.core.num.Num;
  */
 public class VolatilityTrailingStopLossRule extends BaseVolatilityTrailingStopLossRule {
 
+    private final Indicator<Num> referencePrice;
+    private final Indicator<Num> volatilityIndicator;
+    private final Number coefficient;
+    private final int barCount;
+
     /**
      * Constructor with default close price as reference.
      *
@@ -58,7 +63,7 @@ public class VolatilityTrailingStopLossRule extends BaseVolatilityTrailingStopLo
      */
     public VolatilityTrailingStopLossRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
             Number coefficient, int barCount) {
-        super(referencePrice, BinaryOperationIndicator.product(volatilityIndicator, coefficient), barCount);
+        this(new Config(referencePrice, volatilityIndicator, coefficient, barCount));
     }
 
     /**
@@ -83,5 +88,19 @@ public class VolatilityTrailingStopLossRule extends BaseVolatilityTrailingStopLo
      */
     public VolatilityTrailingStopLossRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator) {
         this(referencePrice, volatilityIndicator, 1, Integer.MAX_VALUE);
+    }
+
+    private VolatilityTrailingStopLossRule(Config config) {
+        super(config.referencePrice(),
+                BinaryOperationIndicator.product(config.volatilityIndicator(), config.coefficient()),
+                config.barCount());
+        this.referencePrice = config.referencePrice();
+        this.volatilityIndicator = config.volatilityIndicator();
+        this.coefficient = config.coefficient();
+        this.barCount = config.barCount();
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator, Number coefficient,
+            int barCount) {
     }
 }

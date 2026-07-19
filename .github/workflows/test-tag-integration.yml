@@ -51,4 +51,4 @@ jobs:
           cache: maven
 
       - name: Build and run integration tagged tests with Maven Wrapper
-        run: xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
+        run: xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
