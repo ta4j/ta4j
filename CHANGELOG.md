@@ -22,6 +22,7 @@
 - **Quiet quality gates complete faster without losing checks**: Repository script fixtures now run in parallel under the quiet build preflight, metadata validation fixtures fake Maven effective-model lookups instead of launching Maven repeatedly, and structural backtest-result tests avoid duplicate numeric-factory parameterization while execution-sensitive coverage remains cross-factory. The shell quiet build now keeps successful fixture chatter and Maven INFO banners out of stdout, passing through only WARN/ERROR-level log lines before a compact elapsed-time, test, coverage, and log-path footer.
 
 ### Fixed
+- **Indicator serialization round-trips now preserve constructor state across the CF-232 / CF-277-CF-286 inventory**: Oscillator, composite, channel, trend, volume, VWAP, Ichimoku, SuperTrend, ADX, and candlestick indicators now serialize durable constructor inputs instead of rebuilt helper graphs, while stricter descriptor reconstruction rejects unconsumed child components or parameters.
 - **Quiet build works under system Bash with no extra Maven args**: The default
   `scripts/run-full-build-quiet.sh` path now preserves the hosted non-demo test
   tag without expanding an empty pass-through argument array under macOS
