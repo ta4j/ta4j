@@ -68,11 +68,11 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
     private final transient RunningTotalIndicator middleTrueRangeSumIndicator;
     private final transient RunningTotalIndicator longTrueRangeSumIndicator;
 
-    private final Num shortWeight;
-    private final Num middleWeight;
-    private final Num longWeight;
-    private final Num totalWeight;
-    private final Num hundred;
+    private final transient Num shortWeight;
+    private final transient Num middleWeight;
+    private final transient Num longWeight;
+    private final transient Num totalWeight;
+    private final transient Num hundred;
 
     /**
      * Constructor using the canonical (7, 14, 28) periods.

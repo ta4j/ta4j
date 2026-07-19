@@ -17,7 +17,8 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ATRIndicator extends AbstractIndicator<Num> {
 
-    private final int trueRangeUnstableBars;
+    private final TRIndicator tr;
+    private final transient int trueRangeUnstableBars;
     private final transient MMAIndicator averageTrueRangeIndicator;
     private final int barCount;
 
@@ -43,6 +44,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     private ATRIndicator(Config config) {
         super(config.trueRangeIndicator().getBarSeries());
+        this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();
         this.averageTrueRangeIndicator = new MMAIndicator(config.trueRangeIndicator(), config.barCount());

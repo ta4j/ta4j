@@ -78,7 +78,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     private final double priorMeanPrecision;
     private final double priorShape;
     private final double priorScale;
-    private final int unstableBarCount;
+    private final transient int unstableBarCount;
     private transient volatile PosteriorModel posteriorModel;
 
     /**

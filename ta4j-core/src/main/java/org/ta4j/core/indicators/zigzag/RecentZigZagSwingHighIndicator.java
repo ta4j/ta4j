@@ -48,7 +48,7 @@ import org.ta4j.core.num.Num;
 public class RecentZigZagSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
-    private final Indicator<Num> price;
+    private final transient Indicator<Num> price;
 
     /**
      * Constructs an indicator using the state's high-price source.

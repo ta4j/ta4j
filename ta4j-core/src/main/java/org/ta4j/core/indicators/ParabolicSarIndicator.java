@@ -26,31 +26,31 @@ import org.ta4j.core.num.Num;
  */
 public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final LowPriceIndicator lowPriceIndicator;
-    private final LowestValueIndicator lowestValueIndicator;
-    private final HighPriceIndicator highPriceIndicator;
-    private final HighestValueIndicator highestValueIndicator;
+    private final transient LowPriceIndicator lowPriceIndicator;
+    private final transient LowestValueIndicator lowestValueIndicator;
+    private final transient HighPriceIndicator highPriceIndicator;
+    private final transient HighestValueIndicator highestValueIndicator;
 
     private final Num maxAcceleration;
     private final Num accelerationStart;
     private final Num accelerationIncrement;
 
-    private final Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
-    private final Map<Integer, Num> lastExtreme = new HashMap<>();
-    private final Map<Integer, Num> lastAf = new HashMap<>();
+    private final transient Map<Integer, Boolean> isUpTrendMap = new HashMap<>();
+    private final transient Map<Integer, Num> lastExtreme = new HashMap<>();
+    private final transient Map<Integer, Num> lastAf = new HashMap<>();
 
     /**
      * If series have removed bars, first actual bar won't have 0 index.
      */
-    private int seriesStartIndex = getBarSeries().getBeginIndex();
+    private transient int seriesStartIndex = getBarSeries().getBeginIndex();
 
     /**
      * Constructor with:
      *
      * <ul>
-     * <li>{@code aF} = 0.02
-     * <li>{@code maxA} = 0.2
-     * <li>{@code increment} = 0.02
+     * <li>{@code accelerationStart} = 0.02
+     * <li>{@code maxAcceleration} = 0.2
+     * <li>{@code accelerationIncrement} = 0.02
      * </ul>
      *
      * @param series the bar series for this indicator
@@ -62,31 +62,32 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Constructor with {@code increment} = 0.02.
      *
-     * @param series the bar series for this indicator
-     * @param aF     acceleration factor
-     * @param maxA   maximum acceleration
+     * @param series            the bar series for this indicator
+     * @param accelerationStart acceleration factor
+     * @param maxAcceleration   maximum acceleration
      */
-    public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA) {
-        this(series, aF, maxA, series.numFactory().numOf(0.02));
+    public ParabolicSarIndicator(BarSeries series, Num accelerationStart, Num maxAcceleration) {
+        this(series, accelerationStart, maxAcceleration, series.numFactory().numOf(0.02));
     }
 
     /**
      * Constructor.
      *
-     * @param series    the bar series for this indicator
-     * @param aF        acceleration factor (usually 0.02)
-     * @param maxA      maximum acceleration (usually 0.2)
-     * @param increment the increment step (usually 0.02)
+     * @param series                the bar series for this indicator
+     * @param accelerationStart     acceleration factor (usually 0.02)
+     * @param maxAcceleration       maximum acceleration (usually 0.2)
+     * @param accelerationIncrement the increment step (usually 0.02)
      */
-    public ParabolicSarIndicator(BarSeries series, Num aF, Num maxA, Num increment) {
+    public ParabolicSarIndicator(BarSeries series, Num accelerationStart, Num maxAcceleration,
+            Num accelerationIncrement) {
         super(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.lowestValueIndicator = new LowestValueIndicator(lowPriceIndicator, 2);
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.highestValueIndicator = new HighestValueIndicator(highPriceIndicator, 2);
-        this.maxAcceleration = maxA;
-        this.accelerationStart = aF;
-        this.accelerationIncrement = increment;
+        this.maxAcceleration = maxAcceleration;
+        this.accelerationStart = accelerationStart;
+        this.accelerationIncrement = accelerationIncrement;
     }
 
     @Override

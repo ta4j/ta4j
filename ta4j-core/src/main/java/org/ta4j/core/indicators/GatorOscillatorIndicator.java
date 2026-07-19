@@ -38,7 +38,7 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
     private final transient Indicator<Num> jawMinusTeeth;
     private final transient Indicator<Num> teethMinusLips;
     private final boolean upperHistogram;
-    private final int unstableBars;
+    private final transient int unstableBars;
 
     /**
      * Constructor.

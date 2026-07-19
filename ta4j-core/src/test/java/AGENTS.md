@@ -10,6 +10,8 @@ These are cross-cutting test rules for ta4j-core. Deeper package guides can add 
 
 ## Test design conventions
 
+- Default unit-test ownership is 1:1: `MyType` belongs in `MyTypeTest`. Do not add roll-up, inventory, or broad
+  suite-style unit test classes for new coverage; place focused tests in the owning production class's test file.
 - Use `assertThrows` for exception assertions (avoid `@Test(expected = ...)` and manual try/catch assertions).
 - Avoid reflection-based access to private APIs; test through public behavior or refactor for dependency injection.
 - Prefer dependency injection when production code is hard to test.

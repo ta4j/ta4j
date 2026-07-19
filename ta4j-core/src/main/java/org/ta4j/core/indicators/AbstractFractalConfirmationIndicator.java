@@ -24,7 +24,7 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
     private final Indicator<Num> indicator;
     private final int precedingBars;
     private final int followingBars;
-    private final int unstableBars;
+    private final transient int unstableBars;
 
     /**
      * Constructor.

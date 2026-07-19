@@ -338,9 +338,6 @@ public final class IndicatorSerialization {
             InvocationPlan candidate = plan.get();
             if (bestPlan == null || isBetterMatch(candidate, bestPlan, components.size())) {
                 bestPlan = candidate;
-                if (candidate.consumedComponents() == components.size()) {
-                    break;
-                }
             }
         }
         if (bestPlan != null) {
@@ -369,6 +366,7 @@ public final class IndicatorSerialization {
         Type[] genericParameterTypes = constructor.getGenericParameterTypes();
         Object[] args = new Object[parameterTypes.length];
         int componentIndex = 0;
+        int componentSpecificity = 0;
         boolean bulkConsumed = false;
         boolean constructorUsesIndicators = false;
         LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
@@ -389,6 +387,7 @@ public final class IndicatorSerialization {
                 if (!parameterType.isInstance(component)) {
                     return Optional.empty();
                 }
+                componentSpecificity += indicatorParameterSpecificity(parameterType);
                 args[i] = component;
             } else if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
                 constructorUsesIndicators = true;
@@ -401,6 +400,7 @@ public final class IndicatorSerialization {
                     if (!parameterType.getComponentType().isInstance(component)) {
                         return Optional.empty();
                     }
+                    componentSpecificity += indicatorParameterSpecificity(parameterType.getComponentType());
                 }
                 args[i] = remaining;
                 componentIndex = components.size();
@@ -419,6 +419,7 @@ public final class IndicatorSerialization {
                         if (!listElementType.isInstance(component)) {
                             return Optional.empty();
                         }
+                        componentSpecificity += indicatorParameterSpecificity(listElementType);
                     }
                     args[i] = remaining;
                     componentIndex = components.size();
@@ -459,14 +460,30 @@ public final class IndicatorSerialization {
             args[request.index()] = converted;
         }
 
-        // Validate that all components were consumed
-        // Note: components is guaranteed non-null due to early return check above
         boolean hasComponents = !components.isEmpty();
+        if (componentIndex != components.size()) {
+            return Optional.empty();
+        }
+        if (hasUnconsumedConstructorParameters(parameterPool)) {
+            return Optional.empty();
+        }
         if (!constructorUsesIndicators && hasComponents && hasIndicatorConstructor) {
             return Optional.empty();
         }
 
-        return Optional.of(new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators));
+        return Optional.of(
+                new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators, componentSpecificity));
+    }
+
+    private static int indicatorParameterSpecificity(Class<?> parameterType) {
+        return parameterType == Indicator.class ? 0 : 1;
+    }
+
+    private static boolean hasUnconsumedConstructorParameters(Map<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return false;
+        }
+        return parameters.keySet().stream().anyMatch(parameter -> !parameter.startsWith("__enumType_"));
     }
 
     private static boolean constructorConsumesIndicators(Constructor<?> constructor) {
@@ -508,6 +525,9 @@ public final class IndicatorSerialization {
         }
         if (candidate.usesIndicators() && !current.usesIndicators()) {
             return true;
+        }
+        if (candidate.componentSpecificity() != current.componentSpecificity()) {
+            return candidate.componentSpecificity() > current.componentSpecificity();
         }
         return false;
     }
@@ -1018,6 +1038,6 @@ public final class IndicatorSerialization {
     }
 
     private record InvocationPlan(Constructor<?> constructor, Object[] arguments, int consumedComponents,
-            boolean usesIndicators) {
+            boolean usesIndicators, int componentSpecificity) {
     }
 }

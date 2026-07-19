@@ -33,7 +33,7 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     private final ElliottSwingIndicator swingIndicator;
     private final ElliottChannelIndicator channelIndicator;
     private final ElliottScenarioGenerator generator;
-    private final ElliottDegree degree;
+    private final transient ElliottDegree degree;
 
     /**
      * Creates a scenario indicator with default settings.
