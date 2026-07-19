@@ -35,8 +35,8 @@ import static org.ta4j.core.num.NaN.NaN;
 public class StochasticIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-    private final HighestValueIndicator highest;
-    private final LowestValueIndicator lowest;
+    private final transient HighestValueIndicator highest;
+    private final transient LowestValueIndicator lowest;
     private final int lookback;
 
     /**

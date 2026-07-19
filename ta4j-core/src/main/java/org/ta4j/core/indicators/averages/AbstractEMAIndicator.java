@@ -22,7 +22,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num multiplier;
+    private final transient Num multiplier;
 
     /**
      * Constructor.

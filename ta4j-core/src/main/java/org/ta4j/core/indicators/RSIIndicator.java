@@ -23,7 +23,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
     private final transient MMAIndicator averageGainIndicator;
     private final transient MMAIndicator averageLossIndicator;
     private final int barCount;
-    private final int unstableBars;
+    private final transient int unstableBars;
 
     /**
      * Constructor.

@@ -4,6 +4,7 @@
 package org.ta4j.core.serialization;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -202,6 +203,28 @@ public class IndicatorSerializationTest {
 
         assertThat(reconstructed).isInstanceOf(IndicatorConstructorSelectionTestIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(original.toDescriptor());
+    }
+
+    @Test
+    public void deserializeRejectsDescriptorsWithUnconsumedComponentsOrParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        ComponentDescriptor extraComponentDescriptor = ComponentDescriptor.builder()
+                .withType("ClosePriceIndicator")
+                .addComponent(ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                .build();
+
+        IndicatorSerializationException componentException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, extraComponentDescriptor));
+        assertThat(componentException).hasMessageContaining("no suitable constructor");
+
+        ComponentDescriptor extraParameterDescriptor = ComponentDescriptor.builder()
+                .withType("ClosePriceIndicator")
+                .withParameters(Map.of("unusedBarCount", 3))
+                .build();
+
+        IndicatorSerializationException parameterException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, extraParameterDescriptor));
+        assertThat(parameterException).hasMessageContaining("no suitable constructor");
     }
 
     @Test
