@@ -25,9 +25,13 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
-    private final RSIIndicator priceRsi;
-    private final RSIIndicator streakRsi;
-    private final PercentRankIndicator percentRankIndicator;
+    private final Indicator<Num> indicator;
+    private final int rsiPeriod;
+    private final int streakRsiPeriod;
+    private final int percentRankPeriod;
+    private final transient RSIIndicator priceRsi;
+    private final transient RSIIndicator streakRsi;
+    private final transient PercentRankIndicator percentRankIndicator;
 
     /**
      * Constructor using the original Connors RSI defaults ({@code rsiPeriod}=3,
@@ -56,6 +60,10 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
     private ConnorsRSIIndicator(Config config) {
         super(config.indicator());
+        this.indicator = config.indicator();
+        this.rsiPeriod = config.rsiPeriod();
+        this.streakRsiPeriod = config.streakRsiPeriod();
+        this.percentRankPeriod = config.percentRankPeriod();
         this.priceRsi = config.priceRsi();
         this.streakRsi = config.streakRsi();
         this.percentRankIndicator = config.percentRankIndicator();
@@ -71,7 +79,8 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         RSIIndicator priceRsi = new RSIIndicator(indicator, rsiPeriod);
         RSIIndicator streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
         PercentRankIndicator percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
-        return new Config(indicator, priceRsi, streakRsi, percentRankIndicator);
+        return new Config(indicator, rsiPeriod, streakRsiPeriod, percentRankPeriod, priceRsi, streakRsi,
+                percentRankIndicator);
     }
 
     @Override
@@ -97,7 +106,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
                 percentRankIndicator.getCountOfUnstableBars());
     }
 
-    private record Config(Indicator<Num> indicator, RSIIndicator priceRsi, RSIIndicator streakRsi,
-            PercentRankIndicator percentRankIndicator) {
+    private record Config(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod, int percentRankPeriod,
+            RSIIndicator priceRsi, RSIIndicator streakRsi, PercentRankIndicator percentRankIndicator) {
     }
 }

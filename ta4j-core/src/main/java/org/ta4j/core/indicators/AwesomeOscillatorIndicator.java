@@ -18,8 +18,11 @@ import org.ta4j.core.num.Num;
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
-    private final SMAIndicator sma5;
-    private final SMAIndicator sma34;
+    private final Indicator<Num> indicator;
+    private final int barCountSma1;
+    private final int barCountSma2;
+    private final transient SMAIndicator sma5;
+    private final transient SMAIndicator sma34;
 
     /**
      * Constructor.
@@ -30,6 +33,9 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
      */
     public AwesomeOscillatorIndicator(Indicator<Num> indicator, int barCountSma1, int barCountSma2) {
         super(indicator);
+        this.indicator = indicator;
+        this.barCountSma1 = barCountSma1;
+        this.barCountSma2 = barCountSma2;
         this.sma5 = new SMAIndicator(indicator, barCountSma1);
         this.sma34 = new SMAIndicator(indicator, barCountSma2);
     }

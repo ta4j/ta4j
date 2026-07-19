@@ -15,8 +15,8 @@ import org.ta4j.core.num.Num;
 public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final LowPriceIndicator lowPrice;
-    private final LowestValueIndicator lowestPrice;
+    private final transient LowPriceIndicator lowPrice;
+    private final transient LowestValueIndicator lowestPrice;
 
     /**
      * Constructor.

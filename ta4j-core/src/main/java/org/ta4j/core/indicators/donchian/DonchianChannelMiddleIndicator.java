@@ -13,8 +13,8 @@ import org.ta4j.core.num.Num;
 public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final DonchianChannelLowerIndicator lower;
-    private final DonchianChannelUpperIndicator upper;
+    private final transient DonchianChannelLowerIndicator lower;
+    private final transient DonchianChannelUpperIndicator upper;
 
     /**
      * Constructor.
