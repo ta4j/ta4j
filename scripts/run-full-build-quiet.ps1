@@ -436,8 +436,7 @@ try {
     $start = Get-Date
     $lastHeartbeat = $start
     $timedOut = $false
-    while (-not $process.HasExited) {
-        Start-Sleep -Seconds 1
+    while (-not $process.WaitForExit(1000)) {
         $now = Get-Date
         if ($timeoutSeconds -gt 0 -and ($now - $start).TotalSeconds -ge $timeoutSeconds) {
             $timedOut = $true

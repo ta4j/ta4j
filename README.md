@@ -975,6 +975,98 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Author concise strategy JSON with the opt-in `version: 2` envelope:
+```java
+String v2StrategyJson = """
+        {
+          "version": 2,
+          "name": "Momentum_Crossover",
+          "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(12)", "SMA(26)"] },
+          "exitRule": {
+            "type": "OrRule",
+            "rules": [
+              { "type": "StopLossRule", "args": ["2.5%"] },
+              { "type": "CrossedDownIndicatorRule", "args": ["SMA(12)", "SMA(26)"] }
+            ]
+          }
+        }
+        """;
+Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
+String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
+```
+
+Strategy JSON v2 also accepts named shorthand strings for rules and a compact
+top-level strategy macro:
+```java
+String compactStrategyJson = """
+        {
+          "version": 2,
+          "strategy": "SMA(7,21)",
+          "name": "Daily_SMA_Crossover"
+        }
+        """;
+Strategy strategy = Strategy.fromJson(series, compactStrategyJson);
+String compactJson = strategy.toCompactJson(); // optional v2 output; toJson() stays canonical
+
+Strategy macroStrategy = Strategy.fromExpression(series, "SMA(7,21)");
+String strategyExpression = macroStrategy.toExpression(); // "SMA(7,21)"
+```
+
+Named shorthand is kind-specific. `SMA(7)` is a single indicator over close
+price, while strategy-level `SMA(7,21)` expands to an SMA crossover strategy.
+Rule-level direction stays explicit with `SmaCrossUp(7,21)`,
+`SmaCrossDown(7,21)`, or generic forms such as
+`CrossedUp(SMA(7),SMA(21))`.
+
+The shorthand grammar is deliberately bounded and strict:
+
+| JSON area | Accepted values |
+| --- | --- |
+| Expression grammar | `Alias`, `Alias(arg,...)`, nested expressions, quoted strings, bare enum/string tokens, and finite JSON-style numbers |
+| Strategy metadata | Optional `name`, optional `type` (`BaseStrategy`), optional `strategy` macro, optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
+| Strategy rules | Required `entryRule` and `exitRule` objects or rule expression strings unless `strategy` is supplied |
+| Composite rules | `And(...)` / `AndRule` and `Or(...)` / `OrRule`, each with exactly two child rules |
+| Leaf rules | `CrossedUp(...)`, `CrossedDown(...)`, `Over(...)`, `Under(...)`, `SmaCrossUp(...)`, `SmaCrossDown(...)`, `StopGain(...)`, and `StopLoss(...)` |
+| Indicators | `ClosePrice`, `ClosePriceIndicator`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, with positive integer bar counts |
+| Analysis criteria | Default forms of `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
+| Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
+
+Malformed JSON-looking descriptor payloads fail as syntax errors. Plain labels
+remain accepted only for non-JSON text. Numeric constructor arguments in
+canonical descriptor JSON follow the same finite JSON-number contract as v2
+shorthand, and integer parameters such as bar counts must be exact integers.
+
+Custom shorthand is registered up front with an immutable `NamedAssetRegistry`:
+```java
+NamedAssetRegistry registry = NamedAssetRegistry.builder()
+        .withDefaults()
+        .registerIndicator("FastCloseSma", List.of("barCount"), args -> {
+            args.requireCount(1);
+            return ComponentDescriptor.builder()
+                    .withType("SMAIndicator")
+                    .withParameters(Map.of("barCount", args.positiveInt(0)))
+                    .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
+                    .build();
+        })
+        .build();
+
+Indicator<?> indicator = Indicator.fromExpression(series, "FastCloseSma(5)", registry);
+AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
+```
+Custom bindings read parsed arguments through typed helpers such as
+`positiveInt(...)`, `finiteNumberText(...)`, `stringValue(...)`,
+`indicatorDescriptor(...)`, and `ruleDescriptor(...)`.
+Indicator aliases used in numeric comparison rules must resolve to indicators
+whose runtime values are `Num`; boolean indicators should be composed through
+boolean-aware rules instead of `Over(...)` / `Under(...)` style comparisons.
+Parameterized analysis criteria serialize through canonical descriptor JSON;
+compact aliases are reserved for descriptors a registry formatter can represent
+without dropping constructor state.
+
+For command-line or agent workflows, split comma-separated shorthand lists with
+`NamedAssetRegistry#splitTopLevel(...)` instead of `String#split(",")`; nested
+forms such as `Custom("a,b",SMA(7))` then remain intact.
+
 Indicator round-tripping depends on each indicator descriptor preserving the
 constructor inputs needed to rebuild that indicator. Indicators that create
 helper indicators internally should keep their constructor arguments in

@@ -129,6 +129,42 @@ public class IndicatorSerializationTest {
     }
 
     @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"type\":\"SMAIndicator\"";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessage("Failed to deserialize indicator from JSON")
+                .hasCauseInstanceOf(com.google.gson.JsonParseException.class);
+    }
+
+    @Test
+    public void fromJsonRejectsFractionalIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = """
+                {"type":"SMAIndicator","parameters":{"barCount":1.9},"components":[{"type":"ClosePriceIndicator"}]}""";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessageContaining("no suitable constructor");
+    }
+
+    @Test
+    public void fromJsonRejectsOverflowingIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = """
+                {"type":"SMAIndicator","parameters":{"barCount":2147483648},"components":[{"type":"ClosePriceIndicator"}]}""";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessageContaining("no suitable constructor");
+    }
+
+    @Test
     public void deserializeIndicatorWithSameTypedParameters() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7).build();
         Num accelerationStart = series.numFactory().numOf("0.03");
