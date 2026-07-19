@@ -3,6 +3,13 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
+
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -286,4 +293,14 @@ class ElliottSwingIndicatorTest {
             return series;
         }
     }
+
+    @Test
+    void serializationRoundTrips() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = serializationSeries(numFactory);
+            assertIndicatorRoundTrips(series, new ElliottSwingIndicator(series, 3, ElliottDegree.MINOR),
+                    stableIndexes(series));
+        }
+    }
+
 }

@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.keltner;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Before;
 import org.junit.Test;
@@ -275,4 +280,14 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
             assertThat(restored.getValue(i)).isEqualTo(indicator.getValue(i));
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List
+                .of(serializationFixture(series, new KeltnerChannelMiddleIndicator(close, 7), stableIndexes(series)));
+    }
+
 }
