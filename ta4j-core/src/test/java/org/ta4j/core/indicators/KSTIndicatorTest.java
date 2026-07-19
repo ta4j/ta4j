@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -43,6 +48,15 @@ public class KSTIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(38.783888, kstIndicator.getValue(47));
         assertNumEquals(37.543147, kstIndicator.getValue(48));
         assertNumEquals(36.253502, kstIndicator.getValue(49));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(
+                serializationFixture(series, new KSTIndicator(close, 2, 3, 3, 4, 4, 5, 5, 6), stableIndexes(series)));
     }
 
 }

@@ -38,9 +38,9 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> sourceIndicator;
     private final Indicator<Num> referenceIndicator;
-    private final Indicator<Num> deviationIndicator;
-    private final StandardDeviationIndicator standardDeviationIndicator;
-    private final ZScoreIndicator zScoreIndicator;
+    private final transient Indicator<Num> deviationIndicator;
+    private final transient StandardDeviationIndicator standardDeviationIndicator;
+    private final transient ZScoreIndicator zScoreIndicator;
     private final int barCount;
 
     /**

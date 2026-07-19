@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static junit.framework.TestCase.assertEquals;
 
 import org.junit.Before;
@@ -66,4 +71,13 @@ public class StochasticOscillatorDIndicatorTest extends AbstractIndicatorTest<In
         assertEquals(sma.getValue(2), sos.getValue(2));
         assertEquals(sma.getValue(13), sos.getValue(13));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series,
+                new StochasticOscillatorDIndicator(new StochasticOscillatorKIndicator(series, 5)),
+                stableIndexes(series)));
+    }
+
 }

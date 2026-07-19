@@ -15,8 +15,8 @@ import org.ta4j.core.num.Num;
 public class DonchianChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final HighPriceIndicator highPrice;
-    private final HighestValueIndicator highestPrice;
+    private final transient HighPriceIndicator highPrice;
+    private final transient HighestValueIndicator highestPrice;
 
     /**
      * Constructor.

@@ -16,8 +16,8 @@ import org.ta4j.core.num.Num;
 public class DXIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final PlusDIIndicator plusDIIndicator;
-    private final MinusDIIndicator minusDIIndicator;
+    private final transient PlusDIIndicator plusDIIndicator;
+    private final transient MinusDIIndicator minusDIIndicator;
 
     /**
      * Constructor.

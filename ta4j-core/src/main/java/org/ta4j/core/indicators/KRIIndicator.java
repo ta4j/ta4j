@@ -17,7 +17,8 @@ import org.ta4j.core.num.Num;
  *      "https://www.tradingview.com/script/xzRPAboO-Indicator-Kairi-Relative-Index-KRI/">TradingView</a>
  */
 public class KRIIndicator extends AbstractIndicator<Num> {
-    private final Indicator<Num> kriIndicator;
+    private final Indicator<Num> indicator;
+    private final transient Indicator<Num> kriIndicator;
     private final int barCount;
 
     public KRIIndicator(BarSeries series, int barCount) {
@@ -26,6 +27,7 @@ public class KRIIndicator extends AbstractIndicator<Num> {
 
     public KRIIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator.getBarSeries());
+        this.indicator = indicator;
 
         final var smaIndicator = new SMAIndicator(indicator, barCount);
         final var difference = BinaryOperationIndicator.difference(indicator, smaIndicator);

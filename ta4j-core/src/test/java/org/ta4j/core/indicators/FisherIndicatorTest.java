@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -182,4 +188,14 @@ public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(0.5026313552592737, fisher.getValue(14));
         assertNumEquals(0.06492516204615063, fisher.getValue(15));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        MedianPriceIndicator median = new MedianPriceIndicator(series);
+
+        return List.of(serializationFixture(series, new FisherIndicator(median, 8, 0.33, 0.67, 0.5, 0.5, 1.0, true),
+                stableIndexes(series)));
+    }
+
 }

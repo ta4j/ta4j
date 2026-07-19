@@ -39,11 +39,14 @@ import org.ta4j.core.num.Num;
  */
 public class TrendScoreIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> emaAlignmentComponent;
-    private final Indicator<Num> macdHistogramComponent;
-    private final Indicator<Num> adxStrengthComponent;
-    private final Indicator<Num> adxChangeComponent;
-    private final Indicator<Num> compositeIndicator;
+    private final Indicator<Num> emaAlignmentIndicator;
+    private final Indicator<Num> macdHistogramIndicator;
+    private final Indicator<Num> adxIndicator;
+    private final transient Indicator<Num> emaAlignmentComponent;
+    private final transient Indicator<Num> macdHistogramComponent;
+    private final transient Indicator<Num> adxStrengthComponent;
+    private final transient Indicator<Num> adxChangeComponent;
+    private final transient Indicator<Num> compositeIndicator;
     private final int normalizationBarCount;
 
     /**
@@ -80,6 +83,9 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
     private TrendScoreIndicator(Config config) {
         super(config.series());
         this.normalizationBarCount = config.normalizationBarCount();
+        this.emaAlignmentIndicator = config.emaAlignmentIndicator();
+        this.macdHistogramIndicator = config.macdHistogramIndicator();
+        this.adxIndicator = config.adxIndicator();
         this.emaAlignmentComponent = config.emaAlignmentComponent();
         this.macdHistogramComponent = config.macdHistogramComponent();
         this.adxStrengthComponent = config.adxStrengthComponent();
@@ -112,8 +118,9 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
                 centeredPercentRank(new DifferenceIndicator(adxIndicator), normalizationBarCount), directionBias);
         Indicator<Num> compositeIndicator = NumericIndicator.of(new SumIndicator(emaAlignmentComponent,
                 macdHistogramComponent, adxStrengthComponent, adxChangeComponent)).dividedBy(4).multipliedBy(100);
-        return new Config(series, emaAlignmentComponent, macdHistogramComponent, adxStrengthComponent,
-                adxChangeComponent, compositeIndicator, normalizationBarCount);
+        return new Config(series, emaAlignmentIndicator, macdHistogramIndicator, adxIndicator, emaAlignmentComponent,
+                macdHistogramComponent, adxStrengthComponent, adxChangeComponent, compositeIndicator,
+                normalizationBarCount);
     }
 
     /**
@@ -215,7 +222,8 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
         };
     }
 
-    private record Config(BarSeries series, Indicator<Num> emaAlignmentComponent, Indicator<Num> macdHistogramComponent,
+    private record Config(BarSeries series, Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
+            Indicator<Num> adxIndicator, Indicator<Num> emaAlignmentComponent, Indicator<Num> macdHistogramComponent,
             Indicator<Num> adxStrengthComponent, Indicator<Num> adxChangeComponent, Indicator<Num> compositeIndicator,
             int normalizationBarCount) {
     }
