@@ -25,6 +25,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
 public class AverageTrueRangeStopLossRuleTest {
 
@@ -296,5 +297,15 @@ public class AverageTrueRangeStopLossRuleTest {
                 new AverageTrueRangeStopLossRule(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient),
                 new AverageTrueRangeStopLossRule(new ClosePriceIndicator(series), new ATRIndicator(series, atrBarCount),
                         atrCoefficient));
+    }
+
+    @Test
+    public void constructorValidation() {
+        ClosePriceIndicator referencePrice = new ClosePriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeStopLossRule(series, referencePrice, 4, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeStopLossRule(series, referencePrice, 4, -1.0));
     }
 }

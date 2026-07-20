@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -17,8 +16,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
  * {@link CachedIndicatorBenchmark}.
  */
 class CachedIndicatorBenchmarkTest {
-
-    private static final String BENCHMARK_PROPERTY = "ta4j.runBenchmarks";
 
     private final CachedIndicatorBenchmark benchmark = new CachedIndicatorBenchmark();
 
@@ -80,7 +77,6 @@ class CachedIndicatorBenchmarkTest {
 
     @Test
     @Tag("benchmark")
-    @EnabledIfSystemProperty(named = BENCHMARK_PROPERTY, matches = "true")
     void benchmarksRunWhenExplicitlyEnabled() throws Exception {
         int threads = intProperty("ta4j.bench.cachedIndicator.threads", 8);
         int batches = intProperty("ta4j.bench.cachedIndicator.batches", 1);

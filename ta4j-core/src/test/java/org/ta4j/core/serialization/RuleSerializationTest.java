@@ -23,6 +23,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -847,6 +848,21 @@ public class RuleSerializationTest {
         assertThat(exception).hasMessageContaining("No compatible constructor");
     }
 
+    @Test
+    public void overloadedIndicatorConstructorRequiresConcreteIndicatorTypeMatch() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        OverloadedIndicatorRule rule = new OverloadedIndicatorRule(closePrice, 2);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(descriptor.getComponents()).hasSize(1);
+        assertThat(descriptor.getComponents().get(0).getType()).isEqualTo("ClosePriceIndicator");
+        assertThat(restored).isInstanceOf(OverloadedIndicatorRule.class);
+        assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
+    }
+
     private static final class ConstructorPreferenceRule extends AbstractRule {
 
         private final Num amount;
@@ -872,6 +888,42 @@ public class RuleSerializationTest {
 
         private Num getAmount() {
             return amount;
+        }
+
+        private int getBarCount() {
+            return barCount;
+        }
+
+        private String getConstructorUsed() {
+            return constructorUsed;
+        }
+    }
+
+    private static final class OverloadedIndicatorRule extends AbstractRule {
+
+        private final Indicator<Num> indicator;
+        private final int barCount;
+        private final String constructorUsed;
+
+        OverloadedIndicatorRule(ATRIndicator indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "atr";
+        }
+
+        OverloadedIndicatorRule(Indicator<Num> indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "generic";
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        private Indicator<Num> getIndicator() {
+            return indicator;
         }
 
         private int getBarCount() {

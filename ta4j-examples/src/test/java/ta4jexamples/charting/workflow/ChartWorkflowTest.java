@@ -12,7 +12,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.ui.Layer;
-import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -27,7 +26,6 @@ import org.ta4j.core.num.Num;
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
 import java.awt.Dimension;
-import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
@@ -166,8 +164,6 @@ public class ChartWorkflowTest {
 
     @Test
     public void testCustomSourcePositionStartFlowsThroughPlainAndVolumeCharts() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         JFreeChart plainChart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
                 TimeAxisMode.BAR_INDEX, 2);
         assertSourceOrdinalLabels(plainChart.getXYPlot(), 2);
@@ -181,8 +177,6 @@ public class ChartWorkflowTest {
 
     @Test
     public void testCustomSourcePositionStartFlowsThroughSavedAndEncodedCharts() throws IOException {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         RecordingChartStorage storage = new RecordingChartStorage();
         ChartWorkflow persistentWorkflow = new ChartWorkflow(new TradingChartFactory(), new MockChartDisplayer(),
                 storage);
@@ -571,8 +565,6 @@ public class ChartWorkflowTest {
 
     @Test
     public void testDisplayTradingRecordChartUsesCustomSourcePositionStart() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         MockChartDisplayer displayer = new MockChartDisplayer();
         ChartWorkflow workflow = new ChartWorkflow(new TradingChartFactory(), displayer, ChartStorage.noOp());
 

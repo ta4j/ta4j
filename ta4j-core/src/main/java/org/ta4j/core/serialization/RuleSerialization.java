@@ -8,6 +8,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -440,6 +441,9 @@ public final class RuleSerialization {
         if (type.equals(BarSeries.class)) {
             return 80;
         }
+        if (type.equals(ATRIndicator.class)) {
+            return 100;
+        }
         if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
             return 70;
         }
@@ -631,7 +635,7 @@ public final class RuleSerialization {
                 // Check if component type matches parameter type
                 if (isAssignableFrom(paramType, component)) {
                     Object componentValue = resolveComponent(component, paramType, context);
-                    if (componentValue != null) {
+                    if (componentValue != null && paramType.isInstance(componentValue)) {
                         arguments[i] = componentValue;
                         argumentTypes[i] = paramType;
                         componentsUsed[j] = true;
@@ -1279,6 +1283,9 @@ public final class RuleSerialization {
             if (type.equals(BarSeries.class)) {
                 return 80;
             }
+            if (type.equals(ATRIndicator.class)) {
+                return 100;
+            }
             if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
                 return 70;
             }
@@ -1463,6 +1470,9 @@ public final class RuleSerialization {
         }
 
         private static boolean indicatorAccepts(Parameter parameter, Indicator<?> indicator) {
+            if (!parameter.getType().isInstance(indicator)) {
+                return false;
+            }
             Type parameterized = parameter.getParameterizedType();
             if (parameterized instanceof ParameterizedType type) {
                 Type[] arguments = type.getActualTypeArguments();
