@@ -9,7 +9,7 @@ Usage:
 Defaults:
   base-ref:      HEAD^
   candidate-ref: HEAD
-  output-dir:    .agents/benchmarks/performance/comparisons/<timestamp>
+  output-dir:    .agents/benchmarks/performance/comparisons/<timestamp>-<unique>
 
 The script runs ta4j-cli performance run in
 temporary worktrees for both refs, then compares performance.json artifacts with
@@ -33,7 +33,8 @@ repo_root="$(git rev-parse --show-toplevel)"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 base_ref="HEAD^"
 candidate_ref="HEAD"
-output_dir="$repo_root/.agents/benchmarks/performance/comparisons/$timestamp"
+output_dir=""
+default_output_parent="$repo_root/.agents/benchmarks/performance/comparisons"
 
 if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
   base_ref="$1"
@@ -47,7 +48,10 @@ if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
   output_dir="$1"
   shift
 fi
-if [[ "$output_dir" != /* ]]; then
+if [[ -z "$output_dir" ]]; then
+  mkdir -p "$default_output_parent"
+  output_dir="$(mktemp -d "$default_output_parent/${timestamp}-XXXXXX")"
+elif [[ "$output_dir" != /* ]]; then
   output_dir="$repo_root/$output_dir"
 fi
 if [[ "${1:-}" == "--" ]]; then
@@ -72,6 +76,7 @@ mkdir -p "$output_dir" "$worktree_parent"
 worktree_root="$(mktemp -d "$worktree_parent/run-XXXXXX")"
 base_worktree="$worktree_root/base"
 candidate_worktree="$worktree_root/candidate"
+maven_repo="$worktree_root/maven-repository"
 base_output="$output_dir/base"
 candidate_output="$output_dir/candidate"
 comparison_output="$output_dir/comparison"
@@ -119,8 +124,8 @@ run_ref() {
   exec_args="$(join_exec_args "${runner_args[@]}" --output-dir "$run_output")"
   (
     cd "$worktree"
-    mvn -q -pl ta4j-cli -am install -DskipTests
-    mvn -q -pl ta4j-cli exec:java \
+    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli -am install -DskipTests
+    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli exec:java \
       -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
       -Dexec.args="performance run $exec_args"
   )
@@ -132,7 +137,7 @@ run_ref "$candidate_worktree" "$candidate_output"
 comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$candidate_output" --output-dir "$comparison_output")"
 (
   cd "$candidate_worktree"
-  mvn -q -pl ta4j-cli exec:java \
+  mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli exec:java \
     -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
     -Dexec.args="performance compare $comparison_args"
 )

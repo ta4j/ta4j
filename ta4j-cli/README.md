@@ -459,6 +459,8 @@ ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
   --repetitions 5
 ```
 
+When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory and uses one temporary Maven local repository for the whole invocation, so concurrent benchmark runs do not share mutable SNAPSHOT artifacts.
+
 ## Common Use Cases
 
 These recipes are shorter than the coverage examples and focus on the workflows most users are likely to repeat.
