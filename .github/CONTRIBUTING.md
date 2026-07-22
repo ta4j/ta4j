@@ -33,7 +33,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    # Or run Maven directly:
    ./mvnw -B clean license:format formatter:format verify
    ```
-   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1` with Git Bash available on `PATH`, or use `mvnw.cmd -B clean license:format formatter:format verify` for the direct Maven path. Bash is required only for the repository shell-fixture preflight provided by the quiet scripts. The Bash watchdog treats continued Maven output as progress after the default timeout boundary and times out only after the no-output stall window also expires. Review and commit formatting and license-header repairs; CI invokes the Bash entrypoint with `--validate-only` and fails if they were omitted.
+   On Windows PowerShell, use `scripts/run-full-build-quiet.ps1` with Git Bash available on `PATH`, or use `mvnw.cmd -B clean license:format formatter:format verify` for the direct Maven path. Bash is required only for the repository shell-fixture preflight provided by the quiet scripts. Review and commit formatting and license-header repairs; CI invokes the Bash entrypoint with `--validate-only` and fails if they were omitted.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
