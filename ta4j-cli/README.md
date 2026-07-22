@@ -117,7 +117,7 @@ Use `--error-format JSON` for structured error envelopes with usage, I/O, or sof
 ```bash
 ta4j-cli catalog
 ta4j-cli completion --shell bash > ~/.local/share/ta4j-cli-completion.bash
-cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv +  --strategy 'SMA(7,21)' --reproducible --error-format json
+cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --strategy 'SMA(7,21)' --reproducible --error-format json
 ```
 
 ## Command Surface

@@ -199,6 +199,21 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
+    void comparisonReportsUnboundedScalingFromZero() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        Path outputDir = tempDir.resolve("comparison");
+        writePerformanceJson(baseDir, 10L, 0L, 1L);
+        writePerformanceJson(candidateDir, 10L, 0L, 1L);
+
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
+
+        JsonObject scaling = comparison.getAsJsonArray("cells").get(1).getAsJsonObject().getAsJsonObject("scaling");
+        assertTrue(scaling.get("baseMedianScale").getAsDouble() > 1e300d);
+        assertTrue(scaling.get("candidateMedianScale").getAsDouble() > 1e300d);
+    }
+
+    @Test
     @Tag("benchmark")
     @EnabledIfSystemProperty(named = BENCHMARK_PROPERTY, matches = "true")
     void benchmarkRunnerExecutesWhenExplicitlyEnabled() throws Exception {

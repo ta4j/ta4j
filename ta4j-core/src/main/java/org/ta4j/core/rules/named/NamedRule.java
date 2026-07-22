@@ -66,6 +66,7 @@ public abstract class NamedRule extends AbstractRule {
     private static final String[] DEFAULT_SCAN_PACKAGES = { "org.ta4j.core.rules.named" };
     private static final Set<String> SCANNED_PACKAGES = ConcurrentHashMap.newKeySet();
     private static final AtomicBoolean DEFAULT_PACKAGES_INITIALIZED = new AtomicBoolean();
+    private static final Object REGISTRY_INITIALIZATION_LOCK = new Object();
 
     private final String label;
 
@@ -82,7 +83,8 @@ public abstract class NamedRule extends AbstractRule {
 
     /**
      * Ensures core packages have been scanned and registers any discovered named
-     * rules.
+     * rules. Concurrent initialization calls wait for an in-progress scan to finish
+     * before returning.
      *
      * @param basePackages optional extra packages to scan
      * @since 0.23.1
@@ -99,11 +101,12 @@ public abstract class NamedRule extends AbstractRule {
      * Registers a named rule implementation.
      *
      * @param type named rule subtype
+     * @throws IllegalArgumentException when the type name cannot form a valid
+     *                                  compact label
      * @since 0.23.1
      */
     public static void registerImplementation(Class<? extends NamedRule> type) {
-        Objects.requireNonNull(type, "type");
-        String key = type.getSimpleName();
+        String key = buildLabel(type);
         REGISTRY.compute(key, (name, existing) -> {
             if (existing != null && existing != type) {
                 throw new IllegalStateException(
@@ -147,12 +150,18 @@ public abstract class NamedRule extends AbstractRule {
      * @param type       concrete named rule type
      * @param parameters constructor parameters encoded as strings
      * @return compact rule label
+     * @throws IllegalArgumentException when the rule type or a parameter contains
+     *                                  the underscore label delimiter
      * @since 0.23.1
      */
     public static String buildLabel(Class<? extends NamedRule> type, String... parameters) {
         Objects.requireNonNull(type, "type");
+        String simpleName = type.getSimpleName();
+        if (simpleName.indexOf('_') >= 0) {
+            throw new IllegalArgumentException("Named rule class names cannot contain underscores: " + simpleName);
+        }
         if (parameters == null || parameters.length == 0) {
-            return type.getSimpleName();
+            return simpleName;
         }
         for (int i = 0; i < parameters.length; i++) {
             String parameter = Objects.requireNonNull(parameters[i], "parameters[" + i + "]");
@@ -161,7 +170,7 @@ public abstract class NamedRule extends AbstractRule {
                         "Named rule parameters cannot contain underscores: parameters[" + i + "]");
             }
         }
-        return type.getSimpleName() + '_' + String.join("_", parameters);
+        return simpleName + '_' + String.join("_", parameters);
     }
 
     /**
@@ -238,8 +247,14 @@ public abstract class NamedRule extends AbstractRule {
     }
 
     private static void ensureDefaultRegistryInitialized() {
-        if (DEFAULT_PACKAGES_INITIALIZED.compareAndSet(false, true)) {
-            scanPackages(DEFAULT_SCAN_PACKAGES);
+        if (DEFAULT_PACKAGES_INITIALIZED.get()) {
+            return;
+        }
+        synchronized (REGISTRY_INITIALIZATION_LOCK) {
+            if (!DEFAULT_PACKAGES_INITIALIZED.get()) {
+                scanPackages(DEFAULT_SCAN_PACKAGES);
+                DEFAULT_PACKAGES_INITIALIZED.set(true);
+            }
         }
     }
 
@@ -247,13 +262,15 @@ public abstract class NamedRule extends AbstractRule {
         if (basePackages == null || basePackages.length == 0) {
             return;
         }
-        ClassLoader loader = detectClassLoader();
-        for (String basePackage : basePackages) {
-            String normalized = normalizePackage(basePackage);
-            if (normalized.isEmpty() || !SCANNED_PACKAGES.add(normalized)) {
-                continue;
+        synchronized (REGISTRY_INITIALIZATION_LOCK) {
+            ClassLoader loader = detectClassLoader();
+            for (String basePackage : basePackages) {
+                String normalized = normalizePackage(basePackage);
+                if (normalized.isEmpty() || !SCANNED_PACKAGES.add(normalized)) {
+                    continue;
+                }
+                scanPackage(normalized, loader);
             }
-            scanPackage(normalized, loader);
         }
     }
 

@@ -10,10 +10,19 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
+import java.io.IOException;
+import java.net.URL;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class NamedRuleTest {
 
@@ -26,15 +35,26 @@ class NamedRuleTest {
 
     @Test
     void buildLabelRejectsUnderscoreParameters() {
-        assertThatThrownBy(() -> NamedRule.buildLabel(NamedRuleFixture.class, "ABOVE", "10_value"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Named rule parameters cannot contain underscores: parameters[1]");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.buildLabel(NamedRuleFixture.class, "ABOVE", "10_value"));
+
+        assertThat(exception).hasMessage("Named rule parameters cannot contain underscores: parameters[1]");
+    }
+
+    @Test
+    void buildLabelRejectsUnderscoreTypeNames() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.buildLabel(Underscored_Rule.class, "ABOVE"));
+
+        assertThat(exception).hasMessage("Named rule class names cannot contain underscores: Underscored_Rule");
     }
 
     @Test
     void splitLabelRejectsBlankValues() {
-        assertThatThrownBy(() -> NamedRule.splitLabel("")).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Named rule label cannot be blank");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.splitLabel(""));
+
+        assertThat(exception).hasMessage("Named rule label cannot be blank");
     }
 
     @Test
@@ -84,10 +104,43 @@ class NamedRuleTest {
 
     @Test
     void requireRegisteredRejectsUnknownRules() {
-        assertThatThrownBy(() -> NamedRule.requireRegistered("MissingRule"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Unknown named rule 'MissingRule'. Ensure it is registered via NamedRule.registerImplementation() or initializeRegistry().");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.requireRegistered("MissingRule"));
+
+        assertThat(exception).hasMessage(
+                "Unknown named rule 'MissingRule'. Ensure it is registered via NamedRule.registerImplementation() or initializeRegistry().");
+    }
+
+    @Test
+    void concurrentRegistryInitializationWaitsForScanningToFinish() throws Exception {
+        String packageName = "org.ta4j.core.rules.named.concurrentfixture";
+        BlockingResourceClassLoader loader = new BlockingResourceClassLoader(packageName.replace('.', '/'));
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch secondStarted = new CountDownLatch(1);
+        CountDownLatch secondReturned = new CountDownLatch(1);
+        try {
+            Future<?> first = executor.submit(() -> initializeRegistryWith(loader, packageName));
+            assertThat(loader.scanStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            Future<?> second = executor.submit(() -> {
+                secondStarted.countDown();
+                try {
+                    initializeRegistryWith(loader, packageName);
+                } finally {
+                    secondReturned.countDown();
+                }
+            });
+            assertThat(secondStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(secondReturned.await(250, TimeUnit.MILLISECONDS)).isFalse();
+
+            loader.releaseScan.countDown();
+            first.get(5, TimeUnit.SECONDS);
+            second.get(5, TimeUnit.SECONDS);
+        } finally {
+            loader.releaseScan.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+        }
     }
 
     @Test
@@ -144,6 +197,53 @@ class NamedRuleTest {
             private DuplicateRule() {
                 super(NamedRule.buildLabel(DuplicateRule.class));
             }
+        }
+    }
+
+    private abstract static class Underscored_Rule extends NamedRule {
+
+        private Underscored_Rule() {
+            super("unreachable");
+        }
+    }
+
+    private static void initializeRegistryWith(ClassLoader loader, String packageName) {
+        Thread thread = Thread.currentThread();
+        ClassLoader originalLoader = thread.getContextClassLoader();
+        try {
+            thread.setContextClassLoader(loader);
+            NamedRule.initializeRegistry(packageName);
+        } finally {
+            thread.setContextClassLoader(originalLoader);
+        }
+    }
+
+    private static final class BlockingResourceClassLoader extends ClassLoader {
+
+        private final String blockedPath;
+        private final CountDownLatch scanStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseScan = new CountDownLatch(1);
+
+        private BlockingResourceClassLoader(String blockedPath) {
+            super(NamedRuleTest.class.getClassLoader());
+            this.blockedPath = blockedPath;
+        }
+
+        @Override
+        public Enumeration<URL> getResources(String name) throws IOException {
+            if (!blockedPath.equals(name)) {
+                return super.getResources(name);
+            }
+            scanStarted.countDown();
+            try {
+                if (!releaseScan.await(5, TimeUnit.SECONDS)) {
+                    throw new IOException("Timed out waiting to release the registry scan");
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while waiting to release the registry scan", exception);
+            }
+            return Collections.emptyEnumeration();
         }
     }
 }

@@ -191,7 +191,7 @@ public final class PerformanceComparison {
 
     private static double ratio(long previous, long current) {
         if (previous == 0L) {
-            return 0d;
+            return current == 0L ? 0d : UNBOUNDED_DELTA_PCT;
         }
         return current / (double) previous;
     }
