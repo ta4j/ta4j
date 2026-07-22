@@ -431,6 +431,32 @@ class Ta4jCliTest {
     }
 
     @Test
+    void stdinReadFailuresUseTheIoErrorContract() {
+        InputStream failingInput = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("simulated pipe failure");
+            }
+        };
+
+        CliRunResult ioFailure = runCliAllowingError(failingInput, "--error-format", "json", "strategy",
+                "backtest", "--data-file", "-", "--data-format", "csv", "--strategy", "SMA(7,21)");
+
+        assertThat(ioFailure.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from stdin.");
+
+        CliRunResult invalidFormat = runCliAllowingError(InputStream.nullInputStream(), "--error-format", "json",
+                "strategy", "backtest", "--data-file", "-", "--data-format", "yaml", "--strategy",
+                "SMA(7,21)");
+        assertThat(invalidFormat.exitCode()).isEqualTo(2);
+        JsonObject usageError = JsonParser.parseString(invalidFormat.stderr()).getAsJsonObject()
+                .getAsJsonObject("error");
+        assertThat(usageError.get("category").getAsString()).isEqualTo("usage");
+    }
+
+    @Test
     void forecastStateRejectsProjectionOnlyOptions() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
