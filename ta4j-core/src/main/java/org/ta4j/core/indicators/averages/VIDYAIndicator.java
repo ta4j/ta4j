@@ -24,7 +24,7 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator; // Input price (e.g., close price)
     private final int cmoPeriod; // Lookback period for cmoPeriod
     private final int vidyaPeriod; // Lookback period for VIDYA
-    private final CMOIndicator cmoIndicator;
+    private final transient CMOIndicator cmoIndicator;
 
     /**
      * Constructor.

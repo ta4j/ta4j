@@ -43,6 +43,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 
 /**
@@ -148,6 +150,68 @@ public final class IndicatorSerialization {
             }
             throw new IndicatorSerializationException("Failed to deserialize indicator from JSON", e);
         }
+    }
+
+    /**
+     * Renders an indicator as a compact named shorthand expression when the default
+     * registry recognizes its descriptor.
+     *
+     * @param indicator indicator instance
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  indicator
+     * @since 0.23.1
+     */
+    public static String toExpression(Indicator<?> indicator) {
+        return toExpression(indicator, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders an indicator as a compact named shorthand expression when the
+     * supplied registry recognizes its descriptor.
+     *
+     * @param indicator indicator instance
+     * @param registry  named asset registry
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  indicator
+     * @since 0.23.1
+     */
+    public static String toExpression(Indicator<?> indicator, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(indicator);
+        return registry.toExpression(NamedAssetKind.INDICATOR, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named indicator shorthand registered for descriptor: " + descriptor));
+    }
+
+    /**
+     * Rebuilds an indicator from a compact named shorthand expression using the
+     * default registry.
+     *
+     * @param series     bar series to attach to the indicator
+     * @param expression shorthand expression
+     * @return reconstructed indicator
+     * @since 0.23.1
+     */
+    public static Indicator<?> fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds an indicator from a compact named shorthand expression using the
+     * supplied registry.
+     *
+     * @param series     bar series to attach to the indicator
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed indicator
+     * @since 0.23.1
+     */
+    public static Indicator<?> fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.INDICATOR, expression);
+        return fromDescriptor(series, descriptor);
     }
 
     /**
@@ -274,9 +338,6 @@ public final class IndicatorSerialization {
             InvocationPlan candidate = plan.get();
             if (bestPlan == null || isBetterMatch(candidate, bestPlan, components.size())) {
                 bestPlan = candidate;
-                if (candidate.consumedComponents() == components.size()) {
-                    break;
-                }
             }
         }
         if (bestPlan != null) {
@@ -305,6 +366,7 @@ public final class IndicatorSerialization {
         Type[] genericParameterTypes = constructor.getGenericParameterTypes();
         Object[] args = new Object[parameterTypes.length];
         int componentIndex = 0;
+        int componentSpecificity = 0;
         boolean bulkConsumed = false;
         boolean constructorUsesIndicators = false;
         LinkedHashMap<String, Object> parameterPool = parameters == null ? new LinkedHashMap<>()
@@ -325,6 +387,7 @@ public final class IndicatorSerialization {
                 if (!parameterType.isInstance(component)) {
                     return Optional.empty();
                 }
+                componentSpecificity += indicatorParameterSpecificity(parameterType);
                 args[i] = component;
             } else if (parameterType.isArray() && Indicator.class.isAssignableFrom(parameterType.getComponentType())) {
                 constructorUsesIndicators = true;
@@ -337,6 +400,7 @@ public final class IndicatorSerialization {
                     if (!parameterType.getComponentType().isInstance(component)) {
                         return Optional.empty();
                     }
+                    componentSpecificity += indicatorParameterSpecificity(parameterType.getComponentType());
                 }
                 args[i] = remaining;
                 componentIndex = components.size();
@@ -355,6 +419,7 @@ public final class IndicatorSerialization {
                         if (!listElementType.isInstance(component)) {
                             return Optional.empty();
                         }
+                        componentSpecificity += indicatorParameterSpecificity(listElementType);
                     }
                     args[i] = remaining;
                     componentIndex = components.size();
@@ -395,14 +460,30 @@ public final class IndicatorSerialization {
             args[request.index()] = converted;
         }
 
-        // Validate that all components were consumed
-        // Note: components is guaranteed non-null due to early return check above
         boolean hasComponents = !components.isEmpty();
+        if (componentIndex != components.size()) {
+            return Optional.empty();
+        }
+        if (hasUnconsumedConstructorParameters(parameterPool)) {
+            return Optional.empty();
+        }
         if (!constructorUsesIndicators && hasComponents && hasIndicatorConstructor) {
             return Optional.empty();
         }
 
-        return Optional.of(new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators));
+        return Optional.of(
+                new InvocationPlan(constructor, args, componentIndex, constructorUsesIndicators, componentSpecificity));
+    }
+
+    private static int indicatorParameterSpecificity(Class<?> parameterType) {
+        return parameterType == Indicator.class ? 0 : 1;
+    }
+
+    private static boolean hasUnconsumedConstructorParameters(Map<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return false;
+        }
+        return parameters.keySet().stream().anyMatch(parameter -> !parameter.startsWith("__enumType_"));
     }
 
     private static boolean constructorConsumesIndicators(Constructor<?> constructor) {
@@ -444,6 +525,9 @@ public final class IndicatorSerialization {
         }
         if (candidate.usesIndicators() && !current.usesIndicators()) {
             return true;
+        }
+        if (candidate.componentSpecificity() != current.componentSpecificity()) {
+            return candidate.componentSpecificity() > current.componentSpecificity();
         }
         return false;
     }
@@ -547,46 +631,17 @@ public final class IndicatorSerialization {
             return Enum.valueOf(enumClass, value.toString());
         }
         if (Num.class.isAssignableFrom(targetType)) {
-            return series.numFactory().numOf(value.toString());
+            BigDecimal decimal = JsonNumberConversions.parseFiniteJsonNumber(value.toString(), "numeric parameter");
+            return series.numFactory().numOf(decimal.toString());
         }
         if (targetType == Object.class) {
-            try {
-                return series.numFactory().numOf(value.toString());
-            } catch (NumberFormatException ex) {
-                return value;
+            Object converted = JsonNumberConversions.convertJsonNumber(value, targetType);
+            if (converted != null) {
+                return series.numFactory().numOf(converted.toString());
             }
+            return value;
         }
-        Number coerced = coerceNumber(value);
-        if (coerced == null) {
-            return null;
-        }
-        if (targetType == int.class || targetType == Integer.class) {
-            return coerced.intValue();
-        }
-        if (targetType == long.class || targetType == Long.class) {
-            return coerced.longValue();
-        }
-        if (targetType == double.class || targetType == Double.class) {
-            return coerced.doubleValue();
-        }
-        if (targetType == float.class || targetType == Float.class) {
-            return coerced.floatValue();
-        }
-        if (targetType == short.class || targetType == Short.class) {
-            return coerced.shortValue();
-        }
-        if (targetType == byte.class || targetType == Byte.class) {
-            return coerced.byteValue();
-        }
-        if (Number.class.isAssignableFrom(targetType)) {
-            if (targetType.isInstance(coerced)) {
-                return coerced;
-            }
-            if (targetType == BigDecimal.class) {
-                return new BigDecimal(coerced.toString());
-            }
-        }
-        return null;
+        return JsonNumberConversions.convertJsonNumber(value, targetType);
     }
 
     private static Object convertNumericArrayValue(Object value, Class<?> arrayType, BarSeries series) {
@@ -613,17 +668,6 @@ public final class IndicatorSerialization {
             Array.set(array, i, converted);
         }
         return array;
-    }
-
-    private static Number coerceNumber(Object value) {
-        if (value instanceof Number number) {
-            return number;
-        }
-        try {
-            return new BigDecimal(value.toString());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 
     private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {
@@ -994,6 +1038,6 @@ public final class IndicatorSerialization {
     }
 
     private record InvocationPlan(Constructor<?> constructor, Object[] arguments, int consumedComponents,
-            boolean usesIndicators) {
+            boolean usesIndicators, int componentSpecificity) {
     }
 }

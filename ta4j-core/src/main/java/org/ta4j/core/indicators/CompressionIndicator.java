@@ -30,10 +30,13 @@ public class CompressionIndicator extends CachedIndicator<Num> {
 
     private static final Number DEFAULT_BOLLINGER_K = 2;
 
-    private final Indicator<Num> atrCompressionIndicator;
-    private final Indicator<Num> bollingerCompressionIndicator;
-    private final Indicator<Num> donchianCompressionIndicator;
-    private final Indicator<Num> compositeIndicator;
+    private final Indicator<Num> atrPercentIndicator;
+    private final Indicator<Num> bollingerWidthIndicator;
+    private final Indicator<Num> donchianWidthIndicator;
+    private final transient Indicator<Num> atrCompressionIndicator;
+    private final transient Indicator<Num> bollingerCompressionIndicator;
+    private final transient Indicator<Num> donchianCompressionIndicator;
+    private final transient Indicator<Num> compositeIndicator;
     private final int barCount;
     private final int percentileBarCount;
 
@@ -82,6 +85,9 @@ public class CompressionIndicator extends CachedIndicator<Num> {
         super(config.series());
         this.barCount = config.barCount();
         this.percentileBarCount = config.percentileBarCount();
+        this.atrPercentIndicator = config.atrPercentIndicator();
+        this.bollingerWidthIndicator = config.bollingerWidthIndicator();
+        this.donchianWidthIndicator = config.donchianWidthIndicator();
         this.atrCompressionIndicator = config.atrCompressionIndicator();
         this.bollingerCompressionIndicator = config.bollingerCompressionIndicator();
         this.donchianCompressionIndicator = config.donchianCompressionIndicator();
@@ -110,7 +116,8 @@ public class CompressionIndicator extends CachedIndicator<Num> {
                 .of(new SumIndicator(atrCompressionIndicator, bollingerCompressionIndicator,
                         donchianCompressionIndicator))
                 .dividedBy(3);
-        return new Config(series, atrCompressionIndicator, bollingerCompressionIndicator, donchianCompressionIndicator,
+        return new Config(series, atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator,
+                atrCompressionIndicator, bollingerCompressionIndicator, donchianCompressionIndicator,
                 compositeIndicator, barCount, percentileBarCount);
     }
 
@@ -192,7 +199,8 @@ public class CompressionIndicator extends CachedIndicator<Num> {
         return NumericIndicator.of(new PercentRankIndicator(indicator, percentileBarCount)).multipliedBy(-1).plus(100);
     }
 
-    private record Config(BarSeries series, Indicator<Num> atrCompressionIndicator,
+    private record Config(BarSeries series, Indicator<Num> atrPercentIndicator, Indicator<Num> bollingerWidthIndicator,
+            Indicator<Num> donchianWidthIndicator, Indicator<Num> atrCompressionIndicator,
             Indicator<Num> bollingerCompressionIndicator, Indicator<Num> donchianCompressionIndicator,
             Indicator<Num> compositeIndicator, int barCount, int percentileBarCount) {
     }

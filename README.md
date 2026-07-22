@@ -82,6 +82,8 @@ Prefer living on the edge? Use the snapshot repository and version:
 <repository>
   <id>central-portal-snapshots</id>
   <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+  <releases><enabled>false</enabled></releases>
+  <snapshots><enabled>true</enabled></snapshots>
 </repository>
 
 <dependency>
@@ -129,8 +131,8 @@ Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to 
 
 - **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
 - **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`. The local default runs actionlint and repository script fixtures, repairs license headers and formatting, then runs all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback. Review any source changes it makes before committing.
-- **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
-- **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
+- **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
+- **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
 - **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
 - **JaCoCo-only local gate:** Use `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
 - **Focused coverage report:** Use `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
@@ -226,16 +228,28 @@ compare it with the realized value at `i + horizon`.
 ```java
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractor;
+import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
+import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
 BarSeries series = ...;
 LogReturnIndicator returns = new LogReturnIndicator(series);
-ReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns);
+ReturnForecastStateIndicator<ReturnForecastState> state = new EwmaReturnForecastStateIndicator(returns);
 ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndicator(state, 5);
 
 Indicator<Num> medianNextClose = nextCloseForecast.median();
@@ -250,9 +264,186 @@ later realized prices.
 numeric output is a return stream in the declared representation. The initial
 forecast implementation supports log returns, so build the pipeline explicitly
 from `LogReturnIndicator` to `EwmaReturnForecastStateIndicator` to
-`MonteCarloPriceForecastIndicator`. Use `MonteCarloReturnProjectionIndicator`
-and `LogReturnToPriceForecastIndicator` from the forecast adapter package directly only when a model needs
-advanced simulation tuning or a custom explicit price source.
+`MonteCarloPriceForecastIndicator`. Its builder exposes advanced simulation
+tuning without leaving the exact path-based price model, and its explicit-price
+overloads support custom log-return sources whose price indicator cannot be
+inferred. Use `LognormalApproximationPriceForecastIndicator` only when a named
+summary-only lognormal approximation is the intended model.
+
+`ForecastState` exposes only index and stability. Return models compose one
+validated `ReturnMoments` value through `ReturnMomentState`, keeping observation
+count, representation, mean, drift, and canonical variance together while
+deriving volatility. `ReturnForecastStateIndicator<S>` lets projections infer
+the source return stream and verifies the state representation at use time.
+
+`Forecast` is Num-only. `Forecast.ofSamples(...)` creates empirical support;
+model summaries use `Forecast.builder(index, horizon, numFactory, support)` and
+declare empirical or analytic provenance through `ForecastSupport`.
+`sampleCount()` reports empirical represented values and returns zero for
+analytic or unavailable forecasts. Missing direct quantiles return `NaN.NaN`.
+
+At primitive-only distance or regression boundaries, bind a schema to the
+required representation:
+
+```java
+ForecastFeatureExtractor<ReturnForecastState> features =
+        ForecastFeatureExtractors.meanVolatility(ReturnRepresentation.LOG);
+int index = series.getEndIndex();
+double[] values = features.features(state.getValue(index));
+// schema id: return-moments/mean-volatility; order: mean, volatility
+```
+
+Feature schemas publish stable identity, version, order, units, and return
+representation. Values remain raw; the consuming model must fit scaling only
+from its eligible training rows.
+
+For a richer volatility state, the shortest path remains one constructor and
+the existing semantic return contract:
+
+```java
+RoughVolatilityForecastStateIndicator roughStates =
+        new RoughVolatilityForecastStateIndicator(returns);
+RoughVolatilityForecastState rough = roughStates.getValue(series.getEndIndex());
+```
+
+The default estimator reuses EWMA return moments, estimates roughness from a
+120-bar log-variogram window, measures log-volatility vol-of-vol over 60 bars,
+and emits cumulative variance forecasts for horizons one through five. Advanced
+construction can tune those windows, the horizon count, EWMA initialization,
+decay, and the existing EWMA drift mode. It becomes stable only when every
+required window is finite; an invalid return keeps it unavailable until all
+affected windows recover.
+
+Use specialized roughness in analog distance only when that modeling choice is
+intentional:
+
+```java
+AnalogReturnProjectionIndicator<RoughVolatilityForecastState> roughAnalog =
+        AnalogReturnProjectionIndicator.builder(roughStates)
+                .featureExtractor(ForecastFeatureExtractors.roughVolatility())
+                .build();
+// schema: [mean, volatility, roughness_hurst, vol_of_vol]
+```
+
+The schema remains raw and training-only standardization stays owned by the
+analog projection. Use rough state when volatility persistence and multi-horizon
+risk shape matter; prefer the smaller EWMA state when only current location and
+scale are needed.
+
+For online regime uncertainty, the default constructor runs a constant-hazard
+Bayesian change-point filter over the same log-return source:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        new OnlineChangePointForecastStateIndicator(returns);
+OnlineChangePointForecastState regime =
+        changePointStates.getValue(series.getEndIndex());
+```
+
+The estimator becomes stable after 20 consecutive valid returns, expects a
+100-observation regime, retains run lengths through 252, and reports the five
+most likely hypotheses. `recentChangeProbability()` is the complete posterior
+mass over run lengths zero through five; it is deliberately not the run-length
+zero probability. That probability equals the hazard before tail truncation and
+can increase slightly after truncation and renormalization, but it does not
+respond usefully to a shift. A non-finite return resets the model and requires a
+complete warm-up again. Each state retains `recentChangeWindow()` so the
+probability remains interpretable after it leaves the indicator.
+
+Advanced construction exposes model assumptions without adding a separate
+configuration type:
+
+```java
+OnlineChangePointForecastStateIndicator changePointStates =
+        OnlineChangePointForecastStateIndicator.builder(returns)
+                .expectedRunLength(150)
+                .maximumRunLength(500)
+                .topRunLengthCount(8)
+                .minimumObservationCount(30)
+                .recentChangeWindow(10)
+                .build();
+
+AnalogReturnProjectionIndicator<OnlineChangePointForecastState> regimeAnalog =
+        AnalogReturnProjectionIndicator.builder(changePointStates)
+                .featureExtractor(ForecastFeatureExtractors.changePoint(
+                        changePointStates.getRecentChangeWindow()))
+                .build();
+// schema: [mean, volatility, recent_change_probability, most_likely_run_length]
+```
+
+Posterior entries keep their probabilities from the complete run-length
+distribution, so the published top list generally sums to less than one. The
+default extractor keeps `change-point/default`; custom windows use
+`change-point/recent-change/<window>` and reject mismatched state. Run length
+zero retains the prior sufficient statistics; the current observation enters
+growth components in the canonical Adams-MacKay recurrence. Use
+change-point state when abrupt regime shifts and run-length uncertainty matter;
+avoid treating it as a trade signal or performance claim without walk-forward
+validation.
+
+For a state-conditioned empirical forecast, analog projection composes directly
+with the same typed state source. Rolling conformal calibration then learns an
+error radius from matured decisions only:
+
+```java
+AnalogReturnProjectionIndicator<ReturnForecastState> analog =
+        new AnalogReturnProjectionIndicator<>(state, 5);
+ReturnForecastProjectionIndicator calibrated =
+        RollingConformalForecastProjectionIndicator
+                .cumulativeLogReturnBuilder(analog, returns)
+                .build();
+
+Forecast analogForecast = analog.getValue(series.getEndIndex());
+Forecast calibratedForecast = calibrated.getValue(series.getEndIndex());
+```
+
+Analog defaults use a 1-bar horizon, 252 candidate rows, 30 nearest neighbors,
+at least 5 usable neighbors, Euclidean distance, `[mean, volatility]`
+log-return features, and candidate-only standardization. The builder can tune
+those choices or accept another fixed, log-return `ForecastFeatureSchema`.
+Candidate `j` is never eligible before `j + horizon`; distance ties resolve by
+the earlier source index. Candidates inside the state or return source's
+unstable window are excluded. Its empirical support count is the number of
+selected neighbors, not the lookback or state observation count.
+
+Rolling conformal defaults target 90% coverage over 252 recent matured decision
+rows and remain unavailable until 30 valid scores exist. A configured minimum
+is raised when necessary to make the requested finite-sample rank attainable;
+configurations whose rolling window can never attain that rank are rejected.
+Generic value calibration observes an indicator at `decision + horizon`;
+cumulative-log-return calibration sums the supplied log returns over the
+complete horizon and preserves the semantic return-projection contract.
+Calibration preserves the base mean, median, standard deviation, and support
+while widening configured lower and upper quantiles. At least one configured
+non-median quantile is required so a stable result always reflects calibration.
+Schema or representation mismatch,
+non-finite primitive conversion, insufficient history, invalid forecast
+metadata, a tail-less base forecast, or a positive widening radius applied to a
+zero-dispersion base forecast produces an unavailable result rather than a
+misleading summary.
+
+The runnable
+`ta4jexamples.analysis.forecast.RollingConformalForecastExample` demonstrates
+the advanced builders on the committed BTC-USD daily resource.
+
+### Forecast API migration from 0.23.0
+
+The 0.23.1 forecast correction intentionally replaces the initial 0.23.0
+surface before additional estimator families build on it:
+
+| 0.23.0 | 0.23.1 replacement |
+| --- | --- |
+| `Forecast<Num>` | Num-only `Forecast` |
+| `forecast.map(...)` | `scale(...)`, `affine(...)`, transformed samples, or a domain-specific adapter |
+| `Forecast.ofSummary(...)` | `Forecast.builder(..., ForecastSupport)` |
+| `LogReturnToPriceForecastIndicator` | Exact `MonteCarloPriceForecastIndicator` or explicit `LognormalApproximationPriceForecastIndicator` |
+| Return-shaped `ForecastState` | Minimal `ForecastState` plus `ReturnMomentState` / `ReturnMoments` |
+| Seven-field `ReturnForecastState` construction | `ReturnForecastState.stable(...)` or `.unstable(...)` |
+| Unnamed feature arrays | Representation-bound `ForecastFeatureSchema` extractors |
+
+This is a deliberate compatibility exception: correctness and durable model
+semantics take precedence over preserving the newly introduced 0.23.0 forecast
+signatures.
 
 ### Staged exit rules
 
@@ -437,8 +628,8 @@ Turn ideas into numbers. Add trading costs for realism and measure what matters:
 ```java
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
-import org.ta4j.core.cost.LinearTransactionCostModel;
-import org.ta4j.core.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 
 // Run backtest with realistic trading costs
 // Transaction cost: 0.1% per trade (typical for crypto exchanges)
@@ -447,6 +638,9 @@ TradingRecord record = new BarSeriesManager(series,
         new LinearTransactionCostModel(0.001),      // 0.1% fee per trade
         new LinearBorrowingCostModel(0.0001))       // 0.01% borrowing cost
         .run(strategy);
+
+// Leveraged-long assumptions can opt in explicitly:
+// new LinearBorrowingCostModel(0.0001, LinearBorrowingCostModel.Applicability.BOTH)
 
 // Calculate performance metrics
 System.out.printf("Trades executed: %d%n", record.getTradeCount());
@@ -781,6 +975,98 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Author concise strategy JSON with the opt-in `version: 2` envelope:
+```java
+String v2StrategyJson = """
+        {
+          "version": 2,
+          "name": "Momentum_Crossover",
+          "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(12)", "SMA(26)"] },
+          "exitRule": {
+            "type": "OrRule",
+            "rules": [
+              { "type": "StopLossRule", "args": ["2.5%"] },
+              { "type": "CrossedDownIndicatorRule", "args": ["SMA(12)", "SMA(26)"] }
+            ]
+          }
+        }
+        """;
+Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
+String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
+```
+
+Strategy JSON v2 also accepts named shorthand strings for rules and a compact
+top-level strategy macro:
+```java
+String compactStrategyJson = """
+        {
+          "version": 2,
+          "strategy": "SMA(7,21)",
+          "name": "Daily_SMA_Crossover"
+        }
+        """;
+Strategy strategy = Strategy.fromJson(series, compactStrategyJson);
+String compactJson = strategy.toCompactJson(); // optional v2 output; toJson() stays canonical
+
+Strategy macroStrategy = Strategy.fromExpression(series, "SMA(7,21)");
+String strategyExpression = macroStrategy.toExpression(); // "SMA(7,21)"
+```
+
+Named shorthand is kind-specific. `SMA(7)` is a single indicator over close
+price, while strategy-level `SMA(7,21)` expands to an SMA crossover strategy.
+Rule-level direction stays explicit with `SmaCrossUp(7,21)`,
+`SmaCrossDown(7,21)`, or generic forms such as
+`CrossedUp(SMA(7),SMA(21))`.
+
+The shorthand grammar is deliberately bounded and strict:
+
+| JSON area | Accepted values |
+| --- | --- |
+| Expression grammar | `Alias`, `Alias(arg,...)`, nested expressions, quoted strings, bare enum/string tokens, and finite JSON-style numbers |
+| Strategy metadata | Optional `name`, optional `type` (`BaseStrategy`), optional `strategy` macro, optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
+| Strategy rules | Required `entryRule` and `exitRule` objects or rule expression strings unless `strategy` is supplied |
+| Composite rules | `And(...)` / `AndRule` and `Or(...)` / `OrRule`, each with exactly two child rules |
+| Leaf rules | `CrossedUp(...)`, `CrossedDown(...)`, `Over(...)`, `Under(...)`, `SmaCrossUp(...)`, `SmaCrossDown(...)`, `StopGain(...)`, and `StopLoss(...)` |
+| Indicators | `ClosePrice`, `ClosePriceIndicator`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, with positive integer bar counts |
+| Analysis criteria | Default forms of `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
+| Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
+
+Malformed JSON-looking descriptor payloads fail as syntax errors. Plain labels
+remain accepted only for non-JSON text. Numeric constructor arguments in
+canonical descriptor JSON follow the same finite JSON-number contract as v2
+shorthand, and integer parameters such as bar counts must be exact integers.
+
+Custom shorthand is registered up front with an immutable `NamedAssetRegistry`:
+```java
+NamedAssetRegistry registry = NamedAssetRegistry.builder()
+        .withDefaults()
+        .registerIndicator("FastCloseSma", List.of("barCount"), args -> {
+            args.requireCount(1);
+            return ComponentDescriptor.builder()
+                    .withType("SMAIndicator")
+                    .withParameters(Map.of("barCount", args.positiveInt(0)))
+                    .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
+                    .build();
+        })
+        .build();
+
+Indicator<?> indicator = Indicator.fromExpression(series, "FastCloseSma(5)", registry);
+AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
+```
+Custom bindings read parsed arguments through typed helpers such as
+`positiveInt(...)`, `finiteNumberText(...)`, `stringValue(...)`,
+`indicatorDescriptor(...)`, and `ruleDescriptor(...)`.
+Indicator aliases used in numeric comparison rules must resolve to indicators
+whose runtime values are `Num`; boolean indicators should be composed through
+boolean-aware rules instead of `Over(...)` / `Under(...)` style comparisons.
+Parameterized analysis criteria serialize through canonical descriptor JSON;
+compact aliases are reserved for descriptors a registry formatter can represent
+without dropping constructor state.
+
+For command-line or agent workflows, split comma-separated shorthand lists with
+`NamedAssetRegistry#splitTopLevel(...)` instead of `String#split(",")`; nested
+forms such as `Custom("a,b",SMA(7))` then remain intact.
+
 Indicator round-tripping depends on each indicator descriptor preserving the
 constructor inputs needed to rebuild that indicator. Indicators that create
 helper indicators internally should keep their constructor arguments in
@@ -1002,7 +1288,7 @@ Time gaps are omitted; no empty bars are inserted. If your pipeline expects cont
 The Elliott Wave suite exposes two minimal entry points:
 
 - `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
-- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+- `ElliottWaveAnalysisRunner` for one-shot analysis runs with pluggable detectors and confidence profiles
 
 ```java
 BarSeries series = ...;
@@ -1015,7 +1301,69 @@ ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
 Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
-See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
+For 1-minute, 5-minute, and other live intraday series, use the causal
+volatility-scaled profile. The compatible default includes the forming terminal
+wave for live charting while reporting it separately from confirmed waves:
+
+```java
+ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder()
+        .degree(ElliottDegree.SUB_MINUETTE)
+        .logicProfile(ElliottLogicProfile.INTRADAY_LIVE)
+        .build();
+
+ElliottAnalysisResult intraday = runner.analyze(series)
+        .analysisFor(ElliottDegree.SUB_MINUETTE)
+        .orElseThrow()
+        .analysis();
+int confirmedWaves = intraday.waveCount().confirmed();
+int wavesIncludingForming = intraday.waveCount().includingProvisional();
+boolean primaryIsForming = intraday.scenarios()
+        .base()
+        .map(intraday::usesProvisionalTerminal)
+        .orElse(false);
+```
+
+For trading rules that must act on confirmed detector pivots only, add
+`.includeProvisionalTerminalSwing(false)` to the runner builder. Custom analysis
+runners own their terminal-wave semantics.
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and runner-based workflow.
+
+## LPPL residual quickstart
+
+`LPPLResidualIndicator` fits a Log-Periodic Power Law model through the bar before the requested index and evaluates the current price against that fixed path. The primary API is a regular normalized numeric indicator:
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+LPPLResidualIndicator residual = new LPPLResidualIndicator(series);
+Num normalizedResidual = residual.getValue(index); // positive = above the path, negative = below it
+```
+
+Use the rich fit when model status and diagnostics affect the decision:
+
+```java
+LPPLFit fit = residual.getFitIndicator().getValue(index);
+if (fit.isQualified(residual.getProfile())) {
+    double rawLogPriceResidual = fit.residual();
+    double fittedCurrentLogPrice = fit.predictedLogPrice();
+}
+```
+
+The value is the observed-minus-predicted log-price residual divided by the maximum absolute residual across the same fitted path. It is bounded to `[-1, 1]`, but it is not by itself a valuation judgment, bubble label, or crash forecast. Warm-up bars, invalid prices, optimizer failures, and unqualified fits return `NaN` rather than a misleading neutral zero. LPPL calibration is substantially more expensive than ordinary rolling arithmetic: reuse `getFitIndicator()` when diagnostics are also needed rather than constructing a second fit indicator for the same series and profile.
+
+Advanced scans can reuse grouped immutable tuning rather than positional parameter lists:
+
+```java
+LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
+        .withWindow(500)
+        .withCriticalTimeSearch(1, 60, 5)
+        .withOptimizerSettings(160, 0.80);
+LPPLResidualIndicator tunedResidual = new LPPLResidualIndicator(series, profile);
+```
+
+LPPL fitting is sensitive to window selection and split/distribution discontinuities, so equity operators should use adjusted prices and validate the residual against matched trend and randomized-return controls before applying thresholds.
 
 ## Portfolio backtesting foundation
 
@@ -1161,9 +1509,11 @@ Snapshots are available at:
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
+Snapshots are consumed from this repository directly; they are not expected to appear in normal Maven Central release search. Portal snapshot browsing may also be unavailable independently of publishing. A green snapshot workflow means an isolated Maven consumer resolved the exact newly deployed `ta4j-parent`, `ta4j-core`, and `ta4j-examples` build and matched the core/examples JAR checksums.
+
 ### Stable releases
 
-Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merge the generated `release/<version>` PR with a merge commit, then `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, creates the GitHub Release, and explicitly dispatches the next snapshot publication. `release-health.yml` then verifies repo-state drift on `master` pushes and release handoffs, and it treats snapshot publication as authoritative once `snapshot.yml` has finished so a healthy release does not fail during the async publish-to-snapshot handoff.
+Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merging the generated `release/<version>` PR with a merge commit immediately starts `snapshot.yml` through its `master` push trigger, while `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, and pushes the tag, which triggers `github-release.yml` to create the GitHub Release. Manual publish/recovery runs retain an explicit snapshot dispatch, but the PR path does not duplicate the already-running snapshot publication. `release-health.yml` then verifies repo-state drift and retrieves the current snapshot's exact timestamped POM/JAR; top-level metadata remains informational because it can lag.
 
 The prepare-release workflow also runs a Java-based removal-ready deprecation scanner: first as a release gate for due or overdue removals, then against the new snapshot version to sync managed GitHub cleanup issues with an attached report artifact.
 

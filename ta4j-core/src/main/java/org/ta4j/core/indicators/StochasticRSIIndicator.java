@@ -19,8 +19,9 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final StochasticIndicator stochasticIndicator;
+    private final transient StochasticIndicator stochasticIndicator;
 
     /**
      * Constructor.
@@ -54,6 +55,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
      */
     public StochasticRSIIndicator(RSIIndicator rsiIndicator, int barCount) {
         super(rsiIndicator);
+        this.indicator = rsiIndicator;
         this.barCount = barCount;
         this.stochasticIndicator = new StochasticIndicator(rsiIndicator, barCount);
     }

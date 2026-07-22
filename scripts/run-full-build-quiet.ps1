@@ -20,7 +20,7 @@ Examples:
   scripts/run-full-build-quiet.ps1 --preflight-only
   scripts/run-full-build-quiet.ps1 -- -pl ta4j-core
   scripts/run-full-build-quiet.ps1 --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
+  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
 "@
 }
 
@@ -378,7 +378,7 @@ if ($preflightOnly) {
 }
 
 if ($defaultGate) {
-    $mavenArgs = @("-Dta4j.excludedTestTags=analysis-demo") + $mavenArgs
+    $mavenArgs = @("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless") + $mavenArgs
 }
 
 $logDir = Join-Path $repoRoot ".agents/logs"
@@ -436,8 +436,7 @@ try {
     $start = Get-Date
     $lastHeartbeat = $start
     $timedOut = $false
-    while (-not $process.HasExited) {
-        Start-Sleep -Seconds 1
+    while (-not $process.WaitForExit(1000)) {
         $now = Get-Date
         if ($timeoutSeconds -gt 0 -and ($now - $start).TotalSeconds -ge $timeoutSeconds) {
             $timedOut = $true

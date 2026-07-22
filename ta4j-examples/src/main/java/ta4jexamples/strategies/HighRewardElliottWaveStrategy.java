@@ -3,688 +3,247 @@
  */
 package ta4jexamples.strategies;
 
-import java.math.BigDecimal;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.IndicatorUtils;
-import org.ta4j.core.indicators.RSIIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
-import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottScenarioGenerator;
-import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
-import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
-import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
+import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator;
+import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.WaveForecast;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
-import org.ta4j.core.rules.NotRule;
-import org.ta4j.core.rules.OverIndicatorRule;
-import org.ta4j.core.rules.UnderIndicatorRule;
-import org.ta4j.core.rules.elliott.ElliottImpulsePhaseRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioAlternationRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioCompletionRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioConfidenceRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioDirectionRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioInvalidationRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioRiskRewardRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioStopViolationRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioTargetReachedRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioTimeStopRule;
-import org.ta4j.core.rules.elliott.ElliottScenarioValidRule;
-import org.ta4j.core.rules.elliott.ElliottTrendBiasRule;
-import org.ta4j.core.strategy.named.NamedStrategy;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.rules.AverageTrueRangeTrailingStopLossRule;
+import org.ta4j.core.rules.StopGainRule;
+import org.ta4j.core.rules.StopLossRule;
+import org.ta4j.core.rules.TrailingStopGainRule;
+import org.ta4j.core.rules.WaitForRule;
 
 /**
- * High-reward Elliott Wave strategy that trades only high-confidence impulse
- * scenarios with favorable risk/reward and trend/momentum alignment.
+ * Trades empirically recurring intraday Elliott impulse phases while refusing
+ * to invent a count when the series has no comparable historical structure.
+ *
+ * <h2>Root thesis</h2>
+ * <p>
+ * Elliott labels are useful here as a compact description of market position,
+ * not as a claim that every chart must contain a deterministic five-wave
+ * pattern. One-minute and five-minute crypto bars repeatedly alternate between
+ * expansion and retracement. When the causal Elliott pipeline recognized that
+ * structure in earlier bars, similar ATR-normalized return, range, and volume
+ * conditions provide an empirical distribution over the likely impulse phase at
+ * the current decision bar. The strategy acts only when that distribution is
+ * sufficiently concentrated; no historical structure means no forecast and no
+ * trade.
  *
  * <p>
- * Entry criteria:
- * <ul>
- * <li>Impulse scenario in wave 3 or wave 5</li>
- * <li>Confidence above the minimum threshold</li>
- * <li>Directional trend bias alignment</li>
- * <li>Risk/reward meets the minimum threshold using the wave 2/4 stop and the
- * furthest Fibonacci target</li>
- * <li>Wave 2/4 time alternation exceeds the minimum ratio</li>
- * <li>Trend (SMA) and momentum (RSI or volatility-normalized MACD-V)
- * confirmation</li>
- * </ul>
+ * Long entries target the asymmetric parts of a bullish impulse: the beginning
+ * of wave 1 and confirmed turns from the bottoms of waves 2 and 4. Wave phase
+ * alone is insufficient, so the entry must also confirm a three-bar local
+ * trough. Exits require a corresponding local crest or a phase transition out
+ * of waves 1, 3, and 5. Because any wave interpretation can fail abruptly,
+ * those thesis exits are OR-composed with a fixed stop, profit target, trailing
+ * gain protection, ATR trailing stop, and maximum holding time. The wave
+ * forecast seeks opportunity; the composite stack controls the cost of being
+ * wrong.
  *
  * <p>
- * Exit criteria:
- * <ul>
- * <li>Scenario invalidation or completion</li>
- * <li>Corrective swing stop breached (wave 2/4)</li>
- * <li>Target reached</li>
- * <li>Trend/momentum breakdown</li>
- * <li>Time-based stop after an extended wave 3 duration</li>
- * </ul>
+ * This example intentionally has no legacy serialized-label constructor or
+ * compatibility parser. Configure it through {@link Settings}; the earlier
+ * direction, risk/reward, alternation, SMA, RSI, and MACD surfaces described a
+ * different strategy and have been removed rather than deprecated.
  *
  * @since 0.22.2
  */
-public final class HighRewardElliottWaveStrategy extends NamedStrategy {
+public final class HighRewardElliottWaveStrategy extends BaseStrategy {
 
-    static {
-        registerImplementation(HighRewardElliottWaveStrategy.class);
-    }
-
-    private static final SignalDirection DEFAULT_DIRECTION = SignalDirection.BULLISH;
-    private static final ElliottDegree DEFAULT_DEGREE = ElliottDegree.PRIMARY;
-    private static final double DEFAULT_MIN_CONFIDENCE = 0.35;
-    private static final double DEFAULT_MIN_RISK_REWARD = 2.0;
-    private static final double DEFAULT_MIN_ALTERNATION_RATIO = 1.50;
-    private static final double DEFAULT_MIN_TREND_BIAS_STRENGTH = 0.10;
-    private static final int DEFAULT_TREND_SMA_PERIOD = 100;
-    private static final int DEFAULT_RSI_PERIOD = 14;
-    private static final double DEFAULT_RSI_THRESHOLD = 50.0;
-    private static final int DEFAULT_MACD_FAST = 12;
-    private static final int DEFAULT_MACD_SLOW = 26;
-    private static final int DEFAULT_MACD_SIGNAL = 9;
-
-    private static final int DEFAULT_ATR_PERIOD = 14;
-    private static final double DEFAULT_MIN_RELATIVE_SWING = 0.10;
-    private static final double ANALYZER_MIN_CONFIDENCE = 0.20;
-    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
-
-    private static final double MAX_WAVE_DURATION_MULTIPLIER = 1.5;
-    private static final int PARAMETER_COUNT = 12;
+    private static final String NAME = "HighRewardElliottWaveStrategy";
 
     /**
-     * Builds the strategy with default parameters.
+     * Builds the one-minute/five-minute strategy with conservative defaults.
      *
-     * @param series bar series to analyze
+     * @param series intraday bar series
      */
     public HighRewardElliottWaveStrategy(final BarSeries series) {
-        this(series, Config.defaults());
+        this(series, Settings.intradayDefaults());
     }
 
     /**
-     * Builds the strategy using serialized label parameters.
+     * Builds the strategy with explicit forecast and risk settings.
      *
-     * @param series bar series to analyze
-     * @param params serialized parameters (see
-     *               {@link Config#fromParameters(String...)})
+     * @param series   intraday bar series
+     * @param settings strategy settings
      */
-    public HighRewardElliottWaveStrategy(final BarSeries series, final String... params) {
-        this(series, Config.fromParameters(params));
+    public HighRewardElliottWaveStrategy(final BarSeries series, final Settings settings) {
+        this(settings, prepare(series, settings,
+                new EmpiricalElliottWaveForecastIndicator(series, settings.forecastSettings())));
     }
 
-    /**
-     * Builds the strategy using a precomputed scenario indicator.
-     *
-     * @param series            bar series to analyze
-     * @param config            strategy configuration
-     * @param scenarioIndicator indicator supplying scenario sets
-     */
-    HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
-            final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        this(config, buildEntryRule(series, config, scenarioIndicator),
-                buildExitRule(series, config, scenarioIndicator), calculateUnstableBars(config));
+    HighRewardElliottWaveStrategy(final BarSeries series, final Settings settings,
+            final Indicator<WaveForecast> forecast) {
+        this(settings, prepare(series, settings, forecast));
     }
 
-    /**
-     * Builds the strategy with the default scenario indicator pipeline.
-     *
-     * @param series bar series to analyze
-     * @param config strategy configuration
-     */
-    private HighRewardElliottWaveStrategy(final BarSeries series, final Config config) {
-        this(series, config, buildScenarioIndicator(series, config));
+    private HighRewardElliottWaveStrategy(final Settings settings, final PreparedRules rules) {
+        super(NAME, rules.entryRule(), rules.exitRule(), rules.unstableBars());
+        Objects.requireNonNull(settings, "settings");
     }
 
-    /**
-     * Internal constructor that wires the prepared rules into the named strategy.
-     *
-     * @param config       strategy configuration
-     * @param entryRule    precomputed entry rule
-     * @param exitRule     precomputed exit rule
-     * @param unstableBars unstable bar count for warm-up
-     */
-    private HighRewardElliottWaveStrategy(final Config config, final Rule entryRule, final Rule exitRule,
-            final int unstableBars) {
-        super(buildLabel(config), entryRule, exitRule, unstableBars);
-    }
-
-    /**
-     * Builds the entry rule for the strategy.
-     *
-     * @param series            bar series backing indicators
-     * @param config            strategy configuration
-     * @param scenarioIndicator indicator supplying scenario sets
-     * @return entry rule
-     */
-    private static Rule buildEntryRule(final BarSeries series, final Config config,
-            final Indicator<ElliottScenarioSet> scenarioIndicator) {
+    private static PreparedRules prepare(final BarSeries series, final Settings settings,
+            final Indicator<WaveForecast> forecast) {
         Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(config, "config");
-        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        validateScenarioIndicator(series, scenarioIndicator);
+        Settings validatedSettings = Objects.requireNonNull(settings, "settings");
+        Indicator<WaveForecast> validatedForecast = Objects.requireNonNull(forecast, "forecast");
+        if (!IndicatorUtils.isSameSeries(series, validatedForecast.getBarSeries())) {
+            throw new IllegalArgumentException("forecast must use the same BarSeries instance");
+        }
 
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
-        RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
-        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
-                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
-
-        Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
-                : new UnderIndicatorRule(close, trendSma);
-
-        Rule momentumRule = config.direction().isBullish()
-                ? new OverIndicatorRule(rsi, config.rsiThreshold()).or(new OverIndicatorRule(macd, 0))
-                : new UnderIndicatorRule(rsi, config.rsiThreshold()).or(new UnderIndicatorRule(macd, 0));
-
-        Rule scenarioValidRule = new ElliottScenarioValidRule(scenarioIndicator, close);
-        Rule impulsePhaseRule = new ElliottImpulsePhaseRule(scenarioIndicator, ElliottPhase.WAVE3, ElliottPhase.WAVE5);
-        Rule confidenceRule = new ElliottScenarioConfidenceRule(scenarioIndicator, config.minConfidence());
-        Rule directionRule = new ElliottScenarioDirectionRule(scenarioIndicator, config.direction().isBullish());
-        Rule trendBiasRule = new ElliottTrendBiasRule(scenarioIndicator, config.direction().isBullish(),
-                config.minTrendBiasStrength());
-        Rule alternationRule = new ElliottScenarioAlternationRule(scenarioIndicator, config.minAlternationRatio());
-        Rule riskRewardRule = new ElliottScenarioRiskRewardRule(scenarioIndicator, close,
-                config.direction().isBullish(), config.minRiskReward());
-
-        Rule entryRule = scenarioValidRule.and(impulsePhaseRule)
-                .and(confidenceRule)
-                .and(directionRule)
-                .and(trendBiasRule)
-                .and(alternationRule)
-                .and(riskRewardRule)
-                .and(trendRule)
-                .and(momentumRule);
-
-        return entryRule;
+        Rule entry = new WaveEntryRule(close, validatedForecast, validatedSettings.minimumPhaseProbability());
+        Rule wavePeak = new WavePeakExitRule(close, validatedForecast, validatedSettings.minimumPhaseProbability());
+        Rule composite = new StopLossRule(close, validatedSettings.fixedStopLossPercentage())
+                .or(new StopGainRule(close, validatedSettings.profitTargetPercentage()))
+                .or(new TrailingStopGainRule(close,
+                        series.numFactory().numOf(validatedSettings.trailingStopPercentage()),
+                        validatedSettings.trailingLookbackBars()))
+                .or(new AverageTrueRangeTrailingStopLossRule(series, close, validatedSettings.atrBarCount(),
+                        validatedSettings.atrMultiplier(), validatedSettings.trailingLookbackBars()))
+                .or(new WaitForRule(Trade.TradeType.BUY, validatedSettings.maximumHoldingBars()));
+        return new PreparedRules(entry, wavePeak.or(composite), validatedForecast.getCountOfUnstableBars());
     }
 
     /**
-     * Builds the exit rule for the strategy.
+     * Settings for the empirical entry and composite exit stack.
      *
-     * @param series            bar series backing indicators
-     * @param config            strategy configuration
-     * @param scenarioIndicator indicator supplying scenario sets
-     * @return exit rule
+     * @param forecastSettings        empirical Elliott forecast settings
+     * @param minimumPhaseProbability minimum modal phase probability
+     * @param fixedStopLossPercentage fixed loss from entry, in percent
+     * @param profitTargetPercentage  direct target from entry, in percent
+     * @param trailingStopPercentage  favorable-excursion giveback, in percent
+     * @param trailingLookbackBars    trailing high and ATR lookback
+     * @param atrBarCount             ATR window
+     * @param atrMultiplier           ATR trailing-stop multiplier
+     * @param maximumHoldingBars      timeout after entry
      */
-    private static Rule buildExitRule(final BarSeries series, final Config config,
-            final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(config, "config");
-        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        validateScenarioIndicator(series, scenarioIndicator);
+    public record Settings(EmpiricalElliottWaveForecastIndicator.Settings forecastSettings,
+            double minimumPhaseProbability, double fixedStopLossPercentage, double profitTargetPercentage,
+            double trailingStopPercentage, int trailingLookbackBars, int atrBarCount, double atrMultiplier,
+            int maximumHoldingBars) {
 
-        ClosePriceIndicator close = new ClosePriceIndicator(series);
-        SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
-        RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
-        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
-                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
+        public Settings {
+            Objects.requireNonNull(forecastSettings, "forecastSettings");
+            requireUnitInterval("minimumPhaseProbability", minimumPhaseProbability);
+            requireNonNegative("fixedStopLossPercentage", fixedStopLossPercentage);
+            requireNonNegative("profitTargetPercentage", profitTargetPercentage);
+            requireNonNegative("trailingStopPercentage", trailingStopPercentage);
+            if (trailingLookbackBars <= 0 || atrBarCount <= 0 || maximumHoldingBars <= 0) {
+                throw new IllegalArgumentException("bar counts must be > 0");
+            }
+            if (!Double.isFinite(atrMultiplier) || atrMultiplier <= 0.0d) {
+                throw new IllegalArgumentException("atrMultiplier must be finite and > 0");
+            }
+        }
 
-        Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
-                : new UnderIndicatorRule(close, trendSma);
+        /**
+         * @return defaults for liquid one-minute or five-minute crypto bars
+         */
+        public static Settings intradayDefaults() {
+            return new Settings(EmpiricalElliottWaveForecastIndicator.Settings.intradayDefaults(), 0.55d, 1.5d, 4.0d,
+                    1.25d, 120, 14, 3.0d, 360);
+        }
 
-        Rule momentumRule = config.direction().isBullish()
-                ? new OverIndicatorRule(rsi, config.rsiThreshold()).or(new OverIndicatorRule(macd, 0))
-                : new UnderIndicatorRule(rsi, config.rsiThreshold()).or(new UnderIndicatorRule(macd, 0));
+        private static void requireUnitInterval(final String name, final double value) {
+            if (!Double.isFinite(value) || value <= 0.0d || value > 1.0d) {
+                throw new IllegalArgumentException(name + " must be in (0, 1]");
+            }
+        }
 
-        Rule scenarioValidRule = new ElliottScenarioValidRule(scenarioIndicator, close);
-        Rule directionRule = new ElliottScenarioDirectionRule(scenarioIndicator, config.direction().isBullish());
-        Rule trendBiasRule = new ElliottTrendBiasRule(scenarioIndicator, config.direction().isBullish(),
-                config.minTrendBiasStrength());
-
-        Rule exitTriggers = new NotRule(scenarioValidRule).or(new NotRule(directionRule))
-                .or(new ElliottScenarioCompletionRule(scenarioIndicator))
-                .or(new ElliottScenarioInvalidationRule(scenarioIndicator, close))
-                .or(new ElliottScenarioTargetReachedRule(scenarioIndicator, close, config.direction().isBullish()))
-                .or(new ElliottScenarioStopViolationRule(scenarioIndicator, close, config.direction().isBullish()))
-                .or(new NotRule(trendBiasRule))
-                .or(new NotRule(trendRule.and(momentumRule)))
-                .or(new ElliottScenarioTimeStopRule(scenarioIndicator, MAX_WAVE_DURATION_MULTIPLIER));
-
-        return exitTriggers;
-    }
-
-    /**
-     * Validates that the scenario indicator is bound to the same series instance as
-     * the strategy.
-     *
-     * @param series            strategy series
-     * @param scenarioIndicator scenario source indicator
-     */
-    private static void validateScenarioIndicator(final BarSeries series,
-            final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
-            throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
+        private static void requireNonNegative(final String name, final double value) {
+            if (!Double.isFinite(value) || value < 0.0d) {
+                throw new IllegalArgumentException(name + " must be finite and >= 0");
+            }
         }
     }
 
-    /**
-     * Builds the scenario indicator pipeline used by the strategy.
-     *
-     * @param series bar series to analyze
-     * @param config strategy configuration
-     * @return scenario indicator
-     */
-    private static Indicator<ElliottScenarioSet> buildScenarioIndicator(final BarSeries series, final Config config) {
-        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, config.degree());
-        ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
-        double minConfidence = Math.min(config.minConfidence(), ANALYZER_MIN_CONFIDENCE);
-        ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(), minConfidence,
-                ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS);
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
-                config.minRelativeSwing(), 0);
-        return new ScenarioSetIndicator(series, swingIndicator, channelIndicator, generator, compressor,
-                DEFAULT_SCENARIO_SWING_WINDOW);
-    }
+    private static final class WaveEntryRule extends AbstractRule {
 
-    /**
-     * Builds the named-strategy label for the configured parameters.
-     *
-     * @param config strategy configuration
-     * @return label string
-     */
-    private static String buildLabel(final Config config) {
-        return NamedStrategy.buildLabel(HighRewardElliottWaveStrategy.class, config.labelParts());
-    }
+        private static final Set<ElliottPhase> ENTRY_PHASES = Set.of(ElliottPhase.WAVE1, ElliottPhase.WAVE2,
+                ElliottPhase.WAVE4);
 
-    /**
-     * Calculates the number of unstable bars for indicator warm-up.
-     *
-     * @param config strategy configuration
-     * @return unstable bar count
-     */
-    private static int calculateUnstableBars(final Config config) {
-        int unstable = Math.max(config.trendSmaPeriod(), Math.max(config.rsiPeriod(), config.macdSlowPeriod()));
-        unstable = Math.max(unstable, DEFAULT_ATR_PERIOD);
-        return unstable;
-    }
+        private final ClosePriceIndicator close;
+        private final Indicator<WaveForecast> forecast;
+        private final double minimumProbability;
 
-    /**
-     * Formats a double for strategy labels without trailing zeros.
-     *
-     * @param value numeric value
-     * @return formatted string
-     */
-    private static String formatDouble(final double value) {
-        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
-    }
-
-    /**
-     * Trade direction for the strategy.
-     */
-    enum SignalDirection {
-        BULLISH, BEARISH;
-
-        /**
-         * @return {@code true} when the direction is bullish
-         */
-        boolean isBullish() {
-            return this == BULLISH;
-        }
-    }
-
-    /**
-     * Immutable configuration for the strategy.
-     */
-    static final class Config {
-
-        private final SignalDirection direction;
-        private final ElliottDegree degree;
-        private final double minConfidence;
-        private final double minRiskReward;
-        private final double minAlternationRatio;
-        private final double minTrendBiasStrength;
-        private final int trendSmaPeriod;
-        private final int rsiPeriod;
-        private final double rsiThreshold;
-        private final int macdFastPeriod;
-        private final int macdSlowPeriod;
-        private final double minRelativeSwing;
-
-        /**
-         * Creates a configuration with the supplied parameters.
-         *
-         * @param direction            trade direction
-         * @param degree               Elliott wave degree to analyze
-         * @param minConfidence        minimum confidence threshold
-         * @param minRiskReward        minimum risk/reward ratio
-         * @param minAlternationRatio  minimum alternation duration ratio
-         * @param minTrendBiasStrength minimum trend bias strength
-         * @param trendSmaPeriod       SMA period for trend confirmation
-         * @param rsiPeriod            RSI period for momentum confirmation
-         * @param rsiThreshold         RSI threshold for momentum
-         * @param macdFastPeriod       MACD fast period
-         * @param macdSlowPeriod       MACD slow period
-         * @param minRelativeSwing     minimum relative swing magnitude
-         */
-        Config(final SignalDirection direction, final ElliottDegree degree, final double minConfidence,
-                final double minRiskReward, final double minAlternationRatio, final double minTrendBiasStrength,
-                final int trendSmaPeriod, final int rsiPeriod, final double rsiThreshold, final int macdFastPeriod,
-                final int macdSlowPeriod, final double minRelativeSwing) {
-            this.direction = Objects.requireNonNull(direction, "direction");
-            this.degree = Objects.requireNonNull(degree, "degree");
-            if (minConfidence <= 0.0 || minConfidence > 1.0) {
-                throw new IllegalArgumentException("minConfidence must be in (0.0, 1.0]");
-            }
-            if (minRiskReward <= 0.0) {
-                throw new IllegalArgumentException("minRiskReward must be positive");
-            }
-            if (minAlternationRatio < 1.0) {
-                throw new IllegalArgumentException("minAlternationRatio must be >= 1.0");
-            }
-            if (minTrendBiasStrength < 0.0 || minTrendBiasStrength > 1.0) {
-                throw new IllegalArgumentException("minTrendBiasStrength must be in [0.0, 1.0]");
-            }
-            if (trendSmaPeriod <= 0) {
-                throw new IllegalArgumentException("trendSmaPeriod must be positive");
-            }
-            if (rsiPeriod <= 0) {
-                throw new IllegalArgumentException("rsiPeriod must be positive");
-            }
-            if (rsiThreshold < 0.0 || rsiThreshold > 100.0) {
-                throw new IllegalArgumentException("rsiThreshold must be in [0.0, 100.0]");
-            }
-            if (macdFastPeriod <= 0 || macdSlowPeriod <= 0) {
-                throw new IllegalArgumentException("MACD periods must be positive");
-            }
-            if (macdFastPeriod >= macdSlowPeriod) {
-                throw new IllegalArgumentException("macdFastPeriod must be less than macdSlowPeriod");
-            }
-            if (minRelativeSwing <= 0.0 || minRelativeSwing > 1.0) {
-                throw new IllegalArgumentException("minRelativeSwing must be in (0.0, 1.0]");
-            }
-            this.minConfidence = minConfidence;
-            this.minRiskReward = minRiskReward;
-            this.minAlternationRatio = minAlternationRatio;
-            this.minTrendBiasStrength = minTrendBiasStrength;
-            this.trendSmaPeriod = trendSmaPeriod;
-            this.rsiPeriod = rsiPeriod;
-            this.rsiThreshold = rsiThreshold;
-            this.macdFastPeriod = macdFastPeriod;
-            this.macdSlowPeriod = macdSlowPeriod;
-            this.minRelativeSwing = minRelativeSwing;
+        private WaveEntryRule(final ClosePriceIndicator close, final Indicator<WaveForecast> forecast,
+                final double minimumProbability) {
+            this.close = close;
+            this.forecast = forecast;
+            this.minimumProbability = minimumProbability;
         }
 
-        /**
-         * @return default configuration values
-         */
-        static Config defaults() {
-            return new Config(DEFAULT_DIRECTION, DEFAULT_DEGREE, DEFAULT_MIN_CONFIDENCE, DEFAULT_MIN_RISK_REWARD,
-                    DEFAULT_MIN_ALTERNATION_RATIO, DEFAULT_MIN_TREND_BIAS_STRENGTH, DEFAULT_TREND_SMA_PERIOD,
-                    DEFAULT_RSI_PERIOD, DEFAULT_RSI_THRESHOLD, DEFAULT_MACD_FAST, DEFAULT_MACD_SLOW,
-                    DEFAULT_MIN_RELATIVE_SWING);
-        }
-
-        /**
-         * Parses a serialized parameter list into a configuration.
-         *
-         * @param params serialized parameters
-         * @return parsed configuration
-         */
-        static Config fromParameters(final String... params) {
-            if (params == null) {
-                throw new IllegalArgumentException("Params cannot be null");
-            }
-            if (params.length == 0) {
-                return defaults();
-            }
-            if (params.length != PARAMETER_COUNT) {
-                throw new IllegalArgumentException("Expected " + PARAMETER_COUNT
-                        + " parameters (direction, degree, minConfidence, minRiskReward, minAlternationRatio, "
-                        + "minTrendBiasStrength, trendSmaPeriod, rsiPeriod, rsiThreshold, macdFastPeriod, "
-                        + "macdSlowPeriod, minRelativeSwing), but got " + params.length);
-            }
-
-            SignalDirection direction = parseEnum(params[0], SignalDirection.class, "direction");
-            ElliottDegree degree = parseEnum(params[1], ElliottDegree.class, "degree");
-            double minConfidence = parseDouble(params[2], "minConfidence");
-            double minRiskReward = parseDouble(params[3], "minRiskReward");
-            double minAlternation = parseDouble(params[4], "minAlternationRatio");
-            double minTrendBias = parseDouble(params[5], "minTrendBiasStrength");
-            int trendSma = parseInt(params[6], "trendSmaPeriod");
-            int rsiPeriod = parseInt(params[7], "rsiPeriod");
-            double rsiThreshold = parseDouble(params[8], "rsiThreshold");
-            int macdFast = parseInt(params[9], "macdFastPeriod");
-            int macdSlow = parseInt(params[10], "macdSlowPeriod");
-            double minRelativeSwing = parseDouble(params[11], "minRelativeSwing");
-
-            return new Config(direction, degree, minConfidence, minRiskReward, minAlternation, minTrendBias, trendSma,
-                    rsiPeriod, rsiThreshold, macdFast, macdSlow, minRelativeSwing);
-        }
-
-        /**
-         * @return label parts used for NamedStrategy labels
-         */
-        String[] labelParts() {
-            return new String[] { direction.name(), degree.name(), formatDouble(minConfidence),
-                    formatDouble(minRiskReward), formatDouble(minAlternationRatio), formatDouble(minTrendBiasStrength),
-                    String.valueOf(trendSmaPeriod), String.valueOf(rsiPeriod), formatDouble(rsiThreshold),
-                    String.valueOf(macdFastPeriod), String.valueOf(macdSlowPeriod), formatDouble(minRelativeSwing) };
-        }
-
-        /**
-         * @return configured trade direction
-         */
-        SignalDirection direction() {
-            return direction;
-        }
-
-        /**
-         * @return configured Elliott wave degree
-         */
-        ElliottDegree degree() {
-            return degree;
-        }
-
-        /**
-         * @return minimum confidence threshold
-         */
-        double minConfidence() {
-            return minConfidence;
-        }
-
-        /**
-         * @return minimum risk/reward ratio
-         */
-        double minRiskReward() {
-            return minRiskReward;
-        }
-
-        /**
-         * @return minimum alternation ratio
-         */
-        double minAlternationRatio() {
-            return minAlternationRatio;
-        }
-
-        /**
-         * @return minimum trend bias strength
-         */
-        double minTrendBiasStrength() {
-            return minTrendBiasStrength;
-        }
-
-        /**
-         * @return trend SMA period
-         */
-        int trendSmaPeriod() {
-            return trendSmaPeriod;
-        }
-
-        /**
-         * @return RSI period
-         */
-        int rsiPeriod() {
-            return rsiPeriod;
-        }
-
-        /**
-         * @return RSI threshold
-         */
-        double rsiThreshold() {
-            return rsiThreshold;
-        }
-
-        /**
-         * @return MACD fast period
-         */
-        int macdFastPeriod() {
-            return macdFastPeriod;
-        }
-
-        /**
-         * @return MACD slow period
-         */
-        int macdSlowPeriod() {
-            return macdSlowPeriod;
-        }
-
-        /**
-         * @return minimum relative swing magnitude
-         */
-        double minRelativeSwing() {
-            return minRelativeSwing;
-        }
-
-        /**
-         * Parses an integer parameter.
-         *
-         * @param value parameter value
-         * @param label parameter label
-         * @return parsed integer
-         */
-        private static int parseInt(final String value, final String label) {
-            try {
-                return Integer.parseInt(value);
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Invalid " + label + " value: '" + value + "'", ex);
-            }
-        }
-
-        /**
-         * Parses a double parameter.
-         *
-         * @param value parameter value
-         * @param label parameter label
-         * @return parsed double
-         */
-        private static double parseDouble(final String value, final String label) {
-            try {
-                return Double.parseDouble(value);
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Invalid " + label + " value: '" + value + "'", ex);
-            }
-        }
-
-        /**
-         * Parses an enum parameter.
-         *
-         * @param value parameter value
-         * @param type  enum type
-         * @param label parameter label
-         * @param <E>   enum type
-         * @return parsed enum
-         */
-        private static <E extends Enum<E>> E parseEnum(final String value, final Class<E> type, final String label) {
-            try {
-                return Enum.valueOf(type, value);
-            } catch (IllegalArgumentException ex) {
-                Set<String> allowed = enumNames(type);
-                throw new IllegalArgumentException(
-                        "Invalid " + label + " value: '" + value + "'. Valid values are: " + String.join(", ", allowed),
-                        ex);
-            }
-        }
-
-        /**
-         * Returns all allowed enum names for an error message.
-         *
-         * @param type enum type
-         * @param <E>  enum type
-         * @return set of enum names
-         */
-        private static <E extends Enum<E>> Set<String> enumNames(final Class<E> type) {
-            if (type == null) {
-                return Set.of();
-            }
-            return EnumSet.allOf(type).stream().map(Enum::name).collect(Collectors.toSet());
-        }
-    }
-
-    /**
-     * Cached indicator that assembles scenario sets for each bar index.
-     */
-    private static final class ScenarioSetIndicator extends CachedIndicator<ElliottScenarioSet> {
-
-        private final ElliottSwingIndicator swingIndicator;
-        private final ElliottChannelIndicator channelIndicator;
-        private final ElliottScenarioGenerator generator;
-        private final ElliottSwingCompressor compressor;
-        private final int scenarioSwingWindow;
-
-        /**
-         * Creates a scenario indicator with the supplied dependencies.
-         *
-         * @param series              bar series
-         * @param swingIndicator      swing detector indicator
-         * @param channelIndicator    channel indicator for scoring
-         * @param generator           scenario generator
-         * @param compressor          optional swing compressor
-         * @param scenarioSwingWindow max number of swings to score
-         */
-        private ScenarioSetIndicator(final BarSeries series, final ElliottSwingIndicator swingIndicator,
-                final ElliottChannelIndicator channelIndicator, final ElliottScenarioGenerator generator,
-                final ElliottSwingCompressor compressor, final int scenarioSwingWindow) {
-            super(series);
-            this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-            this.channelIndicator = Objects.requireNonNull(channelIndicator, "channelIndicator");
-            this.generator = Objects.requireNonNull(generator, "generator");
-            this.compressor = compressor;
-            this.scenarioSwingWindow = scenarioSwingWindow;
-        }
-
-        /**
-         * Computes the scenario set for the provided index.
-         *
-         * @param index bar index
-         * @return scenario set for the index
-         */
         @Override
-        protected ElliottScenarioSet calculate(final int index) {
-            final BarSeries series = getBarSeries();
-            if (series.isEmpty()) {
-                throw new IllegalArgumentException("series cannot be empty");
+        public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
+            if (index <= close.getBarSeries().getBeginIndex() + 1) {
+                return false;
             }
-            int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-            List<ElliottSwing> swings = swingIndicator.getValue(clampedIndex);
-            if (compressor != null) {
-                swings = compressor.compress(swings);
-            }
-            if (swings.isEmpty()) {
-                return ElliottScenarioSet.empty(clampedIndex);
-            }
-            List<ElliottSwing> recent = swings;
-            if (scenarioSwingWindow > 0 && swings.size() > scenarioSwingWindow) {
-                recent = List.copyOf(swings.subList(swings.size() - scenarioSwingWindow, swings.size()));
-            }
-            return generator.generate(recent, swingIndicator.getDegree(), channelIndicator.getValue(clampedIndex),
-                    clampedIndex);
+            WaveForecast current = forecast.getValue(index);
+            ElliottPhase phase = current.mostLikelyPhase();
+            boolean upwardTurn = close.getValue(index).isGreaterThan(close.getValue(index - 1))
+                    && close.getValue(index - 1).isLessThanOrEqual(close.getValue(index - 2));
+            boolean satisfied = current.isStable() && ENTRY_PHASES.contains(phase)
+                    && meetsProbability(current, minimumProbability) && upwardTurn;
+            traceIsSatisfied(index, satisfied);
+            return satisfied;
+        }
+    }
+
+    private static final class WavePeakExitRule extends AbstractRule {
+
+        private static final Set<ElliottPhase> PEAK_PHASES = Set.of(ElliottPhase.WAVE1, ElliottPhase.WAVE3,
+                ElliottPhase.WAVE5);
+
+        private final ClosePriceIndicator close;
+        private final Indicator<WaveForecast> forecast;
+        private final double minimumProbability;
+
+        private WavePeakExitRule(final ClosePriceIndicator close, final Indicator<WaveForecast> forecast,
+                final double minimumProbability) {
+            this.close = close;
+            this.forecast = forecast;
+            this.minimumProbability = minimumProbability;
         }
 
-        /**
-         * @return the number of unstable bars for the underlying swing indicator
-         */
         @Override
-        public int getCountOfUnstableBars() {
-            return swingIndicator.getCountOfUnstableBars();
+        public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
+            if (index <= close.getBarSeries().getBeginIndex() + 1) {
+                return false;
+            }
+            WaveForecast current = forecast.getValue(index);
+            WaveForecast previous = forecast.getValue(index - 1);
+            boolean downwardTurn = close.getValue(index).isLessThan(close.getValue(index - 1))
+                    && close.getValue(index - 1).isGreaterThanOrEqual(close.getValue(index - 2));
+            boolean currentPeakReversal = current.isStable() && PEAK_PHASES.contains(current.mostLikelyPhase())
+                    && meetsProbability(current, minimumProbability) && downwardTurn;
+            boolean transitionedFromPeak = previous.isStable() && PEAK_PHASES.contains(previous.mostLikelyPhase())
+                    && meetsProbability(previous, minimumProbability) && current.isStable()
+                    && current.mostLikelyPhase() != previous.mostLikelyPhase();
+            boolean satisfied = currentPeakReversal || transitionedFromPeak;
+            traceIsSatisfied(index, satisfied);
+            return satisfied;
         }
+    }
+
+    private static boolean meetsProbability(final WaveForecast forecast, final double threshold) {
+        Num probability = forecast.probability();
+        return !Num.isNaNOrNull(probability)
+                && probability.isGreaterThanOrEqual(probability.getNumFactory().numOf(threshold));
+    }
+
+    private record PreparedRules(Rule entryRule, Rule exitRule, int unstableBars) {
     }
 }

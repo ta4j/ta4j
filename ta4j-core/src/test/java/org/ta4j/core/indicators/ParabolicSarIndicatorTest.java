@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import org.ta4j.core.BarSeries;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -354,6 +359,13 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(values.get(8), parabolicSarIndicator.getValue(8));
         assertNumEquals(values.get(7), parabolicSarIndicator.getValue(7));
         assertNumEquals(values.get(6), parabolicSarIndicator.getValue(6));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series,
+                new ParabolicSarIndicator(series, numOf(0.02), numOf(0.2), numOf(0.02)), stableIndexes(series)));
     }
 
 }

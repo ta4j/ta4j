@@ -23,10 +23,12 @@ import org.ta4j.core.num.Num;
  */
 public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
-    private final EMAIndicator stcSmoothed;
+    private final Indicator<Num> indicator;
+    private final int fastPeriod;
     private final int slowPeriod;
     private final int cycleLength;
     private final int smoothingPeriod;
+    private final transient EMAIndicator stcSmoothed;
 
     /**
      * Constructor with common parameterization ({@code fast}=23, {@code slow}=50,
@@ -57,6 +59,8 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
     private SchaffTrendCycleIndicator(Config config) {
         super(config.indicator());
+        this.indicator = config.indicator();
+        this.fastPeriod = config.fastPeriod();
         this.slowPeriod = config.slowPeriod();
         this.cycleLength = config.cycleLength();
         this.smoothingPeriod = config.smoothingPeriod();
@@ -77,7 +81,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
         StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
         EMAIndicator stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
-        return new Config(indicator, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
+        return new Config(indicator, fastPeriod, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
     @Override
@@ -97,7 +101,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
     }
 
-    private record Config(Indicator<Num> indicator, EMAIndicator stcSmoothed, int slowPeriod, int cycleLength,
-            int smoothingPeriod) {
+    private record Config(Indicator<Num> indicator, int fastPeriod, EMAIndicator stcSmoothed, int slowPeriod,
+            int cycleLength, int smoothingPeriod) {
     }
 }

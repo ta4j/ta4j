@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
@@ -61,4 +66,11 @@ public class BearishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
         series.barBuilder().openPrice(openPrice).closePrice(closePrice).highPrice(highPrice).lowPrice(lowPrice).add();
         return series;
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new BearishMarubozuIndicator(series), stableIndexes(series)));
+    }
+
 }

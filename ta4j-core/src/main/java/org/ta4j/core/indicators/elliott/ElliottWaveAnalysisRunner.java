@@ -47,6 +47,15 @@ import org.ta4j.core.num.NumFactory;
  * bias) rather than per-bar indicator outputs.
  *
  * <p>
+ * For minute and other low-duration live series, apply
+ * {@link ElliottLogicProfile#INTRADAY_LIVE}. That profile uses causal
+ * ATR-scaled swing detection and exposes the optional forming terminal wave
+ * separately via {@link ElliottAnalysisResult#waveCount()}. The forming swing
+ * is included by default for compatibility and live charting; trading rules can
+ * select confirmed pivots only with
+ * {@link Builder#includeProvisionalTerminalSwing(boolean)}.
+ *
+ * <p>
  * If configured with supporting degrees ({@link Builder#higherDegrees(int)} and
  * {@link Builder#lowerDegrees(int)}), the analysis re-ranks the base-degree
  * {@link ElliottScenarioSet} by blending base confidence, structural breadth,
@@ -131,6 +140,7 @@ public final class ElliottWaveAnalysisRunner {
     private final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
     private final double baseConfidenceWeight;
     private final boolean usesDefaultAnalysisRunner;
+    private final boolean usesDefaultSwingDetector;
     private final ElliottLogicProfile logicProfile;
 
     // Built-in single-degree analysis pipeline configuration (used by default
@@ -142,6 +152,7 @@ public final class ElliottWaveAnalysisRunner {
     private final double minConfidence;
     private final int maxScenarios;
     private final int scenarioSwingWindow;
+    private final boolean includeProvisionalTerminalSwing;
 
     private ElliottWaveAnalysisRunner(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
@@ -156,10 +167,8 @@ public final class ElliottWaveAnalysisRunner {
                 : logicProfile == null ? builder.scenarioSwingWindow : logicProfile.scenarioSwingWindow();
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
-        this.swingDetector = builder.swingDetector == null
-                ? defaultHierarchicalSwingDetector(baseDegree,
-                        logicProfile == null ? DEFAULT_FAST_FRACTAL_WINDOW : logicProfile.baseFractalWindow())
-                : builder.swingDetector;
+        this.usesDefaultSwingDetector = builder.swingDetector == null;
+        this.swingDetector = usesDefaultSwingDetector ? defaultSwingDetector() : builder.swingDetector;
         this.swingFilter = builder.swingFilter;
         this.confidenceModelFactory = builder.confidenceModelFactory == null
                 ? defaultConfidenceModelFactory(logicProfile)
@@ -168,6 +177,7 @@ public final class ElliottWaveAnalysisRunner {
                 ? (logicProfile == null ? PatternSet.all() : logicProfile.patternSet())
                 : builder.patternSet;
         this.minConfidence = builder.minConfidence;
+        this.includeProvisionalTerminalSwing = builder.includeProvisionalTerminalSwing;
 
         int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
         this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0
@@ -176,6 +186,14 @@ public final class ElliottWaveAnalysisRunner {
 
         this.usesDefaultAnalysisRunner = builder.analysisRunner == null;
         this.analysisRunner = usesDefaultAnalysisRunner ? this::runDefaultAnalysis : builder.analysisRunner;
+    }
+
+    private SwingDetector defaultSwingDetector() {
+        if (logicProfile != null && logicProfile.volatilityScaledSwingProcessing()) {
+            return SwingDetectors.adaptiveZigZag(DEFAULT_ZIGZAG_CONFIG);
+        }
+        return defaultHierarchicalSwingDetector(baseDegree,
+                logicProfile == null ? DEFAULT_FAST_FRACTAL_WINDOW : logicProfile.baseFractalWindow());
     }
 
     /**
@@ -210,11 +228,12 @@ public final class ElliottWaveAnalysisRunner {
         builder.baseConfidenceWeight = baseConfidenceWeight;
         builder.baseConfidenceWeightExplicit = true;
         builder.logicProfile = logicProfile;
-        builder.swingDetector = swingDetector;
+        builder.swingDetector = usesDefaultSwingDetector ? null : swingDetector;
         builder.swingFilter = swingFilter;
         builder.confidenceModelFactory = confidenceModelFactory;
         builder.patternSet = patternSet;
         builder.minConfidence = minConfidence;
+        builder.includeProvisionalTerminalSwing = includeProvisionalTerminalSwing;
         return new ElliottWaveAnalysisRunner(builder);
     }
 
@@ -1395,13 +1414,18 @@ public final class ElliottWaveAnalysisRunner {
         Objects.requireNonNull(degree, "degree");
 
         SwingFilter filter = swingFilter;
-        if (filter == null) {
+        if (filter == null && !usesVolatilityScaledSwingProcessing()) {
             filter = new MinMagnitudeSwingFilter(defaultMinRelativeMagnitude(series, degree));
         }
 
-        ElliottSwingCompressor compressor = defaultSwingCompressor(series, degree);
+        ElliottSwingCompressor compressor = usesVolatilityScaledSwingProcessing() ? null
+                : defaultSwingCompressor(series, degree);
 
         return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor, scenarioBudget);
+    }
+
+    private boolean usesVolatilityScaledSwingProcessing() {
+        return logicProfile != null && logicProfile.volatilityScaledSwingProcessing();
     }
 
     private double defaultMinRelativeMagnitude(final BarSeries series, final ElliottDegree degree) {
@@ -1497,7 +1521,11 @@ public final class ElliottWaveAnalysisRunner {
             processed = compressed == null ? List.of() : compressed;
         }
 
-        List<ElliottSwing> scenarioInput = appendTerminalExtensionIfNeeded(processed, series, endIndex, degree);
+        List<ElliottSwing> scenarioInput = includeProvisionalTerminalSwing
+                ? appendTerminalExtensionIfNeeded(processed, series, endIndex, degree)
+                : List.copyOf(processed);
+        ElliottAnalysisResult.WaveCount waveCount = new ElliottAnalysisResult.WaveCount(processed.size(),
+                scenarioInput.size() - processed.size());
         List<ElliottSwing> scenarioSwings = recentSwings(scenarioInput, scenarioSwingWindow);
         ElliottChannel channel = computeChannel(series.numFactory(), scenarioSwings, endIndex);
 
@@ -1516,11 +1544,11 @@ public final class ElliottWaveAnalysisRunner {
         }
 
         return new ElliottAnalysisResult(degree, endIndex, rawSwings, scenarioSwings, scenarios, breakdowns, channel,
-                trendBias, generator.lastDiagnostics());
+                trendBias, waveCount, generator.lastDiagnostics());
     }
 
-    private int internalScenarioBudget(final BarSeries series) {
-        if (!usesDefaultAnalysisRunner || scenarioSwingWindow != 0
+    int internalScenarioBudget(final BarSeries series) {
+        if (!usesDefaultAnalysisRunner || usesVolatilityScaledSwingProcessing() || scenarioSwingWindow != 0
                 || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
             return maxScenarios;
         }
@@ -2270,7 +2298,7 @@ public final class ElliottWaveAnalysisRunner {
         final ElliottScenarioSet clippedScenarioSet = ElliottScenarioSet.of(clippedScenarios, result.index());
         return new ElliottAnalysisResult(result.degree(), result.index(), result.rawSwings(), result.processedSwings(),
                 clippedScenarioSet, clippedBreakdowns, result.channel(), clippedScenarioSet.trendBias(),
-                result.diagnostics());
+                result.waveCount(), result.diagnostics());
     }
 
     private List<ElliottSwing> appendTerminalExtensionIfNeeded(final List<ElliottSwing> swings, final BarSeries series,
@@ -2811,6 +2839,25 @@ public final class ElliottWaveAnalysisRunner {
 
     private ElliottAnalysisResult anchorWindowAnalysisSnapshot(final BarSeries rootSeries,
             final ElliottAnalysisResult analysis, final int startIndex, final int endIndex) {
+        List<ElliottSwing> anchoredProcessedSwings = analysis.processedSwings();
+        if (analysis.waveCount().hasProvisional() && !anchoredProcessedSwings.isEmpty()) {
+            final ElliottSwing terminal = anchoredProcessedSwings.getLast();
+            final int snapBars = anchorWindowSnapBars(startIndex, endIndex);
+            final boolean snapStart = anchoredProcessedSwings.size() == 1
+                    && Math.abs(terminal.fromIndex() - startIndex) <= snapBars;
+            final boolean snapEnd = Math.abs(terminal.toIndex() - endIndex) <= snapBars;
+            if (snapStart || snapEnd) {
+                final List<ElliottSwing> updated = new ArrayList<>(anchoredProcessedSwings);
+                updated.set(updated.size() - 1,
+                        new ElliottSwing(snapStart ? startIndex : terminal.fromIndex(),
+                                snapEnd ? endIndex : terminal.toIndex(),
+                                snapStart ? boundaryPrice(rootSeries, startIndex, !terminal.isRising())
+                                        : terminal.fromPrice(),
+                                snapEnd ? boundaryPrice(rootSeries, endIndex, terminal.isRising()) : terminal.toPrice(),
+                                terminal.degree()));
+                anchoredProcessedSwings = List.copyOf(updated);
+            }
+        }
         final List<ElliottScenario> anchoredScenarios = analysis.scenarios()
                 .all()
                 .stream()
@@ -2818,8 +2865,8 @@ public final class ElliottWaveAnalysisRunner {
                 .toList();
         final ElliottScenarioSet anchoredScenarioSet = ElliottScenarioSet.of(anchoredScenarios, analysis.index());
         return new ElliottAnalysisResult(analysis.degree(), analysis.index(), analysis.rawSwings(),
-                analysis.processedSwings(), anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
-                anchoredScenarioSet.trendBias(), analysis.diagnostics());
+                anchoredProcessedSwings, anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
+                anchoredScenarioSet.trendBias(), analysis.waveCount(), analysis.diagnostics());
     }
 
     private ElliottScenario anchorWindowScenario(final BarSeries rootSeries, final ElliottScenario scenario,
@@ -2891,7 +2938,7 @@ public final class ElliottWaveAnalysisRunner {
                 analysis.index() + indexOffset);
         return new ElliottAnalysisResult(analysis.degree(), analysis.index() + indexOffset, rebasedRaw,
                 rebasedProcessed, rebasedScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
-                rebasedScenarioSet.trendBias(), analysis.diagnostics());
+                rebasedScenarioSet.trendBias(), analysis.waveCount(), analysis.diagnostics());
     }
 
     private List<ElliottSwing> rebaseSwings(final List<ElliottSwing> swings, final int indexOffset) {
@@ -3500,6 +3547,7 @@ public final class ElliottWaveAnalysisRunner {
         private double minConfidence = ElliottScenarioGenerator.DEFAULT_MIN_CONFIDENCE;
         private int maxScenarios = ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS;
         private int scenarioSwingWindow = DEFAULT_SCENARIO_SWING_WINDOW;
+        private boolean includeProvisionalTerminalSwing = true;
 
         private Builder() {
         }
@@ -3629,6 +3677,27 @@ public final class ElliottWaveAnalysisRunner {
          */
         public Builder swingFilter(final SwingFilter swingFilter) {
             this.swingFilter = swingFilter;
+            return this;
+        }
+
+        /**
+         * Controls whether the built-in analysis pipeline appends the current forming
+         * terminal swing before channel, confidence, and scenario generation.
+         *
+         * <p>
+         * The default is {@code true} for compatibility and for live charting. Trading
+         * rules that must use confirmed detector pivots only can disable the
+         * projection. This setting does not affect a custom
+         * {@link #analysisRunner(AnalysisRunner)}, which owns its complete result
+         * semantics.
+         *
+         * @param include {@code true} to include the forming terminal swing;
+         *                {@code false} to analyze confirmed swings only
+         * @return builder
+         * @since 0.23.1
+         */
+        public Builder includeProvisionalTerminalSwing(final boolean include) {
+            this.includeProvisionalTerminalSwing = include;
             return this;
         }
 

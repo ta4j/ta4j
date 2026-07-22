@@ -33,7 +33,7 @@ public class VWMAIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> priceIndicator;
     private final Indicator<Num> volumeIndicator;
-    private final Indicator<Num> volumeWeightedIndicator;
+    private final transient Indicator<Num> volumeWeightedIndicator;
 
     /**
      * Constructor.
@@ -43,6 +43,19 @@ public class VWMAIndicator extends CachedIndicator<Num> {
      */
     public VWMAIndicator(Indicator<Num> priceIndicator, int barCount) {
         this(defaultConfig(priceIndicator, barCount));
+    }
+
+    /**
+     * Constructor using the default SMA averaging strategy with explicit price and
+     * volume inputs.
+     *
+     * @param priceIndicator  price based indicator
+     * @param volumeIndicator volume based indicator
+     * @param barCount        the time frame
+     * @since 0.23.1
+     */
+    public VWMAIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount) {
+        this(validatedConfig(priceIndicator, volumeIndicator, barCount, SMAIndicator::new));
     }
 
     /**

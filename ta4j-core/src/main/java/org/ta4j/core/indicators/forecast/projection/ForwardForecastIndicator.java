@@ -18,7 +18,7 @@ import org.ta4j.core.num.Num;
 public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
     private final ForecastProjectionIndicator forecastIndicator;
-    private final Function<Forecast<Num>, Num> valueResolver;
+    private final Function<Forecast, Num> valueResolver;
 
     /**
      * Constructor.
@@ -29,7 +29,7 @@ public class ForwardForecastIndicator extends CachedIndicator<Num> {
      * @since 0.22.9
      */
     public ForwardForecastIndicator(ForecastProjectionIndicator forecastIndicator,
-            Function<Forecast<Num>, Num> valueResolver) {
+            Function<Forecast, Num> valueResolver) {
         super(Objects.requireNonNull(forecastIndicator, "forecastIndicator must not be null"));
         this.forecastIndicator = forecastIndicator;
         this.valueResolver = Objects.requireNonNull(valueResolver, "valueResolver must not be null");
@@ -37,8 +37,9 @@ public class ForwardForecastIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        Forecast<Num> forecast = forecastIndicator.getValue(index);
-        if (forecast == null || !forecast.isStable()) {
+        Forecast forecast = forecastIndicator.getValue(index);
+        if (forecast == null || forecast.decisionIndex() != index
+                || forecast.horizon() != forecastIndicator.getHorizon() || !forecast.isStable()) {
             return NaN.NaN;
         }
         Num value = valueResolver.apply(forecast);

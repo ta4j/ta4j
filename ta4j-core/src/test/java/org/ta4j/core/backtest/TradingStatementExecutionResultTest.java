@@ -22,8 +22,8 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -33,11 +33,9 @@ import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 
-public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class TradingStatementExecutionResultTest {
 
-    public TradingStatementExecutionResultTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+    private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
     public void backtestResultExposesSharedContractCriterionAndRecordViews() {
@@ -316,7 +314,7 @@ public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<B
 
     private TradingStatementExecutionResult.WeightedCriterion weightedCriterion(AnalysisCriterion criterion,
             double multiplier) {
-        return TradingStatementExecutionResult.WeightedCriterion.of(criterion, numOf(multiplier));
+        return TradingStatementExecutionResult.WeightedCriterion.of(criterion, numFactory.numOf(multiplier));
     }
 
     private MappedCriterion mappedCriterion(TradingStatementExecutionResult<?> result, boolean higherIsBetter,

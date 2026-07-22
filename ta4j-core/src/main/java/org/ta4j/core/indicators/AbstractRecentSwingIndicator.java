@@ -29,8 +29,8 @@ import static org.ta4j.core.num.NaN.NaN;
 public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
 
     private final Indicator<Num> priceIndicator;
-    private final SwingPointTracker swingPoints;
-    private final int unstableBars;
+    private final transient SwingPointTracker swingPoints;
+    private final transient int unstableBars;
 
     /**
      * Constructor.

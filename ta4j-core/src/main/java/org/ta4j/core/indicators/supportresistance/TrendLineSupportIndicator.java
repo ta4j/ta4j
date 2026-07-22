@@ -248,6 +248,37 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
     }
 
     /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights,
+     * tolerance parameters, and search caps as strings/primitives.
+     *
+     * @param swingLowIndicator          the swing-low indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceMode              tolerance mode as string (PERCENTAGE,
+     *                                   ABSOLUTE, or TICK_SIZE)
+     * @param toleranceValue             tolerance value
+     * @param toleranceMinimum           minimum absolute tolerance
+     * @param maxSwingPointsForTrendline maximum number of swing points to consider
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
+     * @since 0.23.1
+     */
+    public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, double touchCountWeight,
+            double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
+            double anchorRecencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
+        super(swingLowIndicator, barCount, TrendLineSide.SUPPORT, touchCountWeight, touchesExtremeWeight,
+                outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), maxSwingPointsForTrendline,
+                maxCandidatePairs);
+    }
+
+    /**
      * Builds a support trend line by analysing the low price of each bar using a
      * symmetric look-back and look-forward window.
      *

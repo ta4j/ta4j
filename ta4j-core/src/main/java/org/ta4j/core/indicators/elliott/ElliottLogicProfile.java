@@ -11,9 +11,10 @@ import java.util.Objects;
  * <p>
  * These profiles package the macro-study learnings into reusable core runner
  * defaults without hard-coding BTC-specific anchors or truth sets into
- * {@code ta4j-core}. A profile tunes three generic analysis levers:
+ * {@code ta4j-core}. A profile tunes four generic analysis levers:
  * <ul>
- * <li>the hierarchical swing-detector sensitivity</li>
+ * <li>the swing-detector and post-processing sensitivity</li>
+ * <li>the supporting-degree confirmation depth</li>
  * <li>the enabled scenario families</li>
  * <li>the confidence-model style used during ranking</li>
  * </ul>
@@ -32,13 +33,13 @@ public enum ElliottLogicProfile {
      * Classical Elliott constraints with a light hierarchical swing detector.
      */
     ORTHODOX_CLASSICAL("orthodox-classical", "Classical Elliott constraints", 2, 1, 1, PatternSet.all(), false, 0.70,
-            25, 0, 0.74),
+            25, 0, 0.74, false),
 
     /**
      * Broader macro pivot preservation with a wider hierarchical detector.
      */
     HIERARCHICAL_SWING("h1-hierarchical-swing", "Hierarchical swing extraction", 4, 1, 1, PatternSet.all(), false, 0.78,
-            25, 0, 0.72),
+            25, 0, 0.72, false),
 
     /**
      * Impulse-oriented profile that narrows corrective coverage and uses the
@@ -46,20 +47,30 @@ public enum ElliottLogicProfile {
      */
     BTC_RELAXED_IMPULSE("h2-pattern-aware-impulse", "Pattern-aware impulse emphasis", 4, 1, 1,
             PatternSet.of(ScenarioType.IMPULSE, ScenarioType.CORRECTIVE_ZIGZAG, ScenarioType.CORRECTIVE_FLAT), true,
-            0.82, 35, 0, 0.70),
+            0.82, 35, 0, 0.70, false),
 
     /**
      * Corrective-oriented profile with broader pattern coverage.
      */
     BTC_RELAXED_CORRECTIVE("h3-pattern-aware-corrective", "Pattern-aware corrective breadth", 5, 1, 1, PatternSet.all(),
-            true, 0.64, 35, 0, 0.68),
+            true, 0.64, 35, 0, 0.68, false),
 
     /**
      * Span-aware hybrid profile used when start/end fit matters as much as raw
      * confidence.
      */
     ANCHOR_FIRST_HYBRID("h4-span-aware-hybrid", "Span-aware hybrid scoring", 5, 2, 2, PatternSet.all(), true, 0.58, 40,
-            0, 0.66);
+            0, 0.66, false),
+
+    /**
+     * Causal, volatility-scaled swing extraction for minute and other intraday
+     * bars. The runner uses an adaptive ATR ZigZag without the macro-oriented
+     * percentage-of-history and percentage-of-price post-filters.
+     *
+     * @since 0.23.1
+     */
+    INTRADAY_LIVE("intraday-live", "Causal volatility-scaled intraday analysis", 2, 0, 0, PatternSet.all(), false, 1.0,
+            25, 0, 0.70, true);
 
     private final String id;
     private final String title;
@@ -72,11 +83,12 @@ public enum ElliottLogicProfile {
     private final int maxScenarios;
     private final int scenarioSwingWindow;
     private final double acceptanceThreshold;
+    private final boolean volatilityScaledSwingProcessing;
 
     ElliottLogicProfile(final String id, final String title, final int baseFractalWindow, final int higherDegrees,
             final int lowerDegrees, final PatternSet patternSet, final boolean patternAwareConfidence,
             final double baseConfidenceWeight, final int maxScenarios, final int scenarioSwingWindow,
-            final double acceptanceThreshold) {
+            final double acceptanceThreshold, final boolean volatilityScaledSwingProcessing) {
         this.id = Objects.requireNonNull(id, "id");
         this.title = Objects.requireNonNull(title, "title");
         this.baseFractalWindow = baseFractalWindow;
@@ -88,6 +100,7 @@ public enum ElliottLogicProfile {
         this.maxScenarios = maxScenarios;
         this.scenarioSwingWindow = scenarioSwingWindow;
         this.acceptanceThreshold = acceptanceThreshold;
+        this.volatilityScaledSwingProcessing = volatilityScaledSwingProcessing;
     }
 
     /**
@@ -176,5 +189,16 @@ public enum ElliottLogicProfile {
      */
     public double acceptanceThreshold() {
         return acceptanceThreshold;
+    }
+
+    /**
+     * Returns whether the runner should use causal ATR-scaled swing extraction and
+     * skip macro post-processing thresholds.
+     *
+     * @return {@code true} for live volatility-scaled swing processing
+     * @since 0.23.1
+     */
+    public boolean volatilityScaledSwingProcessing() {
+        return volatilityScaledSwingProcessing;
     }
 }

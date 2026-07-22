@@ -21,9 +21,9 @@ import org.ta4j.core.num.Num;
 public class AroonDownIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final LowestValueIndicator lowestLowPriceIndicator;
     private final Indicator<Num> lowPriceIndicator;
-    private final Num barCountNum;
+    private final transient LowestValueIndicator lowestLowPriceIndicator;
+    private final transient Num barCountNum;
 
     /**
      * Constructor.

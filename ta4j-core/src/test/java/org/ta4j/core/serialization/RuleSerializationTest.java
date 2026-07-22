@@ -22,6 +22,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -810,6 +812,57 @@ public class RuleSerializationTest {
         assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");
     }
 
+    @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"type\":\"BooleanRule\"";
+
+        assertThrows(com.google.gson.JsonParseException.class, () -> Rule.fromJson(series, json));
+    }
+
+    @Test
+    public void fromDescriptorRejectsFractionalIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 1.9))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void fromDescriptorRejectsOverflowingIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 2147483648L))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void overloadedIndicatorConstructorRequiresConcreteIndicatorTypeMatch() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        OverloadedIndicatorRule rule = new OverloadedIndicatorRule(closePrice, 2);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(descriptor.getComponents()).hasSize(1);
+        assertThat(descriptor.getComponents().get(0).getType()).isEqualTo("ClosePriceIndicator");
+        assertThat(restored).isInstanceOf(OverloadedIndicatorRule.class);
+        assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
+    }
+
     private static final class ConstructorPreferenceRule extends AbstractRule {
 
         private final Num amount;
@@ -835,6 +888,42 @@ public class RuleSerializationTest {
 
         private Num getAmount() {
             return amount;
+        }
+
+        private int getBarCount() {
+            return barCount;
+        }
+
+        private String getConstructorUsed() {
+            return constructorUsed;
+        }
+    }
+
+    private static final class OverloadedIndicatorRule extends AbstractRule {
+
+        private final Indicator<Num> indicator;
+        private final int barCount;
+        private final String constructorUsed;
+
+        OverloadedIndicatorRule(ATRIndicator indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "atr";
+        }
+
+        OverloadedIndicatorRule(Indicator<Num> indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "generic";
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        private Indicator<Num> getIndicator() {
+            return indicator;
         }
 
         private int getBarCount() {

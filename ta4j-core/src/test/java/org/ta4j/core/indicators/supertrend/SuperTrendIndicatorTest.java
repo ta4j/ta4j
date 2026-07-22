@@ -3,12 +3,16 @@
  */
 package org.ta4j.core.indicators.supertrend;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -336,26 +340,6 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         }
     }
 
-    @Test
-    public void serializationRoundTrip() {
-        BarSeries series = buildLongerSeries();
-        // Use default parameters to ensure round-trip reconstruction works
-        // since the framework reconstructs using the default constructor
-        SuperTrendIndicator original = new SuperTrendIndicator(series);
-
-        String json = original.toJson();
-        @SuppressWarnings("unchecked")
-        Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, json);
-
-        assertThat(restored).isInstanceOf(SuperTrendIndicator.class);
-        assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
-
-        // Verify values match
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertThat(restored.getValue(i)).isEqualTo(original.getValue(i));
-        }
-    }
-
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();
@@ -421,4 +405,11 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         series.barBuilder().openPrice(95).closePrice(90).highPrice(96).lowPrice(89).add();
         return series;
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new SuperTrendIndicator(series, 8, 2.0), stableIndexes(series)));
+    }
+
 }

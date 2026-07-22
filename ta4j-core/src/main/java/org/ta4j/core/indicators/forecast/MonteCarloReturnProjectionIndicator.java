@@ -3,117 +3,81 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.SplittableRandom;
-import java.util.TreeSet;
-import java.util.random.RandomGenerator;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
-import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
-import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
-import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
 
 /**
  * Monte Carlo cumulative log-return forecast indicator.
  *
  * @since 0.22.9
  */
-public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<Forecast<Num>>
+public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<Forecast>
         implements ReturnForecastProjectionIndicator {
 
-    private final ReturnIndicator returnIndicator;
-    private final ReturnForecastStateIndicator stateIndicator;
-    private final int horizon;
-    private final int iterationCount;
-    private final int lookbackBarCount;
-    private final long seed;
-    private final ShockModel shockModel;
-    private final VolatilityUpdateMode volatilityUpdateMode;
-    private final double volatilityDecayFactor;
-    private final List<Double> quantileProbabilities;
+    private final MonteCarloSimulation simulation;
 
     /**
-     * Constructor using default Monte Carlo settings.
+     * Creates a one-bar projection with default settings.
      *
-     * @param stateIndicator log-return state indicator
+     * @param stateIndicator log-return moment state source
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator) {
+    public MonteCarloReturnProjectionIndicator(
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
     /**
-     * Constructor using default Monte Carlo settings for the requested horizon.
+     * Creates a projection with default settings for the requested horizon.
      *
-     * @param stateIndicator log-return state indicator
-     * @param horizon        forecast horizon in bars
+     * @param stateIndicator log-return moment state source
+     * @param horizon        positive forecast horizon in bars
      * @since 0.22.9
      */
-    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator stateIndicator, int horizon) {
+    public MonteCarloReturnProjectionIndicator(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
+            int horizon) {
         this(builder(stateIndicator).horizon(horizon));
     }
 
-    /**
-     * Creates an indicator from the supplied builder.
-     *
-     * @param builder builder
-     */
     private MonteCarloReturnProjectionIndicator(Builder builder) {
-        super(requireSameSeries(builder.stateIndicator));
-        this.stateIndicator = builder.stateIndicator;
-        this.returnIndicator = builder.stateIndicator.getReturnIndicator();
-        this.horizon = validatePositive("horizon", builder.horizon);
-        this.iterationCount = validatePositive("iterationCount", builder.iterationCount);
-        this.lookbackBarCount = validatePositive("lookbackBarCount", builder.lookbackBarCount);
-        this.seed = builder.seed;
-        this.shockModel = Objects.requireNonNull(builder.shockModel, "shockModel must not be null");
-        this.volatilityUpdateMode = Objects.requireNonNull(builder.volatilityUpdateMode,
-                "volatilityUpdateMode must not be null");
-        this.volatilityDecayFactor = validateDecayFactor(builder.volatilityDecayFactor);
-        this.quantileProbabilities = validateQuantiles(builder.quantileProbabilities);
+        super(builder.stateIndicator);
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings());
     }
 
     /**
-     * Returns a builder for this indicator.
+     * Returns an advanced-settings builder.
      *
-     * @param stateIndicator log-return state indicator
-     * @return builder
-     * @since 0.22.9
+     * @param stateIndicator return-moment state source
+     * @return Monte Carlo builder
+     * @since 0.23.1
      */
-    public static Builder builder(ReturnForecastStateIndicator stateIndicator) {
+    public static Builder builder(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         return new Builder(stateIndicator);
     }
 
     @Override
-    protected Forecast<Num> calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
-            return Forecast.unstable(index, horizon);
-        }
-        ReturnForecastState state = stateIndicator.getValue(index);
-        if (state == null || !state.isStable() || !Num.isFinite(state.volatility()) || !Num.isFinite(state.drift())) {
-            return Forecast.unstable(index, horizon);
-        }
-        List<Num> historicalReturns = historicalReturns(index);
-        if (historicalReturns.size() < lookbackBarCount) {
-            return Forecast.unstable(index, horizon);
-        }
+    protected Forecast calculate(int index) {
+        return simulation.project(index, value -> value);
+    }
 
-        NumFactory numFactory = getBarSeries().numFactory();
-        ShockSampler sampler = ShockSampler.create(shockModel, historicalReturns, state, numFactory);
-        RandomGenerator random = new SplittableRandom(mixSeed(seed, index, horizon));
-        List<Num> cumulativeReturns = new ArrayList<>(iterationCount);
-        for (int iteration = 0; iteration < iterationCount; iteration++) {
-            cumulativeReturns.add(simulatePath(random, sampler, state, numFactory));
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public Forecast getValue(int index) {
+        if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
+            return Forecast.unstable(index, getHorizon());
         }
-        return Forecast.ofSamples(index, horizon, cumulativeReturns, quantileProbabilities);
+        return super.getValue(index);
     }
 
     /**
@@ -123,8 +87,17 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(stateIndicator.getCountOfUnstableBars(),
-                returnIndicator.getCountOfUnstableBars() + lookbackBarCount - 1);
+        return simulation.getCountOfUnstableBars();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public int getHorizon() {
+        return simulation.getHorizon();
     }
 
     /**
@@ -137,129 +110,17 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         return ReturnRepresentation.LOG;
     }
 
-    private List<Num> historicalReturns(int index) {
-        int startIndex = index - lookbackBarCount + 1;
-        List<Num> values = new ArrayList<>(lookbackBarCount);
-        for (int i = startIndex; i <= index; i++) {
-            Num value = returnIndicator.getValue(i);
-            if (Num.isFinite(value)) {
-                values.add(value);
-            }
-        }
-        return values;
-    }
-
-    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ReturnForecastState startingState,
-            NumFactory numFactory) {
-        Num cumulativeReturn = numFactory.zero();
-        Num drift = startingState.drift();
-        Num mean = startingState.mean();
-        Num variance = startingState.variance();
-        Num volatility = startingState.volatility();
-        for (int step = 0; step < horizon; step++) {
-            Num stepReturn = stepReturn(random, sampler, drift, volatility);
-            cumulativeReturn = cumulativeReturn.plus(stepReturn);
-            if (volatilityUpdateMode == VolatilityUpdateMode.EWMA) {
-                Num decay = numFactory.numOf(volatilityDecayFactor);
-                Num oneMinusDecay = numFactory.one().minus(decay);
-                Num deviation = stepReturn.minus(mean);
-                mean = mean.multipliedBy(decay).plus(stepReturn.multipliedBy(oneMinusDecay));
-                variance = variance.multipliedBy(decay)
-                        .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
-                volatility = variance.sqrt();
-            }
-        }
-        return cumulativeReturn;
-    }
-
-    private Num stepReturn(RandomGenerator random, ShockSampler sampler, Num drift, Num volatility) {
-        Num shock = sampler.sample(random);
-        if (shockModel == ShockModel.HISTORICAL_BOOTSTRAP) {
-            return shock;
-        }
-        return drift.plus(volatility.multipliedBy(shock));
-    }
-
-    private static long mixSeed(long seed, int index, int horizon) {
-        long value = seed;
-        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
-        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
-        value ^= 0x1C69B3F74AC4AE35L + horizon;
-        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
-        return value ^ value >>> 33;
-    }
-
-    private static int validatePositive(String fieldName, int value) {
-        if (value < 1) {
-            throw new IllegalArgumentException(fieldName + " must be >= 1");
-        }
-        return value;
-    }
-
-    private static double validateDecayFactor(double decayFactor) {
-        if (Double.isNaN(decayFactor) || decayFactor <= 0d || decayFactor >= 1d) {
-            throw new IllegalArgumentException("volatilityDecayFactor must be in (0, 1)");
-        }
-        return decayFactor;
-    }
-
-    private static List<Double> validateQuantiles(List<Double> quantileProbabilities) {
-        List<Double> input = Objects.requireNonNull(quantileProbabilities, "quantileProbabilities must not be null");
-        if (input.isEmpty()) {
-            throw new IllegalArgumentException("quantileProbabilities must not be empty");
-        }
-        TreeSet<Double> sorted = new TreeSet<>();
-        for (Double probability : input) {
-            Double value = Objects.requireNonNull(probability, "quantile probability must not be null");
-            if (Double.isNaN(value) || value < 0d || value > 1d) {
-                throw new IllegalArgumentException("quantile probability must be in [0, 1]");
-            }
-            sorted.add(value);
-        }
-        return List.copyOf(sorted);
-    }
-
-    private static ReturnForecastStateIndicator validateLogStateIndicator(ReturnForecastStateIndicator stateIndicator) {
-        ReturnForecastStateIndicator validated = Objects.requireNonNull(stateIndicator,
-                "stateIndicator must not be null");
-        if (validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
-            throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
-        }
-        return validated;
-    }
-
-    private static ReturnForecastStateIndicator requireSameSeries(ReturnForecastStateIndicator stateIndicator) {
-        ReturnForecastStateIndicator validated = validateLogStateIndicator(stateIndicator);
-        IndicatorUtils.requireSameSeries(validated.getReturnIndicator(), validated);
-        return validated;
-    }
-
     /**
      * Shock source for simulated paths.
      *
      * @since 0.22.9
      */
     public enum ShockModel {
-
-        /**
-         * Sample raw historical returns.
-         *
-         * @since 0.22.9
-         */
+        /** Sample raw historical returns. */
         HISTORICAL_BOOTSTRAP,
-
-        /**
-         * Sample standardized empirical residuals and rescale by current state.
-         *
-         * @since 0.22.9
-         */
+        /** Sample standardized empirical residuals. */
         STANDARDIZED_EMPIRICAL,
-
-        /**
-         * Sample standard normal shocks and rescale by current state.
-         *
-         * @since 0.22.9
-         */
+        /** Sample standard normal shocks. */
         NORMAL
     }
 
@@ -269,30 +130,20 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
      * @since 0.22.9
      */
     public enum VolatilityUpdateMode {
-
-        /**
-         * Keep volatility fixed for each path.
-         *
-         * @since 0.22.9
-         */
+        /** Keep volatility fixed. */
         CONSTANT,
-
-        /**
-         * Update path volatility with EWMA after each simulated step.
-         *
-         * @since 0.22.9
-         */
+        /** Update variance by EWMA after each simulated step. */
         EWMA
     }
 
     /**
-     * Builder for {@link MonteCarloReturnProjectionIndicator}.
+     * Builder for advanced Monte Carlo settings.
      *
      * @since 0.22.9
      */
     public static final class Builder {
 
-        private final ReturnForecastStateIndicator stateIndicator;
+        private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
         private int horizon = 1;
         private int iterationCount = 1_000;
         private int lookbackBarCount = 252;
@@ -302,98 +153,98 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         private double volatilityDecayFactor = 0.94d;
         private List<Double> quantileProbabilities = Forecast.DEFAULT_QUANTILE_PROBABILITIES;
 
-        private Builder(ReturnForecastStateIndicator stateIndicator) {
+        private Builder(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
             this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
         }
 
         /**
-         * Sets the forecast horizon.
+         * Sets the positive forecast horizon in bars.
          *
-         * @param horizon forecast horizon in bars
+         * @param value horizon in bars
          * @return this builder
          * @since 0.22.9
          */
-        public Builder horizon(int horizon) {
-            this.horizon = horizon;
+        public Builder horizon(int value) {
+            horizon = value;
             return this;
         }
 
         /**
-         * Sets the number of simulated paths.
+         * Sets the positive number of simulated terminal paths.
          *
-         * @param iterationCount iteration count
+         * @param value number of paths
          * @return this builder
          * @since 0.22.9
          */
-        public Builder iterationCount(int iterationCount) {
-            this.iterationCount = iterationCount;
+        public Builder iterationCount(int value) {
+            iterationCount = value;
             return this;
         }
 
         /**
-         * Sets the empirical lookback count.
+         * Sets the positive historical-return lookback.
          *
-         * @param lookbackBarCount lookback count
+         * @param value lookback in bars
          * @return this builder
          * @since 0.22.9
          */
-        public Builder lookbackBarCount(int lookbackBarCount) {
-            this.lookbackBarCount = lookbackBarCount;
+        public Builder lookbackBarCount(int value) {
+            lookbackBarCount = value;
             return this;
         }
 
         /**
-         * Sets the base random seed.
+         * Sets the deterministic base seed.
          *
-         * @param seed base random seed
+         * @param value base seed
          * @return this builder
          * @since 0.22.9
          */
-        public Builder seed(long seed) {
-            this.seed = seed;
+        public Builder seed(long value) {
+            seed = value;
             return this;
         }
 
         /**
-         * Sets the shock model.
+         * Sets the simulated shock source.
          *
-         * @param shockModel shock model
+         * @param value shock model
          * @return this builder
          * @since 0.22.9
          */
-        public Builder shockModel(ShockModel shockModel) {
-            this.shockModel = shockModel;
+        public Builder shockModel(ShockModel value) {
+            shockModel = value;
             return this;
         }
 
         /**
-         * Sets the volatility update mode.
+         * Sets within-path volatility behavior.
          *
-         * @param volatilityUpdateMode volatility update mode
+         * @param value volatility update mode
          * @return this builder
          * @since 0.22.9
          */
-        public Builder volatilityUpdateMode(VolatilityUpdateMode volatilityUpdateMode) {
-            this.volatilityUpdateMode = volatilityUpdateMode;
+        public Builder volatilityUpdateMode(VolatilityUpdateMode value) {
+            volatilityUpdateMode = value;
             return this;
         }
 
         /**
-         * Sets the volatility EWMA decay factor.
+         * Sets the EWMA decay used by within-path volatility updates.
          *
-         * @param volatilityDecayFactor decay factor in {@code (0, 1)}
+         * @param value decay factor in {@code (0, 1)}
          * @return this builder
          * @since 0.22.9
          */
-        public Builder volatilityDecayFactor(double volatilityDecayFactor) {
-            this.volatilityDecayFactor = volatilityDecayFactor;
+        public Builder volatilityDecayFactor(double value) {
+            volatilityDecayFactor = value;
             return this;
         }
 
         /**
-         * Sets the quantiles to include in returned forecasts.
+         * Sets the quantile probabilities summarized from terminal paths.
          *
-         * @param probabilities quantile probabilities in {@code [0, 1]}
+         * @param probabilities probabilities in {@code [0, 1]}
          * @return this builder
          * @since 0.22.9
          */
@@ -403,52 +254,23 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
             for (int i = 0; i < probabilities.length; i++) {
                 boxed[i] = probabilities[i];
             }
-            this.quantileProbabilities = List.of(boxed);
+            quantileProbabilities = List.of(boxed);
             return this;
         }
 
         /**
-         * Builds the indicator.
+         * Builds the validated projection indicator.
          *
-         * @return indicator
+         * @return configured projection
          * @since 0.22.9
          */
         public MonteCarloReturnProjectionIndicator build() {
             return new MonteCarloReturnProjectionIndicator(this);
         }
-    }
 
-    @FunctionalInterface
-    private interface ShockSampler {
-
-        Num sample(RandomGenerator random);
-
-        static ShockSampler create(ShockModel model, List<Num> historicalReturns, ReturnForecastState state,
-                NumFactory numFactory) {
-            return switch (model) {
-            case HISTORICAL_BOOTSTRAP -> historicalBootstrap(historicalReturns);
-            case STANDARDIZED_EMPIRICAL -> standardizedEmpirical(historicalReturns, state, numFactory);
-            case NORMAL -> random -> numFactory.numOf(random.nextGaussian());
-            };
-        }
-
-        private static ShockSampler historicalBootstrap(List<Num> historicalReturns) {
-            List<Num> samples = List.copyOf(historicalReturns);
-            return random -> samples.get(random.nextInt(samples.size()));
-        }
-
-        private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ReturnForecastState state,
-                NumFactory numFactory) {
-            List<Num> shocks = new ArrayList<>(historicalReturns.size());
-            if (state.volatility().isZero()) {
-                shocks.add(numFactory.zero());
-            } else {
-                for (Num historicalReturn : historicalReturns) {
-                    shocks.add(historicalReturn.minus(state.mean()).dividedBy(state.volatility()));
-                }
-            }
-            List<Num> samples = List.copyOf(shocks);
-            return random -> samples.get(random.nextInt(samples.size()));
+        private MonteCarloSettings settings() {
+            return new MonteCarloSettings(horizon, iterationCount, lookbackBarCount, seed, shockModel,
+                    volatilityUpdateMode, volatilityDecayFactor, quantileProbabilities);
         }
     }
 }

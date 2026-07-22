@@ -30,16 +30,19 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     static final double DEFAULT_UPPER_SHADOW_TO_BODY_RATIO = 0.05d;
     static final double DEFAULT_LOWER_SHADOW_TO_BODY_RATIO = 0.05d;
 
-    private final RealBodyIndicator realBodyIndicator;
-    private final Indicator<Num> bodyHeightIndicator;
-    private final SMAIndicator averageBodyHeightIndicator;
-    private final UpperShadowIndicator upperShadowIndicator;
-    private final LowerShadowIndicator lowerShadowIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient Indicator<Num> bodyHeightIndicator;
+    private final transient SMAIndicator averageBodyHeightIndicator;
+    private final transient UpperShadowIndicator upperShadowIndicator;
+    private final transient LowerShadowIndicator lowerShadowIndicator;
     private final int bodyAveragePeriod;
-    private final Num bodyToAverageBodyRatioThreshold;
-    private final Num upperShadowToBodyRatioThreshold;
-    private final Num lowerShadowToBodyRatioThreshold;
-    private final Num zero;
+    private final double bodyToAverageBodyRatio;
+    private final double upperShadowToBodyRatio;
+    private final double lowerShadowToBodyRatio;
+    private final transient Num bodyToAverageBodyRatioThreshold;
+    private final transient Num upperShadowToBodyRatioThreshold;
+    private final transient Num lowerShadowToBodyRatioThreshold;
+    private final transient Num zero;
 
     AbstractMarubozuIndicator(final BarSeries series) {
         this(validatedConfig(series, DEFAULT_BODY_AVERAGE_PERIOD, DEFAULT_BODY_TO_AVERAGE_BODY_RATIO,
@@ -55,6 +58,9 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     private AbstractMarubozuIndicator(final Config config) {
         super(config.series());
         this.bodyAveragePeriod = config.bodyAveragePeriod();
+        this.bodyToAverageBodyRatio = config.bodyToAverageBodyRatio();
+        this.upperShadowToBodyRatio = config.upperShadowToBodyRatio();
+        this.lowerShadowToBodyRatio = config.lowerShadowToBodyRatio();
         this.realBodyIndicator = config.realBodyIndicator();
         this.bodyHeightIndicator = config.bodyHeightIndicator();
         this.averageBodyHeightIndicator = config.averageBodyHeightIndicator();
@@ -94,7 +100,8 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         Num lowerShadowToBodyRatioThreshold = numFactory.numOf(lowerShadowToBodyRatio);
         Num zero = numFactory.zero();
         return new Config(validatedSeries, realBodyIndicator, bodyHeightIndicator, averageBodyHeightIndicator,
-                upperShadowIndicator, lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatioThreshold,
+                upperShadowIndicator, lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatio,
+                upperShadowToBodyRatio, lowerShadowToBodyRatio, bodyToAverageBodyRatioThreshold,
                 upperShadowToBodyRatioThreshold, lowerShadowToBodyRatioThreshold, zero);
     }
 
@@ -147,7 +154,8 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
 
     private record Config(BarSeries series, RealBodyIndicator realBodyIndicator, Indicator<Num> bodyHeightIndicator,
             SMAIndicator averageBodyHeightIndicator, UpperShadowIndicator upperShadowIndicator,
-            LowerShadowIndicator lowerShadowIndicator, int bodyAveragePeriod, Num bodyToAverageBodyRatioThreshold,
+            LowerShadowIndicator lowerShadowIndicator, int bodyAveragePeriod, double bodyToAverageBodyRatio,
+            double upperShadowToBodyRatio, double lowerShadowToBodyRatio, Num bodyToAverageBodyRatioThreshold,
             Num upperShadowToBodyRatioThreshold, Num lowerShadowToBodyRatioThreshold, Num zero) {
     }
 }

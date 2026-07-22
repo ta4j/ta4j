@@ -50,7 +50,7 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
 
     private final ATRIndicator atrIndicator;
     private final Num multiplier;
-    private final MedianPriceIndicator medianPriceIndicator;
+    private final transient MedianPriceIndicator medianPriceIndicator;
 
     /**
      * Constructor with {@code multiplier} = 3.

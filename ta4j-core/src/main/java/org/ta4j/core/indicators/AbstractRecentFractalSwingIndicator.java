@@ -17,7 +17,7 @@ import org.ta4j.core.num.Num;
  */
 abstract class AbstractRecentFractalSwingIndicator extends AbstractRecentSwingIndicator {
 
-    private final Indicator<Num> indicator;
+    private final transient Indicator<Num> indicator;
 
     /**
      * Constructor.

@@ -88,8 +88,8 @@ import org.ta4j.core.num.Num;
  */
 public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
-    private final SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
+    private final transient SuperTrendUpperBandIndicator superTrendUpperBandIndicator;
+    private final transient SuperTrendLowerBandIndicator superTrendLowerBandIndicator;
     private final int barCount;
     private final double multiplier;
 

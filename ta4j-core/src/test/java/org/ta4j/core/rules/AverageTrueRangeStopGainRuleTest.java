@@ -191,5 +191,8 @@ public class AverageTrueRangeStopGainRuleTest {
         FixedIndicator<Num> reference = new FixedIndicator<>(series, constant, constant, constant, constant, constant);
         assertThrows(IllegalArgumentException.class, () -> new AverageTrueRangeStopGainRule(series, null, 4, 2.0));
         assertThrows(IllegalArgumentException.class, () -> new AverageTrueRangeStopGainRule(series, reference, 0, 2.0));
+        assertThrows(IllegalArgumentException.class, () -> new AverageTrueRangeStopGainRule(series, reference, 4, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeStopGainRule(series, reference, 4, -1.0));
     }
 }
