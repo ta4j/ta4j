@@ -102,6 +102,10 @@ BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
 if ! [[ "$BUILD_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
     BUILD_TIMEOUT_SECONDS=180
 fi
+BUILD_STALL_SECONDS="${QUIET_BUILD_STALL_SECONDS:-$BUILD_TIMEOUT_SECONDS}"
+if ! [[ "$BUILD_STALL_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_STALL_SECONDS <= 0)); then
+    BUILD_STALL_SECONDS="$BUILD_TIMEOUT_SECONDS"
+fi
 
 MAVEN_FLAGS=(
     -B
@@ -151,6 +155,9 @@ runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
 --validate-only to reject those defects without modifying its checkout. Maven
 output is filtered and the complete log is written to .agents/logs/full-build-*.log.
 Explicit --goals invocations remain focused and skip repository preflight checks.
+The Bash watchdog keeps the default 180-second timeout as the earliest timeout
+point, then allows a build that keeps emitting Maven output to continue until no
+output progresses for QUIET_BUILD_STALL_SECONDS, which defaults to the timeout.
 
 Examples:
   scripts/run-full-build-quiet.sh
@@ -272,9 +279,9 @@ run_repository_preflight() {
     for index in "${!fixture_pids[@]}"; do
         if ! wait "${fixture_pids[$index]}"; then
             status=1
-            fixture_statuses[$index]=1
+            fixture_statuses[index]=1
         else
-            fixture_statuses[$index]=0
+            fixture_statuses[index]=0
         fi
     done
     restore_preflight_fixture_traps
@@ -407,7 +414,9 @@ MVN_CMD+=("${GOALS[@]}")
 run_with_timeout() {
     local timeout_marker_file="$1"
     local timeout_seconds="$2"
-    shift 2
+    local progress_file="$3"
+    local stall_seconds="$4"
+    shift 4
     : >"$timeout_marker_file"
 
     "$@" &
@@ -416,8 +425,20 @@ run_with_timeout() {
     (
         local elapsed=0
         local sleep_pid=""
+        local start_epoch
+        local now_epoch
+        local last_progress_epoch
+        local last_progress_size=0
+        start_epoch="$(date +%s)"
+        last_progress_epoch="$start_epoch"
+        if [[ -f "$progress_file" ]]; then
+            last_progress_size="$(wc -c <"$progress_file" | tr -d '[:space:]')"
+            if ! [[ "$last_progress_size" =~ ^[0-9]+$ ]]; then
+                last_progress_size=0
+            fi
+        fi
         trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
-        while ((elapsed < timeout_seconds)); do
+        while true; do
             sleep 1 &
             sleep_pid="$!"
             wait "$sleep_pid" >/dev/null 2>&1 || exit 0
@@ -425,16 +446,30 @@ run_with_timeout() {
             if ! kill -0 "$command_pid" >/dev/null 2>&1; then
                 exit 0
             fi
-            elapsed=$((elapsed + 1))
-        done
-        if kill -0 "$command_pid" >/dev/null 2>&1; then
-            echo "timeout" >"$timeout_marker_file"
-            kill -TERM "$command_pid" >/dev/null 2>&1 || true
-            sleep 5
-            if kill -0 "$command_pid" >/dev/null 2>&1; then
-                kill -KILL "$command_pid" >/dev/null 2>&1 || true
+            now_epoch="$(date +%s)"
+            elapsed=$((now_epoch - start_epoch))
+
+            if [[ -f "$progress_file" ]]; then
+                local progress_size
+                progress_size="$(wc -c <"$progress_file" | tr -d '[:space:]')"
+                if [[ "$progress_size" =~ ^[0-9]+$ ]] && ((progress_size > last_progress_size)); then
+                    last_progress_size="$progress_size"
+                    last_progress_epoch="$now_epoch"
+                fi
             fi
-        fi
+
+            local idle_seconds=$((now_epoch - last_progress_epoch))
+            if ((elapsed >= timeout_seconds && idle_seconds >= stall_seconds)); then
+                printf 'elapsed=%s idle=%s stall=%s timeout=%s\n' \
+                    "$elapsed" "$idle_seconds" "$stall_seconds" "$timeout_seconds" >"$timeout_marker_file"
+                kill -TERM "$command_pid" >/dev/null 2>&1 || true
+                sleep 5
+                if kill -0 "$command_pid" >/dev/null 2>&1; then
+                    kill -KILL "$command_pid" >/dev/null 2>&1 || true
+                fi
+                exit 0
+            fi
+        done
     ) &
     local timeout_watcher_pid=$!
 
@@ -456,7 +491,7 @@ run_with_timeout() {
 
 run_maven_build() {
     if ((BUILD_TIMEOUT_SECONDS > 0)); then
-        run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "${MVN_CMD[@]}"
+        run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "$RAW_OUTPUT_FILE" "$BUILD_STALL_SECONDS" "${MVN_CMD[@]}"
         return $?
     fi
     "${MVN_CMD[@]}"
@@ -583,7 +618,12 @@ set -o pipefail
 
 if ((mvn_status != 0 || filter_status != 0)); then
     if ((mvn_status == 124)); then
-        echo "Build: timed out after ${BUILD_TIMEOUT_SECONDS}s in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        timeout_detail="$(cat "$TIMEOUT_MARKER_FILE" 2>/dev/null || true)"
+        if [[ "$timeout_detail" =~ ^elapsed=([0-9]+)[[:space:]]+idle=([0-9]+)[[:space:]]+stall=([0-9]+)[[:space:]]+timeout=([0-9]+)$ ]]; then
+            echo "Build: timed out after ${BASH_REMATCH[1]}s (timeout ${BASH_REMATCH[4]}s; no output progress for ${BASH_REMATCH[2]}s, stall limit ${BASH_REMATCH[3]}s) in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        else
+            echo "Build: timed out after ${BUILD_TIMEOUT_SECONDS}s in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        fi
         echo "Log: $LOG_FILE_FOR_DISPLAY"
         exit 124
     fi

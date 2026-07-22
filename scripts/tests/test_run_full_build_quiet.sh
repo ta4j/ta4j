@@ -137,6 +137,7 @@ run_quiet_build() {
   export PATH="$TMP/bin:$PATH"
   export FAKE_MAVEN_ARGS="$TMP/maven-args.txt"
   export QUIET_BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
+  export QUIET_BUILD_STALL_SECONDS="${QUIET_BUILD_STALL_SECONDS:-$QUIET_BUILD_TIMEOUT_SECONDS}"
   export BASH_ENV=/dev/null
   "$@"
 }
@@ -409,6 +410,57 @@ EOF
   pass "test_maven_wrapper_is_preferred_when_present"
 }
 
+test_progressing_build_is_not_killed_at_timeout_boundary() {
+  echo "Running test_progressing_build_is_not_killed_at_timeout_boundary"
+  create_test_repo
+  cat > "$TMP/bin/mvn" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
+echo "[INFO] Slow fixture started"
+sleep 1
+echo "[INFO] Slow fixture still progressing"
+sleep 1
+echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
+echo "[INFO] BUILD SUCCESS"
+EOF
+  chmod +x "$TMP/bin/mvn"
+
+  local output
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=2 run_quiet_build scripts/run-full-build-quiet.sh)"
+
+  expect_contains "$output" "Build: success" "progressing Maven output should extend the watchdog past the hard timeout boundary"
+  expect_file_contains_line "$TMP/maven-args.txt" "verify" "progressing timeout fixture should still run the canonical Maven command"
+
+  finish_test_repo
+  pass "test_progressing_build_is_not_killed_at_timeout_boundary"
+}
+
+test_stalled_build_is_killed_after_no_progress_window() {
+  echo "Running test_stalled_build_is_killed_after_no_progress_window"
+  create_test_repo
+  cat > "$TMP/bin/mvn" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
+echo "[INFO] Stalled fixture started"
+sleep 5
+echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
+echo "[INFO] BUILD SUCCESS"
+EOF
+  chmod +x "$TMP/bin/mvn"
+
+  local output
+  if output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh 2>&1)"; then
+    fail "stalled fake Maven should make quiet build time out"
+  fi
+
+  expect_contains "$output" "Build: timed out after" "stalled build should report timeout"
+  expect_contains "$output" "no output progress for" "timeout summary should include progress watchdog evidence"
+  expect_contains "$output" "stall limit 1s" "timeout summary should include the configured no-progress limit"
+
+  finish_test_repo
+  pass "test_stalled_build_is_killed_after_no_progress_window"
+}
+
 test_powershell_entrypoint_classifier_parity() {
   echo "Running test_powershell_entrypoint_classifier_parity"
   create_test_repo
@@ -449,6 +501,8 @@ test_unexpected_success_output_stays_in_log
 test_failure_output_passes_through_errors_without_digest
 test_warning_passthrough_has_no_digest_cap
 test_maven_wrapper_is_preferred_when_present
+test_progressing_build_is_not_killed_at_timeout_boundary
+test_stalled_build_is_killed_after_no_progress_window
 test_powershell_entrypoint_classifier_parity
 
 echo
