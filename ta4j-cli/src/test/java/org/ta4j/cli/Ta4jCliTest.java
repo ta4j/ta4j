@@ -514,6 +514,37 @@ class Ta4jCliTest {
     }
 
     @Test
+    void reproduciblePartialOutputOmitsInvalidStrategyFilePaths() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String strategiesJson = "[" + sampleSweepStrategy(series).toJson() + ",\"invalid\"]";
+        Path firstStrategiesFile = tempDir.resolve("first-strategies.json");
+        Path secondStrategiesFile = tempDir.resolve("same-strategies-under-another-name.json");
+        Files.writeString(firstStrategiesFile, strategiesJson);
+        Files.writeString(secondStrategiesFile, strategiesJson);
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip",
+                "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", secondStrategiesFile.toString(), "--invalid-input", "skip",
+                "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(second.exitCode()).isZero();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        String reproducibleInvalidInput = result(JsonParser.parseString(first.stdout()).getAsJsonObject())
+                .getAsJsonArray("invalidStrategies").get(0).getAsString();
+        assertThat(reproducibleInvalidInput).doesNotContain(tempDir.toString());
+
+        CliRunResult ordinary = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip");
+        String ordinaryInvalidInput = result(JsonParser.parseString(ordinary.stdout()).getAsJsonObject())
+                .getAsJsonArray("invalidStrategies").get(0).getAsString();
+        assertThat(ordinaryInvalidInput).contains(firstStrategiesFile.toString());
+    }
+
+    @Test
     void walkForwardSupportsStrategiesJsonFileAndPreservesPrimaryFields() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
