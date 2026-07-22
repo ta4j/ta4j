@@ -914,7 +914,7 @@ final class CliSupport {
     private static Map<String, Object> buildInputMetadata(BarSeries series, String dataFile, String timeframeToken,
             String fromDateToken, String toDateToken, boolean reproducible) {
         Map<String, Object> input = linkedMap();
-        if (!reproducible) {
+        if (!reproducible || "-".equals(dataFile)) {
             input.put("dataFile", dataFile);
             input.put("seriesName", "-".equals(dataFile) ? "stdin" : series.getName());
         }
