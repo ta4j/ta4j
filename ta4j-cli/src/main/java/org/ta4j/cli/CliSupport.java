@@ -27,6 +27,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
+import org.ta4j.core.backtest.PositionSizer;
 import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
@@ -36,9 +37,23 @@ import org.ta4j.core.criteria.commissions.TotalFeesCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
+import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
+import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
+import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
@@ -86,7 +101,7 @@ import java.util.function.Consumer;
  * file-oriented for both users and agents.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 final class CliSupport {
 
@@ -100,9 +115,8 @@ final class CliSupport {
             SharpeRatioCriterion.class.getName());
     static final String NAMED_STRATEGY_EXAMPLE = "DayOfWeekStrategy_MONDAY_FRIDAY";
     static final String NAMED_RULE_EXAMPLE = "RsiThresholdRule_BELOW_14_30";
-    static final String CRITERION_CLASS_EXAMPLE = NetProfitCriterion.class.getName();
     private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.";
-    private static final String INDICATOR_INPUT_GUIDANCE = "Use --indicator with serialized indicator JSON or --indicator-json-file.";
+    private static final String INDICATOR_INPUT_GUIDANCE = "Use --indicator with compact shorthand or serialized JSON, or use --indicator-json-file.";
     private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
@@ -153,9 +167,14 @@ final class CliSupport {
 
     static BacktestExecutor buildExecutor(BarSeries series, String executionModelToken, String commissionToken,
             String borrowRateToken) {
+        return buildExecutor(series, executionModelToken, commissionToken, borrowRateToken, null);
+    }
+
+    static BacktestExecutor buildExecutor(BarSeries series, String executionModelToken, String commissionToken,
+            String borrowRateToken, String borrowSideToken) {
         TradeExecutionModel executionModel = resolveExecutionModel(executionModelToken);
         CostModel transactionCostModel = resolveTransactionCostModel(commissionToken);
-        CostModel holdingCostModel = resolveHoldingCostModel(borrowRateToken);
+        CostModel holdingCostModel = resolveHoldingCostModel(borrowRateToken, borrowSideToken);
         return new BacktestExecutor(series, transactionCostModel, holdingCostModel, executionModel);
     }
 
@@ -184,14 +203,54 @@ final class CliSupport {
         return series.numFactory().numOf(resolved);
     }
 
+    static PositionSizingSpec resolvePositionSizing(BarSeries series, String modeToken, String capitalToken,
+            String stakeAmountToken, String winProbabilityToken, String payoffRatioToken, String coefficientToken) {
+        String mode = modeToken == null || modeToken.isBlank() ? "fixed" : normalizeToken(modeToken);
+        return switch (mode) {
+        case "fixed" -> {
+            rejectOption(winProbabilityToken, "--win-probability", "--position-sizing kelly");
+            rejectOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
+            rejectOption(coefficientToken, "--kelly-coefficient", "--position-sizing kelly");
+            yield new PositionSizingSpec(mode, capitalToken, stakeAmountToken, null, null, null,
+                    PositionSizer.fixed(resolveAmount(series, capitalToken, stakeAmountToken)));
+        }
+        case "balance" -> {
+            requireOption(capitalToken, "--capital", "--position-sizing balance");
+            rejectOption(stakeAmountToken, "--stake-amount", "--position-sizing fixed");
+            rejectOption(winProbabilityToken, "--win-probability", "--position-sizing kelly");
+            rejectOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
+            rejectOption(coefficientToken, "--kelly-coefficient", "--position-sizing kelly");
+            double capital = parsePositiveDouble(capitalToken, "capital");
+            yield new PositionSizingSpec(mode, capitalToken, null, null, null, null, PositionSizer.balance(capital));
+        }
+        case "kelly" -> {
+            requireOption(capitalToken, "--capital", "--position-sizing kelly");
+            requireOption(winProbabilityToken, "--win-probability", "--position-sizing kelly");
+            requireOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
+            rejectOption(stakeAmountToken, "--stake-amount", "--position-sizing fixed");
+            double capital = parsePositiveDouble(capitalToken, "capital");
+            double winProbability = parseProbability(winProbabilityToken, "win-probability");
+            double payoffRatio = parsePositiveDouble(payoffRatioToken, "payoff-ratio");
+            double coefficient = coefficientToken == null || coefficientToken.isBlank() ? 1.0d
+                    : parsePositiveDouble(coefficientToken, "kelly-coefficient");
+            yield new PositionSizingSpec(mode, capitalToken, null, winProbabilityToken, payoffRatioToken,
+                    coefficientToken == null || coefficientToken.isBlank() ? "1" : coefficientToken,
+                    PositionSizer.kelly(capital, winProbability, payoffRatio, coefficient));
+        }
+        default -> throw new IllegalArgumentException(
+                "Unsupported --position-sizing '" + modeToken + "'. Use fixed, balance, or kelly.");
+        };
+    }
+
     static List<CriterionSpec> resolveCriteria(List<String> requestedTypes, List<String> defaults) {
         List<String> effectiveTypes = requestedTypes == null || requestedTypes.isEmpty() ? defaults : requestedTypes;
         LinkedHashSet<String> normalizedTypes = new LinkedHashSet<>();
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
         for (String value : effectiveTypes) {
             if (value == null) {
                 continue;
             }
-            for (String token : value.split(",")) {
+            for (String token : registry.splitTopLevel(value)) {
                 String normalized = token.trim();
                 if (!normalized.isEmpty()) {
                     normalizedTypes.add(normalized);
@@ -216,7 +275,7 @@ final class CliSupport {
         if (strategyJsonFile != null && !strategyJsonFile.isBlank()) {
             strategy = buildStrategyFromJsonPath(strategyJsonFile, unstableBars, series);
         } else {
-            strategy = buildNamedStrategy(requestedStrategy, series);
+            strategy = buildStrategyExpression(requestedStrategy, series);
         }
 
         if (unstableBars != null && (strategyJsonFile == null || strategyJsonFile.isBlank())) {
@@ -251,9 +310,9 @@ final class CliSupport {
 
         if (strategyLabels != null && !strategyLabels.isEmpty()) {
             hasStrategyInput = true;
-            for (String label : parseStrategyLabels(strategyLabels, invalidStrategies)) {
+            for (String label : parseStrategyInputs(strategyLabels, invalidStrategies)) {
                 try {
-                    validStrategies.add(buildNamedStrategy(label, series));
+                    validStrategies.add(buildStrategyExpression(label, series));
                     if (unstableBars != null) {
                         validStrategies.getLast().setUnstableBars(unstableBars);
                     }
@@ -338,13 +397,15 @@ final class CliSupport {
     }
 
     static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {
-        String json = readSerializedInput("--indicator", indicatorJson, "--indicator-json-file", indicatorJsonFile,
+        String input = readSerializedInput("--indicator", indicatorJson, "--indicator-json-file", indicatorJsonFile,
                 INDICATOR_INPUT_GUIDANCE);
         Indicator<?> rawIndicator;
         try {
-            rawIndicator = Indicator.fromJson(series, json);
+            rawIndicator = indicatorJsonFile != null && !indicatorJsonFile.isBlank()
+                    || input.stripLeading().startsWith("{") ? Indicator.fromJson(series, input)
+                            : Indicator.fromExpression(series, input);
         } catch (RuntimeException ex) {
-            throw new IllegalArgumentException("Invalid serialized indicator input.", ex);
+            throw new IllegalArgumentException("Invalid indicator shorthand or serialized JSON input.", ex);
         }
 
         Indicator<Num> indicator = castNumericIndicator(rawIndicator);
@@ -376,6 +437,200 @@ final class CliSupport {
             strategy.setUnstableBars(indicator.getCountOfUnstableBars());
         }
         return strategy;
+    }
+
+    static Map<String, Object> buildForecastReport(BarSeries series, String dataFile, String timeframeToken,
+            String fromDateToken, String toDateToken, ForecastRequest request, Path outputPath) {
+        int index = request.index() == null ? series.getEndIndex() : request.index();
+        if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+            throw new IllegalArgumentException(
+                    "--index must be between " + series.getBeginIndex() + " and " + series.getEndIndex() + ".");
+        }
+        if (request.horizon() <= 0) {
+            throw new IllegalArgumentException("--horizon must be greater than zero.");
+        }
+
+        ReturnIndicator returns = new LogReturnIndicator(series);
+        String stateModel = normalizeToken(request.stateModel());
+        ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator = switch (stateModel) {
+        case "ewma" -> new EwmaReturnForecastStateIndicator(returns);
+        case "rough-volatility" ->
+            RoughVolatilityForecastStateIndicator.builder(returns).horizon(request.horizon()).build();
+        case "change-point" -> new OnlineChangePointForecastStateIndicator(returns);
+        default -> throw new IllegalArgumentException("Unsupported --state-model '" + request.stateModel()
+                + "'. Use ewma, rough-volatility, or change-point.");
+        };
+
+        String target = normalizeToken(request.target());
+        if (!Set.of("state", "return", "price").contains(target)) {
+            throw new IllegalArgumentException(
+                    "Unsupported --target '" + request.target() + "'. Use state, return, or price.");
+        }
+        ReturnMomentState state = stateIndicator.getValue(index);
+
+        Map<String, Object> response = linkedMap();
+        response.put("command", "forecast run");
+        response.put("generatedAtUtc", Instant.now().toString());
+        response.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
+
+        Map<String, Object> configuration = linkedMap();
+        configuration.put("stateModel", stateModel);
+        configuration.put("target", target);
+        configuration.put("index", index);
+        configuration.put("horizon", request.horizon());
+        if (!"state".equals(target)) {
+            configuration.put("samples", request.samples());
+            configuration.put("lookbackBars", request.lookbackBars());
+            configuration.put("seed", request.seed());
+            configuration.put("shockModel", normalizeToken(request.shockModel()));
+            configuration.put("volatilityMode", normalizeToken(request.volatilityMode()));
+            configuration.put("volatilityDecay", request.volatilityDecay());
+            configuration.put("quantiles", request.quantiles());
+        }
+        response.put("configuration", configuration);
+
+        Map<String, Object> decision = linkedMap();
+        decision.put("index", index);
+        decision.put("endTime", series.getBar(index).getEndTime().toString());
+        decision.put("closePrice", numberString(series.getBar(index).getClosePrice()));
+        response.put("decision", decision);
+        response.put("state", forecastStateToMap(stateIndicator, state));
+
+        if (!"state".equals(target)) {
+            Forecast forecast = buildMonteCarloForecast(series, stateIndicator, request, target).getValue(index);
+            response.put("forecast", forecastToMap(forecast));
+        }
+
+        Map<String, Object> artifacts = linkedMap();
+        artifacts.put("outputFile", outputPath == null ? null : outputPath.toString());
+        response.put("artifacts", artifacts);
+        return response;
+    }
+
+    private static Indicator<Forecast> buildMonteCarloForecast(BarSeries series,
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request,
+            String target) {
+        if (request.samples() <= 0) {
+            throw new IllegalArgumentException("--samples must be greater than zero.");
+        }
+        if (request.lookbackBars() <= 0) {
+            throw new IllegalArgumentException("--lookback-bars must be greater than zero.");
+        }
+        if (!Double.isFinite(request.volatilityDecay()) || request.volatilityDecay() <= 0.0d
+                || request.volatilityDecay() >= 1.0d) {
+            throw new IllegalArgumentException("--volatility-decay must be in (0, 1).");
+        }
+        double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
+        MonteCarloReturnProjectionIndicator.ShockModel shockModel = parseShockModel(request.shockModel());
+        MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityMode = parseVolatilityMode(
+                request.volatilityMode());
+
+        if ("price".equals(target)) {
+            return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), stateIndicator)
+                    .horizon(request.horizon())
+                    .iterationCount(request.samples())
+                    .lookbackBarCount(request.lookbackBars())
+                    .seed(request.seed())
+                    .shockModel(shockModel)
+                    .volatilityUpdateMode(volatilityMode)
+                    .volatilityDecayFactor(request.volatilityDecay())
+                    .quantiles(quantiles)
+                    .build();
+        }
+        return MonteCarloReturnProjectionIndicator.builder(stateIndicator)
+                .horizon(request.horizon())
+                .iterationCount(request.samples())
+                .lookbackBarCount(request.lookbackBars())
+                .seed(request.seed())
+                .shockModel(shockModel)
+                .volatilityUpdateMode(volatilityMode)
+                .volatilityDecayFactor(request.volatilityDecay())
+                .quantiles(quantiles)
+                .build();
+    }
+
+    private static MonteCarloReturnProjectionIndicator.ShockModel parseShockModel(String token) {
+        return switch (normalizeToken(token)) {
+        case "historical-bootstrap" -> MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP;
+        case "standardized-empirical" -> MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL;
+        case "normal" -> MonteCarloReturnProjectionIndicator.ShockModel.NORMAL;
+        default -> throw new IllegalArgumentException("Unsupported --shock-model '" + token
+                + "'. Use historical-bootstrap, standardized-empirical, or normal.");
+        };
+    }
+
+    private static MonteCarloReturnProjectionIndicator.VolatilityUpdateMode parseVolatilityMode(String token) {
+        return switch (normalizeToken(token)) {
+        case "constant" -> MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT;
+        case "ewma" -> MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA;
+        default ->
+            throw new IllegalArgumentException("Unsupported --volatility-mode '" + token + "'. Use constant or ewma.");
+        };
+    }
+
+    private static Map<String, Object> forecastStateToMap(
+            ReturnForecastStateIndicator<? extends ReturnMomentState> indicator, ReturnMomentState state) {
+        Map<String, Object> result = linkedMap();
+        result.put("type", state.getClass().getName());
+        result.put("indicatorType", indicator.getClass().getName());
+        result.put("index", state.index());
+        result.put("stable", state.isStable());
+        result.put("observationCount", state.observationCount());
+        result.put("representation", state.representation().name());
+        result.put("mean", numberString(state.mean()));
+        result.put("drift", numberString(state.drift()));
+        result.put("variance", numberString(state.variance()));
+        result.put("volatility", numberString(state.volatility()));
+
+        if (state instanceof RoughVolatilityForecastState roughState) {
+            result.put("roughnessHurst", numberString(roughState.roughnessHurst()));
+            result.put("volOfVol", numberString(roughState.volOfVol()));
+            result.put("horizonVariances",
+                    roughState.horizonVarianceForecasts().stream().map(CliSupport::numberString).toList());
+        } else if (state instanceof OnlineChangePointForecastState changePointState) {
+            result.put("recentChangeWindow", changePointState.recentChangeWindow());
+            result.put("recentChangeProbability", numberString(changePointState.recentChangeProbability()));
+            result.put("mostLikelyRunLength", changePointState.mostLikelyRunLength());
+            result.put("topRunLengths", changePointState.topRunLengths().stream().map(posterior -> {
+                Map<String, Object> entry = linkedMap();
+                entry.put("runLength", posterior.runLength());
+                entry.put("probability", numberString(posterior.probability()));
+                entry.put("mean", numberString(posterior.mean()));
+                entry.put("variance", numberString(posterior.variance()));
+                return entry;
+            }).toList());
+        }
+        return result;
+    }
+
+    private static Map<String, Object> forecastToMap(Forecast forecast) {
+        Map<String, Object> result = linkedMap();
+        result.put("decisionIndex", forecast.decisionIndex());
+        result.put("horizon", forecast.horizon());
+        result.put("stable", forecast.isStable());
+        result.put("support", forecastSupportToMap(forecast.support()));
+        result.put("mean", numberString(forecast.mean()));
+        result.put("median", numberString(forecast.median()));
+        result.put("standardDeviation", numberString(forecast.standardDeviation()));
+        Map<String, String> quantiles = new LinkedHashMap<>();
+        forecast.quantiles()
+                .forEach((probability, value) -> quantiles.put(Double.toString(probability), numberString(value)));
+        result.put("quantiles", quantiles);
+        return result;
+    }
+
+    private static Map<String, Object> forecastSupportToMap(ForecastSupport support) {
+        Map<String, Object> result = linkedMap();
+        if (support instanceof ForecastSupport.Empirical empirical) {
+            result.put("type", "empirical");
+            result.put("count", empirical.count());
+        } else if (support instanceof ForecastSupport.Analytic analytic) {
+            result.put("type", "analytic");
+            result.put("assumption", analytic.assumption());
+        } else {
+            result.put("type", "unavailable");
+        }
+        return result;
     }
 
     static WalkForwardConfig buildWalkForwardConfig(BarSeries series, String minTrainBarsToken, String testBarsToken,
@@ -455,29 +710,30 @@ final class CliSupport {
 
     static Map<String, Object> buildCommandMetadata(String command, BarSeries series, String dataFile,
             String timeframeToken, String fromDateToken, String toDateToken, String executionModelToken,
-            String capitalToken, String stakeAmountToken, String commissionToken, String borrowRateToken,
+            PositionSizingSpec positionSizing, String commissionToken, String borrowRateToken, String borrowSideToken,
             List<CriterionSpec> criteria, Path outputPath, Path chartPath) {
         Map<String, Object> metadata = linkedMap();
         metadata.put("command", command);
         metadata.put("generatedAtUtc", Instant.now().toString());
-
-        Map<String, Object> input = linkedMap();
-        input.put("dataFile", Path.of(dataFile).toAbsolutePath().normalize().toString());
-        input.put("seriesName", series.getName());
-        input.put("barCount", series.getBarCount());
-        input.put("timeframe", timeframeToken == null ? null : normalizeToken(timeframeToken));
-        input.put("fromDate", fromDateToken);
-        input.put("toDate", toDateToken);
-        metadata.put("input", input);
+        metadata.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
 
         Map<String, Object> execution = linkedMap();
         execution.put("executionModel",
                 executionModelToken == null ? "next-open" : normalizeToken(executionModelToken));
-        execution.put("capital", capitalToken);
-        execution.put("stakeAmount", stakeAmountToken);
+        execution.put("positionSizing", positionSizing.mode());
+        execution.put("capital", positionSizing.capital());
+        execution.put("stakeAmount", positionSizing.stakeAmount());
+        execution.put("winProbability", positionSizing.winProbability());
+        execution.put("payoffRatio", positionSizing.payoffRatio());
+        execution.put("kellyCoefficient", positionSizing.kellyCoefficient());
         execution.put("commission", commissionToken);
         execution.put("borrowRate", borrowRateToken);
-        execution.put("criteria", criteria.stream().map(CriterionSpec::className).toList());
+        execution.put("borrowSide", borrowRateToken == null || borrowRateToken.isBlank() ? null
+                : borrowSideToken == null || borrowSideToken.isBlank() ? "short" : normalizeToken(borrowSideToken));
+        execution.put("criteria", criteria.stream().map(CriterionSpec::name).toList());
+        execution.put("criterionTypes", criteria.stream()
+                .collect(LinkedHashMap::new, (types, criterion) -> types.put(criterion.name(), criterion.className()),
+                        LinkedHashMap::putAll));
         metadata.put("execution", execution);
 
         Map<String, Object> artifacts = linkedMap();
@@ -485,6 +741,20 @@ final class CliSupport {
         artifacts.put("chartFile", chartPath == null ? null : chartPath.toString());
         metadata.put("artifacts", artifacts);
         return metadata;
+    }
+
+    private static Map<String, Object> buildInputMetadata(BarSeries series, String dataFile, String timeframeToken,
+            String fromDateToken, String toDateToken) {
+        Map<String, Object> input = linkedMap();
+        input.put("dataFile", Path.of(dataFile).toAbsolutePath().normalize().toString());
+        input.put("seriesName", series.getName());
+        input.put("barCount", series.getBarCount());
+        input.put("beginIndex", series.getBeginIndex());
+        input.put("endIndex", series.getEndIndex());
+        input.put("timeframe", timeframeToken == null ? null : normalizeToken(timeframeToken));
+        input.put("fromDate", fromDateToken);
+        input.put("toDate", toDateToken);
+        return input;
     }
 
     static Map<String, Object> statementToMap(BarSeries series, TradingStatement statement,
@@ -560,7 +830,7 @@ final class CliSupport {
             values.put("holdout",
                     result.holdoutCriterionValue(criterion.criterion()).map(CliSupport::numberString).orElse(null));
             values.put("outOfSampleAverage", average(result.outOfSampleCriterionValues(criterion.criterion())));
-            aggregateCriteria.put(criterion.className(), values);
+            aggregateCriteria.put(criterion.name(), values);
         }
         walkForward.put("criteria", aggregateCriteria);
         return walkForward;
@@ -609,7 +879,7 @@ final class CliSupport {
             List<CriterionSpec> criteria) {
         Map<String, Object> scores = linkedMap();
         for (CriterionSpec criterion : criteria) {
-            scores.put(criterion.className(), numberString(criterion.criterion().calculate(series, tradingRecord)));
+            scores.put(criterion.name(), numberString(criterion.criterion().calculate(series, tradingRecord)));
         }
         return scores;
     }
@@ -633,11 +903,41 @@ final class CliSupport {
         return new LinearTransactionCostModel(parseNonNegativeDouble(commissionToken, "commission"));
     }
 
-    private static CostModel resolveHoldingCostModel(String borrowRateToken) {
+    private static CostModel resolveHoldingCostModel(String borrowRateToken, String borrowSideToken) {
         if (borrowRateToken == null || borrowRateToken.isBlank()) {
+            if (borrowSideToken != null && !borrowSideToken.isBlank()) {
+                throw new IllegalArgumentException("--borrow-side requires --borrow-rate.");
+            }
             return new ZeroCostModel();
         }
-        return new LinearBorrowingCostModel(parseNonNegativeDouble(borrowRateToken, "borrow-rate"));
+        LinearBorrowingCostModel.Applicability applicability = switch (normalizeToken(borrowSideToken)) {
+        case "", "short" -> LinearBorrowingCostModel.Applicability.SHORT_ONLY;
+        case "long" -> LinearBorrowingCostModel.Applicability.LONG_ONLY;
+        case "both" -> LinearBorrowingCostModel.Applicability.BOTH;
+        default -> throw new IllegalArgumentException(
+                "Unsupported --borrow-side '" + borrowSideToken + "'. Use short, long, or both.");
+        };
+        return new LinearBorrowingCostModel(parseNonNegativeDouble(borrowRateToken, "borrow-rate"), applicability);
+    }
+
+    private static double parseProbability(String token, String optionName) {
+        double parsed = parseNonNegativeDouble(token, optionName);
+        if (parsed <= 0.0d || parsed >= 1.0d) {
+            throw new IllegalArgumentException("--" + optionName + " must be in (0, 1).");
+        }
+        return parsed;
+    }
+
+    private static void requireOption(String token, String optionName, String mode) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException(optionName + " is required with " + mode + ".");
+        }
+    }
+
+    private static void rejectOption(String token, String optionName, String supportedMode) {
+        if (token != null && !token.isBlank()) {
+            throw new IllegalArgumentException(optionName + " is only valid with " + supportedMode + ".");
+        }
     }
 
     private static double parsePositiveDouble(String token, String optionName) {
@@ -828,37 +1128,18 @@ final class CliSupport {
 
     private static CriterionSpec resolveCriterion(String requestedType) {
         if (requestedType == null || requestedType.isBlank()) {
-            throw new IllegalArgumentException("Criterion class names must not be blank.");
-        }
-        if (!requestedType.contains(".")) {
-            throw new IllegalArgumentException(
-                    "Criteria aliases are no longer supported. Use a fully qualified AnalysisCriterion class name such as "
-                            + CRITERION_CLASS_EXAMPLE + ".");
-        }
-
-        Class<?> rawType;
-        try {
-            rawType = Class.forName(requestedType);
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Unknown criterion class: " + requestedType + ".", ex);
-        }
-        if (!AnalysisCriterion.class.isAssignableFrom(rawType)) {
-            throw new IllegalArgumentException(
-                    "Criterion class does not implement AnalysisCriterion: " + requestedType + ".");
+            throw new IllegalArgumentException("Criterion inputs must not be blank.");
         }
 
         AnalysisCriterion criterion;
         try {
-            java.lang.reflect.Constructor<?> constructor = rawType.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            criterion = (AnalysisCriterion) constructor.newInstance();
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalArgumentException(
-                    "Criterion class must expose a no-arg constructor: " + requestedType + ".", ex);
-        } catch (ReflectiveOperationException ex) {
-            throw new IllegalArgumentException("Unable to construct criterion: " + requestedType + ".", ex);
+            criterion = AnalysisCriterion.fromExpression(requestedType);
+        } catch (RuntimeException ex) {
+            String inputKind = requestedType.contains(".") ? "input" : "shorthand";
+            throw new IllegalArgumentException("Invalid analysis criterion " + inputKind + ": " + requestedType + ".",
+                    ex);
         }
-        return new CriterionSpec(rawType.getName(), criterion);
+        return new CriterionSpec(requestedType, criterion.getClass().getName(), criterion);
     }
 
     static Strategy buildRuleTestStrategy(String entryRuleLabel, String entryRuleJsonFile, String exitRuleLabel,
@@ -873,19 +1154,18 @@ final class CliSupport {
         return strategy;
     }
 
-    private static Strategy buildNamedStrategy(String strategyLabel, BarSeries series) {
-        if (strategyLabel == null || strategyLabel.isBlank()) {
-            throw unknownStrategyValue(strategyLabel);
+    private static Strategy buildStrategyExpression(String strategyInput, BarSeries series) {
+        if (strategyInput == null || strategyInput.isBlank()) {
+            throw unknownStrategyValue(strategyInput);
         }
         NamedStrategy.initializeRegistry("ta4jexamples.strategies");
-        List<String> labelTokens = NamedStrategy.splitLabel(strategyLabel);
-        String simpleName = labelTokens.getFirst();
-        if (simpleName.isBlank() || NamedStrategy.lookup(simpleName).isEmpty()) {
-            throw unknownStrategyValue(strategyLabel);
+        try {
+            return Strategy.fromExpression(series, strategyInput);
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("Invalid strategy shorthand or label '" + strategyInput
+                    + "'. Use a compact expression such as SMA(7,21) or a NamedStrategy label such as "
+                    + NAMED_STRATEGY_EXAMPLE + ".", ex);
         }
-
-        String json = toJson(Map.of("type", NamedStrategy.SERIALIZED_TYPE, "label", strategyLabel));
-        return buildStrategyFromJsonString(json, strategyLabel, null, series);
     }
 
     private static Rule buildRule(String ruleLabel, String ruleJsonFile, String labelOptionName, String jsonOptionName,
@@ -896,10 +1176,10 @@ final class CliSupport {
             throw new IllegalArgumentException(
                     "Provide exactly one of " + labelOptionName + " or " + jsonOptionName + ". " + RULE_INPUT_GUIDANCE);
         }
-        return hasJsonFile ? buildRuleFromJsonPath(ruleJsonFile, series) : buildNamedRule(ruleLabel, series);
+        return hasJsonFile ? buildRuleFromJsonPath(ruleJsonFile, series) : buildRuleInput(ruleLabel, series);
     }
 
-    private static Rule buildNamedRule(String ruleLabel, BarSeries series) {
+    private static Rule buildRuleInput(String ruleLabel, BarSeries series) {
         if (ruleLabel == null || ruleLabel.isBlank()) {
             throw unknownRuleValue(ruleLabel);
         }
@@ -907,7 +1187,13 @@ final class CliSupport {
         List<String> labelTokens = NamedRule.splitLabel(ruleLabel);
         String simpleName = labelTokens.getFirst();
         if (simpleName.isBlank() || NamedRule.lookup(simpleName).isEmpty()) {
-            throw unknownRuleValue(ruleLabel);
+            try {
+                return Rule.fromExpression(series, ruleLabel);
+            } catch (RuntimeException ex) {
+                throw new IllegalArgumentException("Invalid rule shorthand or label '" + ruleLabel
+                        + "'. Use a compact expression such as CrossedUp(SMA(7),SMA(21)) or a NamedRule label such as "
+                        + NAMED_RULE_EXAMPLE + ".", ex);
+            }
         }
 
         Class<? extends NamedRule> ruleType = NamedRule.requireRegistered(simpleName);
@@ -972,13 +1258,14 @@ final class CliSupport {
         }
     }
 
-    private static List<String> parseStrategyLabels(List<String> strategyLabels, List<String> invalidStrategies) {
+    private static List<String> parseStrategyInputs(List<String> strategyLabels, List<String> invalidStrategies) {
         List<String> labels = new ArrayList<>();
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
         for (String rawValue : strategyLabels) {
             if (rawValue == null) {
                 continue;
             }
-            for (String token : rawValue.split(",")) {
+            for (String token : registry.splitTopLevel(rawValue)) {
                 String trimmed = token.trim();
                 if (trimmed.isEmpty()) {
                     invalidStrategies.add("--strategies contains an empty strategy label.");
@@ -1152,15 +1439,56 @@ final class CliSupport {
     }
 
     /**
-     * Binds the resolved criterion class name to the concrete criterion instance
-     * used for a single command execution.
+     * Binds one operator-facing criterion input and concrete implementation to the
+     * instance used for a single command execution.
      *
-     * @param className fully qualified {@link AnalysisCriterion} class name used in
-     *                  JSON output
+     * @param name      compact shorthand or fully qualified class name used as the
+     *                  JSON key
+     * @param className resolved {@link AnalysisCriterion} implementation class
      * @param criterion resolved analysis criterion instance
-     * @since 0.22.7
+     * @since 0.23.1
      */
-    record CriterionSpec(String className, AnalysisCriterion criterion) {
+    record CriterionSpec(String name, String className, AnalysisCriterion criterion) {
+    }
+
+    /**
+     * Validated command inputs for one forecast state/projection evaluation.
+     *
+     * @param stateModel      EWMA, rough-volatility, or change-point state
+     * @param target          state, cumulative return, or terminal price output
+     * @param index           decision index, or {@code null} for the series end
+     * @param horizon         positive forecast horizon in bars
+     * @param samples         Monte Carlo terminal path count
+     * @param lookbackBars    historical shock lookback in bars
+     * @param seed            deterministic simulation seed
+     * @param shockModel      simulated shock source
+     * @param volatilityMode  within-path volatility behavior
+     * @param volatilityDecay EWMA decay for within-path variance updates
+     * @param quantiles       reported quantile probabilities
+     * @since 0.23.1
+     */
+    record ForecastRequest(String stateModel, String target, Integer index, int horizon, int samples, int lookbackBars,
+            long seed, String shockModel, String volatilityMode, double volatilityDecay, List<Double> quantiles) {
+
+        ForecastRequest {
+            quantiles = List.copyOf(Objects.requireNonNull(quantiles, "quantiles"));
+        }
+    }
+
+    /**
+     * Validated position-sizing selection and its operator-facing configuration.
+     *
+     * @param mode             fixed, balance, or Kelly sizing mode
+     * @param capital          configured starting capital, when present
+     * @param stakeAmount      fixed per-entry amount, when present
+     * @param winProbability   Kelly win probability, when present
+     * @param payoffRatio      Kelly payoff ratio, when present
+     * @param kellyCoefficient Kelly fraction multiplier, when present
+     * @param positionSizer    configured ta4j position sizer
+     * @since 0.23.1
+     */
+    record PositionSizingSpec(String mode, String capital, String stakeAmount, String winProbability,
+            String payoffRatio, String kellyCoefficient, PositionSizer positionSizer) {
     }
 
     /**
@@ -1169,7 +1497,7 @@ final class CliSupport {
      *
      * @param strategies        valid strategies that can be executed
      * @param invalidStrategies descriptive messages for rejected inputs
-     * @since 0.22.7
+     * @since 0.23.1
      */
     record ResolvedStrategies(List<Strategy> strategies, List<String> invalidStrategies) {
     }
@@ -1181,7 +1509,7 @@ final class CliSupport {
      * @param indicator numeric indicator instance
      * @param json      canonical serialized indicator JSON
      * @param typeName  runtime type name
-     * @since 0.22.7
+     * @since 0.23.1
      */
     record ResolvedIndicator(Indicator<Num> indicator, String json, String typeName) {
     }

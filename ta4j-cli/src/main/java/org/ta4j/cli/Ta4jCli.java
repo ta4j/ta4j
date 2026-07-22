@@ -4,6 +4,7 @@
 package org.ta4j.cli;
 
 import org.ta4j.cli.commands.indicator.IndicatorCommand;
+import org.ta4j.cli.commands.forecast.ForecastCommand;
 import org.ta4j.cli.commands.performance.PerformanceCommand;
 import org.ta4j.cli.commands.rule.RuleCommand;
 import org.ta4j.cli.commands.strategy.StrategyCommand;
@@ -14,6 +15,7 @@ import java.io.PrintWriter;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
+import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.ParameterException;
 import picocli.CommandLine.Spec;
@@ -23,15 +25,27 @@ import picocli.CommandLine.Spec;
  *
  * <p>
  * The root command uses progressive disclosure: users first choose the primary
- * input family ({@code strategy}, {@code indicator}, {@code rule}, or
- * {@code performance}), then choose the action within that family.
+ * input family ({@code strategy}, {@code indicator}, {@code rule},
+ * {@code forecast}, or {@code performance}), then choose the action within that
+ * family.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
-@Command(name = "ta4j-cli", description = "Run bounded ta4j workflows from local files.", mixinStandardHelpOptions = true, subcommands = {
-        StrategyCommand.class, IndicatorCommand.class, RuleCommand.class, PerformanceCommand.class, HelpCommand.class })
+@Command(name = "ta4j-cli", description = "Run bounded ta4j workflows from local files.", mixinStandardHelpOptions = true, versionProvider = Ta4jCli.VersionProvider.class, subcommands = {
+        StrategyCommand.class, IndicatorCommand.class, RuleCommand.class, ForecastCommand.class,
+        PerformanceCommand.class, HelpCommand.class })
 public final class Ta4jCli implements Runnable {
+
+    static final class VersionProvider implements IVersionProvider {
+
+        @Override
+        public String[] getVersion() {
+            String implementationVersion = Ta4jCli.class.getPackage().getImplementationVersion();
+            return new String[] {
+                    "ta4j-cli " + (implementationVersion == null ? "development" : implementationVersion) };
+        }
+    }
 
     @Spec
     private CommandSpec spec;
@@ -40,7 +54,7 @@ public final class Ta4jCli implements Runnable {
      * Executes the CLI.
      *
      * @param args command-line arguments
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static void main(String[] args) {
         int exitCode = run(args, new PrintWriter(System.out, true), new PrintWriter(System.err, true));

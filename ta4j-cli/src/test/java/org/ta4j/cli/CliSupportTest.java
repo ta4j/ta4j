@@ -169,23 +169,59 @@ class CliSupportTest {
     }
 
     @Test
-    void resolveCriteriaUsesDefaultsDeduplicatesClassNamesAndRejectsAliases() {
+    void resolvePositionSizingSupportsFixedBalanceAndKellyModes() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+
+        CliSupport.PositionSizingSpec fixed = CliSupport.resolvePositionSizing(series, null, "1000", "100", null, null,
+                null);
+        CliSupport.PositionSizingSpec balance = CliSupport.resolvePositionSizing(series, "balance", "1000", null, null,
+                null, null);
+        CliSupport.PositionSizingSpec kelly = CliSupport.resolvePositionSizing(series, "kelly", "1000", null, "0.6",
+                "2", "0.5");
+
+        assertThat(fixed.mode()).isEqualTo("fixed");
+        assertThat(balance.mode()).isEqualTo("balance");
+        assertThat(kelly.mode()).isEqualTo("kelly");
+        assertThat(kelly.kellyCoefficient()).isEqualTo("0.5");
+        assertThatThrownBy(() -> CliSupport.resolvePositionSizing(series, "balance", null, null, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--capital is required with --position-sizing balance.");
+        assertThatThrownBy(() -> CliSupport.resolvePositionSizing(series, "fixed", null, null, "0.6", null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--win-probability is only valid with --position-sizing kelly.");
+    }
+
+    @Test
+    void resolveCriteriaSupportsNamedExpressionsAndFullyQualifiedClasses() {
         List<CliSupport.CriterionSpec> defaults = CliSupport.resolveCriteria(List.of(),
                 CliSupport.DEFAULT_BACKTEST_CRITERIA);
         List<CliSupport.CriterionSpec> explicit = CliSupport.resolveCriteria(
                 List.of(NetProfitCriterion.class.getName() + "," + SharpeRatioCriterion.class.getName(),
                         NetProfitCriterion.class.getName()),
                 CliSupport.DEFAULT_SWEEP_CRITERIA);
+        List<CliSupport.CriterionSpec> named = CliSupport.resolveCriteria(List.of("NetProfit,ReturnOverMaxDrawdown"),
+                CliSupport.DEFAULT_SWEEP_CRITERIA);
 
         assertThat(defaults).extracting(CliSupport.CriterionSpec::className)
                 .containsExactlyElementsOf(CliSupport.DEFAULT_BACKTEST_CRITERIA);
         assertThat(explicit).extracting(CliSupport.CriterionSpec::className)
                 .containsExactly(NetProfitCriterion.class.getName(), SharpeRatioCriterion.class.getName());
+        assertThat(named).extracting(CliSupport.CriterionSpec::name)
+                .containsExactly("NetProfit", "ReturnOverMaxDrawdown");
         assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of("net-profit"), CliSupport.DEFAULT_SWEEP_CRITERIA))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Criteria aliases are no longer supported. Use a fully qualified AnalysisCriterion class name such as "
-                                + NetProfitCriterion.class.getName() + ".");
+                .hasMessage("Invalid analysis criterion shorthand: net-profit.");
+    }
+
+    @Test
+    void rejectedCriterionInputDoesNotRunStaticInitializer() {
+        InitializerProbe.initialized = false;
+
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(RejectedCriterionProbe.class.getName()),
+                CliSupport.DEFAULT_SWEEP_CRITERIA)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid analysis criterion input: " + RejectedCriterionProbe.class.getName() + ".");
+        assertThat(InitializerProbe.initialized).isFalse();
     }
 
     @Test
@@ -197,11 +233,24 @@ class CliSupportTest {
         Files.writeString(strategyJsonFile, labelStrategy.toJson());
 
         Strategy jsonStrategy = CliSupport.buildStrategy("ignored", strategyJsonFile.toString(), 7, series);
+        Strategy expressionStrategy = CliSupport.buildStrategy("SMA(7,21)", null, null, series);
+        Path versionTwoFile = tempDir.resolve("strategy-v2.json");
+        Files.writeString(versionTwoFile, """
+                {
+                  "version": 2,
+                  "name": "v2-sma",
+                  "entryRule": {"type": "CrossedUpIndicatorRule", "args": ["SMA(7)", "SMA(21)"]},
+                  "exitRule": {"type": "CrossedDownIndicatorRule", "args": ["SMA(7)", "SMA(21)"]}
+                }
+                """);
+        Strategy versionTwoStrategy = CliSupport.buildStrategy(null, versionTwoFile.toString(), null, series);
 
         assertThat(labelStrategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
         assertThat(labelStrategy.getUnstableBars()).isEqualTo(12);
         assertThat(jsonStrategy.getName()).isEqualTo(labelStrategy.getName());
         assertThat(jsonStrategy.getUnstableBars()).isEqualTo(7);
+        assertThat(expressionStrategy.getName()).isEqualTo("SMA(7,21)");
+        assertThat(versionTwoStrategy.getName()).isEqualTo("v2-sma");
     }
 
     @Test
@@ -226,13 +275,13 @@ class CliSupportTest {
         Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",\"invalid\"]");
 
         CliSupport.ResolvedStrategies resolved = CliSupport.resolveStrategies("DayOfWeekStrategy_MONDAY_FRIDAY",
-                strategyJson.toString(), List.of("HourOfDayStrategy_9_17,MissingStrategy_VALUE"),
+                strategyJson.toString(), List.of("HourOfDayStrategy_9_17,SMA(7,21),MissingStrategy_VALUE"),
                 strategiesJsonFile.toString(), 7, series);
 
-        assertThat(resolved.strategies()).hasSize(4);
+        assertThat(resolved.strategies()).hasSize(5);
         assertThat(resolved.strategies()).extracting(Strategy::getUnstableBars).containsOnly(7);
         assertThat(resolved.invalidStrategies()).contains(
-                "--strategies MissingStrategy_VALUE: Unknown strategy label 'MissingStrategy_VALUE'. Use a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.",
+                "--strategies MissingStrategy_VALUE: Invalid strategy shorthand or label 'MissingStrategy_VALUE'. Use a compact expression such as SMA(7,21) or a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.",
                 "--strategies-json-file " + strategiesJsonFile
                         + "[1]: Each array element must be a serialized strategy object.");
     }
@@ -247,7 +296,7 @@ class CliSupportTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No valid strategies to run.")
                 .hasMessageContaining(
-                        "--strategies MissingStrategy_VALUE: Unknown strategy label 'MissingStrategy_VALUE'.")
+                        "--strategies MissingStrategy_VALUE: Invalid strategy shorthand or label 'MissingStrategy_VALUE'.")
                 .hasMessageContaining("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
     }
 
@@ -258,8 +307,8 @@ class CliSupportTest {
 
         assertThatThrownBy(() -> CliSupport.buildStrategy("unknown", null, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unknown strategy label 'unknown'. Use a NamedStrategy label such as "
-                        + "DayOfWeekStrategy_MONDAY_FRIDAY.");
+                .hasMessage("Invalid strategy shorthand or label 'unknown'. Use a compact expression such as SMA(7,21) "
+                        + "or a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.");
     }
 
     @Test
@@ -294,10 +343,12 @@ class CliSupportTest {
         CliSupport.ResolvedIndicator inlineIndicator = CliSupport.resolveIndicator(indicatorJson, null, series);
         CliSupport.ResolvedIndicator fileIndicator = CliSupport.resolveIndicator(null, indicatorJsonFile.toString(),
                 series);
+        CliSupport.ResolvedIndicator expressionIndicator = CliSupport.resolveIndicator("EMA(5)", null, series);
 
         assertThat(inlineIndicator.typeName()).isEqualTo(EMAIndicator.class.getName());
         assertThat(inlineIndicator.json()).isEqualTo(indicatorJson);
         assertThat(fileIndicator.typeName()).isEqualTo(EMAIndicator.class.getName());
+        assertThat(expressionIndicator.typeName()).isEqualTo(EMAIndicator.class.getName());
     }
 
     @Test
@@ -330,7 +381,7 @@ class CliSupportTest {
         assertThatThrownBy(
                 () -> CliSupport.buildIndicatorTestStrategy("not-json", null, null, null, null, null, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid serialized indicator input.");
+                .hasMessage("Invalid indicator shorthand or serialized JSON input.");
         assertThatThrownBy(() -> CliSupport.resolveIndicator(booleanIndicatorJson, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("--indicator must deserialize to an Indicator<Num>.");
@@ -340,6 +391,32 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", null,
                 null, null, series)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Threshold indicator tests require either --exit-below or --exit-above.");
+    }
+
+    @Test
+    void forecastReportsExposeStateProvenanceAndEmpiricalPriceSupport() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        CliSupport.ForecastRequest stateRequest = new CliSupport.ForecastRequest("change-point", "state", null, 3, 25,
+                40, 42L, "standardized-empirical", "constant", 0.94d, List.of(0.05d, 0.5d, 0.95d));
+        CliSupport.ForecastRequest priceRequest = new CliSupport.ForecastRequest("ewma", "price", null, 3, 25, 40, 42L,
+                "standardized-empirical", "constant", 0.94d, List.of(0.05d, 0.5d, 0.95d));
+
+        Map<String, Object> stateReport = CliSupport.buildForecastReport(series, dataFile.toString(), null, null, null,
+                stateRequest, null);
+        Map<String, Object> priceReport = CliSupport.buildForecastReport(series, dataFile.toString(), null, null, null,
+                priceRequest, null);
+
+        assertThat(asMap(stateReport.get("state"))).containsEntry("stable", true)
+                .containsEntry("representation", "LOG")
+                .containsKeys("recentChangeProbability", "mostLikelyRunLength", "topRunLengths");
+        assertThat(asMap(stateReport.get("decision"))).containsEntry("index", series.getEndIndex())
+                .containsEntry("endTime", series.getLastBar().getEndTime().toString())
+                .containsEntry("closePrice", series.getLastBar().getClosePrice().toString());
+        Map<String, Object> forecast = asMap(priceReport.get("forecast"));
+        assertThat(forecast).containsEntry("stable", true).containsEntry("horizon", 3);
+        assertThat(asMap(forecast.get("support"))).containsEntry("type", "empirical").containsEntry("count", 25);
+        assertThat(asMap(forecast.get("quantiles"))).containsKeys("0.05", "0.5", "0.95");
     }
 
     @Test
@@ -357,12 +434,15 @@ class CliSupportTest {
                 "RsiThresholdRule_ABOVE_14_70", null, 11, series);
         Strategy jsonStrategy = CliSupport.buildRuleTestStrategy(null, entryRuleJsonFile.toString(), null,
                 exitRuleJsonFile.toString(), null, series);
+        Strategy expressionStrategy = CliSupport.buildRuleTestStrategy("CrossedUp(SMA(7),SMA(21))", null,
+                "CrossedDown(SMA(7),SMA(21))", null, null, series);
 
         assertThat(labelStrategy.getName()).contains("rule-test-RsiThresholdRule_BELOW_14_30");
         assertThat(labelStrategy.getUnstableBars()).isEqualTo(11);
         assertThat(labelStrategy.getEntryRule().getName()).isEqualTo("RsiThresholdRule_BELOW_14_30");
         assertThat(jsonStrategy.getEntryRule().getName()).isEqualTo(entryRule.getName());
         assertThat(jsonStrategy.getExitRule().getName()).isEqualTo(exitRule.getName());
+        assertThat(expressionStrategy.getEntryRule().getClass().getSimpleName()).isEqualTo("CrossedUpIndicatorRule");
     }
 
     @Test
@@ -378,7 +458,7 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.buildRuleTestStrategy("MissingRule_VALUE", null,
                 "RsiThresholdRule_ABOVE_14_70", null, null, series)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
-                        "Unknown rule label 'MissingRule_VALUE'. Use a NamedRule label such as RsiThresholdRule_BELOW_14_30.");
+                        "Invalid rule shorthand or label 'MissingRule_VALUE'. Use a compact expression such as CrossedUp(SMA(7),SMA(21)) or a NamedRule label such as RsiThresholdRule_BELOW_14_30.");
     }
 
     @Test
@@ -479,9 +559,11 @@ class CliSupportTest {
         StrategyWalkForwardExecutionResult walkForward = executor.executeWalkForward(strategy, amount, config);
         Path outputPath = CliSupport.resolveOutputPath(tempDir.resolve("artifacts/backtest.json").toString());
         Path chartPath = CliSupport.saveChart(tempDir.resolve("charts/backtest.jpg").toString(), series, statement);
+        CliSupport.PositionSizingSpec positionSizing = CliSupport.resolvePositionSizing(series, "fixed", "1000", "1000",
+                null, null, null);
 
         Map<String, Object> metadata = CliSupport.buildCommandMetadata("backtest", series, dataFile.toString(), "1d",
-                "2013-01-02", "2013-12-31", "current-close", "1000", "1000", "0.01", "0.02", backtestCriteria,
+                "2013-01-02", "2013-12-31", "current-close", positionSizing, "0.01", "0.02", "short", backtestCriteria,
                 outputPath, chartPath);
         Map<String, Object> statementMap = CliSupport.statementToMap(series, statement, backtestCriteria);
         Map<String, Object> runtimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
@@ -495,6 +577,7 @@ class CliSupportTest {
                 .containsEntry("seriesName", series.getName())
                 .containsEntry("barCount", series.getBarCount());
         assertThat(asMap(metadata.get("execution"))).containsEntry("executionModel", "current-close")
+                .containsEntry("positionSizing", "fixed")
                 .containsEntry("capital", "1000")
                 .containsEntry("stakeAmount", "1000")
                 .containsEntry("commission", "0.01")
@@ -527,5 +610,17 @@ class CliSupportTest {
 
     private Strategy sampleSweepStrategy(BarSeries series) {
         return CliSupport.buildSweepStrategies(List.of(), List.of("fast=5", "slow=20"), null, series).getFirst();
+    }
+
+    private static final class InitializerProbe {
+
+        private static boolean initialized;
+    }
+
+    private static final class RejectedCriterionProbe {
+
+        static {
+            InitializerProbe.initialized = true;
+        }
     }
 }

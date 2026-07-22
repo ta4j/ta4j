@@ -18,7 +18,7 @@ import picocli.CommandLine.Spec;
 /**
  * Compares two performance experiment artifact directories.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "compare", description = "Compare two performance experiment runs.", mixinStandardHelpOptions = true)
 public final class PerformanceCompareCommand implements Callable<Integer> {

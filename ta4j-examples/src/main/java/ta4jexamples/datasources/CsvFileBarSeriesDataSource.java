@@ -195,7 +195,8 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
         if (Files.isRegularFile(localPath)) {
             try {
                 stream = Files.newInputStream(localPath);
-                seriesName = localPath.getFileName().toString();
+                Path fileName = localPath.getFileName();
+                seriesName = fileName == null ? localPath.toString() : fileName.toString();
             } catch (IOException e) {
                 LOG.debug("Unable to open CSV file from filesystem: {}", filename, e);
                 return null;

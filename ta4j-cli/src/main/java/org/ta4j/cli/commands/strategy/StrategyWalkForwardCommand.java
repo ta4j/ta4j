@@ -10,7 +10,7 @@ import picocli.CommandLine.Command;
 /**
  * Runs rolling walk-forward evaluation for one or more concrete strategies.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "walk-forward", description = "Run strategy walk-forward validation.", mixinStandardHelpOptions = true)
 public final class StrategyWalkForwardCommand extends CliCommands.StrategyWalkForwardWorkflow {

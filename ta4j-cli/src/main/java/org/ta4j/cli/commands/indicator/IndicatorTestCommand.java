@@ -11,7 +11,7 @@ import picocli.CommandLine.Command;
  * Builds a temporary threshold or crossover strategy from a serialized numeric
  * indicator.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "test", description = "Backtest a serialized indicator idea.", mixinStandardHelpOptions = true)
 public final class IndicatorTestCommand extends CliCommands.IndicatorTestWorkflow {

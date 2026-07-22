@@ -11,7 +11,7 @@ import picocli.CommandLine.Spec;
  * Strategy command group for backtests, walk-forward checks, and strategy
  * parameter sweeps.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "strategy", description = "Run and tune strategy workflows.", mixinStandardHelpOptions = true, subcommands = {
         StrategyBacktestCommand.class, StrategyWalkForwardCommand.class, StrategySweepCommand.class })

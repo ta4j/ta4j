@@ -10,7 +10,7 @@ import picocli.CommandLine.Command;
 /**
  * Runs one or more concrete strategies against one local dataset.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "backtest", description = "Run strategies against one dataset.", mixinStandardHelpOptions = true)
 public final class StrategyBacktestCommand extends CliCommands.StrategyBacktestWorkflow {

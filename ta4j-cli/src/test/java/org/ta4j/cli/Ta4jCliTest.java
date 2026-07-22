@@ -13,7 +13,6 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -34,6 +33,7 @@ class Ta4jCliTest {
     void helpUsesProgressiveDisclosure() {
         CliRunResult rootHelp = runCliAllowingError("--help");
         CliRunResult strategyHelp = runCliAllowingError("strategy", "--help");
+        CliRunResult forecastHelp = runCliAllowingError("forecast", "run", "--help");
         CliRunResult performanceRunHelp = runCliAllowingError("performance", "run", "--help");
 
         assertThat(rootHelp.exitCode()).isZero();
@@ -41,6 +41,7 @@ class Ta4jCliTest {
                 .contains("strategy")
                 .contains("indicator")
                 .contains("rule")
+                .contains("forecast")
                 .contains("performance");
         assertThat(rootHelp.stdout()).doesNotContain("backtest      Run strategies against one dataset.");
 
@@ -51,11 +52,25 @@ class Ta4jCliTest {
                 .contains("sweep");
         assertThat(strategyHelp.stdout()).doesNotContain("--data-file");
 
+        assertThat(forecastHelp.exitCode()).isZero();
+        assertThat(forecastHelp.stdout()).contains("Usage: ta4j-cli forecast run")
+                .contains("--state-model")
+                .contains("--target")
+                .contains("--quantiles");
+
         assertThat(performanceRunHelp.exitCode()).isZero();
         assertThat(performanceRunHelp.stdout()).contains("Usage: ta4j-cli performance run")
                 .contains("--bar-counts")
                 .contains("--output-dir");
         assertThat(performanceRunHelp.stdout()).doesNotContain("--base-dir");
+    }
+
+    @Test
+    void versionIsAlwaysVisible() {
+        CliRunResult result = runCliAllowingError("--version");
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stdout()).contains("ta4j-cli ").doesNotEndWith("ta4j-cli " + System.lineSeparator());
     }
 
     @Test
@@ -139,11 +154,9 @@ class Ta4jCliTest {
     @Test
     void indicatorTestBuildsThresholdStrategy() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
-        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        String indicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
         Path outputFile = tempDir.resolve("indicator-test.json");
 
-        int exitCode = runCli("indicator", "test", "--data-file", dataFile.toString(), "--indicator", indicatorJson,
+        int exitCode = runCli("indicator", "test", "--data-file", dataFile.toString(), "--indicator", "RSI(14)",
                 "--entry-below", "30", "--exit-above", "70", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
@@ -218,6 +231,75 @@ class Ta4jCliTest {
         JsonObject payload = readJson(outputFile);
         assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
                 .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+    }
+
+    @Test
+    void backtestAcceptsCompactStrategyAndCriterionExpressionsWithDynamicSizing() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("expression-backtest.json");
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy", "SMA(7,21)",
+                "--criteria", "NetProfit,ReturnOverMaxDrawdown", "--position-sizing", "balance", "--capital", "10000",
+                "--borrow-rate", "0", "--borrow-side", "both", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString()).isEqualTo("SMA(7,21)");
+        assertThat(payload.getAsJsonObject("statement").getAsJsonObject("criteria").keySet()).hasSize(2);
+        assertThat(payload.getAsJsonObject("execution").get("positionSizing").getAsString()).isEqualTo("balance");
+        assertThat(payload.getAsJsonObject("execution").get("borrowSide").getAsString()).isEqualTo("both");
+    }
+
+    @Test
+    void backtestAcceptsVersionTwoStrategyJson() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path strategyFile = tempDir.resolve("strategy-v2.json");
+        Path outputFile = tempDir.resolve("strategy-v2-backtest.json");
+        Files.writeString(strategyFile, """
+                {
+                  "version": 2,
+                  "name": "v2-sma",
+                  "entryRule": {"type": "CrossedUpIndicatorRule", "args": ["SMA(7)", "SMA(21)"]},
+                  "exitRule": {"type": "CrossedDownIndicatorRule", "args": ["SMA(7)", "SMA(21)"]}
+                }
+                """);
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyFile.toString(), "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        assertThat(readJson(outputFile).getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("v2-sma");
+    }
+
+    @Test
+    void forecastRunProducesDeterministicEmpiricalPriceSummary() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("forecast.json");
+
+        int exitCode = runCli("forecast", "run", "--data-file", dataFile.toString(), "--state-model", "ewma",
+                "--target", "price", "--horizon", "3", "--samples", "25", "--quantiles", "0.05,0.5,0.95", "--output",
+                outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("command").getAsString()).isEqualTo("forecast run");
+        assertThat(payload.getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
+        assertThat(payload.getAsJsonObject("forecast").get("horizon").getAsInt()).isEqualTo(3);
+        assertThat(payload.getAsJsonObject("configuration").get("lookbackBars").getAsInt()).isEqualTo(251);
+        assertThat(payload.getAsJsonObject("forecast").getAsJsonObject("support").get("count").getAsInt())
+                .isEqualTo(25);
+    }
+
+    @Test
+    void forecastStateRejectsProjectionOnlyOptions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "state", "--shock-model", "typo");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--shock-model may only be used with --target return or --target price.");
     }
 
     @Test
@@ -317,7 +399,7 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains(
-                "The strategy backtest command does not accept --param. Encode parameter values in NamedStrategy labels or serialized strategy JSON.");
+                "The strategy backtest command does not accept --param. Encode parameters in compact shorthand, NamedStrategy labels, or serialized strategy JSON.");
     }
 
     @Test
@@ -329,7 +411,7 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains(
-                "The indicator test command does not accept --param. Encode indicator parameters in serialized indicator JSON.");
+                "The indicator test command does not accept --param. Encode indicator parameters in compact shorthand or serialized indicator JSON.");
     }
 
     @Test

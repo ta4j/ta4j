@@ -139,6 +139,20 @@ public class NamedAssetRegistryTest {
     }
 
     @Test
+    public void drawdownCriterionAliasesUseCurrentPackages() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        ComponentDescriptor maximumDrawdown = registry.toDescriptor(NamedAssetKind.ANALYSIS_CRITERION,
+                "MaximumDrawdown");
+        ComponentDescriptor returnOverMaxDrawdown = registry.toDescriptor(NamedAssetKind.ANALYSIS_CRITERION,
+                "ReturnOverMaxDrawdown");
+
+        assertThat(maximumDrawdown.getType()).isEqualTo("org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion");
+        assertThat(returnOverMaxDrawdown.getType())
+                .isEqualTo("org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion");
+    }
+
+    @Test
     public void duplicateAliasThrowsDuringBuild() {
         NamedAssetRegistry.Builder builder = NamedAssetRegistry.builder()
                 .registerAnalysisCriterion("Score", List.of(), args -> ComponentDescriptor.typeOnly("First"));

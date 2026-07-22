@@ -1,19 +1,19 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.cli.commands.indicator;
+package org.ta4j.cli.commands.forecast;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
 
 /**
- * Indicator command group for exploratory indicator workflows.
+ * Forecast state and projection command group.
  *
  * @since 0.23.1
  */
-@Command(name = "indicator", description = "Explore indicator workflows.", mixinStandardHelpOptions = true, subcommands = IndicatorTestCommand.class)
-public final class IndicatorCommand implements Runnable {
+@Command(name = "forecast", description = "Inspect return state and produce deterministic forecasts.", mixinStandardHelpOptions = true, subcommands = ForecastRunCommand.class)
+public final class ForecastCommand implements Runnable {
 
     @Spec
     private CommandSpec spec;

@@ -9,7 +9,6 @@ import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 
@@ -37,7 +36,7 @@ import picocli.CommandLine.Spec;
  * package-local support layer.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public final class CliCommands {
 
@@ -47,7 +46,7 @@ public final class CliCommands {
     /**
      * Common execution context for all concrete CLI workflow commands.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class WorkflowCommand implements Callable<Integer> {
@@ -62,12 +61,16 @@ public final class CliCommands {
         final PrintWriter err() {
             return spec.commandLine().getErr();
         }
+
+        final boolean optionMatched(String optionName) {
+            return spec.commandLine().getParseResult().hasMatchedOption(optionName);
+        }
     }
 
     /**
      * Shared local bar-series input options.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class DataOptions {
@@ -88,7 +91,7 @@ public final class CliCommands {
     /**
      * Shared backtest execution options.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class ExecutionOptions {
@@ -102,17 +105,37 @@ public final class CliCommands {
         @Option(names = "--stake-amount", paramLabel = "<number>", description = "Per-trade amount.")
         String stakeAmount;
 
+        @Option(names = "--position-sizing", paramLabel = "<mode>", description = "Entry sizing: fixed, balance, or kelly.")
+        String positionSizing;
+
+        @Option(names = "--win-probability", paramLabel = "<probability>", description = "Kelly win probability in (0, 1).")
+        String winProbability;
+
+        @Option(names = "--payoff-ratio", paramLabel = "<ratio>", description = "Kelly average-win to average-loss ratio.")
+        String payoffRatio;
+
+        @Option(names = "--kelly-coefficient", paramLabel = "<coefficient>", description = "Kelly fraction multiplier; defaults to 1.")
+        String kellyCoefficient;
+
         @Option(names = "--commission", paramLabel = "<rate>", description = "Non-negative transaction fee rate.")
         String commission;
 
         @Option(names = "--borrow-rate", paramLabel = "<rate>", description = "Non-negative holding cost rate.")
         String borrowRate;
+
+        @Option(names = "--borrow-side", paramLabel = "<side>", description = "Borrowing-cost side: short, long, or both.")
+        String borrowSide;
+
+        final CliSupport.PositionSizingSpec resolvePositionSizing(BarSeries series) {
+            return CliSupport.resolvePositionSizing(series, positionSizing, capital, stakeAmount, winProbability,
+                    payoffRatio, kellyCoefficient);
+        }
     }
 
     /**
      * Shared output and progress options.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class ArtifactOptions {
@@ -130,33 +153,33 @@ public final class CliCommands {
     /**
      * Shared analysis-criterion options.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class CriteriaOptions {
 
-        @Option(names = "--criteria", split = ",", arity = "1..*", paramLabel = "<fqcn>", description = "AnalysisCriterion class names.")
+        @Option(names = "--criteria", arity = "1..*", paramLabel = "<criterion>", description = "Named criterion expressions or AnalysisCriterion class names.")
         List<String> criteria = new ArrayList<>();
     }
 
     /**
      * Strategy input options shared by strategy execution commands.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class StrategyInputOptions {
 
-        @Option(names = "--strategy", paramLabel = "<label>", description = "One NamedStrategy label.")
+        @Option(names = "--strategy", paramLabel = "<strategy>", description = "One compact strategy expression or NamedStrategy label.")
         String strategy;
 
-        @Option(names = "--strategies", split = ",", arity = "1..*", paramLabel = "<label>", description = "One or more NamedStrategy labels.")
+        @Option(names = "--strategies", arity = "1..*", paramLabel = "<strategy>", description = "Comma-separated compact expressions or NamedStrategy labels.")
         List<String> strategies = new ArrayList<>();
 
-        @Option(names = "--strategy-json-file", paramLabel = "<path>", description = "Serialized Strategy JSON file.")
+        @Option(names = "--strategy-json-file", paramLabel = "<path>", description = "Canonical or version 2 Strategy JSON file.")
         String strategyJsonFile;
 
-        @Option(names = "--strategies-json-file", paramLabel = "<path>", description = "JSON array of serialized strategies.")
+        @Option(names = "--strategies-json-file", paramLabel = "<path>", description = "JSON array of canonical or version 2 strategies.")
         String strategiesJsonFile;
 
         @Option(names = "--unstable-bars", paramLabel = "<count>", description = "Override strategy unstable bars.")
@@ -169,7 +192,7 @@ public final class CliCommands {
     /**
      * Walk-forward split and ranking options.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     static final class WalkForwardOptions {
@@ -210,7 +233,7 @@ public final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy backtest}.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class StrategyBacktestWorkflow extends WorkflowCommand {
@@ -243,15 +266,15 @@ public final class CliCommands {
                     unstableBars, series);
             CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err());
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
-                    execution.borrowRate);
-            Num amount = CliSupport.resolveAmount(series, execution.capital, execution.stakeAmount);
+                    execution.borrowRate, execution.borrowSide);
+            CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
 
             List<TradingStatement> statements = new ArrayList<>(resolvedStrategies.strategies().size());
             List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(resolvedStrategies.strategies().size());
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
-                BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                        strategy.getStartingType(),
+                BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy),
+                        positionSizing.positionSizer(), strategy.getStartingType(),
                         resolvedStrategies.strategies().size() == 1
                                 ? CliSupport.progressCallback(artifacts.progress, err(), "strategy backtest")
                                 : null);
@@ -269,8 +292,8 @@ public final class CliCommands {
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy backtest", series, data.dataFile,
-                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, execution.capital,
-                    execution.stakeAmount, execution.commission, execution.borrowRate, resolvedCriteria, outputPath,
+                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
+                    execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
                     chartPath);
             response.put("runtime",
                     CliSupport.backtestRuntimeToMap(CliSupport.aggregateBacktestRuntimes(runtimeReports)));
@@ -287,7 +310,7 @@ public final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy walk-forward}.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class StrategyWalkForwardWorkflow extends WorkflowCommand {
@@ -325,8 +348,8 @@ public final class CliCommands {
             CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err());
 
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
-                    execution.borrowRate);
-            Num amount = CliSupport.resolveAmount(series, execution.capital, execution.stakeAmount);
+                    execution.borrowRate, execution.borrowSide);
+            CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
 
             List<Map<String, Object>> resultEntries = new ArrayList<>(resolvedStrategies.strategies().size());
             TradingStatement primaryStatement = null;
@@ -335,10 +358,10 @@ public final class CliCommands {
             Map<String, Object> primaryWalkForward = null;
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
-                BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                        strategy.getStartingType());
-                StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy, amount,
-                        strategy.getStartingType(), config,
+                BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy),
+                        positionSizing.positionSizer(), strategy.getStartingType());
+                StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
+                        positionSizing.positionSizer(), strategy.getStartingType(), config,
                         resolvedStrategies.strategies().size() == 1
                                 ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward")
                                 : null);
@@ -367,9 +390,9 @@ public final class CliCommands {
             Path chartPath = CliSupport.saveChart(artifacts.chart, series, primaryStatement);
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy walk-forward", series,
-                    data.dataFile, data.timeframe, data.fromDate, data.toDate, execution.executionModel,
-                    execution.capital, execution.stakeAmount, execution.commission, execution.borrowRate,
-                    resolvedCriteria, outputPath, chartPath);
+                    data.dataFile, data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
+                    execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
+                    chartPath);
             response.put("strategyCount", resolvedStrategies.strategies().size());
             response.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
             response.put("invalidStrategies", resolvedStrategies.invalidStrategies());
@@ -385,7 +408,7 @@ public final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy sweep}.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class StrategySweepWorkflow extends WorkflowCommand {
@@ -428,11 +451,12 @@ public final class CliCommands {
             BarSeries series = CliSupport.loadSeries(data.dataFile, data.timeframe, data.fromDate, data.toDate);
             List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
-                    execution.borrowRate);
-            Num amount = CliSupport.resolveAmount(series, execution.capital, execution.stakeAmount);
+                    execution.borrowRate, execution.borrowSide);
+            CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
 
-            BacktestExecutionResult sweepResult = executor.executeAndKeepTopK(strategies, amount,
-                    strategies.getFirst().getStartingType(), resolvedCriteria.getFirst().criterion(), topK,
+            BacktestExecutionResult sweepResult = executor.executeAndKeepTopK(strategies,
+                    positionSizing.positionSizer(), strategies.getFirst().getStartingType(),
+                    resolvedCriteria.getFirst().criterion(), topK,
                     CliSupport.progressCallback(artifacts.progress, err(), "strategy sweep"));
             TradingStatement topStatement = sweepResult.tradingStatements().isEmpty() ? null
                     : sweepResult.tradingStatements().getFirst();
@@ -445,8 +469,8 @@ public final class CliCommands {
                     .toList();
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy sweep", series, data.dataFile,
-                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, execution.capital,
-                    execution.stakeAmount, execution.commission, execution.borrowRate, resolvedCriteria, outputPath,
+                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
+                    execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
                     chartPath);
             response.put("candidateCount", strategies.size());
             response.put("topK", topK);
@@ -458,9 +482,88 @@ public final class CliCommands {
     }
 
     /**
+     * Implements {@code ta4j-cli forecast run}.
+     *
+     * @since 0.23.1
+     */
+    @Command
+    public abstract static class ForecastRunWorkflow extends WorkflowCommand {
+
+        @Mixin
+        DataOptions data = new DataOptions();
+
+        @Option(names = "--state-model", defaultValue = "ewma", paramLabel = "<model>", description = "Return state: ewma, rough-volatility, or change-point.")
+        String stateModel;
+
+        @Option(names = "--target", defaultValue = "price", paramLabel = "<target>", description = "Output target: state, return, or price.")
+        String target;
+
+        @Option(names = "--index", paramLabel = "<index>", description = "Decision index; defaults to the series end.")
+        Integer index;
+
+        @Option(names = "--horizon", defaultValue = "1", paramLabel = "<bars>", description = "Positive forecast horizon in bars.")
+        int horizon;
+
+        @Option(names = "--samples", defaultValue = "1000", paramLabel = "<count>", description = "Monte Carlo terminal path count.")
+        int samples;
+
+        @Option(names = "--lookback-bars", paramLabel = "<count>", description = "Historical shock lookback; defaults to up to 252 available returns.")
+        Integer lookbackBars;
+
+        @Option(names = "--seed", defaultValue = "42", paramLabel = "<long>", description = "Deterministic simulation seed.")
+        long seed;
+
+        @Option(names = "--shock-model", defaultValue = "standardized-empirical", paramLabel = "<model>", description = "Shocks: historical-bootstrap, standardized-empirical, or normal.")
+        String shockModel;
+
+        @Option(names = "--volatility-mode", defaultValue = "constant", paramLabel = "<mode>", description = "Within-path volatility: constant or ewma.")
+        String volatilityMode;
+
+        @Option(names = "--volatility-decay", defaultValue = "0.94", paramLabel = "<factor>", description = "EWMA volatility decay in (0, 1).")
+        double volatilityDecay;
+
+        @Option(names = "--quantiles", split = ",", defaultValue = "0.05,0.5,0.95", paramLabel = "<probability>", description = "Comma-separated quantile probabilities in [0, 1].")
+        List<Double> quantiles = new ArrayList<>();
+
+        @Option(names = "--output", paramLabel = "<json-path>", description = "Write JSON output to this file instead of stdout.")
+        String output;
+
+        @Override
+        public final Integer call() throws IOException {
+            rejectProjectionOptionsForStateTarget();
+            BarSeries series = CliSupport.loadSeries(data.dataFile, data.timeframe, data.fromDate, data.toDate);
+            Path outputPath = CliSupport.resolveOutputPath(output);
+            int resolvedLookbackBars = lookbackBars == null ? Math.max(1, Math.min(252, series.getBarCount() - 1))
+                    : lookbackBars;
+            CliSupport.ForecastRequest request = new CliSupport.ForecastRequest(stateModel, target, index, horizon,
+                    samples, resolvedLookbackBars, seed, shockModel, volatilityMode, volatilityDecay, quantiles);
+            Map<String, Object> response = CliSupport.buildForecastReport(series, data.dataFile, data.timeframe,
+                    data.fromDate, data.toDate, request, outputPath);
+            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
+            return 0;
+        }
+
+        private void rejectProjectionOptionsForStateTarget() {
+            if (!"state".equalsIgnoreCase(target.trim())) {
+                return;
+            }
+            List<String> projectionOptions = List
+                    .of("--samples", "--lookback-bars", "--seed", "--shock-model", "--volatility-mode",
+                            "--volatility-decay", "--quantiles")
+                    .stream()
+                    .filter(this::optionMatched)
+                    .toList();
+            if (!projectionOptions.isEmpty()) {
+                throw new IllegalArgumentException(String.join(", ", projectionOptions)
+                        + " may only be used with --target return or --target price.");
+            }
+        }
+    }
+
+    /**
      * Implements {@code ta4j-cli indicator test}.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class IndicatorTestWorkflow extends WorkflowCommand {
@@ -477,7 +580,7 @@ public final class CliCommands {
         @Mixin
         ArtifactOptions artifacts = new ArtifactOptions();
 
-        @Option(names = "--indicator", paramLabel = "<json>", description = "Serialized numeric Indicator JSON.")
+        @Option(names = "--indicator", paramLabel = "<indicator>", description = "Compact numeric indicator expression or serialized JSON.")
         String indicatorJson;
 
         @Option(names = "--indicator-json-file", paramLabel = "<path>", description = "Serialized numeric Indicator JSON file.")
@@ -514,18 +617,18 @@ public final class CliCommands {
             Strategy strategy = CliSupport.buildIndicatorTestStrategy(indicatorJson, indicatorJsonFile,
                     parsedUnstableBars, entryBelow, entryAbove, exitBelow, exitAbove, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
-                    execution.borrowRate);
-            Num amount = CliSupport.resolveAmount(series, execution.capital, execution.stakeAmount);
-            BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                    strategy.getStartingType(),
+                    execution.borrowRate, execution.borrowSide);
+            CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
+            BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy),
+                    positionSizing.positionSizer(), strategy.getStartingType(),
                     CliSupport.progressCallback(artifacts.progress, err(), "indicator test"));
             TradingStatement statement = result.tradingStatements().getFirst();
             Path chartPath = CliSupport.saveChart(artifacts.chart, series, statement);
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("indicator test", series, data.dataFile,
-                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, execution.capital,
-                    execution.stakeAmount, execution.commission, execution.borrowRate, resolvedCriteria, outputPath,
+                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
+                    execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
                     chartPath);
             response.put("indicatorType", resolvedIndicator.typeName());
             response.put("indicatorJson", resolvedIndicator.json());
@@ -539,7 +642,7 @@ public final class CliCommands {
     /**
      * Implements {@code ta4j-cli rule test}.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Command
     public abstract static class RuleTestWorkflow extends WorkflowCommand {
@@ -559,13 +662,13 @@ public final class CliCommands {
         @Mixin
         ArtifactOptions artifacts = new ArtifactOptions();
 
-        @Option(names = "--entry-rule", paramLabel = "<label>", description = "NamedRule entry label.")
+        @Option(names = "--entry-rule", paramLabel = "<rule>", description = "Compact entry-rule expression or NamedRule label.")
         String entryRuleLabel;
 
         @Option(names = "--entry-rule-json-file", paramLabel = "<path>", description = "Serialized entry Rule JSON file.")
         String entryRuleJsonFile;
 
-        @Option(names = "--exit-rule", paramLabel = "<label>", description = "NamedRule exit label.")
+        @Option(names = "--exit-rule", paramLabel = "<rule>", description = "Compact exit-rule expression or NamedRule label.")
         String exitRuleLabel;
 
         @Option(names = "--exit-rule-json-file", paramLabel = "<path>", description = "Serialized exit Rule JSON file.")
@@ -589,12 +692,12 @@ public final class CliCommands {
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
-                    execution.borrowRate);
-            Num amount = CliSupport.resolveAmount(series, execution.capital, execution.stakeAmount);
-            BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                    strategy.getStartingType());
-            StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy, amount,
-                    strategy.getStartingType(), config,
+                    execution.borrowRate, execution.borrowSide);
+            CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
+            BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy),
+                    positionSizing.positionSizer(), strategy.getStartingType());
+            StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
+                    positionSizing.positionSizer(), strategy.getStartingType(), config,
                     CliSupport.progressCallback(artifacts.progress, err(), "rule test"));
 
             TradingStatement statement = backtest.tradingStatements().getFirst();
@@ -602,8 +705,8 @@ public final class CliCommands {
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("rule test", series, data.dataFile,
-                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, execution.capital,
-                    execution.stakeAmount, execution.commission, execution.borrowRate, resolvedCriteria, outputPath,
+                    data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
+                    execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
                     chartPath);
             response.put("entryRuleName", strategy.getEntryRule().getName());
             response.put("entryRuleJson", strategy.getEntryRule().toJson());
@@ -632,9 +735,9 @@ public final class CliCommands {
             return;
         }
         String guidance = switch (inputKind) {
-        case "strategy" -> "Encode parameter values in NamedStrategy labels or serialized strategy JSON.";
-        case "indicator" -> "Encode indicator parameters in serialized indicator JSON.";
-        case "rule" -> "Encode rule parameters in NamedRule labels or serialized rule JSON.";
+        case "strategy" -> "Encode parameters in compact shorthand, NamedStrategy labels, or serialized strategy JSON.";
+        case "indicator" -> "Encode indicator parameters in compact shorthand or serialized indicator JSON.";
+        case "rule" -> "Encode rule parameters in compact shorthand, NamedRule labels, or serialized rule JSON.";
         default -> "Use the command-specific structured inputs instead.";
         };
         throw new IllegalArgumentException("The " + command + " command does not accept --param. " + guidance);

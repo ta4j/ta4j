@@ -19,7 +19,7 @@ import picocli.CommandLine.Spec;
 /**
  * Runs a named reusable performance experiment.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "run", description = "Run a named performance experiment.", mixinStandardHelpOptions = true)
 public final class PerformanceRunCommand implements Callable<Integer> {

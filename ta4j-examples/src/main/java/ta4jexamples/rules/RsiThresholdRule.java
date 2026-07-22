@@ -21,9 +21,13 @@ import java.util.Objects;
  * drops strictly below {@code 30}.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
-public class RsiThresholdRule extends NamedRule {
+public final class RsiThresholdRule extends NamedRule {
+
+    static {
+        registerImplementation(RsiThresholdRule.class);
+    }
 
     private final ClosePriceIndicator closePriceIndicator;
     private final int period;
@@ -38,7 +42,7 @@ public class RsiThresholdRule extends NamedRule {
      * @param period              RSI period
      * @param threshold           threshold to compare against
      * @param direction           comparison direction
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
             ThresholdDirection direction) {
@@ -58,7 +62,7 @@ public class RsiThresholdRule extends NamedRule {
      * @param direction comparison direction
      * @param period    RSI period
      * @param threshold threshold to compare against
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public RsiThresholdRule(BarSeries series, ThresholdDirection direction, int period, double threshold) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), period,
@@ -70,7 +74,7 @@ public class RsiThresholdRule extends NamedRule {
      *
      * @param series backing bar series
      * @param params compact label parameters
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public RsiThresholdRule(BarSeries series, String... params) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), parsePeriod(params),
@@ -83,7 +87,7 @@ public class RsiThresholdRule extends NamedRule {
      * @param index         the bar index
      * @param tradingRecord trading record context
      * @return {@code true} when the threshold condition is satisfied
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
@@ -158,7 +162,7 @@ public class RsiThresholdRule extends NamedRule {
     /**
      * Direction used for threshold comparison.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public enum ThresholdDirection {
         ABOVE, BELOW

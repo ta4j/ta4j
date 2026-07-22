@@ -5,12 +5,12 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.22.7-SNAPSHOT</version>
+        <version>0.23.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>ta4j-cli</artifactId>
     <name>Ta4j CLI</name>
-    <description>Provides a first-class command-line entry point for ta4j backtesting workflows</description>
+    <description>Provides a first-class command-line entry point for ta4j operator workflows</description>
 
     <dependencies>
         <dependency>
@@ -70,6 +70,7 @@
                 <configuration>
                     <archive>
                         <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                             <mainClass>org.ta4j.cli.Ta4jCli</mainClass>
                         </manifest>
                     </archive>

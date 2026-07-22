@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  * specific indicator.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 final class PerformanceExperiments {
 
@@ -38,7 +38,7 @@ final class PerformanceExperiments {
      *
      * @param id experiment id
      * @return built-in experiment
-     * @since 0.22.7
+     * @since 0.23.1
      */
     static PerformanceExperiment get(String id) {
         if (KALMAN_FILTER_ID.equals(id)) {

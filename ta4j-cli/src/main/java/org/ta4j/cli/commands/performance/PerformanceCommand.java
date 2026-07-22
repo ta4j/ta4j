@@ -10,7 +10,7 @@ import picocli.CommandLine.Spec;
 /**
  * Performance command group for reusable optimization experiments.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "performance", description = "Run and compare performance experiments.", mixinStandardHelpOptions = true, subcommands = {
         PerformanceRunCommand.class, PerformanceCompareCommand.class })

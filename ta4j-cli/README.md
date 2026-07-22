@@ -1,16 +1,17 @@
 # ta4j-cli
 
-`ta4j-cli` ships a first-class command-line entry point for bounded ta4j workflows. The MVP stays local-file-first and reuses the existing ta4j backtest, walk-forward, reporting, and charting APIs instead of introducing a parallel runtime.
+`ta4j-cli` ships a first-class command-line entry point for bounded ta4j workflows. It stays local-file-first and reuses ta4j execution, serialization, forecasting, reporting, and charting APIs instead of introducing a parallel runtime.
 
 ## Supported Commands
 
-Root help exposes four command groups: `strategy`, `indicator`, `rule`, and `performance`. Each group then reveals its focused actions and options.
+Root help exposes five command groups: `strategy`, `indicator`, `rule`, `forecast`, and `performance`. Each group then reveals its focused actions and options.
 
 - `strategy backtest`: runs one or more concrete strategies against one local dataset and emits bounded JSON performance reports. Use it when you already know which strategy definitions you want to replay and want a fast deterministic answer on one dataset.
 - `strategy walk-forward`: runs rolling train/test evaluation for one or more concrete strategies and records both the in-sample backtest and fold-by-fold out-of-sample results. Use it when a plain backtest looks promising and you want a robustness check before promoting the strategy.
 - `strategy sweep`: ranks a bounded SMA crossover parameter grid on one dataset and returns the top candidates. Use it when you are tuning fast/slow crossover windows rather than evaluating already-defined strategy labels or serialized strategies.
-- `indicator test`: turns one serialized numeric indicator plus optional thresholds into a lightweight exploratory strategy. Use it when you want to sanity-check an indicator idea before investing in a `NamedIndicator`, a `NamedRule`, or a full strategy definition.
-- `rule test`: builds a temporary strategy from one entry rule and one exit rule, then emits both a plain backtest and a walk-forward report. Use it when you are iterating on entry/exit logic via `NamedRule` labels or serialized rule payloads before folding that logic into a reusable strategy.
+- `indicator test`: turns one compact or serialized numeric indicator plus optional thresholds into a lightweight exploratory strategy. Use it when you want to sanity-check an indicator idea before investing in a reusable rule or strategy.
+- `rule test`: builds a temporary strategy from compact, named, or serialized entry and exit rules, then emits both a plain backtest and a walk-forward report.
+- `forecast run`: inspects EWMA, rough-volatility, or online change-point return state and optionally produces deterministic Monte Carlo return or terminal-price forecasts with explicit support provenance.
 - `performance run`: runs a named optimization experiment and writes `performance.json` plus `summary.md` artifacts. Use it when you need a baseline profile, hypothesis, measured candidate result, checksum, and host/JVM metadata.
 - `performance compare`: compares two experiment artifact directories and reports deltas, scaling shape, checksum parity, and threshold pass/fail status.
 
@@ -41,8 +42,10 @@ JSON input may use the existing ta4j example bar-series formats already supporte
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
-  --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion,org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion \
+  --strategy 'SMA(7,21)' \
+  --criteria NetProfit,ReturnOverMaxDrawdown \
+  --position-sizing balance \
+  --capital 10000 \
   --output /tmp/backtest.json
 ```
 
@@ -51,7 +54,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   strategy walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy-json-file /absolute/path/exported-strategy.json \
-  --criteria org.ta4j.core.criteria.pnl.GrossReturnCriterion \
+  --criteria GrossReturn \
   --output /tmp/walk-forward.json
 ```
 
@@ -61,20 +64,32 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --entry-rule RsiThresholdRule_BELOW_14_30 \
   --exit-rule RsiThresholdRule_ABOVE_14_70 \
-  --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion \
+  --criteria NetProfit \
   --output /tmp/rule-test.json
+```
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  forecast run \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --state-model change-point \
+  --target price \
+  --horizon 5 \
+  --samples 2000 \
+  --quantiles 0.05,0.5,0.95 \
+  --output /tmp/price-forecast.json
 ```
 
 ## Input Conventions
 
-- `--strategy` and `--strategies` accept `NamedStrategy` labels of the form `<SimpleClassName>_<param1>_<param2>...`, for example `DayOfWeekStrategy_MONDAY_FRIDAY` or `HourOfDayStrategy_9_17`.
-- `--strategy-json-file` accepts one serialized strategy payload generated by `Strategy.toJson()`.
-- `--strategies-json-file` accepts a JSON array containing one or more serialized strategy objects.
-- `--indicator` accepts one serialized numeric indicator payload generated by `Indicator.toJson()`.
+- `--strategy` and `--strategies` accept compact expressions such as `SMA(7,21)` and existing `NamedStrategy` labels such as `DayOfWeekStrategy_MONDAY_FRIDAY`. Nested commas are preserved when a batch is parsed.
+- `--strategy-json-file` accepts canonical `Strategy.toJson()` output or version 2 strategy JSON with expression-backed `entryRule` and `exitRule` components.
+- `--strategies-json-file` accepts a JSON array containing canonical or version 2 strategy objects.
+- `--indicator` accepts a compact expression such as `RSI(14)` or serialized numeric indicator JSON generated by `Indicator.toJson()`.
 - `--indicator-json-file` accepts that same indicator payload from disk.
-- `--entry-rule` and `--exit-rule` accept `NamedRule` labels of the form `<SimpleClassName>_<param1>_<param2>...`, for example `RsiThresholdRule_BELOW_14_30` or `ClosePriceCrossedMovingAverageRule_UP_SMA_20`.
+- `--entry-rule` and `--exit-rule` accept compact expressions such as `CrossedUp(SMA(7),SMA(21))` or existing `NamedRule` labels.
 - `--entry-rule-json-file` and `--exit-rule-json-file` accept serialized rule payloads generated by `Rule.toJson()`.
-- `--criteria` accepts fully qualified `AnalysisCriterion` class names, not aliases. Supply them as a comma-separated list or by repeating the flag.
+- `--criteria` accepts named expressions such as `NetProfit` and `SharpeRatio`, or a fully qualified no-argument `AnalysisCriterion` class name. Supply them as a comma-separated list or by repeating the flag.
 - Strategy batches are tolerant of partial failure: invalid strategy inputs are reported and skipped when at least one valid strategy remains. If no valid strategies remain, the command fails fast with a descriptive error instead of producing an empty result.
 
 ## Command Surface
@@ -85,11 +100,14 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - `--timeframe`: resample the loaded series to `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, or an ISO-8601 duration such as `PT5M`.
 - `--from-date`, `--to-date`: date-only (`YYYY-MM-DD`) or full ISO timestamps used to trim the series before execution.
 - `--execution-model`: `next-open` or `current-close`.
-- `--capital`: portfolio size used as the default stake when `--stake-amount` is omitted.
+- `--position-sizing`: `fixed` (default), `balance`, or `kelly` entry sizing.
+- `--capital`: fixed sizing ceiling/default stake, or required starting capital for balance and Kelly sizing.
 - `--stake-amount`: per-trade amount. When both are supplied, it must not exceed `--capital`.
+- `--win-probability`, `--payoff-ratio`, `--kelly-coefficient`: Kelly sizing inputs; the coefficient defaults to `1`.
 - `--commission`: non-negative transaction fee rate.
 - `--borrow-rate`: non-negative holding cost rate.
-- `--criteria`: one or more fully qualified `AnalysisCriterion` class names such as `org.ta4j.core.criteria.pnl.NetProfitCriterion`.
+- `--borrow-side`: `short` (default when a rate is present), `long`, or `both`.
+- `--criteria`: one or more named criterion expressions or fully qualified class names.
 - `--output`: JSON file path. When omitted, JSON is written to stdout.
 - `--chart`: optional JPEG output path for a trading chart artifact.
 - `--progress`: emit bounded progress messages to stderr during longer runs.
@@ -113,7 +131,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   - `--param-grid key=v1,v2,...`: candidate grid dimensions.
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
-  - `--indicator`: one serialized numeric indicator payload produced by `Indicator.toJson()`.
+  - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
   - `--indicator-json-file`: path to one serialized indicator payload.
   - `--entry-below`, `--entry-above`, `--exit-below`, `--exit-above`: optional threshold rules. If none are supplied, the command defaults to close-price crossovers around the selected indicator.
   - indicator inputs are self-contained, so `indicator test` does not accept `--param`.
@@ -124,6 +142,16 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   - `--exit-rule-json-file`: path to one serialized rule payload.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: the same walk-forward controls used by `strategy walk-forward`.
   - rule inputs are self-contained, so `rule test` does not accept `--param`.
+- `forecast run`
+  - `--state-model`: `ewma`, `rough-volatility`, or `change-point`.
+  - `--target`: `state`, `return`, or `price`.
+  - `--index`, `--horizon`: decision index (series end by default) and positive forecast horizon.
+  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history.
+  - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
+  - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
+  - `--quantiles`: comma-separated probabilities in `[0, 1]`; defaults to `0.05,0.5,0.95`.
+  - Projection-only simulation options are rejected with `--target state` instead of being silently ignored.
+  - Forecast JSON reports the decision bar time and close price, state stability, return representation, moments, model-specific diagnostics, and empirical, analytic, or unavailable support provenance.
 - `performance run`
   - `--experiment`: experiment id, currently `kalman-filter`.
   - `--bar-counts`: comma-separated positive bar counts, for example `1000,5000,10000`.
@@ -168,7 +196,16 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ### Backtest From A Serialized Strategy JSON File
 
-Use this when you already have a serialized ta4j strategy payload and want to rerun it without rebuilding the definition as a label.
+Use this when you already have a canonical or version 2 ta4j strategy payload and want to rerun it without rebuilding the definition as a label. A concise version 2 file can look like this:
+
+```json
+{
+  "version": 2,
+  "name": "sma-crossover",
+  "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(7)", "SMA(21)"] },
+  "exitRule": { "type": "CrossedDownIndicatorRule", "args": ["SMA(7)", "SMA(21)"] }
+}
+```
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
@@ -254,19 +291,38 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --progress
 ```
 
-### Indicator Test With Inline Serialized Indicator JSON
+### Indicator Test With A Compact Expression
 
-This example demonstrates `--indicator`, `--entry-below`, and `--exit-above` using an inline payload generated by `Indicator.toJson()`.
+This example demonstrates `--indicator`, `--entry-below`, and `--exit-above` using serialization v2 shorthand.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   indicator test \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --indicator '{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}' \
+  --indicator 'RSI(14)' \
   --entry-below 30 \
   --exit-above 70 \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion,org.ta4j.core.criteria.SharpeRatioCriterion \
   --output /tmp/indicator-rsi.json
+```
+
+### Deterministic Price Forecast With Support Provenance
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  forecast run \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --state-model rough-volatility \
+  --target price \
+  --horizon 5 \
+  --samples 2000 \
+  --lookback-bars 252 \
+  --seed 42 \
+  --shock-model standardized-empirical \
+  --volatility-mode ewma \
+  --volatility-decay 0.94 \
+  --quantiles 0.05,0.5,0.95 \
+  --output /tmp/aapl-price-forecast.json
 ```
 
 ### Indicator Test From A Serialized Indicator File
@@ -462,13 +518,14 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ## Notes
 
-- Criteria are resolved from fully qualified `AnalysisCriterion` class names. Aliases are intentionally retired.
+- Compact expressions are the shortest interactive path; canonical JSON, version 2 strategy JSON, named example labels, and fully qualified criterion class names remain supported where documented.
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
 - `strategy backtest` and `strategy walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
-- `indicator test` accepts serialized numeric indicators, either inline or from disk. If you omit threshold options, it defaults to close-price crossovers around the indicator.
+- `indicator test` accepts compact expressions or inline serialized numeric indicators, plus serialized JSON files. If you omit threshold options, it defaults to close-price crossovers around the indicator.
 - `rule test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `strategy walk-forward`.
 - `strategy sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
 - `performance run` and `performance compare` write shareable artifacts under caller-selected paths; `.agents/benchmarks/` is the preferred local scratch location.
+- `forecast run` reports `Num` values as strings to preserve precision; Monte Carlo output is reproducible for identical data and options because the seed is explicit.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
 - `NamedRule` labels follow the same compact format, for example `RsiThresholdRule_BELOW_14_30` or `ClosePriceCrossedMovingAverageRule_UP_SMA_20`.
 - If every supplied strategy input is invalid, the command fails fast with a descriptive error and a non-zero exit code instead of producing an empty result artifact.

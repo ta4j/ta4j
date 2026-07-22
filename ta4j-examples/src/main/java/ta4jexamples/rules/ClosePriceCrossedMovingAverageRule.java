@@ -25,9 +25,13 @@ import java.util.Objects;
  * {@code ClosePriceCrossedMovingAverageRule_<UP|DOWN>_<SMA|EMA>_<period>}.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
-public class ClosePriceCrossedMovingAverageRule extends NamedRule {
+public final class ClosePriceCrossedMovingAverageRule extends NamedRule {
+
+    static {
+        registerImplementation(ClosePriceCrossedMovingAverageRule.class);
+    }
 
     private final ClosePriceIndicator closePriceIndicator;
     private final int period;
@@ -43,7 +47,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
      * @param period              moving-average period
      * @param averageType         average family
      * @param direction           crossover direction
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public ClosePriceCrossedMovingAverageRule(ClosePriceIndicator closePriceIndicator, int period,
             AverageType averageType, CrossDirection direction) {
@@ -62,7 +66,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
      * @param averageType average family
      * @param direction   crossover direction
      * @param period      moving-average period
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public ClosePriceCrossedMovingAverageRule(BarSeries series, AverageType averageType, CrossDirection direction,
             int period) {
@@ -74,7 +78,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
      *
      * @param series backing bar series
      * @param params compact label parameters
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public ClosePriceCrossedMovingAverageRule(BarSeries series, String... params) {
         this(series, parseAverageType(params), parseDirection(params), parsePeriod(params));
@@ -86,7 +90,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
      * @param index         the bar index
      * @param tradingRecord trading record context
      * @return {@code true} when the crossover condition is satisfied
-     * @since 0.22.7
+     * @since 0.23.1
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
@@ -162,7 +166,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
     /**
      * Moving-average family used for the crossover.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public enum AverageType {
         SMA, EMA
@@ -171,7 +175,7 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
     /**
      * Direction used for the crossover test.
      *
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public enum CrossDirection {
         UP, DOWN

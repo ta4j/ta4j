@@ -10,7 +10,7 @@ import picocli.CommandLine.Spec;
 /**
  * Rule command group for entry/exit rule exploration.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 @Command(name = "rule", description = "Explore entry and exit rule workflows.", mixinStandardHelpOptions = true, subcommands = RuleTestCommand.class)
 public final class RuleCommand implements Runnable {

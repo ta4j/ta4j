@@ -67,6 +67,13 @@ class NamedRuleTest {
     }
 
     @Test
+    void constructionDoesNotReplaceExplicitRegistration() {
+        new TestUnregisterRule(TestUnregisterRule.ClosePredicate.ALWAYS);
+
+        assertThat(NamedRule.lookup("TestUnregisterRule")).isEmpty();
+    }
+
+    @Test
     void unregisterDoesNotRemoveDifferentImplementationWithSameSimpleName() {
         NamedRule.registerImplementation(FirstRuleHolder.DuplicateRule.class);
 

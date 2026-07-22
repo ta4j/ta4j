@@ -27,7 +27,7 @@ import com.google.gson.JsonParser;
  * reporting timing deltas. A checksum mismatch fails the comparison because it
  * means the baseline and candidate did not exercise equivalent behavior.
  *
- * @since 0.22.7
+ * @since 0.23.1
  */
 public final class PerformanceComparison {
 
@@ -50,7 +50,7 @@ public final class PerformanceComparison {
      * @param maxRegressionPct maximum allowed median regression percentage
      * @return comparison JSON
      * @throws IOException when artifacts cannot be read or written
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
             throws IOException {
@@ -272,7 +272,7 @@ public final class PerformanceComparison {
      *
      * @param outputDir      directory containing written artifacts
      * @param comparisonJson in-memory representation of {@code comparison.json}
-     * @since 0.22.7
+     * @since 0.23.1
      */
     public record ComparisonArtifacts(Path outputDir, JsonObject comparisonJson) {
     }
