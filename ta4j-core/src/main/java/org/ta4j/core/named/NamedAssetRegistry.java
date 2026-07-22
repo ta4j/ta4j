@@ -152,6 +152,23 @@ public final class NamedAssetRegistry {
         return Collections.unmodifiableList(Parser.splitTopLevel(text, "expression list"));
     }
 
+    /**
+     * Returns the registered aliases for an asset family in deterministic
+     * registration order.
+     *
+     * <p>
+     * This read-only view supports discovery surfaces such as command-line catalogs
+     * without exposing registry bindings or reconstruction internals.
+     *
+     * @param kind asset family
+     * @return immutable registered alias list
+     * @since 0.23.1
+     */
+    public List<String> aliases(NamedAssetKind kind) {
+        Objects.requireNonNull(kind, "kind");
+        return List.copyOf(bindings.getOrDefault(kind, Map.of()).keySet());
+    }
+
     private ComponentDescriptor toDescriptor(NamedAssetKind kind, ParsedExpression parsed, String location) {
         Binding binding = bindings.getOrDefault(kind, Map.of()).get(parsed.alias());
         if (binding == null) {
@@ -530,8 +547,9 @@ public final class NamedAssetRegistry {
             registerCriterion("NetProfit", "org.ta4j.core.criteria.pnl.NetProfitCriterion");
             registerCriterion("GrossReturn", "org.ta4j.core.criteria.pnl.GrossReturnCriterion");
             registerCriterion("NetReturn", "org.ta4j.core.criteria.pnl.NetReturnCriterion");
-            registerCriterion("MaximumDrawdown", "org.ta4j.core.criteria.MaximumDrawdownCriterion");
-            registerCriterion("ReturnOverMaxDrawdown", "org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion");
+            registerCriterion("MaximumDrawdown", "org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion");
+            registerCriterion("ReturnOverMaxDrawdown",
+                    "org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion");
             registerCriterion("SharpeRatio", "org.ta4j.core.criteria.SharpeRatioCriterion");
             registerCriterion("SortinoRatio", "org.ta4j.core.criteria.SortinoRatioCriterion");
             registerCriterion("TotalFees", "org.ta4j.core.criteria.commissions.TotalFeesCriterion");
