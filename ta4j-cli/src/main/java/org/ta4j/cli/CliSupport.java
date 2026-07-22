@@ -551,7 +551,8 @@ final class CliSupport {
 
         Map<String, Object> response = buildResponse("forecast run");
         Map<String, Object> result = result(response);
-        result.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
+        result.put("input",
+                buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken, reproducible));
 
         Map<String, Object> configuration = linkedMap();
         configuration.put("stateModel", stateModel);
@@ -886,7 +887,8 @@ final class CliSupport {
             List<CriterionSpec> criteria, Path outputPath, Path chartPath, boolean reproducible) {
         Map<String, Object> metadata = buildResponse(command);
         Map<String, Object> result = result(metadata);
-        result.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
+        result.put("input",
+                buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken, reproducible));
 
         Map<String, Object> execution = linkedMap();
         execution.put("executionModel",
@@ -909,11 +911,13 @@ final class CliSupport {
     }
 
     private static Map<String, Object> buildInputMetadata(BarSeries series, String dataFile, String timeframeToken,
-            String fromDateToken, String toDateToken) {
+            String fromDateToken, String toDateToken, boolean reproducible) {
         Map<String, Object> input = linkedMap();
-        input.put("dataFile", dataFile);
+        if (!reproducible) {
+            input.put("dataFile", dataFile);
+            input.put("seriesName", "-".equals(dataFile) ? "stdin" : series.getName());
+        }
         input.put("seriesSha256", seriesSha256(series));
-        input.put("seriesName", "-".equals(dataFile) ? "stdin" : series.getName());
         input.put("barCount", series.getBarCount());
         input.put("beginIndex", series.getBeginIndex());
         input.put("endIndex", series.getEndIndex());
