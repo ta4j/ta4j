@@ -435,6 +435,37 @@ EOF
   pass "test_progressing_build_is_not_killed_at_timeout_boundary"
 }
 
+test_watchdog_emits_configured_heartbeat_while_running() {
+  echo "Running test_watchdog_emits_configured_heartbeat_while_running"
+  create_test_repo
+  cat > "$TMP/bin/mvn" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
+echo "[INFO] Heartbeat fixture started"
+sleep 2
+echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
+echo "[INFO] BUILD SUCCESS"
+EOF
+  chmod +x "$TMP/bin/mvn"
+
+  local output
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=5 QUIET_BUILD_STALL_SECONDS=5 QUIET_BUILD_HEARTBEAT_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
+  local log_file
+  log_file="$(latest_log_from_output "$output")"
+
+  expect_contains "$output" "[WARN] quiet build still running after" "watchdog should emit configured still-running heartbeat output"
+  expect_contains "$output" "Build: success" "heartbeat fixture should still preserve successful Maven status"
+  if [[ -z "$log_file" || ! -f "$log_file" ]]; then
+    fail "heartbeat fixture should report an existing full log path"
+  fi
+  if ! grep -Fq "[WARN] quiet build still running after" "$log_file"; then
+    fail "heartbeat line should be preserved in the full log"
+  fi
+
+  finish_test_repo
+  pass "test_watchdog_emits_configured_heartbeat_while_running"
+}
+
 test_stalled_build_is_killed_after_no_progress_window() {
   echo "Running test_stalled_build_is_killed_after_no_progress_window"
   create_test_repo
@@ -502,6 +533,7 @@ test_failure_output_passes_through_errors_without_digest
 test_warning_passthrough_has_no_digest_cap
 test_maven_wrapper_is_preferred_when_present
 test_progressing_build_is_not_killed_at_timeout_boundary
+test_watchdog_emits_configured_heartbeat_while_running
 test_stalled_build_is_killed_after_no_progress_window
 test_powershell_entrypoint_classifier_parity
 

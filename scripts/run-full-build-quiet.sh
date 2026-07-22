@@ -31,6 +31,8 @@ to_host_path() {
 
 TMP_FILES=()
 build_runner_pid=""
+QUIET_BUILD_STDOUT_FD=3
+exec 3>&1
 cleanup() {
     if [[ -n "${build_runner_pid:-}" ]] && kill -0 "$build_runner_pid" >/dev/null 2>&1; then
         kill "$build_runner_pid" >/dev/null 2>&1 || true
@@ -45,6 +47,7 @@ cleanup() {
             rm -f "$file"
         fi
     done
+    exec 3>&- >/dev/null 2>&1 || true
 }
 trap cleanup SIGINT SIGTERM EXIT
 
@@ -106,6 +109,10 @@ BUILD_STALL_SECONDS="${QUIET_BUILD_STALL_SECONDS:-$BUILD_TIMEOUT_SECONDS}"
 if ! [[ "$BUILD_STALL_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_STALL_SECONDS <= 0)); then
     BUILD_STALL_SECONDS="$BUILD_TIMEOUT_SECONDS"
 fi
+BUILD_HEARTBEAT_SECONDS="${QUIET_BUILD_HEARTBEAT_SECONDS:-60}"
+if ! [[ "$BUILD_HEARTBEAT_SECONDS" =~ ^[0-9]+$ ]] || ((BUILD_HEARTBEAT_SECONDS <= 0)); then
+    BUILD_HEARTBEAT_SECONDS=60
+fi
 
 MAVEN_FLAGS=(
     -B
@@ -158,6 +165,7 @@ Explicit --goals invocations remain focused and skip repository preflight checks
 The Bash watchdog keeps the default 180-second timeout as the earliest timeout
 point, then allows a build that keeps emitting Maven output to continue until no
 output progresses for QUIET_BUILD_STALL_SECONDS, which defaults to the timeout.
+QUIET_BUILD_HEARTBEAT_SECONDS controls periodic still-running watchdog output.
 
 Examples:
   scripts/run-full-build-quiet.sh
@@ -416,7 +424,8 @@ run_with_timeout() {
     local timeout_seconds="$2"
     local progress_file="$3"
     local stall_seconds="$4"
-    shift 4
+    local heartbeat_seconds="$5"
+    shift 5
     : >"$timeout_marker_file"
 
     "$@" &
@@ -428,9 +437,11 @@ run_with_timeout() {
         local start_epoch
         local now_epoch
         local last_progress_epoch
+        local last_heartbeat_epoch
         local last_progress_size=0
         start_epoch="$(date +%s)"
         last_progress_epoch="$start_epoch"
+        last_heartbeat_epoch="$start_epoch"
         if [[ -f "$progress_file" ]]; then
             last_progress_size="$(wc -c <"$progress_file" | tr -d '[:space:]')"
             if ! [[ "$last_progress_size" =~ ^[0-9]+$ ]]; then
@@ -459,6 +470,14 @@ run_with_timeout() {
             fi
 
             local idle_seconds=$((now_epoch - last_progress_epoch))
+            if ((now_epoch - last_heartbeat_epoch >= heartbeat_seconds)); then
+                local heartbeat_line
+                heartbeat_line="$(printf '[WARN] quiet build still running after %s (timeout %ss; no-output stall limit %ss)' \
+                    "$(format_elapsed "$elapsed")" "$timeout_seconds" "$stall_seconds")"
+                printf '%s\n' "$heartbeat_line" >&"$QUIET_BUILD_STDOUT_FD"
+                printf '%s\n' "$heartbeat_line" >>"$LOG_FILE"
+                last_heartbeat_epoch="$now_epoch"
+            fi
             if ((elapsed >= timeout_seconds && idle_seconds >= stall_seconds)); then
                 printf 'elapsed=%s idle=%s stall=%s timeout=%s\n' \
                     "$elapsed" "$idle_seconds" "$stall_seconds" "$timeout_seconds" >"$timeout_marker_file"
@@ -491,7 +510,7 @@ run_with_timeout() {
 
 run_maven_build() {
     if ((BUILD_TIMEOUT_SECONDS > 0)); then
-        run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "$RAW_OUTPUT_FILE" "$BUILD_STALL_SECONDS" "${MVN_CMD[@]}"
+        run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "$RAW_OUTPUT_FILE" "$BUILD_STALL_SECONDS" "$BUILD_HEARTBEAT_SECONDS" "${MVN_CMD[@]}"
         return $?
     fi
     "${MVN_CMD[@]}"
