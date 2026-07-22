@@ -27,7 +27,7 @@ public class DXIndicator extends CachedIndicator<Num> {
      *                 {@link #minusDIIndicator}
      */
     public DXIndicator(BarSeries series, int barCount) {
-        super(series);
+        super(series, identityOfExact(DXIndicator.class, barCount));
         this.barCount = barCount;
         this.plusDIIndicator = new PlusDIIndicator(series, barCount);
         this.minusDIIndicator = new MinusDIIndicator(series, barCount);

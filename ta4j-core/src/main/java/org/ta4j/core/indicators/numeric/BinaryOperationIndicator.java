@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
@@ -17,7 +17,7 @@ import java.util.function.BinaryOperator;
  * This is a lightweight, non-cached implementation for binary operations
  * between two indicators.
  */
-public class BinaryOperationIndicator implements Indicator<Num> {
+public class BinaryOperationIndicator extends AbstractIndicator<Num> {
 
     /**
      * Enumeration of supported binary operations.
@@ -207,6 +207,8 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     }
 
     private BinaryOperationIndicator(Config config) {
+        super(config.left().getBarSeries(),
+                identityOfExact(BinaryOperationIndicator.class, config.operation(), config.left(), config.right()));
         this.operation = config.operation();
         this.operator = config.operator();
         this.left = config.left();
@@ -245,11 +247,6 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(left.getCountOfUnstableBars(), right.getCountOfUnstableBars());
-    }
-
-    @Override
-    public BarSeries getBarSeries() {
-        return left.getBarSeries(); // Both indicators share the same series (validated in constructor)
     }
 
     private record Config(Operation operation, BinaryOperator<Num> operator, Indicator<Num> left,

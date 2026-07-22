@@ -36,7 +36,7 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgMinusDMIndicator}
      */
     public MinusDIIndicator(BarSeries series, int barCount) {
-        super(series);
+        super(series, identityOfExact(MinusDIIndicator.class, barCount));
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.minusDMIndicator = new MinusDMIndicator(series);

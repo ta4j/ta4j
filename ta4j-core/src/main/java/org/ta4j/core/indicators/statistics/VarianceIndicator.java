@@ -45,7 +45,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public VarianceIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
-        super(indicator);
+        super(indicator, identityOfExact(VarianceIndicator.class, indicator, Math.max(barCount, 1), sampleType));
         this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
         this.barCount = Math.max(barCount, 1);
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");

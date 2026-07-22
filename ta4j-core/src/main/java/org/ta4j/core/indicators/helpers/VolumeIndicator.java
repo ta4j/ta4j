@@ -48,7 +48,7 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount the time frame
      */
     public VolumeIndicator(BarSeries series, int barCount) {
-        super(series);
+        super(series, identityOfExact(VolumeIndicator.class, barCount));
         this.barCount = barCount;
     }
 

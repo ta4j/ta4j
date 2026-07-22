@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
 import java.util.function.UnaryOperator;
@@ -14,7 +14,7 @@ import java.util.function.UnaryOperator;
  * <p>
  * There may be other unary operations on Num that could be added here.
  */
-public class UnaryOperationIndicator implements Indicator<Num> {
+public class UnaryOperationIndicator extends AbstractIndicator<Num> {
 
     /**
      * Enumeration of supported unary operations.
@@ -69,6 +69,8 @@ public class UnaryOperationIndicator implements Indicator<Num> {
     }
 
     private UnaryOperationIndicator(Config config) {
+        super(config.operand().getBarSeries(), identityOfExact(UnaryOperationIndicator.class, config.operation(),
+                config.operand(), config.exponent(), config.valueToReplace(), config.replacementValue()));
         this.operation = config.operation();
         this.operand = config.operand();
         this.exponent = config.exponent();
@@ -197,11 +199,6 @@ public class UnaryOperationIndicator implements Indicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return operand.getCountOfUnstableBars();
-    }
-
-    @Override
-    public BarSeries getBarSeries() {
-        return operand.getBarSeries();
     }
 
     private record Config(Operation operation, UnaryOperator<Num> operator, Indicator<Num> operand, Num exponent,

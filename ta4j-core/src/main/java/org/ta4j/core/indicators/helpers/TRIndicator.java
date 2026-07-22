@@ -43,7 +43,8 @@ public class TRIndicator extends CachedIndicator<Num> {
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
+        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator),
+                identityOfExact(TRIndicator.class, highPriceIndicator, lowPriceIndicator, closePriceIndicator));
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
         this.closePriceIndicator = closePriceIndicator;

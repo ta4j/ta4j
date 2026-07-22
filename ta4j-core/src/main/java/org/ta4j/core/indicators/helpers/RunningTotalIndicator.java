@@ -22,7 +22,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     private transient int previousIndex = -1;
 
     public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, identityOfExact(RunningTotalIndicator.class, indicator, barCount));
         this.indicator = indicator;
         this.barCount = barCount;
         this.previousSum = indicator.getBarSeries().numFactory().zero();

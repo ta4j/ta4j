@@ -26,7 +26,7 @@ public class TypicalPriceIndicator extends CachedIndicator<Num> {
      * @param series the bar series
      */
     public TypicalPriceIndicator(BarSeries series) {
-        super(series);
+        super(series, identityOfExact(TypicalPriceIndicator.class));
     }
 
     @Override

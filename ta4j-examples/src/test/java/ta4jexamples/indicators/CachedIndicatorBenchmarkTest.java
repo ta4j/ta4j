@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -73,6 +74,27 @@ class CachedIndicatorBenchmarkTest {
         assertEquals(reads, result.getOperations(), "Each SMA read should be counted");
         assertEquals(expectedChecksum, result.getChecksum(), "Hot reads should return a stable cached SMA value");
         assertTrue(result.getThroughputOpsPerSecond() > 0d, "Hot-read scenario should report throughput");
+    }
+
+    @Test
+    void duplicateGraphScenarioCoversConstructionHeapEvaluationAndContention() {
+        int barCount = 64;
+        int graphCount = 20;
+        int threads = 2;
+        int readsPerThread = 100;
+
+        CachedIndicatorBenchmark.DuplicateGraphScenarioResult result = benchmark.runDuplicateGraphScenario(barCount,
+                graphCount, threads, readsPerThread);
+        var series = CachedIndicatorBenchmark.buildSeries(barCount);
+        var graph = new SMAIndicator(new EMAIndicator(new ClosePriceIndicator(series), 12), 26);
+        int evaluationIndex = series.getEndIndex() - 1;
+        long expectedReads = graphCount + (long) threads * readsPerThread;
+        long expectedChecksum = expectedReads * graph.getValue(evaluationIndex).hashCode();
+
+        assertEquals(graphCount, result.getGraphCount());
+        assertEquals((long) threads * readsPerThread, result.getContentionReads());
+        assertEquals(expectedChecksum, result.getChecksum());
+        assertTrue(result.getRetainedHeapBytes() >= 0);
     }
 
     @Test

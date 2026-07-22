@@ -185,6 +185,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 ```java
 import org.ta4j.core.*;
+import org.ta4j.core.indicators.IndicatorContext;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.rules.*;
@@ -194,10 +195,11 @@ import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;  // Re
 // Load historical price data (or use your own data source)
 BarSeries series = BitStampCsvTradesFileBarSeriesDataSource.loadBitstampSeries();
 
-// Create indicators: calculate moving averages from close prices
-ClosePriceIndicator close = new ClosePriceIndicator(series);
-EMAIndicator fastEma = new EMAIndicator(close, 12);  // 12-period EMA
-EMAIndicator slowEma = new EMAIndicator(close, 26);  // 26-period EMA
+// Create indicators from the series-scoped canonical factory
+IndicatorContext indicators = series.indicators();
+ClosePriceIndicator close = indicators.closePrice();
+EMAIndicator fastEma = indicators.ema(close, 12);  // 12-period EMA
+EMAIndicator slowEma = indicators.ema(close, 26);  // 26-period EMA
 
 // Define entry rule: buy when fast EMA crosses above slow EMA (golden cross)
 Rule entry = new CrossedUpIndicatorRule(fastEma, slowEma);
@@ -217,6 +219,11 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+Standard ta4j series transparently share calculation state across equivalent
+deterministic indicators, so ordinary `new EMAIndicator(...)` construction is
+equally safe. The context is optional: it keeps common graph construction concise
+and canonical without exposing cache keys or lifecycle management.
 
 ## Forecast predictions
 

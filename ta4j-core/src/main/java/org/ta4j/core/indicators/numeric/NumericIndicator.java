@@ -61,7 +61,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return a NumericIndicator wrapped around a ClosePriceIndicator
      */
     public static NumericIndicator closePrice(BarSeries bs) {
-        return of(new ClosePriceIndicator(bs));
+        return of(bs.indicators().closePrice());
     }
 
     /**
@@ -70,7 +70,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return a NumericIndicator wrapped around a VolumeIndicator
      */
     public static NumericIndicator volume(BarSeries bs) {
-        return of(new VolumeIndicator(bs));
+        return of(bs.indicators().volume());
     }
 
     protected final Indicator<Num> delegate;
@@ -216,7 +216,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link SMAIndicator} of {@code this}
      */
     public NumericIndicator sma(int barCount) {
-        return NumericIndicator.of(new SMAIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().sma(delegate, barCount));
     }
 
     /**
@@ -224,7 +224,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link EMAIndicator} of {@code this}
      */
     public NumericIndicator ema(int barCount) {
-        return NumericIndicator.of(new EMAIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().ema(delegate, barCount));
     }
 
     /**
@@ -232,7 +232,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link StandardDeviationIndicator} of {@code this}
      */
     public NumericIndicator stddev(int barCount) {
-        return NumericIndicator.of(new StandardDeviationIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().standardDeviation(delegate, barCount));
     }
 
     /**
@@ -240,7 +240,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link HighestValueIndicator} of {@code this}
      */
     public NumericIndicator highest(int barCount) {
-        return NumericIndicator.of(new HighestValueIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().highest(delegate, barCount));
     }
 
     /**
@@ -248,7 +248,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link LowestValueIndicator} of {@code this}
      */
     public NumericIndicator lowest(int barCount) {
-        return NumericIndicator.of(new LowestValueIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().lowest(delegate, barCount));
     }
 
     /**
@@ -256,7 +256,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link PreviousValueIndicator} of {@code this}
      */
     public NumericIndicator previous(int barCount) {
-        return NumericIndicator.of(new PreviousValueIndicator(this, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().previous(delegate, barCount));
     }
 
     /**

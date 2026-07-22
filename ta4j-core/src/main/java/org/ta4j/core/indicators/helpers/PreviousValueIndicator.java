@@ -41,7 +41,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     }
 
     private PreviousValueIndicator(Config config) {
-        super(config.indicator());
+        super(config.indicator(), identityOfExact(PreviousValueIndicator.class, config.indicator(), config.n()));
         this.n = config.n();
         this.indicator = config.indicator();
     }

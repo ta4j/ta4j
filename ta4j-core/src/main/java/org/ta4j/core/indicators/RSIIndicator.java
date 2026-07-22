@@ -32,7 +32,7 @@ public class RSIIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, identityOfExact(RSIIndicator.class, indicator, barCount));
         this.indicator = indicator;
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);

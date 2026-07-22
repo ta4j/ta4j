@@ -28,7 +28,7 @@ public class ROCIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public ROCIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, identityOfExact(ROCIndicator.class, indicator, barCount));
         this.indicator = indicator;
         this.barCount = barCount;
     }

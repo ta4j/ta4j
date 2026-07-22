@@ -11,6 +11,8 @@ import org.ta4j.core.indicators.AbstractIndicator;
  *
  * <p>
  * Returns a constant value for a bar.
+ *
+ * @param <T> constant value type
  */
 public class ConstantIndicator<T> extends AbstractIndicator<T> {
 
@@ -23,7 +25,7 @@ public class ConstantIndicator<T> extends AbstractIndicator<T> {
      * @param t      the constant value
      */
     public ConstantIndicator(BarSeries series, T t) {
-        super(series);
+        super(series, identityOfExact(ConstantIndicator.class, t));
         this.value = t;
     }
 

@@ -8,6 +8,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
+import org.ta4j.core.BarSeries;
+
 /**
  * Ring-buffer backed cache for indicator values with O(1) eviction and
  * read-optimized locking.
@@ -143,6 +145,11 @@ class CachedBuffer<T> {
     }
 
     T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex) {
+        return getOrCompute(index, calculator, onComputedIndex, null, -1L);
+    }
+
+    T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex, BarSeries series,
+            long historyEpoch) {
         // Optimistic fast-path (lock-free) for cache hits.
         Object cached = readAtOptimistic(index);
         if (cached != NOT_COMPUTED) {
@@ -177,7 +184,14 @@ class CachedBuffer<T> {
             cached = readAtUnlocked(index);
             if (cached == NOT_COMPUTED) {
                 T result = calculator.apply(index);
+                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
+                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
+                }
                 store(index, result);
+                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
+                    clearInternal();
+                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
+                }
                 if (onComputedIndex != null) {
                     onComputedIndex.accept(index);
                 }

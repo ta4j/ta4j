@@ -25,7 +25,7 @@ public class GainIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public GainIndicator(Indicator<Num> indicator) {
-        super(indicator);
+        super(indicator, identityOfExact(GainIndicator.class, indicator));
         this.indicator = indicator;
     }
 

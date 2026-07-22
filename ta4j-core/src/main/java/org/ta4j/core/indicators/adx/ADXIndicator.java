@@ -32,7 +32,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
      */
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
-        super(series);
+        super(series, identityOfExact(ADXIndicator.class, diBarCount, adxBarCount));
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
         this.dxIndicator = new DXIndicator(series, diBarCount);

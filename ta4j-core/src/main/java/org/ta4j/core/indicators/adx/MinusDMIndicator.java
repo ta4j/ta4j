@@ -22,7 +22,7 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
      * @param series the bar series
      */
     public MinusDMIndicator(BarSeries series) {
-        super(series);
+        super(series, identityOfExact(MinusDMIndicator.class));
     }
 
     @Override

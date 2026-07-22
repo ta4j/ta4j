@@ -36,7 +36,8 @@ public class EWMAIndicator extends AbstractEMAIndicator {
      * @since 0.22.9
      */
     public EWMAIndicator(Indicator<Num> indicator, int barCount, double decayFactor) {
-        super(validateIndicator(indicator), validateBarCount(barCount), 1d - validateDecayFactor(decayFactor));
+        super(EWMAIndicator.class, validateIndicator(indicator), validateBarCount(barCount),
+                1d - validateDecayFactor(decayFactor));
         this.indicator = indicator;
     }
 

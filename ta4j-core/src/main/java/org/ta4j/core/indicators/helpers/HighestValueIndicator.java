@@ -25,7 +25,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public HighestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, identityOfExact(HighestValueIndicator.class, indicator, barCount));
         this.indicator = indicator;
         this.barCount = barCount;
     }

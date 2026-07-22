@@ -42,7 +42,7 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
-        super(indicator);
+        super(indicator, identityOfExact(StandardDeviationIndicator.class, indicator, barCount, sampleType));
         this.indicator = indicator;
         this.barCount = barCount;
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");

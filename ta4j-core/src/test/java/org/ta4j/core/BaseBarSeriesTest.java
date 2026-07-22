@@ -145,6 +145,34 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testBarHistoryEpochTracksOnlyHistoryInvalidation() {
+        long initialEpoch = seriesWithBars.getBarHistoryEpoch();
+        Bar lastBar = seriesWithBars.getLastBar();
+
+        seriesWithBars.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(lastBar.getClosePrice())
+                .volume(numFactory.zero())
+                .add();
+        seriesWithBars.addBar(seriesWithBars.getLastBar(), true);
+        seriesWithBars.addPrice(numFactory.numOf(42));
+        seriesWithBars.addTrade(numFactory.one(), numFactory.numOf(43));
+        assertEquals(initialEpoch, seriesWithBars.getBarHistoryEpoch());
+
+        seriesWithBars.replaceBar(1, testBars.get(1));
+        assertEquals(initialEpoch + 1, seriesWithBars.getBarHistoryEpoch());
+
+        seriesWithBars.replaceBar(seriesWithBars.getEndIndex(), seriesWithBars.getLastBar());
+        assertEquals(initialEpoch + 1, seriesWithBars.getBarHistoryEpoch());
+
+        seriesWithBars.clear();
+        assertEquals(initialEpoch + 2, seriesWithBars.getBarHistoryEpoch());
+        seriesWithBars.clear();
+        assertEquals(initialEpoch + 3, seriesWithBars.getBarHistoryEpoch());
+    }
+
+    @Test
     public void testFullConstructor() {
         BaseBarSeries series = new BaseBarSeries("TestName", testBars, 1, 3, true, numFactory, barBuilderFactory);
 

@@ -9,8 +9,11 @@ import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.IndicatorContext;
 
 import java.io.Serial;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +72,8 @@ public class BaseBarSeries implements BarSeries {
      */
     private int removedBarsCount = 0;
     private long barHistoryRevision;
+    private long barHistoryEpoch;
+    private transient IndicatorContext indicatorContext;
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -116,6 +121,7 @@ public class BaseBarSeries implements BarSeries {
         this.seriesEndIndex = config.seriesEndIndex();
         this.removedBarsCount = config.removedBarsCount();
         this.constrained = config.constrained();
+        this.indicatorContext = new IndicatorContext(this);
     }
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
@@ -266,10 +272,37 @@ public class BaseBarSeries implements BarSeries {
     /**
      * {@inheritDoc}
      *
+     * @since 0.23.1
+     */
+    @Override
+    public long getBarHistoryEpoch() {
+        return this.barHistoryEpoch;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public IndicatorContext indicators() {
+        return this.indicatorContext;
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+        input.defaultReadObject();
+        this.indicatorContext = new IndicatorContext(this);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.22.9
      */
     @Override
     public void clear() {
+        this.barHistoryEpoch++;
         if (!this.bars.isEmpty()) {
             this.barHistoryRevision++;
         }
@@ -386,6 +419,9 @@ public class BaseBarSeries implements BarSeries {
         }
         this.bars.set(innerIndex, bar);
         this.barHistoryRevision++;
+        if (index < this.seriesEndIndex) {
+            this.barHistoryEpoch++;
+        }
     }
 
     @Override
