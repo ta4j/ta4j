@@ -97,10 +97,11 @@ public final class PerformanceExperimentRunner {
         }
         root.add("results", results);
 
-        Files.writeString(outputDir.resolve(PERFORMANCE_FILE), GSON.toJson(root) + System.lineSeparator(),
+        String performanceJson = GSON.toJson(root);
+        Files.writeString(outputDir.resolve(PERFORMANCE_FILE), performanceJson + System.lineSeparator(),
                 StandardCharsets.UTF_8);
         Files.writeString(outputDir.resolve(SUMMARY_FILE), summary(root), StandardCharsets.UTF_8);
-        return new RunArtifacts(outputDir, root);
+        return new RunArtifacts(outputDir, performanceJson);
     }
 
     private static ScenarioAggregation runScenario(PerformanceScenario scenario, int barCount, int warmups,
@@ -248,10 +249,11 @@ public final class PerformanceExperimentRunner {
      * Artifacts from one performance experiment run.
      *
      * @param outputDir       directory containing written artifacts
-     * @param performanceJson in-memory representation of {@code performance.json}
+     * @param performanceJson immutable JSON representation of
+     *                        {@code performance.json}
      * @since 0.23.1
      */
-    public record RunArtifacts(Path outputDir, JsonObject performanceJson) {
+    public record RunArtifacts(Path outputDir, String performanceJson) {
     }
 
     /**

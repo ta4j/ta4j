@@ -152,6 +152,23 @@ public final class NamedAssetRegistry {
         return Collections.unmodifiableList(Parser.splitTopLevel(text, "expression list"));
     }
 
+    /**
+     * Returns the registered aliases for an asset family in deterministic
+     * registration order.
+     *
+     * <p>
+     * This read-only view supports discovery surfaces such as command-line catalogs
+     * without exposing registry bindings or reconstruction internals.
+     *
+     * @param kind asset family
+     * @return immutable registered alias list
+     * @since 0.23.1
+     */
+    public List<String> aliases(NamedAssetKind kind) {
+        Objects.requireNonNull(kind, "kind");
+        return List.copyOf(bindings.getOrDefault(kind, Map.of()).keySet());
+    }
+
     private ComponentDescriptor toDescriptor(NamedAssetKind kind, ParsedExpression parsed, String location) {
         Binding binding = bindings.getOrDefault(kind, Map.of()).get(parsed.alias());
         if (binding == null) {

@@ -11,6 +11,7 @@ import com.google.gson.JsonParser;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
@@ -40,19 +41,25 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.OnlineChangePointForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.RoughVolatilityForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.adapters.LognormalApproximationPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
+import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.PositionStatsReport;
@@ -71,9 +78,13 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -84,6 +95,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -104,6 +116,8 @@ import java.util.function.Consumer;
  * @since 0.23.1
  */
 final class CliSupport {
+
+    static final int SCHEMA_VERSION = 1;
 
     static final List<String> DEFAULT_BACKTEST_CRITERIA = List.of(NetProfitCriterion.class.getName(),
             ReturnOverMaxDrawdownCriterion.class.getName(), TotalFeesCriterion.class.getName());
@@ -129,7 +143,38 @@ final class CliSupport {
     }
 
     static BarSeries loadSeries(String dataFile, String timeframeToken, String fromDateToken, String toDateToken) {
+        return loadSeries(dataFile, null, System.in, timeframeToken, fromDateToken, toDateToken);
+    }
+
+    static BarSeries loadSeries(String dataFile, String dataFormat, InputStream input, String timeframeToken,
+            String fromDateToken, String toDateToken) {
         Objects.requireNonNull(dataFile, "dataFile");
+        if ("-".equals(dataFile)) {
+            String normalizedFormat = normalizeToken(dataFormat);
+            if (!"csv".equals(normalizedFormat) && !"json".equals(normalizedFormat)) {
+                throw new IllegalArgumentException(
+                        "--data-format csv or --data-format json is required when --data-file is -.");
+            }
+            Objects.requireNonNull(input, "input");
+            Path temporaryFile = null;
+            try {
+                temporaryFile = Files.createTempFile("ta4j-cli-stdin-", "." + normalizedFormat);
+                Files.copy(input, temporaryFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                return loadSeries(temporaryFile.toString(), null, System.in, timeframeToken, fromDateToken,
+                        toDateToken);
+            } catch (IOException exception) {
+                throw new IllegalArgumentException("Unable to read bar data from stdin.", exception);
+            } finally {
+                if (temporaryFile != null) {
+                    try {
+                        Files.deleteIfExists(temporaryFile);
+                    } catch (IOException ignored) {
+                        temporaryFile.toFile().deleteOnExit();
+                    }
+                }
+            }
+        }
+
         String normalizedPath = Path.of(dataFile).toAbsolutePath().normalize().toString();
         BarSeries loadedSeries;
         String lowerCasePath = dataFile.toLowerCase(Locale.ROOT);
@@ -243,29 +288,49 @@ final class CliSupport {
     }
 
     static List<CriterionSpec> resolveCriteria(List<String> requestedTypes, List<String> defaults) {
-        List<String> effectiveTypes = requestedTypes == null || requestedTypes.isEmpty() ? defaults : requestedTypes;
-        LinkedHashSet<String> normalizedTypes = new LinkedHashSet<>();
+        return resolveCriteria(requestedTypes, List.of(), List.of(), defaults);
+    }
+
+    static List<CriterionSpec> resolveCriteria(List<String> requestedTypes, List<String> requestedJson,
+            List<String> jsonFiles, List<String> defaults) {
+        boolean hasExplicitInput = requestedTypes != null && !requestedTypes.isEmpty()
+                || requestedJson != null && !requestedJson.isEmpty() || jsonFiles != null && !jsonFiles.isEmpty();
+        List<String> effectiveTypes = hasExplicitInput ? requestedTypes : defaults;
+        LinkedHashSet<String> normalizedInputs = new LinkedHashSet<>();
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
-        for (String value : effectiveTypes) {
+        for (String value : effectiveTypes == null ? List.<String>of() : effectiveTypes) {
             if (value == null) {
                 continue;
             }
             for (String token : registry.splitTopLevel(value)) {
                 String normalized = token.trim();
                 if (!normalized.isEmpty()) {
-                    normalizedTypes.add(normalized);
+                    normalizedInputs.add(normalized);
                 }
             }
         }
-        if (normalizedTypes.isEmpty()) {
-            throw new IllegalArgumentException("At least one criterion class is required.");
+        if (requestedJson != null) {
+            requestedJson.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(value -> !value.isEmpty())
+                    .forEach(normalizedInputs::add);
+        }
+        if (jsonFiles != null) {
+            for (String file : jsonFiles) {
+                normalizedInputs.addAll(readCriterionJsonInputs(file));
+            }
+        }
+        if (normalizedInputs.isEmpty()) {
+            throw new IllegalArgumentException("At least one analysis criterion is required.");
         }
 
-        List<CriterionSpec> criteria = new ArrayList<>(normalizedTypes.size());
-        for (String requestedType : normalizedTypes) {
-            criteria.add(resolveCriterion(requestedType));
+        LinkedHashMap<String, CriterionSpec> criteriaByJson = new LinkedHashMap<>();
+        for (String input : normalizedInputs) {
+            CriterionSpec criterion = resolveCriterion(input);
+            criteriaByJson.putIfAbsent(criterion.json(), criterion);
         }
-        return List.copyOf(criteria);
+        return List.copyOf(criteriaByJson.values());
     }
 
     static Strategy buildStrategy(String strategyLabel, String strategyJsonFile, Integer unstableBars,
@@ -346,6 +411,22 @@ final class CliSupport {
             err.println("- " + message);
         }
         err.flush();
+    }
+
+    static void enforceInvalidStrategyPolicy(List<String> invalidStrategies, String policyToken, PrintWriter err) {
+        String policy = normalizeToken(policyToken);
+        if (!"fail".equals(policy) && !"skip".equals(policy)) {
+            throw new IllegalArgumentException(
+                    "Unsupported --invalid-input policy '" + policyToken + "'. Use fail or skip.");
+        }
+        if (invalidStrategies == null || invalidStrategies.isEmpty()) {
+            return;
+        }
+        if ("fail".equals(policy)) {
+            throw new IllegalArgumentException("Invalid strategy inputs:\n" + String.join("\n", invalidStrategies)
+                    + "\nUse --invalid-input skip to run only valid inputs.");
+        }
+        reportInvalidStrategies(invalidStrategies, err);
     }
 
     static BacktestRuntimeReport aggregateBacktestRuntimes(List<BacktestRuntimeReport> runtimeReports) {
@@ -440,7 +521,7 @@ final class CliSupport {
     }
 
     static Map<String, Object> buildForecastReport(BarSeries series, String dataFile, String timeframeToken,
-            String fromDateToken, String toDateToken, ForecastRequest request, Path outputPath) {
+            String fromDateToken, String toDateToken, ForecastRequest request, Path outputPath, boolean reproducible) {
         int index = request.index() == null ? series.getEndIndex() : request.index();
         if (index < series.getBeginIndex() || index > series.getEndIndex()) {
             throw new IllegalArgumentException(
@@ -468,48 +549,119 @@ final class CliSupport {
         }
         ReturnMomentState state = stateIndicator.getValue(index);
 
-        Map<String, Object> response = linkedMap();
-        response.put("command", "forecast run");
-        response.put("generatedAtUtc", Instant.now().toString());
-        response.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
+        Map<String, Object> response = buildResponse("forecast run");
+        Map<String, Object> result = result(response);
+        result.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
 
         Map<String, Object> configuration = linkedMap();
         configuration.put("stateModel", stateModel);
         configuration.put("target", target);
         configuration.put("index", index);
-        configuration.put("horizon", request.horizon());
         if (!"state".equals(target)) {
-            configuration.put("samples", request.samples());
+            String projectionModel = normalizeToken(request.projectionModel());
+            String calibration = normalizeToken(request.calibration());
+            configuration.put("projectionModel", projectionModel);
+            configuration.put("calibration", calibration);
+            configuration.put("horizon", request.horizon());
             configuration.put("lookbackBars", request.lookbackBars());
-            configuration.put("seed", request.seed());
-            configuration.put("shockModel", normalizeToken(request.shockModel()));
-            configuration.put("volatilityMode", normalizeToken(request.volatilityMode()));
-            configuration.put("volatilityDecay", request.volatilityDecay());
             configuration.put("quantiles", request.quantiles());
+            if ("monte-carlo".equals(projectionModel)) {
+                configuration.put("samples", request.samples());
+                configuration.put("seed", request.seed());
+                configuration.put("shockModel", normalizeToken(request.shockModel()));
+                configuration.put("volatilityMode", normalizeToken(request.volatilityMode()));
+                configuration.put("volatilityDecay", request.volatilityDecay());
+            } else if ("analog".equals(projectionModel)) {
+                configuration.put("neighborCount", request.neighborCount());
+                configuration.put("minimumNeighborCount", request.minimumNeighborCount());
+                configuration.put("standardizeFeatures", request.standardizeFeatures());
+            } else {
+                throw new IllegalArgumentException("Unsupported --projection-model '" + request.projectionModel()
+                        + "'. Use monte-carlo or analog.");
+            }
+            if ("conformal".equals(calibration)) {
+                configuration.put("coverage", request.coverage());
+                configuration.put("calibrationWindow", request.calibrationWindow());
+                configuration.put("minimumCalibrationCount", request.minimumCalibrationCount());
+            } else if (!"none".equals(calibration)) {
+                throw new IllegalArgumentException(
+                        "Unsupported --calibration '" + request.calibration() + "'. Use none or conformal.");
+            }
         }
-        response.put("configuration", configuration);
+        result.put("configuration", configuration);
 
         Map<String, Object> decision = linkedMap();
         decision.put("index", index);
         decision.put("endTime", series.getBar(index).getEndTime().toString());
         decision.put("closePrice", numberString(series.getBar(index).getClosePrice()));
-        response.put("decision", decision);
-        response.put("state", forecastStateToMap(stateIndicator, state));
+        result.put("decision", decision);
+        result.put("state", forecastStateToMap(stateIndicator, state));
 
         if (!"state".equals(target)) {
-            Forecast forecast = buildMonteCarloForecast(series, stateIndicator, request, target).getValue(index);
-            response.put("forecast", forecastToMap(forecast));
+            ProjectionSelection projection = buildForecastProjection(series, returns, stateIndicator, request, target);
+            configuration.put("resolvedPriceModel", projection.priceModel());
+            Forecast forecast = projection.indicator().getValue(index);
+            result.put("forecast", forecastToMap(forecast));
         }
 
-        Map<String, Object> artifacts = linkedMap();
-        artifacts.put("outputFile", outputPath == null ? null : outputPath.toString());
-        response.put("artifacts", artifacts);
+        addRunMetadata(response, reproducible, dataFile, outputPath, null);
         return response;
     }
 
-    private static Indicator<Forecast> buildMonteCarloForecast(BarSeries series,
+    private static ProjectionSelection buildForecastProjection(BarSeries series, ReturnIndicator returns,
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request,
             String target) {
+        String projectionModel = normalizeToken(request.projectionModel());
+        ReturnForecastProjectionIndicator returnProjection = switch (projectionModel) {
+        case "monte-carlo" -> buildMonteCarloReturnForecast(stateIndicator, request);
+        case "analog" -> buildAnalogReturnForecast(stateIndicator, request);
+        default -> throw new IllegalArgumentException(
+                "Unsupported --projection-model '" + request.projectionModel() + "'. Use monte-carlo or analog.");
+        };
+
+        String calibration = normalizeToken(request.calibration());
+        if ("conformal".equals(calibration)) {
+            returnProjection = RollingConformalForecastProjectionIndicator
+                    .cumulativeLogReturnBuilder(returnProjection, returns)
+                    .targetCoverage(request.coverage())
+                    .calibrationWindow(request.calibrationWindow())
+                    .minimumCalibrationCount(request.minimumCalibrationCount())
+                    .build();
+        } else if (!"none".equals(calibration)) {
+            throw new IllegalArgumentException(
+                    "Unsupported --calibration '" + request.calibration() + "'. Use none or conformal.");
+        }
+
+        if ("return".equals(target)) {
+            return new ProjectionSelection(returnProjection, null);
+        }
+
+        String requestedPriceModel = normalizeToken(request.priceModel());
+        String resolvedPriceModel = "auto".equals(requestedPriceModel)
+                ? "monte-carlo".equals(projectionModel) && "none".equals(calibration) ? "empirical" : "lognormal"
+                : requestedPriceModel;
+        ForecastProjectionIndicator priceProjection;
+        if ("empirical".equals(resolvedPriceModel)) {
+            if (!"monte-carlo".equals(projectionModel) || !"none".equals(calibration)) {
+                throw new IllegalArgumentException(
+                        "--price-model empirical requires --projection-model monte-carlo and --calibration none.");
+            }
+            priceProjection = buildMonteCarloPriceForecast(series, stateIndicator, request);
+        } else if ("lognormal".equals(resolvedPriceModel)) {
+            double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
+            priceProjection = LognormalApproximationPriceForecastIndicator
+                    .builder(new ClosePriceIndicator(series), returnProjection)
+                    .quantiles(quantiles)
+                    .build();
+        } else {
+            throw new IllegalArgumentException(
+                    "Unsupported --price-model '" + request.priceModel() + "'. Use auto, empirical, or lognormal.");
+        }
+        return new ProjectionSelection(priceProjection, resolvedPriceModel);
+    }
+
+    private static ReturnForecastProjectionIndicator buildMonteCarloReturnForecast(
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
         if (request.samples() <= 0) {
             throw new IllegalArgumentException("--samples must be greater than zero.");
         }
@@ -524,19 +676,6 @@ final class CliSupport {
         MonteCarloReturnProjectionIndicator.ShockModel shockModel = parseShockModel(request.shockModel());
         MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityMode = parseVolatilityMode(
                 request.volatilityMode());
-
-        if ("price".equals(target)) {
-            return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), stateIndicator)
-                    .horizon(request.horizon())
-                    .iterationCount(request.samples())
-                    .lookbackBarCount(request.lookbackBars())
-                    .seed(request.seed())
-                    .shockModel(shockModel)
-                    .volatilityUpdateMode(volatilityMode)
-                    .volatilityDecayFactor(request.volatilityDecay())
-                    .quantiles(quantiles)
-                    .build();
-        }
         return MonteCarloReturnProjectionIndicator.builder(stateIndicator)
                 .horizon(request.horizon())
                 .iterationCount(request.samples())
@@ -545,6 +684,37 @@ final class CliSupport {
                 .shockModel(shockModel)
                 .volatilityUpdateMode(volatilityMode)
                 .volatilityDecayFactor(request.volatilityDecay())
+                .quantiles(quantiles)
+                .build();
+    }
+
+    private static ForecastProjectionIndicator buildMonteCarloPriceForecast(BarSeries series,
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
+        double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
+        return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), stateIndicator)
+                .horizon(request.horizon())
+                .iterationCount(request.samples())
+                .lookbackBarCount(request.lookbackBars())
+                .seed(request.seed())
+                .shockModel(parseShockModel(request.shockModel()))
+                .volatilityUpdateMode(parseVolatilityMode(request.volatilityMode()))
+                .volatilityDecayFactor(request.volatilityDecay())
+                .quantiles(quantiles)
+                .build();
+    }
+
+    private static ReturnForecastProjectionIndicator buildAnalogReturnForecast(
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
+        if (request.lookbackBars() <= 0) {
+            throw new IllegalArgumentException("--lookback-bars must be greater than zero.");
+        }
+        double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
+        return AnalogReturnProjectionIndicator.builder(stateIndicator)
+                .horizon(request.horizon())
+                .lookbackBarCount(request.lookbackBars())
+                .neighborCount(request.neighborCount())
+                .minimumNeighborCount(request.minimumNeighborCount())
+                .standardizeFeatures(request.standardizeFeatures())
                 .quantiles(quantiles)
                 .build();
     }
@@ -678,8 +848,9 @@ final class CliSupport {
             return null;
         }
         Path outputPath = Path.of(outputToken).toAbsolutePath().normalize();
-        if (outputPath.getParent() != null) {
-            Files.createDirectories(outputPath.getParent());
+        Path outputParent = outputPath.getParent();
+        if (outputParent != null) {
+            Files.createDirectories(outputParent);
         }
         return outputPath;
     }
@@ -698,8 +869,9 @@ final class CliSupport {
             return null;
         }
         Path chartPath = Path.of(chartToken).toAbsolutePath().normalize();
-        if (chartPath.getParent() != null) {
-            Files.createDirectories(chartPath.getParent());
+        Path chartParent = chartPath.getParent();
+        if (chartParent != null) {
+            Files.createDirectories(chartParent);
         }
         ChartWorkflow workflow = new ChartWorkflow();
         JFreeChart chart = workflow.createTradingRecordChart(series, statement.getStrategy().getName(),
@@ -711,11 +883,10 @@ final class CliSupport {
     static Map<String, Object> buildCommandMetadata(String command, BarSeries series, String dataFile,
             String timeframeToken, String fromDateToken, String toDateToken, String executionModelToken,
             PositionSizingSpec positionSizing, String commissionToken, String borrowRateToken, String borrowSideToken,
-            List<CriterionSpec> criteria, Path outputPath, Path chartPath) {
-        Map<String, Object> metadata = linkedMap();
-        metadata.put("command", command);
-        metadata.put("generatedAtUtc", Instant.now().toString());
-        metadata.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
+            List<CriterionSpec> criteria, Path outputPath, Path chartPath, boolean reproducible) {
+        Map<String, Object> metadata = buildResponse(command);
+        Map<String, Object> result = result(metadata);
+        result.put("input", buildInputMetadata(series, dataFile, timeframeToken, fromDateToken, toDateToken));
 
         Map<String, Object> execution = linkedMap();
         execution.put("executionModel",
@@ -730,24 +901,19 @@ final class CliSupport {
         execution.put("borrowRate", borrowRateToken);
         execution.put("borrowSide", borrowRateToken == null || borrowRateToken.isBlank() ? null
                 : borrowSideToken == null || borrowSideToken.isBlank() ? "short" : normalizeToken(borrowSideToken));
-        execution.put("criteria", criteria.stream().map(CriterionSpec::name).toList());
-        execution.put("criterionTypes", criteria.stream()
-                .collect(LinkedHashMap::new, (types, criterion) -> types.put(criterion.name(), criterion.className()),
-                        LinkedHashMap::putAll));
-        metadata.put("execution", execution);
+        execution.put("criteria", criteria.stream().map(CliSupport::criterionMetadata).toList());
+        result.put("execution", execution);
 
-        Map<String, Object> artifacts = linkedMap();
-        artifacts.put("outputFile", outputPath == null ? null : outputPath.toString());
-        artifacts.put("chartFile", chartPath == null ? null : chartPath.toString());
-        metadata.put("artifacts", artifacts);
+        addRunMetadata(metadata, reproducible, dataFile, outputPath, chartPath);
         return metadata;
     }
 
     private static Map<String, Object> buildInputMetadata(BarSeries series, String dataFile, String timeframeToken,
             String fromDateToken, String toDateToken) {
         Map<String, Object> input = linkedMap();
-        input.put("dataFile", Path.of(dataFile).toAbsolutePath().normalize().toString());
-        input.put("seriesName", series.getName());
+        input.put("dataFile", dataFile);
+        input.put("seriesSha256", seriesSha256(series));
+        input.put("seriesName", "-".equals(dataFile) ? "stdin" : series.getName());
         input.put("barCount", series.getBarCount());
         input.put("beginIndex", series.getBeginIndex());
         input.put("endIndex", series.getEndIndex());
@@ -757,13 +923,125 @@ final class CliSupport {
         return input;
     }
 
+    static Map<String, Object> buildResponse(String command) {
+        Map<String, Object> response = linkedMap();
+        response.put("schemaVersion", SCHEMA_VERSION);
+        response.put("status", "success");
+        response.put("command", command);
+        response.put("result", linkedMap());
+        return response;
+    }
+
+    static Map<String, Object> buildCatalogReport() {
+        Map<String, Object> response = buildResponse("catalog");
+        Map<String, Object> catalog = result(response);
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        Map<String, Object> aliases = linkedMap();
+        aliases.put("strategies", registry.aliases(NamedAssetKind.STRATEGY));
+        aliases.put("indicators", registry.aliases(NamedAssetKind.INDICATOR));
+        aliases.put("rules", registry.aliases(NamedAssetKind.RULE));
+        aliases.put("criteria", registry.aliases(NamedAssetKind.ANALYSIS_CRITERION));
+        catalog.put("aliases", aliases);
+
+        Map<String, Object> forecasting = linkedMap();
+        forecasting.put("stateModels", List.of("ewma", "rough-volatility", "change-point"));
+        forecasting.put("targets", List.of("state", "return", "price"));
+        forecasting.put("projectionModels", List.of("monte-carlo", "analog"));
+        forecasting.put("calibrations", List.of("none", "conformal"));
+        forecasting.put("priceModels", List.of("auto", "empirical", "lognormal"));
+        catalog.put("forecasting", forecasting);
+
+        Map<String, Object> execution = linkedMap();
+        execution.put("executionModels", List.of("next-open", "current-close"));
+        execution.put("positionSizing", List.of("fixed", "balance", "kelly"));
+        execution.put("borrowSides", List.of("short", "long", "both"));
+        execution.put("invalidInputPolicies", List.of("fail", "skip"));
+        catalog.put("execution", execution);
+
+        Map<String, Object> output = linkedMap();
+        output.put("schemaVersion", SCHEMA_VERSION);
+        output.put("statuses", List.of("success", "partial", "error"));
+        output.put("errorFormats", List.of("text", "json"));
+        catalog.put("output", output);
+        return response;
+    }
+
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> result(Map<String, Object> response) {
+        return (Map<String, Object>) response.get("result");
+    }
+
+    @SuppressWarnings("unchecked")
+    static void putRunMetadata(Map<String, Object> response, String key, Object value) {
+        Map<String, Object> run = (Map<String, Object>) response.get("run");
+        if (run != null) {
+            run.put(key, value);
+        }
+    }
+
+    static void markPartial(Map<String, Object> response, List<String> invalidInputs) {
+        if (invalidInputs != null && !invalidInputs.isEmpty()) {
+            response.put("status", "partial");
+        }
+    }
+
+    private static void addRunMetadata(Map<String, Object> response, boolean reproducible, String dataFile,
+            Path outputPath, Path chartPath) {
+        if (reproducible) {
+            return;
+        }
+        Map<String, Object> run = linkedMap();
+        run.put("generatedAtUtc", Instant.now().toString());
+        run.put("resolvedDataFile",
+                "-".equals(dataFile) ? null : Path.of(dataFile).toAbsolutePath().normalize().toString());
+        Map<String, Object> artifacts = linkedMap();
+        artifacts.put("outputFile", outputPath == null ? null : outputPath.toString());
+        artifacts.put("chartFile", chartPath == null ? null : chartPath.toString());
+        run.put("artifacts", artifacts);
+        response.put("run", run);
+    }
+
+    private static Map<String, Object> criterionMetadata(CriterionSpec criterion) {
+        Map<String, Object> metadata = linkedMap();
+        metadata.put("id", criterion.name());
+        metadata.put("type", criterion.className());
+        metadata.put("expression", criterion.expression());
+        metadata.put("descriptor", JsonParser.parseString(criterion.json()));
+        return metadata;
+    }
+
+    private static String seriesSha256(BarSeries series) {
+        MessageDigest digest = sha256Digest();
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            Bar bar = series.getBar(index);
+            String row = bar.getEndTime() + "|" + bar.getOpenPrice() + "|" + bar.getHighPrice() + "|"
+                    + bar.getLowPrice() + "|" + bar.getClosePrice() + "|" + bar.getVolume() + "\n";
+            digest.update(row.getBytes(StandardCharsets.UTF_8));
+        }
+        return HexFormat.of().formatHex(digest.digest());
+    }
+
+    private static String sha256(String value) {
+        MessageDigest digest = sha256Digest();
+        return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static MessageDigest sha256Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable.", exception);
+        }
+    }
+
     static Map<String, Object> statementToMap(BarSeries series, TradingStatement statement,
             List<CriterionSpec> criteria) {
         Map<String, Object> result = linkedMap();
         result.put("strategyName", statement.getStrategy().getName());
         result.put("startingType", statement.getStrategy().getStartingType().name());
         result.put("unstableBars", statement.getStrategy().getUnstableBars());
-        result.put("strategyJson", statement.getStrategy().toJson());
+        result.put("strategyJson", JsonParser.parseString(statement.getStrategy().toJson()));
         result.put("positionCount", statement.getTradingRecord().getPositionCount());
 
         Map<String, Object> performance = linkedMap();
@@ -812,8 +1090,6 @@ final class CliSupport {
         config.put("seed", result.config().seed());
         walkForward.put("config", config);
 
-        walkForward.put("runtime", walkForwardRuntimeToMap(result.runtimeReport()));
-
         List<Map<String, Object>> folds = new ArrayList<>(result.folds().size());
         for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
             folds.add(foldToMap(series, fold, criteria));
@@ -836,7 +1112,7 @@ final class CliSupport {
         return walkForward;
     }
 
-    private static Map<String, Object> walkForwardRuntimeToMap(WalkForwardRuntimeReport runtimeReport) {
+    static Map<String, Object> walkForwardRuntimeToMap(WalkForwardRuntimeReport runtimeReport) {
         Map<String, Object> runtime = linkedMap();
         runtime.put("overallRuntime", runtimeReport.overallRuntime().toString());
         runtime.put("minFoldRuntime", runtimeReport.minFoldRuntime().toString());
@@ -859,7 +1135,6 @@ final class CliSupport {
         foldMap.put("testEnd", split.testEnd());
         foldMap.put("purgeBars", split.purgeBars());
         foldMap.put("embargoBars", split.embargoBars());
-        foldMap.put("runtime", fold.runtime().toString());
         foldMap.put("statement", statementToMap(series, fold.tradingStatement(), criteria));
         return foldMap;
     }
@@ -875,13 +1150,15 @@ final class CliSupport {
         return numberString(sum.dividedBy(values.getFirst().getNumFactory().numOf(values.size())));
     }
 
-    private static Map<String, Object> criterionScores(BarSeries series, TradingRecord tradingRecord,
+    private static List<Map<String, Object>> criterionScores(BarSeries series, TradingRecord tradingRecord,
             List<CriterionSpec> criteria) {
-        Map<String, Object> scores = linkedMap();
+        List<Map<String, Object>> scores = new ArrayList<>(criteria.size());
         for (CriterionSpec criterion : criteria) {
-            scores.put(criterion.name(), numberString(criterion.criterion().calculate(series, tradingRecord)));
+            Map<String, Object> score = criterionMetadata(criterion);
+            score.put("value", numberString(criterion.criterion().calculate(series, tradingRecord)));
+            scores.add(score);
         }
-        return scores;
+        return List.copyOf(scores);
     }
 
     private static TradeExecutionModel resolveExecutionModel(String executionModelToken) {
@@ -1133,13 +1410,59 @@ final class CliSupport {
 
         AnalysisCriterion criterion;
         try {
-            criterion = AnalysisCriterion.fromExpression(requestedType);
+            criterion = requestedType.stripLeading().startsWith("{") ? AnalysisCriterion.fromJson(requestedType)
+                    : AnalysisCriterion.fromExpression(requestedType);
         } catch (RuntimeException ex) {
-            String inputKind = requestedType.contains(".") ? "input" : "shorthand";
+            String inputKind = requestedType.stripLeading().startsWith("{") ? "JSON"
+                    : requestedType.contains(".") ? "input" : "shorthand";
             throw new IllegalArgumentException("Invalid analysis criterion " + inputKind + ": " + requestedType + ".",
                     ex);
         }
-        return new CriterionSpec(requestedType, criterion.getClass().getName(), criterion);
+        String json = criterion.toJson();
+        String expression;
+        try {
+            expression = criterion.toExpression();
+        } catch (IllegalArgumentException exception) {
+            expression = null;
+        }
+        String name = expression == null || expression.isBlank()
+                ? criterion.getClass().getSimpleName() + "-" + sha256(json).substring(0, 8)
+                : expression;
+        return new CriterionSpec(name, criterion.getClass().getName(), json, expression, criterion);
+    }
+
+    private static List<String> readCriterionJsonInputs(String file) {
+        if (file == null || file.isBlank()) {
+            throw new IllegalArgumentException("--criteria-file paths must not be blank.");
+        }
+        Path path = Path.of(file).toAbsolutePath().normalize();
+        try {
+            JsonElement root = JsonParser.parseString(Files.readString(path));
+            if (root.isJsonObject()) {
+                return List.of(root.toString());
+            }
+            if (root.isJsonArray()) {
+                List<String> inputs = new ArrayList<>();
+                JsonArray array = root.getAsJsonArray();
+                for (int index = 0; index < array.size(); index++) {
+                    JsonElement element = array.get(index);
+                    if (!element.isJsonObject()) {
+                        throw new IllegalArgumentException(
+                                "--criteria-file " + file + "[" + index + "] must be a JSON object.");
+                    }
+                    inputs.add(element.toString());
+                }
+                return List.copyOf(inputs);
+            }
+            throw new IllegalArgumentException("--criteria-file " + file + " must contain a JSON object or array.");
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Unable to read --criteria-file " + file + ".", exception);
+        } catch (RuntimeException exception) {
+            if (exception instanceof IllegalArgumentException) {
+                throw exception;
+            }
+            throw new IllegalArgumentException("Invalid JSON in --criteria-file " + file + ".", exception);
+        }
     }
 
     static Strategy buildRuleTestStrategy(String entryRuleLabel, String entryRuleJsonFile, String exitRuleLabel,
@@ -1442,37 +1765,55 @@ final class CliSupport {
      * Binds one operator-facing criterion input and concrete implementation to the
      * instance used for a single command execution.
      *
-     * @param name      compact shorthand or fully qualified class name used as the
-     *                  JSON key
-     * @param className resolved {@link AnalysisCriterion} implementation class
-     * @param criterion resolved analysis criterion instance
+     * @param name       canonical compact name used as the result identifier
+     * @param className  resolved {@link AnalysisCriterion} implementation class
+     * @param json       canonical lossless descriptor JSON
+     * @param expression compact expression when the registry can render one
+     * @param criterion  resolved analysis criterion instance
      * @since 0.23.1
      */
-    record CriterionSpec(String name, String className, AnalysisCriterion criterion) {
+    record CriterionSpec(String name, String className, String json, String expression, AnalysisCriterion criterion) {
     }
 
     /**
      * Validated command inputs for one forecast state/projection evaluation.
      *
-     * @param stateModel      EWMA, rough-volatility, or change-point state
-     * @param target          state, cumulative return, or terminal price output
-     * @param index           decision index, or {@code null} for the series end
-     * @param horizon         positive forecast horizon in bars
-     * @param samples         Monte Carlo terminal path count
-     * @param lookbackBars    historical shock lookback in bars
-     * @param seed            deterministic simulation seed
-     * @param shockModel      simulated shock source
-     * @param volatilityMode  within-path volatility behavior
-     * @param volatilityDecay EWMA decay for within-path variance updates
-     * @param quantiles       reported quantile probabilities
+     * @param stateModel              EWMA, rough-volatility, or change-point state
+     * @param target                  state, cumulative return, or terminal price
+     *                                output
+     * @param projectionModel         Monte Carlo or analog return projection
+     * @param calibration             optional conformal calibration
+     * @param priceModel              empirical or lognormal price conversion
+     * @param index                   decision index, or {@code null} for the series
+     *                                end
+     * @param horizon                 positive forecast horizon in bars
+     * @param samples                 Monte Carlo terminal path count
+     * @param lookbackBars            historical shock lookback in bars
+     * @param seed                    deterministic simulation seed
+     * @param shockModel              simulated shock source
+     * @param volatilityMode          within-path volatility behavior
+     * @param volatilityDecay         EWMA decay for within-path variance updates
+     * @param neighborCount           maximum analog neighbor count
+     * @param minimumNeighborCount    minimum usable analog neighbors
+     * @param standardizeFeatures     whether analog features are standardized
+     * @param coverage                conformal target coverage
+     * @param calibrationWindow       conformal rolling window
+     * @param minimumCalibrationCount minimum matured conformal rows
+     * @param quantiles               reported quantile probabilities
      * @since 0.23.1
      */
-    record ForecastRequest(String stateModel, String target, Integer index, int horizon, int samples, int lookbackBars,
-            long seed, String shockModel, String volatilityMode, double volatilityDecay, List<Double> quantiles) {
+    record ForecastRequest(String stateModel, String target, String projectionModel, String calibration,
+            String priceModel, Integer index, int horizon, int samples, int lookbackBars, long seed, String shockModel,
+            String volatilityMode, double volatilityDecay, int neighborCount, int minimumNeighborCount,
+            boolean standardizeFeatures, double coverage, int calibrationWindow, int minimumCalibrationCount,
+            List<Double> quantiles) {
 
         ForecastRequest {
             quantiles = List.copyOf(Objects.requireNonNull(quantiles, "quantiles"));
         }
+    }
+
+    private record ProjectionSelection(ForecastProjectionIndicator indicator, String priceModel) {
     }
 
     /**

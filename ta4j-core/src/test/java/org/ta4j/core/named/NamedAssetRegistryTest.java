@@ -16,6 +16,17 @@ import org.ta4j.core.serialization.ComponentDescriptor;
 public class NamedAssetRegistryTest {
 
     @Test
+    public void exposesAliasesInDeterministicRegistrationOrder() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        assertThat(registry.aliases(NamedAssetKind.INDICATOR)).startsWith("ClosePrice", "ClosePriceIndicator", "SMA",
+                "EMA", "RSI");
+        assertThat(registry.aliases(NamedAssetKind.RULE)).contains("CrossedUp", "CrossedDown", "Under", "Over");
+        assertThat(registry.aliases(NamedAssetKind.STRATEGY)).containsExactly("SMA");
+        assertThat(registry.aliases(NamedAssetKind.ANALYSIS_CRITERION)).contains("NetProfit", "GrossReturn");
+    }
+
+    @Test
     public void defaultRegistryExpandsNestedRuleExpression() {
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
 

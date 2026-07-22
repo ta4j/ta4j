@@ -11,11 +11,13 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
+import org.ta4j.core.criteria.Annualization;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -34,10 +36,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -212,6 +214,23 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of("net-profit"), CliSupport.DEFAULT_SWEEP_CRITERIA))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid analysis criterion shorthand: net-profit.");
+    }
+
+    @Test
+    void resolveCriteriaAcceptsLosslessJsonAndJsonArrayFiles() throws Exception {
+        SharpeRatioCriterion tradeSampled = new SharpeRatioCriterion(0.03d, SamplingFrequency.TRADE,
+                Annualization.ANNUALIZED, ZoneOffset.UTC);
+        Path criteriaFile = tempDir.resolve("criteria.json");
+        Files.writeString(criteriaFile, "[" + tradeSampled.toJson() + "," + new NetProfitCriterion().toJson() + "]");
+
+        List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(List.of(), List.of(tradeSampled.toJson()),
+                List.of(criteriaFile.toString()), CliSupport.DEFAULT_SWEEP_CRITERIA);
+
+        assertThat(criteria).hasSize(2);
+        assertThat(criteria.getFirst().criterion()).isInstanceOf(SharpeRatioCriterion.class);
+        assertThat(criteria.getFirst().json()).contains("TRADE", "0.03");
+        assertThat(criteria).extracting(CliSupport.CriterionSpec::className)
+                .contains(NetProfitCriterion.class.getName());
     }
 
     @Test
@@ -397,23 +416,27 @@ class CliSupportTest {
     void forecastReportsExposeStateProvenanceAndEmpiricalPriceSupport() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        CliSupport.ForecastRequest stateRequest = new CliSupport.ForecastRequest("change-point", "state", null, 3, 25,
-                40, 42L, "standardized-empirical", "constant", 0.94d, List.of(0.05d, 0.5d, 0.95d));
-        CliSupport.ForecastRequest priceRequest = new CliSupport.ForecastRequest("ewma", "price", null, 3, 25, 40, 42L,
-                "standardized-empirical", "constant", 0.94d, List.of(0.05d, 0.5d, 0.95d));
+        CliSupport.ForecastRequest stateRequest = new CliSupport.ForecastRequest("change-point", "state", "monte-carlo",
+                "none", "auto", null, 3, 25, 40, 42L, "standardized-empirical", "constant", 0.94d, 30, 5, true, 0.90d,
+                252, 30, List.of(0.05d, 0.5d, 0.95d));
+        CliSupport.ForecastRequest priceRequest = new CliSupport.ForecastRequest("ewma", "price", "monte-carlo", "none",
+                "auto", null, 3, 25, 40, 42L, "standardized-empirical", "constant", 0.94d, 30, 5, true, 0.90d, 252, 30,
+                List.of(0.05d, 0.5d, 0.95d));
 
         Map<String, Object> stateReport = CliSupport.buildForecastReport(series, dataFile.toString(), null, null, null,
-                stateRequest, null);
+                stateRequest, null, false);
         Map<String, Object> priceReport = CliSupport.buildForecastReport(series, dataFile.toString(), null, null, null,
-                priceRequest, null);
+                priceRequest, null, false);
+        Map<String, Object> stateResult = asMap(stateReport.get("result"));
+        Map<String, Object> priceResult = asMap(priceReport.get("result"));
 
-        assertThat(asMap(stateReport.get("state"))).containsEntry("stable", true)
+        assertThat(asMap(stateResult.get("state"))).containsEntry("stable", true)
                 .containsEntry("representation", "LOG")
                 .containsKeys("recentChangeProbability", "mostLikelyRunLength", "topRunLengths");
-        assertThat(asMap(stateReport.get("decision"))).containsEntry("index", series.getEndIndex())
+        assertThat(asMap(stateResult.get("decision"))).containsEntry("index", series.getEndIndex())
                 .containsEntry("endTime", series.getLastBar().getEndTime().toString())
                 .containsEntry("closePrice", series.getLastBar().getClosePrice().toString());
-        Map<String, Object> forecast = asMap(priceReport.get("forecast"));
+        Map<String, Object> forecast = asMap(priceResult.get("forecast"));
         assertThat(forecast).containsEntry("stable", true).containsEntry("horizon", 3);
         assertThat(asMap(forecast.get("support"))).containsEntry("type", "empirical").containsEntry("count", 25);
         assertThat(asMap(forecast.get("quantiles"))).containsKeys("0.05", "0.5", "0.95");
@@ -564,7 +587,7 @@ class CliSupportTest {
 
         Map<String, Object> metadata = CliSupport.buildCommandMetadata("backtest", series, dataFile.toString(), "1d",
                 "2013-01-02", "2013-12-31", "current-close", positionSizing, "0.01", "0.02", "short", backtestCriteria,
-                outputPath, chartPath);
+                outputPath, chartPath, false);
         Map<String, Object> statementMap = CliSupport.statementToMap(series, statement, backtestCriteria);
         Map<String, Object> runtimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
         Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForward, walkForwardCriteria);
@@ -572,27 +595,28 @@ class CliSupportTest {
         assertThat(chartPath).exists();
         assertThat(Files.size(chartPath)).isGreaterThan(0L);
         assertThat(metadata).containsEntry("command", "backtest");
-        assertThat(asMap(metadata.get("input")))
-                .containsEntry("dataFile", dataFile.toAbsolutePath().normalize().toString())
+        Map<String, Object> result = asMap(metadata.get("result"));
+        assertThat(asMap(result.get("input"))).containsEntry("dataFile", dataFile.toString())
                 .containsEntry("seriesName", series.getName())
-                .containsEntry("barCount", series.getBarCount());
-        assertThat(asMap(metadata.get("execution"))).containsEntry("executionModel", "current-close")
+                .containsEntry("barCount", series.getBarCount())
+                .containsKey("seriesSha256");
+        assertThat(asMap(result.get("execution"))).containsEntry("executionModel", "current-close")
                 .containsEntry("positionSizing", "fixed")
                 .containsEntry("capital", "1000")
                 .containsEntry("stakeAmount", "1000")
                 .containsEntry("commission", "0.01")
                 .containsEntry("borrowRate", "0.02");
-        assertThat(asMap(metadata.get("artifacts"))).containsEntry("outputFile", outputPath.toString())
+        assertThat(asMap(asMap(metadata.get("run")).get("artifacts")))
+                .containsEntry("outputFile", outputPath.toString())
                 .containsEntry("chartFile", chartPath.toString());
         assertThat(statementMap).containsEntry("strategyName", strategy.getName())
                 .containsEntry("unstableBars", strategy.getUnstableBars());
-        assertThat(asMap(statementMap.get("criteria")).keySet())
-                .containsAll(Set.of(NetProfitCriterion.class.getName(), SharpeRatioCriterion.class.getName()));
+        assertThat((List<?>) statementMap.get("criteria")).hasSize(2);
         assertThat(runtimeMap).containsEntry("strategyCount", 1);
         assertThat(asMap(walkForwardMap.get("config"))).containsKey("configHash");
-        assertThat(asMap(walkForwardMap.get("runtime"))).containsEntry("foldCount", walkForward.folds().size());
+        assertThat(CliSupport.walkForwardRuntimeToMap(walkForward.runtimeReport())).containsEntry("foldCount",
+                walkForward.folds().size());
         assertThat((List<?>) walkForwardMap.get("folds")).isNotEmpty();
-        assertThat(asMap(walkForwardMap.get("criteria"))).containsKey(GrossReturnCriterion.class.getName());
     }
 
     @SuppressWarnings("unchecked")

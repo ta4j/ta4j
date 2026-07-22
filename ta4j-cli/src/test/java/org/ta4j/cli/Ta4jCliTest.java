@@ -10,15 +10,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.criteria.Annualization;
+import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,7 +48,9 @@ class Ta4jCliTest {
                 .contains("indicator")
                 .contains("rule")
                 .contains("forecast")
-                .contains("performance");
+                .contains("performance")
+                .contains("catalog")
+                .contains("completion");
         assertThat(rootHelp.stdout()).doesNotContain("backtest      Run strategies against one dataset.");
 
         assertThat(strategyHelp.exitCode()).isZero();
@@ -71,6 +79,31 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isZero();
         assertThat(result.stdout()).contains("ta4j-cli ").doesNotEndWith("ta4j-cli " + System.lineSeparator());
+    }
+
+    @Test
+    void catalogAndCompletionAreGeneratedFromTheLiveCommandModel() {
+        CliRunResult catalogRun = runCliAllowingError("catalog");
+        CliRunResult completionRun = runCliAllowingError("completion", "--shell", "bash");
+
+        assertThat(catalogRun.exitCode()).isZero();
+        JsonObject catalog = result(JsonParser.parseString(catalogRun.stdout()).getAsJsonObject());
+        assertThat(catalog.getAsJsonObject("aliases").getAsJsonArray("indicators").toString()).contains("SMA", "RSI");
+        assertThat(catalog.getAsJsonObject("forecasting").getAsJsonArray("projectionModels").toString())
+                .contains("monte-carlo", "analog");
+        assertThat(completionRun.exitCode()).isZero();
+        assertThat(completionRun.stdout()).contains("ta4j-cli", "_complete_ta4j-cli");
+    }
+
+    @Test
+    void structuredErrorsDistinguishUsageFailures() {
+        CliRunResult result = runCliAllowingError("--error-format", "json", "backtest");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        JsonObject payload = JsonParser.parseString(result.stderr()).getAsJsonObject();
+        assertThat(payload.get("schemaVersion").getAsInt()).isEqualTo(1);
+        assertThat(payload.get("status").getAsString()).isEqualTo("error");
+        assertThat(payload.getAsJsonObject("error").get("category").getAsString()).isEqualTo("usage");
     }
 
     @Test
@@ -107,11 +140,14 @@ class Ta4jCliTest {
         assertThat(chartFile).exists();
 
         JsonObject payload = readJson(outputFile);
+        JsonObject result = result(payload);
         assertThat(payload.get("command").getAsString()).isEqualTo("strategy backtest");
-        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString()).contains("sma-crossover");
-        assertThat(payload.getAsJsonObject("artifacts").get("outputFile").getAsString())
+        assertThat(payload.get("schemaVersion").getAsInt()).isEqualTo(1);
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString()).contains("sma-crossover");
+        JsonObject artifacts = payload.getAsJsonObject("run").getAsJsonObject("artifacts");
+        assertThat(artifacts.get("outputFile").getAsString())
                 .isEqualTo(outputFile.toAbsolutePath().normalize().toString());
-        assertThat(payload.getAsJsonObject("artifacts").get("chartFile").getAsString())
+        assertThat(artifacts.get("chartFile").getAsString())
                 .isEqualTo(chartFile.toAbsolutePath().normalize().toString());
     }
 
@@ -128,8 +164,7 @@ class Ta4jCliTest {
                 "--holdout-bars", "20");
 
         assertThat(exitCode).isZero();
-        JsonObject payload = readJson(outputFile);
-        JsonObject walkForward = payload.getAsJsonObject("walkForward");
+        JsonObject walkForward = result(readJson(outputFile)).getAsJsonObject("walkForward");
         assertThat(walkForward.getAsJsonObject("config").get("configHash").getAsString()).isNotBlank();
         JsonArray folds = walkForward.getAsJsonArray("folds");
         assertThat(folds).isNotEmpty();
@@ -145,10 +180,10 @@ class Ta4jCliTest {
                 "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
-        JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("candidateCount").getAsInt()).isEqualTo(4);
-        assertThat(payload.get("topK").getAsInt()).isEqualTo(2);
-        assertThat(payload.getAsJsonArray("leaderboard")).hasSize(2);
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("candidateCount").getAsInt()).isEqualTo(4);
+        assertThat(result.get("topK").getAsInt()).isEqualTo(2);
+        assertThat(result.getAsJsonArray("leaderboard")).hasSize(2);
     }
 
     @Test
@@ -160,9 +195,9 @@ class Ta4jCliTest {
                 "--entry-below", "30", "--exit-above", "70", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
-        JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("indicatorType").getAsString()).isEqualTo(RSIIndicator.class.getName());
-        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("indicatorType").getAsString()).isEqualTo(RSIIndicator.class.getName());
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString())
                 .isEqualTo("RSIIndicator-indicator-test");
     }
 
@@ -178,11 +213,12 @@ class Ta4jCliTest {
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("entryRuleName").getAsString()).isEqualTo("RsiThresholdRule_BELOW_14_30");
-        assertThat(payload.get("exitRuleName").getAsString()).isEqualTo("RsiThresholdRule_ABOVE_14_70");
-        assertThat(payload.get("backtest")).isNotNull();
-        assertThat(payload.get("backtestRuntime")).isNotNull();
-        assertThat(payload.get("walkForward")).isNotNull();
+        JsonObject result = result(payload);
+        assertThat(result.get("entryRuleName").getAsString()).isEqualTo("RsiThresholdRule_BELOW_14_30");
+        assertThat(result.get("exitRuleName").getAsString()).isEqualTo("RsiThresholdRule_ABOVE_14_70");
+        assertThat(result.get("backtest")).isNotNull();
+        assertThat(payload.getAsJsonObject("run").get("backtestRuntime")).isNotNull();
+        assertThat(result.get("walkForward")).isNotNull();
     }
 
     @Test
@@ -228,8 +264,8 @@ class Ta4jCliTest {
                 "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
-        JsonObject payload = readJson(outputFile);
-        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString())
                 .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
     }
 
@@ -243,11 +279,11 @@ class Ta4jCliTest {
                 "--borrow-rate", "0", "--borrow-side", "both", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
-        JsonObject payload = readJson(outputFile);
-        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString()).isEqualTo("SMA(7,21)");
-        assertThat(payload.getAsJsonObject("statement").getAsJsonObject("criteria").keySet()).hasSize(2);
-        assertThat(payload.getAsJsonObject("execution").get("positionSizing").getAsString()).isEqualTo("balance");
-        assertThat(payload.getAsJsonObject("execution").get("borrowSide").getAsString()).isEqualTo("both");
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString()).isEqualTo("SMA(7,21)");
+        assertThat(result.getAsJsonObject("statement").getAsJsonArray("criteria")).hasSize(2);
+        assertThat(result.getAsJsonObject("execution").get("positionSizing").getAsString()).isEqualTo("balance");
+        assertThat(result.getAsJsonObject("execution").get("borrowSide").getAsString()).isEqualTo("both");
     }
 
     @Test
@@ -268,7 +304,7 @@ class Ta4jCliTest {
                 strategyFile.toString(), "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
-        assertThat(readJson(outputFile).getAsJsonObject("statement").get("strategyName").getAsString())
+        assertThat(result(readJson(outputFile)).getAsJsonObject("statement").get("strategyName").getAsString())
                 .isEqualTo("v2-sma");
     }
 
@@ -283,12 +319,88 @@ class Ta4jCliTest {
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
+        JsonObject result = result(payload);
         assertThat(payload.get("command").getAsString()).isEqualTo("forecast run");
-        assertThat(payload.getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
-        assertThat(payload.getAsJsonObject("forecast").get("horizon").getAsInt()).isEqualTo(3);
-        assertThat(payload.getAsJsonObject("configuration").get("lookbackBars").getAsInt()).isEqualTo(251);
-        assertThat(payload.getAsJsonObject("forecast").getAsJsonObject("support").get("count").getAsInt())
-                .isEqualTo(25);
+        assertThat(result.getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
+        assertThat(result.getAsJsonObject("forecast").get("horizon").getAsInt()).isEqualTo(3);
+        assertThat(result.getAsJsonObject("configuration").get("lookbackBars").getAsInt()).isEqualTo(251);
+        assertThat(result.getAsJsonObject("forecast").getAsJsonObject("support").get("count").getAsInt()).isEqualTo(25);
+    }
+
+    @Test
+    void forecastRunComposesAnalogConformalAndLognormalModels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path analogOutput = tempDir.resolve("analog-price.json");
+        Path conformalOutput = tempDir.resolve("analog-conformal-return.json");
+
+        int analogExit = runCli("forecast", "run", "--data-file", dataFile.toString(), "--target", "price",
+                "--projection-model", "analog", "--price-model", "lognormal", "--lookback-bars", "120",
+                "--neighbor-count", "10", "--minimum-neighbor-count", "5", "--output", analogOutput.toString());
+        int conformalExit = runCli("forecast", "run", "--data-file", dataFile.toString(), "--target", "return",
+                "--projection-model", "analog", "--calibration", "conformal", "--lookback-bars", "40",
+                "--neighbor-count", "10", "--minimum-neighbor-count", "5", "--calibration-window", "80",
+                "--minimum-calibration-count", "10", "--output", conformalOutput.toString());
+
+        assertThat(analogExit).isZero();
+        assertThat(conformalExit).isZero();
+        JsonObject analogResult = result(readJson(analogOutput));
+        assertThat(analogResult.getAsJsonObject("configuration").get("resolvedPriceModel").getAsString())
+                .isEqualTo("lognormal");
+        assertThat(analogResult.getAsJsonObject("forecast").getAsJsonObject("support").get("assumption").getAsString())
+                .isEqualTo("lognormal-moment-match");
+        JsonObject conformalResult = result(readJson(conformalOutput));
+        assertThat(conformalResult.getAsJsonObject("configuration").get("calibration").getAsString())
+                .isEqualTo("conformal");
+        assertThat(conformalResult.getAsJsonObject("forecast").get("stable").getAsBoolean()).isTrue();
+    }
+
+    @Test
+    void criterionJsonPreservesTradeSamplingConfiguration() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("criterion-json.json");
+        String criterionJson = new SharpeRatioCriterion(0.03d, SamplingFrequency.TRADE, Annualization.ANNUALIZED,
+                ZoneOffset.UTC).toJson();
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy", "SMA(7,21)",
+                "--criterion-json", criterionJson, "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonArray scores = result(readJson(outputFile)).getAsJsonObject("statement").getAsJsonArray("criteria");
+        assertThat(scores).hasSize(1);
+        assertThat(scores.get(0).getAsJsonObject().get("descriptor").toString()).contains("TRADE", "0.03");
+    }
+
+    @Test
+    void reproducibleOutputIsByteStableAndOmitsRunMetadata() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(first.stderr()).isBlank();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        JsonObject payload = JsonParser.parseString(first.stdout()).getAsJsonObject();
+        assertThat(payload.has("run")).isFalse();
+        assertThat(result(payload).getAsJsonObject("input").get("seriesSha256").getAsString()).hasSize(64);
+    }
+
+    @Test
+    void stdinDataSupportsComposableAgentPipelines() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        InputStream input = new ByteArrayInputStream(Files.readAllBytes(dataFile));
+
+        CliRunResult run = runCliAllowingError(input, "strategy", "backtest", "--data-file", "-", "--data-format",
+                "csv", "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(run.exitCode()).isZero();
+        assertThat(run.stderr()).isBlank();
+        JsonObject inputMetadata = result(JsonParser.parseString(run.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(inputMetadata.get("dataFile").getAsString()).isEqualTo("-");
+        assertThat(inputMetadata.get("seriesName").getAsString()).isEqualTo("stdin");
     }
 
     @Test
@@ -296,10 +408,24 @@ class Ta4jCliTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
         CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
-                "state", "--shock-model", "typo");
+                "state", "--horizon", "3");
 
         assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.stderr()).contains("--shock-model may only be used with --target return or --target price.");
+        assertThat(result.stderr()).contains("--horizon may only be used with --target return or --target price.");
+    }
+
+    @Test
+    void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("should-not-exist.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies", "SMA(7,21),MissingStrategy_VALUE", "--output", outputFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid strategy inputs:", "MissingStrategy_VALUE",
+                "Use --invalid-input skip to run only valid inputs.");
+        assertThat(outputFile).doesNotExist();
     }
 
     @Test
@@ -315,7 +441,8 @@ class Ta4jCliTest {
         CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
                 "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--strategies",
                 "HourOfDayStrategy_9_17,MissingStrategy_VALUE", "--strategy-json-file", strategyJsonFile.toString(),
-                "--strategies-json-file", strategiesJsonFile.toString(), "--output", outputFile.toString());
+                "--strategies-json-file", strategiesJsonFile.toString(), "--invalid-input", "skip", "--output",
+                outputFile.toString());
 
         assertThat(result.exitCode()).isZero();
         assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
@@ -323,11 +450,13 @@ class Ta4jCliTest {
                 .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
 
         JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("strategyCount").getAsInt()).isEqualTo(4);
-        assertThat(payload.get("invalidStrategyCount").getAsInt()).isEqualTo(2);
-        assertThat(payload.getAsJsonArray("statements")).hasSize(4);
-        assertThat(payload.getAsJsonArray("invalidStrategies")).hasSize(2);
-        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
+        JsonObject resultPayload = result(payload);
+        assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+        assertThat(resultPayload.get("strategyCount").getAsInt()).isEqualTo(4);
+        assertThat(resultPayload.get("invalidStrategyCount").getAsInt()).isEqualTo(2);
+        assertThat(resultPayload.getAsJsonArray("statements")).hasSize(4);
+        assertThat(resultPayload.getAsJsonArray("invalidStrategies")).hasSize(2);
+        assertThat(resultPayload.getAsJsonObject("statement").get("strategyName").getAsString())
                 .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
     }
 
@@ -341,20 +470,23 @@ class Ta4jCliTest {
         Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",{\"bad\":true}]");
 
         CliRunResult result = runCliAllowingError("strategy", "walk-forward", "--data-file", dataFile.toString(),
-                "--strategies-json-file", strategiesJsonFile.toString(), "--output", outputFile.toString(),
-                "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20", "--holdout-bars", "20");
+                "--strategies-json-file", strategiesJsonFile.toString(), "--invalid-input", "skip", "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
 
         assertThat(result.exitCode()).isZero();
         assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
                 .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
 
         JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("strategyCount").getAsInt()).isEqualTo(1);
-        assertThat(payload.get("invalidStrategyCount").getAsInt()).isEqualTo(1);
-        assertThat(payload.get("backtest")).isNotNull();
-        assertThat(payload.get("backtestRuntime")).isNotNull();
-        assertThat(payload.get("walkForward")).isNotNull();
-        assertThat(payload.getAsJsonArray("results")).hasSize(1);
+        JsonObject resultPayload = result(payload);
+        assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+        assertThat(resultPayload.get("strategyCount").getAsInt()).isEqualTo(1);
+        assertThat(resultPayload.get("invalidStrategyCount").getAsInt()).isEqualTo(1);
+        assertThat(resultPayload.get("backtest")).isNotNull();
+        assertThat(payload.getAsJsonObject("run").get("backtestRuntime")).isNotNull();
+        assertThat(resultPayload.get("walkForward")).isNotNull();
+        assertThat(resultPayload.getAsJsonArray("results")).hasSize(1);
     }
 
     @Test
@@ -437,9 +569,13 @@ class Ta4jCliTest {
     }
 
     private CliRunResult runCliAllowingError(String... args) {
+        return runCliAllowingError(InputStream.nullInputStream(), args);
+    }
+
+    private CliRunResult runCliAllowingError(InputStream input, String... args) {
         StringWriter stdout = new StringWriter();
         StringWriter stderr = new StringWriter();
-        int exitCode = Ta4jCli.run(args, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
+        int exitCode = Ta4jCli.run(args, input, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
         return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
     }
 
@@ -453,6 +589,10 @@ class Ta4jCliTest {
 
     private JsonObject readJson(Path jsonFile) throws IOException {
         return JsonParser.parseString(Files.readString(jsonFile)).getAsJsonObject();
+    }
+
+    private JsonObject result(JsonObject payload) {
+        return payload.getAsJsonObject("result");
     }
 
     private Strategy sampleSweepStrategy(BarSeries series) {

@@ -125,7 +125,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
-**💡 Also new**: The `ta4j-cli` module exposes compact serialization v2 expressions, dynamic backtest sizing, forecast state/projections, and grouped `strategy`, `indicator`, `rule`, and `performance` workflows. Build it with `./mvnw -pl ta4j-cli -am package`, then run the fat jar from `ta4j-cli/target/`.
+**💡 Also new**: The `ta4j-cli` module exposes compact and lossless serialization v2 inputs, dynamic backtest sizing, Monte Carlo/analog/conformal forecasting, versioned reproducible JSON, stdin pipelines, live catalog discovery, and generated completion. Build it with `./mvnw -pl ta4j-cli -am package`, then run the fat jar from `ta4j-cli/target/`.
 
 ## Build commands: Maven
 

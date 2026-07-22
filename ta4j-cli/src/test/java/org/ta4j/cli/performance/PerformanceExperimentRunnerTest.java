@@ -64,7 +64,7 @@ class PerformanceExperimentRunnerTest {
         assertTrue(Files.exists(outputDir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceExperimentRunner.SUMMARY_FILE)));
 
-        JsonObject json = artifacts.performanceJson();
+        JsonObject json = JsonParser.parseString(artifacts.performanceJson()).getAsJsonObject();
         assertEquals("kalman-filter", json.get("experimentId").getAsString());
         assertEquals(2, json.get("repetitions").getAsInt());
         assertEquals(0, json.get("warmups").getAsInt());

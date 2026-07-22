@@ -3,21 +3,21 @@
  */
 package org.ta4j.cli;
 
-import org.ta4j.cli.commands.indicator.IndicatorCommand;
-import org.ta4j.cli.commands.forecast.ForecastCommand;
-import org.ta4j.cli.commands.performance.PerformanceCommand;
-import org.ta4j.cli.commands.rule.RuleCommand;
-import org.ta4j.cli.commands.strategy.StrategyCommand;
-
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
 import picocli.CommandLine.IVersionProvider;
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.ParameterException;
+import picocli.CommandLine.ScopeType;
 import picocli.CommandLine.Spec;
 
 /**
@@ -33,9 +33,18 @@ import picocli.CommandLine.Spec;
  * @since 0.23.1
  */
 @Command(name = "ta4j-cli", description = "Run bounded ta4j workflows from local files.", mixinStandardHelpOptions = true, versionProvider = Ta4jCli.VersionProvider.class, subcommands = {
-        StrategyCommand.class, IndicatorCommand.class, RuleCommand.class, ForecastCommand.class,
-        PerformanceCommand.class, HelpCommand.class })
+        CliCommands.StrategyCommand.class, CliCommands.IndicatorCommand.class, CliCommands.RuleCommand.class,
+        CliCommands.ForecastCommand.class, CliCommands.PerformanceCommand.class, CliCommands.CatalogCommand.class,
+        CliCommands.CompletionCommand.class, HelpCommand.class })
 public final class Ta4jCli implements Runnable {
+
+    enum ErrorFormat {
+        TEXT, JSON
+    }
+
+    private static final int IO_ERROR_EXIT_CODE = 74;
+
+    private final InputStream input;
 
     static final class VersionProvider implements IVersionProvider {
 
@@ -50,6 +59,22 @@ public final class Ta4jCli implements Runnable {
     @Spec
     private CommandSpec spec;
 
+    @Option(names = "--error-format", defaultValue = "TEXT", scope = ScopeType.INHERIT, paramLabel = "<format>", description = "Error output: text or json.")
+    private ErrorFormat errorFormat;
+
+    /**
+     * Creates a CLI using standard input.
+     *
+     * @since 0.23.1
+     */
+    public Ta4jCli() {
+        this(System.in);
+    }
+
+    Ta4jCli(InputStream input) {
+        this.input = input;
+    }
+
     /**
      * Executes the CLI.
      *
@@ -57,19 +82,29 @@ public final class Ta4jCli implements Runnable {
      * @since 0.23.1
      */
     public static void main(String[] args) {
-        int exitCode = run(args, new PrintWriter(System.out, true), new PrintWriter(System.err, true));
+        int exitCode = run(args, new PrintWriter(System.out, true, StandardCharsets.UTF_8),
+                new PrintWriter(System.err, true, StandardCharsets.UTF_8));
         if (exitCode != 0) {
             System.exit(exitCode);
         }
     }
 
     static int run(String[] args, PrintWriter out, PrintWriter err) {
-        CommandLine commandLine = new CommandLine(new Ta4jCli());
+        return run(args, System.in, out, err);
+    }
+
+    static int run(String[] args, InputStream input, PrintWriter out, PrintWriter err) {
+        CommandLine commandLine = new CommandLine(new Ta4jCli(input));
+        commandLine.setCaseInsensitiveEnumValuesAllowed(true);
         commandLine.setOut(out);
         commandLine.setErr(err);
         commandLine.setParameterExceptionHandler(Ta4jCli::handleParameterException);
         commandLine.setExecutionExceptionHandler(Ta4jCli::handleExecutionException);
         return commandLine.execute(args);
+    }
+
+    InputStream input() {
+        return input;
     }
 
     @Override
@@ -80,21 +115,63 @@ public final class Ta4jCli implements Runnable {
     private static int handleParameterException(ParameterException exception, String[] args) {
         CommandLine commandLine = exception.getCommandLine();
         PrintWriter err = commandLine.getErr();
-        err.println(exception.getMessage());
-        err.println();
-        commandLine.usage(err);
+        Ta4jCli root = rootCommand(commandLine);
+        if (root.errorFormat == ErrorFormat.JSON) {
+            err.println(CliSupport
+                    .toJson(errorPayload(commandLine, "usage", CommandLine.ExitCode.USAGE, exception.getMessage())));
+        } else {
+            err.println(exception.getMessage());
+            err.println();
+            commandLine.usage(err);
+        }
         err.flush();
         return CommandLine.ExitCode.USAGE;
     }
 
     private static int handleExecutionException(Exception exception, CommandLine commandLine,
             CommandLine.ParseResult parseResult) {
-        PrintWriter err = commandLine.getErr();
-        err.println(exception.getMessage());
-        err.flush();
-        if (exception instanceof IOException) {
-            return CommandLine.ExitCode.SOFTWARE;
+        int exitCode;
+        String category;
+        if (exception instanceof IllegalArgumentException) {
+            exitCode = CommandLine.ExitCode.USAGE;
+            category = "usage";
+        } else if (exception instanceof IOException) {
+            exitCode = IO_ERROR_EXIT_CODE;
+            category = "io";
+        } else {
+            exitCode = CommandLine.ExitCode.SOFTWARE;
+            category = "software";
         }
-        return CommandLine.ExitCode.USAGE;
+        String message = exception.getMessage() == null || exception.getMessage().isBlank()
+                ? exception.getClass().getSimpleName()
+                : exception.getMessage();
+        PrintWriter err = commandLine.getErr();
+        Ta4jCli root = rootCommand(commandLine);
+        if (root.errorFormat == ErrorFormat.JSON) {
+            err.println(CliSupport.toJson(errorPayload(commandLine, category, exitCode, message)));
+        } else {
+            err.println(message);
+        }
+        err.flush();
+        return exitCode;
+    }
+
+    private static Ta4jCli rootCommand(CommandLine commandLine) {
+        return (Ta4jCli) commandLine.getCommandSpec().root().userObject();
+    }
+
+    private static Map<String, Object> errorPayload(CommandLine commandLine, String category, int exitCode,
+            String message) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        error.put("category", category);
+        error.put("exitCode", exitCode);
+        error.put("message", message);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("schemaVersion", CliSupport.SCHEMA_VERSION);
+        payload.put("status", "error");
+        payload.put("command", commandLine.getCommandSpec().qualifiedName());
+        payload.put("error", error);
+        return payload;
     }
 }

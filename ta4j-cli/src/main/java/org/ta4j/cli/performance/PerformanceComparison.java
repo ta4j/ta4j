@@ -267,13 +267,4 @@ public final class PerformanceComparison {
         return DECIMAL_FORMAT.format(scale.getAsDouble());
     }
 
-    /**
-     * Artifacts from one performance comparison run.
-     *
-     * @param outputDir      directory containing written artifacts
-     * @param comparisonJson in-memory representation of {@code comparison.json}
-     * @since 0.23.1
-     */
-    public record ComparisonArtifacts(Path outputDir, JsonObject comparisonJson) {
-    }
 }
