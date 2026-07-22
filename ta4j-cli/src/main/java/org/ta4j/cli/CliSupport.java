@@ -430,6 +430,25 @@ final class CliSupport {
         reportInvalidStrategies(invalidStrategies, err);
     }
 
+    static List<String> outputInvalidStrategies(List<String> invalidStrategies, boolean reproducible,
+            String strategyJsonFile, String strategiesJsonFile) {
+        if (!reproducible) {
+            return invalidStrategies;
+        }
+        return invalidStrategies.stream()
+                .map(message -> redactStrategyInputFile(message, "--strategy-json-file", strategyJsonFile))
+                .map(message -> redactStrategyInputFile(message, "--strategies-json-file", strategiesJsonFile))
+                .toList();
+    }
+
+    private static String redactStrategyInputFile(String message, String option, String inputFile) {
+        if (inputFile == null || inputFile.isBlank()) {
+            return message;
+        }
+        return message.replace(option + " " + inputFile, option + " <file>")
+                .replace(" from " + inputFile, " from <file>");
+    }
+
     static BacktestRuntimeReport aggregateBacktestRuntimes(List<BacktestRuntimeReport> runtimeReports) {
         if (runtimeReports == null || runtimeReports.isEmpty()) {
             return BacktestRuntimeReport.empty();
