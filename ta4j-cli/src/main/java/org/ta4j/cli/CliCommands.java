@@ -510,9 +510,8 @@ final class CliCommands {
                     CliSupport.backtestRuntimeToMap(CliSupport.aggregateBacktestRuntimes(runtimeReports)));
             payload.put("strategyCount", resolvedStrategies.strategies().size());
             payload.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
-            payload.put("invalidStrategies",
-                    CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(), artifacts.reproducible,
-                            strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
+            payload.put("invalidStrategies", CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(),
+                    artifacts.reproducible, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
             payload.put("statement", statementMaps.getFirst());
             payload.put("statements", statementMaps);
             CliSupport.markPartial(response, resolvedStrategies.invalidStrategies());
@@ -614,9 +613,8 @@ final class CliCommands {
             Map<String, Object> payload = CliSupport.result(response);
             payload.put("strategyCount", resolvedStrategies.strategies().size());
             payload.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
-            payload.put("invalidStrategies",
-                    CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(), artifacts.reproducible,
-                            strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
+            payload.put("invalidStrategies", CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(),
+                    artifacts.reproducible, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
             payload.put("backtest", primaryBacktest);
             payload.put("walkForward", primaryWalkForward);
             payload.put("results", resultEntries);

@@ -439,8 +439,8 @@ class Ta4jCliTest {
             }
         };
 
-        CliRunResult ioFailure = runCliAllowingError(failingInput, "--error-format", "json", "strategy",
-                "backtest", "--data-file", "-", "--data-format", "csv", "--strategy", "SMA(7,21)");
+        CliRunResult ioFailure = runCliAllowingError(failingInput, "--error-format", "json", "strategy", "backtest",
+                "--data-file", "-", "--data-format", "csv", "--strategy", "SMA(7,21)");
 
         assertThat(ioFailure.exitCode()).isEqualTo(74);
         JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
@@ -448,10 +448,10 @@ class Ta4jCliTest {
         assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from stdin.");
 
         CliRunResult invalidFormat = runCliAllowingError(InputStream.nullInputStream(), "--error-format", "json",
-                "strategy", "backtest", "--data-file", "-", "--data-format", "yaml", "--strategy",
-                "SMA(7,21)");
+                "strategy", "backtest", "--data-file", "-", "--data-format", "yaml", "--strategy", "SMA(7,21)");
         assertThat(invalidFormat.exitCode()).isEqualTo(2);
-        JsonObject usageError = JsonParser.parseString(invalidFormat.stderr()).getAsJsonObject()
+        JsonObject usageError = JsonParser.parseString(invalidFormat.stderr())
+                .getAsJsonObject()
                 .getAsJsonObject("error");
         assertThat(usageError.get("category").getAsString()).isEqualTo("usage");
     }
@@ -524,23 +524,25 @@ class Ta4jCliTest {
         Files.writeString(secondStrategiesFile, strategiesJson);
 
         CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
-                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip",
-                "--reproducible");
+                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip", "--reproducible");
         CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
-                "--strategies-json-file", secondStrategiesFile.toString(), "--invalid-input", "skip",
-                "--reproducible");
+                "--strategies-json-file", secondStrategiesFile.toString(), "--invalid-input", "skip", "--reproducible");
 
         assertThat(first.exitCode()).isZero();
         assertThat(second.exitCode()).isZero();
         assertThat(second.stdout()).isEqualTo(first.stdout());
         String reproducibleInvalidInput = result(JsonParser.parseString(first.stdout()).getAsJsonObject())
-                .getAsJsonArray("invalidStrategies").get(0).getAsString();
+                .getAsJsonArray("invalidStrategies")
+                .get(0)
+                .getAsString();
         assertThat(reproducibleInvalidInput).doesNotContain(tempDir.toString());
 
         CliRunResult ordinary = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
                 "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip");
         String ordinaryInvalidInput = result(JsonParser.parseString(ordinary.stdout()).getAsJsonObject())
-                .getAsJsonArray("invalidStrategies").get(0).getAsString();
+                .getAsJsonArray("invalidStrategies")
+                .get(0)
+                .getAsString();
         assertThat(ordinaryInvalidInput).contains(firstStrategiesFile.toString());
     }
 
