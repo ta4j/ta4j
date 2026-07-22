@@ -21,9 +21,9 @@ import org.ta4j.core.num.Num;
 public class AroonUpIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final HighestValueIndicator highestHighPriceIndicator;
     private final Indicator<Num> highPriceIndicator;
-    private final Num barCountNum;
+    private final transient HighestValueIndicator highestHighPriceIndicator;
+    private final transient Num barCountNum;
 
     /**
      * Constructor.

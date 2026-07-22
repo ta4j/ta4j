@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
@@ -71,5 +72,14 @@ public class InSlopeRuleTest {
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rulePositiveSlope);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, ruleNegativeSlope);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, ruleNegativeSlope);
+    }
+
+    @Test
+    public void rejectsInvalidConstructorArguments() {
+        Indicator<Num> indicator = new FixedNumIndicator(series, 1, 2, 3);
+
+        assertThrows(NullPointerException.class, () -> new InSlopeRule(null, series.numFactory().zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new InSlopeRule(indicator, 0, series.numFactory().zero(), series.numFactory().one()));
     }
 }

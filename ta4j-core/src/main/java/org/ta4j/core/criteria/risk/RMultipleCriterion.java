@@ -29,10 +29,18 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
      * @param riskModel model that provides per-trade risk amounts
      */
     public RMultipleCriterion(PositionRiskModel riskModel) {
+        this(validatedConfig(riskModel));
+    }
+
+    private RMultipleCriterion(Config config) {
+        this.riskModel = config.riskModel();
+    }
+
+    private static Config validatedConfig(PositionRiskModel riskModel) {
         if (riskModel == null) {
             throw new IllegalArgumentException("riskModel must not be null");
         }
-        this.riskModel = riskModel;
+        return new Config(riskModel);
     }
 
     /**
@@ -104,5 +112,8 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    private record Config(PositionRiskModel riskModel) {
     }
 }

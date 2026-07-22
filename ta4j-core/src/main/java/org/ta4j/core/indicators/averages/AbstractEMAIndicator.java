@@ -22,7 +22,7 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final Num multiplier;
+    private final transient Num multiplier;
 
     /**
      * Constructor.
@@ -50,16 +50,16 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         Num current = indicator.getValue(index);
 
         // Check for NaN in current value
-        if (Num.isNaNOrNull(current)) {
+        if (!Num.isFinite(current)) {
             return NaN;
         }
 
         // Get previous value and check for NaN
         Num prevValue = getValue(index - 1);
-        if (Num.isNaNOrNull(prevValue)) {
+        if (!Num.isFinite(prevValue)) {
             // Graceful recovery: reset to current value when previous is NaN
             // This prevents contamination of future values
-            return current;
+            return initialValue(index, current);
         }
 
         // Standard EMA calculation
@@ -73,5 +73,17 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
 
     public int getBarCount() {
         return barCount;
+    }
+
+    /**
+     * Returns the first value used after warm-up or after a NaN reset.
+     *
+     * @param index   current index
+     * @param current current source value
+     * @return initial EMA value
+     * @since 0.22.9
+     */
+    protected Num initialValue(int index, Num current) {
+        return current;
     }
 }

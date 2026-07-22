@@ -41,7 +41,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @param operand   the operand indicator
      */
     public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand) {
-        this(operation, operand, null, null, null);
+        this(validatedConfig(operation, operand, null, null, null));
     }
 
     /**
@@ -52,15 +52,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      * @param exponent  the exponent for POW operation
      */
     public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Number exponent) {
-        if (operation != Operation.POW) {
-            throw new IllegalArgumentException("Exponent parameter is only valid for POW operation");
-        }
-        this.operation = operation;
-        this.operand = operand;
-        this.exponent = operand.getBarSeries().numFactory().numOf(exponent);
-        this.valueToReplace = null;
-        this.replacementValue = null;
-        this.operator = getOperator(operation, this.exponent, null, null);
+        this(validatedPowConfig(operation, operand, exponent));
     }
 
     /**
@@ -73,28 +65,42 @@ public class UnaryOperationIndicator implements Indicator<Num> {
      */
     public UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Num valueToReplace,
             final Num replacementValue) {
-        if (operation != Operation.SUBSTITUTE) {
-            throw new IllegalArgumentException("Replacement values are only valid for SUBSTITUTE operation");
-        }
-        this.operation = operation;
-        this.operand = operand;
-        this.exponent = null;
-        this.valueToReplace = valueToReplace;
-        this.replacementValue = replacementValue;
-        this.operator = getOperator(operation, null, valueToReplace, replacementValue);
+        this(validatedSubstituteConfig(operation, operand, valueToReplace, replacementValue));
     }
 
-    private UnaryOperationIndicator(final Operation operation, final Indicator<Num> operand, final Num exponent,
+    private UnaryOperationIndicator(Config config) {
+        this.operation = config.operation();
+        this.operand = config.operand();
+        this.exponent = config.exponent();
+        this.valueToReplace = config.valueToReplace();
+        this.replacementValue = config.replacementValue();
+        this.operator = config.operator();
+    }
+
+    private static Config validatedConfig(final Operation operation, final Indicator<Num> operand, final Num exponent,
             final Num valueToReplace, final Num replacementValue) {
         if (operation == null || operand == null) {
             throw new IllegalArgumentException("Operation and operand must not be null");
         }
-        this.operation = operation;
-        this.operand = operand;
-        this.exponent = exponent;
-        this.valueToReplace = valueToReplace;
-        this.replacementValue = replacementValue;
-        this.operator = getOperator(operation, exponent, valueToReplace, replacementValue);
+        return new Config(operation, getOperator(operation, exponent, valueToReplace, replacementValue), operand,
+                exponent, valueToReplace, replacementValue);
+    }
+
+    private static Config validatedPowConfig(final Operation operation, final Indicator<Num> operand,
+            final Number exponent) {
+        if (operation != Operation.POW) {
+            throw new IllegalArgumentException("Exponent parameter is only valid for POW operation");
+        }
+        Num convertedExponent = operand.getBarSeries().numFactory().numOf(exponent);
+        return validatedConfig(operation, operand, convertedExponent, null, null);
+    }
+
+    private static Config validatedSubstituteConfig(final Operation operation, final Indicator<Num> operand,
+            final Num valueToReplace, final Num replacementValue) {
+        if (operation != Operation.SUBSTITUTE) {
+            throw new IllegalArgumentException("Replacement values are only valid for SUBSTITUTE operation");
+        }
+        return validatedConfig(operation, operand, null, valueToReplace, replacementValue);
     }
 
     private static UnaryOperator<Num> getOperator(Operation operation, Num exponent, Num valueToReplace,
@@ -198,4 +204,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
         return operand.getBarSeries();
     }
 
+    private record Config(Operation operation, UnaryOperator<Num> operator, Indicator<Num> operand, Num exponent,
+            Num valueToReplace, Num replacementValue) {
+    }
 }

@@ -17,8 +17,8 @@ import org.ta4j.core.indicators.trend.UpTrendIndicator;
  */
 public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
 
-    private final UpTrendIndicator trendIndicator;
-    private final BearishHaramiIndicator harami;
+    private final transient UpTrendIndicator trendIndicator;
+    private final transient BearishHaramiIndicator harami;
 
     /**
      * Constructor.

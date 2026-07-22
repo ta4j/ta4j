@@ -13,8 +13,8 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
@@ -26,11 +26,9 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestExecutionResultTest {
 
-    public BacktestExecutionResultTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+    private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
     public void toStringReturnsJsonWithCountAndRuntimeReport() {
@@ -42,7 +40,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategyOne, strategyTwo);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         String jsonString = result.toString();
 
@@ -79,7 +77,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numFactory.one());
 
         String jsonString = result.toString();
 
@@ -91,6 +89,38 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         assertEquals("tradingStatementsCount should be 0 for empty list", 0,
                 json.get("tradingStatementsCount").getAsInt());
         assertTrue("JSON should contain runtimeReport", json.has("runtimeReport"));
+    }
+
+    @Test
+    public void constructorCopiesTradingStatements() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult source = executor.executeWithRuntimeReport(
+                List.of(new BaseStrategy(new FixedRule(0), new FixedRule(1))), numFactory.one());
+        List<TradingStatement> statements = new ArrayList<>(source.tradingStatements());
+
+        BacktestExecutionResult result = new BacktestExecutionResult(series, statements, source.runtimeReport());
+        statements.clear();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertThrows(UnsupportedOperationException.class, () -> result.tradingStatements().clear());
+    }
+
+    @Test
+    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
+        BarSeries firstSnapshot = result.barSeries();
+        BarSeries secondSnapshot = result.barSeries();
+        series.barBuilder().closePrice(8).add();
+
+        assertNotSame(series, firstSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
+        assertEquals(3, firstSnapshot.getBarCount());
+        assertEquals(3, secondSnapshot.getBarCount());
+        assertEquals(3, result.barSeries().getBarCount());
+        assertEquals(series.getName(), firstSnapshot.getName());
     }
 
     @Test
@@ -112,7 +142,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         // Get top 2 strategies by net profit
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
@@ -142,7 +172,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         // Sort by number of positions first, then by expectancy for ties
         AnalysisCriterion positionsCriterion = new NumberOfPositionsCriterion();
@@ -183,7 +213,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         }
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(5, criterion);
@@ -201,7 +231,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategy1, strategy2);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(100, criterion);
@@ -216,7 +246,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
 
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(0, criterion);
@@ -231,7 +261,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
 
         AnalysisCriterion[] nullCriteria = null;
         result.getTopStrategies(1, nullCriteria);
@@ -244,7 +274,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
 
         List<AnalysisCriterion> nullCriteria = null;
         result.getTopStrategies(1, nullCriteria);
@@ -257,7 +287,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
 
         result.getTopStrategies(1, new ArrayList<>());
     }
@@ -269,7 +299,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         Strategy strategy = new BaseStrategy("Strategy", new FixedRule(0), new FixedRule(1));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
 
         result.getTopStrategies(-1, new NetProfitCriterion());
     }
@@ -287,7 +317,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
@@ -314,7 +344,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(), numFactory.one());
 
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(10, criterion);
@@ -335,7 +365,7 @@ public class BacktestExecutionResultTest extends AbstractIndicatorTest<BarSeries
         List<Strategy> strategies = List.of(strategy1, strategy2, strategy3);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numFactory.one());
 
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();

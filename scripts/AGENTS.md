@@ -4,9 +4,13 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 
 ## Build script contract
 
-- `run-full-build-quiet.sh` must enforce a default 3-minute timeout (`QUIET_BUILD_TIMEOUT_SECONDS` can override).
-- Preserve quiet-build behavior: full log under `.agents/logs/` and concise aggregated stdout.
+- `run-full-build-quiet.sh` and `run-full-build-quiet.ps1` default to the local contributor gate: repository preflight checks plus mutating Maven `clean license:format formatter:format verify` across all non-demo tags. Hosted PR CI must use `--validate-only` for non-mutating `clean license:check formatter:validate verify`. Use `--goals "goal..."` only when intentionally running a focused Maven goal set; focused invocations skip repository preflight checks.
+- `run-full-build-quiet.sh` must enforce a default 3-minute timeout (`QUIET_BUILD_TIMEOUT_SECONDS` can override). `QUIET_BUILD_HEARTBEAT_SECONDS` controls periodic still-running output.
+- For `run-full-build-quiet.sh`, preserve quiet-build behavior: full log under `.agents/logs/` and minimal stdout that passes through WARN/ERROR-level lines, then prints final elapsed build time, the aggregate test summary when available, JaCoCo coverage when generated, and the log path. Do not add per-step start/success chatter.
+- Keep Maven argument pass-through intact for focused modules, tagged tests, and quality-tool flags, for example `scripts/run-full-build-quiet.sh -- -pl ta4j-core` and `scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration`.
 - Use `mktemp` templates ending in `XXXXXX` for macOS portability.
+- Repository preflight fixtures run in parallel through `run-full-build-quiet.sh`; keep new `scripts/tests/test_*.sh` fixtures isolated, deterministic, temp-directory scoped, and safe under `BASH_ENV=/dev/null`.
+- In script fixtures, fake expensive tools such as Maven, GitHub, network calls, and cross-shell launches when the assertion is command shape, output parsing, or failure handling. Reserve real tool execution for the actual release/build workflow or an explicit opt-in smoke.
 
 ## Scoped AGENTS discovery helper
 

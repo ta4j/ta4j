@@ -27,12 +27,17 @@ public record ElliottWaveWalkForwardContext(ElliottWaveAnalysisRunner runner, Se
      * Creates a validated context.
      */
     public ElliottWaveWalkForwardContext {
-        Objects.requireNonNull(runner, "runner");
+        runner = Objects.requireNonNull(runner, "runner").copy();
         seriesSelector = seriesSelector == null ? defaultPrefixSelector() : seriesSelector;
         if (maxPredictions <= 0) {
             throw new IllegalArgumentException("maxPredictions must be > 0");
         }
         metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
+    }
+
+    @Override
+    public ElliottWaveAnalysisRunner runner() {
+        return runner.copy();
     }
 
     /**

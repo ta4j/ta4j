@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.*;
 
 import org.junit.Test;
@@ -44,6 +49,15 @@ public class KiJunV2IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
 
             assertNumEquals(expected.doubleValue(), value);
         }
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        HighPriceIndicator high = new HighPriceIndicator(series);
+        LowPriceIndicator low = new LowPriceIndicator(series);
+
+        return List.of(serializationFixture(series, new KiJunV2Indicator(high, low, 9), stableIndexes(series)));
     }
 
 }

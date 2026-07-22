@@ -6,6 +6,9 @@ package org.ta4j.core.serialization;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -94,6 +97,68 @@ public final class RuleSerialization {
     public static ComponentDescriptor describe(Rule rule) {
         Objects.requireNonNull(rule, "rule");
         return describe(rule, new IdentityHashMap<>());
+    }
+
+    /**
+     * Renders a rule as a compact named shorthand expression when the default
+     * registry recognizes its descriptor.
+     *
+     * @param rule rule instance
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  rule
+     * @since 0.23.1
+     */
+    public static String toExpression(Rule rule) {
+        return toExpression(rule, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders a rule as a compact named shorthand expression when the supplied
+     * registry recognizes its descriptor.
+     *
+     * @param rule     rule instance
+     * @param registry named asset registry
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  rule
+     * @since 0.23.1
+     */
+    public static String toExpression(Rule rule, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(rule);
+        return registry.toExpression(NamedAssetKind.RULE, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named rule shorthand registered for descriptor: " + descriptor));
+    }
+
+    /**
+     * Rebuilds a rule from a compact named shorthand expression using the default
+     * registry.
+     *
+     * @param series     bar series to use for indicator construction
+     * @param expression shorthand expression
+     * @return reconstructed rule
+     * @since 0.23.1
+     */
+    public static Rule fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds a rule from a compact named shorthand expression using the supplied
+     * registry.
+     *
+     * @param series     bar series to use for indicator construction
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed rule
+     * @since 0.23.1
+     */
+    public static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.RULE, expression);
+        return fromDescriptor(series, descriptor);
     }
 
     private static ComponentDescriptor describe(Rule rule, IdentityHashMap<Rule, ComponentDescriptor> visited) {
@@ -376,6 +441,9 @@ public final class RuleSerialization {
         if (type.equals(BarSeries.class)) {
             return 80;
         }
+        if (type.equals(ATRIndicator.class)) {
+            return 100;
+        }
         if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
             return 70;
         }
@@ -567,7 +635,7 @@ public final class RuleSerialization {
                 // Check if component type matches parameter type
                 if (isAssignableFrom(paramType, component)) {
                     Object componentValue = resolveComponent(component, paramType, context);
-                    if (componentValue != null) {
+                    if (componentValue != null && paramType.isInstance(componentValue)) {
                         arguments[i] = componentValue;
                         argumentTypes[i] = paramType;
                         componentsUsed[j] = true;
@@ -885,6 +953,11 @@ public final class RuleSerialization {
                     return deserializeChainLinks(value, context);
                 }
             }
+        } catch (IllegalArgumentException e) {
+            if (paramType.isArray() && paramType.getComponentType().equals(ChainLink.class)) {
+                throw e;
+            }
+            return null; // Can't resolve, try next match
         } catch (Exception e) {
             return null; // Can't resolve, try next match
         }
@@ -900,28 +973,30 @@ public final class RuleSerialization {
         for (int i = 0; i < list.size(); i++) {
             Object entry = list.get(i);
             if (entry == null) {
-                links[i] = null;
-                continue;
+                throw new IllegalArgumentException("Chain link entry cannot be null");
             }
             if (!(entry instanceof Map<?, ?> map)) {
                 throw new IllegalArgumentException("Chain link entry must be an object but was " + entry);
             }
-            Rule linkRule = null;
             Object ruleValue = map.get("rule");
-            if (ruleValue != null) {
-                ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
-                if (ruleDescriptor != null) {
-                    linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
-                }
+            if (ruleValue == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
             }
+            ComponentDescriptor ruleDescriptor = parseChainLinkRule(ruleValue);
+            if (ruleDescriptor == null) {
+                throw new IllegalArgumentException("Chain link rule cannot be null");
+            }
+            Rule linkRule = RuleSerialization.fromDescriptor(context.series, ruleDescriptor, context);
             int threshold = 0;
             Object thresholdValue = map.get("threshold");
             if (thresholdValue != null) {
                 Object converted = convertNumber(thresholdValue, Integer.class);
                 if (converted instanceof Number number) {
                     threshold = number.intValue();
-                } else {
+                } else if (converted != null) {
                     threshold = Integer.parseInt(String.valueOf(converted));
+                } else {
+                    throw new IllegalArgumentException("Invalid chain link threshold: " + thresholdValue);
                 }
             }
             links[i] = new ChainLink(linkRule, threshold);
@@ -1018,7 +1093,8 @@ public final class RuleSerialization {
             if (value == null) {
                 throw new IllegalArgumentException("Missing numeric parameter: " + name);
             }
-            return series.numFactory().numOf(String.valueOf(value));
+            return series.numFactory()
+                    .numOf(JsonNumberConversions.parseFiniteJsonNumber(String.valueOf(value), name).toString());
         }
 
         private Object resolveNumber(String name, Class<?> targetType) {
@@ -1039,6 +1115,10 @@ public final class RuleSerialization {
             for (int i = 0; i < list.size(); i++) {
                 Object element = list.get(i);
                 Object converted = convertNumber(element, componentType);
+                if (converted == null) {
+                    throw new IllegalArgumentException(
+                            "Invalid numeric array parameter '" + name + "' at index " + i + ": " + element);
+                }
                 Array.set(array, i, converted);
             }
             return array;
@@ -1146,82 +1226,10 @@ public final class RuleSerialization {
     }
 
     private static Object convertNumber(Object value, Class<?> targetType) {
-        if (targetType.equals(Number.class) || targetType.equals(Object.class)) {
-            if (value instanceof Number) {
-                return value;
-            }
-            try {
-                return Double.parseDouble(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(int.class) || targetType.equals(Integer.class)) {
-            if (value instanceof Number number) {
-                return number.intValue();
-            }
-            try {
-                return Integer.parseInt(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Integer: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(long.class) || targetType.equals(Long.class)) {
-            if (value instanceof Number number) {
-                return number.longValue();
-            }
-            try {
-                return Long.parseLong(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Long: " + e.getMessage(),
-                        e);
-            }
-        }
-        if (targetType.equals(double.class) || targetType.equals(Double.class)) {
-            if (value instanceof Number number) {
-                return number.doubleValue();
-            }
-            try {
-                return Double.parseDouble(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Double: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(float.class) || targetType.equals(Float.class)) {
-            if (value instanceof Number number) {
-                return number.floatValue();
-            }
-            try {
-                return Float.parseFloat(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Float: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(short.class) || targetType.equals(Short.class)) {
-            if (value instanceof Number number) {
-                return number.shortValue();
-            }
-            try {
-                return Short.parseShort(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "Failed to convert value '" + value + "' to Short: " + e.getMessage(), e);
-            }
-        }
-        if (targetType.equals(byte.class) || targetType.equals(Byte.class)) {
-            if (value instanceof Number number) {
-                return number.byteValue();
-            }
-            try {
-                return Byte.parseByte(String.valueOf(value));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Failed to convert value '" + value + "' to Byte: " + e.getMessage(),
-                        e);
-            }
+        Object converted = JsonNumberConversions.convertJsonNumber(value, targetType);
+        if (converted != null || targetType.equals(Number.class) || targetType.equals(Object.class)
+                || Number.class.isAssignableFrom(targetType) || targetType.isPrimitive()) {
+            return converted;
         }
         throw new IllegalStateException("Unsupported numeric target type: " + targetType.getName());
     }
@@ -1274,6 +1282,9 @@ public final class RuleSerialization {
         private static int parameterSpecificity(Class<?> type) {
             if (type.equals(BarSeries.class)) {
                 return 80;
+            }
+            if (type.equals(ATRIndicator.class)) {
+                return 100;
             }
             if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
                 return 70;
@@ -1459,6 +1470,9 @@ public final class RuleSerialization {
         }
 
         private static boolean indicatorAccepts(Parameter parameter, Indicator<?> indicator) {
+            if (!parameter.getType().isInstance(indicator)) {
+                return false;
+            }
             Type parameterized = parameter.getParameterizedType();
             if (parameterized instanceof ParameterizedType type) {
                 Type[] arguments = type.getActualTypeArguments();
@@ -1812,18 +1826,13 @@ public final class RuleSerialization {
             List<Map<String, Object>> serialized = new ArrayList<>(links.length);
             for (ChainLink link : links) {
                 if (link == null) {
-                    serialized.add(null);
-                    continue;
+                    throw new IllegalArgumentException("Chain link entry cannot be null");
                 }
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("threshold", serializeNumber(link.getThreshold()));
-                Rule linkRule = link.getRule();
-                if (linkRule != null) {
-                    ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
-                    payload.put("rule", ComponentSerialization.toJson(descriptor));
-                } else {
-                    payload.put("rule", null);
-                }
+                Rule linkRule = Objects.requireNonNull(link.getRule(), "chain link rule cannot be null");
+                ComponentDescriptor descriptor = RuleSerialization.describe(linkRule, context.visited);
+                payload.put("rule", ComponentSerialization.toJson(descriptor));
                 serialized.add(payload);
             }
             return serialized;

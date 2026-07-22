@@ -5,9 +5,11 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -15,6 +17,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class VolatilityStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
@@ -81,5 +84,26 @@ public class VolatilityStopLossRuleTest extends AbstractIndicatorTest<Object, Ob
         tradingRecord.enter(0, numFactory.hundred(), numFactory.one());
 
         assertTrue(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
+    public void serializeAndDeserialize() {
+        BarSeries series = StopRuleTestSupport.series(numFactory, 100, 105, 111);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        ConstantIndicator<Num> volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+        VolatilityStopLossRule rule = new VolatilityStopLossRule(closePrice, volatility, 2);
+
+        RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
+        RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        BarSeries series = StopRuleTestSupport.series(numFactory, 100, 95, 89);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        ConstantIndicator<Num> volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopLossRule(closePrice, volatility, 0));
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopLossRule(closePrice, volatility, -1));
     }
 }

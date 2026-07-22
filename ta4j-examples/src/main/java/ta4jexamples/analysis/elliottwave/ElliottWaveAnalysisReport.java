@@ -51,9 +51,8 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.Gson;
 
 /**
- * Domain model capturing all Elliott Wave analysis results currently logged via
- * {@link ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)}
- * and {@link ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)}.
+ * Domain model capturing the Elliott Wave analysis results produced by
+ * {@link ElliottWaveIndicatorSuiteDemo}.
  * <p>
  * This class provides structured access to analysis results including swing
  * snapshots, phase information, ratio and channel data, confluence scores,
@@ -97,6 +96,23 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     private static final double OUTLOOK_MIN_TOP_THREE_SPREAD = 0.08;
     private static final double OUTLOOK_MIN_TREND_STRENGTH = 0.15;
     private static final double CALIBRATION_EPSILON = 1.0e-12;
+
+    public ElliottWaveAnalysisReport {
+        alternatives = copyOrEmpty(alternatives);
+        alternativeChartImages = copyOrEmpty(alternativeChartImages);
+    }
+
+    public List<AlternativeScenario> alternatives() {
+        return List.copyOf(alternatives);
+    }
+
+    public List<String> alternativeChartImages() {
+        return List.copyOf(alternativeChartImages);
+    }
+
+    private static <T> List<T> copyOrEmpty(List<T> source) {
+        return source == null ? List.of() : List.copyOf(source);
+    }
 
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
         @Override
@@ -450,6 +466,14 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             double fibonacciScore, double timeScore, double alternationScore, double channelScore,
             double completenessScore, String primaryReason, String weakestFactor, String direction,
             double invalidationPrice, double primaryTarget, List<SwingData> swings) {
+        public BaseCaseScenario {
+            swings = copyOrEmpty(swings);
+        }
+
+        public List<SwingData> swings() {
+            return List.copyOf(swings);
+        }
+
         static BaseCaseScenario from(ElliottScenario scenario, double scenarioProbability,
                 double calibratedProbability) {
             ElliottConfidence confidence = scenario.confidence();
@@ -491,6 +515,14 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     public record AlternativeScenario(ElliottPhase currentPhase, ScenarioType type, double confidencePercent,
             @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability,
             @JsonAdapter(ScenarioProbabilityAdapter.class) double calibratedProbability, List<SwingData> swings) {
+        public AlternativeScenario {
+            swings = copyOrEmpty(swings);
+        }
+
+        public List<SwingData> swings() {
+            return List.copyOf(swings);
+        }
+
         static AlternativeScenario from(ElliottScenario scenario, double scenarioProbability,
                 double calibratedProbability) {
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();

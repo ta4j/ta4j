@@ -3,7 +3,10 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -28,6 +31,12 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
      */
     public CCIIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        CCIIndicator indicator = new CCIIndicator(series, 20);
+        return List.of(serializationFixture(series, indicator, 0, 1, 10, 19, series.getEndIndex()));
     }
 
     @Before
@@ -55,5 +64,14 @@ public class CCIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (int i = 0; i < results20to30.length; i++) {
             assertNumEquals(results20to30[i], cci.getValue(i + 19));
         }
+    }
+
+    @Test
+    public void descriptorStoresOnlyConstructorInputs() {
+        CCIIndicator indicator = new CCIIndicator(series, 20);
+
+        assertThat(indicator.toDescriptor().getParameters()).containsOnlyKeys("barCount");
+        assertThat(indicator.toDescriptor().getParameters()).containsEntry("barCount", 20);
+        assertThat(indicator.toDescriptor().getComponents()).isEmpty();
     }
 }

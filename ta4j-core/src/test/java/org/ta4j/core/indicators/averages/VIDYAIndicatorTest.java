@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.*;
 
 import org.junit.Test;
@@ -36,6 +41,14 @@ public class VIDYAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
             assertNumEquals(expected.doubleValue(), value);
         }
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new VIDYAIndicator(close, 5, 6), stableIndexes(series)));
     }
 
 }

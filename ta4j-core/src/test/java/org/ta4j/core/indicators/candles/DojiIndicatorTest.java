@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -55,4 +60,11 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         assertFalse(doji.getValue(4));
         assertFalse(doji.getValue(5));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new DojiIndicator(series, 8, 0.1), stableIndexes(series)));
+    }
+
 }

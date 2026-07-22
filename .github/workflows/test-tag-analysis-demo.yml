@@ -90,11 +90,11 @@ jobs:
           printf 'TA4J_ANALYSIS_DEMO_INSTRUMENT=%s\n' "${instrument}" >> "${GITHUB_ENV}"
           echo "analysis-demo:instrument=${instrument}"
 
-      - name: Build and run analysis-demo tagged tests with Maven
+      - name: Build and run analysis-demo tagged tests with Maven Wrapper
         run: >
-          xvfb-run mvn -B test
+          xvfb-run ./mvnw -B test
           -Dgroups=analysis-demo
-          -Dta4j.excludedTestTags=elliott-macro-cycle-replay
+          -Dta4j.excludedTestTags=
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
 

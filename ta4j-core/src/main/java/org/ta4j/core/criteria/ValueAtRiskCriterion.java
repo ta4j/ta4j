@@ -10,6 +10,7 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -77,7 +78,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     private Num calculateVaR(Returns returns, double confidence, ReturnRepresentation representation) {
         Num zero = returns.getBarSeries().numFactory().zero();
         // select non-NaN returns (use raw values for statistical calculations)
-        List<Num> returnRates = returns.getRawValues().subList(1, returns.getSize() + 1);
+        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
         if (returnRates.isEmpty()) {
             return getNeutralValue(returns.getBarSeries().numFactory());
         }

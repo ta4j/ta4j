@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -81,4 +84,11 @@ public class InvertedHammerIndicatorTest extends AbstractIndicatorTest<Indicator
         final var invertedHammer = new InvertedHammerIndicator(this.uptrendSeries);
         assertFalse(invertedHammer.getValue(26));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new InvertedHammerIndicator(series), stableIndexes(series)));
+    }
+
 }

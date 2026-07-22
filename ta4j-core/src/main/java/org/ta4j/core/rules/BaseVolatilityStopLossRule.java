@@ -26,14 +26,22 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
      * @param stopLossThreshold volatility-scaled stop-loss threshold indicator
      */
     protected BaseVolatilityStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
+        this(validatedConfig(referencePrice, stopLossThreshold));
+    }
+
+    private BaseVolatilityStopLossRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopLossThreshold = config.stopLossThreshold();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
         if (stopLossThreshold == null) {
             throw new IllegalArgumentException("stopLossThreshold must not be null");
         }
-        this.referencePrice = referencePrice;
-        this.stopLossThreshold = stopLossThreshold;
+        return new Config(referencePrice, stopLossThreshold);
     }
 
     /**
@@ -101,5 +109,8 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         // stopPrice models the initial stop at entry time, so threshold is read at
         // the entry index rather than the current evaluation index.
         return StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
     }
 }

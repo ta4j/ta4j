@@ -3,8 +3,16 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Test;
 import org.ta4j.core.Indicator;
@@ -32,14 +40,14 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
 
         final BollingerBandFacade bollingerBandFacade = new BollingerBandFacade(data, barCount, 2);
 
-        assertEquals(data, bollingerBandFacade.bandwidth().getBarSeries());
-        assertEquals(data, bollingerBandFacade.middle().getBarSeries());
+        assertTrue(isSameSeries(data, bollingerBandFacade.bandwidth().getBarSeries()));
+        assertTrue(isSameSeries(data, bollingerBandFacade.middle().getBarSeries()));
 
         final BollingerBandFacade bollingerBandFacadeOfIndicator = new BollingerBandFacade(new OpenPriceIndicator(data),
                 barCount, 2);
 
-        assertEquals(data, bollingerBandFacadeOfIndicator.lower().getBarSeries());
-        assertEquals(data, bollingerBandFacadeOfIndicator.upper().getBarSeries());
+        assertTrue(isSameSeries(data, bollingerBandFacadeOfIndicator.lower().getBarSeries()));
+        assertTrue(isSameSeries(data, bollingerBandFacadeOfIndicator.upper().getBarSeries()));
     }
 
     @Test
@@ -74,4 +82,18 @@ public class BollingerBandFacadeTest extends AbstractIndicatorTest<Indicator<Num
             assertNumEquals(widthBB.getValue(i), widthBBNumeric.getValue(i));
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(
+                serializationFixture(series, new BollingerBandFacade(close, 9, 2.0).middle(), stableIndexes(series)),
+                serializationFixture(series, new BollingerBandFacade(close, 9, 2.0).upper(), stableIndexes(series)),
+                serializationFixture(series, new BollingerBandFacade(close, 9, 2.0).lower(), stableIndexes(series)),
+                serializationFixture(series, new BollingerBandFacade(close, 9, 2.0).bandwidth(), stableIndexes(series)),
+                serializationFixture(series, new BollingerBandFacade(close, 9, 2.0).percentB(), stableIndexes(series)));
+    }
+
 }

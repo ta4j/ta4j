@@ -44,6 +44,18 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
      * @param barCount   the number of bars to look back for the calculation
      */
     public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Num gainAmount, int barCount) {
+        this(validatedConfig(indicator, gainAmount, barCount));
+    }
+
+    private TrailingFixedAmountStopGainRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.barCount = config.barCount();
+        this.gainAmount = config.gainAmount();
+        this.highestPriceWithMaxLookback = new HighestValueIndicator(priceIndicator, barCount);
+        this.lowestPriceWithMaxLookback = new LowestValueIndicator(priceIndicator, barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, Num gainAmount, int barCount) {
         if (indicator == null) {
             throw new IllegalArgumentException("indicator must not be null");
         }
@@ -53,11 +65,7 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.priceIndicator = indicator;
-        this.barCount = barCount;
-        this.gainAmount = gainAmount;
-        this.highestPriceWithMaxLookback = new HighestValueIndicator(priceIndicator, barCount);
-        this.lowestPriceWithMaxLookback = new LowestValueIndicator(priceIndicator, barCount);
+        return new Config(indicator, gainAmount, barCount);
     }
 
     /**
@@ -68,7 +76,7 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
      * @param barCount   the number of bars to look back for the calculation
      */
     public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Number gainAmount, int barCount) {
-        this(indicator, indicator.getBarSeries().numFactory().numOf(gainAmount), barCount);
+        this(validatedConfig(indicator, toNumGainAmount(indicator, gainAmount), barCount));
     }
 
     /**
@@ -78,7 +86,7 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
      * @param gainAmount the absolute gain amount
      */
     public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Num gainAmount) {
-        this(indicator, gainAmount, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, gainAmount, Integer.MAX_VALUE));
     }
 
     /**
@@ -88,7 +96,7 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
      * @param gainAmount the absolute gain amount
      */
     public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Number gainAmount) {
-        this(indicator, gainAmount, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, toNumGainAmount(indicator, gainAmount), Integer.MAX_VALUE));
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -220,5 +228,18 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
             return "activationNotReached";
         }
         return buy ? "priceAboveStop" : "priceBelowStop";
+    }
+
+    private static Num toNumGainAmount(Indicator<Num> indicator, Number gainAmount) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("indicator must not be null");
+        }
+        if (gainAmount == null) {
+            throw new IllegalArgumentException("gainAmount must be positive");
+        }
+        return indicator.getBarSeries().numFactory().numOf(gainAmount);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num gainAmount, int barCount) {
     }
 }

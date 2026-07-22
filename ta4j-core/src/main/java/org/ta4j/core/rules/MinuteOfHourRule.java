@@ -42,18 +42,27 @@ public class MinuteOfHourRule extends AbstractRule {
      * @throws IllegalArgumentException if any minute is not in the range 0-59
      */
     public MinuteOfHourRule(DateTimeIndicator timeIndicator, int... minutesOfHour) {
-        this.timeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
+        this(validatedConfig(timeIndicator, minutesOfHour));
+    }
+
+    private MinuteOfHourRule(Config config) {
+        this.timeIndicator = config.timeIndicator();
+        this.minutesOfHour = config.minutesOfHour();
+        this.minutesOfHourSet = config.minutesOfHourSet();
+    }
+
+    private static Config validatedConfig(DateTimeIndicator timeIndicator, int... minutesOfHour) {
+        DateTimeIndicator validatedTimeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
         Objects.requireNonNull(minutesOfHour, "minutesOfHour");
-        this.minutesOfHour = Arrays.copyOf(minutesOfHour, minutesOfHour.length);
-        this.minutesOfHourSet = new HashSet<>(this.minutesOfHour.length);
-        for (int minute : this.minutesOfHour) {
+        int[] copiedMinutes = Arrays.copyOf(minutesOfHour, minutesOfHour.length);
+        Set<Integer> copiedMinuteSet = new HashSet<>(copiedMinutes.length);
+        for (int minute : copiedMinutes) {
             if (minute < 0 || minute > 59) {
                 throw new IllegalArgumentException("Minute of hour must be in range 0-59, but got: " + minute);
             }
+            copiedMinuteSet.add(minute);
         }
-        for (int minute : this.minutesOfHour) {
-            this.minutesOfHourSet.add(minute);
-        }
+        return new Config(validatedTimeIndicator, copiedMinutes, copiedMinuteSet);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
@@ -63,5 +72,8 @@ public class MinuteOfHourRule extends AbstractRule {
         final boolean satisfied = minutesOfHourSet.contains(dateTime.atZone(ZoneOffset.UTC).getMinute());
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(DateTimeIndicator timeIndicator, int[] minutesOfHour, Set<Integer> minutesOfHourSet) {
     }
 }

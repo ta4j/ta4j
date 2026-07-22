@@ -49,9 +49,22 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
      */
     public ElliottPhaseIndicator(final ElliottSwingIndicator swingIndicator,
             final ElliottFibonacciValidator fibonacciValidator) {
-        super(Objects.requireNonNull(swingIndicator, "swingIndicator"));
-        this.swingIndicator = swingIndicator;
-        this.fibonacciValidator = Objects.requireNonNull(fibonacciValidator, "fibonacciValidator");
+        this(validatedConfig(swingIndicator, fibonacciValidator));
+    }
+
+    private ElliottPhaseIndicator(final Config config) {
+        super(config.swingIndicator());
+        this.swingIndicator = config.swingIndicator();
+        this.fibonacciValidator = config.fibonacciValidator();
+    }
+
+    private static Config validatedConfig(final ElliottSwingIndicator swingIndicator,
+            final ElliottFibonacciValidator fibonacciValidator) {
+        final ElliottSwingIndicator ownedSwingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator")
+                .copy();
+        final ElliottFibonacciValidator validatedFibonacciValidator = Objects.requireNonNull(fibonacciValidator,
+                "fibonacciValidator");
+        return new Config(ownedSwingIndicator, validatedFibonacciValidator);
     }
 
     private static NumFactory requireFactory(final ElliottSwingIndicator swingIndicator) {
@@ -145,7 +158,7 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
      * @since 0.22.0
      */
     public ElliottSwingIndicator getSwingIndicator() {
-        return swingIndicator;
+        return swingIndicator.copy();
     }
 
     ElliottSwingMetadata metadata(final int index) {
@@ -412,5 +425,12 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     record ImpulseAssessment(ElliottPhase phase, List<ElliottSwing> segment, int startIndex, boolean rising) {
+    }
+
+    ElliottPhaseIndicator copy() {
+        return new ElliottPhaseIndicator(new Config(swingIndicator.copy(), fibonacciValidator));
+    }
+
+    private record Config(ElliottSwingIndicator swingIndicator, ElliottFibonacciValidator fibonacciValidator) {
     }
 }

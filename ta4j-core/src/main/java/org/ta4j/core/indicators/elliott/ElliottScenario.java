@@ -61,6 +61,14 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
         }
     }
 
+    public List<ElliottSwing> swings() {
+        return List.copyOf(swings);
+    }
+
+    public List<Num> fibonacciTargets() {
+        return List.copyOf(fibonacciTargets);
+    }
+
     /**
      * @return {@code true} if this scenario has high confidence
      * @since 0.22.0
@@ -216,7 +224,7 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
         }
 
         public Builder swings(final List<ElliottSwing> swings) {
-            this.swings = swings;
+            this.swings = swings == null ? List.of() : List.copyOf(swings);
             return this;
         }
 
@@ -241,7 +249,7 @@ public record ElliottScenario(String id, ElliottPhase currentPhase, List<Elliott
         }
 
         public Builder fibonacciTargets(final List<Num> targets) {
-            this.fibonacciTargets = targets;
+            this.fibonacciTargets = targets == null ? List.of() : List.copyOf(targets);
             return this;
         }
 

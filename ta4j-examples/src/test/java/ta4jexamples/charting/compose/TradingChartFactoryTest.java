@@ -123,6 +123,88 @@ class TradingChartFactoryTest {
     }
 
     @Test
+    void tradingRecordLabelsDefaultToFirstSourcePosition() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B1 @");
+        assertTradeLabelPrefixPresent(plot, "S1 @");
+        assertEquals(List.of("Position 1"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void tradingRecordLabelsUseSuppliedSourcePositionStart() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertEquals(List.of("Position 2"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void defaultSourcePositionStartKeepsMultiPositionLabelsSequential() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        addPosition(record, 5, 7, amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B1 @");
+        assertTradeLabelPrefixPresent(plot, "S1 @");
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertEquals(List.of("Position 1", "Position 2"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void sourcePositionStartKeepsMultiPositionLabelsSequentialIncludingOpenPosition() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        record.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX,
+                2);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertTradeLabelPrefixPresent(plot, "B2 @");
+        assertTradeLabelPrefixPresent(plot, "S2 @");
+        assertTradeLabelPrefixPresent(plot, "B3 @");
+        assertEquals(List.of("Position 2", "Position 3"),
+                extractPositionMarkers(plot).stream().map(IntervalMarker::getLabel).toList());
+    }
+
+    @Test
+    void sourcePositionStartRejectsValuesBelowOne() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> factory
+                .createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0));
+
+        assertEquals("Source position start must be at least 1", exception.getMessage());
+    }
+
+    @Test
+    void sourcePositionStartRejectsRangesThatOverflowWithAnOpenPosition() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        addPosition(record, 1, 3, amount);
+        record.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> factory.createTradingRecordChart(barSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX,
+                        Integer.MAX_VALUE));
+
+        assertEquals("Source position start cannot represent every rendered position", exception.getMessage());
+    }
+
+    @Test
     void testCreateTradingRecordChartWithIndicatorsAddsTradingOverlay() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
@@ -1213,6 +1295,17 @@ class TradingChartFactoryTest {
                 .filter(IntervalMarker.class::isInstance)
                 .map(IntervalMarker.class::cast)
                 .collect(Collectors.toList());
+    }
+
+    private void assertTradeLabelPrefixPresent(XYPlot plot, String expectedPrefix) {
+        List<String> annotationTexts = plot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .map(XYTextAnnotation::getText)
+                .toList();
+        assertTrue(annotationTexts.stream().anyMatch(text -> text.startsWith(expectedPrefix)),
+                () -> "Expected trade label prefix " + expectedPrefix + " but found " + annotationTexts);
     }
 
     // ========== NaN Gap Handling Tests ==========

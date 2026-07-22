@@ -38,7 +38,7 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
     private final transient Indicator<Num> jawMinusTeeth;
     private final transient Indicator<Num> teethMinusLips;
     private final boolean upperHistogram;
-    private final int unstableBars;
+    private final transient int unstableBars;
 
     /**
      * Constructor.
@@ -136,12 +136,12 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         final Num rawSpread = upperHistogram ? jawMinusTeeth.getValue(index) : teethMinusLips.getValue(index);
-        if (IndicatorUtils.isInvalid(rawSpread)) {
+        if (!Num.isFinite(rawSpread)) {
             return NaN;
         }
 
         final Num spread = rawSpread.abs();
-        if (IndicatorUtils.isInvalid(spread)) {
+        if (!Num.isFinite(spread)) {
             return NaN;
         }
 

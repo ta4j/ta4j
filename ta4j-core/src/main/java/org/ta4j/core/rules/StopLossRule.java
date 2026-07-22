@@ -37,7 +37,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Number lossPercentage) {
-        this(priceIndicator, numOf(priceIndicator, lossPercentage, "lossPercentage"));
+        this(validatedConfig(priceIndicator, numOf(priceIndicator, lossPercentage, "lossPercentage")));
     }
 
     /**
@@ -47,11 +47,20 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        this(validatedConfig(priceIndicator, lossPercentage));
+    }
+
+    private StopLossRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.lossPercentage = config.lossPercentage();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Num lossPercentage) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
         if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
             throw new IllegalArgumentException("lossPercentage must be >= 0");
         }
-        this.lossPercentage = lossPercentage;
+        return new Config(validatedPriceIndicator, lossPercentage);
     }
 
     /**
@@ -153,5 +162,8 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         Objects.requireNonNull(priceIndicator, "priceIndicator");
         Objects.requireNonNull(value, parameterName);
         return priceIndicator.getBarSeries().numFactory().numOf(value);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num lossPercentage) {
     }
 }

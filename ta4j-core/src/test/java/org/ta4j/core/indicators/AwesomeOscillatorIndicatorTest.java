@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -62,6 +67,15 @@ public class AwesomeOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
         assertNumEquals(0, awesome.getValue(2));
         assertNumEquals(0, awesome.getValue(3));
         assertNumEquals(0, awesome.getValue(4));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        MedianPriceIndicator median = new MedianPriceIndicator(series);
+
+        return List
+                .of(serializationFixture(series, new AwesomeOscillatorIndicator(median, 2, 5), stableIndexes(series)));
     }
 
 }

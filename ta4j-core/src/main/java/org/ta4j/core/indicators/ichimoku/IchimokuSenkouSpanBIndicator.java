@@ -18,7 +18,10 @@ import org.ta4j.core.num.Num;
 public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     /** Ichimoku avg line indicator. */
-    private final IchimokuLineIndicator lineIndicator;
+    private final transient IchimokuLineIndicator lineIndicator;
+
+    /** The time frame. */
+    private final int barCount;
 
     /** Displacement on the chart (usually 26). */
     private final int offset;
@@ -51,6 +54,7 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
      */
     public IchimokuSenkouSpanBIndicator(BarSeries series, int barCount, int offset) {
         super(series);
+        this.barCount = barCount;
         this.lineIndicator = new IchimokuLineIndicator(series, barCount);
         this.offset = offset;
     }

@@ -13,8 +13,10 @@ import org.ta4j.core.num.Num;
  */
 public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
 
-    private final AwesomeOscillatorIndicator awesome;
-    private final SMAIndicator sma;
+    private final int barCountSma1;
+    private final int barCountSma2;
+    private final transient AwesomeOscillatorIndicator awesome;
+    private final transient SMAIndicator sma;
 
     /**
      * Constructor.
@@ -25,6 +27,8 @@ public class AccelerationDecelerationIndicator extends CachedIndicator<Num> {
      */
     public AccelerationDecelerationIndicator(BarSeries series, int barCountSma1, int barCountSma2) {
         super(series);
+        this.barCountSma1 = barCountSma1;
+        this.barCountSma2 = barCountSma2;
         this.awesome = new AwesomeOscillatorIndicator(new MedianPriceIndicator(series), barCountSma1, barCountSma2);
         this.sma = new SMAIndicator(awesome, barCountSma1);
     }

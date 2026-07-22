@@ -6,6 +6,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -56,5 +62,11 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     // TODO: this test class needs better cases
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new ChopIndicator(series, 8, 100), stableIndexes(series)));
+    }
 
 }

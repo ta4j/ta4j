@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Before;
@@ -67,4 +72,12 @@ public class ChandelierExitLongIndicatorTest extends AbstractIndicatorTest<Indic
         assertThat(Double.isNaN(cel.getValue(13).doubleValue())).isFalse();
         assertThat(Double.isNaN(cel.getValue(14).doubleValue())).isFalse();
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(
+                serializationFixture(series, new ChandelierExitLongIndicator(series, 8, 2.5), stableIndexes(series)));
+    }
+
 }

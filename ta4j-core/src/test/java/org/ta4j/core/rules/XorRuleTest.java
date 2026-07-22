@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
@@ -54,6 +55,12 @@ public class XorRuleTest {
         Rule xor = satisfiedRule.xor(unsatisfiedRule);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, xor);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, xor);
+    }
+
+    @Test
+    public void constructorRejectsNullRules() {
+        assertThrows(NullPointerException.class, () -> new XorRule(null, satisfiedRule));
+        assertThrows(NullPointerException.class, () -> new XorRule(satisfiedRule, null));
     }
 
     @Test

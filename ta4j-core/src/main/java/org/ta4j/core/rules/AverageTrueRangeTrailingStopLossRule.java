@@ -27,6 +27,11 @@ import static java.util.Objects.requireNonNull;
  */
 public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailingStopLossRule {
 
+    private final Indicator<Num> referencePrice;
+    private final ATRIndicator atrIndicator;
+    private final Number atrCoefficient;
+    private final int barCount;
+
     /**
      * Constructor with default close price as reference.
      *
@@ -35,7 +40,7 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
      * @param atrCoefficient the coefficient to multiply ATR
      */
     public AverageTrueRangeTrailingStopLossRule(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        this(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient);
+        this(new ClosePriceIndicator(series), new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 
     /**
@@ -48,7 +53,7 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this(series, referencePrice, atrBarCount, atrCoefficient, Integer.MAX_VALUE);
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient, Integer.MAX_VALUE);
     }
 
     /**
@@ -64,7 +69,7 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient, final int barCount) {
-        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient), barCount);
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient, barCount);
     }
 
     /**
@@ -92,18 +97,26 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient, final int barCount) {
-        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient), barCount);
+        this(new Config(referencePrice, requireNonNull(atrIndicator), atrCoefficient, barCount));
     }
 
-    /**
-     * Builds ATR-based trailing stop-loss threshold indicator.
-     *
-     * @param series         bar series
-     * @param atrBarCount    ATR lookback length
-     * @param atrCoefficient ATR multiplier
-     * @return ATR-scaled threshold indicator
-     */
-    private static Indicator<Num> createStopLossThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+    private AverageTrueRangeTrailingStopLossRule(Config config) {
+        super(config.referencePrice(), BinaryOperationIndicator.product(config.atrIndicator(), config.atrCoefficient()),
+                config.barCount());
+        this.referencePrice = config.referencePrice();
+        this.atrIndicator = config.atrIndicator();
+        this.atrCoefficient = config.atrCoefficient();
+        this.barCount = config.barCount();
+    }
+
+    private record Config(Indicator<Num> referencePrice, ATRIndicator atrIndicator, Number atrCoefficient,
+            int barCount) {
+
+        private Config {
+            if (atrCoefficient == null || Double.isNaN(atrCoefficient.doubleValue())
+                    || atrCoefficient.doubleValue() <= 0) {
+                throw new IllegalArgumentException("atrCoefficient must be positive");
+            }
+        }
     }
 }

@@ -32,4 +32,8 @@ public class IchimokuKijunSenIndicator extends IchimokuLineIndicator {
     public IchimokuKijunSenIndicator(BarSeries series, int barCount) {
         super(series, barCount);
     }
+
+    IchimokuKijunSenIndicator copy() {
+        return new IchimokuKijunSenIndicator(getBarSeries(), getBarCount());
+    }
 }

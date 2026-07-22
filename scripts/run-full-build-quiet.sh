@@ -31,19 +31,12 @@ to_host_path() {
 
 TMP_FILES=()
 build_runner_pid=""
-heartbeat_pid=""
 cleanup() {
     if [[ -n "${build_runner_pid:-}" ]] && kill -0 "$build_runner_pid" >/dev/null 2>&1; then
         kill "$build_runner_pid" >/dev/null 2>&1 || true
     fi
-    if [[ -n "${heartbeat_pid:-}" ]] && kill -0 "$heartbeat_pid" >/dev/null 2>&1; then
-        kill "$heartbeat_pid" >/dev/null 2>&1 || true
-    fi
     if [[ -n "${build_runner_pid:-}" ]]; then
         wait "$build_runner_pid" >/dev/null 2>&1 || true
-    fi
-    if [[ -n "${heartbeat_pid:-}" ]]; then
-        wait "$heartbeat_pid" >/dev/null 2>&1 || true
     fi
 
     local file
@@ -102,15 +95,12 @@ LOG_FILE_FOR_DISPLAY="$LOG_FILE"
 if [[ "$RUNNING_IN_MINGW" == "true" ]]; then
     LOG_FILE_FOR_DISPLAY="$(to_host_path "$LOG_FILE")"
 fi
+: >"$LOG_FILE"
+SCRIPT_START_TIME="$(date +%s)"
 
 BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
 if ! [[ "$BUILD_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
     BUILD_TIMEOUT_SECONDS=180
-fi
-
-HEARTBEAT_INTERVAL_SECONDS="${QUIET_BUILD_HEARTBEAT_SECONDS:-60}"
-if ! [[ "$HEARTBEAT_INTERVAL_SECONDS" =~ ^[0-9]+$ ]] || ((HEARTBEAT_INTERVAL_SECONDS < 1)); then
-    HEARTBEAT_INTERVAL_SECONDS=60
 fi
 
 MAVEN_FLAGS=(
@@ -119,41 +109,6 @@ MAVEN_FLAGS=(
     -Dstyle.color=never
     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
 )
-
-EXTRA_MAVEN_ARGS=()
-if (($# > 0)); then
-    EXTRA_MAVEN_ARGS=("$@")
-fi
-
-if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
-    printf 'Forwarding extra Maven args:'
-    for arg in "${EXTRA_MAVEN_ARGS[@]}"; do
-        printf ' %q' "$arg"
-    done
-    printf '\n'
-fi
-
-GOALS=(clean license:format formatter:format test install)
-MAVEN_CMD_PREFIX=(mvn)
-if [[ -x "./mvnw" ]]; then
-    MAVEN_CMD_PREFIX=("./mvnw")
-    echo "Using Maven Wrapper: ./mvnw"
-elif [[ -f "./mvnw" ]]; then
-    MAVEN_CMD_PREFIX=(sh "./mvnw")
-    echo "Using Maven Wrapper via sh: ./mvnw"
-else
-    echo "Using system Maven from PATH: mvn"
-fi
-
-MVN_CMD=("${MAVEN_CMD_PREFIX[@]}" "${MAVEN_FLAGS[@]}")
-if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
-    MVN_CMD+=("${EXTRA_MAVEN_ARGS[@]}")
-fi
-MVN_CMD+=("${GOALS[@]}")
-
-echo "Running ta4j full build quietly..."
-echo "Full log: $LOG_FILE_FOR_DISPLAY"
-echo
 
 format_elapsed() {
     local total_seconds="$1"
@@ -169,24 +124,285 @@ format_elapsed() {
     fi
 }
 
-should_print_line() {
-    local text="$1"
-    case "$text" in
-        *"[ERROR]"*|*"[WARNING]"*|*"BUILD SUCCESS"*|*"BUILD FAILURE"*|*"Failed to execute goal"*|*"Reactor Summary"*)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
+print_warn_or_above_lines() {
+    local file="$1"
+    awk '
+        /\[(WARNING|WARN|ERROR)\]/ ||
+        /(^|[[:space:]])(WARN|WARNING|ERROR|FATAL)([[:space:]:]|$)/ ||
+        /^\[FAIL\]/ {
+            print
+        }
+    ' "$file"
 }
 
-trim_whitespace() {
-    local value="$1"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    printf '%s' "$value"
+is_warn_or_above_text() {
+    local line="$1"
+    [[ "$line" =~ \[(WARNING|WARN|ERROR)\] ||
+        "$line" =~ (^|[[:space:]])(WARN|WARNING|ERROR|FATAL)([[:space:]:]|$) ||
+        "$line" == "[FAIL]"* ]]
 }
+
+usage() {
+    cat <<'EOF'
+Usage: scripts/run-full-build-quiet.sh [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
+
+The default local invocation repairs license headers and formatting before it
+runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
+--validate-only to reject those defects without modifying its checkout. Maven
+output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+Explicit --goals invocations remain focused and skip repository preflight checks.
+
+Examples:
+  scripts/run-full-build-quiet.sh
+  scripts/run-full-build-quiet.sh --validate-only
+  scripts/run-full-build-quiet.sh --preflight-only
+  scripts/run-full-build-quiet.sh -- -pl ta4j-core
+  scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+EOF
+}
+
+run_repository_preflight() {
+    if [[ -d "$REPO_ROOT/.github/workflows" ]]; then
+        local actionlint_output
+        actionlint_output="$(mktemp "${TMPDIR:-/tmp}/ta4j-actionlint.XXXXXX")"
+        TMP_FILES+=("$actionlint_output")
+        if command -v actionlint >/dev/null 2>&1 && actionlint -version 2>&1 | grep -Fq "1.7.12"; then
+            if ! actionlint >"$actionlint_output" 2>&1; then
+                cat "$actionlint_output" >>"$LOG_FILE"
+                print_warn_or_above_lines "$actionlint_output"
+                echo "[ERROR] actionlint failed" >&2
+                return 1
+            fi
+        elif command -v go >/dev/null 2>&1; then
+            if ! go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 >"$actionlint_output" 2>&1; then
+                cat "$actionlint_output" >>"$LOG_FILE"
+                print_warn_or_above_lines "$actionlint_output"
+                echo "[ERROR] actionlint failed" >&2
+                return 1
+            fi
+        else
+            echo "[ERROR] actionlint 1.7.12 or Go is required for hosted CI parity." >&2
+            return 1
+        fi
+        cat "$actionlint_output" >>"$LOG_FILE"
+        print_warn_or_above_lines "$actionlint_output"
+    fi
+
+    local -a fixtures=()
+    local fixture
+    for fixture in "$REPO_ROOT"/scripts/tests/test_*.sh; do
+        if [[ ! -f "$fixture" ]]; then
+            continue
+        fi
+        fixtures+=("$fixture")
+    done
+
+    if ((${#fixtures[@]} == 0)); then
+        return 0
+    fi
+
+    local -a fixture_pids=()
+    local -a fixture_outputs=()
+    local -a fixture_statuses=()
+    local output_file
+    local previous_sigint_trap previous_sigterm_trap previous_exit_trap
+    previous_sigint_trap="$(trap -p SIGINT || true)"
+    previous_sigterm_trap="$(trap -p SIGTERM || true)"
+    previous_exit_trap="$(trap -p EXIT || true)"
+
+    restore_preflight_fixture_traps() {
+        if [[ -n "$previous_sigint_trap" ]]; then
+            eval "$previous_sigint_trap"
+        else
+            trap - SIGINT
+        fi
+        if [[ -n "$previous_sigterm_trap" ]]; then
+            eval "$previous_sigterm_trap"
+        else
+            trap - SIGTERM
+        fi
+        if [[ -n "$previous_exit_trap" ]]; then
+            eval "$previous_exit_trap"
+        else
+            trap - EXIT
+        fi
+    }
+
+    cleanup_preflight_fixture_pids() {
+        local pid
+        for pid in "${fixture_pids[@]:-}"; do
+            if kill -0 "$pid" >/dev/null 2>&1; then
+                kill "$pid" >/dev/null 2>&1 || true
+            fi
+        done
+        for pid in "${fixture_pids[@]:-}"; do
+            wait "$pid" >/dev/null 2>&1 || true
+        done
+    }
+
+    preflight_fixture_signal_cleanup() {
+        local exit_status="$1"
+        cleanup_preflight_fixture_pids
+        restore_preflight_fixture_traps
+        cleanup
+        exit "$exit_status"
+    }
+
+    preflight_fixture_exit_cleanup() {
+        cleanup_preflight_fixture_pids
+        restore_preflight_fixture_traps
+        cleanup
+    }
+
+    trap 'preflight_fixture_signal_cleanup 130' SIGINT
+    trap 'preflight_fixture_signal_cleanup 143' SIGTERM
+    trap preflight_fixture_exit_cleanup EXIT
+
+    for fixture in "${fixtures[@]}"; do
+        output_file="$(mktemp "${TMPDIR:-/tmp}/ta4j-preflight-fixture.XXXXXX")"
+        TMP_FILES+=("$output_file")
+        fixture_outputs+=("$output_file")
+        (cd "$REPO_ROOT" && BASH_ENV=/dev/null bash "$fixture") >"$output_file" 2>&1 &
+        fixture_pids+=("$!")
+    done
+
+    local status=0
+    local index
+    for index in "${!fixture_pids[@]}"; do
+        if ! wait "${fixture_pids[$index]}"; then
+            status=1
+            fixture_statuses[$index]=1
+        else
+            fixture_statuses[$index]=0
+        fi
+    done
+    restore_preflight_fixture_traps
+
+    for index in "${!fixtures[@]}"; do
+        fixture="${fixtures[$index]}"
+        {
+            echo "== ${fixture#"$REPO_ROOT"/} =="
+            cat "${fixture_outputs[$index]}"
+        } >>"$LOG_FILE"
+        print_warn_or_above_lines "${fixture_outputs[$index]}"
+        if ((${fixture_statuses[$index]:-0} != 0)); then
+            if grep -Eq '^\[FAIL\]|\[(ERROR|WARN|WARNING)\]|(^|[[:space:]])(ERROR|FATAL|WARN|WARNING)([[:space:]:]|$)' "${fixture_outputs[$index]}"; then
+                :
+            elif [[ -s "${fixture_outputs[$index]}" ]]; then
+                echo "[ERROR] Preflight fixture failed; see ${fixture#"$REPO_ROOT"/} output in $LOG_FILE_FOR_DISPLAY" >&2
+            fi
+        fi
+    done
+
+    return "$status"
+}
+
+GOALS=(clean license:format formatter:format verify)
+EXTRA_MAVEN_ARGS=()
+DEFAULT_GATE="true"
+PREFLIGHT_ONLY="false"
+VALIDATE_ONLY="false"
+while (($# > 0)); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --goals)
+            shift
+            if (($# == 0)) || [[ -z "$1" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$1"
+            DEFAULT_GATE="false"
+            shift
+            ;;
+        --goals=*)
+            goal_value="${1#--goals=}"
+            if [[ -z "$goal_value" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$goal_value"
+            DEFAULT_GATE="false"
+            shift
+            ;;
+        --preflight-only)
+            PREFLIGHT_ONLY="true"
+            shift
+            ;;
+        --validate-only)
+            VALIDATE_ONLY="true"
+            shift
+            ;;
+        --)
+            shift
+            EXTRA_MAVEN_ARGS+=("$@")
+            break
+            ;;
+        *)
+            EXTRA_MAVEN_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
+    echo "--validate-only cannot be combined with --goals" >&2
+    exit 2
+fi
+
+if [[ "$VALIDATE_ONLY" == "true" ]]; then
+    GOALS=(clean license:check formatter:validate verify)
+fi
+
+if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
+    if ! run_repository_preflight; then
+        echo "Build: failed in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        echo "Log: $LOG_FILE_FOR_DISPLAY"
+        exit 1
+    fi
+fi
+
+if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
+    echo "Build: preflight-only success in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+    echo "Log: $LOG_FILE_FOR_DISPLAY"
+    exit 0
+fi
+
+if [[ "$DEFAULT_GATE" == "true" ]]; then
+    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless")
+    if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
+        DEFAULT_MAVEN_ARGS+=("${EXTRA_MAVEN_ARGS[@]}")
+    fi
+    EXTRA_MAVEN_ARGS=("${DEFAULT_MAVEN_ARGS[@]}")
+fi
+
+if ((${#GOALS[@]} == 0)); then
+    echo "At least one Maven goal is required" >&2
+    exit 2
+fi
+
+MAVEN_CMD_PREFIX=(mvn)
+if [[ -x "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=("./mvnw")
+elif [[ -f "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=(sh "./mvnw")
+fi
+
+MVN_CMD=("${MAVEN_CMD_PREFIX[@]}" "${MAVEN_FLAGS[@]}")
+if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
+    MVN_CMD+=("${EXTRA_MAVEN_ARGS[@]}")
+fi
+MVN_CMD+=("${GOALS[@]}")
+
+{
+    printf 'Command:'
+    printf ' %q' "${MVN_CMD[@]}"
+    printf '\n'
+} >>"$LOG_FILE"
 
 run_with_timeout() {
     local timeout_marker_file="$1"
@@ -199,8 +415,13 @@ run_with_timeout() {
 
     (
         local elapsed=0
+        local sleep_pid=""
+        trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
         while ((elapsed < timeout_seconds)); do
-            sleep 1
+            sleep 1 &
+            sleep_pid="$!"
+            wait "$sleep_pid" >/dev/null 2>&1 || exit 0
+            sleep_pid=""
             if ! kill -0 "$command_pid" >/dev/null 2>&1; then
                 exit 0
             fi
@@ -222,6 +443,9 @@ run_with_timeout() {
     local command_status=$?
     set -e
 
+    if kill -0 "$timeout_watcher_pid" >/dev/null 2>&1; then
+        kill "$timeout_watcher_pid" >/dev/null 2>&1 || true
+    fi
     wait "$timeout_watcher_pid" >/dev/null 2>&1 || true
 
     if [[ -s "$timeout_marker_file" ]]; then
@@ -230,59 +454,12 @@ run_with_timeout() {
     return "$command_status"
 }
 
-update_last_visible() {
-    date +%s >"$LAST_VISIBLE_FILE"
-}
-
-heartbeat_worker() {
-    local build_pid="$1"
-    local start_time="$2"
-    local heartbeat_interval="$3"
-    while kill -0 "$build_pid" >/dev/null 2>&1; do
-        sleep "$heartbeat_interval"
-        if ! kill -0 "$build_pid" >/dev/null 2>&1; then
-            break
-        fi
-        local now
-        now="$(date +%s)"
-        local last_visible="$start_time"
-        if [[ -f "$LAST_VISIBLE_FILE" ]]; then
-            last_visible="$(cat "$LAST_VISIBLE_FILE" 2>/dev/null || echo "$start_time")"
-        fi
-        if ! [[ "$last_visible" =~ ^[0-9]+$ ]]; then
-            last_visible="$start_time"
-        fi
-        if ((now - last_visible >= heartbeat_interval)); then
-            echo "[quiet-build] still running... ($(format_elapsed $((now - start_time))))"
-            update_last_visible
-        fi
-    done
-}
-
 run_maven_build() {
     if ((BUILD_TIMEOUT_SECONDS > 0)); then
         run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "${MVN_CMD[@]}"
         return $?
     fi
     "${MVN_CMD[@]}"
-}
-
-emit_suppressed_duplicates() {
-    if [[ ! -s "$SUPPRESSED_DUPLICATES_FILE" ]]; then
-        return 0
-    fi
-    echo
-    echo "[quiet-build] Suppressed duplicate warnings:"
-    local line
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if grep -Fqx -- "$line" "$SUPPRESSED_REPORTED_FILE"; then
-            continue
-        fi
-        local count
-        count=$(grep -Fxc -- "$line" "$SUPPRESSED_DUPLICATES_FILE" || true)
-        echo "[quiet-build]   (${count} more) $(trim_whitespace "$line")"
-        printf '%s\n' "$line" >>"$SUPPRESSED_REPORTED_FILE"
-    done <"$SUPPRESSED_DUPLICATES_FILE"
 }
 
 extract_test_summary() {
@@ -296,10 +473,10 @@ extract_test_summary() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$line" =~ ^\[(INFO|WARNING)\][[:space:]]+Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+)[[:space:]]*$ ]]; then
             has_aggregated="true"
-            total_run=$((total_run + ${BASH_REMATCH[2]}))
-            total_failures=$((total_failures + ${BASH_REMATCH[3]}))
-            total_errors=$((total_errors + ${BASH_REMATCH[4]}))
-            total_skipped=$((total_skipped + ${BASH_REMATCH[5]}))
+            total_run=$((total_run + BASH_REMATCH[2]))
+            total_failures=$((total_failures + BASH_REMATCH[3]))
+            total_errors=$((total_errors + BASH_REMATCH[4]))
+            total_skipped=$((total_skipped + BASH_REMATCH[5]))
         elif [[ "$line" =~ Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+) ]]; then
             fallback_summary="Tests run: ${BASH_REMATCH[1]}, Failures: ${BASH_REMATCH[2]}, Errors: ${BASH_REMATCH[3]}, Skipped: ${BASH_REMATCH[4]}"
         fi
@@ -314,24 +491,70 @@ extract_test_summary() {
     fi
 }
 
-LAST_VISIBLE_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-last-visible.XXXXXX")"
-TMP_FILES+=("$LAST_VISIBLE_FILE")
-BUILD_START_TIME="$(date +%s)"
-echo "$BUILD_START_TIME" >"$LAST_VISIBLE_FILE"
+print_jacoco_coverage() {
+    local -a coverage_reports=()
+    local report
+    for report in "$REPO_ROOT"/*/target/site/jacoco/jacoco.csv; do
+        if [[ -f "$report" ]]; then
+            coverage_reports+=("$report")
+        fi
+    done
 
-SEEN_VISIBLE_LINES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-seen-visible.XXXXXX")"
-TMP_FILES+=("$SEEN_VISIBLE_LINES_FILE")
+    if ((${#coverage_reports[@]} == 0)); then
+        return 0
+    fi
 
-SUPPRESSED_DUPLICATES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-duplicates.XXXXXX")"
-TMP_FILES+=("$SUPPRESSED_DUPLICATES_FILE")
+    for report in "${coverage_reports[@]}"; do
+        awk -F, '
+            function pct(covered, missed, total) {
+                total = covered + missed
+                if (total == 0) {
+                    return "n/a"
+                }
+                return sprintf("%.2f%%", (covered * 100) / total)
+            }
+            NR == 2 {
+                group = $1
+            }
+            NR > 1 {
+                instruction_missed += $4
+                instruction_covered += $5
+                branch_missed += $6
+                branch_covered += $7
+                line_missed += $8
+                line_covered += $9
+            }
+            END {
+                if (group != "") {
+                    printf "JaCoCo: %s line %s, branch %s, instruction %s\n",
+                        group,
+                        pct(line_covered, line_missed),
+                        pct(branch_covered, branch_missed),
+                        pct(instruction_covered, instruction_missed)
+                }
+            }
+        ' "$report"
+    done
+}
 
-SUPPRESSED_REPORTED_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-reported.XXXXXX")"
-TMP_FILES+=("$SUPPRESSED_REPORTED_FILE")
+print_final_summary() {
+    local status="$1"
+    local elapsed
+    elapsed="$(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+    echo "Build: $status in $elapsed"
 
-OUTPUT_FIFO="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
-TMP_FILES+=("$OUTPUT_FIFO")
-rm -f "$OUTPUT_FIFO"
-mkfifo "$OUTPUT_FIFO"
+    local summary
+    summary="$(extract_test_summary)"
+    if [[ -n "$summary" ]]; then
+        echo "$summary"
+    fi
+
+    print_jacoco_coverage
+    echo "Log: $LOG_FILE_FOR_DISPLAY"
+}
+
+RAW_OUTPUT_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
+TMP_FILES+=("$RAW_OUTPUT_FILE")
 
 TIMEOUT_MARKER_FILE=""
 if ((BUILD_TIMEOUT_SECONDS > 0)); then
@@ -339,63 +562,36 @@ if ((BUILD_TIMEOUT_SECONDS > 0)); then
     TMP_FILES+=("$TIMEOUT_MARKER_FILE")
 fi
 
-: >"$LOG_FILE"
-: >"$SEEN_VISIBLE_LINES_FILE"
-: >"$SUPPRESSED_DUPLICATES_FILE"
-: >"$SUPPRESSED_REPORTED_FILE"
-
 set +o pipefail
 set +e
-run_maven_build >"$OUTPUT_FIFO" 2>&1 &
+run_maven_build >"$RAW_OUTPUT_FILE" 2>&1 &
 build_runner_pid=$!
-
-heartbeat_worker "$build_runner_pid" "$BUILD_START_TIME" "$HEARTBEAT_INTERVAL_SECONDS" &
-heartbeat_pid=$!
-
-while IFS= read -r line || [[ -n "$line" ]]; do
-    printf '%s\n' "$line" >>"$LOG_FILE"
-    if ! should_print_line "$line"; then
-        continue
-    fi
-    if [[ "$line" == *"Tests run:"* && "$line" == *"Time elapsed"* ]]; then
-        continue
-    fi
-    if grep -Fqx -- "$line" "$SEEN_VISIBLE_LINES_FILE"; then
-        printf '%s\n' "$line" >>"$SUPPRESSED_DUPLICATES_FILE"
-    else
-        printf '%s\n' "$line" >>"$SEEN_VISIBLE_LINES_FILE"
-        printf '%s\n' "$line"
-        update_last_visible
-    fi
-done <"$OUTPUT_FIFO"
-filter_status=$?
 
 wait "$build_runner_pid"
 mvn_status=$?
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+    printf '%s\n' "$line" >>"$LOG_FILE"
+    if is_warn_or_above_text "$line"; then
+        printf '%s\n' "$line"
+    fi
+done <"$RAW_OUTPUT_FILE"
+filter_status=$?
+
 set -e
 set -o pipefail
 
-kill "$heartbeat_pid" >/dev/null 2>&1 || true
-wait "$heartbeat_pid" >/dev/null 2>&1 || true
-
-emit_suppressed_duplicates
-
 if ((mvn_status != 0 || filter_status != 0)); then
-    echo
     if ((mvn_status == 124)); then
-        echo "Maven build timed out after ${BUILD_TIMEOUT_SECONDS}s. Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
-        exit 1
+        echo "Build: timed out after ${BUILD_TIMEOUT_SECONDS}s in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
+        echo "Log: $LOG_FILE_FOR_DISPLAY"
+        exit 124
     fi
-    echo "Maven build failed (mvn=$mvn_status, filter=$filter_status). Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
+    print_final_summary "failed"
+    if ((mvn_status != 0)); then
+        exit "$mvn_status"
+    fi
     exit 1
 fi
 
-summary="$(extract_test_summary)"
-
-echo
-if [[ -n "$summary" ]]; then
-    echo "$summary"
-else
-    echo "Tests run summary not found in log; see $LOG_FILE_FOR_DISPLAY"
-fi
-echo "Full build log saved to: $LOG_FILE_FOR_DISPLAY"
+print_final_summary "success"

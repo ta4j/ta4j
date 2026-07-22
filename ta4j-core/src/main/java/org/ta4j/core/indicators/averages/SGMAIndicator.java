@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.averages;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -43,8 +44,20 @@ public class SGMAIndicator extends CachedIndicator<Num> {
      * @param polynomialOrder the degree of the polynomial, default 2
      */
     public SGMAIndicator(Indicator<Num> indicator, int barCount, int polynomialOrder) {
-        super(indicator.getBarSeries());
+        this(validatedConfig(indicator, barCount, polynomialOrder));
+    }
 
+    private SGMAIndicator(Config config) {
+        super(config.indicator().getBarSeries());
+        this.barCount = config.barCount();
+        this.indicator = config.indicator();
+        this.polynomialOrder = config.polynomialOrder();
+        this.coefficients = config.coefficients();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int barCount, int polynomialOrder) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
+        Objects.requireNonNull(validatedIndicator.getBarSeries(), "indicator must reference a bar series");
         if (barCount % 2 == 0) {
             throw new IllegalArgumentException("Window size must be odd.");
         }
@@ -52,14 +65,12 @@ public class SGMAIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Polynomial order must be less than window size.");
         }
 
-        this.barCount = barCount;
-        this.indicator = indicator;
-
         // Convert int parameters to Num objects
-        this.polynomialOrder = indicator.getBarSeries().numFactory().numOf(polynomialOrder);
+        Num polynomialOrderNum = validatedIndicator.getBarSeries().numFactory().numOf(polynomialOrder);
 
         // Precompute coefficients
-        this.coefficients = calculateCoefficients(barCount, polynomialOrder);
+        List<Num> coefficients = calculateCoefficients(validatedIndicator, barCount, polynomialOrder);
+        return new Config(validatedIndicator, barCount, polynomialOrderNum, List.copyOf(coefficients));
     }
 
     @Override
@@ -97,7 +108,7 @@ public class SGMAIndicator extends CachedIndicator<Num> {
      * @param polynomialOrder The degree of the polynomial.
      * @return A list of smoothing coefficients.
      */
-    private List<Num> calculateCoefficients(int barCount, int polynomialOrder) {
+    private static List<Num> calculateCoefficients(Indicator<Num> indicator, int barCount, int polynomialOrder) {
         int halfWindow = barCount / 2;
         List<Num> coefficients = new ArrayList<>(barCount);
         NumFactory numFactory = indicator.getBarSeries().numFactory();
@@ -131,7 +142,7 @@ public class SGMAIndicator extends CachedIndicator<Num> {
      * @param polynomialOrder The degree of the polynomial.
      * @return The solution vector of coefficients.
      */
-    private double[] solveLeastSquares(double[][] matrix, int barCount, int polynomialOrder) {
+    private static double[] solveLeastSquares(double[][] matrix, int barCount, int polynomialOrder) {
         double[] coefficients = new double[barCount];
 
         // Use the normal equations to compute the coefficients
@@ -142,5 +153,8 @@ public class SGMAIndicator extends CachedIndicator<Num> {
         }
 
         return coefficients;
+    }
+
+    private record Config(Indicator<Num> indicator, int barCount, Num polynomialOrder, List<Num> coefficients) {
     }
 }

@@ -44,11 +44,11 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this.barSeries = snapshotSeries(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = barSeries.getEndIndex();
+        int seriesEnd = this.barSeries.getEndIndex();
         int size = Math.max(seriesEnd + 1, 0);
-        this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().zero()));
+        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -233,7 +233,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public BarSeries getBarSeries() {
-        return barSeries;
+        return snapshotSeries(barSeries);
     }
 
     /**
@@ -274,6 +274,15 @@ public final class CumulativePnL implements PerformanceIndicator {
         for (int i = start; i <= end; i++) {
             values.set(i, values.get(i).plus(delta));
         }
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 
 }

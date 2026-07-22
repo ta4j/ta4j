@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
@@ -31,11 +36,11 @@ public class TrueStrengthIndexIndicatorTest extends AbstractIndicatorTest<Indica
 
         String[] expected;
         if (numFactory instanceof DecimalNumFactory) {
-            expected = new String[] { null, "100", "100", "100", "100", "46.66666666666667", "-3.111111111111110",
-                    "-38.90370370370370", "-62.35456790123456", "-23.75018930041152" };
+            expected = new String[] { null, null, null, null, null, null, "-3.111111111111110", "-38.90370370370370",
+                    "-62.35456790123456", "-23.75018930041152" };
         } else {
-            expected = new String[] { null, "100.0", "100.0", "100.0", "100.0", "46.666666666666664",
-                    "-3.111111111111109", "-38.903703703703705", "-62.35456790123457", "-23.750189300411524" };
+            expected = new String[] { null, null, null, null, null, null, "-3.111111111111109", "-38.903703703703705",
+                    "-62.35456790123457", "-23.750189300411524" };
         }
 
         for (int i = 0; i < expected.length; i++) {
@@ -260,6 +265,15 @@ public class TrueStrengthIndexIndicatorTest extends AbstractIndicatorTest<Indica
                 assertThat(actual).isEqualTo(expected);
             }
         }
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List
+                .of(serializationFixture(series, new TrueStrengthIndexIndicator(close, 4, 3), stableIndexes(series)));
     }
 
 }

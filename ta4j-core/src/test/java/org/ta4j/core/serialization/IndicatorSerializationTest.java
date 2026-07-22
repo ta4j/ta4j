@@ -4,6 +4,7 @@
 package org.ta4j.core.serialization;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -21,6 +22,7 @@ import org.ta4j.core.num.Num;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class IndicatorSerializationTest {
 
@@ -106,6 +108,64 @@ public class IndicatorSerializationTest {
     }
 
     @Test
+    public void describeRejectsNullIndicator() {
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.describe(null));
+
+        assertThat(exception).hasMessage("Indicator cannot be null").hasNoCause();
+    }
+
+    @Test
+    public void fromDescriptorRejectsNullInputs() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder().withType("ClosePriceIndicator").build();
+
+        IndicatorSerializationException nullSeriesException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(null, descriptor));
+        assertThat(nullSeriesException).hasMessage("Series and descriptor cannot be null").hasNoCause();
+
+        IndicatorSerializationException nullDescriptorException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, null));
+        assertThat(nullDescriptorException).hasMessage("Series and descriptor cannot be null").hasNoCause();
+    }
+
+    @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"type\":\"SMAIndicator\"";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessage("Failed to deserialize indicator from JSON")
+                .hasCauseInstanceOf(com.google.gson.JsonParseException.class);
+    }
+
+    @Test
+    public void fromJsonRejectsFractionalIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = """
+                {"type":"SMAIndicator","parameters":{"barCount":1.9},"components":[{"type":"ClosePriceIndicator"}]}""";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessageContaining("no suitable constructor");
+    }
+
+    @Test
+    public void fromJsonRejectsOverflowingIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = """
+                {"type":"SMAIndicator","parameters":{"barCount":2147483648},"components":[{"type":"ClosePriceIndicator"}]}""";
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                () -> Indicator.fromJson(series, json));
+
+        assertThat(exception).hasMessageContaining("no suitable constructor");
+    }
+
+    @Test
     public void deserializeIndicatorWithSameTypedParameters() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7).build();
         Num accelerationStart = series.numFactory().numOf("0.03");
@@ -143,6 +203,28 @@ public class IndicatorSerializationTest {
 
         assertThat(reconstructed).isInstanceOf(IndicatorConstructorSelectionTestIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(original.toDescriptor());
+    }
+
+    @Test
+    public void deserializeRejectsDescriptorsWithUnconsumedComponentsOrParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        ComponentDescriptor extraComponentDescriptor = ComponentDescriptor.builder()
+                .withType("ClosePriceIndicator")
+                .addComponent(ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                .build();
+
+        IndicatorSerializationException componentException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, extraComponentDescriptor));
+        assertThat(componentException).hasMessageContaining("no suitable constructor");
+
+        ComponentDescriptor extraParameterDescriptor = ComponentDescriptor.builder()
+                .withType("ClosePriceIndicator")
+                .withParameters(Map.of("unusedBarCount", 3))
+                .build();
+
+        IndicatorSerializationException parameterException = assertThrows(IndicatorSerializationException.class,
+                () -> IndicatorSerialization.fromDescriptor(series, extraParameterDescriptor));
+        assertThat(parameterException).hasMessageContaining("no suitable constructor");
     }
 
     @Test

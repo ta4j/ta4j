@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
@@ -179,13 +180,19 @@ public class AndWithThresholdRuleTest {
     @Test
     public void getRule1ReturnsFirstRule() {
         AndWithThresholdRule rule = new AndWithThresholdRule(satisfiedRule, unsatisfiedRule, 1);
-        assertTrue(rule.getRule1() == satisfiedRule);
+        Rule returnedRule = rule.getRule1();
+
+        assertNotSame(satisfiedRule, returnedRule);
+        assertTrue(returnedRule.isSatisfied(0));
     }
 
     @Test
     public void getRule2ReturnsSecondRule() {
         AndWithThresholdRule rule = new AndWithThresholdRule(satisfiedRule, unsatisfiedRule, 1);
-        assertTrue(rule.getRule2() == unsatisfiedRule);
+        Rule returnedRule = rule.getRule2();
+
+        assertNotSame(unsatisfiedRule, returnedRule);
+        assertFalse(returnedRule.isSatisfied(0));
     }
 
     @Test

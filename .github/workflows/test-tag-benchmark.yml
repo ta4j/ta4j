@@ -50,5 +50,5 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Build and run benchmark tagged tests with Maven
-        run: xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true
+      - name: Build and run benchmark tagged tests with Maven Wrapper
+        run: xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=

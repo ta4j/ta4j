@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -128,6 +131,15 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
         assertThat(indicator.getValue(3).isNaN()).isTrue();
         assertNumEquals(13, indicator.getValue(4));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolumeIndicator volume = new VolumeIndicator(series);
+
+        return List.of(serializationFixture(series, new VWAPIndicator(close, volume, 8), stableIndexes(series)));
     }
 
 }

@@ -5,7 +5,9 @@ package org.ta4j.core.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -171,6 +173,49 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         // no bar was added
         assertEquals(7, this.series.getBarData().size());
         assertEquals(7, this.series.getBarCount());
+    }
+
+    @Test
+    public void replaceBarIfChangedFailsClearlyForUnsupportedSeries() {
+        final Instant endTime = Instant.parse("2019-06-01T01:01:00Z");
+        final Bar originalBar = new MockBarBuilder(numFactory).endTime(endTime)
+                .openPrice(1d)
+                .closePrice(2d)
+                .highPrice(3d)
+                .lowPrice(4d)
+                .amount(5d)
+                .volume(0d)
+                .trades(7)
+                .build();
+        final Bar replacementBar = new MockBarBuilder(numFactory).endTime(endTime)
+                .openPrice(2d)
+                .closePrice(3d)
+                .highPrice(4d)
+                .lowPrice(5d)
+                .amount(6d)
+                .volume(1d)
+                .trades(8)
+                .build();
+        final BarSeries unsupportedSeries = unsupportedSeriesWithBars(List.of(originalBar));
+
+        final UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class,
+                () -> BarSeriesUtils.replaceBarIfChanged(unsupportedSeries, replacementBar));
+
+        assertEquals("Cannot replace bars for " + unsupportedSeries.getClass().getName()
+                + "; use a BaseBarSeries-backed implementation", exception.getMessage());
+    }
+
+    private static BarSeries unsupportedSeriesWithBars(final List<Bar> bars) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    if ("getBarData".equals(method.getName())) {
+                        return bars;
+                    }
+                    if ("toString".equals(method.getName())) {
+                        return "UnsupportedBarSeries";
+                    }
+                    throw new UnsupportedOperationException(method.getName());
+                });
     }
 
     @Test

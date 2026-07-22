@@ -3,8 +3,15 @@
  */
 package org.ta4j.core.indicators.keltner;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -66,7 +73,7 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void testCreation() {
         final var facade = new KeltnerChannelFacade(data, 14, 14, 2);
-        assertEquals(data, facade.middle().getBarSeries());
+        assertTrue(isSameSeries(data, facade.middle().getBarSeries()));
     }
 
     @Test
@@ -86,4 +93,18 @@ public class KeltnerChannelFacadeTest extends AbstractIndicatorTest<Indicator<Nu
             assertNumEquals(km.getValue(i), middleNumeric.getValue(i));
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+
+        return List.of(
+                serializationFixture(series, new KeltnerChannelFacade(series, 7, 5, 1.5).middle(),
+                        stableIndexes(series)),
+                serializationFixture(series, new KeltnerChannelFacade(series, 7, 5, 1.5).upper(),
+                        stableIndexes(series)),
+                serializationFixture(series, new KeltnerChannelFacade(series, 7, 5, 1.5).lower(),
+                        stableIndexes(series)));
+    }
+
 }

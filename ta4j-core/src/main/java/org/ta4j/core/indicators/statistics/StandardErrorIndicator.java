@@ -14,8 +14,10 @@ import org.ta4j.core.num.Num;
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final StandardDeviationIndicator sdev;
+    private final SampleType sampleType;
+    private final transient StandardDeviationIndicator sdev;
 
     /**
      * Constructor using {@link SampleType#POPULATION} for backward compatibility.
@@ -37,9 +39,10 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
         super(indicator);
+        this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
         this.barCount = Math.max(barCount, 1);
-        this.sdev = Objects.requireNonNull(sampleType, "sampleType must not be null").isSample()
-                ? StandardDeviationIndicator.ofSample(indicator, this.barCount)
+        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
+        this.sdev = this.sampleType.isSample() ? StandardDeviationIndicator.ofSample(indicator, this.barCount)
                 : StandardDeviationIndicator.ofPopulation(indicator, this.barCount);
     }
 

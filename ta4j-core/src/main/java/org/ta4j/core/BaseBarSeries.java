@@ -68,6 +68,7 @@ public class BaseBarSeries implements BarSeries {
      * The number of removed bars.
      */
     private int removedBarsCount = 0;
+    private long barHistoryRevision;
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -77,7 +78,7 @@ public class BaseBarSeries implements BarSeries {
      * @param bars the list of bars of the bar series
      */
     public BaseBarSeries(final String name, final List<Bar> bars) {
-        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory());
+        this(defaultConfig(name, bars));
     }
 
     /**
@@ -95,26 +96,55 @@ public class BaseBarSeries implements BarSeries {
      */
     BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
-        this.name = name;
-        this.numFactory = numFactory;
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, 0, constrained, numFactory,
+                barBuilderFactory));
+    }
 
-        this.bars = new ArrayList<>(bars);
-        this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
-        if (bars.isEmpty()) {
+    BaseBarSeries(final String name, final List<Bar> bars, final int seriesBeginIndex, final int seriesEndIndex,
+            final int removedBarsCount, final boolean constrained, final NumFactory numFactory,
+            final BarBuilderFactory barBuilderFactory) {
+        this(validatedConfig(name, bars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
+                barBuilderFactory));
+    }
+
+    private BaseBarSeries(final Config config) {
+        this.name = config.name();
+        this.numFactory = config.numFactory();
+        this.bars = config.bars();
+        this.barBuilderFactory = config.barBuilderFactory();
+        this.seriesBeginIndex = config.seriesBeginIndex();
+        this.seriesEndIndex = config.seriesEndIndex();
+        this.removedBarsCount = config.removedBarsCount();
+        this.constrained = config.constrained();
+    }
+
+    private static Config defaultConfig(final String name, final List<Bar> bars) {
+        List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
+        return validatedConfig(name, copiedBars, 0, copiedBars.size() - 1, 0, false, DecimalNumFactory.getInstance(),
+                new TimeBarBuilderFactory());
+    }
+
+    private static Config validatedConfig(final String name, final List<Bar> bars, final int seriesBeginIndex,
+            final int seriesEndIndex, final int removedBarsCount, final boolean constrained,
+            final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
+        List<Bar> copiedBars = new ArrayList<>(Objects.requireNonNull(bars, "bars"));
+        BarBuilderFactory validatedBarBuilderFactory = Objects.requireNonNull(barBuilderFactory);
+        if (copiedBars.isEmpty()) {
             // Bar list empty
-            this.constrained = false;
-            return;
+            return new Config(name, copiedBars, -1, -1, 0, false, numFactory, validatedBarBuilderFactory);
         }
         // Bar list not empty: checking indexes
         if (seriesEndIndex < seriesBeginIndex - 1) {
             throw new IllegalArgumentException("End index must be >= to begin index - 1");
         }
-        if (seriesEndIndex >= bars.size()) {
-            throw new IllegalArgumentException("End index must be < to the bar list size");
+        if (removedBarsCount < 0 || seriesBeginIndex < removedBarsCount) {
+            throw new IllegalArgumentException("Removed bars count must be between zero and the begin index");
         }
-        this.seriesBeginIndex = seriesBeginIndex;
-        this.seriesEndIndex = seriesEndIndex;
-        this.constrained = constrained;
+        if ((long) seriesEndIndex >= (long) removedBarsCount + copiedBars.size()) {
+            throw new IllegalArgumentException("End index must be within the offset bar list");
+        }
+        return new Config(name, copiedBars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
+                validatedBarBuilderFactory);
     }
 
     /**
@@ -140,6 +170,10 @@ public class BaseBarSeries implements BarSeries {
                 series.removedBarsCount, index);
     }
 
+    private record Config(String name, List<Bar> bars, int seriesBeginIndex, int seriesEndIndex, int removedBarsCount,
+            boolean constrained, NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
+    }
+
     @Override
     public BaseBarSeries getSubSeries(final int startIndex, final int endIndex) {
         if (startIndex < 0) {
@@ -149,12 +183,14 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
+        final int retainedStartIndex = Math.max(startIndex, this.seriesBeginIndex);
         var builder = new BaseBarSeriesBuilder().withName(getName())
                 .withNumFactory(this.numFactory)
-                .withMaxBarCount(this.maximumBarCount);
+                .withMaxBarCount(this.maximumBarCount)
+                .withBeginIndex(this.removedBarsCount > 0 ? retainedStartIndex : 0);
         if (!this.bars.isEmpty()) {
             var removedBarsCount = getRemovedBarsCount();
-            var start = startIndex - removedBarsCount;
+            var start = retainedStartIndex - removedBarsCount;
             var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
             return builder.withBars(cut(this.bars, start, end)).build();
         }
@@ -214,7 +250,33 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public List<Bar> getBarData() {
-        return this.bars;
+        return List.copyOf(this.bars);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.23.1
+     */
+    @Override
+    public long getBarHistoryRevision() {
+        return this.barHistoryRevision;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.9
+     */
+    @Override
+    public void clear() {
+        if (!this.bars.isEmpty()) {
+            this.barHistoryRevision++;
+        }
+        this.bars.clear();
+        this.seriesBeginIndex = -1;
+        this.seriesEndIndex = -1;
+        this.removedBarsCount = 0;
     }
 
     @Override
@@ -255,6 +317,8 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @throws NullPointerException if {@code bar} is {@code null}
+     * @throws ArithmeticException  if appending would advance the absolute index
+     *                              beyond {@link Integer#MAX_VALUE}
      */
     @Override
     public void addBar(final Bar bar, final boolean replace) {
@@ -268,7 +332,11 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             if (replace) {
                 this.bars.set(this.bars.size() - 1, bar);
+                this.barHistoryRevision++;
                 return;
+            }
+            if (this.seriesEndIndex == Integer.MAX_VALUE) {
+                throw new ArithmeticException("Bar series index overflow");
             }
             final int lastBarIndex = this.bars.size() - 1;
             final Instant seriesEndTime = this.bars.get(lastBarIndex).getEndTime();
@@ -284,7 +352,7 @@ public class BaseBarSeries implements BarSeries {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
-        this.seriesEndIndex++;
+        this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
         removeExceedingBars();
     }
 
@@ -300,8 +368,9 @@ public class BaseBarSeries implements BarSeries {
      *                                   numFactory
      * @throws IndexOutOfBoundsException if the index is outside the current series
      *                                   window
+     * @since 0.22.9
      */
-    protected void replaceBar(final int index, final Bar bar) {
+    public void replaceBar(final int index, final Bar bar) {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!numFactory.produces(bar.getClosePrice())) {
             throw new IllegalArgumentException(
@@ -316,6 +385,7 @@ public class BaseBarSeries implements BarSeries {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
         this.bars.set(innerIndex, bar);
+        this.barHistoryRevision++;
     }
 
     @Override
@@ -326,11 +396,13 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
         getLastBar().addTrade(tradeVolume, tradePrice);
+        this.barHistoryRevision++;
     }
 
     @Override
     public void addPrice(final Num price) {
         getLastBar().addPrice(price);
+        this.barHistoryRevision++;
     }
 
     /**

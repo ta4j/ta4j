@@ -299,7 +299,7 @@ public class DoubleNum implements Num {
 
     @Override
     public int compareTo(final Num o) {
-        if (this == NaN || o == NaN) {
+        if (o.isNaN()) {
             return 0;
         }
         final DoubleNum doubleNumO = (DoubleNum) o;

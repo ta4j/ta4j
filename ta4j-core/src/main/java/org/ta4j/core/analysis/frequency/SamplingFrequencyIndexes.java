@@ -30,6 +30,8 @@ import org.ta4j.core.BarSeries;
 public final class SamplingFrequencyIndexes {
 
     private static final WeekFields ISO_WEEK_FIELDS = WeekFields.ISO;
+    private static final String TRADE_REQUIRES_TRADING_RECORD = "SamplingFrequency.TRADE requires a trading record; "
+            + "use a TradingRecord-aware sampling API";
 
     private final SamplingFrequency samplingFrequency;
     private final ZoneId groupingZoneId;
@@ -39,10 +41,16 @@ public final class SamplingFrequencyIndexes {
      *
      * @param samplingFrequency the sampling granularity
      * @param groupingZoneId    the time zone used to interpret bar end times
+     * @throws IllegalArgumentException if {@code samplingFrequency} is
+     *                                  {@link SamplingFrequency#TRADE}, because
+     *                                  trade sampling requires a trading record
      * @since 0.22.2
      */
     public SamplingFrequencyIndexes(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
         this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
+        if (this.samplingFrequency == SamplingFrequency.TRADE) {
+            throw new IllegalArgumentException(TRADE_REQUIRES_TRADING_RECORD);
+        }
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
     }
 
@@ -96,6 +104,7 @@ public final class SamplingFrequencyIndexes {
         case WEEK -> !sameIsoWeek(now, next);
         case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
         case BAR -> true;
+        case TRADE -> throw new IllegalStateException(TRADE_REQUIRES_TRADING_RECORD);
         };
     }
 

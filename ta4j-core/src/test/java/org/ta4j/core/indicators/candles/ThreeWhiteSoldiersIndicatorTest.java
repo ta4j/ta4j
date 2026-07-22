@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -48,4 +53,12 @@ public class ThreeWhiteSoldiersIndicatorTest extends AbstractIndicatorTest<Indic
         assertFalse(tws.getValue(6));
         assertFalse(tws.getValue(7));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new ThreeWhiteSoldiersIndicator(series, 5, numOf(1.0)),
+                stableIndexes(series)));
+    }
+
 }
