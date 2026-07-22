@@ -80,6 +80,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -163,7 +164,7 @@ final class CliSupport {
                 return loadSeries(temporaryFile.toString(), null, System.in, timeframeToken, fromDateToken,
                         toDateToken);
             } catch (IOException exception) {
-                throw new IllegalArgumentException("Unable to read bar data from stdin.", exception);
+                throw new UncheckedIOException("Unable to read bar data from stdin.", exception);
             } finally {
                 if (temporaryFile != null) {
                     try {

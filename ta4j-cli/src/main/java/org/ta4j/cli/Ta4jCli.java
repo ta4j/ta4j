@@ -6,6 +6,7 @@ package org.ta4j.cli;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -135,7 +136,7 @@ public final class Ta4jCli implements Runnable {
         if (exception instanceof IllegalArgumentException) {
             exitCode = CommandLine.ExitCode.USAGE;
             category = "usage";
-        } else if (exception instanceof IOException) {
+        } else if (exception instanceof IOException || exception instanceof UncheckedIOException) {
             exitCode = IO_ERROR_EXIT_CODE;
             category = "io";
         } else {
