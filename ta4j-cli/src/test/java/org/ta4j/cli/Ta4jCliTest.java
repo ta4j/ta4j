@@ -388,6 +388,33 @@ class Ta4jCliTest {
     }
 
     @Test
+    void reproducibleOutputUsesContentIdentityInsteadOfLocalInputPath() throws Exception {
+        Path firstDataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path secondDataFile = tempDir.resolve("same-bars-under-another-name.csv");
+        Files.copy(firstDataFile, secondDataFile);
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", firstDataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", secondDataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(second.exitCode()).isZero();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        JsonObject reproducibleInput = result(JsonParser.parseString(first.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(reproducibleInput.has("dataFile")).isFalse();
+        assertThat(reproducibleInput.has("seriesName")).isFalse();
+
+        CliRunResult ordinary = runCliAllowingError("strategy", "backtest", "--data-file", firstDataFile.toString(),
+                "--strategy", "SMA(7,21)");
+        JsonObject ordinaryInput = result(JsonParser.parseString(ordinary.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(ordinaryInput.get("dataFile").getAsString()).isEqualTo(firstDataFile.toString());
+        assertThat(ordinaryInput.get("seriesName").getAsString()).isEqualTo(firstDataFile.getFileName().toString());
+    }
+
+    @Test
     void stdinDataSupportsComposableAgentPipelines() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         InputStream input = new ByteArrayInputStream(Files.readAllBytes(dataFile));
