@@ -1,0 +1,2 @@
+org.ta4j.acceleration.internal.providers.MetalAccelerationProviderFactory
+org.ta4j.acceleration.internal.providers.CudaAccelerationProviderFactory
