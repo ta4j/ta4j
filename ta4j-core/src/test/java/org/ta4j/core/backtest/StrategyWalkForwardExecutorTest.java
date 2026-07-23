@@ -22,6 +22,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -158,6 +159,9 @@ public class StrategyWalkForwardExecutorTest {
 
         assertNotSame(series, firstSnapshot);
         assertNotSame(firstSnapshot, secondSnapshot);
+        assertSame(firstSnapshot.indicators(), secondSnapshot.indicators());
+        assertSame(firstSnapshot.indicators().sma(new ClosePriceIndicator(firstSnapshot), 2),
+                secondSnapshot.indicators().sma(new ClosePriceIndicator(secondSnapshot), 2));
         assertEquals(48, firstSnapshot.getBarCount());
         assertEquals(48, secondSnapshot.getBarCount());
         assertEquals(48, result.barSeries().getBarCount());

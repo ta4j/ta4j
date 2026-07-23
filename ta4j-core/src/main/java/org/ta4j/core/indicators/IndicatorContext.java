@@ -427,7 +427,7 @@ public final class IndicatorContext {
     private void requireSameSeries(Indicator<?> indicator) {
         BarSeries indicatorSeries = AbstractIndicator
                 .unwrapBarSeries(Objects.requireNonNull(indicator, "indicator").getBarSeries());
-        if (indicatorSeries != series) {
+        if (indicatorSeries != series && indicatorSeries.indicators() != this) {
             throw new IllegalArgumentException("Indicator belongs to a different bar series");
         }
     }

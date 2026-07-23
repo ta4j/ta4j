@@ -6,7 +6,6 @@ package org.ta4j.core.backtest;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -254,7 +253,7 @@ public interface PositionSizer {
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
             strategy = StrategySnapshots.copy(strategy);
-            barSeries = snapshotSeries(barSeries);
+            barSeries = BacktestBarSeriesViews.snapshot(barSeries);
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");
@@ -263,7 +262,7 @@ public interface PositionSizer {
 
         @Override
         public BarSeries barSeries() {
-            return snapshotSeries(barSeries);
+            return BacktestBarSeriesViews.readOnlyView(barSeries);
         }
 
         @Override
@@ -373,13 +372,5 @@ public interface PositionSizer {
             return low;
         }
 
-        private static BarSeries snapshotSeries(BarSeries barSeries) {
-            BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-            return new BaseBarSeriesBuilder().withName(series.getName())
-                    .withNumFactory(series.numFactory())
-                    .withBars(series.getBarData())
-                    .withMaxBarCount(series.getMaximumBarCount())
-                    .build();
-        }
     }
 }

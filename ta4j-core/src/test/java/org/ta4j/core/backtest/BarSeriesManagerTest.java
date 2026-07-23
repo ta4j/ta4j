@@ -31,6 +31,7 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DoubleNum;
@@ -150,6 +151,9 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
             assertTrue(firstContextStrategy.shouldEnter(2));
             assertNotSame(series, firstContextSeries);
             assertNotSame(firstContextSeries, secondContextSeries);
+            assertSame(firstContextSeries.indicators(), secondContextSeries.indicators());
+            assertSame(firstContextSeries.indicators().sma(new ClosePriceIndicator(firstContextSeries), 2),
+                    secondContextSeries.indicators().sma(new ClosePriceIndicator(secondContextSeries), 2));
             assertEquals(series.getBarCount(), firstContextSeries.getBarCount());
             assertEquals(TradeType.SELL, context.tradeType());
             return context.entryPrice().dividedBy(numFactory.numOf(10));
@@ -176,6 +180,9 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertNotSame(series, firstSnapshot);
         assertNotSame(firstSnapshot, secondSnapshot);
+        assertSame(firstSnapshot.indicators(), secondSnapshot.indicators());
+        assertSame(firstSnapshot.indicators().sma(new ClosePriceIndicator(firstSnapshot), 2),
+                secondSnapshot.indicators().sma(new ClosePriceIndicator(secondSnapshot), 2));
         assertEquals(3, firstSnapshot.getBarCount());
         assertEquals(3, secondSnapshot.getBarCount());
         assertEquals(3, localManager.getBarSeries().getBarCount());
