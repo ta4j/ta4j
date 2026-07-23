@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
@@ -1131,6 +1132,46 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void historicalMutationCannotRaceWithLastBarPromotion() throws Exception {
+        BaseBarSeries source = (BaseBarSeries) new MockBarSeriesBuilder()
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1, 2, 3, 4, 5)
+                .build();
+        EpochBlockingSeries mutableSeries = new EpochBlockingSeries(source.getBarData());
+        SMAIndicator first = new SMAIndicator(new ClosePriceIndicator(mutableSeries), 5);
+        SMAIndicator second = new SMAIndicator(new ClosePriceIndicator(mutableSeries), 5);
+        int previousEndIndex = mutableSeries.getEndIndex();
+
+        assertNumEquals(3, first.getValue(previousEndIndex));
+        Bar lastBar = mutableSeries.getLastBar();
+        mutableSeries.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(6)
+                .add();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        mutableSeries.blockNextEpochRead();
+        Future<Num> result = executor.submit(() -> second.getValue(previousEndIndex));
+        try {
+            assertTrue(mutableSeries.awaitBlockedEpochRead());
+            Bar firstBar = mutableSeries.getFirstBar();
+            Bar replacement = mutableSeries.barBuilder()
+                    .timePeriod(firstBar.getTimePeriod())
+                    .endTime(firstBar.getEndTime())
+                    .closePrice(101)
+                    .build();
+            mutableSeries.replaceBar(0, replacement);
+            mutableSeries.allowEpochRead();
+
+            assertNumEquals(23, result.get(10, TimeUnit.SECONDS));
+        } finally {
+            mutableSeries.allowEpochRead();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     public void historicalMutationDuringCalculationCannotPublishStaleSharedState() throws Exception {
         BaseBarSeries mutableSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5)
@@ -1640,6 +1681,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         public void addPrice(Num price) {
             delegate.addPrice(price);
+        }
+    }
+
+    private static final class EpochBlockingSeries extends BaseBarSeries {
+
+        private final AtomicBoolean blockNextEpochRead = new AtomicBoolean();
+        private final CountDownLatch epochReadStarted = new CountDownLatch(1);
+        private final CountDownLatch allowEpochRead = new CountDownLatch(1);
+
+        private EpochBlockingSeries(List<Bar> bars) {
+            super("epoch-blocking", bars);
+        }
+
+        private void blockNextEpochRead() {
+            blockNextEpochRead.set(true);
+        }
+
+        private boolean awaitBlockedEpochRead() throws InterruptedException {
+            return epochReadStarted.await(10, TimeUnit.SECONDS);
+        }
+
+        private void allowEpochRead() {
+            allowEpochRead.countDown();
+        }
+
+        @Override
+        public long getBarHistoryEpoch() {
+            long epoch = super.getBarHistoryEpoch();
+            if (blockNextEpochRead.compareAndSet(true, false)) {
+                epochReadStarted.countDown();
+                try {
+                    assertTrue(allowEpochRead.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+            return epoch;
         }
     }
 

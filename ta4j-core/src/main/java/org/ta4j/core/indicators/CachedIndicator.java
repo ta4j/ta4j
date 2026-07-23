@@ -172,8 +172,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     result = getLastBarValue(index, series);
                     requireUnchangedEpoch(series, historyEpoch);
                 } else {
-                    result = promotePreviousLastBar(index, series) ? state.cache.get(index)
+                    boolean promotedLastBar = promotePreviousLastBar(index, series);
+                    result = promotedLastBar ? state.cache.get(index)
                             : getOrComputeAndCache(index, series, historyEpoch);
+                    if (promotedLastBar) {
+                        requireUnchangedEpoch(series, historyEpoch);
+                    }
                 }
 
                 if (log.isTraceEnabled()) {
