@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import java.util.Objects;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.frequency.SampleSummary;
@@ -36,23 +36,24 @@ public class EWMAIndicator extends AbstractEMAIndicator {
      * @since 0.22.9
      */
     public EWMAIndicator(Indicator<Num> indicator, int barCount, double decayFactor) {
-        super(EWMAIndicator.class, validateIndicator(indicator), validateBarCount(barCount),
-                1d - validateDecayFactor(decayFactor));
+        super(validateIndicator(indicator), validateBarCount(barCount), 1d - validateDecayFactor(decayFactor),
+                identityOfExact(EWMAIndicator.class, indicator, barCount, 1d - decayFactor));
         this.indicator = indicator;
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param indicator     source indicator
-     * @param barCount      number of observations used for initialization
-     * @param decayFactor   EWMA decay factor in {@code (0, 1)}
+     * @param indicator   source indicator
+     * @param barCount    number of observations used for initialization
+     * @param decayFactor EWMA decay factor in {@code (0, 1)}
+     * @param identity    complete immutable constructor identity
      * @since 0.23.1
      */
-    protected EWMAIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount, double decayFactor) {
-        super(identityClass, validateIndicator(indicator), validateBarCount(barCount),
-                1d - validateDecayFactor(decayFactor));
+    protected EWMAIndicator(Indicator<Num> indicator, int barCount, double decayFactor, IndicatorIdentity identity) {
+        super(validateIndicator(indicator), validateBarCount(barCount), 1d - validateDecayFactor(decayFactor),
+                identity);
         this.indicator = indicator;
     }
 

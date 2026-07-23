@@ -32,20 +32,21 @@ public class ADXIndicator extends CachedIndicator<Num> {
      * @param adxBarCount the bar count for {@link #averageDXIndicator}
      */
     public ADXIndicator(BarSeries series, int diBarCount, int adxBarCount) {
-        this(ADXIndicator.class, series, diBarCount, adxBarCount);
+        this(series, diBarCount, adxBarCount, identityOfExact(ADXIndicator.class, diBarCount, adxBarCount));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param series        the bar series
-     * @param diBarCount    the bar count for {@link DXIndicator}
-     * @param adxBarCount   the bar count for {@link #averageDXIndicator}
+     * @param series      the bar series
+     * @param diBarCount  the bar count for {@link DXIndicator}
+     * @param adxBarCount the bar count for {@link #averageDXIndicator}
+     * @param identity    complete immutable constructor identity
      * @since 0.23.1
      */
-    protected ADXIndicator(Class<?> identityClass, BarSeries series, int diBarCount, int adxBarCount) {
-        super(series, identityOfExact(identityClass, diBarCount, adxBarCount));
+    protected ADXIndicator(BarSeries series, int diBarCount, int adxBarCount, IndicatorIdentity identity) {
+        super(series, identity);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
         this.dxIndicator = new DXIndicator(series, diBarCount);

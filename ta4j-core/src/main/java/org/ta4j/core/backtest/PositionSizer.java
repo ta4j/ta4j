@@ -253,7 +253,7 @@ public interface PositionSizer {
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
             strategy = StrategySnapshots.copy(strategy);
-            barSeries = BacktestBarSeriesViews.snapshot(barSeries);
+            barSeries = BacktestBarSeriesViews.readOnlySnapshot(barSeries);
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");

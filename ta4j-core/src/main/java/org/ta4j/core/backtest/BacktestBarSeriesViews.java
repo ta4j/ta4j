@@ -29,7 +29,14 @@ final class BacktestBarSeriesViews {
                 .build();
     }
 
+    static BarSeries readOnlySnapshot(BarSeries barSeries) {
+        return readOnlyView(snapshot(barSeries));
+    }
+
     static BarSeries readOnlyView(BarSeries barSeries) {
+        if (barSeries instanceof ReadOnlyBarSeriesView) {
+            return barSeries;
+        }
         return new ReadOnlyBarSeriesView(barSeries);
     }
 

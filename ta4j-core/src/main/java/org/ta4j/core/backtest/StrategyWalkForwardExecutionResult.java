@@ -46,7 +46,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @since 0.22.4
      */
     public StrategyWalkForwardExecutionResult {
-        barSeries = BacktestBarSeriesViews.snapshot(barSeries);
+        barSeries = BacktestBarSeriesViews.readOnlySnapshot(barSeries);
         strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));

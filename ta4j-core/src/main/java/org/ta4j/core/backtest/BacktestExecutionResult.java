@@ -35,7 +35,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @param runtimeReport     runtime statistics for the execution
      */
     public BacktestExecutionResult {
-        barSeries = BacktestBarSeriesViews.snapshot(barSeries);
+        barSeries = BacktestBarSeriesViews.readOnlySnapshot(barSeries);
         tradingStatements = List
                 .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");

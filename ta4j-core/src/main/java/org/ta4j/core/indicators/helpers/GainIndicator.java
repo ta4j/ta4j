@@ -25,18 +25,19 @@ public class GainIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public GainIndicator(Indicator<Num> indicator) {
-        this(GainIndicator.class, indicator);
+        this(indicator, identityOfExact(GainIndicator.class, indicator));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param indicator     the {@link Indicator}
+     * @param indicator the {@link Indicator}
+     * @param identity  complete immutable constructor identity
      * @since 0.23.1
      */
-    protected GainIndicator(Class<?> identityClass, Indicator<Num> indicator) {
-        super(indicator, identityOfExact(identityClass, indicator));
+    protected GainIndicator(Indicator<Num> indicator, IndicatorIdentity identity) {
+        super(indicator, identity);
         this.indicator = indicator;
     }
 

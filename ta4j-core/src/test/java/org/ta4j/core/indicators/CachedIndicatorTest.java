@@ -1420,6 +1420,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void subclassesOfAuditedIndicatorsCanOptInWithCompleteIdentity() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        AtomicInteger calculations = new AtomicInteger();
+        OptedInAdjustedSmaIndicator first = new OptedInAdjustedSmaIndicator(close, 3, 1, calculations);
+        OptedInAdjustedSmaIndicator same = new OptedInAdjustedSmaIndicator(close, 3, 1, calculations);
+        OptedInAdjustedSmaIndicator different = new OptedInAdjustedSmaIndicator(close, 3, 2, calculations);
+
+        assertNotSame(first, same);
+        assertSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) same).sharedStateIdentity());
+        assertNotSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) different).sharedStateIdentity());
+
+        assertNumEquals(4, first.getValue(3));
+        assertNumEquals(4, same.getValue(3));
+        assertNumEquals(5, different.getValue(3));
+        assertEquals(2, calculations.get());
+    }
+
+    @Test
     public void equivalentFluentSourceGraphsShareTheirCachedComposition() {
         NumericIndicator first = NumericIndicator.closePrice(series).plus(1).sma(3);
         NumericIndicator second = NumericIndicator.closePrice(series).plus(1).sma(3);
@@ -1441,6 +1461,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         @Override
         protected Num calculate(int index) {
+            return super.calculate(index).plus(getBarSeries().numFactory().numOf(adjustment));
+        }
+    }
+
+    private static final class OptedInAdjustedSmaIndicator extends SMAIndicator {
+
+        private final int adjustment;
+        private final AtomicInteger calculations;
+
+        private OptedInAdjustedSmaIndicator(Indicator<Num> indicator, int barCount, int adjustment,
+                AtomicInteger calculations) {
+            super(indicator, barCount,
+                    identityOfExact(OptedInAdjustedSmaIndicator.class, indicator, barCount, adjustment));
+            this.adjustment = adjustment;
+            this.calculations = calculations;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
             return super.calculate(index).plus(getBarSeries().numFactory().numOf(adjustment));
         }
     }

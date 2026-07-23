@@ -42,14 +42,15 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     /**
      * Constructor.
      *
-     * @param exactClass exact concrete indicator class eligible for sharing
      * @param indicator  the {@link Indicator}
      * @param barCount   the time frame
      * @param multiplier the multiplier
+     * @param identity   complete immutable constructor identity
      * @since 0.23.1
      */
-    protected AbstractEMAIndicator(Class<?> exactClass, Indicator<Num> indicator, int barCount, double multiplier) {
-        super(indicator, identityOfExact(exactClass, indicator, barCount, multiplier));
+    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier,
+            IndicatorIdentity identity) {
+        super(indicator, identity);
         this.indicator = indicator;
         this.barCount = barCount;
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);

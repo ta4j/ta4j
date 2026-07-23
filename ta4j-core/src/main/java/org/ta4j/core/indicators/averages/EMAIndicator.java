@@ -40,19 +40,20 @@ public class EMAIndicator extends AbstractEMAIndicator {
      * @param barCount  the EMA time frame
      */
     public EMAIndicator(Indicator<Num> indicator, int barCount) {
-        this(EMAIndicator.class, indicator, barCount);
+        this(indicator, barCount, identityOfExact(EMAIndicator.class, indicator, barCount));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param indicator     an indicator
-     * @param barCount      the EMA time frame
+     * @param indicator an indicator
+     * @param barCount  the EMA time frame
+     * @param identity  complete immutable constructor identity
      * @since 0.23.1
      */
-    protected EMAIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount) {
-        super(identityClass, indicator, barCount, (2.0 / (barCount + 1)));
+    protected EMAIndicator(Indicator<Num> indicator, int barCount, IndicatorIdentity identity) {
+        super(indicator, barCount, (2.0 / (barCount + 1)), identity);
     }
 
     @Override

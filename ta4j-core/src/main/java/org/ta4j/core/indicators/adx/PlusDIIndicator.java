@@ -36,20 +36,21 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgPlusDMIndicator}
      */
     public PlusDIIndicator(BarSeries series, int barCount) {
-        this(PlusDIIndicator.class, series, barCount);
+        this(series, barCount, identityOfExact(PlusDIIndicator.class, barCount));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param series        the bar series
-     * @param barCount      the bar count for {@link #atrIndicator} and
-     *                      {@link #avgPlusDMIndicator}
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #atrIndicator} and
+     *                 {@link #avgPlusDMIndicator}
+     * @param identity complete immutable constructor identity
      * @since 0.23.1
      */
-    protected PlusDIIndicator(Class<?> identityClass, BarSeries series, int barCount) {
-        super(series, identityOfExact(identityClass, barCount));
+    protected PlusDIIndicator(BarSeries series, int barCount, IndicatorIdentity identity) {
+        super(series, identity);
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.plusDMIndicator = new PlusDMIndicator(series);

@@ -50,6 +50,7 @@ public class BarSeriesManager {
 
     /** The managed bar series */
     private final BarSeries barSeries;
+    private final BarSeries readOnlyBarSeries;
 
     /** The trading cost models */
     private final CostModel transactionCostModel;
@@ -153,6 +154,7 @@ public class BarSeriesManager {
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
         this.barSeries = BacktestBarSeriesViews.snapshot(barSeries);
+        this.readOnlyBarSeries = BacktestBarSeriesViews.readOnlyView(this.barSeries);
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -163,7 +165,7 @@ public class BarSeriesManager {
      * @return the managed bar series
      */
     public BarSeries getBarSeries() {
-        return BacktestBarSeriesViews.readOnlyView(barSeries);
+        return BacktestBarSeriesViews.readOnlyView(readOnlyBarSeries);
     }
 
     /**

@@ -42,26 +42,23 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
-        super(indicator, identityOfExact(StandardDeviationIndicator.class, indicator, barCount, sampleType));
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
-        this.variance = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
-                : VarianceIndicator.ofPopulation(indicator, barCount);
+        this(indicator, barCount, sampleType,
+                identityOfExact(StandardDeviationIndicator.class, indicator, barCount, sampleType));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param indicator     the indicator
-     * @param barCount      the time frame
-     * @param sampleType    sample/population variance selection
+     * @param indicator  the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population variance selection
+     * @param identity   complete immutable constructor identity
      * @since 0.23.1
      */
-    protected StandardDeviationIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount,
-            SampleType sampleType) {
-        super(indicator, identityOfExact(identityClass, indicator, barCount, sampleType));
+    protected StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType,
+            IndicatorIdentity identity) {
+        super(indicator, identity);
         this.indicator = indicator;
         this.barCount = barCount;
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");

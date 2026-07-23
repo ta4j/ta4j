@@ -48,19 +48,20 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount the time frame
      */
     public VolumeIndicator(BarSeries series, int barCount) {
-        this(VolumeIndicator.class, series, barCount);
+        this(series, barCount, identityOfExact(VolumeIndicator.class, barCount));
     }
 
     /**
-     * Constructor for subclasses that provide their own audited cache identity.
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
      *
-     * @param identityClass exact concrete indicator class eligible for sharing
-     * @param series        the bar series
-     * @param barCount      the time frame
+     * @param series   the bar series
+     * @param barCount the time frame
+     * @param identity complete immutable constructor identity
      * @since 0.23.1
      */
-    protected VolumeIndicator(Class<?> identityClass, BarSeries series, int barCount) {
-        super(series, identityOfExact(identityClass, barCount));
+    protected VolumeIndicator(BarSeries series, int barCount, IndicatorIdentity identity) {
+        super(series, identity);
         this.barCount = barCount;
     }
 
