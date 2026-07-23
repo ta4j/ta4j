@@ -8,6 +8,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
+import org.ta4j.core.BarSeries;
+
 /**
  * Ring-buffer backed cache for indicator values with O(1) eviction and
  * read-optimized locking.
@@ -143,6 +145,11 @@ class CachedBuffer<T> {
     }
 
     T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex) {
+        return getOrCompute(index, calculator, onComputedIndex, null, -1L);
+    }
+
+    T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex, BarSeries series,
+            long historyEpoch) {
         // Optimistic fast-path (lock-free) for cache hits.
         Object cached = readAtOptimistic(index);
         if (cached != NOT_COMPUTED) {
@@ -178,6 +185,10 @@ class CachedBuffer<T> {
             if (cached == NOT_COMPUTED) {
                 T result = calculator.apply(index);
                 store(index, result);
+                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
+                    clearInternal();
+                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
+                }
                 if (onComputedIndex != null) {
                     onComputedIndex.accept(index);
                 }
@@ -284,6 +295,11 @@ class CachedBuffer<T> {
      * @param calculator  function to compute values
      */
     void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator) {
+        prefillUntil(startIndex, targetIndex, calculator, null, null, -1L);
+    }
+
+    void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator, IntConsumer onComputedIndex,
+            BarSeries series, long historyEpoch) {
         lock.writeLock().lock();
         try {
             onWriteLockAcquired();
@@ -292,6 +308,13 @@ class CachedBuffer<T> {
                 for (int i = fillStart; i < targetIndex; i++) {
                     T value = calculator.apply(i);
                     store(i, value);
+                }
+                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
+                    clearInternal();
+                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
+                }
+                if (onComputedIndex != null) {
+                    onComputedIndex.accept(highestResultIndex);
                 }
             } finally {
                 onBeforeWriteLockReleased();
@@ -360,6 +383,10 @@ class CachedBuffer<T> {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    int getMaximumCapacity() {
+        return bounded ? maximumCapacity : Integer.MAX_VALUE;
     }
 
     /**

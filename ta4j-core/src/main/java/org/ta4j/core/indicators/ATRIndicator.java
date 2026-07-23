@@ -43,7 +43,8 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     private ATRIndicator(Config config) {
-        super(config.trueRangeIndicator().getBarSeries());
+        super(config.trueRangeIndicator().getBarSeries(),
+                identityOfExact(ATRIndicator.class, config.trueRangeIndicator(), config.barCount()));
         this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();

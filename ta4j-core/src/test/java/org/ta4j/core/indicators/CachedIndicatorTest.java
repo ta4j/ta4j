@@ -10,7 +10,11 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
@@ -18,7 +22,11 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
@@ -347,6 +356,68 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             executor.shutdownNow();
             executor.awaitTermination(30, TimeUnit.SECONDS);
         }
+    }
+
+    @Test
+    public void lastBarMutationDuringCalculationRetriesBeforeReturning() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        RevisionBlockingIndicator indicator = new RevisionBlockingIndicator(barSeries);
+        int endIndex = barSeries.getEndIndex();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.firstCalculationStarted.await(30, TimeUnit.SECONDS));
+
+            barSeries.addTrade(numOf(1), numOf(10));
+            indicator.allowFirstCalculation.countDown();
+
+            assertNumEquals(10, future.get(30, TimeUnit.SECONDS));
+            assertEquals(2, indicator.calculations.get());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    public void previousLastBarPromotionRejectsRevisionAbaMutation() {
+        BarSeries barSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        Duration period = Duration.ofMinutes(1);
+        barSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(Instant.EPOCH.plus(period))
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .closePrice(1)
+                .add();
+        barSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(Instant.EPOCH.plus(period.multipliedBy(2)))
+                .openPrice(10)
+                .highPrice(10)
+                .lowPrice(10)
+                .closePrice(10)
+                .add();
+        HighPriceIndicator high = new HighPriceIndicator(barSeries);
+        SMAIndicator cachedHigh = new SMAIndicator(high, 1);
+        int previousLastIndex = barSeries.getEndIndex();
+        assertNumEquals(10, cachedHigh.getValue(previousLastIndex));
+
+        barSeries.addPrice(numOf(20));
+        barSeries.addPrice(numOf(10));
+        barSeries.addBar(barSeries.barBuilder()
+                .timePeriod(period)
+                .endTime(Instant.EPOCH.plus(period.multipliedBy(3)))
+                .openPrice(30)
+                .highPrice(30)
+                .lowPrice(30)
+                .closePrice(30)
+                .build());
+
+        assertNumEquals(20, cachedHigh.getValue(previousLastIndex));
     }
 
     @Test
@@ -956,6 +1027,680 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
     }
 
+    @Test
+    public void equivalentOptedInInstancesShareOneCalculation() {
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(series, "shared", calculations);
+        SharedCountingIndicator second = new SharedCountingIndicator(series, "shared", calculations);
+
+        assertNotSame(first, second);
+        assertNumEquals(4, first.getValue(3));
+        assertNumEquals(4, second.getValue(3));
+        assertEquals(1, calculations.get());
+    }
+
+    @Test
+    public void sharedLastBarWaiterRefreshesProtectedHighestIndexMirror() throws Exception {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        AtomicInteger calculations = new AtomicInteger();
+        CountDownLatch calculationStarted = new CountDownLatch(1);
+        CountDownLatch allowCalculation = new CountDownLatch(1);
+        SharedBlockingIndicator first = new SharedBlockingIndicator(barSeries, calculations, calculationStarted,
+                allowCalculation);
+        SharedBlockingIndicator second = new SharedBlockingIndicator(barSeries, calculations, calculationStarted,
+                allowCalculation);
+        int endIndex = barSeries.getEndIndex();
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        AtomicReference<Thread> waiterThread = new AtomicReference<>();
+        CountDownLatch waiterStarted = new CountDownLatch(1);
+
+        try {
+            Future<Num> firstResult = executor.submit(() -> first.getValue(endIndex));
+            assertTrue(calculationStarted.await(30, TimeUnit.SECONDS));
+            Future<Num> secondResult = executor.submit(() -> {
+                waiterThread.set(Thread.currentThread());
+                waiterStarted.countDown();
+                return second.getValue(endIndex);
+            });
+            assertTrue(waiterStarted.await(30, TimeUnit.SECONDS));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+            while (waiterThread.get().getState() != Thread.State.TIMED_WAITING && !secondResult.isDone()
+                    && System.nanoTime() < deadline) {
+                Thread.sleep(1L);
+            }
+            assertEquals(Thread.State.TIMED_WAITING, waiterThread.get().getState());
+
+            allowCalculation.countDown();
+            assertNumEquals(4, firstResult.get(30, TimeUnit.SECONDS));
+            assertNumEquals(4, secondResult.get(30, TimeUnit.SECONDS));
+            assertEquals(1, calculations.get());
+            assertEquals(endIndex, second.highestIndexMirror());
+        } finally {
+            allowCalculation.countDown();
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    public void existingSuperclassConstructorKeepsStatefulIndicatorsIsolated() {
+        CountingIndicator first = CountingIndicator.closePrice(series);
+        CountingIndicator second = CountingIndicator.closePrice(series);
+
+        first.getValue(3);
+        second.getValue(3);
+        assertEquals(1, first.getCalculationCount());
+        assertEquals(1, second.getCalculationCount());
+    }
+
+    @Test
+    public void sharedStateDistinguishesParametersClassesSeriesAndOpaqueInputs() {
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(series, "first", calculations);
+        SharedCountingIndicator differentParameter = new SharedCountingIndicator(series, "second", calculations);
+        OtherSharedCountingIndicator differentClass = new OtherSharedCountingIndicator(series, "first", calculations);
+        BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        SharedCountingIndicator differentSeries = new SharedCountingIndicator(otherSeries, "first", calculations);
+
+        first.getValue(2);
+        differentParameter.getValue(2);
+        differentClass.getValue(2);
+        differentSeries.getValue(2);
+        assertEquals(4, calculations.get());
+
+        Object opaque = new Object();
+        SharedCountingIndicator sameOpaqueFirst = new SharedCountingIndicator(series, opaque, calculations);
+        SharedCountingIndicator sameOpaqueSecond = new SharedCountingIndicator(series, opaque, calculations);
+        SharedCountingIndicator differentOpaque = new SharedCountingIndicator(series, new Object(), calculations);
+        sameOpaqueFirst.getValue(4);
+        sameOpaqueSecond.getValue(4);
+        differentOpaque.getValue(4);
+        assertEquals(6, calculations.get());
+
+        List<Integer> mutableConfiguration = new ArrayList<>(List.of(1, 2));
+        SharedCountingIndicator snapshotted = new SharedCountingIndicator(series, mutableConfiguration, calculations);
+        mutableConfiguration.add(3);
+        SharedCountingIndicator equivalentSnapshot = new SharedCountingIndicator(series, new ArrayList<>(List.of(1, 2)),
+                calculations);
+        snapshotted.getValue(6);
+        equivalentSnapshot.getValue(6);
+        assertEquals(7, calculations.get());
+    }
+
+    @Test
+    public void structuralIdentityPreservesContainerTypesAndIterationOrder() {
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator primitiveArray = new SharedCountingIndicator(series, new int[] { 1 }, calculations);
+        SharedCountingIndicator boxedArray = new SharedCountingIndicator(series, new Integer[] { 1 }, calculations);
+        SharedCountingIndicator list = new SharedCountingIndicator(series, List.of(1), calculations);
+        assertNotSame(primitiveArray.sharedStateIdentity(), boxedArray.sharedStateIdentity());
+        assertNotSame(primitiveArray.sharedStateIdentity(), list.sharedStateIdentity());
+
+        Map<String, Integer> firstOrder = new LinkedHashMap<>();
+        firstOrder.put("first", 1);
+        firstOrder.put("second", 2);
+        Map<String, Integer> secondOrder = new LinkedHashMap<>();
+        secondOrder.put("second", 2);
+        secondOrder.put("first", 1);
+        SharedCountingIndicator firstMap = new SharedCountingIndicator(series, firstOrder, calculations);
+        SharedCountingIndicator secondMap = new SharedCountingIndicator(series, secondOrder, calculations);
+        assertNotSame(firstMap.sharedStateIdentity(), secondMap.sharedStateIdentity());
+    }
+
+    @Test
+    public void mutableConstantValuesRemainOpaqueToDownstreamIdentity() {
+        List<Integer> firstValue = new ArrayList<>(List.of(1));
+        List<Integer> secondValue = new ArrayList<>(List.of(1));
+        ConstantIndicator<List<Integer>> firstConstant = new ConstantIndicator<>(series, firstValue);
+        ConstantIndicator<List<Integer>> secondConstant = new ConstantIndicator<>(series, secondValue);
+        SharedForwardingIndicator<List<Integer>> first = new SharedForwardingIndicator<>(firstConstant);
+        SharedForwardingIndicator<List<Integer>> second = new SharedForwardingIndicator<>(secondConstant);
+
+        assertNotSame(first.sharedStateIdentity(), second.sharedStateIdentity());
+        firstValue.add(2);
+        assertEquals(List.of(1, 2), first.getValue(3));
+        assertEquals(List.of(1), second.getValue(3));
+    }
+
+    @Test
+    public void sharedStateDistinguishesDecimalArithmeticContexts() {
+        NumFactory lowPrecisionFactory = DecimalNumFactory.getInstance(16);
+        NumFactory highPrecisionFactory = DecimalNumFactory.getInstance(40);
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(lowPrecisionFactory).withData(1, 1).build();
+        Num lowPrecisionValue = lowPrecisionFactory.numOf(2).dividedBy(lowPrecisionFactory.numOf(3));
+        Num highPrecisionValue = highPrecisionFactory.numOf(2).dividedBy(highPrecisionFactory.numOf(3));
+        SMAIndicator lowPrecision = new SMAIndicator(new ConstantIndicator<>(decimalSeries, lowPrecisionValue), 1);
+        SMAIndicator highPrecision = new SMAIndicator(new ConstantIndicator<>(decimalSeries, highPrecisionValue), 1);
+
+        assertNotSame(((CachedIndicator<?>) lowPrecision).sharedStateIdentity(),
+                ((CachedIndicator<?>) highPrecision).sharedStateIdentity());
+        assertEquals(16, ((DecimalNum) lowPrecision.getValue(1)).getMathContext().getPrecision());
+        assertEquals(40, ((DecimalNum) highPrecision.getValue(1)).getMathContext().getPrecision());
+    }
+
+    @Test
+    public void sharedStateComputesOnceUnderContentionAndCachesNull() throws Exception {
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(series, "concurrent", calculations);
+        SharedCountingIndicator second = new SharedCountingIndicator(series, "concurrent", calculations);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Num>> futures = new ArrayList<>();
+        for (int i = 0; i < 32; i++) {
+            SharedCountingIndicator target = i % 2 == 0 ? first : second;
+            futures.add(executor.submit(() -> {
+                start.await();
+                return target.getValue(5);
+            }));
+        }
+        start.countDown();
+        for (Future<Num> future : futures) {
+            assertNumEquals(4, future.get(10, TimeUnit.SECONDS));
+        }
+        executor.shutdownNow();
+        assertEquals(1, calculations.get());
+
+        AtomicInteger nullCalculations = new AtomicInteger();
+        SharedNullIndicator nullFirst = new SharedNullIndicator(series, nullCalculations);
+        SharedNullIndicator nullSecond = new SharedNullIndicator(series, nullCalculations);
+        assertNull(nullFirst.getValue(4));
+        assertNull(nullSecond.getValue(4));
+        assertEquals(1, nullCalculations.get());
+    }
+
+    @Test
+    public void failedSharedCalculationIsRetriedByEquivalentInstance() {
+        AtomicInteger calculations = new AtomicInteger();
+        AtomicBoolean failFirst = new AtomicBoolean(true);
+        SharedFailingIndicator first = new SharedFailingIndicator(series, calculations, failFirst);
+        SharedFailingIndicator second = new SharedFailingIndicator(series, calculations, failFirst);
+
+        assertThrows(IllegalStateException.class, () -> first.getValue(4));
+        assertNumEquals(4, second.getValue(4));
+        assertEquals(2, calculations.get());
+    }
+
+    @Test
+    public void historyEpochInvalidatesSharedStateButAppendAndPruningPreserveIt() {
+        BaseBarSeries mutableSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5)
+                .build();
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(mutableSeries, "epoch", calculations);
+        SharedCountingIndicator second = new SharedCountingIndicator(mutableSeries, "epoch", calculations);
+
+        first.getValue(2);
+        mutableSeries.addBar(mutableSeries.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(mutableSeries.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .closePrice(6)
+                .build());
+        second.getValue(2);
+        assertEquals(1, calculations.get());
+
+        mutableSeries.replaceBar(1, mutableSeries.getBar(1));
+        second.getValue(2);
+        assertEquals(2, calculations.get());
+
+        List<Bar> bars = mutableSeries.getBarData();
+        mutableSeries.clear();
+        bars.forEach(mutableSeries::addBar);
+        first.getValue(2);
+        assertEquals(3, calculations.get());
+
+        first.getValue(4);
+        assertEquals(4, calculations.get());
+        mutableSeries.setMaximumBarCount(3);
+        second.getValue(4);
+        assertEquals(4, calculations.get());
+    }
+
+    @Test
+    public void liveBarMutationInvalidatesOneSharedLastBarValue() {
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(series, "live", calculations);
+        SharedCountingIndicator second = new SharedCountingIndicator(series, "live", calculations);
+        int endIndex = series.getEndIndex();
+
+        first.getValue(endIndex);
+        second.getValue(endIndex);
+        assertEquals(1, calculations.get());
+
+        series.addPrice(numFactory.numOf(42));
+        assertNumEquals(42, second.getValue(endIndex));
+        assertEquals(2, calculations.get());
+    }
+
+    @Test
+    public void appendPromotesSharedLastBarWithoutRecalculation() {
+        BaseBarSeries mutableSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5)
+                .build();
+        AtomicInteger calculations = new AtomicInteger();
+        SharedCountingIndicator first = new SharedCountingIndicator(mutableSeries, "append", calculations);
+        SharedCountingIndicator second = new SharedCountingIndicator(mutableSeries, "append", calculations);
+        int previousEndIndex = mutableSeries.getEndIndex();
+
+        first.getValue(previousEndIndex);
+        Bar lastBar = mutableSeries.getLastBar();
+        mutableSeries.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(6)
+                .add();
+
+        assertNumEquals(5, second.getValue(previousEndIndex));
+        assertEquals(1, calculations.get());
+    }
+
+    @Test
+    public void historicalMutationCannotRaceWithLastBarPromotion() throws Exception {
+        BaseBarSeries source = (BaseBarSeries) new MockBarSeriesBuilder()
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1, 2, 3, 4, 5)
+                .build();
+        EpochBlockingSeries mutableSeries = new EpochBlockingSeries(source.getBarData());
+        SMAIndicator first = new SMAIndicator(new ClosePriceIndicator(mutableSeries), 5);
+        SMAIndicator second = new SMAIndicator(new ClosePriceIndicator(mutableSeries), 5);
+        int previousEndIndex = mutableSeries.getEndIndex();
+
+        assertNumEquals(3, first.getValue(previousEndIndex));
+        Bar lastBar = mutableSeries.getLastBar();
+        mutableSeries.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(6)
+                .add();
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        mutableSeries.blockNextEpochRead();
+        Future<Num> result = executor.submit(() -> second.getValue(previousEndIndex));
+        try {
+            assertTrue(mutableSeries.awaitBlockedEpochRead());
+            Bar firstBar = mutableSeries.getFirstBar();
+            Bar replacement = mutableSeries.barBuilder()
+                    .timePeriod(firstBar.getTimePeriod())
+                    .endTime(firstBar.getEndTime())
+                    .closePrice(101)
+                    .build();
+            mutableSeries.replaceBar(0, replacement);
+            mutableSeries.allowEpochRead();
+
+            assertNumEquals(23, result.get(10, TimeUnit.SECONDS));
+        } finally {
+            mutableSeries.allowEpochRead();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void historicalMutationDuringCalculationCannotPublishStaleSharedState() throws Exception {
+        BaseBarSeries mutableSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5)
+                .build();
+        CountDownLatch calculationStarted = new CountDownLatch(1);
+        CountDownLatch calculationMayFinish = new CountDownLatch(1);
+        AtomicInteger calculations = new AtomicInteger();
+        EpochBlockingIndicator first = new EpochBlockingIndicator(mutableSeries, calculations, calculationStarted,
+                calculationMayFinish);
+        EpochBlockingIndicator second = new EpochBlockingIndicator(mutableSeries, calculations, calculationStarted,
+                calculationMayFinish);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<Num> result = executor.submit(() -> first.getValue(3));
+
+        assertTrue(calculationStarted.await(10, TimeUnit.SECONDS));
+        mutableSeries.replaceBar(1, mutableSeries.getBar(1));
+        calculationMayFinish.countDown();
+
+        assertNumEquals(4, result.get(10, TimeUnit.SECONDS));
+        assertNumEquals(4, second.getValue(3));
+        executor.shutdownNow();
+        assertEquals(2, calculations.get());
+    }
+
+    @Test
+    public void historicalMutationDuringRecursivePrefillRetriesOnNewEpoch() throws Exception {
+        List<Double> values = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            values.add(1d);
+        }
+        BaseBarSeries mutableSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(values)
+                .build();
+        CountDownLatch calculationStarted = new CountDownLatch(1);
+        CountDownLatch calculationMayFinish = new CountDownLatch(1);
+        PrefillEpochBlockingIndicator first = new PrefillEpochBlockingIndicator(mutableSeries, calculationStarted,
+                calculationMayFinish);
+        PrefillEpochBlockingIndicator second = new PrefillEpochBlockingIndicator(mutableSeries, calculationStarted,
+                calculationMayFinish);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Future<Num> accumulated = executor.submit(() -> first.getValue(150));
+
+        try {
+            assertTrue(calculationStarted.await(10, TimeUnit.SECONDS));
+            Bar firstBar = mutableSeries.getFirstBar();
+            Bar replacement = mutableSeries.barBuilder()
+                    .timePeriod(firstBar.getTimePeriod())
+                    .endTime(firstBar.getEndTime())
+                    .closePrice(100)
+                    .build();
+            mutableSeries.replaceBar(0, replacement);
+            Future<Num> firstValue = executor.submit(() -> second.getValue(0));
+            calculationMayFinish.countDown();
+
+            assertNumEquals(250, accumulated.get(10, TimeUnit.SECONDS));
+            assertNumEquals(100, firstValue.get(10, TimeUnit.SECONDS));
+        } finally {
+            calculationMayFinish.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void ordinaryConstructorsOfAuditedIndicatorsShareWithoutSharingIdentity() {
+        SMAIndicator first = new SMAIndicator(new ClosePriceIndicator(series), 3);
+        SMAIndicator second = new SMAIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNotSame(first, second);
+        assertSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) second).sharedStateIdentity());
+        assertNumEquals(first.getValue(5), second.getValue(5));
+    }
+
+    @Test
+    public void subclassesOfAuditedIndicatorsRemainIsolatedUntilTheyOptIn() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        ExtendedSmaIndicator first = new ExtendedSmaIndicator(close, 3, 1);
+        ExtendedSmaIndicator second = new ExtendedSmaIndicator(close, 3, 2);
+
+        assertNotSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) second).sharedStateIdentity());
+        assertNumEquals(4, first.getValue(3));
+        assertNumEquals(5, second.getValue(3));
+    }
+
+    @Test
+    public void subclassesOfAuditedIndicatorsCanOptInWithCompleteIdentity() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        AtomicInteger calculations = new AtomicInteger();
+        OptedInAdjustedSmaIndicator first = new OptedInAdjustedSmaIndicator(close, 3, 1, calculations);
+        OptedInAdjustedSmaIndicator same = new OptedInAdjustedSmaIndicator(close, 3, 1, calculations);
+        OptedInAdjustedSmaIndicator different = new OptedInAdjustedSmaIndicator(close, 3, 2, calculations);
+
+        assertNotSame(first, same);
+        assertSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) same).sharedStateIdentity());
+        assertNotSame(((CachedIndicator<?>) first).sharedStateIdentity(),
+                ((CachedIndicator<?>) different).sharedStateIdentity());
+
+        assertNumEquals(4, first.getValue(3));
+        assertNumEquals(4, same.getValue(3));
+        assertNumEquals(5, different.getValue(3));
+        assertEquals(2, calculations.get());
+    }
+
+    @Test
+    public void equivalentFluentSourceGraphsShareTheirCachedComposition() {
+        NumericIndicator first = NumericIndicator.closePrice(series).plus(1).sma(3);
+        NumericIndicator second = NumericIndicator.closePrice(series).plus(1).sma(3);
+        CachedIndicator<?> firstDelegate = (CachedIndicator<?>) first.delegate();
+        CachedIndicator<?> secondDelegate = (CachedIndicator<?>) second.delegate();
+
+        assertSame(firstDelegate.sharedStateIdentity(), secondDelegate.sharedStateIdentity());
+        assertNumEquals(first.getValue(5), second.getValue(5));
+    }
+
+    private static final class ExtendedSmaIndicator extends SMAIndicator {
+
+        private final int adjustment;
+
+        private ExtendedSmaIndicator(Indicator<Num> indicator, int barCount, int adjustment) {
+            super(indicator, barCount);
+            this.adjustment = adjustment;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return super.calculate(index).plus(getBarSeries().numFactory().numOf(adjustment));
+        }
+    }
+
+    private static final class OptedInAdjustedSmaIndicator extends SMAIndicator {
+
+        private final int adjustment;
+        private final AtomicInteger calculations;
+
+        private OptedInAdjustedSmaIndicator(Indicator<Num> indicator, int barCount, int adjustment,
+                AtomicInteger calculations) {
+            super(indicator, barCount,
+                    identityOfExact(OptedInAdjustedSmaIndicator.class, indicator, barCount, adjustment));
+            this.adjustment = adjustment;
+            this.calculations = calculations;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return super.calculate(index).plus(getBarSeries().numFactory().numOf(adjustment));
+        }
+    }
+
+    private static final class SharedCountingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+
+        private SharedCountingIndicator(BarSeries series, Object configuration, AtomicInteger calculations) {
+            super(series, identityOf(configuration));
+            this.calculations = calculations;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class OtherSharedCountingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+
+        private OtherSharedCountingIndicator(BarSeries series, Object configuration, AtomicInteger calculations) {
+            super(series, identityOf(configuration));
+            this.calculations = calculations;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class SharedBlockingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+        private final CountDownLatch calculationStarted;
+        private final CountDownLatch allowCalculation;
+
+        private SharedBlockingIndicator(BarSeries series, AtomicInteger calculations, CountDownLatch calculationStarted,
+                CountDownLatch allowCalculation) {
+            super(series, identityOf("shared-blocking"));
+            this.calculations = calculations;
+            this.calculationStarted = calculationStarted;
+            this.allowCalculation = allowCalculation;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (calculations.incrementAndGet() == 1) {
+                calculationStarted.countDown();
+                try {
+                    assertTrue(allowCalculation.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int highestIndexMirror() {
+            return highestResultIndex;
+        }
+    }
+
+    private static final class SharedNullIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+
+        private SharedNullIndicator(BarSeries series, AtomicInteger calculations) {
+            super(series, identityOf("null"));
+            this.calculations = calculations;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return null;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class SharedForwardingIndicator<T> extends CachedIndicator<T> {
+
+        private final Indicator<T> source;
+
+        private SharedForwardingIndicator(Indicator<T> source) {
+            super(source, identityOf(source));
+            this.source = source;
+        }
+
+        @Override
+        protected T calculate(int index) {
+            return source.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return source.getCountOfUnstableBars();
+        }
+    }
+
+    private static final class SharedFailingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+        private final AtomicBoolean failFirst;
+
+        private SharedFailingIndicator(BarSeries series, AtomicInteger calculations, AtomicBoolean failFirst) {
+            super(series, identityOf("failure"));
+            this.calculations = calculations;
+            this.failFirst = failFirst;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            if (failFirst.compareAndSet(true, false)) {
+                throw new IllegalStateException("expected");
+            }
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class EpochBlockingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations;
+        private final CountDownLatch calculationStarted;
+        private final CountDownLatch calculationMayFinish;
+
+        private EpochBlockingIndicator(BarSeries series, AtomicInteger calculations, CountDownLatch calculationStarted,
+                CountDownLatch calculationMayFinish) {
+            super(series, identityOf("epoch-race"));
+            this.calculations = calculations;
+            this.calculationStarted = calculationStarted;
+            this.calculationMayFinish = calculationMayFinish;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (calculations.incrementAndGet() == 1) {
+                calculationStarted.countDown();
+                try {
+                    assertTrue(calculationMayFinish.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class PrefillEpochBlockingIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final ClosePriceIndicator closePrice;
+        private final CountDownLatch calculationStarted;
+        private final CountDownLatch calculationMayFinish;
+        private final AtomicBoolean blockOnce = new AtomicBoolean(true);
+
+        private PrefillEpochBlockingIndicator(BarSeries series, CountDownLatch calculationStarted,
+                CountDownLatch calculationMayFinish) {
+            super(series, identityOf("prefill-epoch-race"));
+            this.closePrice = new ClosePriceIndicator(series);
+            this.calculationStarted = calculationStarted;
+            this.calculationMayFinish = calculationMayFinish;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 50 && blockOnce.compareAndSet(true, false)) {
+                calculationStarted.countDown();
+                try {
+                    assertTrue(calculationMayFinish.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+            Num current = closePrice.getValue(index);
+            return index == 0 ? current : getValue(index - 1).plus(current);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
     private final static class FailingIndicator extends CachedIndicator<Num> {
 
         private final AtomicInteger calculations = new AtomicInteger();
@@ -1032,6 +1777,37 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private int getHighestResultIndex() {
             return highestResultIndex;
+        }
+    }
+
+    private static final class RevisionBlockingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+        private final CountDownLatch firstCalculationStarted = new CountDownLatch(1);
+        private final CountDownLatch allowFirstCalculation = new CountDownLatch(1);
+
+        private RevisionBlockingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            Num value = getBarSeries().getBar(index).getClosePrice();
+            if (calculations.incrementAndGet() == 1) {
+                firstCalculationStarted.countDown();
+                try {
+                    assertTrue("First calculation was not allowed to proceed in time",
+                            allowFirstCalculation.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 
@@ -1269,6 +2045,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         public void addPrice(Num price) {
             delegate.addPrice(price);
+        }
+    }
+
+    private static final class EpochBlockingSeries extends BaseBarSeries {
+
+        private final AtomicBoolean blockNextEpochRead = new AtomicBoolean();
+        private final CountDownLatch epochReadStarted = new CountDownLatch(1);
+        private final CountDownLatch allowEpochRead = new CountDownLatch(1);
+
+        private EpochBlockingSeries(List<Bar> bars) {
+            super("epoch-blocking", bars);
+        }
+
+        private void blockNextEpochRead() {
+            blockNextEpochRead.set(true);
+        }
+
+        private boolean awaitBlockedEpochRead() throws InterruptedException {
+            return epochReadStarted.await(10, TimeUnit.SECONDS);
+        }
+
+        private void allowEpochRead() {
+            allowEpochRead.countDown();
+        }
+
+        @Override
+        public long getBarHistoryEpoch() {
+            long epoch = super.getBarHistoryEpoch();
+            if (blockNextEpochRead.compareAndSet(true, false)) {
+                epochReadStarted.countDown();
+                try {
+                    assertTrue(allowEpochRead.await(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+            return epoch;
         }
     }
 

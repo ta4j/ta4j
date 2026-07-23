@@ -25,7 +25,8 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     private final transient Num multiplier;
 
     /**
-     * Constructor.
+     * Constructor retained for custom EMA implementations. Custom subclasses remain
+     * instance-local unless they use the identity-aware overload.
      *
      * @param indicator  the {@link Indicator}
      * @param barCount   the time frame
@@ -33,6 +34,23 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
      */
     protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier) {
         super(indicator);
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.multiplier = getBarSeries().numFactory().numOf(multiplier);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator  the {@link Indicator}
+     * @param barCount   the time frame
+     * @param multiplier the multiplier
+     * @param identity   complete immutable constructor identity
+     * @since 0.23.1
+     */
+    protected AbstractEMAIndicator(Indicator<Num> indicator, int barCount, double multiplier,
+            IndicatorIdentity identity) {
+        super(indicator, identity);
         this.indicator = indicator;
         this.barCount = barCount;
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);

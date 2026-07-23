@@ -86,7 +86,7 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
     }
 
     private TrendConclusionIndicator(Config config) {
-        super(config.series());
+        super(config.series(), identityOfExact(TrendConclusionIndicator.class, config.identityParts()));
         this.normalizationBarCount = config.normalizationBarCount();
         this.adxFadeIndicator = config.adxFadeIndicator();
         this.histogramMeanReversionIndicator = config.histogramMeanReversionIndicator();
@@ -103,12 +103,22 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
                 buildHistogramReversion(series, macdFastBarCount, macdSlowBarCount, macdSignalBarCount,
                         normalizationBarCount),
                 buildPriceRecenter(series, mediumEmaBarCount, normalizationBarCount),
-                new CompressionIndicator(series, compressionBarCount, normalizationBarCount), normalizationBarCount);
+                new CompressionIndicator(series, compressionBarCount, normalizationBarCount), normalizationBarCount,
+                mediumEmaBarCount, macdFastBarCount, macdSlowBarCount, macdSignalBarCount, adxBarCount,
+                compressionBarCount, normalizationBarCount);
     }
 
     private static Config validatedConfig(Indicator<Num> adxFadeIndicator,
             Indicator<Num> histogramMeanReversionIndicator, Indicator<Num> priceRecenterIndicator,
             Indicator<Num> compressionIndicator, int normalizationBarCount) {
+        return validatedConfig(adxFadeIndicator, histogramMeanReversionIndicator, priceRecenterIndicator,
+                compressionIndicator, normalizationBarCount, adxFadeIndicator, histogramMeanReversionIndicator,
+                priceRecenterIndicator, compressionIndicator, normalizationBarCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> adxFadeIndicator,
+            Indicator<Num> histogramMeanReversionIndicator, Indicator<Num> priceRecenterIndicator,
+            Indicator<Num> compressionIndicator, int normalizationBarCount, Object... identityParts) {
         BarSeries series = IndicatorUtils.requireSameSeries(adxFadeIndicator, histogramMeanReversionIndicator,
                 priceRecenterIndicator, compressionIndicator);
         if (normalizationBarCount < 1) {
@@ -118,7 +128,7 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
         Indicator<Num> compositeIndicator = NumericIndicator.of(new SumIndicator(adxFadeComponent,
                 histogramMeanReversionIndicator, priceRecenterIndicator, compressionIndicator)).dividedBy(4);
         return new Config(series, adxFadeIndicator, histogramMeanReversionIndicator, priceRecenterIndicator,
-                adxFadeComponent, compressionIndicator, compositeIndicator, normalizationBarCount);
+                adxFadeComponent, compressionIndicator, compositeIndicator, normalizationBarCount, identityParts);
     }
 
     /**
@@ -217,6 +227,15 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
     private record Config(BarSeries series, Indicator<Num> adxFadeIndicator,
             Indicator<Num> histogramMeanReversionIndicator, Indicator<Num> priceRecenterIndicator,
             Indicator<Num> adxFadeComponent, Indicator<Num> compressionComponent, Indicator<Num> compositeIndicator,
-            int normalizationBarCount) {
+            int normalizationBarCount, Object[] identityParts) {
+
+        private Config {
+            identityParts = identityParts.clone();
+        }
+
+        @Override
+        public Object[] identityParts() {
+            return identityParts.clone();
+        }
     }
 }

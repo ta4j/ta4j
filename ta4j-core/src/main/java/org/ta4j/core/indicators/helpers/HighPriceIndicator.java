@@ -21,7 +21,7 @@ public class HighPriceIndicator extends AbstractIndicator<Num> {
      * @param series the bar series
      */
     public HighPriceIndicator(BarSeries series) {
-        super(series);
+        super(series, identityOfExact(HighPriceIndicator.class));
     }
 
     @Override

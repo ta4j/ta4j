@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -49,6 +50,8 @@ import org.ta4j.core.num.NumFactory;
  * <li>Concurrent cache-hit reads (contention on read-mostly workloads)</li>
  * <li>Repeated reads of the last bar (common in live feeds where the last bar
  * is queried frequently)</li>
+ * <li>Construction, retained heap, evaluation, and contention for duplicate
+ * deterministic indicator graphs</li>
  * </ul>
  *
  * @since 0.22.0
@@ -66,6 +69,8 @@ public class CachedIndicatorBenchmark {
     private static final int DEFAULT_CACHE_HIT_READS_PER_THREAD = 1_000_000;
     private static final int DEFAULT_LAST_BAR_READS = 1_000_000;
     private static final int DEFAULT_LAST_BAR_SMA_PERIOD = 50;
+    private static final int DEFAULT_DUPLICATE_GRAPHS = 500;
+    private static final int DEFAULT_DUPLICATE_GRAPH_READS_PER_THREAD = 100_000;
 
     public static void main(String[] args) throws Exception {
         int threads = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_THREADS;
@@ -75,9 +80,12 @@ public class CachedIndicatorBenchmark {
         int lastBarReads = args.length > 4 ? Integer.parseInt(args[4]) : DEFAULT_LAST_BAR_READS;
         int maximumBarCountHint = args.length > 5 ? Integer.parseInt(args[5]) : DEFAULT_MAXIMUM_BAR_COUNT_HINT;
         int lastBarSmaPeriod = args.length > 6 ? Integer.parseInt(args[6]) : DEFAULT_LAST_BAR_SMA_PERIOD;
+        int duplicateGraphs = args.length > 7 ? Integer.parseInt(args[7]) : DEFAULT_DUPLICATE_GRAPHS;
+        int duplicateGraphReadsPerThread = args.length > 8 ? Integer.parseInt(args[8])
+                : DEFAULT_DUPLICATE_GRAPH_READS_PER_THREAD;
 
         new CachedIndicatorBenchmark().run(threads, batches, evictionBars, cacheHitsPerThread, lastBarReads,
-                maximumBarCountHint, lastBarSmaPeriod);
+                maximumBarCountHint, lastBarSmaPeriod, duplicateGraphs, duplicateGraphReadsPerThread);
     }
 
     ScenarioResult runBoundedEvictionScenario(int barCount, int maximumBarCountHint) {
@@ -95,8 +103,14 @@ public class CachedIndicatorBenchmark {
         return benchmarkLastBarHotReads(series, smaPeriod, reads);
     }
 
+    DuplicateGraphScenarioResult runDuplicateGraphScenario(int barCount, int graphCount, int threads,
+            int readsPerThread) {
+        return benchmarkDuplicateGraphs(buildSeries(barCount), graphCount, threads, readsPerThread);
+    }
+
     private void run(int threads, int batches, int evictionBars, int cacheHitsPerThread, int lastBarReads,
-            int maximumBarCountHint, int lastBarSmaPeriod) throws Exception {
+            int maximumBarCountHint, int lastBarSmaPeriod, int duplicateGraphs, int duplicateGraphReadsPerThread)
+            throws Exception {
         LOG.info(
                 "Starting CachedIndicator benchmark: threads={}, batches={}, evictionBars={}, cacheHitsPerThread={}, lastBarReads={}, maxBarCountHint={}, lastBarSmaPeriod={}",
                 threads, batches, formatLong(evictionBars), formatLong(cacheHitsPerThread), formatLong(lastBarReads),
@@ -114,6 +128,13 @@ public class CachedIndicatorBenchmark {
                     () -> benchmarkConcurrentCacheHits(cacheHitSeries, threads, cacheHitsPerThread));
             runScenario("Last bar hot reads (SMA)", batch, statsByScenario,
                     () -> benchmarkLastBarHotReads(lastBarSeries, lastBarSmaPeriod, lastBarReads));
+            DuplicateGraphScenarioResult duplicateResult = benchmarkDuplicateGraphs(cacheHitSeries, duplicateGraphs,
+                    threads, duplicateGraphReadsPerThread);
+            LOG.info(
+                    "Batch {}: Duplicate deterministic graphs: construction={} ms, evaluation={} ms, contention={} ms, retainedHeap={} bytes, checksum={}",
+                    batch, formatMillis(duplicateResult.constructionNanos),
+                    formatMillis(duplicateResult.evaluationNanos), formatMillis(duplicateResult.contentionNanos),
+                    formatLong(duplicateResult.retainedHeapBytes), duplicateResult.checksum);
         }
 
         logSummary(statsByScenario);
@@ -244,6 +265,77 @@ public class CachedIndicatorBenchmark {
         return new ScenarioResult(reads, durationNanos, checksum);
     }
 
+    private DuplicateGraphScenarioResult benchmarkDuplicateGraphs(BarSeries series, int graphCount, int threads,
+            int readsPerThread) {
+        requireTrue(graphCount > 0, "Graph count must be positive");
+        requireTrue(threads > 0, "Thread count must be positive");
+        requireTrue(readsPerThread >= 0, "Reads per thread must not be negative");
+
+        long heapBefore = usedHeapAfterGc();
+        long constructionStart = System.nanoTime();
+        List<SMAIndicator> graphs = new ArrayList<>(graphCount);
+        for (int i = 0; i < graphCount; i++) {
+            ClosePriceIndicator close = new ClosePriceIndicator(series);
+            EMAIndicator ema = new EMAIndicator(close, 12);
+            graphs.add(new SMAIndicator(ema, 26));
+        }
+        long constructionNanos = System.nanoTime() - constructionStart;
+
+        int evaluationIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - 1);
+        long evaluationChecksum = 0;
+        long evaluationStart = System.nanoTime();
+        for (SMAIndicator graph : graphs) {
+            evaluationChecksum += graph.getValue(evaluationIndex).hashCode();
+        }
+        long evaluationNanos = System.nanoTime() - evaluationStart;
+        long retainedHeapBytes = Math.max(0, usedHeapAfterGc() - heapBefore);
+
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        long contentionChecksum = 0;
+        long contentionNanos;
+        try {
+            CountDownLatch ready = new CountDownLatch(threads);
+            CountDownLatch start = new CountDownLatch(1);
+            List<CompletableFuture<Long>> futures = new ArrayList<>(threads);
+            for (int thread = 0; thread < threads; thread++) {
+                int graphOffset = thread;
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    ready.countDown();
+                    try {
+                        start.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return 0L;
+                    }
+                    long checksum = 0;
+                    for (int read = 0; read < readsPerThread; read++) {
+                        SMAIndicator graph = graphs.get((graphOffset + read) % graphs.size());
+                        checksum += graph.getValue(evaluationIndex).hashCode();
+                    }
+                    return checksum;
+                }, pool));
+            }
+            awaitLatch(ready, Duration.ofSeconds(30), "duplicate-graph workers to become ready");
+            long contentionStart = System.nanoTime();
+            start.countDown();
+            for (CompletableFuture<Long> future : futures) {
+                contentionChecksum += future.join();
+            }
+            contentionNanos = System.nanoTime() - contentionStart;
+        } finally {
+            pool.shutdownNow();
+        }
+
+        return new DuplicateGraphScenarioResult(graphCount, (long) threads * readsPerThread, constructionNanos,
+                evaluationNanos, contentionNanos, retainedHeapBytes, evaluationChecksum + contentionChecksum);
+    }
+
+    private static long usedHeapAfterGc() {
+        System.gc();
+        Runtime runtime = Runtime.getRuntime();
+        return runtime.totalMemory() - runtime.freeMemory();
+    }
+
     static BarSeries buildSeries(int barCount) {
         var numFactory = DoubleNumFactory.getInstance();
         BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -330,6 +422,44 @@ public class CachedIndicatorBenchmark {
 
         double getThroughputOpsPerSecond() {
             return throughputOpsPerSecond;
+        }
+    }
+
+    static final class DuplicateGraphScenarioResult {
+
+        private final int graphCount;
+        private final long contentionReads;
+        private final long constructionNanos;
+        private final long evaluationNanos;
+        private final long contentionNanos;
+        private final long retainedHeapBytes;
+        private final long checksum;
+
+        private DuplicateGraphScenarioResult(int graphCount, long contentionReads, long constructionNanos,
+                long evaluationNanos, long contentionNanos, long retainedHeapBytes, long checksum) {
+            this.graphCount = graphCount;
+            this.contentionReads = contentionReads;
+            this.constructionNanos = constructionNanos;
+            this.evaluationNanos = evaluationNanos;
+            this.contentionNanos = contentionNanos;
+            this.retainedHeapBytes = retainedHeapBytes;
+            this.checksum = checksum;
+        }
+
+        int getGraphCount() {
+            return graphCount;
+        }
+
+        long getContentionReads() {
+            return contentionReads;
+        }
+
+        long getRetainedHeapBytes() {
+            return retainedHeapBytes;
+        }
+
+        long getChecksum() {
+            return checksum;
         }
     }
 

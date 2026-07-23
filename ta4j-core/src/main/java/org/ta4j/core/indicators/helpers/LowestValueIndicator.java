@@ -25,7 +25,7 @@ public class LowestValueIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public LowestValueIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
+        super(indicator, identityOfExact(LowestValueIndicator.class, indicator, barCount));
         this.indicator = indicator;
         this.barCount = barCount;
     }

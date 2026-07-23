@@ -42,7 +42,23 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
-        super(indicator);
+        this(indicator, barCount, sampleType,
+                identityOfExact(StandardDeviationIndicator.class, indicator, barCount, sampleType));
+    }
+
+    /**
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
+     *
+     * @param indicator  the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population variance selection
+     * @param identity   complete immutable constructor identity
+     * @since 0.23.1
+     */
+    protected StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType,
+            IndicatorIdentity identity) {
+        super(indicator, identity);
         this.indicator = indicator;
         this.barCount = barCount;
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");

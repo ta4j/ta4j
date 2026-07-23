@@ -22,7 +22,7 @@ public class PlusDMIndicator extends CachedIndicator<Num> {
      * @param series the bar series
      */
     public PlusDMIndicator(BarSeries series) {
-        super(series);
+        super(series, identityOfExact(PlusDMIndicator.class));
     }
 
     @Override

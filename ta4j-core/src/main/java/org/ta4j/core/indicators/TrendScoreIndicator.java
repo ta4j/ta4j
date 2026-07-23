@@ -81,7 +81,7 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
     }
 
     private TrendScoreIndicator(Config config) {
-        super(config.series());
+        super(config.series(), identityOfExact(TrendScoreIndicator.class, config.identityParts()));
         this.normalizationBarCount = config.normalizationBarCount();
         this.emaAlignmentIndicator = config.emaAlignmentIndicator();
         this.macdHistogramIndicator = config.macdHistogramIndicator();
@@ -97,11 +97,18 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
             int signalBarCount, int adxBarCount, int normalizationBarCount) {
         return validatedConfig(buildEmaAlignment(series, fastEmaBarCount, slowEmaBarCount),
                 buildMacdHistogram(series, fastEmaBarCount, slowEmaBarCount, signalBarCount),
-                new ADXIndicator(series, adxBarCount), normalizationBarCount);
+                new ADXIndicator(series, adxBarCount), normalizationBarCount, fastEmaBarCount, slowEmaBarCount,
+                signalBarCount, adxBarCount, normalizationBarCount);
     }
 
     private static Config validatedConfig(Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
             Indicator<Num> adxIndicator, int normalizationBarCount) {
+        return validatedConfig(emaAlignmentIndicator, macdHistogramIndicator, adxIndicator, normalizationBarCount,
+                emaAlignmentIndicator, macdHistogramIndicator, adxIndicator, normalizationBarCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
+            Indicator<Num> adxIndicator, int normalizationBarCount, Object... identityParts) {
         BarSeries series = IndicatorUtils.requireSameSeries(emaAlignmentIndicator, macdHistogramIndicator,
                 adxIndicator);
         if (normalizationBarCount < 1) {
@@ -120,7 +127,7 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
                 macdHistogramComponent, adxStrengthComponent, adxChangeComponent)).dividedBy(4).multipliedBy(100);
         return new Config(series, emaAlignmentIndicator, macdHistogramIndicator, adxIndicator, emaAlignmentComponent,
                 macdHistogramComponent, adxStrengthComponent, adxChangeComponent, compositeIndicator,
-                normalizationBarCount);
+                normalizationBarCount, identityParts);
     }
 
     /**
@@ -225,6 +232,15 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
     private record Config(BarSeries series, Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
             Indicator<Num> adxIndicator, Indicator<Num> emaAlignmentComponent, Indicator<Num> macdHistogramComponent,
             Indicator<Num> adxStrengthComponent, Indicator<Num> adxChangeComponent, Indicator<Num> compositeIndicator,
-            int normalizationBarCount) {
+            int normalizationBarCount, Object[] identityParts) {
+
+        private Config {
+            identityParts = identityParts.clone();
+        }
+
+        @Override
+        public Object[] identityParts() {
+            return identityParts.clone();
+        }
     }
 }

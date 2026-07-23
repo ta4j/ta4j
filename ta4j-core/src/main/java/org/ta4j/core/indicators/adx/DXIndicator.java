@@ -27,7 +27,21 @@ public class DXIndicator extends CachedIndicator<Num> {
      *                 {@link #minusDIIndicator}
      */
     public DXIndicator(BarSeries series, int barCount) {
-        super(series);
+        this(series, barCount, identityOfExact(DXIndicator.class, barCount));
+    }
+
+    /**
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
+     *
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #plusDIIndicator} and
+     *                 {@link #minusDIIndicator}
+     * @param identity complete immutable constructor identity
+     * @since 0.23.1
+     */
+    protected DXIndicator(BarSeries series, int barCount, IndicatorIdentity identity) {
+        super(series, identity);
         this.barCount = barCount;
         this.plusDIIndicator = new PlusDIIndicator(series, barCount);
         this.minusDIIndicator = new MinusDIIndicator(series, barCount);

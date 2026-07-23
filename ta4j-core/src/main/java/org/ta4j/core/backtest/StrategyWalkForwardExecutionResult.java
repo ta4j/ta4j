@@ -13,7 +13,6 @@ import java.util.Optional;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -47,7 +46,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @since 0.22.4
      */
     public StrategyWalkForwardExecutionResult {
-        barSeries = snapshotSeries(barSeries);
+        barSeries = BacktestBarSeriesViews.readOnlySnapshot(barSeries);
         strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
@@ -56,7 +55,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
 
     @Override
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return BacktestBarSeriesViews.readOnlyView(barSeries);
     }
 
     @Override
@@ -171,15 +170,6 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     private List<Num> criterionValuesFor(AnalysisCriterion criterion, List<FoldResult> selectedFolds) {
         Objects.requireNonNull(criterion, "criterion");
         return selectedFolds.stream().map(fold -> criterion.calculate(barSeries, fold.tradingRecord())).toList();
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
     /**

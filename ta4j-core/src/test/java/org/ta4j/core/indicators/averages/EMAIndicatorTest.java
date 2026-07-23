@@ -52,6 +52,13 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void customSubclassCanUseLegacyProtectedConstructor() {
+        LegacyEmaIndicator indicator = new LegacyEmaIndicator(new ClosePriceIndicator(data), 3);
+
+        assertThat(Num.isFinite(indicator.getValue(4))).isTrue();
+    }
+
+    @Test
     public void usingBarCount10UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
         // Index 9 is in unstable period (barCount=10, so indices 0-9 are unstable)
@@ -278,6 +285,18 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             } else {
                 assertThat(actual).isEqualTo(expected);
             }
+        }
+    }
+
+    private static final class LegacyEmaIndicator extends AbstractEMAIndicator {
+
+        private LegacyEmaIndicator(Indicator<Num> indicator, int barCount) {
+            super(indicator, barCount, 2.0 / (barCount + 1));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return getBarCount();
         }
     }
 }

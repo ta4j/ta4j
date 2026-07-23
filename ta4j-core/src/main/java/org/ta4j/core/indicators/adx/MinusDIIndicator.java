@@ -36,7 +36,21 @@ public class MinusDIIndicator extends CachedIndicator<Num> {
      *                 {@link #avgMinusDMIndicator}
      */
     public MinusDIIndicator(BarSeries series, int barCount) {
-        super(series);
+        this(series, barCount, identityOfExact(MinusDIIndicator.class, barCount));
+    }
+
+    /**
+     * Constructor for subclasses that provide their complete audited cache
+     * identity.
+     *
+     * @param series   the bar series
+     * @param barCount the bar count for {@link #atrIndicator} and
+     *                 {@link #avgMinusDMIndicator}
+     * @param identity complete immutable constructor identity
+     * @since 0.23.1
+     */
+    protected MinusDIIndicator(BarSeries series, int barCount, IndicatorIdentity identity) {
+        super(series, identity);
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
         this.minusDMIndicator = new MinusDMIndicator(series);

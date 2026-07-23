@@ -81,7 +81,7 @@ public final class EmpiricalElliottWaveForecastIndicator
 
     private EmpiricalElliottWaveForecastIndicator(final BarSeries series, final BuiltInSources sources,
             final Settings settings) {
-        this(series, sources.scenarioIndicator(), sources.phaseIndicator(), settings);
+        this(series, sources.scenarioIndicator(), sources.phaseIndicator(), settings, true);
     }
 
     /**
@@ -98,13 +98,17 @@ public final class EmpiricalElliottWaveForecastIndicator
      */
     public EmpiricalElliottWaveForecastIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator, final Settings settings) {
-        this(series, scenarioIndicator, null, settings);
+        this(series, scenarioIndicator, null, settings, false);
     }
 
     private EmpiricalElliottWaveForecastIndicator(final BarSeries series,
             final Indicator<ElliottScenarioSet> scenarioIndicator, final Indicator<ElliottPhase> phaseIndicator,
-            final Settings settings) {
-        super(Objects.requireNonNull(series, "series"));
+            final Settings settings, final boolean builtInSources) {
+        super(Objects.requireNonNull(series, "series"),
+                identityOfExact(EmpiricalElliottWaveForecastIndicator.class, builtInSources ? null : scenarioIndicator,
+                        settings.degree(), settings.trainingLookbackBars(), settings.neighborCount(),
+                        settings.minimumSamples(), settings.maximumAnalogDistance(),
+                        settings.minimumScenarioConfidence()));
         this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
         if (!IndicatorUtils.isSameSeries(series, scenarioIndicator.getBarSeries())) {
             throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");

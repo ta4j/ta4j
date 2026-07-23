@@ -16,6 +16,7 @@ import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
@@ -163,6 +164,23 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
 
         ADXIndicator adx = new ADXIndicator(series, 5);
         assertEquals(ADXIndicator.class, NumericIndicator.of(adx).delegate().getClass());
+    }
+
+    @Test
+    public void rollingIndicatorsPreserveSubclassBehavior() {
+        ConstantIndicator<Num> constant = new ConstantIndicator<>(series, numFactory.two());
+        NumericIndicator scaled = new NumericIndicator(constant) {
+            @Override
+            public Num getValue(int index) {
+                return delegate.getValue(index).multipliedBy(numFactory.numOf(10));
+            }
+        };
+
+        NumericIndicator scaledSma = scaled.sma(1);
+        NumericIndicator plainSma = NumericIndicator.of(constant).sma(1);
+
+        assertNumEquals(20, scaledSma.getValue(0));
+        assertNumEquals(2, plainSma.getValue(0));
     }
 
     @Test

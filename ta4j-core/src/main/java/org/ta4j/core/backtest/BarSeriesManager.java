@@ -9,7 +9,6 @@ import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -51,6 +50,7 @@ public class BarSeriesManager {
 
     /** The managed bar series */
     private final BarSeries barSeries;
+    private final BarSeries readOnlyBarSeries;
 
     /** The trading cost models */
     private final CostModel transactionCostModel;
@@ -153,7 +153,8 @@ public class BarSeriesManager {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
-        this.barSeries = snapshotSeries(barSeries);
+        this.barSeries = BacktestBarSeriesViews.snapshot(barSeries);
+        this.readOnlyBarSeries = BacktestBarSeriesViews.readOnlyView(this.barSeries);
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -164,7 +165,7 @@ public class BarSeriesManager {
      * @return the managed bar series
      */
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return BacktestBarSeriesViews.readOnlyView(readOnlyBarSeries);
     }
 
     /**
@@ -650,15 +651,6 @@ public class BarSeriesManager {
             fallbackIndex = safeEnd;
         }
         return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
 }

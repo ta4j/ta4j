@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.IndicatorContext;
 
 /**
  * A {@code BarSeries} is a sequence of {@link Bar bars} separated by a
@@ -124,6 +125,41 @@ public interface BarSeries extends Serializable {
      * @since 0.23.1
      */
     default long getBarHistoryRevision() {
+        return -1L;
+    }
+
+    /**
+     * Returns the series-scoped indicator factory and sharing context.
+     *
+     * <p>
+     * Standard ta4j series retain one context for their lifetime. Custom series
+     * implementations can opt into the same behavior by retaining an
+     * {@link IndicatorContext} created for themselves and by implementing
+     * {@link #getBarHistoryEpoch()} correctly. The default creates an isolated
+     * context, so custom implementations remain correct without any changes.
+     *
+     * @return the indicator context for this series
+     * @since 0.23.1
+     */
+    default IndicatorContext indicators() {
+        return new IndicatorContext(this);
+    }
+
+    /**
+     * Returns the lifecycle epoch for retained historical bar data.
+     *
+     * <p>
+     * The epoch advances when previously published historical results can no longer
+     * be reused, such as after clearing the series or replacing a bar before the
+     * current bar. Appending, pruning, and current-bar mutation do not advance it.
+     * Implementations that do not track this lifecycle return {@code -1}; their
+     * indicators remain instance-local.
+     *
+     * @return the history epoch, or {@code -1} when lifecycle-aware sharing is
+     *         unsupported
+     * @since 0.23.1
+     */
+    default long getBarHistoryEpoch() {
         return -1L;
     }
 
