@@ -184,9 +184,6 @@ class CachedBuffer<T> {
             cached = readAtUnlocked(index);
             if (cached == NOT_COMPUTED) {
                 T result = calculator.apply(index);
-                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
-                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
-                }
                 store(index, result);
                 if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
                     clearInternal();

@@ -159,7 +159,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     private VolatilityNormalizedMACDIndicator(ValidatedConfig config) {
-        super(config.priceIndicator());
+        super(config.priceIndicator(),
+                identityOfExact(VolatilityNormalizedMACDIndicator.class, config.priceIndicator(), config.fastBarCount(),
+                        config.slowBarCount(), config.atrBarCount(), config.signalBarCount(), config.scaleFactor()));
         this.priceIndicator = config.priceIndicator();
         this.fastBarCount = config.fastBarCount();
         this.slowBarCount = config.slowBarCount();

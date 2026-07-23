@@ -54,6 +54,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     private transient Lock writeLock;
 
     private transient BarBuilder tradeBarBuilder;
+    private volatile long barHistoryEpoch;
 
     /**
      * Indicates how a streaming bar was applied to the series.
@@ -265,12 +266,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     @Override
     public long getBarHistoryEpoch() {
-        this.readLock.lock();
-        try {
-            return super.getBarHistoryEpoch();
-        } finally {
-            this.readLock.unlock();
-        }
+        return this.barHistoryEpoch;
     }
 
     /**
@@ -283,6 +279,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.writeLock.lock();
         try {
             super.clear();
+            this.barHistoryEpoch = super.getBarHistoryEpoch();
             this.tradeBarBuilder = null;
         } finally {
             this.writeLock.unlock();
@@ -444,6 +441,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.writeLock.lock();
         try {
             super.replaceBar(index, bar);
+            this.barHistoryEpoch = super.getBarHistoryEpoch();
         } finally {
             this.writeLock.unlock();
         }
@@ -812,6 +810,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             // Replacing a historical bar doesn't change bar count or indices, so we bypass
             // addBar().
             super.replaceBar(seriesIndex, newBar);
+            this.barHistoryEpoch = super.getBarHistoryEpoch();
             return new StreamingBarIngestResult(StreamingBarIngestAction.REPLACED_HISTORICAL, seriesIndex);
         }
         throw new IllegalArgumentException(

@@ -55,7 +55,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      * @param type      the type of the outcome value (y, slope, intercept)
      */
     public SimpleLinearRegressionIndicator(Indicator<Num> indicator, int barCount, SimpleLinearRegressionType type) {
-        super(indicator);
+        super(indicator, identityOfExact(SimpleLinearRegressionIndicator.class, indicator, barCount, type));
         this.indicator = indicator;
         this.barCount = barCount;
         this.type = type;

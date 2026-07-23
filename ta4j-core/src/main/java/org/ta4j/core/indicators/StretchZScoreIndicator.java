@@ -79,7 +79,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
     }
 
     private StretchZScoreIndicator(Config config) {
-        super(config.series());
+        super(config.series(), identityOfExact(StretchZScoreIndicator.class, config.identityParts()));
         this.sourceIndicator = config.sourceIndicator();
         this.referenceIndicator = config.referenceIndicator();
         this.barCount = config.barCount();
@@ -93,13 +93,23 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
     }
 
     private static Config validatedConfig(Indicator<Num> sourceIndicator, int barCount) {
+        return validatedConfig(sourceIndicator, barCount, sourceIndicator, barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> sourceIndicator, int barCount, Object... identityParts) {
         Indicator<Num> validatedSourceIndicator = Objects.requireNonNull(sourceIndicator, "sourceIndicator");
-        return validatedConfig(validatedSourceIndicator, new SMAIndicator(validatedSourceIndicator, barCount),
-                barCount);
+        return validatedConfig(validatedSourceIndicator, new SMAIndicator(validatedSourceIndicator, barCount), barCount,
+                identityParts);
     }
 
     private static Config validatedConfig(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator,
             int barCount) {
+        return validatedConfig(sourceIndicator, referenceIndicator, barCount, sourceIndicator, referenceIndicator,
+                barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator,
+            int barCount, Object... identityParts) {
         BarSeries series = IndicatorUtils.requireSameSeries(sourceIndicator, referenceIndicator);
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than zero");
@@ -112,7 +122,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
                 barCount);
         ZScoreIndicator zScoreIndicator = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);
         return new Config(series, validatedSourceIndicator, validatedReferenceIndicator, deviationIndicator,
-                standardDeviationIndicator, zScoreIndicator, barCount);
+                standardDeviationIndicator, zScoreIndicator, barCount, identityParts);
     }
 
     /**
@@ -188,6 +198,15 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
 
     private record Config(BarSeries series, Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator,
             Indicator<Num> deviationIndicator, StandardDeviationIndicator standardDeviationIndicator,
-            ZScoreIndicator zScoreIndicator, int barCount) {
+            ZScoreIndicator zScoreIndicator, int barCount, Object[] identityParts) {
+
+        private Config {
+            identityParts = identityParts.clone();
+        }
+
+        @Override
+        public Object[] identityParts() {
+            return identityParts.clone();
+        }
     }
 }

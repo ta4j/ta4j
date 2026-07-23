@@ -14,6 +14,8 @@ import org.ta4j.core.indicators.AbstractIndicator.IndicatorIdentity;
 import org.ta4j.core.indicators.adx.ADXIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator;
+import org.ta4j.core.indicators.elliott.EmpiricalElliottWaveForecastIndicator.Settings;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -24,6 +26,8 @@ import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -270,10 +274,86 @@ public final class IndicatorContext {
         return canonical(new LowestValueIndicator(indicator, barCount));
     }
 
+    /**
+     * @param indicator      price input
+     * @param fastBarCount   fast EMA window
+     * @param slowBarCount   slow EMA and ATR window
+     * @param signalBarCount signal EMA window
+     * @return the canonical volatility-normalized MACD indicator
+     * @since 0.23.1
+     */
+    public VolatilityNormalizedMACDIndicator volatilityNormalizedMacd(Indicator<Num> indicator, int fastBarCount,
+            int slowBarCount, int signalBarCount) {
+        requireSameSeries(indicator);
+        return canonical(new VolatilityNormalizedMACDIndicator(indicator, fastBarCount, slowBarCount, signalBarCount));
+    }
+
+    /**
+     * @param indicator input indicator
+     * @param barCount  regression window
+     * @return the canonical rolling linear regression
+     * @since 0.23.1
+     */
+    public SimpleLinearRegressionIndicator linearRegression(Indicator<Num> indicator, int barCount) {
+        requireSameSeries(indicator);
+        return canonical(new SimpleLinearRegressionIndicator(indicator, barCount));
+    }
+
+    /**
+     * @param barCount normalization window
+     * @return the canonical close-price stretch z-score
+     * @since 0.23.1
+     */
+    public StretchZScoreIndicator stretchZScore(int barCount) {
+        return canonical(new StretchZScoreIndicator(series, barCount));
+    }
+
+    /**
+     * @param fastEmaBarCount       fast EMA window
+     * @param slowEmaBarCount       slow EMA window
+     * @param signalBarCount        MACD signal window
+     * @param adxBarCount           ADX window
+     * @param normalizationBarCount percentile normalization window
+     * @return the canonical trend score
+     * @since 0.23.1
+     */
+    public TrendScoreIndicator trendScore(int fastEmaBarCount, int slowEmaBarCount, int signalBarCount, int adxBarCount,
+            int normalizationBarCount) {
+        return canonical(new TrendScoreIndicator(series, fastEmaBarCount, slowEmaBarCount, signalBarCount, adxBarCount,
+                normalizationBarCount));
+    }
+
+    /**
+     * @param mediumEmaBarCount     medium EMA window
+     * @param macdFastBarCount      fast MACD window
+     * @param macdSlowBarCount      slow MACD window
+     * @param macdSignalBarCount    MACD signal window
+     * @param adxBarCount           ADX window
+     * @param compressionBarCount   compression window
+     * @param normalizationBarCount percentile normalization window
+     * @return the canonical trend-conclusion score
+     * @since 0.23.1
+     */
+    public TrendConclusionIndicator trendConclusion(int mediumEmaBarCount, int macdFastBarCount, int macdSlowBarCount,
+            int macdSignalBarCount, int adxBarCount, int compressionBarCount, int normalizationBarCount) {
+        return canonical(new TrendConclusionIndicator(series, mediumEmaBarCount, macdFastBarCount, macdSlowBarCount,
+                macdSignalBarCount, adxBarCount, compressionBarCount, normalizationBarCount));
+    }
+
+    /**
+     * @param settings empirical matching settings
+     * @return the canonical empirical Elliott-wave forecast
+     * @since 0.23.1
+     */
+    public EmpiricalElliottWaveForecastIndicator empiricalElliottWaveForecast(Settings settings) {
+        return canonical(new EmpiricalElliottWaveForecastIndicator(series, settings));
+    }
+
     synchronized <T> CachedIndicator.SharedState<T> sharedState(IndicatorIdentity identity, int cacheLimit,
             long lastBarWaitTimeoutMs) {
         if (identity == null || series.getBarHistoryEpoch() < 0) {
-            return new CachedIndicator.SharedState<>(cacheLimit, lastBarWaitTimeoutMs, series.getBarHistoryEpoch());
+            return new CachedIndicator.SharedState<>(identity, cacheLimit, lastBarWaitTimeoutMs,
+                    series.getBarHistoryEpoch());
         }
         WeakReference<CachedIndicator.SharedState<?>> reference = sharedStates.get(identity);
         CachedIndicator.SharedState<?> existing = reference == null ? null : reference.get();
@@ -282,8 +362,8 @@ public final class IndicatorContext {
             CachedIndicator.SharedState<T> typed = (CachedIndicator.SharedState<T>) existing;
             return typed;
         }
-        CachedIndicator.SharedState<T> created = new CachedIndicator.SharedState<>(cacheLimit, lastBarWaitTimeoutMs,
-                series.getBarHistoryEpoch());
+        CachedIndicator.SharedState<T> created = new CachedIndicator.SharedState<>(identity, cacheLimit,
+                lastBarWaitTimeoutMs, series.getBarHistoryEpoch());
         sharedStates.put(identity, new WeakReference<>(created));
         return created;
     }

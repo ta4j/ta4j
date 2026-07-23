@@ -96,8 +96,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private CachedIndicator(Config config) {
         super(config.series(), config.identity());
-        this.state = underlyingBarSeries().indicators()
-                .sharedState(indicatorIdentity(), config.cacheLimit(), config.lastBarWaitTimeoutMs());
+        BarSeries series = underlyingBarSeries();
+        IndicatorIdentity identity = indicatorIdentity();
+        long historyEpoch = series.getBarHistoryEpoch();
+        this.state = identity == null || historyEpoch < 0
+                ? new SharedState<>(identity, config.cacheLimit(), config.lastBarWaitTimeoutMs(), historyEpoch)
+                : series.indicators().sharedState(identity, config.cacheLimit(), config.lastBarWaitTimeoutMs());
         this.highestResultIndex = state.highestResultIndex;
     }
 
@@ -586,6 +590,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private static final AtomicIntegerFieldUpdater<SharedState> HIGHEST_RESULT_INDEX_UPDATER = AtomicIntegerFieldUpdater
                 .newUpdater(SharedState.class, "highestResultIndex");
 
+        // Keeps the WeakHashMap key alive for exactly as long as any indicator uses
+        // this state. The context itself retains the state only through a weak value.
+        final IndicatorIdentity identity;
         private final CachedBuffer<T> cache;
         private final long lastBarWaitTimeoutMs;
         private final Object epochLock = new Object();
@@ -608,7 +615,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private volatile boolean firstBarHasCachedResult;
         private volatile T firstBarCachedResult;
 
-        SharedState(int cacheLimit, long lastBarWaitTimeoutMs, long historyEpoch) {
+        SharedState(IndicatorIdentity identity, int cacheLimit, long lastBarWaitTimeoutMs, long historyEpoch) {
+            this.identity = identity;
             this.cache = new CachedBuffer<>(cacheLimit);
             this.lastBarWaitTimeoutMs = lastBarWaitTimeoutMs;
             this.historyEpoch = historyEpoch;
