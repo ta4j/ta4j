@@ -41,6 +41,21 @@ public class EWMAIndicator extends AbstractEMAIndicator {
         this.indicator = indicator;
     }
 
+    /**
+     * Constructor for subclasses that provide their own audited cache identity.
+     *
+     * @param identityClass exact concrete indicator class eligible for sharing
+     * @param indicator     source indicator
+     * @param barCount      number of observations used for initialization
+     * @param decayFactor   EWMA decay factor in {@code (0, 1)}
+     * @since 0.23.1
+     */
+    protected EWMAIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount, double decayFactor) {
+        super(identityClass, validateIndicator(indicator), validateBarCount(barCount),
+                1d - validateDecayFactor(decayFactor));
+        this.indicator = indicator;
+    }
+
     @Override
     protected Num initialValue(int index, Num current) {
         List<Num> values = new ArrayList<>(getBarCount());

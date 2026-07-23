@@ -44,7 +44,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     }
 
     private Num fastPath(final int index, final long currentEpoch) {
-        var newSum = partialSum(index);
+        Num newSum = partialSum(index);
         updatePartialSum(index, newSum, currentEpoch);
         return newSum;
     }

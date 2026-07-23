@@ -27,7 +27,19 @@ public class SMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the time frame
      */
     public SMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, identityOfExact(SMAIndicator.class, indicator, barCount));
+        this(SMAIndicator.class, indicator, barCount);
+    }
+
+    /**
+     * Constructor for subclasses that provide their own audited cache identity.
+     *
+     * @param identityClass exact concrete indicator class eligible for sharing
+     * @param indicator     the {@link Indicator}
+     * @param barCount      the time frame
+     * @since 0.23.1
+     */
+    protected SMAIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount) {
+        super(indicator, identityOfExact(identityClass, indicator, barCount));
         this.previousSum = new RunningTotalIndicator(indicator, barCount);
         this.indicator = indicator;
         this.barCount = barCount;

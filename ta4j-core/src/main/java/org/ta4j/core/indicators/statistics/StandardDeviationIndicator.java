@@ -51,6 +51,25 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Constructor for subclasses that provide their own audited cache identity.
+     *
+     * @param identityClass exact concrete indicator class eligible for sharing
+     * @param indicator     the indicator
+     * @param barCount      the time frame
+     * @param sampleType    sample/population variance selection
+     * @since 0.23.1
+     */
+    protected StandardDeviationIndicator(Class<?> identityClass, Indicator<Num> indicator, int barCount,
+            SampleType sampleType) {
+        super(indicator, identityOfExact(identityClass, indicator, barCount, sampleType));
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
+        this.variance = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
+                : VarianceIndicator.ofPopulation(indicator, barCount);
+    }
+
+    /**
      * Creates an indicator using sample variance ({@code n - 1} divisor).
      *
      * @param indicator the indicator

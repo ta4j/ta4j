@@ -168,7 +168,7 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
 
     @Test
     public void rollingIndicatorsPreserveSubclassBehavior() {
-        ConstantIndicator<Num> constant = new ConstantIndicator<>(series, numFactory.numOf(2));
+        ConstantIndicator<Num> constant = new ConstantIndicator<>(series, numFactory.two());
         NumericIndicator scaled = new NumericIndicator(constant) {
             @Override
             public Num getValue(int index) {
