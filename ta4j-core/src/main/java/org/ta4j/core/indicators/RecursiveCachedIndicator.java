@@ -92,23 +92,32 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
 
     @Override
     public T getValue(int index) {
-        BarSeries series = getBarSeries();
-        if (series != null) {
-            final int seriesEndIndex = series.getEndIndex();
-            if (index <= seriesEndIndex) {
-                // We are not after the end of the series
-                final int removedBarsCount = series.getRemovedBarsCount();
-                int startIndex = Math.max(removedBarsCount, sharedHighestResultIndex());
-                if (startIndex < 0) {
-                    startIndex = Math.max(0, removedBarsCount);
+        while (true) {
+            try {
+                BarSeries series = getBarSeries();
+                if (series != null) {
+                    final int seriesEndIndex = series.getEndIndex();
+                    if (index <= seriesEndIndex) {
+                        // We are not after the end of the series
+                        final int removedBarsCount = series.getRemovedBarsCount();
+                        int startIndex = Math.max(removedBarsCount, sharedHighestResultIndex());
+                        if (startIndex < 0) {
+                            startIndex = Math.max(0, removedBarsCount);
+                        }
+                        if (index - startIndex > RECURSION_THRESHOLD) {
+                            prefillMissingValues(startIndex, index, series);
+                        }
+                    }
                 }
-                if (index - startIndex > RECURSION_THRESHOLD) {
-                    prefillMissingValues(startIndex, index);
+                return super.getValue(index);
+            } catch (HistoryEpochChangedException changed) {
+                // A historical mutation raced with iterative prefill. Retry after the
+                // shared state observes the new epoch.
+                if (getCache().isWriteLockedByCurrentThread()) {
+                    throw changed;
                 }
             }
         }
-
-        return super.getValue(index);
     }
 
     /**
@@ -122,7 +131,7 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
      * @param startIndex  the index to start filling from
      * @param targetIndex the target index (exclusive)
      */
-    private void prefillMissingValues(int startIndex, int targetIndex) {
+    private void prefillMissingValues(int startIndex, int targetIndex, BarSeries series) {
         Map<Object, Integer> depthByIndicator = PREFILL_DEPTH.get();
         Object stateIdentity = sharedStateIdentity();
         Integer depth = depthByIndicator.get(stateIdentity);
@@ -139,11 +148,9 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         try {
             // Use the cache's prefillUntil to compute values iteratively
             // under a single write lock
-            getCache().prefillUntil(startIndex, targetIndex, this::calculate);
-
-            // Ensure highestResultIndex reflects the cache without regressing if
-            // another thread advanced it further (e.g., last-bar caching).
-            updateHighestResultIndex(getCache().getHighestResultIndex());
+            long historyEpoch = series.getBarHistoryEpoch();
+            getCache().prefillUntil(startIndex, targetIndex, this::calculate, this::updateHighestResultIndex, series,
+                    historyEpoch);
         } finally {
             // Cleanup: decrement depth and remove if zero
             cleanupPrefillDepth(depthByIndicator, stateIdentity);

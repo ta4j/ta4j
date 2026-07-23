@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.numeric;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -247,6 +248,11 @@ public class BinaryOperationIndicator extends AbstractIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(left.getCountOfUnstableBars(), right.getCountOfUnstableBars());
+    }
+
+    @Override
+    public BarSeries getBarSeries() {
+        return left.getBarSeries();
     }
 
     private record Config(Operation operation, BinaryOperator<Num> operator, Indicator<Num> left,

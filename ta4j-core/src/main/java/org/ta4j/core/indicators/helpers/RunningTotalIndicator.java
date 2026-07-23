@@ -17,50 +17,52 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
     private transient Num previousSum;
-
-    // serial access detection
-    private transient int previousIndex = -1;
+    private transient int previousIndex;
+    private transient long previousEpoch;
+    private transient boolean hasPreviousSum;
 
     public RunningTotalIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator, identityOfExact(RunningTotalIndicator.class, indicator, barCount));
+        super(indicator);
         this.indicator = indicator;
         this.barCount = barCount;
         this.previousSum = indicator.getBarSeries().numFactory().zero();
     }
 
     @Override
-    protected Num calculate(int index) {
+    protected synchronized Num calculate(int index) {
+        long currentEpoch = getBarSeries().getBarHistoryEpoch();
         // serial access can benefit from previous partial sums
         // which saves a lot of CPU work for very long barCounts
-        if (previousIndex != -1 && previousIndex == index - 1) {
+        if (hasPreviousSum && previousEpoch == currentEpoch && previousIndex == index - 1) {
             if (!Num.isFinite(previousSum)) {
-                return slowPath(index);
+                return slowPath(index, currentEpoch);
             }
-            return fastPath(index);
+            return fastPath(index, currentEpoch);
         }
 
-        return slowPath(index);
+        return slowPath(index, currentEpoch);
     }
 
-    private Num fastPath(final int index) {
+    private Num fastPath(final int index, final long currentEpoch) {
         var newSum = partialSum(index);
-        updatePartialSum(index, newSum);
+        updatePartialSum(index, newSum, currentEpoch);
         return newSum;
     }
 
-    private Num slowPath(final int index) {
+    private Num slowPath(final int index, final long currentEpoch) {
         Num sum = getBarSeries().numFactory().zero();
         for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));
         }
-
-        updatePartialSum(index, sum);
+        updatePartialSum(index, sum, currentEpoch);
         return sum;
     }
 
-    private void updatePartialSum(final int index, final Num sum) {
+    private void updatePartialSum(final int index, final Num sum, final long currentEpoch) {
         previousIndex = index;
         previousSum = sum;
+        previousEpoch = currentEpoch;
+        hasPreviousSum = true;
     }
 
     private Num partialSum(int index) {

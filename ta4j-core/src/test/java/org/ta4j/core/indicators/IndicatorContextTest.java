@@ -114,6 +114,21 @@ public class IndicatorContextTest {
         assertSame(state, secondCached.sharedStateIdentity());
     }
 
+    @Test
+    public void canonicalStateTracksMaximumBarCountChangesAtConstruction() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        IndicatorContext context = series.indicators();
+        SMAIndicator unbounded = context.sma(context.closePrice(), 2);
+
+        series.setMaximumBarCount(3);
+        SMAIndicator bounded = context.sma(context.closePrice(), 2);
+
+        assertNotSame(unbounded, bounded);
+        assertNotSame(((CachedIndicator<?>) unbounded).sharedStateIdentity(),
+                ((CachedIndicator<?>) bounded).sharedStateIdentity());
+        assertSame(bounded, context.sma(context.closePrice(), 2));
+    }
+
     private static void assertEquivalentState(CachedIndicator<?> first, CachedIndicator<?> second) {
         assertNotSame(first, second);
         assertSame(first.sharedStateIdentity(), second.sharedStateIdentity());

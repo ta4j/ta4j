@@ -183,10 +183,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 if (log.isTraceEnabled()) {
                     log.trace("{}({}): {}", this, index, result);
                 }
+                highestResultIndex = state.highestResultIndex;
                 return result;
-            } catch (HistoryEpochChangedException ignored) {
+            } catch (HistoryEpochChangedException changed) {
                 // A concurrent historical mutation won the race. The next iteration
                 // invalidates lazily and recomputes against the new epoch.
+                if (state.cache.isWriteLockedByCurrentThread()) {
+                    throw changed;
+                }
             }
         }
     }
@@ -215,25 +219,30 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         Bar cachedBar;
         long cachedTradeCount;
         Num cachedClosePrice;
+        long cachedRevision;
         synchronized (state.lastBarLock) {
             if (state.lastBarCachedIndex != index || state.lastBarRef == null) {
                 return false;
             }
             Bar currentBar = series.getBar(index);
+            long currentRevision = series.getBarHistoryRevision();
             if (currentBar != state.lastBarRef || currentBar.getTrades() != state.lastBarTradeCount
-                    || !equalsNum(currentBar.getClosePrice(), state.lastBarClosePrice)) {
+                    || !equalsNum(currentBar.getClosePrice(), state.lastBarClosePrice)
+                    || currentRevision != state.lastBarHistoryRevision) {
                 return false;
             }
             cachedResult = state.lastBarCachedResult;
             cachedBar = currentBar;
             cachedTradeCount = currentBar.getTrades();
             cachedClosePrice = currentBar.getClosePrice();
+            cachedRevision = currentRevision;
         }
 
         state.cache.put(index, cachedResult);
         Bar currentBar = series.getBar(index);
         if (currentBar != cachedBar || currentBar.getTrades() != cachedTradeCount
-                || !equalsNum(currentBar.getClosePrice(), cachedClosePrice)) {
+                || !equalsNum(currentBar.getClosePrice(), cachedClosePrice)
+                || series.getBarHistoryRevision() != cachedRevision) {
             state.cache.invalidateFrom(index);
             return false;
         }
@@ -334,12 +343,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         Bar snapshotBar;
         long snapshotTradeCount;
         Num snapshotClosePrice;
+        long snapshotRevision;
         long snapshotInvalidationCount;
 
         boolean ownsComputation = false;
         boolean timedOut = false;
         while (true) {
             synchronized (state.lastBarLock) {
+                long revision1 = series.getBarHistoryRevision();
                 Bar bar1 = series.getLastBar();
                 long tradeCount1 = bar1.getTrades();
                 Num closePrice1 = bar1.getClosePrice();
@@ -347,15 +358,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 Bar bar2 = series.getLastBar();
                 long tradeCount2 = bar2.getTrades();
                 Num closePrice2 = bar2.getClosePrice();
+                long revision2 = series.getBarHistoryRevision();
 
-                boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
+                boolean stableRead = revision1 == revision2 && bar1 == bar2 && tradeCount1 == tradeCount2
+                        && equalsNum(closePrice1, closePrice2);
                 Bar currentBar = stableRead ? bar1 : bar2;
                 long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
                 Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+                long currentRevision = stableRead ? revision1 : revision2;
 
                 if (stableRead && index == state.lastBarCachedIndex && currentBar == state.lastBarRef
                         && currentTradeCount == state.lastBarTradeCount
-                        && equalsNum(currentClosePrice, state.lastBarClosePrice)) {
+                        && equalsNum(currentClosePrice, state.lastBarClosePrice)
+                        && currentRevision == state.lastBarHistoryRevision) {
                     return state.lastBarCachedResult;
                 }
 
@@ -367,6 +382,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     snapshotBar = currentBar;
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
+                    snapshotRevision = currentRevision;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -378,6 +394,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     snapshotBar = currentBar;
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
+                    snapshotRevision = currentRevision;
                     snapshotInvalidationCount = state.lastBarCacheInvalidationCount;
                     break;
                 }
@@ -388,6 +405,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     snapshotBar = currentBar;
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
+                    snapshotRevision = currentRevision;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -408,6 +426,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     snapshotBar = currentBar;
                     snapshotTradeCount = currentTradeCount;
                     snapshotClosePrice = currentClosePrice;
+                    snapshotRevision = currentRevision;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -429,6 +448,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
 
         if (!ownsComputation) {
+            if (!lastBarSnapshotIsCurrent(series, snapshotBar, snapshotTradeCount, snapshotClosePrice,
+                    snapshotRevision)) {
+                throw HistoryEpochChangedException.INSTANCE;
+            }
             // snapshotInvalidationCount == -1 signals that caching should be skipped
             // (e.g., recursive call while holding cache write lock, or thread
             // interrupted). In these cases, do not update highestResultIndex to avoid
@@ -440,9 +463,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             return computed;
         }
 
+        boolean retry;
         synchronized (state.lastBarLock) {
             try {
+                retry = false;
                 if (snapshotInvalidationCount == state.lastBarCacheInvalidationCount) {
+                    long revision1 = series.getBarHistoryRevision();
                     Bar bar1 = series.getLastBar();
                     long tradeCount1 = bar1.getTrades();
                     Num closePrice1 = bar1.getClosePrice();
@@ -450,35 +476,54 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     Bar bar2 = series.getLastBar();
                     long tradeCount2 = bar2.getTrades();
                     Num closePrice2 = bar2.getClosePrice();
+                    long revision2 = series.getBarHistoryRevision();
 
-                    boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2
+                    boolean stableRead = revision1 == revision2 && bar1 == bar2 && tradeCount1 == tradeCount2
                             && equalsNum(closePrice1, closePrice2);
                     Bar currentBar = stableRead ? bar1 : bar2;
                     long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
                     Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
+                    long currentRevision = stableRead ? revision1 : revision2;
 
                     if (stableRead && currentBar == snapshotBar && currentTradeCount == snapshotTradeCount
-                            && equalsNum(currentClosePrice, snapshotClosePrice)) {
+                            && equalsNum(currentClosePrice, snapshotClosePrice)
+                            && currentRevision == snapshotRevision) {
                         state.lastBarRef = snapshotBar;
                         state.lastBarTradeCount = snapshotTradeCount;
                         state.lastBarClosePrice = snapshotClosePrice;
+                        state.lastBarHistoryRevision = snapshotRevision;
                         state.lastBarCachedResult = computed;
                         state.lastBarCachedIndex = index;
                         updateHighestResultIndex(index);
+                    } else {
+                        retry = true;
                     }
-                } else {
-                    // Cache was invalidated while this computation was in flight.
-                    // Return the computed value to the caller, but do not update any
-                    // cache state (including highestResultIndex) to avoid resurrecting
-                    // invalidated state.
                 }
-                return computed;
             } finally {
                 state.lastBarComputationInProgress = false;
                 state.lastBarComputationIndex = -1;
                 state.lastBarLock.notifyAll();
             }
         }
+        if (retry) {
+            throw HistoryEpochChangedException.INSTANCE;
+        }
+        return computed;
+    }
+
+    private static boolean lastBarSnapshotIsCurrent(BarSeries series, Bar snapshotBar, long snapshotTradeCount,
+            Num snapshotClosePrice, long snapshotRevision) {
+        long revision1 = series.getBarHistoryRevision();
+        Bar bar1 = series.getLastBar();
+        long tradeCount1 = bar1.getTrades();
+        Num closePrice1 = bar1.getClosePrice();
+        Bar bar2 = series.getLastBar();
+        long tradeCount2 = bar2.getTrades();
+        Num closePrice2 = bar2.getClosePrice();
+        long revision2 = series.getBarHistoryRevision();
+        return revision1 == revision2 && revision1 == snapshotRevision && bar1 == bar2 && bar1 == snapshotBar
+                && tradeCount1 == tradeCount2 && tradeCount1 == snapshotTradeCount
+                && equalsNum(closePrice1, closePrice2) && equalsNum(closePrice1, snapshotClosePrice);
     }
 
     /**
@@ -546,6 +591,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         state.lastBarRef = null;
         state.lastBarTradeCount = 0;
         state.lastBarClosePrice = null;
+        state.lastBarHistoryRevision = -1;
         state.lastBarCachedResult = null;
         state.lastBarCachedIndex = -1;
     }
@@ -577,6 +623,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         return state;
     }
 
+    final boolean matchesSeriesConfiguration(int cacheLimit) {
+        return state.matchesConfiguration(cacheLimit, LAST_BAR_WAIT_TIMEOUT_MS);
+    }
+
     static final class HistoryEpochChangedException extends RuntimeException {
 
         private static final long serialVersionUID = 1L;
@@ -602,7 +652,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private final Object epochLock = new Object();
         private final Object lastBarLock = new Object();
         private final Object firstBarLock = new Object();
-
         private volatile long historyEpoch;
         private volatile int highestResultIndex = -1;
 
@@ -612,6 +661,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private volatile Bar lastBarRef;
         private volatile long lastBarTradeCount;
         private volatile Num lastBarClosePrice;
+        private volatile long lastBarHistoryRevision = -1;
         private volatile T lastBarCachedResult;
         private volatile int lastBarCachedIndex = -1;
 
@@ -626,9 +676,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             this.historyEpoch = historyEpoch;
         }
 
+        boolean matchesConfiguration(int cacheLimit, long waitTimeoutMs) {
+            return cache.getMaximumCapacity() == cacheLimit && lastBarWaitTimeoutMs == waitTimeoutMs;
+        }
+
         private void ensureEpoch(long currentEpoch) {
             if (currentEpoch < 0 || historyEpoch == currentEpoch) {
                 return;
+            }
+            // Recursive prefill already owns the cache write lock. Abort it instead of
+            // inverting the cache-lock/epoch-lock order against another reader.
+            if (cache.isWriteLockedByCurrentThread()) {
+                throw HistoryEpochChangedException.INSTANCE;
             }
             synchronized (epochLock) {
                 if (historyEpoch == currentEpoch) {
@@ -640,6 +699,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     lastBarRef = null;
                     lastBarTradeCount = 0;
                     lastBarClosePrice = null;
+                    lastBarHistoryRevision = -1;
                     lastBarCachedResult = null;
                     lastBarCachedIndex = -1;
                     lastBarLock.notifyAll();

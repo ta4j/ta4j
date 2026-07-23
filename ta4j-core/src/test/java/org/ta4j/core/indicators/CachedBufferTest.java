@@ -4,6 +4,9 @@
 package org.ta4j.core.indicators;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -210,6 +213,30 @@ public class CachedBufferTest {
         // Should only compute 10-14 (5 values)
         assertEquals(5, computations.get());
         assertEquals(14, buffer.getHighestResultIndex());
+    }
+
+    @Test
+    public void prefillDoesNotPublishAcrossHistoryEpochChange() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(100);
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        Bar firstBar = series.getFirstBar();
+        Bar replacement = series.barBuilder()
+                .timePeriod(firstBar.getTimePeriod())
+                .endTime(firstBar.getEndTime())
+                .closePrice(10)
+                .build();
+        long historyEpoch = series.getBarHistoryEpoch();
+        AtomicInteger publishedHighestIndex = new AtomicInteger(Integer.MIN_VALUE);
+
+        assertThrows(CachedIndicator.HistoryEpochChangedException.class, () -> buffer.prefillUntil(0, 3, index -> {
+            if (index == 1) {
+                series.replaceBar(0, replacement);
+            }
+            return index;
+        }, publishedHighestIndex::set, series, historyEpoch));
+
+        assertEquals(Integer.MIN_VALUE, publishedHighestIndex.get());
+        assertEquals(-1, buffer.getHighestResultIndex());
     }
 
     @Test

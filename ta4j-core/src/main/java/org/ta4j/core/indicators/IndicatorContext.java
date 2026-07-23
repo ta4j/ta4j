@@ -7,6 +7,7 @@ import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
+import java.util.function.Supplier;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -305,7 +306,9 @@ public final class IndicatorContext {
      * @since 0.23.1
      */
     public StretchZScoreIndicator stretchZScore(int barCount) {
-        return canonical(new StretchZScoreIndicator(series, barCount));
+        ClosePriceIndicator closePrice = closePrice();
+        IndicatorIdentity identity = AbstractIndicator.identityFor(StretchZScoreIndicator.class, closePrice, barCount);
+        return canonical(identity, () -> new StretchZScoreIndicator(closePrice, barCount));
     }
 
     /**
@@ -319,8 +322,10 @@ public final class IndicatorContext {
      */
     public TrendScoreIndicator trendScore(int fastEmaBarCount, int slowEmaBarCount, int signalBarCount, int adxBarCount,
             int normalizationBarCount) {
-        return canonical(new TrendScoreIndicator(series, fastEmaBarCount, slowEmaBarCount, signalBarCount, adxBarCount,
-                normalizationBarCount));
+        IndicatorIdentity identity = AbstractIndicator.identityFor(TrendScoreIndicator.class, fastEmaBarCount,
+                slowEmaBarCount, signalBarCount, adxBarCount, normalizationBarCount);
+        return canonical(identity, () -> new TrendScoreIndicator(series, fastEmaBarCount, slowEmaBarCount,
+                signalBarCount, adxBarCount, normalizationBarCount));
     }
 
     /**
@@ -336,8 +341,11 @@ public final class IndicatorContext {
      */
     public TrendConclusionIndicator trendConclusion(int mediumEmaBarCount, int macdFastBarCount, int macdSlowBarCount,
             int macdSignalBarCount, int adxBarCount, int compressionBarCount, int normalizationBarCount) {
-        return canonical(new TrendConclusionIndicator(series, mediumEmaBarCount, macdFastBarCount, macdSlowBarCount,
-                macdSignalBarCount, adxBarCount, compressionBarCount, normalizationBarCount));
+        IndicatorIdentity identity = AbstractIndicator.identityFor(TrendConclusionIndicator.class, mediumEmaBarCount,
+                macdFastBarCount, macdSlowBarCount, macdSignalBarCount, adxBarCount, compressionBarCount,
+                normalizationBarCount);
+        return canonical(identity, () -> new TrendConclusionIndicator(series, mediumEmaBarCount, macdFastBarCount,
+                macdSlowBarCount, macdSignalBarCount, adxBarCount, compressionBarCount, normalizationBarCount));
     }
 
     /**
@@ -346,7 +354,12 @@ public final class IndicatorContext {
      * @since 0.23.1
      */
     public EmpiricalElliottWaveForecastIndicator empiricalElliottWaveForecast(Settings settings) {
-        return canonical(new EmpiricalElliottWaveForecastIndicator(series, settings));
+        Settings validatedSettings = Objects.requireNonNull(settings, "settings");
+        IndicatorIdentity identity = AbstractIndicator.identityFor(EmpiricalElliottWaveForecastIndicator.class, null,
+                validatedSettings.degree(), validatedSettings.trainingLookbackBars(), validatedSettings.neighborCount(),
+                validatedSettings.minimumSamples(), validatedSettings.maximumAnalogDistance(),
+                validatedSettings.minimumScenarioConfidence());
+        return canonical(identity, () -> new EmpiricalElliottWaveForecastIndicator(series, validatedSettings));
     }
 
     synchronized <T> CachedIndicator.SharedState<T> sharedState(IndicatorIdentity identity, int cacheLimit,
@@ -357,13 +370,14 @@ public final class IndicatorContext {
         }
         WeakReference<CachedIndicator.SharedState<?>> reference = sharedStates.get(identity);
         CachedIndicator.SharedState<?> existing = reference == null ? null : reference.get();
-        if (existing != null) {
+        if (existing != null && existing.matchesConfiguration(cacheLimit, lastBarWaitTimeoutMs)) {
             @SuppressWarnings("unchecked")
             CachedIndicator.SharedState<T> typed = (CachedIndicator.SharedState<T>) existing;
             return typed;
         }
         CachedIndicator.SharedState<T> created = new CachedIndicator.SharedState<>(identity, cacheLimit,
                 lastBarWaitTimeoutMs, series.getBarHistoryEpoch());
+        sharedStates.remove(identity);
         sharedStates.put(identity, new WeakReference<>(created));
         return created;
     }
@@ -376,11 +390,37 @@ public final class IndicatorContext {
         WeakReference<AbstractIndicator<?>> reference = canonicalIndicators.get(identity);
         AbstractIndicator<?> existing = reference == null ? null : reference.get();
         if (existing != null) {
+            if (existing instanceof CachedIndicator<?> existingCached
+                    && candidate instanceof CachedIndicator<?> candidateCached
+                    && existingCached.sharedStateIdentity() != candidateCached.sharedStateIdentity()) {
+                canonicalIndicators.remove(identity);
+                canonicalIndicators.put(identity, new WeakReference<>(candidate));
+                return candidate;
+            }
             @SuppressWarnings("unchecked")
             I typed = (I) existing;
             return typed;
         }
         canonicalIndicators.put(identity, new WeakReference<>(candidate));
+        return candidate;
+    }
+
+    private synchronized <I extends AbstractIndicator<?>> I canonical(IndicatorIdentity identity,
+            Supplier<I> candidateFactory) {
+        if (series.getBarHistoryEpoch() < 0) {
+            return candidateFactory.get();
+        }
+        WeakReference<AbstractIndicator<?>> reference = canonicalIndicators.get(identity);
+        AbstractIndicator<?> existing = reference == null ? null : reference.get();
+        if (existing != null && (!(existing instanceof CachedIndicator<?> cached)
+                || cached.matchesSeriesConfiguration(series.getMaximumBarCount()))) {
+            @SuppressWarnings("unchecked")
+            I typed = (I) existing;
+            return typed;
+        }
+        I candidate = candidateFactory.get();
+        canonicalIndicators.remove(identity);
+        canonicalIndicators.put(candidate.indicatorIdentity(), new WeakReference<>(candidate));
         return candidate;
     }
 

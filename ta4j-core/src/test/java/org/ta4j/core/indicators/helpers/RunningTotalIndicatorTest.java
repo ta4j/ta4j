@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -48,6 +49,19 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(runningTotal.getValue(1).isNaN());
         assertTrue(runningTotal.getValue(2).isNaN());
         assertNumEquals(7, runningTotal.getValue(3));
+    }
+
+    @Test
+    public void resetsSerialShortcutAfterHistoryIsCleared() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10).build();
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 2);
+
+        assertNumEquals(10, runningTotal.getValue(0));
+        series.clear();
+        series.barBuilder().closePrice(1).add();
+        series.barBuilder().closePrice(2).add();
+
+        assertNumEquals(3, runningTotal.getValue(1));
     }
 
     @Test

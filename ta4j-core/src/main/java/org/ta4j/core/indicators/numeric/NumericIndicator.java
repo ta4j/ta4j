@@ -216,7 +216,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link SMAIndicator} of {@code this}
      */
     public NumericIndicator sma(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().sma(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().sma(this, barCount));
     }
 
     /**
@@ -224,7 +224,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link EMAIndicator} of {@code this}
      */
     public NumericIndicator ema(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().ema(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().ema(this, barCount));
     }
 
     /**
@@ -232,7 +232,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link StandardDeviationIndicator} of {@code this}
      */
     public NumericIndicator stddev(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().standardDeviation(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().standardDeviation(this, barCount));
     }
 
     /**
@@ -240,7 +240,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link HighestValueIndicator} of {@code this}
      */
     public NumericIndicator highest(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().highest(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().highest(this, barCount));
     }
 
     /**
@@ -248,7 +248,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link LowestValueIndicator} of {@code this}
      */
     public NumericIndicator lowest(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().lowest(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().lowest(this, barCount));
     }
 
     /**
@@ -256,7 +256,7 @@ public class NumericIndicator implements Indicator<Num> {
      * @return the {@link PreviousValueIndicator} of {@code this}
      */
     public NumericIndicator previous(int barCount) {
-        return NumericIndicator.of(getBarSeries().indicators().previous(delegate, barCount));
+        return NumericIndicator.of(getBarSeries().indicators().previous(this, barCount));
     }
 
     /**

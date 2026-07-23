@@ -21,6 +21,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -92,6 +94,10 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         return new IndicatorIdentity(exactClass, null, Collections.unmodifiableList(normalized));
     }
 
+    static IndicatorIdentity identityFor(Class<?> exactClass, Object... parts) {
+        return identityOfExact(exactClass, parts).forClass(exactClass);
+    }
+
     @Override
     public BarSeries getBarSeries() {
         return new ReadOnlyBarSeriesView(series);
@@ -123,14 +129,23 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
                 || part instanceof Byte || part instanceof Short || part instanceof Integer || part instanceof Long
                 || part instanceof Float || part instanceof Double || part instanceof BigInteger
                 || part instanceof BigDecimal || part instanceof Enum<?> || part instanceof Class<?>
-                || part instanceof TemporalAccessor || part instanceof Num) {
+                || part instanceof TemporalAccessor) {
             return part;
+        }
+        if (part instanceof DecimalNum decimalNum) {
+            return new NumIdentity(DecimalNum.class, decimalNum.getDelegate(), decimalNum.getMathContext());
+        }
+        if (part instanceof DoubleNum doubleNum) {
+            return new NumIdentity(DoubleNum.class, Double.doubleToLongBits(doubleNum.doubleValue()), null);
+        }
+        if (part instanceof Num) {
+            return new OpaqueIdentity(part);
         }
         if (part instanceof AbstractIndicator<?> indicator) {
             IndicatorIdentity sourceIdentity = indicator.indicatorIdentity();
             return sourceIdentity == null ? new OpaqueIdentity(part) : sourceIdentity;
         }
-        if (part instanceof NumericIndicator numericIndicator) {
+        if (part instanceof NumericIndicator numericIndicator && part.getClass() == NumericIndicator.class) {
             return normalizeIdentityPart(numericIndicator.delegate());
         }
         if (part.getClass().isArray()) {
@@ -139,19 +154,20 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
             for (int i = 0; i < length; i++) {
                 normalized.add(normalizeIdentityPart(Array.get(part, i)));
             }
-            return Collections.unmodifiableList(normalized);
+            return new ArrayIdentity(part.getClass(), Collections.unmodifiableList(normalized));
         }
         if (part instanceof Collection<?> collection) {
             List<Object> normalized = new ArrayList<>(collection.size());
             for (Object element : collection) {
                 normalized.add(normalizeIdentityPart(element));
             }
-            return Collections.unmodifiableList(normalized);
+            return new CollectionIdentity(part.getClass(), Collections.unmodifiableList(normalized));
         }
         if (part instanceof Map<?, ?> map) {
-            Map<Object, Object> normalized = new java.util.HashMap<>();
-            map.forEach((key, value) -> normalized.put(normalizeIdentityPart(key), normalizeIdentityPart(value)));
-            return Collections.unmodifiableMap(normalized);
+            List<MapEntryIdentity> normalized = new ArrayList<>(map.size());
+            map.forEach((key, value) -> normalized
+                    .add(new MapEntryIdentity(normalizeIdentityPart(key), normalizeIdentityPart(value))));
+            return new MapIdentity(part.getClass(), Collections.unmodifiableList(normalized));
         }
         return new OpaqueIdentity(part);
     }
@@ -208,6 +224,21 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         public int hashCode() {
             return System.identityHashCode(value);
         }
+    }
+
+    private record NumIdentity(Class<?> type, Object value, Object arithmeticContext) {
+    }
+
+    private record ArrayIdentity(Class<?> type, List<Object> elements) {
+    }
+
+    private record CollectionIdentity(Class<?> type, List<Object> elements) {
+    }
+
+    private record MapIdentity(Class<?> type, List<MapEntryIdentity> entries) {
+    }
+
+    private record MapEntryIdentity(Object key, Object value) {
     }
 
     private static final class ReadOnlyBarSeriesView implements BarSeries {

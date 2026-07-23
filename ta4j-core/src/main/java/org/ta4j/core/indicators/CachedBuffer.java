@@ -295,6 +295,11 @@ class CachedBuffer<T> {
      * @param calculator  function to compute values
      */
     void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator) {
+        prefillUntil(startIndex, targetIndex, calculator, null, null, -1L);
+    }
+
+    void prefillUntil(int startIndex, int targetIndex, IntFunction<T> calculator, IntConsumer onComputedIndex,
+            BarSeries series, long historyEpoch) {
         lock.writeLock().lock();
         try {
             onWriteLockAcquired();
@@ -303,6 +308,13 @@ class CachedBuffer<T> {
                 for (int i = fillStart; i < targetIndex; i++) {
                     T value = calculator.apply(i);
                     store(i, value);
+                }
+                if (series != null && historyEpoch >= 0 && series.getBarHistoryEpoch() != historyEpoch) {
+                    clearInternal();
+                    throw CachedIndicator.HistoryEpochChangedException.INSTANCE;
+                }
+                if (onComputedIndex != null) {
+                    onComputedIndex.accept(highestResultIndex);
                 }
             } finally {
                 onBeforeWriteLockReleased();
@@ -371,6 +383,10 @@ class CachedBuffer<T> {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    int getMaximumCapacity() {
+        return bounded ? maximumCapacity : Integer.MAX_VALUE;
     }
 
     /**

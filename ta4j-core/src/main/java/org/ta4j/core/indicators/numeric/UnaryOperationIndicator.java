@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.numeric;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
@@ -199,6 +200,11 @@ public class UnaryOperationIndicator extends AbstractIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return operand.getCountOfUnstableBars();
+    }
+
+    @Override
+    public BarSeries getBarSeries() {
+        return operand.getBarSeries();
     }
 
     private record Config(Operation operation, UnaryOperator<Num> operator, Indicator<Num> operand, Num exponent,
