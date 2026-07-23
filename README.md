@@ -1370,7 +1370,8 @@ LPPL fitting is sensitive to window selection and split/distribution discontinui
 Ta4j includes a static target-weight portfolio backtesting foundation under
 `org.ta4j.core.portfolio` for deterministic multi-asset experiments with
 aligned series, scheduled rebalances, transaction costs, and portfolio
-snapshots. See the
+snapshots. The same aligned portfolio universe can also produce rolling
+log-return correlation matrices for asset-diversification analysis. See the
 [`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
 example and the ta4j wiki for a complete user guide.
 
