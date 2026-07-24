@@ -49,7 +49,7 @@ public class ElliottWaveAdaptiveSwingAnalysis {
 
         ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
 
-        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+        AdaptiveZigZagConfig config = AdaptiveZigZagConfig.defaults();
         SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.OR, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 

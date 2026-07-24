@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -155,6 +156,43 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator3.getSwingPointIndexesUpTo(2)).containsExactly(2);
         assertThat(indicator3.getSwingPointIndexesUpTo(8)).containsExactly(2, 5, 8);
         assertThat(indicator3.getSwingPointIndexesUpTo(4)).containsExactly(2);
+    }
+
+    @Test
+    public void shouldFilterByConfirmationIndexRatherThanPivotIndex() {
+        final BarSeries series = seriesFromCloses(10, 12, 15, 13, 11);
+        final int[] latestSwingIndexes = { -1, -1, -1, -1, 2 };
+        final FixedSwingIndicator indicator = new FixedSwingIndicator(new ClosePriceIndicator(series),
+                latestSwingIndexes);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        assertThat(indicator.getLatestSwingConfirmationIndex(4)).isEqualTo(4);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).isEmpty();
+        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(-1);
+        assertThat(indicator.getLatestSwingConfirmationIndex(2)).isEqualTo(-1);
+    }
+
+    @Test
+    public void shouldRewindConfirmedSwingsWhenTheTerminalBarIsReplaced() {
+        final BarSeries series = seriesFromCloses(10, 12, 15, 13, 11);
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(series, 2);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(series.getEndIndex())).containsExactly(2);
+
+        final Bar lastBar = series.getLastBar();
+        final Bar replacement = series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime())
+                .openPrice(16)
+                .highPrice(16)
+                .lowPrice(16)
+                .closePrice(16)
+                .build();
+        series.addBar(replacement, true);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(series.getEndIndex())).isEmpty();
+        assertThat(indicator.getLatestSwingIndex(series.getEndIndex())).isEqualTo(-1);
     }
 
     @Test

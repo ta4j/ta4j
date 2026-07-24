@@ -21,6 +21,10 @@ package org.ta4j.core.indicators.elliott.swing;
 public record AdaptiveZigZagConfig(int atrPeriod, double atrMultiplier, double minThreshold, double maxThreshold,
         int smoothingPeriod) {
 
+    private static final int DEFAULT_ATR_PERIOD = 14;
+    private static final double DEFAULT_ATR_MULTIPLIER = 1.0;
+    private static final int DEFAULT_SMOOTHING_PERIOD = 3;
+
     public AdaptiveZigZagConfig {
         if (atrPeriod < 1) {
             throw new IllegalArgumentException("atrPeriod must be positive");
@@ -56,5 +60,16 @@ public record AdaptiveZigZagConfig(int atrPeriod, double atrMultiplier, double m
      */
     public boolean hasMaxClamp() {
         return maxThreshold > 0.0;
+    }
+
+    /**
+     * Returns the balanced unclamped adaptive profile used by standard swing
+     * analysis.
+     *
+     * @return ATR(14), one-ATR reversal distance, and three-bar ATR smoothing
+     * @since 0.23.1
+     */
+    public static AdaptiveZigZagConfig defaults() {
+        return new AdaptiveZigZagConfig(DEFAULT_ATR_PERIOD, DEFAULT_ATR_MULTIPLIER, 0.0, 0.0, DEFAULT_SMOOTHING_PERIOD);
     }
 }

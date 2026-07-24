@@ -80,7 +80,7 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class ElliottWaveAnalysisRunner {
 
-    private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+    private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = AdaptiveZigZagConfig.defaults();
     private static final int DEFAULT_FAST_FRACTAL_WINDOW = 3;
     private static final int DEFAULT_SLOW_FRACTAL_WINDOW = 8;
 
