@@ -1370,10 +1370,11 @@ LPPL fitting is sensitive to window selection and split/distribution discontinui
 Ta4j includes a static target-weight portfolio backtesting foundation under
 `org.ta4j.core.portfolio` for deterministic multi-asset experiments with
 aligned series, scheduled rebalances, transaction costs, and portfolio
-snapshots. The same aligned portfolio universe can also produce rolling
-log-return correlation matrices for asset-diversification analysis. See the
-[`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
-example and the ta4j wiki for a complete user guide.
+snapshots. The same aligned portfolio universe can also produce price, simple
+return, and log-return correlation matrices for asset-diversification analysis;
+the [`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
+and [`PortfolioCorrelationAnalysis`](ta4j-examples/src/main/java/ta4jexamples/portfolio/PortfolioCorrelationAnalysis.java)
+examples plus the ta4j wiki show complete workflows.
 
 ## Real-world examples
 
@@ -1414,7 +1415,6 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 - **[StaticPortfolioBacktest](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)** - Run a deterministic static target-weight multi-asset portfolio backtest with aligned inputs, rebalance snapshots, turnover, and transaction costs
-
 ### Charting Examples
 - **[IndicatorsToChart](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java)** - Visualize indicators overlaid on price charts
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals

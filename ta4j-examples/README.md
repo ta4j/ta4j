@@ -27,6 +27,7 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`: prints aligned portfolio snapshots, final value, total return, and transaction costs
+- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints AssetCorrelations-style price, simple-return, and log-return correlation matrices for sample portfolios
 
 If chart windows do not appear, you are likely in a headless environment; switch to chart file output or run on a GUI-enabled machine.
 
@@ -74,6 +75,7 @@ raw machine hostname.
 ### 4) Portfolio simulation
 
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`
+- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`
 
 ### 5) Live-style workflows
 
