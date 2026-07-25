@@ -31,6 +31,7 @@ class NamedRuleTest {
         NamedRule.unregisterImplementation(TestUnregisterRule.class);
         NamedRule.unregisterImplementation(FirstRuleHolder.DuplicateRule.class);
         NamedRule.unregisterImplementation(SecondRuleHolder.DuplicateRule.class);
+        NamedRule.unregisterImplementation(AutoScanRule.class);
     }
 
     @Test
@@ -144,6 +145,13 @@ class NamedRuleTest {
     }
 
     @Test
+    void registryScanSkipsInvalidRuleClassesAndContinues() {
+        NamedRule.initializeRegistry("org.ta4j.core.rules.named");
+
+        assertThat(NamedRule.lookup("AutoScanRule")).contains(AutoScanRule.class);
+    }
+
+    @Test
     void ruleJsonRoundTripsThroughConcreteSerialization() {
         BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d, 4d).build();
         NamedRuleFixture original = new NamedRuleFixture(series, NamedRuleFixture.Comparison.ABOVE,
@@ -204,6 +212,30 @@ class NamedRuleTest {
 
         private Underscored_Rule() {
             super("unreachable");
+        }
+    }
+
+    private static final class Invalid_Rule extends NamedRule {
+
+        private Invalid_Rule() {
+            super("unreachable");
+        }
+
+        @Override
+        public boolean isSatisfied(int index, org.ta4j.core.TradingRecord tradingRecord) {
+            return false;
+        }
+    }
+
+    private static final class AutoScanRule extends NamedRule {
+
+        private AutoScanRule() {
+            super(NamedRule.buildLabel(AutoScanRule.class));
+        }
+
+        @Override
+        public boolean isSatisfied(int index, org.ta4j.core.TradingRecord tradingRecord) {
+            return true;
         }
     }
 

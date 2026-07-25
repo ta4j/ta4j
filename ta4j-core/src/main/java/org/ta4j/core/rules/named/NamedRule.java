@@ -377,6 +377,8 @@ public abstract class NamedRule extends AbstractRule {
             }
         } catch (ClassNotFoundException | LinkageError ex) {
             LOGGER.debug("Unable to inspect named rule class {}", className, ex);
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            LOGGER.debug("Skipping invalid or conflicting named rule class {}", className, ex);
         }
     }
 }

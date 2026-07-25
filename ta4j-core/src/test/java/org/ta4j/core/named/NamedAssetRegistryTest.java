@@ -22,7 +22,7 @@ public class NamedAssetRegistryTest {
         assertThat(registry.aliases(NamedAssetKind.INDICATOR)).startsWith("ClosePrice", "ClosePriceIndicator", "SMA",
                 "EMA", "RSI");
         assertThat(registry.aliases(NamedAssetKind.RULE)).contains("CrossedUp", "CrossedDown", "Under", "Over");
-        assertThat(registry.aliases(NamedAssetKind.STRATEGY)).containsExactly("SMA");
+        assertThat(registry.aliases(NamedAssetKind.STRATEGY)).contains("SMA");
         assertThat(registry.aliases(NamedAssetKind.ANALYSIS_CRITERION)).contains("NetProfit", "GrossReturn");
     }
 

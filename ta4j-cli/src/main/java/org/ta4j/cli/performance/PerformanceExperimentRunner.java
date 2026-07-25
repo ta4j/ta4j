@@ -16,12 +16,12 @@ import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
@@ -47,6 +47,7 @@ public final class PerformanceExperimentRunner {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final NumberFormat INTEGER_FORMAT = NumberFormat.getIntegerInstance(Locale.US);
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
+    private static final long COMMAND_TIMEOUT_SECONDS = 5;
 
     private PerformanceExperimentRunner() {
     }
@@ -224,21 +225,32 @@ public final class PerformanceExperimentRunner {
     }
 
     private static String gitRef() {
-        return commandOutput("git", "rev-parse", "--short", "HEAD").orElse("unknown");
+        return commandOutput(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS, "git", "rev-parse", "--short", "HEAD")
+                .orElse("unknown");
     }
 
-    private static Optional<String> commandOutput(String... command) {
+    static Optional<String> commandOutput(long timeout, TimeUnit unit, String... command) {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.redirectErrorStream(true);
+        Process process = null;
         try {
-            Process process = processBuilder.start();
+            process = processBuilder.start();
+            if (!process.waitFor(timeout, unit)) {
+                process.destroyForcibly();
+                process.waitFor();
+                return Optional.empty();
+            }
+            int exitCode = process.exitValue();
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            int exitCode = process.waitFor();
             if (exitCode == 0 && !output.isBlank()) {
                 return Optional.of(output);
             }
         } catch (IOException e) {
             return Optional.empty();
         } catch (InterruptedException e) {
+            if (process != null) {
+                process.destroyForcibly();
+            }
             Thread.currentThread().interrupt();
             return Optional.empty();
         }
@@ -288,7 +300,7 @@ public final class PerformanceExperimentRunner {
             if (warmups < 0) {
                 throw new IllegalArgumentException("warmups must be non-negative");
             }
-            barCounts = List.copyOf(new LinkedHashSet<>(barCounts));
+            barCounts = barCounts.stream().distinct().sorted().toList();
             scenarioIds = scenarioIds == null ? List.of() : List.copyOf(scenarioIds);
             outputDir = outputDir == null ? Optional.empty() : outputDir;
         }

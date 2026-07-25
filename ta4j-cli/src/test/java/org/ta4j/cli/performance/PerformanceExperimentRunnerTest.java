@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -41,6 +42,30 @@ class PerformanceExperimentRunnerTest {
                         Optional.empty(), false));
 
         assertEquals("barCounts values must be positive", exception.getMessage());
+    }
+
+    @Test
+    void runRequestSortsAndDeduplicatesBarCounts() {
+        PerformanceExperimentRunner.RunRequest request = new PerformanceExperimentRunner.RunRequest("kalman-filter",
+                List.of(10000, 1000, 5000, 1000), List.of(), 1, 0, Optional.empty(), false);
+
+        assertEquals(List.of(1000, 5000, 10000), request.barCounts());
+    }
+
+    @Test
+    void commandOutputReturnsEmptyWhenProcessTimesOut() {
+        Optional<String> output = PerformanceExperimentRunner.commandOutput(100, TimeUnit.MILLISECONDS, "/bin/sh", "-c",
+                "sleep 5; printf late");
+
+        assertTrue(output.isEmpty());
+    }
+
+    @Test
+    void commandOutputReturnsTrimmedOutputForSuccessfulProcess() {
+        Optional<String> output = PerformanceExperimentRunner.commandOutput(5, TimeUnit.SECONDS, "/bin/sh", "-c",
+                "printf ' ok '");
+
+        assertEquals(Optional.of("ok"), output);
     }
 
     @Test
