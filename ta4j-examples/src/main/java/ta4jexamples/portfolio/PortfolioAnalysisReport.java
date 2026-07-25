@@ -44,7 +44,7 @@ final class PortfolioAnalysisReport {
 
     static void write(Path outputDirectory, PortfolioSeries series, CorrelationMatrix priceMatrix,
             CorrelationMatrix returnMatrix, PortfolioAllocation equalWeight, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance, Path aiAnalysisFile) throws IOException {
+            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight, Path aiAnalysisFile) throws IOException {
         Objects.requireNonNull(outputDirectory, "outputDirectory");
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(priceMatrix, "priceMatrix");
@@ -52,6 +52,11 @@ final class PortfolioAnalysisReport {
         Objects.requireNonNull(equalWeight, "equalWeight");
         Objects.requireNonNull(minimumVariance, "minimumVariance");
         Objects.requireNonNull(cappedMinimumVariance, "cappedMinimumVariance");
+        Objects.requireNonNull(maximumAssetWeight, "maximumAssetWeight");
+        if (!Num.isFinite(maximumAssetWeight) || maximumAssetWeight.isNegativeOrZero()
+                || maximumAssetWeight.isGreaterThan(series.numFactory().one())) {
+            throw new IllegalArgumentException("maximumAssetWeight must be finite and in (0, 1]");
+        }
         Files.createDirectories(outputDirectory);
 
         PortfolioCorrelationChartFactory chartFactory = new PortfolioCorrelationChartFactory();
@@ -65,14 +70,13 @@ final class PortfolioAnalysisReport {
                 chartFactory.createDendrogram("Simple-return correlation hierarchy", returnMatrix.completeLinkage()));
 
         writeWorkbook(outputDirectory.resolve(WORKBOOK), series, priceMatrix, returnMatrix, equalWeight,
-                minimumVariance, cappedMinimumVariance);
-        Files.writeString(outputDirectory.resolve(AI_PROMPT), aiPrompt(series, returnMatrix, cappedMinimumVariance),
-                StandardCharsets.UTF_8);
+                minimumVariance, cappedMinimumVariance, maximumAssetWeight);
+        Files.writeString(outputDirectory.resolve(AI_PROMPT),
+                aiPrompt(series, returnMatrix, cappedMinimumVariance, maximumAssetWeight), StandardCharsets.UTF_8);
         String externalAnalysis = aiAnalysisFile == null ? null
                 : Files.readString(aiAnalysisFile, StandardCharsets.UTF_8);
-        Files.writeString(outputDirectory.resolve(HTML_REPORT),
-                htmlReport(series, returnMatrix, equalWeight, minimumVariance, cappedMinimumVariance, externalAnalysis),
-                StandardCharsets.UTF_8);
+        Files.writeString(outputDirectory.resolve(HTML_REPORT), htmlReport(series, returnMatrix, equalWeight,
+                minimumVariance, cappedMinimumVariance, maximumAssetWeight, externalAnalysis), StandardCharsets.UTF_8);
     }
 
     private static void writeChart(Path path, org.jfree.chart.JFreeChart chart) throws IOException {
@@ -81,7 +85,7 @@ final class PortfolioAnalysisReport {
 
     private static void writeWorkbook(Path path, PortfolioSeries series, CorrelationMatrix priceMatrix,
             CorrelationMatrix returnMatrix, PortfolioAllocation equalWeight, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance) throws IOException {
+            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight) throws IOException {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             CellStyle decimalStyle = workbook.createCellStyle();
             decimalStyle.setDataFormat(workbook.createDataFormat().getFormat("0.0000"));
@@ -100,7 +104,7 @@ final class PortfolioAnalysisReport {
             writeMatrix(workbook.createSheet("Price Correlations"), priceMatrix, decimalStyle);
             writeMatrix(workbook.createSheet("Return Correlations"), returnMatrix, decimalStyle);
             writeAllocations(workbook.createSheet("Allocations"), series.getAssets(), equalWeight, minimumVariance,
-                    cappedMinimumVariance, percentStyle);
+                    cappedMinimumVariance, maximumAssetWeight, percentStyle);
             writeHierarchy(workbook.createSheet("Return Linkage"), returnMatrix.completeLinkage(), decimalStyle);
 
             try (OutputStream output = Files.newOutputStream(path)) {
@@ -132,12 +136,13 @@ final class PortfolioAnalysisReport {
     }
 
     private static void writeAllocations(Sheet sheet, List<String> assets, PortfolioAllocation equalWeight,
-            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance, CellStyle percentStyle) {
+            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight,
+            CellStyle percentStyle) {
         Row header = sheet.createRow(0);
         header.createCell(0).setCellValue("Asset");
         header.createCell(1).setCellValue("Equal weight");
         header.createCell(2).setCellValue("Minimum variance");
-        header.createCell(3).setCellValue("Minimum variance (25% cap)");
+        header.createCell(3).setCellValue("Minimum variance (" + percent(maximumAssetWeight) + " cap)");
         for (int index = 0; index < assets.size(); index++) {
             String asset = assets.get(index);
             Row row = sheet.createRow(index + 1);
@@ -192,7 +197,7 @@ final class PortfolioAnalysisReport {
     }
 
     private static String aiPrompt(PortfolioSeries series, CorrelationMatrix returnMatrix,
-            PortfolioAllocation recommendation) {
+            PortfolioAllocation recommendation, Num maximumAssetWeight) {
         StringBuilder prompt = new StringBuilder("""
                 # Portfolio analysis review
 
@@ -207,7 +212,9 @@ final class PortfolioAnalysisReport {
         prompt.append("- Adjusted daily bars: ").append(series.getBarCount()).append('\n');
         prompt.append("- Start: ").append(series.getEndTimes().getFirst()).append('\n');
         prompt.append("- End: ").append(series.getEndTimes().getLast()).append("\n\n");
-        prompt.append("## Recommended allocation (25% maximum per asset)\n\n");
+        prompt.append("## Recommended allocation (")
+                .append(percent(maximumAssetWeight))
+                .append(" maximum per asset)\n\n");
         appendMarkdownAllocation(prompt, series.getAssets(), recommendation);
         prompt.append("\n## Simple-return correlations\n\n");
         for (PortfolioCorrelations.CorrelationPair pair : returnMatrix.getPairs()) {
@@ -219,7 +226,7 @@ final class PortfolioAnalysisReport {
 
     private static String htmlReport(PortfolioSeries series, CorrelationMatrix returnMatrix,
             PortfolioAllocation equalWeight, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance, String externalAnalysis) {
+            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight, String externalAnalysis) {
         PortfolioCorrelations.CorrelationPair strongest = returnMatrix.getPairs()
                 .stream()
                 .filter(pair -> Num.isFinite(pair.getCoefficient()))
@@ -256,7 +263,7 @@ final class PortfolioAnalysisReport {
                 <body><main>
                   <h1>Diversified Portfolio Analysis</h1>
                   <p class="meta">Adjusted daily data from %s through %s, %d common observations.</p>
-                  <p>This report compares equal weight, unconstrained minimum variance, and a practical 25%%-capped
+                  <p>This report compares equal weight, unconstrained minimum variance, and a practical %s-capped
                   minimum-variance allocation. The capped result is the recommendation shown here; it is analytical
                   research, not personalized financial advice.</p>
                   <h2>Allocation comparison</h2>
@@ -277,17 +284,20 @@ final class PortfolioAnalysisReport {
                 """
                 .replace("\n", "%n")
                 .formatted(series.getEndTimes().getFirst(), series.getEndTimes().getLast(), series.getBarCount(),
-                        allocationTable(series.getAssets(), equalWeight, minimumVariance, cappedMinimumVariance),
+                        percent(maximumAssetWeight),
+                        allocationTable(series.getAssets(), equalWeight, minimumVariance, cappedMinimumVariance,
+                                maximumAssetWeight),
                         escapeHtml(strongest.getFirstAsset()), escapeHtml(strongest.getSecondAsset()),
                         strongest.getCoefficient().doubleValue(), PRICE_HEATMAP, PRICE_DENDROGRAM, RETURN_HEATMAP,
                         RETURN_DENDROGRAM, aiSection, WORKBOOK, WORKBOOK);
     }
 
     private static String allocationTable(List<String> assets, PortfolioAllocation equalWeight,
-            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance) {
+            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight) {
         StringBuilder html = new StringBuilder(
                 "<div class=\"table-wrap\"><table><thead><tr><th>Asset</th><th>Equal</th><th>Minimum variance</th>"
-                        + "<th class=\"recommended\">25% capped</th></tr></thead><tbody>");
+                        + "<th class=\"recommended\">" + percent(maximumAssetWeight)
+                        + " capped</th></tr></thead><tbody>");
         for (String asset : assets) {
             html.append("<tr><td>")
                     .append(escapeHtml(asset))

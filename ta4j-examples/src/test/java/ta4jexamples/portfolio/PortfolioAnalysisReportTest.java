@@ -47,12 +47,14 @@ public class PortfolioAnalysisReportTest {
         }
         PortfolioAllocation equal = new PortfolioAllocation(equalWeights, series.numFactory());
         PortfolioAllocation minimumVariance = new MinimumVarianceOptimizer(series).optimize();
-        PortfolioAllocation capped = new MinimumVarianceOptimizer(series, series.numFactory().numOf(0.5)).optimize();
+        Num maximumAssetWeight = series.numFactory().numOf(0.5);
+        PortfolioAllocation capped = new MinimumVarianceOptimizer(series, maximumAssetWeight).optimize();
         Path externalAnalysis = temporaryDirectory.resolve("analysis.txt");
         Files.writeString(externalAnalysis, "<script>alert(\"unsafe\")</script> & review", StandardCharsets.UTF_8);
 
         PortfolioAnalysisReport.write(temporaryDirectory, series, correlations.getPriceMatrix(),
-                correlations.getSimpleReturnMatrix(), equal, minimumVariance, capped, externalAnalysis);
+                correlations.getSimpleReturnMatrix(), equal, minimumVariance, capped, maximumAssetWeight,
+                externalAnalysis);
 
         assertChart(PortfolioAnalysisReport.PRICE_HEATMAP);
         assertChart(PortfolioAnalysisReport.PRICE_DENDROGRAM);
@@ -63,8 +65,9 @@ public class PortfolioAnalysisReportTest {
         String html = Files.readString(temporaryDirectory.resolve(PortfolioAnalysisReport.HTML_REPORT));
         assertTrue(html.contains("&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt; &amp; review"));
         assertFalse(html.contains("<script>alert"));
+        assertTrue(html.contains("50.00%-capped"));
         String prompt = Files.readString(temporaryDirectory.resolve(PortfolioAnalysisReport.AI_PROMPT));
-        assertTrue(prompt.contains("25% maximum per asset"));
+        assertTrue(prompt.contains("50.00% maximum per asset"));
         assertTrue(prompt.contains("ALPHA / BETA"));
     }
 
@@ -85,6 +88,8 @@ public class PortfolioAnalysisReportTest {
             assertNotNull(workbook.getSheet("Allocations"));
             assertNotNull(workbook.getSheet("Return Linkage"));
             assertEquals("ALPHA", workbook.getSheet("Allocations").getRow(1).getCell(0).getStringCellValue());
+            assertEquals("Minimum variance (50.00% cap)",
+                    workbook.getSheet("Allocations").getRow(0).getCell(3).getStringCellValue());
         }
     }
 

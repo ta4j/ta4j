@@ -58,12 +58,12 @@ public final class DiversifiedPortfolioAnalysis {
         }
         PortfolioAllocation equalWeight = new PortfolioAllocation(equalInputs, series.numFactory());
         PortfolioAllocation minimumVariance = new MinimumVarianceOptimizer(series).optimize();
-        PortfolioAllocation cappedMinimumVariance = new MinimumVarianceOptimizer(series,
-                series.numFactory().numOf(0.25)).optimize();
+        Num maximumAssetWeight = series.numFactory().numOf(0.25);
+        PortfolioAllocation cappedMinimumVariance = new MinimumVarianceOptimizer(series, maximumAssetWeight).optimize();
 
         PortfolioAnalysisReport.write(arguments.outputDirectory(), series, priceMatrix, returnMatrix, equalWeight,
-                minimumVariance, cappedMinimumVariance, arguments.aiAnalysisFile());
-        printSummary(arguments.outputDirectory(), series, minimumVariance, cappedMinimumVariance);
+                minimumVariance, cappedMinimumVariance, maximumAssetWeight, arguments.aiAnalysisFile());
+        printSummary(arguments.outputDirectory(), series, minimumVariance, cappedMinimumVariance, maximumAssetWeight);
     }
 
     private static PortfolioSeries loadAdjustedYearToDateSeries() {
@@ -84,12 +84,13 @@ public final class DiversifiedPortfolioAnalysis {
     }
 
     private static void printSummary(Path outputDirectory, PortfolioSeries series, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance) {
+            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight) {
         System.out.printf("Portfolio report generated in %s%n", outputDirectory.toAbsolutePath());
         System.out.printf("Common adjusted daily bars: %d%n", series.getBarCount());
         System.out.println("Uncapped minimum-variance allocation:");
         printAllocation(series, minimumVariance);
-        System.out.println("Recommended 25%-capped allocation:");
+        System.out.printf(Locale.ROOT, "Recommended %.2f%%-capped allocation:%n",
+                maximumAssetWeight.doubleValue() * 100.0);
         printAllocation(series, cappedMinimumVariance);
     }
 
