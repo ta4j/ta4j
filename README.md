@@ -1365,16 +1365,9 @@ LPPLResidualIndicator tunedResidual = new LPPLResidualIndicator(series, profile)
 
 LPPL fitting is sensitive to window selection and split/distribution discontinuities, so equity operators should use adjusted prices and validate the residual against matched trend and randomized-return controls before applying thresholds.
 
-## Portfolio backtesting foundation
+## Portfolio analytics
 
-Ta4j includes a static target-weight portfolio backtesting foundation under
-`org.ta4j.core.portfolio` for deterministic multi-asset experiments with
-aligned series, scheduled rebalances, transaction costs, and portfolio
-snapshots. The same aligned portfolio universe can also produce price, simple
-return, and log-return correlation matrices for asset-diversification analysis;
-the [`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java)
-and [`PortfolioCorrelationAnalysis`](ta4j-examples/src/main/java/ta4jexamples/portfolio/PortfolioCorrelationAnalysis.java)
-examples plus the ta4j wiki show complete workflows.
+Ta4j includes constructor-first multi-asset portfolio backtesting, correlation and hierarchy analysis, and long-only minimum-variance allocation. Runnable examples also generate adjusted-data heatmaps, dendrograms, HTML, and XLSX reports.
 
 ## Real-world examples
 

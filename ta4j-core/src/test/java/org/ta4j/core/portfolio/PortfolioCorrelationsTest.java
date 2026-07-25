@@ -24,130 +24,134 @@ public class PortfolioCorrelationsTest {
     @Test
     public void buildsClosePriceCorrelationMatrixMatchingPandasCorr() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
-        PortfolioAsset beta = PortfolioAsset.of("BETA");
-        PortfolioAsset gamma = PortfolioAsset.of("GAMMA");
-        AlignedPortfolioSeries series = AlignedPortfolioSeries
-                .of(List.of(new PortfolioSeries(alpha, series("alpha", start, 10, 11, 12, 11, 13)),
-                        new PortfolioSeries(beta, series("beta", start, 20, 21, 19, 22, 24)),
-                        new PortfolioSeries(gamma, series("gamma", start, 8, 7, 7.5, 6, 6.5))));
+        String alpha = "ALPHA";
+        String beta = "BETA";
+        String gamma = "GAMMA";
+        PortfolioSeries series = new PortfolioSeries(series(alpha, start, 10, 11, 12, 11, 13),
+                series(beta, start, 20, 21, 19, 22, 24), series(gamma, start, 8, 7, 7.5, 6, 6.5));
 
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.priceMatrix(series);
+        PortfolioCorrelations.CorrelationMatrix matrix = new PortfolioCorrelations(series).getPriceMatrix();
 
-        assertEquals(4, matrix.index());
-        assertEquals(5, matrix.barCount());
+        assertEquals(4, matrix.getIndex());
+        assertEquals(5, matrix.getBarCount());
         assertEquals(4, matrix.getCountOfUnstableBars());
         assertTrue(matrix.isStable());
-        assertNumEquals(0.5243548655, matrix.coefficient(alpha, beta));
-        assertNumEquals(-0.4160251472, matrix.coefficient(alpha, gamma));
-        assertNumEquals(-0.7397954429, matrix.coefficient(beta, gamma));
+        assertNumEquals(0.5243548655, matrix.getCoefficient(alpha, beta));
+        assertNumEquals(-0.4160251472, matrix.getCoefficient(alpha, gamma));
+        assertNumEquals(-0.7397954429, matrix.getCoefficient(beta, gamma));
     }
 
     @Test
     public void buildsSimpleReturnCorrelationMatrixMatchingPandasPctChangeCorr() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
-        PortfolioAsset beta = PortfolioAsset.of("BETA");
-        PortfolioAsset gamma = PortfolioAsset.of("GAMMA");
-        BarSeries alphaSeries = series("alpha", start, closesFromSimpleReturns(100, 0.10, -0.05, 0.20, 0.03));
-        BarSeries betaSeries = series("beta", start, closesFromSimpleReturns(200, 0.20, -0.10, 0.40, 0.06));
-        BarSeries gammaSeries = series("gamma", start, closesFromSimpleReturns(300, -0.10, 0.05, -0.20, -0.03));
-        AlignedPortfolioSeries series = AlignedPortfolioSeries.of(List.of(new PortfolioSeries(alpha, alphaSeries),
-                new PortfolioSeries(beta, betaSeries), new PortfolioSeries(gamma, gammaSeries)));
+        String alpha = "ALPHA";
+        String beta = "BETA";
+        String gamma = "GAMMA";
+        BarSeries alphaSeries = series(alpha, start, closesFromSimpleReturns(100, 0.10, -0.05, 0.20, 0.03));
+        BarSeries betaSeries = series(beta, start, closesFromSimpleReturns(200, 0.20, -0.10, 0.40, 0.06));
+        BarSeries gammaSeries = series(gamma, start, closesFromSimpleReturns(300, -0.10, 0.05, -0.20, -0.03));
+        PortfolioSeries series = new PortfolioSeries(alphaSeries, betaSeries, gammaSeries);
 
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.simpleReturnMatrix(series);
+        PortfolioCorrelations.CorrelationMatrix matrix = new PortfolioCorrelations(series).getSimpleReturnMatrix();
 
-        assertEquals(4, matrix.index());
-        assertEquals(4, matrix.barCount());
+        assertEquals(4, matrix.getIndex());
+        assertEquals(4, matrix.getBarCount());
         assertEquals(4, matrix.getCountOfUnstableBars());
         assertTrue(matrix.isStable());
-        assertNumEquals(1d, matrix.coefficient(alpha, beta));
-        assertNumEquals(-1d, matrix.coefficient(alpha, gamma));
-        assertNumEquals(-1d, matrix.coefficient(beta, gamma));
+        assertNumEquals(1d, matrix.getCoefficient(alpha, beta));
+        assertNumEquals(-1d, matrix.getCoefficient(alpha, gamma));
+        assertNumEquals(-1d, matrix.getCoefficient(beta, gamma));
     }
 
     @Test
     public void buildsSymmetricLogReturnCorrelationMatrix() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
-        PortfolioAsset beta = PortfolioAsset.of("BETA");
-        PortfolioAsset gamma = PortfolioAsset.of("GAMMA");
-        BarSeries alphaSeries = series("alpha", start, closesFromLogReturns(100, 0.10, -0.05, 0.20, 0.03));
-        BarSeries betaSeries = series("beta", start, closesFromLogReturns(200, 0.20, -0.10, 0.40, 0.06));
-        BarSeries gammaSeries = series("gamma", start, closesFromLogReturns(300, -0.10, 0.05, -0.20, -0.03));
-        AlignedPortfolioSeries series = AlignedPortfolioSeries.of(List.of(new PortfolioSeries(alpha, alphaSeries),
-                new PortfolioSeries(beta, betaSeries), new PortfolioSeries(gamma, gammaSeries)));
+        String alpha = "ALPHA";
+        String beta = "BETA";
+        String gamma = "GAMMA";
+        BarSeries alphaSeries = series(alpha, start, closesFromLogReturns(100, 0.10, -0.05, 0.20, 0.03));
+        BarSeries betaSeries = series(beta, start, closesFromLogReturns(200, 0.20, -0.10, 0.40, 0.06));
+        BarSeries gammaSeries = series(gamma, start, closesFromLogReturns(300, -0.10, 0.05, -0.20, -0.03));
+        PortfolioSeries series = new PortfolioSeries(alphaSeries, betaSeries, gammaSeries);
 
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.logReturnMatrix(series, 4);
+        PortfolioCorrelations.CorrelationMatrix matrix = new PortfolioCorrelations(series).getLogReturnMatrix(4);
 
-        assertEquals(List.of(alpha, beta, gamma), matrix.assets());
-        assertEquals(4, matrix.index());
-        assertEquals(4, matrix.barCount());
+        assertEquals(List.of(alpha, beta, gamma), matrix.getAssets());
+        assertEquals(4, matrix.getIndex());
+        assertEquals(4, matrix.getBarCount());
         assertEquals(4, matrix.getCountOfUnstableBars());
-        assertEquals(SampleType.POPULATION, matrix.sampleType());
+        assertEquals(SampleType.POPULATION, matrix.getSampleType());
         assertTrue(matrix.isStable());
-        assertNumEquals(1, matrix.coefficient(alpha, alpha));
-        assertNumEquals(1d, matrix.coefficient(alpha, beta));
-        assertNumEquals(-1d, matrix.coefficient(alpha, gamma));
-        assertNumEquals(matrix.coefficient(beta, gamma), matrix.coefficient(gamma, beta), 0.0001);
-        assertEquals(3, matrix.pairs().size());
-        assertEquals(alpha, matrix.pairs().getFirst().firstAsset());
-        assertEquals(beta, matrix.pairs().getFirst().secondAsset());
-        assertNumEquals(1d, matrix.pairs().getFirst().absoluteCoefficient());
+        assertNumEquals(1, matrix.getCoefficient(alpha, alpha));
+        assertNumEquals(1d, matrix.getCoefficient(alpha, beta));
+        assertNumEquals(-1d, matrix.getCoefficient(alpha, gamma));
+        assertNumEquals(matrix.getCoefficient(beta, gamma), matrix.getCoefficient(gamma, beta), 0.0001);
+        assertEquals(3, matrix.getPairs().size());
+        assertEquals(alpha, matrix.getPairs().getFirst().getFirstAsset());
+        assertEquals(beta, matrix.getPairs().getFirst().getSecondAsset());
+        assertNumEquals(1d, matrix.getPairs().getFirst().getAbsoluteCoefficient());
+
+        PortfolioCorrelations.CorrelationHierarchy hierarchy = matrix.completeLinkage();
+        assertEquals(List.of(gamma, alpha, beta), hierarchy.getLeafOrder());
+        assertEquals(2, hierarchy.getMerges().size());
+        assertNumEquals(series.numFactory().zero(), hierarchy.getMerges().get(0).getDistance(), 0.000000000001);
+        assertEquals(2, hierarchy.getMerges().get(0).getSize());
+        assertNumEquals(series.numFactory().numOf(Math.sqrt(12)), hierarchy.getMerges().get(1).getDistance(),
+                0.000000000001);
+        assertEquals(3, hierarchy.getMerges().get(1).getSize());
     }
 
     @Test
     public void usesAlignedEndTimeTimelineWhenSourceIndexesDiffer() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
-        PortfolioAsset beta = PortfolioAsset.of("BETA");
-        BarSeries alphaSeries = series("alpha", start, new int[] { 0, 1, 2, 3, 4 },
+        String alpha = "ALPHA";
+        String beta = "BETA";
+        BarSeries alphaSeries = series(alpha, start, new int[] { 0, 1, 2, 3, 4 },
                 new double[] { 100, 110, 500, 121, 108.9 });
-        BarSeries betaSeries = series("beta", start, new int[] { 0, 1, 3, 4 }, new double[] { 50, 55, 60.5, 54.45 });
-        AlignedPortfolioSeries series = AlignedPortfolioSeries
-                .of(List.of(new PortfolioSeries(alpha, alphaSeries), new PortfolioSeries(beta, betaSeries)));
+        BarSeries betaSeries = series(beta, start, new int[] { 0, 1, 3, 4 }, new double[] { 50, 55, 60.5, 54.45 });
+        PortfolioSeries series = new PortfolioSeries(alphaSeries, betaSeries);
 
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.logReturnMatrix(series, 3);
+        PortfolioCorrelations.CorrelationMatrix matrix = new PortfolioCorrelations(series).getLogReturnMatrix(3);
 
         assertTrue(matrix.isStable());
-        assertNumEquals(1d, matrix.coefficient(alpha, beta));
+        assertNumEquals(1d, matrix.getCoefficient(alpha, beta));
     }
 
     @Test
     public void marksEarlyWindowUnstableWithoutRejectingValidAlignedIndex() {
         Fixture fixture = fixture();
 
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.logReturnMatrix(fixture.series(), 1, 3);
+        PortfolioCorrelations.CorrelationMatrix matrix = new PortfolioCorrelations(fixture.series())
+                .getLogReturnMatrix(1, 3);
 
         assertFalse(matrix.isStable());
         assertEquals(3, matrix.getCountOfUnstableBars());
-        assertTrue(matrix.coefficient(fixture.alpha(), fixture.beta()).isNaN());
-        assertNumEquals(1, matrix.coefficient(fixture.alpha(), fixture.alpha()));
+        assertTrue(matrix.getCoefficient(fixture.alpha(), fixture.beta()).isNaN());
+        assertNumEquals(1, matrix.getCoefficient(fixture.alpha(), fixture.alpha()));
     }
 
     @Test
     public void rejectsInvalidRequestsAndKeepsMatrixImmutable() {
         Fixture fixture = fixture();
-        PortfolioCorrelations.CorrelationMatrix matrix = PortfolioCorrelations.logReturnMatrix(fixture.series(), 2);
+        PortfolioCorrelations correlations = new PortfolioCorrelations(fixture.series());
+        PortfolioCorrelations.CorrelationMatrix matrix = correlations.getLogReturnMatrix(2);
 
-        assertThrows(IllegalArgumentException.class, () -> PortfolioCorrelations.logReturnMatrix(fixture.series(), 1));
+        assertThrows(IllegalArgumentException.class, () -> correlations.getLogReturnMatrix(1));
         assertThrows(IndexOutOfBoundsException.class,
-                () -> PortfolioCorrelations.logReturnMatrix(fixture.series(), fixture.series().getBarCount(), 2));
-        assertThrows(IllegalArgumentException.class,
-                () -> matrix.coefficient(fixture.alpha(), PortfolioAsset.of("MISSING")));
-        assertThrows(UnsupportedOperationException.class, () -> matrix.values().clear());
-        assertThrows(UnsupportedOperationException.class, () -> matrix.values().get(fixture.alpha()).clear());
-        assertThrows(UnsupportedOperationException.class, () -> matrix.pairs().clear());
+                () -> correlations.getLogReturnMatrix(fixture.series().getBarCount(), 2));
+        assertThrows(IllegalArgumentException.class, () -> matrix.getCoefficient(fixture.alpha(), "MISSING"));
+        assertThrows(UnsupportedOperationException.class, () -> matrix.getValues().clear());
+        assertThrows(UnsupportedOperationException.class, () -> matrix.getValues().get(fixture.alpha()).clear());
+        assertThrows(UnsupportedOperationException.class, () -> matrix.getPairs().clear());
     }
 
     private static Fixture fixture() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        PortfolioAsset alpha = PortfolioAsset.of("ALPHA");
-        PortfolioAsset beta = PortfolioAsset.of("BETA");
-        BarSeries alphaSeries = series("alpha", start, 100, 110, 99, 125, 115);
-        BarSeries betaSeries = series("beta", start, 50, 45, 47, 43, 51);
-        AlignedPortfolioSeries series = AlignedPortfolioSeries
-                .of(List.of(new PortfolioSeries(alpha, alphaSeries), new PortfolioSeries(beta, betaSeries)));
+        String alpha = "ALPHA";
+        String beta = "BETA";
+        BarSeries alphaSeries = series(alpha, start, 100, 110, 99, 125, 115);
+        BarSeries betaSeries = series(beta, start, 50, 45, 47, 43, 51);
+        PortfolioSeries series = new PortfolioSeries(alphaSeries, betaSeries);
         return new Fixture(alpha, beta, series);
     }
 
@@ -195,6 +199,6 @@ public class PortfolioCorrelationsTest {
         return closes;
     }
 
-    private record Fixture(PortfolioAsset alpha, PortfolioAsset beta, AlignedPortfolioSeries series) {
+    private record Fixture(String alpha, String beta, PortfolioSeries series) {
     }
 }

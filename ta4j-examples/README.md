@@ -27,7 +27,8 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`: prints aligned portfolio snapshots, final value, total return, and transaction costs
-- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints AssetCorrelations-style price, simple-return, and log-return correlation matrices for sample portfolios
+- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints price, simple-return, and log-return matrices plus complete-linkage clusters for anonymous sample universes
+- `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`: writes adjusted-data correlation charts, allocation comparisons, HTML, XLSX, and an optional external-AI response
 
 If chart windows do not appear, you are likely in a headless environment; switch to chart file output or run on a GUI-enabled machine.
 
@@ -76,6 +77,17 @@ raw machine hostname.
 
 - `ta4jexamples.portfolio.StaticPortfolioBacktest`
 - `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`
+- `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`
+
+Generate the complete YTD report:
+
+```bash
+./mvnw -pl ta4j-examples -am compile
+./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.portfolio.DiversifiedPortfolioAnalysis
+```
+
+The default output directory is `ta4j-examples/target/portfolio-analysis`. To embed a response from an external model safely in the HTML report, rerun with `-Dexec.args="--ai-analysis=/path/to/response.md"`.
 
 ### 5) Live-style workflows
 
@@ -107,8 +119,9 @@ Run the ossified BTC daily analog and rolling-conformal walkthrough:
 3. `ta4jexamples.backtesting.TradeFillRecordingExample`
 4. `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 5. `ta4jexamples.portfolio.StaticPortfolioBacktest`
-6. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
-7. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
+6. `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`
+7. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
+8. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 
 ## Companion guides
 

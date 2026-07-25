@@ -5,12 +5,14 @@ package org.ta4j.core.portfolio;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -26,229 +28,199 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Portfolio-level correlation analytics for aligned asset universes.
+ * Portfolio-level correlation analytics for one aligned
+ * {@link PortfolioSeries}.
  *
  * <p>
- * The utility turns each asset in an {@link AlignedPortfolioSeries} into an
- * aligned close-price series and delegates rolling correlation calculations to
- * ta4j's existing {@link CorrelationCoefficientIndicator}. Callers can
- * correlate close prices directly, one-bar simple returns equivalent to pandas
- * {@code pct_change()}, or one-bar log returns while keeping the same strict
- * common-end-time timeline as portfolio execution.
+ * Price, one-bar simple-return, and one-bar log-return matrices reuse ta4j's
+ * rolling statistics indicators. Matrix values retain the portfolio numeric
+ * factory and deterministic asset order.
  * </p>
  *
  * @since 0.23.1
  */
 public final class PortfolioCorrelations {
 
-    private PortfolioCorrelations() {
-    }
+    private final PortfolioSeries series;
 
     /**
-     * Builds a population close-price correlation matrix ending at the final
-     * aligned bar and using the full aligned history.
+     * Creates correlation analytics for a portfolio series.
      *
      * @param series aligned portfolio series
-     * @return close-price correlation matrix for the final aligned bar
      * @since 0.23.1
      */
-    public static CorrelationMatrix priceMatrix(AlignedPortfolioSeries series) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return priceMatrix(portfolioSeries, portfolioSeries.getBarCount());
+    public PortfolioCorrelations(PortfolioSeries series) {
+        this.series = Objects.requireNonNull(series, "series");
     }
 
     /**
-     * Builds a population close-price correlation matrix ending at the final
-     * aligned bar.
+     * @return analyzed portfolio series
+     * @since 0.23.1
+     */
+    public PortfolioSeries getPortfolioSeries() {
+        return series;
+    }
+
+    /**
+     * Builds a population close-price matrix over the full aligned history.
      *
-     * @param series   aligned portfolio series
-     * @param barCount number of close-price observations in the rolling correlation
-     *                 window
-     * @return close-price correlation matrix for the final aligned bar
+     * @return final close-price correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix priceMatrix(AlignedPortfolioSeries series, int barCount) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return priceMatrix(portfolioSeries, portfolioSeries.getBarCount() - 1, barCount, SampleType.POPULATION);
+    public CorrelationMatrix getPriceMatrix() {
+        return getPriceMatrix(series.getBarCount());
     }
 
     /**
-     * Builds a population close-price correlation matrix ending at a specific
-     * aligned index.
+     * Builds a population close-price matrix ending at the final aligned bar.
      *
-     * @param series   aligned portfolio series
-     * @param index    aligned portfolio index at which to evaluate the matrix
-     * @param barCount number of close-price observations in the rolling correlation
-     *                 window
-     * @return close-price correlation matrix for the requested aligned index
+     * @param barCount number of close-price observations
+     * @return final close-price correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix priceMatrix(AlignedPortfolioSeries series, int index, int barCount) {
-        return priceMatrix(series, index, barCount, SampleType.POPULATION);
+    public CorrelationMatrix getPriceMatrix(int barCount) {
+        return getPriceMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
     }
 
     /**
-     * Builds a close-price correlation matrix ending at a specific aligned index.
+     * Builds a population close-price matrix at an aligned index.
      *
-     * @param series     aligned portfolio series
-     * @param index      aligned portfolio index at which to evaluate the matrix
-     * @param barCount   number of close-price observations in the rolling
-     *                   correlation window
-     * @param sampleType sample/population normalization used by the underlying
-     *                   rolling statistic
-     * @return close-price correlation matrix for the requested aligned index
+     * @param index    aligned portfolio index
+     * @param barCount number of close-price observations
+     * @return close-price correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix priceMatrix(AlignedPortfolioSeries series, int index, int barCount,
-            SampleType sampleType) {
-        return matrix(series, index, barCount, sampleType,
-                closePriceIndicators(Objects.requireNonNull(series, "series")), 0);
+    public CorrelationMatrix getPriceMatrix(int index, int barCount) {
+        return getPriceMatrix(index, barCount, SampleType.POPULATION);
     }
 
     /**
-     * Builds a population simple-return correlation matrix ending at the final
-     * aligned bar and using every available one-bar simple return.
+     * Builds a close-price matrix at an aligned index.
+     *
+     * @param index      aligned portfolio index
+     * @param barCount   number of close-price observations
+     * @param sampleType sample or population normalization
+     * @return close-price correlation matrix
+     * @since 0.23.1
+     */
+    public CorrelationMatrix getPriceMatrix(int index, int barCount, SampleType sampleType) {
+        return matrix(index, barCount, sampleType, closePriceIndicators(), 0);
+    }
+
+    /**
+     * Builds a population simple-return matrix over all available one-bar returns.
+     *
+     * @return final simple-return correlation matrix
+     * @since 0.23.1
+     */
+    public CorrelationMatrix getSimpleReturnMatrix() {
+        return getSimpleReturnMatrix(series.getEndIndex());
+    }
+
+    /**
+     * Builds a population simple-return matrix ending at the final aligned bar.
+     *
+     * @param barCount number of one-bar simple returns
+     * @return final simple-return correlation matrix
+     * @since 0.23.1
+     */
+    public CorrelationMatrix getSimpleReturnMatrix(int barCount) {
+        return getSimpleReturnMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
+    }
+
+    /**
+     * Builds a population simple-return matrix at an aligned index.
+     *
+     * @param index    aligned portfolio index
+     * @param barCount number of one-bar simple returns
+     * @return simple-return correlation matrix
+     * @since 0.23.1
+     */
+    public CorrelationMatrix getSimpleReturnMatrix(int index, int barCount) {
+        return getSimpleReturnMatrix(index, barCount, SampleType.POPULATION);
+    }
+
+    /**
+     * Builds a simple-return matrix at an aligned index.
      *
      * <p>
-     * Simple returns are decimal returns: {@code close[i] / close[i - 1] - 1},
-     * matching pandas {@code pct_change()} rather than percentage points.
+     * Simple returns are decimal returns:
+     * {@code close[index] / close[index - 1] - 1}.
      * </p>
      *
-     * @param series aligned portfolio series
-     * @return simple-return correlation matrix for the final aligned bar
+     * @param index      aligned portfolio index
+     * @param barCount   number of one-bar simple returns
+     * @param sampleType sample or population normalization
+     * @return simple-return correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix simpleReturnMatrix(AlignedPortfolioSeries series) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return simpleReturnMatrix(portfolioSeries, portfolioSeries.getBarCount() - 1);
+    public CorrelationMatrix getSimpleReturnMatrix(int index, int barCount, SampleType sampleType) {
+        return matrix(index, barCount, sampleType,
+                transformedIndicators(closeSeries -> new SimpleReturnIndicator(new ClosePriceIndicator(closeSeries))),
+                1);
     }
 
     /**
-     * Builds a population simple-return correlation matrix ending at the final
-     * aligned bar.
+     * Builds a population log-return matrix over all available one-bar returns.
      *
-     * @param series   aligned portfolio series
-     * @param barCount number of one-bar simple returns in the rolling correlation
-     *                 window
-     * @return simple-return correlation matrix for the final aligned bar
+     * @return final log-return correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix simpleReturnMatrix(AlignedPortfolioSeries series, int barCount) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return simpleReturnMatrix(portfolioSeries, portfolioSeries.getBarCount() - 1, barCount, SampleType.POPULATION);
+    public CorrelationMatrix getLogReturnMatrix() {
+        return getLogReturnMatrix(series.getEndIndex());
     }
 
     /**
-     * Builds a population simple-return correlation matrix ending at a specific
-     * aligned index.
+     * Builds a population log-return matrix ending at the final aligned bar.
      *
-     * @param series   aligned portfolio series
-     * @param index    aligned portfolio index at which to evaluate the matrix
-     * @param barCount number of one-bar simple returns in the rolling correlation
-     *                 window
-     * @return simple-return correlation matrix for the requested aligned index
+     * @param barCount number of one-bar log returns
+     * @return final log-return correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix simpleReturnMatrix(AlignedPortfolioSeries series, int index, int barCount) {
-        return simpleReturnMatrix(series, index, barCount, SampleType.POPULATION);
+    public CorrelationMatrix getLogReturnMatrix(int barCount) {
+        return getLogReturnMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
     }
 
     /**
-     * Builds a simple-return correlation matrix ending at a specific aligned index.
+     * Builds a population log-return matrix at an aligned index.
      *
-     * @param series     aligned portfolio series
-     * @param index      aligned portfolio index at which to evaluate the matrix
-     * @param barCount   number of one-bar simple returns in the rolling correlation
-     *                   window
-     * @param sampleType sample/population normalization used by the underlying
-     *                   rolling statistic
-     * @return simple-return correlation matrix for the requested aligned index
+     * @param index    aligned portfolio index
+     * @param barCount number of one-bar log returns
+     * @return log-return correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix simpleReturnMatrix(AlignedPortfolioSeries series, int index, int barCount,
-            SampleType sampleType) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return matrix(portfolioSeries, index, barCount, sampleType, transformedIndicators(portfolioSeries,
-                alignedClose -> new SimpleReturnIndicator(new ClosePriceIndicator(alignedClose))), 1);
+    public CorrelationMatrix getLogReturnMatrix(int index, int barCount) {
+        return getLogReturnMatrix(index, barCount, SampleType.POPULATION);
     }
 
     /**
-     * Builds a population log-return correlation matrix ending at the final aligned
-     * bar and using every available one-bar log return.
+     * Builds a log-return matrix at an aligned index.
      *
-     * @param series aligned portfolio series
-     * @return log-return correlation matrix for the final aligned bar
+     * @param index      aligned portfolio index
+     * @param barCount   number of one-bar log returns
+     * @param sampleType sample or population normalization
+     * @return log-return correlation matrix
      * @since 0.23.1
      */
-    public static CorrelationMatrix logReturnMatrix(AlignedPortfolioSeries series) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return logReturnMatrix(portfolioSeries, portfolioSeries.getBarCount() - 1);
+    public CorrelationMatrix getLogReturnMatrix(int index, int barCount, SampleType sampleType) {
+        return matrix(index, barCount, sampleType, transformedIndicators(LogReturnIndicator::new), 1);
     }
 
-    /**
-     * Builds a population log-return correlation matrix ending at the final aligned
-     * bar.
-     *
-     * @param series   aligned portfolio series
-     * @param barCount number of one-bar log returns in the rolling correlation
-     *                 window
-     * @return correlation matrix for the final aligned bar
-     * @since 0.23.1
-     */
-    public static CorrelationMatrix logReturnMatrix(AlignedPortfolioSeries series, int barCount) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return logReturnMatrix(portfolioSeries, portfolioSeries.getBarCount() - 1, barCount, SampleType.POPULATION);
-    }
-
-    /**
-     * Builds a population log-return correlation matrix ending at a specific
-     * aligned index.
-     *
-     * @param series   aligned portfolio series
-     * @param index    aligned portfolio index at which to evaluate the matrix
-     * @param barCount number of one-bar log returns in the rolling correlation
-     *                 window
-     * @return correlation matrix for the requested aligned index
-     * @since 0.23.1
-     */
-    public static CorrelationMatrix logReturnMatrix(AlignedPortfolioSeries series, int index, int barCount) {
-        return logReturnMatrix(series, index, barCount, SampleType.POPULATION);
-    }
-
-    /**
-     * Builds a log-return correlation matrix ending at a specific aligned index.
-     *
-     * @param series     aligned portfolio series
-     * @param index      aligned portfolio index at which to evaluate the matrix
-     * @param barCount   number of one-bar log returns in the rolling correlation
-     *                   window
-     * @param sampleType sample/population normalization used by the underlying
-     *                   rolling statistic
-     * @return correlation matrix for the requested aligned index
-     * @since 0.23.1
-     */
-    public static CorrelationMatrix logReturnMatrix(AlignedPortfolioSeries series, int index, int barCount,
-            SampleType sampleType) {
-        AlignedPortfolioSeries portfolioSeries = Objects.requireNonNull(series, "series");
-        return matrix(portfolioSeries, index, barCount, sampleType,
-                transformedIndicators(portfolioSeries, LogReturnIndicator::new), 1);
-    }
-
-    private static CorrelationMatrix matrix(AlignedPortfolioSeries series, int index, int barCount,
-            SampleType sampleType, Map<PortfolioAsset, Indicator<Num>> indicatorsByAsset, int sourceUnstableBars) {
-        requireIndex(series, index);
+    private CorrelationMatrix matrix(int index, int barCount, SampleType sampleType,
+            Map<String, Indicator<Num>> indicatorsByAsset, int sourceUnstableBars) {
+        requireIndex(index);
         requireBarCount(barCount);
         SampleType effectiveSampleType = Objects.requireNonNull(sampleType, "sampleType");
 
-        List<PortfolioAsset> assets = series.assets();
-        Map<PortfolioAsset, Map<PortfolioAsset, Num>> coefficients = new LinkedHashMap<>();
+        List<String> assets = series.getAssets();
+        Map<String, Map<String, Num>> coefficients = new LinkedHashMap<>();
         Num one = series.numFactory().one();
 
         for (int rowIndex = 0; rowIndex < assets.size(); rowIndex++) {
-            PortfolioAsset rowAsset = assets.get(rowIndex);
-            Map<PortfolioAsset, Num> row = new LinkedHashMap<>();
+            String rowAsset = assets.get(rowIndex);
+            Map<String, Num> row = new LinkedHashMap<>();
             for (int columnIndex = 0; columnIndex < assets.size(); columnIndex++) {
-                PortfolioAsset columnAsset = assets.get(columnIndex);
+                String columnAsset = assets.get(columnIndex);
                 Num coefficient;
                 if (rowIndex == columnIndex) {
                     coefficient = one;
@@ -267,25 +239,24 @@ public final class PortfolioCorrelations {
                 coefficients);
     }
 
-    private static Map<PortfolioAsset, Indicator<Num>> closePriceIndicators(AlignedPortfolioSeries series) {
-        return transformedIndicators(series, ClosePriceIndicator::new);
+    private Map<String, Indicator<Num>> closePriceIndicators() {
+        return transformedIndicators(ClosePriceIndicator::new);
     }
 
-    private static Map<PortfolioAsset, Indicator<Num>> transformedIndicators(AlignedPortfolioSeries series,
-            Function<BarSeries, Indicator<Num>> indicatorFactory) {
-        Map<PortfolioAsset, Indicator<Num>> indicatorsByAsset = new LinkedHashMap<>();
-        for (PortfolioAsset asset : series.assets()) {
-            indicatorsByAsset.put(asset, indicatorFactory.apply(alignedCloseSeries(series, asset)));
+    private Map<String, Indicator<Num>> transformedIndicators(Function<BarSeries, Indicator<Num>> indicatorFactory) {
+        Map<String, Indicator<Num>> indicatorsByAsset = new LinkedHashMap<>();
+        for (String asset : series.getAssets()) {
+            indicatorsByAsset.put(asset, indicatorFactory.apply(alignedCloseSeries(asset)));
         }
         return indicatorsByAsset;
     }
 
-    private static BarSeries alignedCloseSeries(AlignedPortfolioSeries series, PortfolioAsset asset) {
-        BarSeries closeSeries = new BaseBarSeriesBuilder().withName(asset.id() + "-aligned-close")
+    private BarSeries alignedCloseSeries(String asset) {
+        BarSeries closeSeries = new BaseBarSeriesBuilder().withName(asset + "-aligned-close")
                 .withNumFactory(series.numFactory())
                 .build();
         Num zero = series.numFactory().zero();
-        for (int index = 0; index < series.getBarCount(); index++) {
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
             Bar sourceBar = series.getBar(asset, index);
             Num close = series.getClosePrice(asset, index);
             closeSeries.barBuilder()
@@ -301,9 +272,10 @@ public final class PortfolioCorrelations {
         return closeSeries;
     }
 
-    private static void requireIndex(AlignedPortfolioSeries series, int index) {
-        if (index < 0 || index >= series.getBarCount()) {
-            throw new IndexOutOfBoundsException("index must be between 0 and " + (series.getBarCount() - 1));
+    private void requireIndex(int index) {
+        if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+            throw new IndexOutOfBoundsException(
+                    "index must be between " + series.getBeginIndex() + " and " + series.getEndIndex());
         }
     }
 
@@ -338,10 +310,7 @@ public final class PortfolioCorrelations {
                 return NaN.NaN;
             }
             Num result = current.dividedBy(previous).minus(current.getNumFactory().one());
-            if (!Num.isFinite(result)) {
-                return NaN.NaN;
-            }
-            return result;
+            return Num.isFinite(result) ? result : NaN.NaN;
         }
 
         @Override
@@ -357,16 +326,16 @@ public final class PortfolioCorrelations {
      */
     public static final class CorrelationMatrix {
 
-        private final List<PortfolioAsset> assets;
+        private final List<String> assets;
         private final int index;
         private final int barCount;
         private final int countOfUnstableBars;
         private final SampleType sampleType;
-        private final Map<PortfolioAsset, Map<PortfolioAsset, Num>> values;
+        private final Map<String, Map<String, Num>> values;
         private final List<CorrelationPair> pairs;
 
-        private CorrelationMatrix(List<PortfolioAsset> assets, int index, int barCount, int countOfUnstableBars,
-                SampleType sampleType, Map<PortfolioAsset, Map<PortfolioAsset, Num>> values) {
+        private CorrelationMatrix(List<String> assets, int index, int barCount, int countOfUnstableBars,
+                SampleType sampleType, Map<String, Map<String, Num>> values) {
             this.assets = List.copyOf(assets);
             this.index = index;
             this.barCount = barCount;
@@ -380,7 +349,7 @@ public final class PortfolioCorrelations {
          * @return assets in deterministic portfolio order
          * @since 0.23.1
          */
-        public List<PortfolioAsset> assets() {
+        public List<String> getAssets() {
             return assets;
         }
 
@@ -388,23 +357,20 @@ public final class PortfolioCorrelations {
          * @return aligned portfolio index at which the matrix was evaluated
          * @since 0.23.1
          */
-        public int index() {
+        public int getIndex() {
             return index;
         }
 
         /**
-         * @return number of observations in the rolling correlation window
+         * @return observation count in the rolling correlation window
          * @since 0.23.1
          */
-        public int barCount() {
+        public int getBarCount() {
             return barCount;
         }
 
         /**
-         * Returns the first aligned index at which off-diagonal coefficients have a
-         * full source-transformation and rolling-correlation window.
-         *
-         * @return count of unstable matrix bars
+         * @return first index with a full transform and correlation window
          * @since 0.23.1
          */
         public int getCountOfUnstableBars() {
@@ -412,19 +378,15 @@ public final class PortfolioCorrelations {
         }
 
         /**
-         * @return sample/population normalization used for the matrix
+         * @return sample or population normalization
          * @since 0.23.1
          */
-        public SampleType sampleType() {
+        public SampleType getSampleType() {
             return sampleType;
         }
 
         /**
-         * Returns whether the evaluated index has a full source-transformation and
-         * rolling-correlation window. Off-diagonal values before this threshold may be
-         * {@code NaN}.
-         *
-         * @return {@code true} when the matrix is beyond its warm-up range
+         * @return whether the evaluated index has a full correlation window
          * @since 0.23.1
          */
         public boolean isStable() {
@@ -432,12 +394,12 @@ public final class PortfolioCorrelations {
         }
 
         /**
-         * @return immutable symmetric matrix values keyed by row asset, then column
-         *         asset
+         * @return immutable symmetric matrix values
          * @since 0.23.1
          */
-        public Map<PortfolioAsset, Map<PortfolioAsset, Num>> values() {
-            return immutableValues(assets, values);
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "values is a recursively unmodifiable copy")
+        public Map<String, Map<String, Num>> getValues() {
+            return values;
         }
 
         /**
@@ -445,44 +407,116 @@ public final class PortfolioCorrelations {
          *
          * @param firstAsset  row asset
          * @param secondAsset column asset
-         * @return correlation coefficient; the diagonal is {@code 1} by convention
+         * @return correlation coefficient
          * @since 0.23.1
          */
-        public Num coefficient(PortfolioAsset firstAsset, PortfolioAsset secondAsset) {
+        public Num getCoefficient(String firstAsset, String secondAsset) {
             Objects.requireNonNull(secondAsset, "secondAsset");
-            Map<PortfolioAsset, Num> row = row(firstAsset);
-            Num coefficient = row.get(secondAsset);
-            if (coefficient == null) {
-                throw new IllegalArgumentException("asset is not in this correlation matrix: " + secondAsset);
+            Map<String, Num> row = values.get(Objects.requireNonNull(firstAsset, "firstAsset"));
+            if (row == null || !row.containsKey(secondAsset)) {
+                String missing = row == null ? firstAsset : secondAsset;
+                throw new IllegalArgumentException("asset is not in this correlation matrix: " + missing);
             }
-            return coefficient;
+            return row.get(secondAsset);
         }
 
         /**
-         * @return immutable unique off-diagonal pairs in deterministic portfolio order
+         * @return unique off-diagonal pairs in portfolio order
          * @since 0.23.1
          */
-        public List<CorrelationPair> pairs() {
-            return List.copyOf(pairs);
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "pairs is copied once and is immutable")
+        public List<CorrelationPair> getPairs() {
+            return pairs;
         }
 
-        private Map<PortfolioAsset, Num> row(PortfolioAsset asset) {
-            Objects.requireNonNull(asset, "firstAsset");
-            Map<PortfolioAsset, Num> row = values.get(asset);
-            if (row == null) {
-                throw new IllegalArgumentException("asset is not in this correlation matrix: " + asset);
+        /**
+         * Performs Euclidean complete-linkage clustering over the matrix rows.
+         *
+         * <p>
+         * This matches {@code scipy.cluster.hierarchy.linkage(matrix,
+         * method="complete")} for finite correlation matrices.
+         * </p>
+         *
+         * @return deterministic complete-linkage hierarchy
+         * @since 0.23.1
+         */
+        public CorrelationHierarchy completeLinkage() {
+            int assetCount = assets.size();
+            Num[][] rows = new Num[assetCount][assetCount];
+            for (int rowIndex = 0; rowIndex < assetCount; rowIndex++) {
+                for (int columnIndex = 0; columnIndex < assetCount; columnIndex++) {
+                    Num value = getCoefficient(assets.get(rowIndex), assets.get(columnIndex));
+                    if (!Num.isFinite(value)) {
+                        throw new IllegalStateException("complete linkage requires finite correlation coefficients");
+                    }
+                    rows[rowIndex][columnIndex] = value;
+                }
             }
-            return row;
+
+            List<WorkingCluster> clusters = new ArrayList<>(assetCount);
+            for (int index = 0; index < assetCount; index++) {
+                clusters.add(new WorkingCluster(index, List.of(index)));
+            }
+
+            List<ClusterMerge> merges = new ArrayList<>(assetCount - 1);
+            while (clusters.size() > 1) {
+                ClusterPair closest = closestPair(clusters, rows);
+                WorkingCluster left = clusters.get(closest.leftIndex());
+                WorkingCluster right = clusters.get(closest.rightIndex());
+                List<Integer> mergedMembers = new ArrayList<>(left.members());
+                mergedMembers.addAll(right.members());
+                int mergedClusterIndex = assetCount + merges.size();
+                merges.add(new ClusterMerge(left.clusterIndex(), right.clusterIndex(), closest.distance(),
+                        mergedMembers.size()));
+                clusters.remove(closest.rightIndex());
+                clusters.remove(closest.leftIndex());
+                clusters.add(new WorkingCluster(mergedClusterIndex, List.copyOf(mergedMembers)));
+            }
+
+            return new CorrelationHierarchy(assets, merges);
         }
 
-        private static Map<PortfolioAsset, Map<PortfolioAsset, Num>> immutableValues(List<PortfolioAsset> assets,
-                Map<PortfolioAsset, Map<PortfolioAsset, Num>> values) {
-            Map<PortfolioAsset, Map<PortfolioAsset, Num>> matrix = new LinkedHashMap<>();
-            for (PortfolioAsset rowAsset : assets) {
-                Map<PortfolioAsset, Num> sourceRow = Objects.requireNonNull(values.get(rowAsset),
+        private static ClusterPair closestPair(List<WorkingCluster> clusters, Num[][] rows) {
+            ClusterPair closest = null;
+            for (int leftIndex = 0; leftIndex < clusters.size(); leftIndex++) {
+                for (int rightIndex = leftIndex + 1; rightIndex < clusters.size(); rightIndex++) {
+                    Num distance = completeDistance(clusters.get(leftIndex), clusters.get(rightIndex), rows);
+                    ClusterPair candidate = new ClusterPair(leftIndex, rightIndex, distance);
+                    if (closest == null || candidate.compareTo(closest) < 0) {
+                        closest = candidate;
+                    }
+                }
+            }
+            return Objects.requireNonNull(closest, "closest");
+        }
+
+        private static Num completeDistance(WorkingCluster left, WorkingCluster right, Num[][] rows) {
+            Num distance = rows[0][0].getNumFactory().zero();
+            for (int leftMember : left.members()) {
+                for (int rightMember : right.members()) {
+                    distance = distance.max(euclideanDistance(rows[leftMember], rows[rightMember]));
+                }
+            }
+            return distance;
+        }
+
+        private static Num euclideanDistance(Num[] left, Num[] right) {
+            Num squaredDistance = left[0].getNumFactory().zero();
+            for (int index = 0; index < left.length; index++) {
+                Num difference = left[index].minus(right[index]);
+                squaredDistance = squaredDistance.plus(difference.multipliedBy(difference));
+            }
+            return squaredDistance.sqrt();
+        }
+
+        private static Map<String, Map<String, Num>> immutableValues(List<String> assets,
+                Map<String, Map<String, Num>> values) {
+            Map<String, Map<String, Num>> matrix = new LinkedHashMap<>();
+            for (String rowAsset : assets) {
+                Map<String, Num> sourceRow = Objects.requireNonNull(values.get(rowAsset),
                         "values row must not be null");
-                Map<PortfolioAsset, Num> row = new LinkedHashMap<>();
-                for (PortfolioAsset columnAsset : assets) {
+                Map<String, Num> row = new LinkedHashMap<>();
+                for (String columnAsset : assets) {
                     row.put(columnAsset, Objects.requireNonNull(sourceRow.get(columnAsset),
                             "correlation coefficient must not be null"));
                 }
@@ -491,13 +525,13 @@ public final class PortfolioCorrelations {
             return Collections.unmodifiableMap(matrix);
         }
 
-        private static List<CorrelationPair> correlationPairs(List<PortfolioAsset> assets,
-                Map<PortfolioAsset, Map<PortfolioAsset, Num>> values) {
+        private static List<CorrelationPair> correlationPairs(List<String> assets,
+                Map<String, Map<String, Num>> values) {
             List<CorrelationPair> pairs = new ArrayList<>();
             for (int firstIndex = 0; firstIndex < assets.size(); firstIndex++) {
-                PortfolioAsset firstAsset = assets.get(firstIndex);
+                String firstAsset = assets.get(firstIndex);
                 for (int secondIndex = firstIndex + 1; secondIndex < assets.size(); secondIndex++) {
-                    PortfolioAsset secondAsset = assets.get(secondIndex);
+                    String secondAsset = assets.get(secondIndex);
                     pairs.add(new CorrelationPair(firstAsset, secondAsset, values.get(firstAsset).get(secondAsset)));
                 }
             }
@@ -506,38 +540,180 @@ public final class PortfolioCorrelations {
     }
 
     /**
-     * One unique off-diagonal portfolio correlation.
+     * Immutable complete-linkage hierarchy for a correlation matrix.
      *
-     * @param firstAsset  first asset in portfolio order
-     * @param secondAsset second asset in portfolio order
-     * @param coefficient correlation coefficient for the pair
      * @since 0.23.1
      */
-    public record CorrelationPair(PortfolioAsset firstAsset, PortfolioAsset secondAsset, Num coefficient) {
+    public static final class CorrelationHierarchy {
 
-        /**
-         * Creates a correlation pair.
-         *
-         * @param firstAsset  first asset in portfolio order
-         * @param secondAsset second asset in portfolio order
-         * @param coefficient correlation coefficient for the pair
-         * @since 0.23.1
-         */
-        public CorrelationPair {
-            Objects.requireNonNull(firstAsset, "firstAsset");
-            Objects.requireNonNull(secondAsset, "secondAsset");
-            Objects.requireNonNull(coefficient, "coefficient");
-            if (firstAsset.equals(secondAsset)) {
-                throw new IllegalArgumentException("correlation pairs must contain two different assets");
-            }
+        private final List<String> assets;
+        private final List<ClusterMerge> merges;
+        private final List<String> leafOrder;
+
+        private CorrelationHierarchy(List<String> assets, List<ClusterMerge> merges) {
+            this.assets = List.copyOf(assets);
+            this.merges = List.copyOf(merges);
+            List<String> orderedLeaves = new ArrayList<>(assets.size());
+            appendLeaves(getRootClusterIndex(), orderedLeaves);
+            this.leafOrder = List.copyOf(orderedLeaves);
         }
 
         /**
-         * @return absolute correlation coefficient magnitude
+         * @return assets in original matrix order
          * @since 0.23.1
          */
-        public Num absoluteCoefficient() {
+        public List<String> getAssets() {
+            return assets;
+        }
+
+        /**
+         * @return linkage merges in construction order
+         * @since 0.23.1
+         */
+        public List<ClusterMerge> getMerges() {
+            return merges;
+        }
+
+        /**
+         * @return assets in deterministic dendrogram leaf order
+         * @since 0.23.1
+         */
+        public List<String> getLeafOrder() {
+            return leafOrder;
+        }
+
+        /**
+         * @return root cluster index
+         * @since 0.23.1
+         */
+        public int getRootClusterIndex() {
+            return assets.size() + merges.size() - 1;
+        }
+
+        private void appendLeaves(int clusterIndex, List<String> orderedLeaves) {
+            if (clusterIndex < assets.size()) {
+                orderedLeaves.add(assets.get(clusterIndex));
+                return;
+            }
+            ClusterMerge merge = merges.get(clusterIndex - assets.size());
+            appendLeaves(merge.getLeftClusterIndex(), orderedLeaves);
+            appendLeaves(merge.getRightClusterIndex(), orderedLeaves);
+        }
+    }
+
+    /**
+     * One complete-linkage hierarchy merge.
+     *
+     * @since 0.23.1
+     */
+    public static final class ClusterMerge {
+
+        private final int leftClusterIndex;
+        private final int rightClusterIndex;
+        private final Num distance;
+        private final int size;
+
+        private ClusterMerge(int leftClusterIndex, int rightClusterIndex, Num distance, int size) {
+            this.leftClusterIndex = leftClusterIndex;
+            this.rightClusterIndex = rightClusterIndex;
+            this.distance = Objects.requireNonNull(distance, "distance");
+            this.size = size;
+        }
+
+        /**
+         * @return left child cluster index
+         * @since 0.23.1
+         */
+        public int getLeftClusterIndex() {
+            return leftClusterIndex;
+        }
+
+        /**
+         * @return right child cluster index
+         * @since 0.23.1
+         */
+        public int getRightClusterIndex() {
+            return rightClusterIndex;
+        }
+
+        /**
+         * @return complete-linkage distance
+         * @since 0.23.1
+         */
+        public Num getDistance() {
+            return distance;
+        }
+
+        /**
+         * @return number of leaves in the merged cluster
+         * @since 0.23.1
+         */
+        public int getSize() {
+            return size;
+        }
+    }
+
+    /**
+     * One unique off-diagonal portfolio correlation.
+     *
+     * @since 0.23.1
+     */
+    public static final class CorrelationPair {
+
+        private final String firstAsset;
+        private final String secondAsset;
+        private final Num coefficient;
+
+        private CorrelationPair(String firstAsset, String secondAsset, Num coefficient) {
+            this.firstAsset = Objects.requireNonNull(firstAsset, "firstAsset");
+            this.secondAsset = Objects.requireNonNull(secondAsset, "secondAsset");
+            this.coefficient = Objects.requireNonNull(coefficient, "coefficient");
+        }
+
+        /**
+         * @return first asset
+         * @since 0.23.1
+         */
+        public String getFirstAsset() {
+            return firstAsset;
+        }
+
+        /**
+         * @return second asset
+         * @since 0.23.1
+         */
+        public String getSecondAsset() {
+            return secondAsset;
+        }
+
+        /**
+         * @return correlation coefficient
+         * @since 0.23.1
+         */
+        public Num getCoefficient() {
+            return coefficient;
+        }
+
+        /**
+         * @return absolute coefficient magnitude
+         * @since 0.23.1
+         */
+        public Num getAbsoluteCoefficient() {
             return coefficient.abs();
+        }
+    }
+
+    private record WorkingCluster(int clusterIndex, List<Integer> members) {
+    }
+
+    private record ClusterPair(int leftIndex, int rightIndex, Num distance) implements Comparable<ClusterPair> {
+
+        @Override
+        public int compareTo(ClusterPair other) {
+            return Comparator.comparing(ClusterPair::distance)
+                    .thenComparingInt(ClusterPair::leftIndex)
+                    .thenComparingInt(ClusterPair::rightIndex)
+                    .compare(this, other);
         }
     }
 }

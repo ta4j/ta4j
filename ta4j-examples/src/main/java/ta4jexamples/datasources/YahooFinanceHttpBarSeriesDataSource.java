@@ -264,6 +264,27 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
     }
 
     /**
+     * Loads historical OHLCV data adjusted for splits and distributions.
+     *
+     * <p>
+     * Yahoo's adjusted-close ratio is applied to open, high, low, and close,
+     * matching the price behavior of {@code yfinance} with
+     * {@code auto_adjust=True}. Volume is preserved.
+     * </p>
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the bar interval
+     * @param startDateTime the start date/time for the data range
+     * @param endDateTime   the end date/time for the data range
+     * @return an adjusted BarSeries, or null if the request fails
+     * @since 0.23.1
+     */
+    public static BarSeries loadAdjustedSeries(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime) {
+        return DEFAULT_INSTANCE.loadAdjustedSeriesInstance(ticker, interval, startDateTime, endDateTime);
+    }
+
+    /**
      * Loads historical OHLCV data for a given ticker symbol with a specified number
      * of bars. The end date/time is set to the current time, and the start
      * date/time is calculated based on the bar count and interval.
@@ -335,7 +356,8 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
     /**
      * Parses the Yahoo Finance API JSON response into a BarSeries.
      */
-    private static BarSeries parseYahooFinanceResponse(String jsonResponse, String ticker, Duration barInterval) {
+    private static BarSeries parseYahooFinanceResponse(String jsonResponse, String ticker, Duration barInterval,
+            boolean adjusted) {
         try {
             JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
             JsonObject chart = root.getAsJsonObject("chart");
@@ -374,6 +396,11 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
             JsonArray lows = quote.getAsJsonArray("low");
             JsonArray closes = quote.getAsJsonArray("close");
             JsonArray volumes = quote.getAsJsonArray("volume");
+            JsonArray adjustedCloses = null;
+            JsonArray adjustedCloseGroups = indicators.getAsJsonArray("adjclose");
+            if (adjustedCloseGroups != null && !adjustedCloseGroups.isEmpty()) {
+                adjustedCloses = adjustedCloseGroups.get(0).getAsJsonObject().getAsJsonArray("adjclose");
+            }
 
             BarSeries series = new BaseBarSeriesBuilder().withName(ticker).build();
 
@@ -394,6 +421,17 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                 double lowValue = lows.get(i).getAsDouble();
                 double closeValue = closes.get(i).getAsDouble();
                 double volumeValue = volumes.get(i).isJsonNull() ? 0.0 : volumes.get(i).getAsDouble();
+                if (adjusted && adjustedCloses != null && i < adjustedCloses.size()
+                        && !adjustedCloses.get(i).isJsonNull() && closeValue != 0.0) {
+                    double adjustedClose = adjustedCloses.get(i).getAsDouble();
+                    double adjustmentRatio = adjustedClose / closeValue;
+                    if (Double.isFinite(adjustmentRatio)) {
+                        openValue *= adjustmentRatio;
+                        highValue *= adjustmentRatio;
+                        lowValue *= adjustmentRatio;
+                        closeValue = adjustedClose;
+                    }
+                }
 
                 series.barBuilder()
                         .timePeriod(barInterval)
@@ -574,7 +612,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                         } catch (IllegalArgumentException e) {
                             LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
                         }
-                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration(), false);
                     }
                 }
             }
@@ -630,6 +668,21 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
     }
 
     /**
+     * Loads historical OHLCV data adjusted for splits and distributions.
+     *
+     * @param ticker        the ticker symbol
+     * @param interval      the bar interval
+     * @param startDateTime the start date/time
+     * @param endDateTime   the end date/time
+     * @return an adjusted BarSeries, or null if the request fails
+     * @since 0.23.1
+     */
+    public BarSeries loadAdjustedSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime) {
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime, null, true);
+    }
+
+    /**
      * Instance method that performs the actual loading logic with optional notes.
      * This method uses the instance's HttpClient (which can be injected for
      * testing).
@@ -644,6 +697,11 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
      */
     public BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
             Instant endDateTime, String notes) {
+        return loadSeriesInstance(ticker, interval, startDateTime, endDateTime, notes, false);
+    }
+
+    private BarSeries loadSeriesInstance(String ticker, YahooFinanceInterval interval, Instant startDateTime,
+            Instant endDateTime, String notes, boolean adjusted) {
         if (ticker == null || ticker.trim().isEmpty()) {
             LOG.error("Ticker symbol cannot be null or empty");
             return null;
@@ -668,11 +726,12 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                     "Requested date range ({}) exceeds conservative limit ({}) for interval {}. "
                             + "Splitting into multiple requests and combining results.",
                     requestedRange, conservativeLimit, interval);
-            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit, notes);
+            return loadSeriesPaginated(ticker, interval, startDateTime, endDateTime, conservativeLimit, notes,
+                    adjusted);
         }
 
         // Single request for smaller ranges
-        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime, notes);
+        return loadSeriesSingleRequest(ticker, interval, startDateTime, endDateTime, notes, adjusted);
     }
 
     /**
@@ -735,7 +794,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
      * @return the BarSeries or null if request fails
      */
     private BarSeries loadSeriesSingleRequest(String ticker, YahooFinanceInterval interval, Instant startDateTime,
-            Instant endDateTime, String notes) {
+            Instant endDateTime, String notes, boolean adjusted) {
         // Check cache first if caching is enabled
         if (enableResponseCaching) {
             // Try exact match first (with or without notes)
@@ -744,7 +803,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
-                    return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                    return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration(), adjusted);
                 }
             }
             // Also try without notes (for backward compatibility)
@@ -754,7 +813,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                     String cachedResponse = readFromCache(cacheFileNoNotes);
                     if (cachedResponse != null) {
                         LOG.debug("Using cached response for {} ({} to {})", ticker, startDateTime, endDateTime);
-                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
+                        return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration(), adjusted);
                     }
                 }
             }
@@ -793,7 +852,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                 writeToCache(cacheFile, responseBody);
             }
 
-            return parseYahooFinanceResponse(responseBody, ticker, interval.getDuration());
+            return parseYahooFinanceResponse(responseBody, ticker, interval.getDuration(), adjusted);
 
         } catch (IOException | InterruptedException e) {
             LOG.error("Error fetching data from Yahoo Finance for ticker {}: {}", ticker, e.getMessage(), e);
@@ -816,7 +875,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
      * @return a BarSeries containing all merged data, or null if all requests fail
      */
     private BarSeries loadSeriesPaginated(String ticker, YahooFinanceInterval interval, Instant startDateTime,
-            Instant endDateTime, Duration chunkSize, String notes) {
+            Instant endDateTime, Duration chunkSize, String notes, boolean adjusted) {
         List<BarSeries> chunks = new ArrayList<>();
         Instant currentStart = startDateTime;
         int requestCount = 0;
@@ -836,7 +895,7 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
             requestCount++;
             LOG.trace("Fetching chunk {}/? ({} to {})", requestCount, currentStart, chunkEnd);
 
-            BarSeries chunk = loadSeriesSingleRequest(ticker, interval, currentStart, chunkEnd, notes);
+            BarSeries chunk = loadSeriesSingleRequest(ticker, interval, currentStart, chunkEnd, notes, adjusted);
             if (chunk != null && chunk.getBarCount() > 0) {
                 chunks.add(chunk);
                 LOG.trace("Successfully loaded chunk {} with {} bars", requestCount, chunk.getBarCount());

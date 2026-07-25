@@ -11,21 +11,19 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.portfolio.AlignedPortfolioSeries;
-import org.ta4j.core.portfolio.PortfolioAsset;
 import org.ta4j.core.portfolio.PortfolioCorrelations;
+import org.ta4j.core.portfolio.PortfolioCorrelations.ClusterMerge;
+import org.ta4j.core.portfolio.PortfolioCorrelations.CorrelationHierarchy;
 import org.ta4j.core.portfolio.PortfolioCorrelations.CorrelationMatrix;
 import org.ta4j.core.portfolio.PortfolioSeries;
 
@@ -33,15 +31,17 @@ import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval;
 
 /**
- * Recreates the AssetCorrelations Python project with ta4j portfolio plumbing.
+ * Runs price and return correlation analysis over several anonymous sample
+ * universes.
  *
  * <p>
- * The sample universes are the ticker lists from the Python scripts. Daily bars
- * are normalized to UTC calendar dates before building an
- * {@link AlignedPortfolioSeries}, so mixed assets such as crypto, futures,
- * equities, ETFs, and indexes can share the portfolio feature's strict common
- * timeline.
+ * Daily adjusted Yahoo bars are normalized to UTC calendar dates before the
+ * aligned {@link PortfolioSeries} is constructed. This lets mixed exchange
+ * schedules share a strict common timeline while keeping every preset free of
+ * account or owner identifiers.
  * </p>
+ *
+ * @since 0.23.1
  */
 public final class PortfolioCorrelationAnalysis {
 
@@ -72,162 +72,102 @@ public final class PortfolioCorrelationAnalysis {
     private static void runAnalysis(YahooFinanceHttpBarSeriesDataSource dataSource, PortfolioPreset preset,
             AnalysisSpec analysis) {
         System.out.printf("=== %s, period=%s ===%n", analysis.kind().label(), analysis.period().label());
-        AlignedPortfolioSeries series = loadPortfolioSeries(dataSource, preset, analysis.period());
+        PortfolioSeries series = loadPortfolioSeries(dataSource, preset, analysis.period());
         CorrelationMatrix matrix = analysis.kind().matrix(series);
-        System.out.printf("Aligned daily bars: %d (%s to %s)%n", series.getBarCount(), series.endTimes().getFirst(),
-                series.endTimes().getLast());
-        printMatrix(matrix, preset.assetsByTicker());
-        printPairReport(matrix, preset.assetsByTicker());
-        printCompleteLinkage(matrix, preset.assetsByTicker());
+        System.out.printf("Aligned daily bars: %d (%s to %s)%n", series.getBarCount(), series.getEndTimes().getFirst(),
+                series.getEndTimes().getLast());
+        printMatrix(matrix, preset.tickerNames());
+        printPairReport(matrix, preset.tickerNames());
+        printCompleteLinkage(matrix, preset.tickerNames());
         System.out.println();
     }
 
-    private static AlignedPortfolioSeries loadPortfolioSeries(YahooFinanceHttpBarSeriesDataSource dataSource,
+    private static PortfolioSeries loadPortfolioSeries(YahooFinanceHttpBarSeriesDataSource dataSource,
             PortfolioPreset preset, PeriodSpec period) {
         Instant end = Instant.now();
         Instant start = period.start(end);
-        List<PortfolioSeries> portfolioSeries = new ArrayList<>();
+        List<BarSeries> assetSeries = new ArrayList<>();
         for (String ticker : preset.tickerNames().keySet()) {
-            BarSeries rawSeries = dataSource.loadSeriesInstance(ticker, YahooFinanceInterval.DAY_1, start, end,
-                    preset.id() + "-" + period.label());
+            BarSeries rawSeries = dataSource.loadAdjustedSeriesInstance(ticker, YahooFinanceInterval.DAY_1, start, end);
             if (rawSeries == null || rawSeries.isEmpty()) {
                 throw new IllegalStateException("No Yahoo Finance data returned for " + ticker);
             }
-            portfolioSeries.add(PortfolioSeries.of(ticker, normalizeDailyCloseSeries(ticker, rawSeries)));
+            assetSeries.add(normalizeDailySeries(ticker, rawSeries));
         }
-        return AlignedPortfolioSeries.of(portfolioSeries);
+        return new PortfolioSeries(assetSeries);
     }
 
-    private static BarSeries normalizeDailyCloseSeries(String ticker, BarSeries rawSeries) {
+    static BarSeries normalizeDailySeries(String ticker, BarSeries rawSeries) {
         TreeMap<LocalDate, Bar> barsByDate = new TreeMap<>();
         for (int index = rawSeries.getBeginIndex(); index <= rawSeries.getEndIndex(); index++) {
             Bar bar = rawSeries.getBar(index);
-            LocalDate date = LocalDate.ofInstant(bar.getEndTime(), ZoneOffset.UTC);
-            barsByDate.put(date, bar);
+            barsByDate.put(LocalDate.ofInstant(bar.getEndTime(), ZoneOffset.UTC), bar);
         }
 
         BarSeries normalized = new BaseBarSeriesBuilder().withName(ticker)
                 .withNumFactory(rawSeries.numFactory())
                 .build();
-        Num zero = rawSeries.numFactory().zero();
         for (Map.Entry<LocalDate, Bar> entry : barsByDate.entrySet()) {
-            Num close = entry.getValue().getClosePrice();
+            Bar bar = entry.getValue();
             normalized.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(entry.getKey().atStartOfDay().toInstant(ZoneOffset.UTC))
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(zero)
+                    .openPrice(bar.getOpenPrice())
+                    .highPrice(bar.getHighPrice())
+                    .lowPrice(bar.getLowPrice())
+                    .closePrice(bar.getClosePrice())
+                    .volume(bar.getVolume())
+                    .amount(bar.getAmount())
                     .add();
         }
         return normalized;
     }
 
-    private static void printMatrix(CorrelationMatrix matrix, Map<PortfolioAsset, String> labels) {
+    private static void printMatrix(CorrelationMatrix matrix, Map<String, String> labels) {
         System.out.println("Correlation matrix:");
         System.out.printf("%" + SYMBOL_WIDTH + "s", "");
-        for (PortfolioAsset asset : matrix.assets()) {
-            System.out.printf(" %" + MATRIX_WIDTH + "s", asset.id());
+        for (String asset : matrix.getAssets()) {
+            System.out.printf(" %" + MATRIX_WIDTH + "s", asset);
         }
         System.out.println();
-        for (PortfolioAsset rowAsset : matrix.assets()) {
-            System.out.printf("%" + SYMBOL_WIDTH + "s", rowAsset.id());
-            for (PortfolioAsset columnAsset : matrix.assets()) {
-                System.out.printf(" %" + MATRIX_WIDTH + ".4f", matrix.coefficient(rowAsset, columnAsset).doubleValue());
+        for (String rowAsset : matrix.getAssets()) {
+            System.out.printf("%" + SYMBOL_WIDTH + "s", rowAsset);
+            for (String columnAsset : matrix.getAssets()) {
+                System.out.printf(" %" + MATRIX_WIDTH + ".4f",
+                        matrix.getCoefficient(rowAsset, columnAsset).doubleValue());
             }
             System.out.printf("  %s%n", labels.get(rowAsset));
         }
     }
 
-    private static void printPairReport(CorrelationMatrix matrix, Map<PortfolioAsset, String> labels) {
+    private static void printPairReport(CorrelationMatrix matrix, Map<String, String> labels) {
         System.out.println("Pair report:");
-        for (PortfolioCorrelations.CorrelationPair pair : matrix.pairs()) {
-            System.out.printf("  %s / %s: %.4f%n", labels.get(pair.firstAsset()), labels.get(pair.secondAsset()),
-                    pair.coefficient().doubleValue());
+        for (PortfolioCorrelations.CorrelationPair pair : matrix.getPairs()) {
+            System.out.printf("  %s / %s: %.4f%n", labels.get(pair.getFirstAsset()), labels.get(pair.getSecondAsset()),
+                    pair.getCoefficient().doubleValue());
         }
     }
 
-    private static void printCompleteLinkage(CorrelationMatrix matrix, Map<PortfolioAsset, String> labels) {
-        List<ClusterMerge> merges = completeLinkage(matrix, labels);
-        if (merges.isEmpty()) {
+    private static void printCompleteLinkage(CorrelationMatrix matrix, Map<String, String> labels) {
+        try {
+            CorrelationHierarchy hierarchy = matrix.completeLinkage();
+            Map<Integer, String> clusterLabels = new LinkedHashMap<>();
+            for (int index = 0; index < hierarchy.getAssets().size(); index++) {
+                String asset = hierarchy.getAssets().get(index);
+                clusterLabels.put(index, labels.get(asset));
+            }
+            System.out.println("Complete-linkage clusters:");
+            for (int index = 0; index < hierarchy.getMerges().size(); index++) {
+                ClusterMerge merge = hierarchy.getMerges().get(index);
+                String left = clusterLabels.get(merge.getLeftClusterIndex());
+                String right = clusterLabels.get(merge.getRightClusterIndex());
+                System.out.printf("  %2d. %s + %s distance=%.4f size=%d%n", index + 1, left, right,
+                        merge.getDistance().doubleValue(), merge.getSize());
+                clusterLabels.put(hierarchy.getAssets().size() + index, left + " + " + right);
+            }
+        } catch (IllegalStateException exception) {
             System.out.println("Complete-linkage clusters: skipped because the matrix contains non-finite values");
-            return;
         }
-        System.out.println("Complete-linkage clusters:");
-        for (int index = 0; index < merges.size(); index++) {
-            ClusterMerge merge = merges.get(index);
-            System.out.printf("  %2d. %s + %s distance=%.4f size=%d%n", index + 1, merge.left(), merge.right(),
-                    merge.distance(), merge.size());
-        }
-    }
-
-    private static List<ClusterMerge> completeLinkage(CorrelationMatrix matrix, Map<PortfolioAsset, String> labels) {
-        List<PortfolioAsset> assets = matrix.assets();
-        double[][] rows = new double[assets.size()][assets.size()];
-        for (int rowIndex = 0; rowIndex < assets.size(); rowIndex++) {
-            for (int columnIndex = 0; columnIndex < assets.size(); columnIndex++) {
-                double value = matrix.coefficient(assets.get(rowIndex), assets.get(columnIndex)).doubleValue();
-                if (!Double.isFinite(value)) {
-                    return List.of();
-                }
-                rows[rowIndex][columnIndex] = value;
-            }
-        }
-
-        List<Cluster> clusters = new ArrayList<>();
-        for (int index = 0; index < assets.size(); index++) {
-            clusters.add(new Cluster(labels.get(assets.get(index)), List.of(index)));
-        }
-
-        List<ClusterMerge> merges = new ArrayList<>();
-        while (clusters.size() > 1) {
-            ClusterPair closest = closestPair(clusters, rows);
-            Cluster left = clusters.get(closest.leftIndex());
-            Cluster right = clusters.get(closest.rightIndex());
-            List<Integer> mergedMembers = new ArrayList<>(left.members());
-            mergedMembers.addAll(right.members());
-            Cluster merged = new Cluster(left.label() + " + " + right.label(), List.copyOf(mergedMembers));
-            merges.add(new ClusterMerge(left.label(), right.label(), closest.distance(), mergedMembers.size()));
-            clusters.remove(closest.rightIndex());
-            clusters.remove(closest.leftIndex());
-            clusters.add(merged);
-        }
-        return List.copyOf(merges);
-    }
-
-    private static ClusterPair closestPair(List<Cluster> clusters, double[][] rows) {
-        ClusterPair closest = null;
-        for (int leftIndex = 0; leftIndex < clusters.size(); leftIndex++) {
-            for (int rightIndex = leftIndex + 1; rightIndex < clusters.size(); rightIndex++) {
-                double distance = completeDistance(clusters.get(leftIndex), clusters.get(rightIndex), rows);
-                ClusterPair candidate = new ClusterPair(leftIndex, rightIndex, distance);
-                if (closest == null || candidate.compareTo(closest) < 0) {
-                    closest = candidate;
-                }
-            }
-        }
-        return Objects.requireNonNull(closest, "closest");
-    }
-
-    private static double completeDistance(Cluster left, Cluster right, double[][] rows) {
-        double distance = 0.0;
-        for (int leftMember : left.members()) {
-            for (int rightMember : right.members()) {
-                distance = Math.max(distance, euclideanDistance(rows[leftMember], rows[rightMember]));
-            }
-        }
-        return distance;
-    }
-
-    private static double euclideanDistance(double[] left, double[] right) {
-        double squaredDistance = 0.0;
-        for (int index = 0; index < left.length; index++) {
-            double difference = left[index] - right[index];
-            squaredDistance += difference * difference;
-        }
-        return Math.sqrt(squaredDistance);
     }
 
     private static boolean isHelp(String value) {
@@ -249,20 +189,20 @@ public final class PortfolioCorrelationAnalysis {
     private enum AnalysisKind {
         PRICE("price") {
             @Override
-            CorrelationMatrix matrix(AlignedPortfolioSeries series) {
-                return PortfolioCorrelations.priceMatrix(series);
+            CorrelationMatrix matrix(PortfolioSeries series) {
+                return new PortfolioCorrelations(series).getPriceMatrix();
             }
         },
         SIMPLE_RETURN("simple-return") {
             @Override
-            CorrelationMatrix matrix(AlignedPortfolioSeries series) {
-                return PortfolioCorrelations.simpleReturnMatrix(series);
+            CorrelationMatrix matrix(PortfolioSeries series) {
+                return new PortfolioCorrelations(series).getSimpleReturnMatrix();
             }
         },
         LOG_RETURN("log-return") {
             @Override
-            CorrelationMatrix matrix(AlignedPortfolioSeries series) {
-                return PortfolioCorrelations.logReturnMatrix(series);
+            CorrelationMatrix matrix(PortfolioSeries series) {
+                return new PortfolioCorrelations(series).getLogReturnMatrix();
             }
         };
 
@@ -272,7 +212,7 @@ public final class PortfolioCorrelationAnalysis {
             this.label = label;
         }
 
-        abstract CorrelationMatrix matrix(AlignedPortfolioSeries series);
+        abstract CorrelationMatrix matrix(PortfolioSeries series);
 
         String label() {
             return label;
@@ -316,17 +256,17 @@ public final class PortfolioCorrelationAnalysis {
     }
 
     private enum PortfolioPreset {
-        MARY_TRADITIONAL_IRA("mary-traditional-ira", "Mary traditional IRA",
+        DIVERSIFIED_STOCKS_BONDS("diversified-stocks-bonds", "Diversified stocks and bonds",
                 tickers("AAP", "AAPL", "BABA", "COIN", "FBT", "FBTC", "GXO", "HOOD", "IBIT", "IJH", "INTC", "JPM",
                         "JWN", "MCHI", "MED", "PYPL", "RSP", "SWK", "TLT", "VB", "VGIT", "VWO"),
                 List.of(new AnalysisSpec(AnalysisKind.PRICE, PeriodSpec.MAX))),
-        ADELA_ROTH_IRA("adela-roth-ira", "Adela Roth IRA",
+        BALANCED_ETFS("balanced-etfs", "Balanced growth and income ETFs",
                 tickers("VIGAX", "FDRR", "SPY", "QUS", "VBR", "AKREX", "BIV", "ICLN"),
                 List.of(new AnalysisSpec(AnalysisKind.PRICE, PeriodSpec.YEAR_TO_DATE))),
-        NINI_ROTH_IRA("nini-roth-ira", "Nini Roth IRA",
+        DIGITAL_ASSET_TILT("digital-asset-tilt", "Diversified portfolio with a digital-asset tilt",
                 tickers("QQQ", "VWO", "COIN", "FBTC", "IBIT", "ETHW", "RES", "XOM", "DOC", "NKE", "ARKK", "TLT"),
                 List.of(new AnalysisSpec(AnalysisKind.PRICE, PeriodSpec.YEAR_TO_DATE))),
-        MARY_ROTH_IRA_8637("mary-roth-ira-8637", "Mary Roth IRA 8637",
+        LARGE_CAP_INCOME("large-cap-income", "Large-cap equity and income mix",
                 tickers("BABA", "CSCO", "GOOG", "INTC", "JPM", "MMM", "MSFT", "PFE", "PYPL", "RES", "SOLV", "TLT",
                         "TMUS", "VNQ", "XOM"),
                 List.of(new AnalysisSpec(AnalysisKind.PRICE, PeriodSpec.MAX))),
@@ -382,14 +322,6 @@ public final class PortfolioCorrelationAnalysis {
             return tickerNames;
         }
 
-        Map<PortfolioAsset, String> assetsByTicker() {
-            Map<PortfolioAsset, String> assetsByTicker = new LinkedHashMap<>();
-            for (Map.Entry<String, String> entry : tickerNames.entrySet()) {
-                assetsByTicker.put(PortfolioAsset.of(entry.getKey()), entry.getValue());
-            }
-            return Collections.unmodifiableMap(assetsByTicker);
-        }
-
         List<AnalysisSpec> analyses(AnalysisKind requestedKind) {
             if (requestedKind == null) {
                 return analyses;
@@ -434,22 +366,5 @@ public final class PortfolioCorrelationAnalysis {
     }
 
     private record AnalysisSpec(AnalysisKind kind, PeriodSpec period) {
-    }
-
-    private record Cluster(String label, List<Integer> members) {
-    }
-
-    private record ClusterMerge(String left, String right, double distance, int size) {
-    }
-
-    private record ClusterPair(int leftIndex, int rightIndex, double distance) implements Comparable<ClusterPair> {
-
-        @Override
-        public int compareTo(ClusterPair other) {
-            return Comparator.comparingDouble(ClusterPair::distance)
-                    .thenComparingInt(ClusterPair::leftIndex)
-                    .thenComparingInt(ClusterPair::rightIndex)
-                    .compare(this, other);
-        }
     }
 }
