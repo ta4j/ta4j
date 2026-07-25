@@ -54,7 +54,8 @@ public final class ProminenceSwingDetector implements SwingDetector {
     }
 
     @Override
-    public synchronized SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
+    public synchronized SwingDetectorResult detect(final BarSeries series, final int index,
+            final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         if (series.isEmpty()) {
