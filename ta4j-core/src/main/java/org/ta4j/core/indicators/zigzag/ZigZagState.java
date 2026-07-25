@@ -68,13 +68,6 @@ public final class ZigZagState {
 
     ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
             int lastExtremeIndex, Num lastExtremePrice, int initialHighIndex, Num initialHighPrice, int initialLowIndex,
-            Num initialLowPrice) {
-        this(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, lastExtremeIndex, lastExtremePrice,
-                initialHighIndex, initialHighPrice, initialLowIndex, initialLowPrice, null, null, null);
-    }
-
-    ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
-            int lastExtremeIndex, Num lastExtremePrice, int initialHighIndex, Num initialHighPrice, int initialLowIndex,
             Num initialLowPrice, Num lastExtremeReversalAmount, Num initialHighReversalAmount,
             Num initialLowReversalAmount) {
         this.lastHighIndex = lastHighIndex;

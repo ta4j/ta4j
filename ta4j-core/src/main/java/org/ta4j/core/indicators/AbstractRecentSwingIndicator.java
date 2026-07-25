@@ -223,6 +223,9 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             final boolean fallbackHistoryChanged = currentRevision < 0L && (currentEndIndex < observedEndIndex
                     || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
             if (!trackedRevisionChanged && !fallbackHistoryChanged) {
+                observedRevision = currentRevision;
+                observedEndIndex = currentEndIndex;
+                observedLastBar = currentLastBar;
                 return;
             }
             confirmedSwings.clear();

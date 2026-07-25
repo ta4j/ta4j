@@ -35,6 +35,16 @@ class ProminenceSwingDetectorTest {
         assertThat(detector.detectPivots(series, series.getEndIndex())).isEqualTo(result.pivots());
     }
 
+    @Test
+    void rejectsLocalExtremaBelowTheProminenceThreshold() {
+        BarSeries series = series(10, 12, 10);
+        SwingDetector detector = SwingDetectors.prominence(new ProminenceSwingConfig(2, 1, 0, 1, 2.0));
+
+        SwingDetectorResult result = detector.detect(series, series.getEndIndex(), ElliottDegree.MINOR);
+
+        assertThat(result.pivots()).isEmpty();
+    }
+
     private BarSeries series(final double... closes) {
         BarSeries series = new MockBarSeriesBuilder().build();
         for (double close : closes) {

@@ -57,7 +57,8 @@ public final class RecentSwingIndicators {
     }
 
     /**
-     * Builds the standard three-bar fractal pair.
+     * Builds the default fractal pair using three preceding bars and three
+     * following bars around the pivot.
      *
      * @param series source bar series
      * @return fractal high/low pair
@@ -176,8 +177,9 @@ public final class RecentSwingIndicators {
     }
 
     /**
-     * Builds the standard two-of-three consensus: three-bar fractal, adaptive
-     * ZigZag, and five-bar slope change, clustered within two bars.
+     * Builds the standard two-of-three consensus: seven-bar fractal (three
+     * preceding bars, pivot bar, three following bars), adaptive ZigZag, and
+     * five-bar slope change, clustered within two bars.
      *
      * @param series source bar series
      * @return consensus high/low pair
@@ -256,8 +258,10 @@ public final class RecentSwingIndicators {
      * A confirmed or developing swing point.
      *
      * @param pivotIndex        bar containing the extreme
-     * @param confirmationIndex bar that confirmed the pivot, or {@code -1} while
-     *                          provisional
+     * @param confirmationIndex bar that confirmed the pivot, {@code -1} while
+     *                          provisional, or the evaluation index when adapting
+     *                          a legacy indicator that cannot expose causal
+     *                          confirmation timing
      * @param price             extreme price
      * @param type              high or low
      * @param confirmation      confirmation state
@@ -527,6 +531,10 @@ public final class RecentSwingIndicators {
                     || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
             if (trackedRevisionChanged || fallbackHistoryChanged) {
                 invalidateCache();
+            } else {
+                observedRevision = currentRevision;
+                observedEndIndex = currentEndIndex;
+                observedLastBar = currentLastBar;
             }
         }
     }
