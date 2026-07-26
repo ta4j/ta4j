@@ -6,8 +6,6 @@ package org.ta4j.core.indicators.elliott.swing;
 import java.util.Arrays;
 import java.util.List;
 
-import org.ta4j.core.indicators.ProminenceSwingConfig;
-
 /**
  * Factory helpers for common swing detector configurations.
  *

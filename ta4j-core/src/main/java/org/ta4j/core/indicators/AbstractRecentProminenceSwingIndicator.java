@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.elliott.swing.ProminenceSwingConfig;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 

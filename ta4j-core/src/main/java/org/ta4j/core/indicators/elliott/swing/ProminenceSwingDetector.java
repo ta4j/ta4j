@@ -8,7 +8,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.ProminenceSwingConfig;
 import org.ta4j.core.indicators.RecentProminenceSwingHighIndicator;
 import org.ta4j.core.indicators.RecentProminenceSwingLowIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;

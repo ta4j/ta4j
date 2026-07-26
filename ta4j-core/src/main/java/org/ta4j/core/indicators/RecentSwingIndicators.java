@@ -11,6 +11,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.indicators.elliott.swing.ProminenceSwingConfig;
 import org.ta4j.core.indicators.elliott.swing.SlopeChangeConfig;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
@@ -25,6 +26,11 @@ import org.ta4j.core.num.Num;
 
 /**
  * Factory and paired view for recent swing-high and swing-low indicators.
+ *
+ * <p>
+ * This type wires first-class {@code *Indicator} implementations and exposes
+ * their paired high/low view; it is not itself an {@link Indicator}
+ * implementation.
  *
  * <p>
  * {@link #defaultFor(BarSeries)} is the canonical general-purpose choice. It
