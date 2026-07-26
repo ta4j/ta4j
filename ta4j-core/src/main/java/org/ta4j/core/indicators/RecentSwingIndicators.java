@@ -57,8 +57,8 @@ public final class RecentSwingIndicators {
     }
 
     /**
-     * Builds the default fractal pair using three preceding bars and three
-     * following bars around the pivot.
+     * Builds the default seven-bar fractal pair: three preceding bars, the pivot
+     * bar, and three following bars.
      *
      * @param series source bar series
      * @return fractal high/low pair
@@ -268,9 +268,9 @@ public final class RecentSwingIndicators {
      *
      * @param pivotIndex        bar containing the extreme
      * @param confirmationIndex bar that confirmed the pivot, {@code -1} while
-     *                          provisional, or the evaluation index when adapting a
-     *                          legacy indicator that cannot expose causal
-     *                          confirmation timing
+     *                          provisional, or the evaluation index as a synthetic
+     *                          fallback when adapting an indicator that cannot
+     *                          expose causal confirmation timing
      * @param price             extreme price
      * @param type              high or low
      * @param confirmation      confirmation state
