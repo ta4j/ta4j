@@ -26,6 +26,7 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.Quickstart`: prints step-by-step run stages and trade/return metrics
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
+- `ta4jexamples.portfolio.StaticPortfolioBacktest`: prints aligned portfolio snapshots, final value, total return, and transaction costs
 
 If chart windows do not appear, you are likely in a headless environment; switch to chart file output or run on a GUI-enabled machine.
 
@@ -70,12 +71,16 @@ the harness and optimization commits are in place. The JSON artifacts include a
 hashed `hostId` plus JVM/OS metadata so reports can be shared without exposing a
 raw machine hostname.
 
-### 4) Live-style workflows
+### 4) Portfolio simulation
+
+- `ta4jexamples.portfolio.StaticPortfolioBacktest`
+
+### 5) Live-style workflows
 
 - `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 
-### 5) Charting and diagnostics
+### 6) Charting and diagnostics
 
 - `ta4jexamples.indicators.IndicatorsToChart`
 - `ta4jexamples.indicators.CandlestickChart`
@@ -99,8 +104,9 @@ Run the ossified BTC daily analog and rolling-conformal walkthrough:
 2. `ta4jexamples.backtesting.TradingRecordParityBacktest`
 3. `ta4jexamples.backtesting.TradeFillRecordingExample`
 4. `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
-5. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
-6. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
+5. `ta4jexamples.portfolio.StaticPortfolioBacktest`
+6. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
+7. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 
 ## Companion guides
 
