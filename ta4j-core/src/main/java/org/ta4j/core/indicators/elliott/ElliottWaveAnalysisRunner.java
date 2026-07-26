@@ -26,13 +26,13 @@ import org.ta4j.core.analysis.SeriesSelector;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
-import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
-import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
-import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
-import org.ta4j.core.indicators.elliott.swing.SwingDetector;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectorResult;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
-import org.ta4j.core.indicators.elliott.swing.SwingFilter;
+import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.analysis.elliott.swing.CompositeSwingDetector;
+import org.ta4j.core.analysis.elliott.swing.MinMagnitudeSwingFilter;
+import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.SwingFilter;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -80,7 +80,7 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class ElliottWaveAnalysisRunner {
 
-    private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+    private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = AdaptiveZigZagConfig.defaults();
     private static final int DEFAULT_FAST_FRACTAL_WINDOW = 3;
     private static final int DEFAULT_SLOW_FRACTAL_WINDOW = 8;
 

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.elliott.swing;
+package org.ta4j.core.analysis.elliott.swing;
 
 import java.util.Arrays;
 import java.util.List;
@@ -76,6 +76,27 @@ public final class SwingDetectors {
      */
     public static SwingDetector slopeChange(final SlopeChangeConfig config) {
         return new SlopeChangeSwingDetector(config);
+    }
+
+    /**
+     * Builds a bounded price-prominence detector with balanced defaults.
+     *
+     * @return prominence detector
+     * @since 0.23.1
+     */
+    public static SwingDetector prominence() {
+        return new ProminenceSwingDetector();
+    }
+
+    /**
+     * Builds a bounded price-prominence detector.
+     *
+     * @param config prominence configuration
+     * @return prominence detector
+     * @since 0.23.1
+     */
+    public static SwingDetector prominence(final ProminenceSwingConfig config) {
+        return new ProminenceSwingDetector(config);
     }
 
     /**

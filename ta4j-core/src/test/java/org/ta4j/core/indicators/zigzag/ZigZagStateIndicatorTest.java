@@ -444,6 +444,48 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
     }
 
     @Test
+    public void shouldPinFirstFiniteThresholdForAnExtremeFormedDuringWarmup() {
+        series.barBuilder().highPrice(100).lowPrice(90).closePrice(95).add();
+        series.barBuilder().highPrice(102).lowPrice(88).closePrice(95).add();
+        series.barBuilder().highPrice(104).lowPrice(86).closePrice(95).add();
+        series.barBuilder().highPrice(106).lowPrice(84).closePrice(95).add();
+        series.barBuilder().highPrice(108).lowPrice(82).closePrice(95).add();
+        series.barBuilder().highPrice(110).lowPrice(80).closePrice(95).add();
+        series.barBuilder().highPrice(112).lowPrice(85).closePrice(100).add();
+        series.barBuilder().highPrice(114).lowPrice(85).closePrice(100).add();
+        series.barBuilder().highPrice(116).lowPrice(85).closePrice(100).add();
+        series.barBuilder().highPrice(118).lowPrice(85).closePrice(100).add();
+        series.barBuilder().highPrice(120).lowPrice(82).closePrice(82).add();
+        series.barBuilder().highPrice(119).lowPrice(81).closePrice(81).add();
+        series.barBuilder().highPrice(90).lowPrice(82).closePrice(90).add();
+
+        final Indicator<Num> threshold = new CachedIndicator<Num>(series) {
+            @Override
+            protected Num calculate(final int index) {
+                return index < 10 ? NaN.NaN : numOf(5);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 10;
+            }
+        };
+        final ZigZagStateIndicator indicator = new ZigZagStateIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), new ClosePriceIndicator(series), threshold);
+
+        final ZigZagState downState = indicator.getValue(11);
+        assertThat(downState.getTrend()).isEqualTo(ZigZagTrend.DOWN);
+        assertThat(downState.getLastHighIndex()).isEqualTo(10);
+        assertThat(downState.getLastExtremeIndex()).isEqualTo(5);
+        assertThat(downState.getLastExtremeReversalAmount()).isEqualByComparingTo(numOf(5));
+
+        final ZigZagState recovered = indicator.getValue(12);
+        assertThat(recovered.getTrend()).isEqualTo(ZigZagTrend.UP);
+        assertThat(recovered.getLastLowIndex()).isEqualTo(5);
+        assertThat(recovered.getLastLowPrice()).isEqualByComparingTo(numOf(80));
+    }
+
+    @Test
     public void shouldReturnZeroUnstableBars() {
         series.barBuilder().closePrice(100).add();
         final Indicator<Num> price = new ClosePriceIndicator(series);
