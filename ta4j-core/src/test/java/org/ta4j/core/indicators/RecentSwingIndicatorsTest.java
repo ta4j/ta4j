@@ -76,16 +76,27 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void shouldAdaptDetectorPivotsToRecentHighAndLowIndicators() {
-        final BarSeries series = seriesFromCloses(10, 8, 15, 11, 9);
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).highPrice(10).lowPrice(10).closePrice(10).add();
+        series.barBuilder().openPrice(9).highPrice(9).lowPrice(7).closePrice(8).add();
+        series.barBuilder().openPrice(14).highPrice(18).lowPrice(12).closePrice(15).add();
+        series.barBuilder().openPrice(12).highPrice(12).lowPrice(11).closePrice(11).add();
+        series.barBuilder().openPrice(9).highPrice(10).lowPrice(9).closePrice(9).add();
         final SwingDetector detector = (bars, index, degree) -> index < 4
                 ? new SwingDetectorResult(List.of(), List.of())
                 : SwingDetectorResult.fromPivots(List.of(new SwingPivot(1, numOf(8), SwingPivotType.LOW),
                         new SwingPivot(2, numOf(15), SwingPivotType.HIGH)), degree);
         final Pair pair = RecentSwingIndicators.fromDetector(series, detector);
 
+        assertThat(pair.highs().getPriceIndicator().getValue(2)).isEqualByComparingTo(numOf(15));
         assertThat(pair.lows().getLatestSwingIndex(4)).isEqualTo(1);
         assertThat(pair.highs().getLatestSwingIndex(4)).isEqualTo(2);
         assertThat(pair.highs().getLatestSwingConfirmationIndex(4)).isEqualTo(4);
+        assertThat(pair.lows().getValue(4)).isEqualByComparingTo(numOf(8));
+        assertThat(pair.highs().getValue(4)).isEqualByComparingTo(numOf(15));
+        assertThat(pair.highs().getPriceIndicator().getValue(2)).isEqualByComparingTo(numOf(15));
+        assertThat(pair.latestHigh(4)).get()
+                .satisfies(point -> assertThat(point.price()).isEqualByComparingTo(numOf(15)));
         assertThat(pair.highs().getSwingPointIndexesUpTo(2)).isEmpty();
     }
 

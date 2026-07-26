@@ -13,6 +13,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -45,6 +46,40 @@ public class RecentProminenceSwingIndicatorTest extends AbstractIndicatorTest<In
         assertThat(indicator.getLatestSwingIndex(5)).isEqualTo(3);
         assertThat(indicator.getLatestSwingConfirmationIndex(5)).isEqualTo(5);
         assertThat(indicator.getValue(5)).isEqualByComparingTo(numOf(10));
+    }
+
+    @Test
+    public void shouldReportPartialBaselineUnstableBarsForHighsAndLows() {
+        final ProminenceSwingConfig config = new ProminenceSwingConfig(5, 2, 0, 14, 1.0);
+        final BarSeries highSeries = seriesFromCloses(10, 20, 15, 14);
+        final RecentProminenceSwingHighIndicator high = new RecentProminenceSwingHighIndicator(
+                new ClosePriceIndicator(highSeries), constant(highSeries, 5), config);
+        final BarSeries lowSeries = seriesFromCloses(20, 10, 15, 16);
+        final RecentProminenceSwingLowIndicator low = new RecentProminenceSwingLowIndicator(
+                new ClosePriceIndicator(lowSeries), constant(lowSeries, 5), config);
+
+        assertThat(high.getCountOfUnstableBars()).isEqualTo(3);
+        assertThat(low.getCountOfUnstableBars()).isEqualTo(3);
+        assertThat(high.getValue(2).isNaN()).isTrue();
+        assertThat(low.getValue(2).isNaN()).isTrue();
+        assertThat(high.getValue(3)).isEqualByComparingTo(numOf(20));
+        assertThat(low.getValue(3)).isEqualByComparingTo(numOf(10));
+    }
+
+    @Test
+    public void shouldNotAddExtraWarmupBarWhenProminenceThresholdIsUnstable() {
+        final ProminenceSwingConfig config = new ProminenceSwingConfig(5, 3, 0, 14, 1.0);
+        final BarSeries series = seriesFromCloses(10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 15, 14,
+                13);
+        final Indicator<Num> minimumProminence = new MockIndicator(series, 14, numOf(5), numOf(5), numOf(5), numOf(5),
+                numOf(5), numOf(5), numOf(5), numOf(5), numOf(5), numOf(5), numOf(5), numOf(5), numOf(5), numOf(5),
+                numOf(5), numOf(5), numOf(5), numOf(5));
+        final RecentProminenceSwingHighIndicator indicator = new RecentProminenceSwingHighIndicator(
+                new ClosePriceIndicator(series), minimumProminence, config);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(17);
+        assertThat(indicator.getValue(16).isNaN()).isTrue();
+        assertThat(indicator.getValue(17)).isEqualByComparingTo(numOf(20));
     }
 
     @Test

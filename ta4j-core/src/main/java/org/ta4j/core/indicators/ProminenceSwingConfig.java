@@ -10,7 +10,10 @@ package org.ta4j.core.indicators;
  * Prominence measures how far a candidate peak or trough stands above or below
  * the surrounding local baselines. The search is bounded by
  * {@code lookbackBars}; {@code confirmationBars} controls how much right-side
- * evidence is required before a candidate is reported.
+ * evidence is required before a candidate is reported. Near the start of a
+ * series, detection uses the available partial baseline once at least one bar
+ * is present on each side of the candidate; {@code lookbackBars} is an upper
+ * bound, not a required warm-up window.
  *
  * @param lookbackBars     maximum bars searched on either side for the local
  *                         baseline

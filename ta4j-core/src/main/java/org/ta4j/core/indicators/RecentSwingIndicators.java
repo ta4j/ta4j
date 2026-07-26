@@ -214,6 +214,11 @@ public final class RecentSwingIndicators {
 
     /**
      * Adapts a swing detector using custom high/low price sources.
+     * <p>
+     * Detector-backed indicators return detector-supplied
+     * {@link SwingPivot#price()} values for pivots detected through the current
+     * series end. The custom price sources define the shared bar series and remain
+     * the fallback values for bars that are not known detector pivots.
      *
      * @param highPrice swing-high price source
      * @param lowPrice  swing-low price source
@@ -232,8 +237,12 @@ public final class RecentSwingIndicators {
                 Objects.requireNonNull(lowPrice, "lowPrice"));
         final DetectorPivotIndicator pivots = new DetectorPivotIndicator(highPrice.getBarSeries(),
                 Objects.requireNonNull(detector, "detector"));
-        return new Pair(method, new DetectorRecentSwingIndicator(highPrice, pivots, SwingPivotType.HIGH),
-                new DetectorRecentSwingIndicator(lowPrice, pivots, SwingPivotType.LOW));
+        final DetectorSwingPriceIndicator highPivotPrices = new DetectorSwingPriceIndicator(highPrice, pivots,
+                SwingPivotType.HIGH);
+        final DetectorSwingPriceIndicator lowPivotPrices = new DetectorSwingPriceIndicator(lowPrice, pivots,
+                SwingPivotType.LOW);
+        return new Pair(method, new DetectorRecentSwingIndicator(highPivotPrices, pivots, SwingPivotType.HIGH),
+                new DetectorRecentSwingIndicator(lowPivotPrices, pivots, SwingPivotType.LOW));
     }
 
     /**
@@ -476,6 +485,71 @@ public final class RecentSwingIndicators {
                 }
             }
             return -1;
+        }
+    }
+
+    private static final class DetectorSwingPriceIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> fallbackPrice;
+        private final Indicator<List<SwingPivot>> pivots;
+        private final SwingPivotType type;
+        private long observedRevision;
+        private int observedEndIndex;
+        private Bar observedLastBar;
+
+        private DetectorSwingPriceIndicator(final Indicator<Num> fallbackPrice,
+                final Indicator<List<SwingPivot>> pivots, final SwingPivotType type) {
+            super(fallbackPrice);
+            this.fallbackPrice = fallbackPrice;
+            this.pivots = pivots;
+            this.type = type;
+            final BarSeries series = getBarSeries();
+            this.observedRevision = series.getBarHistoryRevision();
+            this.observedEndIndex = series.getEndIndex();
+            this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+        }
+
+        @Override
+        public Num getValue(final int index) {
+            resetIfHistoryChanged();
+            return super.getValue(index);
+        }
+
+        @Override
+        protected Num calculate(final int index) {
+            final BarSeries series = getBarSeries();
+            if (!series.isEmpty() && index >= series.getBeginIndex() && index <= series.getEndIndex()) {
+                final List<SwingPivot> detected = pivots.getValue(series.getEndIndex());
+                for (int pivotIndex = detected.size() - 1; pivotIndex >= 0; pivotIndex--) {
+                    final SwingPivot pivot = detected.get(pivotIndex);
+                    if (pivot.type() == type && pivot.index() == index) {
+                        return pivot.price();
+                    }
+                }
+            }
+            return fallbackPrice.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return fallbackPrice.getCountOfUnstableBars();
+        }
+
+        private synchronized void resetIfHistoryChanged() {
+            final BarSeries series = getBarSeries();
+            final long currentRevision = series.getBarHistoryRevision();
+            final int currentEndIndex = series.getEndIndex();
+            final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            final boolean trackedRevisionChanged = currentRevision >= 0L && observedRevision >= 0L
+                    && currentRevision != observedRevision;
+            final boolean fallbackHistoryChanged = currentRevision < 0L && (currentEndIndex < observedEndIndex
+                    || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
+            if (trackedRevisionChanged || fallbackHistoryChanged) {
+                invalidateCache();
+            }
+            observedRevision = currentRevision;
+            observedEndIndex = currentEndIndex;
+            observedLastBar = currentLastBar;
         }
     }
 

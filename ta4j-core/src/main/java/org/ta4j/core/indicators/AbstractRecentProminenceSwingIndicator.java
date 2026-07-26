@@ -129,7 +129,8 @@ abstract class AbstractRecentProminenceSwingIndicator extends AbstractRecentSwin
         requirePrice(priceIndicator);
         Objects.requireNonNull(minimumProminence, "minimumProminence");
         Objects.requireNonNull(config, "config");
-        return Math.max(priceIndicator.getCountOfUnstableBars(), minimumProminence.getCountOfUnstableBars())
-                + config.lookbackBars() + config.confirmationBars();
+        final int earliestCandidate = Math.max(priceIndicator.getCountOfUnstableBars() + 1,
+                minimumProminence.getCountOfUnstableBars());
+        return earliestCandidate + config.confirmationBars();
     }
 }
