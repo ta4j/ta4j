@@ -11,8 +11,8 @@ import java.util.Set;
  *
  * <p>
  * The MVP policies are deliberately index based. Calendar-aware policies can
- * capture an {@link AlignedPortfolioSeries} and inspect
- * {@link AlignedPortfolioSeries#endTimes()}.
+ * capture a {@link PortfolioSeries} and inspect its
+ * {@link PortfolioSeries#getEndTimes()}.
  * </p>
  *
  * @since 0.23.1
@@ -25,7 +25,7 @@ public interface RebalancePolicy {
      * {@code index}.
      *
      * @param index aligned portfolio index
-     * @return true if the executor should rebalance
+     * @return true if the portfolio manager should rebalance
      * @since 0.23.1
      */
     boolean shouldRebalance(int index);

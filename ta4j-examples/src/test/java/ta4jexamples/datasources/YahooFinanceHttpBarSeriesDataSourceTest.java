@@ -54,6 +54,28 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
             }
             """;
 
+    private static final String ADJUSTED_JSON_RESPONSE = """
+            {
+                "chart": {
+                    "result": [{
+                        "timestamp": [1609459200, 1609545600],
+                        "indicators": {
+                            "quote": [{
+                                "open": [100.0, 200.0],
+                                "high": [110.0, 220.0],
+                                "low": [90.0, 180.0],
+                                "close": [105.0, 210.0],
+                                "volume": [1000, 2000]
+                            }],
+                            "adjclose": [{
+                                "adjclose": [52.5, 210.0]
+                            }]
+                        }
+                    }]
+                }
+            }
+            """;
+
     /**
      * Helper method to clean up cache files matching a pattern. This ensures tests
      * start with a clean cache state.
@@ -165,6 +187,31 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         assertEquals(3, series.getBarCount(), "Should have 3 bars");
         assertEquals("AAPL", series.getName(), "Series name should match ticker");
         assertTrue(series.getBar(0).getClosePrice().doubleValue() > 0, "Close price should be positive");
+    }
+
+    @Test
+    public void loadsAdjustedPricesWithoutChangingRawPriceBehavior() throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(ADJUSTED_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-02T00:00:00Z");
+
+        BarSeries adjusted = dataSource.loadAdjustedSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries raw = dataSource.loadSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+
+        assertEquals(50.0, adjusted.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(55.0, adjusted.getBar(0).getHighPrice().doubleValue(), 0.000001);
+        assertEquals(45.0, adjusted.getBar(0).getLowPrice().doubleValue(), 0.000001);
+        assertEquals(52.5, adjusted.getBar(0).getClosePrice().doubleValue(), 0.000001);
+        assertEquals(1000.0, adjusted.getBar(0).getVolume().doubleValue(), 0.000001);
+        assertEquals(100.0, raw.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(105.0, raw.getBar(0).getClosePrice().doubleValue(), 0.000001);
     }
 
     @Test

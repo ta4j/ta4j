@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import java.util.List;
 
 import org.junit.Test;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -31,6 +32,15 @@ public class WeightedValueTest {
     public void constructorAllowsNegativeWeightForPenaltyUseCases() {
         WeightedValue<String> weightedValue = new WeightedValue<>("penaltyMetric", NUM_FACTORY.minusOne());
         assertThat(weightedValue.weight()).isEqualByComparingTo(NUM_FACTORY.minusOne());
+    }
+
+    @Test
+    public void constructorAllowsFiniteDecimalWeightBeyondDoubleRange() {
+        Num weight = DecimalNumFactory.getInstance().numOf("1E400");
+
+        WeightedValue<String> weightedValue = new WeightedValue<>("large", weight);
+
+        assertThat(weightedValue.weight()).isEqualByComparingTo(weight);
     }
 
     @Test

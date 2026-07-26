@@ -14,44 +14,65 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
 /**
- * Result of a static target-weight portfolio execution.
+ * Immutable result of a static target-weight portfolio execution.
  *
- * <p>
- * The result exposes snapshots directly and can also materialize the portfolio
- * equity curve as a {@link BarSeries}. That value series gives existing ta4j
- * indicators, reports, and future walk-forward/ranking flows a stable bridge
- * without changing single-series strategy APIs.
- * </p>
- *
- * @param series      aligned source series
- * @param allocation  target allocation used for execution
- * @param initialCash starting cash
- * @param snapshots   portfolio snapshots
  * @since 0.23.1
  */
-public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioAllocation allocation, Num initialCash,
-        List<PortfolioSnapshot> snapshots) {
+public final class PortfolioExecutionResult {
 
-    /**
-     * Creates an execution result.
-     *
-     * @since 0.23.1
-     */
-    public PortfolioExecutionResult {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(allocation, "allocation");
-        Objects.requireNonNull(initialCash, "initialCash");
-        snapshots = List.copyOf(Objects.requireNonNull(snapshots, "snapshots"));
+    private final PortfolioSeries series;
+    private final PortfolioAllocation allocation;
+    private final Num initialCash;
+    private final List<PortfolioSnapshot> snapshots;
+
+    PortfolioExecutionResult(PortfolioSeries series, PortfolioAllocation allocation, Num initialCash,
+            List<PortfolioSnapshot> snapshots) {
+        this.series = Objects.requireNonNull(series, "series");
+        this.allocation = Objects.requireNonNull(allocation, "allocation");
+        this.initialCash = Objects.requireNonNull(initialCash, "initialCash");
+        this.snapshots = List.copyOf(Objects.requireNonNull(snapshots, "snapshots"));
         if (snapshots.isEmpty()) {
             throw new IllegalArgumentException("snapshots must not be empty");
         }
     }
 
     /**
+     * @return aligned source portfolio series
+     * @since 0.23.1
+     */
+    public PortfolioSeries getPortfolioSeries() {
+        return series;
+    }
+
+    /**
+     * @return target allocation used for execution
+     * @since 0.23.1
+     */
+    public PortfolioAllocation getAllocation() {
+        return allocation;
+    }
+
+    /**
+     * @return starting cash
+     * @since 0.23.1
+     */
+    public Num getInitialCash() {
+        return initialCash;
+    }
+
+    /**
+     * @return immutable portfolio snapshots
+     * @since 0.23.1
+     */
+    public List<PortfolioSnapshot> getSnapshots() {
+        return snapshots;
+    }
+
+    /**
      * @return final portfolio snapshot
      * @since 0.23.1
      */
-    public PortfolioSnapshot finalSnapshot() {
+    public PortfolioSnapshot getFinalSnapshot() {
         return snapshots.getLast();
     }
 
@@ -59,26 +80,26 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
      * @return final portfolio value
      * @since 0.23.1
      */
-    public Num finalValue() {
-        return finalSnapshot().portfolioValue();
+    public Num getFinalValue() {
+        return getFinalSnapshot().getPortfolioValue();
     }
 
     /**
      * @return total return from initial cash to final portfolio value
      * @since 0.23.1
      */
-    public Num totalReturn() {
-        return finalValue().minus(initialCash).dividedBy(initialCash);
+    public Num getTotalReturn() {
+        return getFinalValue().minus(initialCash).dividedBy(initialCash);
     }
 
     /**
      * @return cumulative transaction costs
      * @since 0.23.1
      */
-    public Num totalTransactionCost() {
+    public Num getTotalTransactionCost() {
         Num totalCost = initialCash.getNumFactory().zero();
         for (PortfolioSnapshot snapshot : snapshots) {
-            totalCost = totalCost.plus(snapshot.transactionCost());
+            totalCost = totalCost.plus(snapshot.getTransactionCost());
         }
         return totalCost;
     }
@@ -87,10 +108,10 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
      * @return cumulative gross notional traded, excluding costs
      * @since 0.23.1
      */
-    public Num totalTurnover() {
+    public Num getTotalTurnover() {
         Num totalTurnover = initialCash.getNumFactory().zero();
         for (PortfolioSnapshot snapshot : snapshots) {
-            totalTurnover = totalTurnover.plus(snapshot.turnover());
+            totalTurnover = totalTurnover.plus(snapshot.getTurnover());
         }
         return totalTurnover;
     }
@@ -107,13 +128,13 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
         BarSeries valueSeries = new BaseBarSeriesBuilder().withName(name)
                 .withNumFactory(initialCash.getNumFactory())
                 .build();
-        PortfolioAsset firstAsset = series.assets().getFirst();
+        String firstAsset = series.getAssets().getFirst();
         Num zero = initialCash.getNumFactory().zero();
         for (PortfolioSnapshot snapshot : snapshots) {
-            Num value = snapshot.portfolioValue();
+            Num value = snapshot.getPortfolioValue();
             valueSeries.barBuilder()
-                    .timePeriod(series.getBar(firstAsset, snapshot.index()).getTimePeriod())
-                    .endTime(snapshot.endTime())
+                    .timePeriod(series.getBar(firstAsset, snapshot.getIndex()).getTimePeriod())
+                    .endTime(snapshot.getEndTime())
                     .openPrice(value)
                     .highPrice(value)
                     .lowPrice(value)
@@ -128,11 +149,11 @@ public record PortfolioExecutionResult(AlignedPortfolioSeries series, PortfolioA
      * @return final actual asset weights
      * @since 0.23.1
      */
-    public Map<PortfolioAsset, Num> finalWeights() {
-        PortfolioSnapshot finalSnapshot = finalSnapshot();
-        Map<PortfolioAsset, Num> weights = new LinkedHashMap<>();
-        for (PortfolioAsset asset : series.assets()) {
-            weights.put(asset, finalSnapshot.assetWeight(asset));
+    public Map<String, Num> getFinalWeights() {
+        PortfolioSnapshot finalSnapshot = getFinalSnapshot();
+        Map<String, Num> weights = new LinkedHashMap<>();
+        for (String asset : series.getAssets()) {
+            weights.put(asset, finalSnapshot.getAssetWeight(asset));
         }
         return Collections.unmodifiableMap(weights);
     }

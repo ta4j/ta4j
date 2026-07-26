@@ -67,6 +67,7 @@
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
         <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-display,requires-headless</ta4j.excludedTestTags>
+        <spotbugs.annotations.version>4.9.8</spotbugs.annotations.version>
         <spotbugs.version>4.9.8.3</spotbugs.version>
         <jacoco.version>0.8.14</jacoco.version>
         <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
@@ -134,6 +135,11 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-annotations</artifactId>
+                <version>${spotbugs.annotations.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>${slf4j.version}</version>
@@ -152,7 +158,11 @@
                 <groupId>org.apache.poi</groupId>
                 <artifactId>poi</artifactId>
                 <version>${poi.version}</version>
-                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.jfree</groupId>
