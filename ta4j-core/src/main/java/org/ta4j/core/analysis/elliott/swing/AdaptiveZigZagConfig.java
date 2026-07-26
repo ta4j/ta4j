@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.elliott.swing;
+package org.ta4j.core.analysis.elliott.swing;
 
 /**
  * Configuration for adaptive ZigZag swing detection.

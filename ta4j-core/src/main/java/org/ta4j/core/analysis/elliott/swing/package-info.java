@@ -11,9 +11,9 @@
  * {@link org.ta4j.core.Indicator} implementations; first-class indicators keep
  * the {@code *Indicator} naming convention. ZigZag and fractal detectors cover
  * sharp or fixed-window turns,
- * {@link org.ta4j.core.indicators.elliott.swing.SlopeChangeSwingDetector}
- * targets rounded turns, and tolerant composite detection provides quorum
- * consensus without requiring exact pivot-index agreement.
+ * {@link org.ta4j.core.analysis.elliott.swing.SlopeChangeSwingDetector} targets
+ * rounded turns, and tolerant composite detection provides quorum consensus
+ * without requiring exact pivot-index agreement.
  * </p>
  */
-package org.ta4j.core.indicators.elliott.swing;
+package org.ta4j.core.analysis.elliott.swing;

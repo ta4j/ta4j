@@ -10,7 +10,7 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.elliott.swing.ProminenceSwingConfig;
+import org.ta4j.core.analysis.elliott.swing.ProminenceSwingConfig;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;

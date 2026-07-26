@@ -5,7 +5,7 @@ package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.elliott.swing.ProminenceSwingConfig;
+import org.ta4j.core.analysis.elliott.swing.ProminenceSwingConfig;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 

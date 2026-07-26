@@ -12,7 +12,7 @@ import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
