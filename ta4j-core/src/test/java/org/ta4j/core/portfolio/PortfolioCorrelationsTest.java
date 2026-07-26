@@ -5,6 +5,7 @@ package org.ta4j.core.portfolio;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -12,6 +13,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -135,14 +137,20 @@ public class PortfolioCorrelationsTest {
         Fixture fixture = fixture();
         PortfolioCorrelations correlations = new PortfolioCorrelations(fixture.series());
         PortfolioCorrelations.CorrelationMatrix matrix = correlations.getLogReturnMatrix(2);
+        Map<String, Map<String, Num>> firstValues = matrix.getValues();
+        Map<String, Map<String, Num>> secondValues = matrix.getValues();
+        List<PortfolioCorrelations.CorrelationPair> firstPairs = matrix.getPairs();
 
         assertThrows(IllegalArgumentException.class, () -> correlations.getLogReturnMatrix(1));
         assertThrows(IndexOutOfBoundsException.class,
                 () -> correlations.getLogReturnMatrix(fixture.series().getBarCount(), 2));
         assertThrows(IllegalArgumentException.class, () -> matrix.getCoefficient(fixture.alpha(), "MISSING"));
-        assertThrows(UnsupportedOperationException.class, () -> matrix.getValues().clear());
-        assertThrows(UnsupportedOperationException.class, () -> matrix.getValues().get(fixture.alpha()).clear());
-        assertThrows(UnsupportedOperationException.class, () -> matrix.getPairs().clear());
+        assertNotSame(firstValues, secondValues);
+        assertNotSame(firstValues.get(fixture.alpha()), secondValues.get(fixture.alpha()));
+        assertNotSame(firstPairs, matrix.getPairs());
+        assertThrows(UnsupportedOperationException.class, firstValues::clear);
+        assertThrows(UnsupportedOperationException.class, () -> firstValues.get(fixture.alpha()).clear());
+        assertThrows(UnsupportedOperationException.class, firstPairs::clear);
     }
 
     private static Fixture fixture() {

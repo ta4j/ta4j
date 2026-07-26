@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -397,9 +396,8 @@ public final class PortfolioCorrelations {
          * @return immutable symmetric matrix values
          * @since 0.23.1
          */
-        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "values is a recursively unmodifiable copy")
         public Map<String, Map<String, Num>> getValues() {
-            return values;
+            return immutableValues(assets, values);
         }
 
         /**
@@ -424,9 +422,8 @@ public final class PortfolioCorrelations {
          * @return unique off-diagonal pairs in portfolio order
          * @since 0.23.1
          */
-        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "pairs is copied once and is immutable")
         public List<CorrelationPair> getPairs() {
-            return pairs;
+            return Collections.unmodifiableList(new ArrayList<>(pairs));
         }
 
         /**
