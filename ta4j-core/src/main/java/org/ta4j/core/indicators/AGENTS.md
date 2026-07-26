@@ -4,6 +4,24 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## Constructors and composition
 
+- First-class public indicators in this package tree must implement `Indicator`
+  and be named `*Indicator`. Do not introduce a public top-level `*Detector`,
+  `*Config`, `*Result`, `*Filter`, `*Runner`, `*Facade`, or generic helper in
+  `org.ta4j.core.indicators...` unless it is a nested support type owned by a
+  specific indicator or an explicitly documented compatibility exception.
+- Non-indicator strategy, analysis, detector, configuration, result, runner,
+  facade, and model APIs belong outside the indicator namespace, typically under
+  `org.ta4j.core.analysis...`, `org.ta4j.core.strategy...`,
+  `org.ta4j.core.backtest...`, or another domain package that matches their
+  primary abstraction.
+- Indicator factories may use plural/factory names such as
+  `RecentSwingIndicators`, but their Javadocs must state that they are factories,
+  not `Indicator` implementations, and they must return first-class
+  `*Indicator` types or clearly named value objects.
+- Before adding or moving public types in this package tree, audit the file name,
+  package, implemented interfaces, Javadocs, wiki inventory, examples, and
+  imports together so configuration/helper APIs are not presented as indicators.
+
 - Provide a `BarSeries` convenience constructor and overloads that accept the underlying source indicator when applicable.
 - Prefer existing helper indicators (`BinaryOperationIndicator`, `VolumeIndicator`, numeric/statistics helpers) over reimplementing arithmetic.
 - Extract reusable building blocks before adding context-specific wrappers.
