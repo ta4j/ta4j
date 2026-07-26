@@ -6,17 +6,21 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -158,6 +162,43 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void shouldFilterByConfirmationIndexRatherThanPivotIndex() {
+        final BarSeries series = seriesFromCloses(10, 12, 15, 13, 11);
+        final int[] latestSwingIndexes = { -1, -1, -1, -1, 2 };
+        final FixedSwingIndicator indicator = new FixedSwingIndicator(new ClosePriceIndicator(series),
+                latestSwingIndexes);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        assertThat(indicator.getLatestSwingConfirmationIndex(4)).isEqualTo(4);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).isEmpty();
+        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(-1);
+        assertThat(indicator.getLatestSwingConfirmationIndex(2)).isEqualTo(-1);
+    }
+
+    @Test
+    public void shouldRewindConfirmedSwingsWhenTheTerminalBarIsReplaced() {
+        final BarSeries series = seriesFromCloses(10, 12, 15, 13, 11);
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(series, 2);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(series.getEndIndex())).containsExactly(2);
+
+        final Bar lastBar = series.getLastBar();
+        final Bar replacement = series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime())
+                .openPrice(16)
+                .highPrice(16)
+                .lowPrice(16)
+                .closePrice(16)
+                .build();
+        series.addBar(replacement, true);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(series.getEndIndex())).isEmpty();
+        assertThat(indicator.getLatestSwingIndex(series.getEndIndex())).isEqualTo(-1);
+    }
+
+    @Test
     public void shouldReturnNaNWhenSwingPriceIsNaN() {
         final var series = seriesFromCloses(1, 2, 3, 4, 5);
         final int[] latestSwingIndexes = { -1, 1, 1, 3, 3 };
@@ -180,6 +221,38 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getSwingPointIndexesUpTo(5)).containsExactly(2, 4);
     }
 
+    @Test
+    public void shouldKeepFallbackHistorySnapshotCurrentDuringBackwardScans() {
+        final UntrackedBarSeries series = new UntrackedBarSeries();
+        for (int close = 1; close <= 5; close++) {
+            addTimedBar(series, close);
+        }
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 2 };
+        final CountingSwingIndicator indicator = new CountingSwingIndicator(new ClosePriceIndicator(series),
+                latestSwingIndexes);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).containsExactly(2);
+        final int detectionCountAfterInitialScan = indicator.detectionCount();
+
+        addTimedBar(series, 6);
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
+        assertThat(indicator.detectionCount()).isEqualTo(detectionCountAfterInitialScan);
+
+        final Bar lastBar = series.getLastBar();
+        final Bar replacement = series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime())
+                .openPrice(7)
+                .closePrice(7)
+                .highPrice(7)
+                .lowPrice(7)
+                .build();
+        series.addBar(replacement, true);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).containsExactly(2);
+        assertThat(indicator.detectionCount()).isGreaterThan(detectionCountAfterInitialScan);
+    }
+
     private BarSeries seriesFromCloses(double... closes) {
         final var seriesBuilder = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : closes) {
@@ -188,7 +261,19 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         return seriesBuilder;
     }
 
-    private static final class FixedSwingIndicator extends AbstractRecentSwingIndicator {
+    private void addTimedBar(final BarSeries series, final Number close) {
+        final int nextIndex = series.getEndIndex() + 1;
+        series.barBuilder()
+                .timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.EPOCH.plus(Duration.ofMinutes(nextIndex + 1)))
+                .openPrice(close)
+                .closePrice(close)
+                .highPrice(close)
+                .lowPrice(close)
+                .add();
+    }
+
+    private static class FixedSwingIndicator extends AbstractRecentSwingIndicator {
 
         private final List<Integer> latestSwingIndexes;
 
@@ -206,6 +291,37 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
                 return latestSwingIndexes.get(latestSwingIndexes.size() - 1);
             }
             return latestSwingIndexes.get(index);
+        }
+    }
+
+    private static final class CountingSwingIndicator extends FixedSwingIndicator {
+
+        private int detectionCount;
+
+        private CountingSwingIndicator(final Indicator<Num> priceIndicator, final int[] latestSwingIndexes) {
+            super(priceIndicator, latestSwingIndexes);
+        }
+
+        @Override
+        protected int detectLatestSwingIndex(final int index) {
+            detectionCount++;
+            return super.detectLatestSwingIndex(index);
+        }
+
+        private int detectionCount() {
+            return detectionCount;
+        }
+    }
+
+    private static final class UntrackedBarSeries extends BaseBarSeries {
+
+        private UntrackedBarSeries() {
+            super("untracked", new ArrayList<>());
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return -1L;
         }
     }
 
