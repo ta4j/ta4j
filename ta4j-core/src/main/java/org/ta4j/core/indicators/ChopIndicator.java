@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
  */
-public class ChopIndicator extends CachedIndicator<Num> {
+public final class ChopIndicator extends CachedIndicator<Num> {
 
     private final int ciTimeFrame;
     private final ReturnRepresentation returnRepresentation;
