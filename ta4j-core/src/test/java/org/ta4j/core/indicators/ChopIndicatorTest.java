@@ -4,8 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
@@ -98,13 +97,12 @@ public class ChopIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void rejectsInvalidConfiguration() {
         BarSeries series = representativeSeries();
 
-        assertThatNullPointerException().isThrownBy(() -> new ChopIndicator(null, 4));
-        assertThatIllegalArgumentException().isThrownBy(() -> new ChopIndicator(series, 1));
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ChopIndicator(series, 4, (ReturnRepresentation) null));
-        assertThatIllegalArgumentException().isThrownBy(() -> new ChopIndicator(series, 4, ReturnRepresentation.LOG));
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new ChopIndicator(series, 4, ReturnRepresentation.MULTIPLICATIVE));
+        assertThrows(NullPointerException.class, () -> new ChopIndicator(null, 4));
+        assertThrows(IllegalArgumentException.class, () -> new ChopIndicator(series, 1));
+        assertThrows(IllegalArgumentException.class, () -> new ChopIndicator(series, 4, (ReturnRepresentation) null));
+        assertThrows(IllegalArgumentException.class, () -> new ChopIndicator(series, 4, ReturnRepresentation.LOG));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ChopIndicator(series, 4, ReturnRepresentation.MULTIPLICATIVE));
     }
 
     @SuppressWarnings("deprecation")
