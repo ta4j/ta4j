@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.IndicatorConstructorSelectionTestIndicator;
 import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.ParabolicSarIndicator;
@@ -202,6 +203,18 @@ public class IndicatorSerializationTest {
         Indicator<?> reconstructed = Indicator.fromJson(series, json);
 
         assertThat(reconstructed).isInstanceOf(IndicatorConstructorSelectionTestIndicator.class);
+        assertThat(reconstructed.toDescriptor()).isEqualTo(original.toDescriptor());
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void deserializeSkipsSameArityConstructorWithIncompatibleEnumParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 9, 12, 10, 13, 11, 14).build();
+        ChopIndicator original = new ChopIndicator(series, 4, 37);
+
+        Indicator<?> reconstructed = Indicator.fromJson(series, original.toJson());
+
+        assertThat(reconstructed).isInstanceOf(ChopIndicator.class);
         assertThat(reconstructed.toDescriptor()).isEqualTo(original.toDescriptor());
     }
 
