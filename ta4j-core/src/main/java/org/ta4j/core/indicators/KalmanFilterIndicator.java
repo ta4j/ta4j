@@ -135,8 +135,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
                 .one()
                 .minus(kalmanGain)
                 .multipliedBy(predictedErrorCovariance);
-        boolean stateValid = Num.isFinite(estimate) && Num.isFinite(errorCovariance)
-                && !errorCovariance.isNegative();
+        boolean stateValid = Num.isFinite(estimate) && Num.isFinite(errorCovariance) && !errorCovariance.isNegative();
         return new KalmanState(estimate, errorCovariance, stateValid, stateValid);
     }
 

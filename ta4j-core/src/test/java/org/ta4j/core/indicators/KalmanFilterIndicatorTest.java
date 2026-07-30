@@ -135,8 +135,8 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     @Test
     public void arithmeticOverflowDoesNotPermanentlyPoisonLaterState() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 0).build();
-        FixedIndicator<Num> source = new FixedIndicator<>(series, numOf(Double.MAX_VALUE),
-                numOf(-Double.MAX_VALUE), numOf(10));
+        FixedIndicator<Num> source = new FixedIndicator<>(series, numOf(Double.MAX_VALUE), numOf(-Double.MAX_VALUE),
+                numOf(10));
         KalmanFilterIndicator filter = new KalmanFilterIndicator(source);
 
         if (numFactory == org.ta4j.core.num.DoubleNumFactory.getInstance()) {
