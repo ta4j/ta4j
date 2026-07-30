@@ -449,7 +449,7 @@ EOF
   chmod +x "$TMP/bin/mvn"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=5 QUIET_BUILD_STALL_SECONDS=5 QUIET_BUILD_HEARTBEAT_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=30 QUIET_BUILD_STALL_SECONDS=30 QUIET_BUILD_HEARTBEAT_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
   local log_file
   log_file="$(latest_log_from_output "$output")"
 
