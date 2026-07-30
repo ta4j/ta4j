@@ -7,7 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -39,8 +42,18 @@ class KinematicKalmanForecastExampleTest {
         try (InputStream input = KinematicKalmanForecastExampleTest.class.getClassLoader()
                 .getResourceAsStream(KinematicKalmanForecastExample.SP500_RESOURCE)) {
             assertNotNull(input, "S&P 500 resource should be available");
-            assertEquals(FIXTURE_SHA256, HexFormat.of().formatHex(digest.digest(input.readAllBytes())));
+            assertEquals(FIXTURE_SHA256, normalizedTextSha256(digest, input));
         }
+    }
+
+    @Test
+    void fixtureDigestIgnoresTransportLineEndingsAndBom() throws Exception {
+        byte[] unix = "{\n  \"name\": \"^GSPC\"\n}\n".getBytes(StandardCharsets.UTF_8);
+        byte[] windowsWithBom = "\uFEFF{\r\n  \"name\": \"^GSPC\"\r\n}\r\n".getBytes(StandardCharsets.UTF_8);
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+        assertEquals(normalizedTextSha256(digest, new ByteArrayInputStream(unix)),
+                normalizedTextSha256(digest, new ByteArrayInputStream(windowsWithBom)));
     }
 
     @Test
@@ -102,5 +115,12 @@ class KinematicKalmanForecastExampleTest {
         KinematicKalmanForecastExample.ForecastEvaluation fourWeek = evaluations.get(1);
         assertTrue(fourWeek.conformalCoverage() >= 0 && fourWeek.conformalCoverage() <= 1);
         assertTrue(fourWeek.conformalNormalizedWidth() >= fourWeek.analyticNormalizedWidth());
+    }
+
+    private static String normalizedTextSha256(MessageDigest digest, InputStream input) throws IOException {
+        String text = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        String withoutBom = text.startsWith("\uFEFF") ? text.substring(1) : text;
+        String normalized = withoutBom.replace("\r\n", "\n").replace('\r', '\n');
+        return HexFormat.of().formatHex(digest.digest(normalized.getBytes(StandardCharsets.UTF_8)));
     }
 }
