@@ -9,11 +9,14 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
 import java.util.Arrays;
 import java.util.List;
@@ -96,6 +99,82 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void testUnstableBars() {
         KalmanFilterIndicator kalmanIndicator = new KalmanFilterIndicator(closePrice);
         Assert.assertEquals(0, kalmanIndicator.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void dynamicNoiseUsesTheExactSourceIndex() {
+        BarSeries series = closePrice.getBarSeries();
+        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numOf(100), numOf(1e-4),
+                numOf(1e-4), numOf(1e-4), numOf(1e-4));
+        FixedIndicator<Num> measurementNoise = new FixedIndicator<>(series, numOf(1e-3), numOf(1e-3), numOf(1e-3),
+                numOf(1e-3), numOf(1e-3), numOf(1e-3));
+        KalmanFilterIndicator dynamic = new KalmanFilterIndicator(closePrice, new KalmanNoiseIndicator(processNoise),
+                new KalmanNoiseIndicator(measurementNoise));
+        KalmanFilterIndicator baseline = new KalmanFilterIndicator(closePrice);
+
+        Assert.assertEquals(baseline.getValue(0).doubleValue(), dynamic.getValue(0).doubleValue(), 1e-12);
+        Assert.assertTrue(
+                dynamic.getValue(1).minus(numOf(15)).abs().isLessThan(baseline.getValue(1).minus(numOf(15)).abs()));
+    }
+
+    @Test
+    public void invalidDynamicNoiseDoesNotContaminateLaterState() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        Indicator<Num> source = new ClosePriceIndicator(series);
+        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numOf(0), numOf(1e-4));
+        KalmanFilterIndicator dynamic = new KalmanFilterIndicator(source, new KalmanNoiseIndicator(processNoise),
+                KalmanNoiseIndicator.constant(series, 1e-3));
+
+        Assert.assertTrue(dynamic.getValue(1).isNaN());
+
+        BarSeries comparisonSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 30).build();
+        KalmanFilterIndicator comparison = new KalmanFilterIndicator(new ClosePriceIndicator(comparisonSeries));
+        Assert.assertEquals(comparison.getValue(1).doubleValue(), dynamic.getValue(2).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void rejectsInvalidStaticNoiseAndDifferentSeries() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 0, 1e-3));
+        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, 1e-4, -1));
+
+        BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        KalmanNoiseIndicator otherNoise = KalmanNoiseIndicator.constant(otherSeries, 1e-4);
+        Assert.assertThrows(IllegalArgumentException.class, () -> new KalmanFilterIndicator(closePrice, otherNoise,
+                KalmanNoiseIndicator.constant(closePrice.getBarSeries(), 1e-3)));
+    }
+
+    @Test
+    public void dynamicDescriptorAndJsonRoundTrip() {
+        BarSeries series = closePrice.getBarSeries();
+        KalmanFilterIndicator original = new KalmanFilterIndicator(closePrice,
+                KalmanNoiseIndicator.constant(series, 1e-4), KalmanNoiseIndicator.constant(series, 1e-3));
+
+        Indicator<?> descriptorCopy = IndicatorSerialization.fromDescriptor(series, original.toDescriptor());
+        Indicator<?> jsonCopy = Indicator.fromJson(series, original.toJson());
+
+        Assert.assertEquals(original.toDescriptor(), descriptorCopy.toDescriptor());
+        Assert.assertEquals(original.toDescriptor(), jsonCopy.toDescriptor());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Assert.assertEquals(original.getValue(i), descriptorCopy.getValue(i));
+            Assert.assertEquals(original.getValue(i), jsonCopy.getValue(i));
+        }
+    }
+
+    @Test
+    public void legacyNumericNoiseDescriptorRemainsReadable() {
+        ComponentDescriptor legacyDescriptor = ComponentDescriptor.builder()
+                .withType("KalmanFilterIndicator")
+                .withParameters(java.util.Map.of("processNoise", "0.0001", "measurementNoise", "0.001"))
+                .addComponent(closePrice.toDescriptor())
+                .build();
+
+        Indicator<?> restored = IndicatorSerialization.fromDescriptor(closePrice.getBarSeries(), legacyDescriptor);
+        KalmanFilterIndicator expected = new KalmanFilterIndicator(closePrice);
+
+        Assert.assertTrue(restored instanceof KalmanFilterIndicator);
+        for (int i = closePrice.getBarSeries().getBeginIndex(); i <= closePrice.getBarSeries().getEndIndex(); i++) {
+            Assert.assertEquals(expected.getValue(i), restored.getValue(i));
+        }
     }
 
     @Test

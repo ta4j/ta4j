@@ -229,6 +229,7 @@ compare it with the realized value at `i + horizon`.
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.indicators.KinematicKalmanFilterIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
@@ -244,6 +245,7 @@ import org.ta4j.core.indicators.forecast.state.OnlineChangePointForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
 
@@ -255,6 +257,29 @@ ForecastProjectionIndicator nextCloseForecast = new MonteCarloPriceForecastIndic
 Indicator<Num> medianNextClose = nextCloseForecast.median();
 Indicator<Num> downsideNextClose = nextCloseForecast.quantile(0.05);
 ```
+
+For price-level smoothing and extrapolation, the kinematic Kalman API keeps the
+corrected same-bar estimate separate from its forward distribution:
+
+```java
+Indicator<Num> closePrice = new ClosePriceIndicator(series);
+KinematicKalmanFilterIndicator smoothedPrice =
+        new KinematicKalmanFilterIndicator(closePrice, 1e-4, 1e-3);
+
+int i = series.getEndIndex();
+Num correctedAtI = smoothedPrice.getValue(i);
+ForecastProjectionIndicator threeBarsAhead = smoothedPrice.forecast(3);
+Forecast distributionAtI = threeBarsAhead.getValue(i);
+Indicator<Num> expectedPriceAtIPlus3 = threeBarsAhead.mean();
+```
+
+Each projection has one fixed positive horizon. Multiple projections can share
+the filter's cached position/velocity state, and `getValue(i)` never reads bars
+after `i`. The analytic variance describes the future observed price: it
+includes propagated state uncertainty, accumulated process noise, and
+measurement noise. For time-varying Q/R, wrap same-series variance indicators
+with `KalmanNoiseIndicator`; non-finite or non-positive values make only that
+decision index unavailable.
 
 Forecasts are estimates, not guarantees. Use deterministic seeds and explicit
 projection indicators so research runs can be repeated and evaluated against

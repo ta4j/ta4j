@@ -18,7 +18,9 @@
  * {@link OnlineChangePointForecastState} applies the same composition pattern
  * to window-qualified recent-change probability and immutable, typed
  * {@link RunLengthPosterior} summaries without exposing the filter's internal
- * arrays.
+ * arrays. {@link KinematicKalmanForecastState} publishes a compact symmetric
+ * position/velocity covariance plus decision-index noise for causal price-level
+ * projections without adopting the return-specific state contract.
  *
  * @since 0.22.9
  */
