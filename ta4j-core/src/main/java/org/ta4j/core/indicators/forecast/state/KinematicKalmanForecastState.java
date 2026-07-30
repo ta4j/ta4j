@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.forecast.state;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.ta4j.core.num.NaN;
@@ -68,9 +69,11 @@ public record KinematicKalmanForecastState(int index, int observationCount, bool
                     "positionVelocityCovariance");
             velocityVariance = requireNonNegative(normalize(velocityVariance, numFactory, "velocityVariance"),
                     "velocityVariance");
-            Num covarianceDeterminant = positionVariance.multipliedBy(velocityVariance)
-                    .minus(positionVelocityCovariance.multipliedBy(positionVelocityCovariance));
-            if (!Num.isFinite(covarianceDeterminant) || covarianceDeterminant.isNegative()) {
+            BigDecimal varianceProduct = positionVariance.bigDecimalValue()
+                    .multiply(velocityVariance.bigDecimalValue());
+            BigDecimal covarianceSquare = positionVelocityCovariance.bigDecimalValue()
+                    .multiply(positionVelocityCovariance.bigDecimalValue());
+            if (varianceProduct.compareTo(covarianceSquare) < 0) {
                 throw new IllegalArgumentException("covariance must be positive semidefinite");
             }
             processNoise = requirePositive(normalize(processNoise, numFactory, "processNoise"), "processNoise");
