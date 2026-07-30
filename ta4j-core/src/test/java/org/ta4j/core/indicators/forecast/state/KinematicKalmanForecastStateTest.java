@@ -81,6 +81,29 @@ public class KinematicKalmanForecastStateTest extends AbstractIndicatorTest<Kine
                         DoubleNumFactory.getInstance().numOf(0.1), DoubleNumFactory.getInstance().numOf(0.2)));
     }
 
+    @Test
+    public void covarianceValidationRemainsCorrectWhenProductsUnderflowOrOverflow() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        Num zero = doubleFactory.zero();
+        Num processNoise = doubleFactory.numOf(0.1);
+        Num measurementNoise = doubleFactory.numOf(0.2);
+        Num tinyVariance = doubleFactory.numOf(1e-200);
+        Num impossibleTinyCovariance = doubleFactory.numOf(2e-200);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> KinematicKalmanForecastState.stable(0, 1, doubleFactory.one(), zero, tinyVariance,
+                        impossibleTinyCovariance, tinyVariance, processNoise, measurementNoise));
+
+        KinematicKalmanForecastState tinyValid = KinematicKalmanForecastState.stable(0, 1, doubleFactory.one(), zero,
+                tinyVariance, tinyVariance, tinyVariance, processNoise, measurementNoise);
+        assertTrue(tinyValid.isStable());
+
+        Num hugeVariance = doubleFactory.numOf(Double.MAX_VALUE);
+        KinematicKalmanForecastState hugeValid = KinematicKalmanForecastState.stable(0, 1, doubleFactory.one(), zero,
+                hugeVariance, zero, hugeVariance, processNoise, measurementNoise);
+        assertTrue(hugeValid.isStable());
+    }
+
     private KinematicKalmanForecastState stable(int index, int observationCount, Number position, Number velocity,
             Number positionVariance, Number covariance, Number velocityVariance, Number processNoise,
             Number measurementNoise) {
