@@ -60,3 +60,10 @@ Worktree lifecycle and PRD/checklist process conventions live in `scripts/AGENTS
 - Prefer explicit local variable types.
 - Use `var` only when the type is immediately and unambiguously obvious from the right-hand side.
 - Do not use `var` for method-return values unless the type is trivial and fully clear from constructor/factory literal context.
+
+## 9) Test runtime discipline (MUST)
+
+- Use the full gate's Surefire class timings to identify the slowest five classes before optimizing and retain comparable before/after evidence for every targeted class.
+- During iteration, run focused `mvn -pl <module> -am -Dtest=<TestClass> test` commands without `clean`; reserve the clean full wrapper for the candidate final patch.
+- Keep one exhaustive owner for a meaningful numeric, history, or permutation matrix. Use representative nominal, boundary, invalid, and interaction cases in neighboring tests rather than repeating the full sweep.
+- Replace deterministic waits with package-private, production-default-preserving seams; never increase timeouts or skip tests merely to improve wall-clock time.
