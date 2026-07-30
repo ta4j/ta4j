@@ -88,7 +88,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         }
 
         KalmanState state = stateIndicator().getValue(index);
-        if (!state.validMeasurement() || !Num.isFinite(state.estimate())) {
+        if (!state.currentValuesValid()) {
             return NaN.NaN;
         }
 
@@ -124,7 +124,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
 
     private KalmanState initialState(Num measurement, boolean validMeasurement) {
         Num estimate = validMeasurement ? measurement : getBarSeries().numFactory().zero();
-        return new KalmanState(estimate, getBarSeries().numFactory().one(), validMeasurement);
+        return new KalmanState(estimate, getBarSeries().numFactory().one(), true, validMeasurement);
     }
 
     private KalmanState correct(KalmanState previous, Num measurement, Num processNoise, Num measurementNoise) {
@@ -135,7 +135,9 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
                 .one()
                 .minus(kalmanGain)
                 .multipliedBy(predictedErrorCovariance);
-        return new KalmanState(estimate, errorCovariance, true);
+        boolean stateValid = Num.isFinite(estimate) && Num.isFinite(errorCovariance)
+                && !errorCovariance.isNegative();
+        return new KalmanState(estimate, errorCovariance, stateValid, stateValid);
     }
 
     private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
@@ -159,7 +161,10 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
 
             KalmanState previous = getValue(index - 1);
             if (!validMeasurement) {
-                return new KalmanState(previous.estimate(), previous.errorCovariance(), false);
+                return new KalmanState(previous.estimate(), previous.errorCovariance(), previous.stateValid(), false);
+            }
+            if (!previous.stateValid()) {
+                return correct(initialState(current, true), current, processNoise, measurementNoise);
             }
             return correct(previous, current, processNoise, measurementNoise);
         }
@@ -170,6 +175,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private record KalmanState(Num estimate, Num errorCovariance, boolean validMeasurement) {
+    private record KalmanState(Num estimate, Num errorCovariance, boolean stateValid, boolean currentValuesValid) {
     }
 }
