@@ -121,7 +121,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void invalidDynamicNoiseDoesNotContaminateLaterState() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
         Indicator<Num> source = new ClosePriceIndicator(series);
-        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numOf(0), numOf(1e-4));
+        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numFactory.zero(), numOf(1e-4));
         KalmanFilterIndicator dynamic = new KalmanFilterIndicator(source, new KalmanNoiseIndicator(processNoise),
                 KalmanNoiseIndicator.constant(series, 1e-3));
 

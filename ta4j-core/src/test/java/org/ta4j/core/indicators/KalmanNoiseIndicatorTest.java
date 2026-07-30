@@ -39,7 +39,7 @@ public class KalmanNoiseIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     @Test
     public void invalidDynamicValuesRemainUnavailable() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
-        FixedIndicator<Num> source = new FixedIndicator<>(series, numOf(-1), numOf(0), NaN.NaN, numOf(2));
+        FixedIndicator<Num> source = new FixedIndicator<>(series, numOf(-1), numFactory.zero(), NaN.NaN, numOf(2));
         KalmanNoiseIndicator noise = new KalmanNoiseIndicator(source);
 
         assertTrue(noise.getValue(0).isNaN());

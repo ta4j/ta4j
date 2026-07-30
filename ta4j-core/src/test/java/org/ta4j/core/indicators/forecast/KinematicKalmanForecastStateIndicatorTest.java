@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class KinematicKalmanForecastStateIndicatorTest
@@ -133,6 +134,26 @@ public class KinematicKalmanForecastStateIndicatorTest
     }
 
     @Test
+    public void roundingInducedNonPositiveSemidefiniteCovarianceIsUnavailableAndRecovers() {
+        BarSeries series = series(10, 20, 30, 40, 50, 60);
+        FixedIndicator<Num> processNoise = values(series, 1.2323044056034407e-14, 7103.474293621034, 257698.81868602187,
+                1257589254.8754091, 7.570601618500834e-11, PROCESS_NOISE);
+        FixedIndicator<Num> measurementNoise = values(series, 860996637233.9683, 0.0010219796485463884,
+                0.00002937051715394565, 2.5421986816576946e-15, 0.11803949640282463, MEASUREMENT_NOISE);
+        KinematicKalmanForecastStateIndicator state = new KinematicKalmanForecastStateIndicator(
+                new ClosePriceIndicator(series), new KalmanNoiseIndicator(processNoise),
+                new KalmanNoiseIndicator(measurementNoise));
+
+        KinematicKalmanForecastState roundedState = state.getValue(4);
+        KinematicKalmanForecastState recovered = state.getValue(5);
+
+        assertFalse(roundedState.isStable());
+        assertEquals(5, roundedState.observationCount());
+        assertTrue(recovered.isStable());
+        assertEquals(1, recovered.observationCount());
+    }
+
+    @Test
     public void reverseReadsReuseCachedStateHistory() {
         int barCount = 128;
         double[] prices = new double[barCount];
@@ -220,7 +241,7 @@ public class KinematicKalmanForecastStateIndicatorTest
             }
             for (int task = 0; task < reads.size(); task++) {
                 int index = Math.floorMod(task * 37, prices.length);
-                assertEquals(expectedStates.get(index), reads.get(task).get());
+                assertEquals(expectedStates.get(index), reads.get(task).get(5, TimeUnit.SECONDS));
             }
         } finally {
             executor.shutdownNow();

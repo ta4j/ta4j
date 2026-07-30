@@ -52,7 +52,7 @@ public class KinematicKalmanFilterIndicatorTest extends AbstractIndicatorTest<In
     public void dynamicInvalidNoiseMakesSameBarFilterAndForecastUnavailable() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
         Indicator<Num> source = new ClosePriceIndicator(series);
-        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numOf(0), numOf(1e-4));
+        FixedIndicator<Num> processNoise = new FixedIndicator<>(series, numOf(1e-4), numFactory.zero(), numOf(1e-4));
         KinematicKalmanFilterIndicator filter = new KinematicKalmanFilterIndicator(source,
                 new KalmanNoiseIndicator(processNoise), KalmanNoiseIndicator.constant(series, 1e-3));
 

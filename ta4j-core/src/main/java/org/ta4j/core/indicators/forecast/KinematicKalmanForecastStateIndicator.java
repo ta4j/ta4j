@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.forecast;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
@@ -59,7 +60,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
      */
     public KinematicKalmanForecastStateIndicator(Indicator<Num> indicator, double processNoise,
             double measurementNoise) {
-        this(indicator, KalmanNoiseIndicator.constant(requireIndicator(indicator).getBarSeries(), processNoise),
+        this(indicator,
+                KalmanNoiseIndicator.constant(
+                        Objects.requireNonNull(indicator, "indicator must not be null").getBarSeries(), processNoise),
                 KalmanNoiseIndicator.constant(indicator.getBarSeries(), measurementNoise));
     }
 
@@ -170,13 +173,14 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
 
     private static boolean isUsableState(Num position, Num velocity, Num positionVariance, Num covariance,
             Num velocityVariance) {
-        return Num.isFinite(position) && Num.isFinite(velocity) && Num.isFinite(positionVariance)
-                && !positionVariance.isNegative() && Num.isFinite(covariance) && Num.isFinite(velocityVariance)
-                && !velocityVariance.isNegative();
-    }
-
-    private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
-        return Objects.requireNonNull(indicator, "indicator must not be null");
+        if (!Num.isFinite(position) || !Num.isFinite(velocity) || !Num.isFinite(positionVariance)
+                || positionVariance.isNegative() || !Num.isFinite(covariance) || !Num.isFinite(velocityVariance)
+                || velocityVariance.isNegative()) {
+            return false;
+        }
+        BigDecimal varianceProduct = positionVariance.bigDecimalValue().multiply(velocityVariance.bigDecimalValue());
+        BigDecimal covarianceSquare = covariance.bigDecimalValue().multiply(covariance.bigDecimalValue());
+        return varianceProduct.compareTo(covarianceSquare) >= 0;
     }
 
     private final class StateIndicator extends RecursiveCachedIndicator<State> {
