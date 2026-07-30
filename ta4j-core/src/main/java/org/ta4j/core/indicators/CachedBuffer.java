@@ -417,6 +417,15 @@ class CachedBuffer<T> {
         }
     }
 
+    int getCapacity() {
+        lock.readLock().lock();
+        try {
+            return capacity;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     boolean isWriteLockedByCurrentThread() {
         return lock.isWriteLockedByCurrentThread();
     }
@@ -647,6 +656,8 @@ class CachedBuffer<T> {
     }
 
     private void clearInternal() {
+        capacity = Math.min(DEFAULT_UNBOUNDED_CAPACITY, maximumCapacity);
+        buffer = new Object[capacity];
         firstCachedIndex = -1;
         highestResultIndex = -1;
     }

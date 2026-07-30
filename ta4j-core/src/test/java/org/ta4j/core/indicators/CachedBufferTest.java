@@ -102,6 +102,29 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testFullInvalidationReleasesExpandedStorageAndRegrowsLazily() {
+        CachedBuffer<Object> buffer = new CachedBuffer<>(Integer.MAX_VALUE);
+        for (int i = 0; i < 600; i++) {
+            buffer.put(i, new Object());
+        }
+        assertEquals(1024, buffer.getCapacity());
+
+        buffer.invalidateFrom(0);
+
+        assertEquals(512, buffer.getCapacity());
+        assertEquals(-1, buffer.getFirstCachedIndex());
+        assertEquals(-1, buffer.getHighestResultIndex());
+        for (int i = 0; i < 600; i++) {
+            assertFalse(buffer.isCached(i));
+        }
+
+        for (int i = 0; i < 600; i++) {
+            buffer.put(i, new Object());
+        }
+        assertEquals(1024, buffer.getCapacity());
+    }
+
+    @Test
     public void testWriteStampFlipsDuringWriteLockAndReturnsEvenAfterwards() {
         CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
 
