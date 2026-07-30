@@ -202,7 +202,7 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
                         numFactory.one(), processNoise, measurementNoise, 0, true, false);
             }
 
-            State previous = getValue(index - 1);
+            State previous = super.getValue(index - 1);
             if (!valid) {
                 return new State(previous.position(), previous.velocity(), previous.positionVariance(),
                         previous.positionVelocityCovariance(), previous.velocityVariance(), processNoise,
