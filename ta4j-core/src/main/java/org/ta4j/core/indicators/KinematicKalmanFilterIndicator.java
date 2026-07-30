@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.forecast.KinematicKalmanForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.KinematicKalmanPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.state.ForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.KinematicKalmanForecastState;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -26,7 +27,7 @@ import org.ta4j.core.num.Num;
  */
 public final class KinematicKalmanFilterIndicator extends CachedIndicator<Num> {
 
-    private final KinematicKalmanForecastStateIndicator stateIndicator;
+    private final ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator;
 
     /**
      * Creates a filter using the scalar Kalman defaults.
@@ -69,7 +70,7 @@ public final class KinematicKalmanFilterIndicator extends CachedIndicator<Num> {
      * @param stateIndicator kinematic state source
      * @since 0.23.1
      */
-    public KinematicKalmanFilterIndicator(KinematicKalmanForecastStateIndicator stateIndicator) {
+    public KinematicKalmanFilterIndicator(ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator) {
         super(Objects.requireNonNull(stateIndicator, "stateIndicator must not be null"));
         this.stateIndicator = stateIndicator;
     }

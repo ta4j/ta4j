@@ -21,8 +21,8 @@ import org.ta4j.core.num.Num;
  */
 public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
-    private final KalmanNoiseIndicator processNoiseIndicator;
-    private final KalmanNoiseIndicator measurementNoiseIndicator;
+    private final Indicator<Num> processNoiseIndicator;
+    private final Indicator<Num> measurementNoiseIndicator;
     private transient volatile StateIndicator stateIndicator;
 
     /**

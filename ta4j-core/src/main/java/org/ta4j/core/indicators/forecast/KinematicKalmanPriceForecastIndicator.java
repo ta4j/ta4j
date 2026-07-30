@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
+import org.ta4j.core.indicators.forecast.state.ForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.KinematicKalmanForecastState;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -40,7 +41,7 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
     private static final String SUPPORT_ASSUMPTION = "linear-gaussian-kalman-observation";
     private static final NormalDistribution STANDARD_NORMAL = new NormalDistribution(0d, 1d);
 
-    private final KinematicKalmanForecastStateIndicator stateIndicator;
+    private final ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator;
     private final int horizon;
 
     /**
@@ -49,7 +50,7 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
      * @param stateIndicator kinematic state source
      * @since 0.23.1
      */
-    public KinematicKalmanPriceForecastIndicator(KinematicKalmanForecastStateIndicator stateIndicator) {
+    public KinematicKalmanPriceForecastIndicator(ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator) {
         this(stateIndicator, 1);
     }
 
@@ -60,7 +61,8 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
      * @param horizon        positive horizon in bars
      * @since 0.23.1
      */
-    public KinematicKalmanPriceForecastIndicator(KinematicKalmanForecastStateIndicator stateIndicator, int horizon) {
+    public KinematicKalmanPriceForecastIndicator(ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator,
+            int horizon) {
         super(Objects.requireNonNull(stateIndicator, "stateIndicator must not be null"));
         if (horizon < 1) {
             throw new IllegalArgumentException("horizon must be > 0");
