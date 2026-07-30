@@ -1413,6 +1413,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
+- **[CachedIndicatorBenchmark](ta4j-examples/src/main/java/ta4jexamples/indicators/CachedIndicatorBenchmark.java)** - Compare bounded forward eviction, reverse traversal, concurrent hits, and mutable last-bar cache performance
 
 ### Charting Examples
 - **[IndicatorsToChart](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java)** - Visualize indicators overlaid on price charts

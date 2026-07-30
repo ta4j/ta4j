@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import java.io.Serializable;
+import java.io.Serial;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -30,6 +31,27 @@ import org.ta4j.core.num.NumFactory;
  * </p>
  */
 public interface BarSeries extends Serializable {
+
+    /**
+     * Immutable cache-relevant view of changes to a bar series.
+     *
+     * @param revision             current published-data revision, or {@code -1}
+     *                             when revision tracking is unsupported
+     * @param earliestChangedIndex earliest index whose published value changed
+     *                             after the requested revision, or {@code -1} when
+     *                             no published value changed
+     * @param removedThroughIndex  greatest removed series index, or {@code -1} when
+     *                             no index has been removed
+     * @param maximumBarCount      current maximum number of retained bars
+     * @param endIndex             current series end index
+     * @since 0.23.1
+     */
+    record BarSeriesChangeSnapshot(long revision, int earliestChangedIndex, int removedThroughIndex,
+            int maximumBarCount, int endIndex) implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+    }
 
     /**
      * @return factory that generates numbers usable in this BarSeries
@@ -125,6 +147,28 @@ public interface BarSeries extends Serializable {
      */
     default long getBarHistoryRevision() {
         return -1L;
+    }
+
+    /**
+     * Returns a cache-relevant snapshot of series changes after the supplied
+     * published-data revision.
+     *
+     * <p>
+     * Implementations that track exact changed indices should override this method.
+     * The default remains source-compatible with third-party series and
+     * conservatively reports index {@code 0} when a tracked revision changed.
+     * Implementations that return {@code -1} from {@link #getBarHistoryRevision()}
+     * retain the legacy best-effort cache behavior.
+     *
+     * @param sinceRevision last revision observed by the caller
+     * @return current change snapshot
+     * @since 0.23.1
+     */
+    default BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+        long currentRevision = getBarHistoryRevision();
+        int earliestChangedIndex = currentRevision >= 0L && currentRevision != sinceRevision ? 0 : -1;
+        return new BarSeriesChangeSnapshot(currentRevision, earliestChangedIndex, getRemovedBarsCount() - 1,
+                getMaximumBarCount(), getEndIndex());
     }
 
     /**

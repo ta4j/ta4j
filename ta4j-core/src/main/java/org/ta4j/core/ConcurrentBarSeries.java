@@ -261,6 +261,21 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     /**
      * {@inheritDoc}
      *
+     * @since 0.23.1
+     */
+    @Override
+    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        this.readLock.lock();
+        try {
+            return super.getBarSeriesChangeSnapshot(sinceRevision);
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.22.9
      */
     @Override

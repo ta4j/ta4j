@@ -10,6 +10,7 @@ import java.util.function.IntFunction;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -55,6 +56,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
     private final long lastBarWaitTimeoutMs;
+    private final Object seriesChangeLock = new Object();
+    private long observedBarHistoryRevision;
+    private int observedRemovedThroughIndex;
+    private int observedMaximumBarCount;
+    private int observedEndIndex;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -106,16 +112,24 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private CachedIndicator(Config config) {
         super(config.series());
-        this.cache = new CachedBuffer<>(config.cacheLimit());
+        BarSeriesChangeSnapshot snapshot = config.snapshot();
+        this.cache = new CachedBuffer<>(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
+        this.observedBarHistoryRevision = snapshot.revision();
+        this.observedRemovedThroughIndex = snapshot.removedThroughIndex();
+        this.observedMaximumBarCount = snapshot.maximumBarCount();
+        this.observedEndIndex = snapshot.endIndex();
     }
 
     private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
         if (lastBarWaitTimeoutMs <= 0) {
             throw new IllegalArgumentException("Last-bar wait timeout must be positive");
         }
-        int limit = series.getMaximumBarCount();
-        return new Config(series, limit, lastBarWaitTimeoutMs);
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
+        if (snapshot.maximumBarCount() <= 0) {
+            throw new IllegalArgumentException("Maximum bar count must be strictly positive");
+        }
+        return new Config(series, snapshot, lastBarWaitTimeoutMs);
     }
 
     /**
@@ -127,7 +141,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
     }
 
-    private record Config(BarSeries series, int cacheLimit, long lastBarWaitTimeoutMs) {
+    private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {
     }
 
     private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
@@ -143,8 +157,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int endIndex = series.getEndIndex();
+        BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
+        final int removedBarsCount = snapshot.removedThroughIndex() + 1;
+        final int endIndex = snapshot.endIndex();
 
         T result;
         if (index < removedBarsCount) {
@@ -169,6 +184,79 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
+    }
+
+    /**
+     * Reconciles cached state with the latest series revision, retained window, and
+     * capacity before a read or recursive prefill.
+     *
+     * @param series indicator bar series
+     * @return the synchronized series snapshot
+     * @since 0.23.1
+     */
+    protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
+        boolean reconciliationRequired = false;
+        while (true) {
+            long sinceRevision;
+            int sinceRemovedThroughIndex;
+            int sinceMaximumBarCount;
+            int sinceEndIndex;
+            synchronized (seriesChangeLock) {
+                sinceRevision = observedBarHistoryRevision;
+                sinceRemovedThroughIndex = observedRemovedThroughIndex;
+                sinceMaximumBarCount = observedMaximumBarCount;
+                sinceEndIndex = observedEndIndex;
+            }
+
+            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+            synchronized (seriesChangeLock) {
+                if (!reconciliationRequired && snapshot.revision() == observedBarHistoryRevision
+                        && snapshot.removedThroughIndex() == observedRemovedThroughIndex
+                        && snapshot.maximumBarCount() == observedMaximumBarCount
+                        && snapshot.endIndex() == observedEndIndex) {
+                    return snapshot;
+                }
+            }
+
+            int invalidateFrom = snapshot.earliestChangedIndex();
+            int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
+            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
+
+            if (snapshot.removedThroughIndex() != sinceRemovedThroughIndex || invalidateFrom == 0) {
+                clearFirstBarCache();
+            }
+
+            int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
+            highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+
+            synchronized (seriesChangeLock) {
+                if (observedBarHistoryRevision == sinceRevision
+                        && observedRemovedThroughIndex == sinceRemovedThroughIndex
+                        && observedMaximumBarCount == sinceMaximumBarCount && observedEndIndex == sinceEndIndex) {
+                    observedBarHistoryRevision = snapshot.revision();
+                    observedRemovedThroughIndex = snapshot.removedThroughIndex();
+                    observedMaximumBarCount = snapshot.maximumBarCount();
+                    observedEndIndex = snapshot.endIndex();
+                    return snapshot;
+                }
+            }
+            reconciliationRequired = true;
+        }
+    }
+
+    private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
+        synchronized (lastBarLock) {
+            boolean cachedIndexChangedRole = lastBarCachedIndex >= 0 && lastBarCachedIndex != snapshot.endIndex();
+            boolean cachedIndexInvalid = lastBarCachedIndex >= 0 && (lastBarCachedIndex < firstRetainedIndex
+                    || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
+            boolean computationInvalid = lastBarComputationInProgress
+                    && (lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
+                            || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
+            if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
+                clearLastBarCacheLocked();
+            }
+            return lastBarCachedIndex;
+        }
     }
 
     /**

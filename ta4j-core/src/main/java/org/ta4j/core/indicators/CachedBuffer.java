@@ -13,10 +13,11 @@ import java.util.function.IntFunction;
  * read-optimized locking.
  *
  * <p>
- * This class manages cached indicator results using a fixed-size circular
- * buffer. It tracks {@code firstCachedIndex} and {@code highestResultIndex} to
- * map series indices to buffer slots efficiently. When the buffer is full, the
- * oldest entries are evicted in O(1) time by advancing the head pointer.
+ * This class manages cached indicator results using a dynamically sized
+ * circular buffer. It tracks {@code firstCachedIndex} and
+ * {@code highestResultIndex} to map series indices to buffer slots efficiently.
+ * When the buffer is full, the oldest entries are evicted in O(1) time by
+ * advancing the logical range.
  *
  * <p>
  * Thread-safety is achieved via a {@link ReentrantReadWriteLock} combined with
@@ -29,10 +30,11 @@ import java.util.function.IntFunction;
  * <p>
  * Each {@code CachedBuffer} allocates an {@code Object[]} array:
  * <ul>
- * <li><strong>Bounded series</strong> (maximumBarCount set): Array size equals
- * {@code maximumBarCount}.</li>
- * <li><strong>Unbounded series</strong>: Initial capacity is 512, growing up to
- * 1,000,000 as needed.</li>
+ * <li><strong>Bounded series</strong> (maximumBarCount set): Initial capacity
+ * is at most 512 and grows lazily to the smaller of {@code maximumBarCount} and
+ * 1,000,000.</li>
+ * <li><strong>Unbounded series</strong>: Initial capacity is 512 and grows up
+ * to 1,000,000 as needed.</li>
  * </ul>
  *
  * <p>
@@ -106,11 +108,8 @@ class CachedBuffer<T> {
     /** Current allocated capacity of the buffer. */
     private int capacity;
 
-    /** The maximum capacity (from series.getMaximumBarCount()). */
-    private final int maximumCapacity;
-
-    /** Whether the buffer has a fixed maximum capacity. */
-    private final boolean bounded;
+    /** Current cache-capacity ceiling derived from series.getMaximumBarCount(). */
+    private int maximumCapacity;
 
     /** The series index of the first (oldest) cached value. */
     private int firstCachedIndex = -1;
@@ -125,9 +124,8 @@ class CachedBuffer<T> {
      *                        {@code Integer.MAX_VALUE} for unbounded
      */
     CachedBuffer(int maximumBarCount) {
-        this.bounded = maximumBarCount != Integer.MAX_VALUE;
-        this.maximumCapacity = bounded ? maximumBarCount : MAX_CAPACITY;
-        this.capacity = bounded ? maximumBarCount : DEFAULT_UNBOUNDED_CAPACITY;
+        this.maximumCapacity = initialMaximumCapacity(maximumBarCount);
+        this.capacity = Math.min(DEFAULT_UNBOUNDED_CAPACITY, this.maximumCapacity);
         this.buffer = new Object[capacity];
     }
 
@@ -335,13 +333,58 @@ class CachedBuffer<T> {
                     clearInternal();
                     return;
                 }
-
-                // Clear slots from index to highestResultIndex
-                for (int i = index; i <= highestResultIndex; i++) {
-                    int slot = indexToSlot(i);
-                    buffer[slot] = NOT_COMPUTED;
-                }
                 highestResultIndex = index - 1;
+            } finally {
+                onBeforeWriteLockReleased();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Reconciles the logical range and capacity with a current series snapshot.
+     *
+     * @param firstRetainedIndex first series index that remains available
+     * @param maximumBarCount    current maximum number of retained bars
+     * @param invalidateFrom     first changed index to invalidate, or {@code -1}
+     *                           when no published value changed
+     * @return highest still-cached index, or {@code -1} when empty
+     */
+    int synchronize(int firstRetainedIndex, int maximumBarCount, int invalidateFrom) {
+        lock.writeLock().lock();
+        try {
+            onWriteLockAcquired();
+            try {
+                maximumCapacity = effectiveMaximumCapacity(maximumBarCount);
+
+                if (firstCachedIndex >= 0 && firstRetainedIndex > firstCachedIndex) {
+                    if (firstRetainedIndex > highestResultIndex) {
+                        clearInternal();
+                    } else {
+                        firstCachedIndex = firstRetainedIndex;
+                    }
+                }
+
+                if (firstCachedIndex >= 0 && invalidateFrom >= 0 && invalidateFrom <= highestResultIndex) {
+                    if (invalidateFrom <= firstCachedIndex) {
+                        clearInternal();
+                    } else {
+                        highestResultIndex = invalidateFrom - 1;
+                    }
+                }
+
+                if (firstCachedIndex >= 0) {
+                    long rangeSize = (long) highestResultIndex - firstCachedIndex + 1L;
+                    if (rangeSize > maximumCapacity) {
+                        firstCachedIndex = highestResultIndex - maximumCapacity + 1;
+                    }
+                }
+
+                if (capacity > maximumCapacity) {
+                    resizeBuffer(maximumCapacity);
+                }
+                return highestResultIndex;
             } finally {
                 onBeforeWriteLockReleased();
             }
@@ -506,35 +549,16 @@ class CachedBuffer<T> {
 
         if (index > highestResultIndex) {
             // Extending forward
-            int gap = index - highestResultIndex;
-            int newSize = highestResultIndex - firstCachedIndex + 1 + gap;
-
-            if (bounded && newSize > maximumCapacity) {
-                // Need to evict oldest entries
-                int evictCount = newSize - maximumCapacity;
-                int existingCount = highestResultIndex - firstCachedIndex + 1;
-
-                if (evictCount >= existingCount) {
-                    // Evicting all existing entries due to large gap - clear and start fresh
-                    for (int i = firstCachedIndex; i <= highestResultIndex; i++) {
-                        int slot = indexToSlot(i);
-                        buffer[slot] = NOT_COMPUTED;
-                    }
-                    // Set firstCachedIndex to the new index since all old entries are evicted
-                    firstCachedIndex = index;
-                } else {
-                    // Partial eviction - clear evicted slots and advance firstCachedIndex
-                    for (int i = 0; i < evictCount; i++) {
-                        int slot = indexToSlot(firstCachedIndex + i);
-                        buffer[slot] = NOT_COMPUTED;
-                    }
-                    firstCachedIndex += evictCount;
-                }
-            } else if (!bounded && newSize > capacity) {
-                // Grow the buffer for unbounded series
-                growBuffer(newSize);
+            int previousHighestIndex = highestResultIndex;
+            long requestedRangeSize = (long) index - firstCachedIndex + 1L;
+            int newFirstIndex = requestedRangeSize > maximumCapacity ? index - maximumCapacity + 1 : firstCachedIndex;
+            if (newFirstIndex > previousHighestIndex) {
+                newFirstIndex = index;
             }
-
+            int requiredSize = index - newFirstIndex + 1;
+            ensureCapacity(requiredSize);
+            clearRange(Math.max(previousHighestIndex + 1, newFirstIndex), index - 1);
+            firstCachedIndex = Math.max(firstCachedIndex, newFirstIndex);
             highestResultIndex = index;
             int slot = indexToSlot(index);
             buffer[slot] = valueToStore;
@@ -545,25 +569,17 @@ class CachedBuffer<T> {
             buffer[slot] = valueToStore;
 
         } else {
-            // Index is before firstCachedIndex; need to expand backward.
-            // For bounded buffers, we rebuild the buffer to avoid slot corruption.
-            int newSize = highestResultIndex - index + 1;
-
-            if (bounded && newSize > maximumCapacity) {
-                // Cannot fit entire range; evict from high end
-                int evictCount = newSize - maximumCapacity;
-                highestResultIndex -= evictCount;
-                newSize = maximumCapacity;
-                // Note: highestResultIndex is now index + maximumCapacity - 1,
-                // therefore it is guaranteed to be >= index.
-            }
-
-            if (!bounded && newSize > capacity) {
-                growBuffer(newSize);
-            }
-
-            rebuildBufferForRange(index, highestResultIndex);
+            // Expand backward in place. Absolute slot mapping means an adjacent
+            // reverse read overwrites exactly the slot evicted from the high end.
+            int previousFirstIndex = firstCachedIndex;
+            long requestedRangeSize = (long) highestResultIndex - index + 1L;
+            int newHighestIndex = requestedRangeSize > maximumCapacity ? index + maximumCapacity - 1
+                    : highestResultIndex;
+            int requiredSize = newHighestIndex - index + 1;
+            ensureCapacity(requiredSize);
+            clearRange(index + 1, Math.min(previousFirstIndex - 1, newHighestIndex));
             firstCachedIndex = index;
+            highestResultIndex = newHighestIndex;
             int slot = indexToSlot(index);
             buffer[slot] = valueToStore;
         }
@@ -576,20 +592,50 @@ class CachedBuffer<T> {
     }
 
     private void growBuffer(int requiredSize) {
-        int newCapacity = Math.min(Math.max(capacity * 2, requiredSize), maximumCapacity);
+        int newCapacity = (int) Math.min(Math.max((long) capacity * 2L, requiredSize), maximumCapacity);
+        resizeBuffer(newCapacity);
+    }
+
+    private void resizeBuffer(int newCapacity) {
         Object[] newBuffer = new Object[newCapacity];
 
         // Copy existing values to new buffer using absolute slot mapping
         if (firstCachedIndex >= 0) {
-            for (int i = firstCachedIndex; i <= highestResultIndex; i++) {
+            if ((long) highestResultIndex - firstCachedIndex + 1L > newCapacity) {
+                firstCachedIndex = highestResultIndex - newCapacity + 1;
+            }
+            for (int i = firstCachedIndex;; i++) {
                 int oldSlot = indexToSlot(i);
                 int newSlot = i % newCapacity;
                 newBuffer[newSlot] = buffer[oldSlot];
+                if (i == highestResultIndex) {
+                    break;
+                }
             }
         }
 
         buffer = newBuffer;
         capacity = newCapacity;
+    }
+
+    private void clearRange(int fromIndex, int toIndex) {
+        for (int i = fromIndex; i <= toIndex; i++) {
+            buffer[indexToSlot(i)] = NOT_COMPUTED;
+            if (i == toIndex) {
+                break;
+            }
+        }
+    }
+
+    private static int effectiveMaximumCapacity(int maximumBarCount) {
+        if (maximumBarCount <= 0) {
+            throw new IllegalArgumentException("Maximum bar count must be strictly positive");
+        }
+        return initialMaximumCapacity(maximumBarCount);
+    }
+
+    private static int initialMaximumCapacity(int maximumBarCount) {
+        return maximumBarCount == Integer.MAX_VALUE ? MAX_CAPACITY : Math.min(maximumBarCount, MAX_CAPACITY);
     }
 
     /**
@@ -600,29 +646,7 @@ class CachedBuffer<T> {
         return index % capacity;
     }
 
-    /**
-     * Rebuilds the buffer for the specified inclusive range, preserving any
-     * existing cached values within the overlap and clearing others. Used when
-     * expanding backward in a bounded buffer to avoid stale slot mappings.
-     */
-    private void rebuildBufferForRange(int newFirstIndex, int newHighestIndex) {
-        Object[] newBuffer = new Object[capacity];
-        if (firstCachedIndex >= 0) {
-            int copyFrom = Math.max(newFirstIndex, firstCachedIndex);
-            int copyTo = Math.min(newHighestIndex, highestResultIndex);
-            for (int i = copyFrom; i <= copyTo; i++) {
-                int oldSlot = indexToSlot(i);
-                int newSlot = i % capacity;
-                newBuffer[newSlot] = buffer[oldSlot];
-            }
-        }
-        buffer = newBuffer;
-    }
-
     private void clearInternal() {
-        for (int i = 0; i < capacity; i++) {
-            buffer[i] = NOT_COMPUTED;
-        }
         firstCachedIndex = -1;
         highestResultIndex = -1;
     }

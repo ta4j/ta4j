@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -55,6 +56,21 @@ class CachedIndicatorBenchmarkTest {
     }
 
     @Test
+    void reverseReadScenarioProducesExpectedChecksum() {
+        int barCount = 64;
+        int maximumBarCountHint = 12;
+
+        CachedIndicatorBenchmark.ScenarioResult result = benchmark.runReverseReadScenario(barCount,
+                maximumBarCountHint);
+        int operations = barCount - maximumBarCountHint - 1;
+        long expectedChecksum = (long) (operations - 1) * operations / 2L;
+
+        assertEquals(operations, result.getOperations(), "Operations should cover values before the warm cache");
+        assertEquals(expectedChecksum, result.getChecksum(), "Checksum should cover descending uncached indices");
+        assertTrue(result.getThroughputOpsPerSecond() > 0d, "Reverse-read throughput should be positive");
+    }
+
+    @Test
     void lastBarHotReadsScenarioKeepsSmaStableAcrossHits() {
         int barCount = 48;
         int smaPeriod = 8;
@@ -63,9 +79,9 @@ class CachedIndicatorBenchmarkTest {
         CachedIndicatorBenchmark.ScenarioResult result = benchmark.runLastBarHotReadsScenario(barCount, smaPeriod,
                 reads);
 
-        var series = CachedIndicatorBenchmark.buildSeries(barCount);
-        var closePrice = new ClosePriceIndicator(series);
-        var sma = new SMAIndicator(closePrice, smaPeriod);
+        BarSeries series = CachedIndicatorBenchmark.buildSeries(barCount);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, smaPeriod);
         int endIndex = series.getEndIndex();
 
         long expectedChecksum = (long) reads * sma.getValue(endIndex).hashCode();

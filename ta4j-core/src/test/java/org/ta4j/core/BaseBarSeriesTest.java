@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -142,6 +143,59 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         seriesWithBars.clear();
         assertEquals(initialRevision + 5, seriesWithBars.getBarHistoryRevision());
+    }
+
+    @Test
+    public void testBarSeriesChangeSnapshotAggregatesSkippedRevisions() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+
+        seriesWithBars.replaceBar(3, testBars.get(3));
+        seriesWithBars.replaceBar(1, testBars.get(1));
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 2, snapshot.revision());
+        assertEquals(1, snapshot.earliestChangedIndex());
+        assertEquals(-1, snapshot.removedThroughIndex());
+        assertEquals(Integer.MAX_VALUE, snapshot.maximumBarCount());
+        assertEquals(4, snapshot.endIndex());
+    }
+
+    @Test
+    public void testBarSeriesChangeSnapshotFallsBackAfterJournalRollover() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+        for (int i = 0; i < 65; i++) {
+            seriesWithBars.addPrice(numFactory.numOf(100 + i));
+        }
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(0, snapshot.earliestChangedIndex());
+    }
+
+    @Test
+    public void testBarSeriesChangeSnapshotIncludesWindowAndCapacityChanges() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+
+        seriesWithBars.setMaximumBarCount(3);
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision, snapshot.revision());
+        assertEquals(-1, snapshot.earliestChangedIndex());
+        assertEquals(1, snapshot.removedThroughIndex());
+        assertEquals(3, snapshot.maximumBarCount());
+        assertEquals(4, snapshot.endIndex());
+    }
+
+    @Test
+    public void testBarSeriesChangeSnapshotClearsPublishedHistory() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+
+        seriesWithBars.clear();
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(0, snapshot.earliestChangedIndex());
+        assertEquals(-1, snapshot.removedThroughIndex());
+        assertEquals(-1, snapshot.endIndex());
     }
 
     @Test

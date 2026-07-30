@@ -43,6 +43,65 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testSynchronizeShrinksAndLazilyRegrowsCapacity() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(Integer.MAX_VALUE);
+        for (int i = 0; i < 10; i++) {
+            buffer.put(i, i);
+        }
+
+        assertEquals(9, buffer.synchronize(5, 3, -1));
+        assertEquals(7, buffer.getFirstCachedIndex());
+        assertNull(buffer.get(6));
+        assertEquals(Integer.valueOf(7), buffer.get(7));
+        assertEquals(Integer.valueOf(9), buffer.get(9));
+
+        buffer.synchronize(7, 6, -1);
+        buffer.put(10, 10);
+        buffer.put(6, 6);
+
+        assertEquals(6, buffer.getFirstCachedIndex());
+        assertEquals(10, buffer.getHighestResultIndex());
+        for (int i = 6; i <= 10; i++) {
+            assertEquals(Integer.valueOf(i), buffer.get(i));
+        }
+    }
+
+    @Test
+    public void testSynchronizeInvalidatesTailAndDiscardsRemovedPrefix() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+        for (int i = 0; i < 8; i++) {
+            buffer.put(i, i);
+        }
+
+        assertEquals(4, buffer.synchronize(2, 10, 5));
+        assertEquals(2, buffer.getFirstCachedIndex());
+        assertEquals(Integer.valueOf(2), buffer.get(2));
+        assertEquals(Integer.valueOf(4), buffer.get(4));
+        assertNull(buffer.get(5));
+
+        buffer.put(5, 50);
+        assertEquals(Integer.valueOf(50), buffer.get(5));
+        assertNull(buffer.get(6));
+    }
+
+    @Test
+    public void testAdjacentReverseExpansionPreservesOverlappingValues() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(4);
+        for (int i = 6; i <= 9; i++) {
+            buffer.put(i, i);
+        }
+
+        for (int i = 5; i >= 0; i--) {
+            buffer.put(i, i);
+            assertEquals(i, buffer.getFirstCachedIndex());
+            assertEquals(i + 3, buffer.getHighestResultIndex());
+            for (int retained = i; retained <= i + 3; retained++) {
+                assertEquals(Integer.valueOf(retained), buffer.get(retained));
+            }
+        }
+    }
+
+    @Test
     public void testWriteStampFlipsDuringWriteLockAndReturnsEvenAfterwards() {
         CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
 
