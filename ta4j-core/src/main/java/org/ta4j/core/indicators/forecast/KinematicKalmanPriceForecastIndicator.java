@@ -39,7 +39,9 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
         implements ForecastProjectionIndicator {
 
     private static final String SUPPORT_ASSUMPTION = "linear-gaussian-kalman-observation";
-    private static final NormalDistribution STANDARD_NORMAL = new NormalDistribution(0d, 1d);
+    private static final double[] DEFAULT_QUANTILE_Z_SCORES = Forecast.DEFAULT_QUANTILE_PROBABILITIES.stream()
+            .mapToDouble(new NormalDistribution(0d, 1d)::inverseCumulativeProbability)
+            .toArray();
 
     private final ForecastStateIndicator<KinematicKalmanForecastState> stateIndicator;
     private final int horizon;
@@ -90,8 +92,9 @@ public final class KinematicKalmanPriceForecastIndicator extends CachedIndicator
         }
 
         Map<Double, Num> quantiles = new LinkedHashMap<>();
-        for (double probability : Forecast.DEFAULT_QUANTILE_PROBABILITIES) {
-            Num zScore = numFactory.numOf(STANDARD_NORMAL.inverseCumulativeProbability(probability));
+        for (int quantileIndex = 0; quantileIndex < Forecast.DEFAULT_QUANTILE_PROBABILITIES.size(); quantileIndex++) {
+            double probability = Forecast.DEFAULT_QUANTILE_PROBABILITIES.get(quantileIndex);
+            Num zScore = numFactory.numOf(DEFAULT_QUANTILE_Z_SCORES[quantileIndex]);
             Num quantile = mean.plus(standardDeviation.multipliedBy(zScore));
             if (Num.isFinite(quantile)) {
                 quantiles.put(probability, quantile);

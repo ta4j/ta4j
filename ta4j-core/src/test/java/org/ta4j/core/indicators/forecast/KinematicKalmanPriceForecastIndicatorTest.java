@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -56,8 +57,12 @@ public class KinematicKalmanPriceForecastIndicatorTest extends AbstractIndicator
         assertEquals(expectedVariance.sqrt().doubleValue(), forecast.standardDeviation().doubleValue(), 1e-12);
         assertEquals(ForecastSupport.analytic("linear-gaussian-kalman-observation"), forecast.support());
         assertEquals(Forecast.DEFAULT_QUANTILE_PROBABILITIES, forecast.quantiles().keySet().stream().toList());
-        assertTrue(forecast.quantile(0.05).isLessThan(forecast.median()));
-        assertTrue(forecast.quantile(0.95).isGreaterThan(forecast.median()));
+        NormalDistribution standardNormal = new NormalDistribution(0d, 1d);
+        for (double probability : Forecast.DEFAULT_QUANTILE_PROBABILITIES) {
+            double expectedQuantile = forecast.mean().doubleValue() + forecast.standardDeviation().doubleValue()
+                    * standardNormal.inverseCumulativeProbability(probability);
+            assertEquals(expectedQuantile, forecast.quantile(probability).doubleValue(), 1e-12);
+        }
     }
 
     @Test
