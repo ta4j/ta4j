@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
@@ -56,11 +57,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
     private final long lastBarWaitTimeoutMs;
-    private final Object seriesChangeLock = new Object();
-    private long observedBarHistoryRevision;
-    private int observedRemovedThroughIndex;
-    private int observedMaximumBarCount;
-    private int observedEndIndex;
+    private final AtomicReference<BarSeriesChangeSnapshot> observedSeriesSnapshot;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -115,10 +112,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         BarSeriesChangeSnapshot snapshot = config.snapshot();
         this.cache = new CachedBuffer<>(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
-        this.observedBarHistoryRevision = snapshot.revision();
-        this.observedRemovedThroughIndex = snapshot.removedThroughIndex();
-        this.observedMaximumBarCount = snapshot.maximumBarCount();
-        this.observedEndIndex = snapshot.endIndex();
+        this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
     }
 
     private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
@@ -197,51 +191,33 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
         boolean reconciliationRequired = false;
         while (true) {
-            long sinceRevision;
-            int sinceRemovedThroughIndex;
-            int sinceMaximumBarCount;
-            int sinceEndIndex;
-            synchronized (seriesChangeLock) {
-                sinceRevision = observedBarHistoryRevision;
-                sinceRemovedThroughIndex = observedRemovedThroughIndex;
-                sinceMaximumBarCount = observedMaximumBarCount;
-                sinceEndIndex = observedEndIndex;
-            }
-
-            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
-            synchronized (seriesChangeLock) {
-                if (!reconciliationRequired && snapshot.revision() == observedBarHistoryRevision
-                        && snapshot.removedThroughIndex() == observedRemovedThroughIndex
-                        && snapshot.maximumBarCount() == observedMaximumBarCount
-                        && snapshot.endIndex() == observedEndIndex) {
-                    return snapshot;
-                }
+            BarSeriesChangeSnapshot sinceSnapshot = observedSeriesSnapshot.get();
+            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceSnapshot.revision());
+            if (!reconciliationRequired && sameSeriesState(snapshot, sinceSnapshot)) {
+                return snapshot;
             }
 
             int invalidateFrom = snapshot.earliestChangedIndex();
             int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
             int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
 
-            if (snapshot.removedThroughIndex() != sinceRemovedThroughIndex || invalidateFrom == 0) {
+            if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex() || invalidateFrom == 0) {
                 clearFirstBarCache();
             }
 
             int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
             highestResultIndex = Math.max(cacheHighest, lastBarIndex);
 
-            synchronized (seriesChangeLock) {
-                if (observedBarHistoryRevision == sinceRevision
-                        && observedRemovedThroughIndex == sinceRemovedThroughIndex
-                        && observedMaximumBarCount == sinceMaximumBarCount && observedEndIndex == sinceEndIndex) {
-                    observedBarHistoryRevision = snapshot.revision();
-                    observedRemovedThroughIndex = snapshot.removedThroughIndex();
-                    observedMaximumBarCount = snapshot.maximumBarCount();
-                    observedEndIndex = snapshot.endIndex();
-                    return snapshot;
-                }
+            if (observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
+                return snapshot;
             }
             reconciliationRequired = true;
         }
+    }
+
+    private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
+        return left.revision() == right.revision() && left.removedThroughIndex() == right.removedThroughIndex()
+                && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
     }
 
     private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
