@@ -42,13 +42,24 @@ public final class MetalAccelerationProviderFactory implements IndicatorAccelera
         if (!operationIds.contains(ForecastBatchAdapter.OPERATION_ID)) {
             return unavailable("Metal provider has no matching requested operation");
         }
-        String configuredLibrary = System.getProperty(LIBRARY_PROPERTY, "build/native/libta4j-metal-accelerator.dylib");
-        Path library = Path.of(configuredLibrary);
+        String configuredLibrary = System.getProperty(LIBRARY_PROPERTY, "");
+        if (configuredLibrary.isBlank()) {
+            return unavailable("Metal native library path is not configured; set " + LIBRARY_PROPERTY);
+        }
+        Path library;
+        try {
+            library = Path.of(configuredLibrary);
+        } catch (RuntimeException exception) {
+            return unavailable("Metal native library path is invalid: " + exception.getMessage());
+        }
+        if (!library.isAbsolute()) {
+            return unavailable("Metal native library path must be absolute: " + library);
+        }
         if (!Files.isRegularFile(library)) {
             return unavailable("Metal native library not present at " + library);
         }
         try {
-            System.load(library.toAbsolutePath().normalize().toString());
+            System.load(library.normalize().toString());
             if (!nativeSelfTest()) {
                 return unavailable("Metal native self-test failed for " + library);
             }
@@ -58,7 +69,7 @@ public final class MetalAccelerationProviderFactory implements IndicatorAccelera
                     "NOT_IMPLEMENTED: Metal probe/self-test passed on %s, but forecast device execution is not enabled"
                             .formatted(deviceName.isBlank() ? "unnamed device" : deviceName));
             return new CapabilityOnlyProvider(capability);
-        } catch (LinkageError | SecurityException exception) {
+        } catch (LinkageError | RuntimeException exception) {
             return unavailable("Metal native probe failed: " + exception.getMessage());
         }
     }

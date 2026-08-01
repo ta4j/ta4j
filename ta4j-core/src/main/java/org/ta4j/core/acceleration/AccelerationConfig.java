@@ -71,19 +71,38 @@ public record AccelerationConfig(AccelerationMode mode, boolean required, double
      * @since 0.23.1
      */
     public static AccelerationConfig fromSystemProperties() {
-        AccelerationMode mode = AccelerationMode.parse(System.getProperty(MODE_PROPERTY));
+        String rawMode = System.getProperty(MODE_PROPERTY);
+        AccelerationMode mode = parseMode(rawMode);
         boolean required = Boolean.parseBoolean(System.getProperty(REQUIRED_PROPERTY, "false"));
-        double minimumSpeedup = parseMinimumSpeedup(
-                System.getProperty(MINIMUM_SPEEDUP_PROPERTY, Double.toString(DEFAULT_MINIMUM_SPEEDUP)));
-        return new AccelerationConfig(mode, required, minimumSpeedup);
+        String rawMinimumSpeedup = System.getProperty(MINIMUM_SPEEDUP_PROPERTY,
+                Double.toString(DEFAULT_MINIMUM_SPEEDUP));
+        double minimumSpeedup = parseMinimumSpeedup(rawMinimumSpeedup);
+        try {
+            return new AccelerationConfig(mode, required, minimumSpeedup);
+        } catch (IllegalArgumentException e) {
+            throw invalidProperty(MINIMUM_SPEEDUP_PROPERTY, rawMinimumSpeedup, e);
+        }
+    }
+
+    private static AccelerationMode parseMode(String value) {
+        try {
+            return AccelerationMode.parse(value);
+        } catch (IllegalArgumentException e) {
+            throw invalidProperty(MODE_PROPERTY, value, e);
+        }
     }
 
     private static double parseMinimumSpeedup(String value) {
         try {
             return Double.parseDouble(value);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(MINIMUM_SPEEDUP_PROPERTY + " must be a decimal value", e);
+            throw invalidProperty(MINIMUM_SPEEDUP_PROPERTY, value, e);
         }
+    }
+
+    private static IllegalArgumentException invalidProperty(String propertyName, String value, RuntimeException cause) {
+        return new IllegalArgumentException("Invalid value for system property %s: %s".formatted(propertyName, value),
+                cause);
     }
 
     /**

@@ -30,6 +30,7 @@ import org.ta4j.core.acceleration.AccelerationMode;
 import org.ta4j.core.acceleration.IndicatorBatchEvaluator;
 import org.ta4j.core.acceleration.IndicatorBatchRequest;
 import org.ta4j.core.acceleration.IndicatorBatchResult;
+import org.ta4j.core.acceleration.IndexedIndicatorValue;
 
 /**
  * Optional adapter/provider-aware indicator batch evaluator.
@@ -110,13 +111,20 @@ public final class AcceleratedIndicatorBatchEvaluator {
         if (provider.isPresent()) {
             ProviderCapability capability = provider.get().capability();
             Optional<IndicatorBatchResult<T>> result = provider.get().evaluate(request, match);
-            if (result.isPresent()) {
+            if (result.isPresent() && providerResultMatchesRequest(request, result.get())) {
                 return result.get();
             }
-            diagnostics.add(new AccelerationDiagnostic(
-                    AccelerationDiagnosticCode.NOT_IMPLEMENTED, "Provider %s did not implement operation %s"
-                            .formatted(capability.providerId(), match.operationId()),
-                    capability.providerId(), match.operationId()));
+            if (result.isPresent()) {
+                diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
+                        "Provider %s returned an invalid result for requested indices [%d, %d]"
+                                .formatted(capability.providerId(), request.fromInclusive(), request.toInclusive()),
+                        capability.providerId(), match.operationId()));
+            } else {
+                diagnostics.add(new AccelerationDiagnostic(
+                        AccelerationDiagnosticCode.NOT_IMPLEMENTED, "Provider %s did not implement operation %s"
+                                .formatted(capability.providerId(), match.operationId()),
+                        capability.providerId(), match.operationId()));
+            }
         }
 
         if (config.required() && config.mode().canUseDevice()) {
@@ -176,6 +184,20 @@ public final class AcceleratedIndicatorBatchEvaluator {
 
     private static boolean eligible(AccelerationMode requested, AccelerationMode providerMode) {
         return requested == AccelerationMode.AUTO || requested == AccelerationMode.HYBRID || requested == providerMode;
+    }
+
+    private static boolean providerResultMatchesRequest(IndicatorBatchRequest<?> request, IndicatorBatchResult<?> result) {
+        int expectedCount = request.toInclusive() - request.fromInclusive() + 1;
+        if (result.values().size() != expectedCount) {
+            return false;
+        }
+        for (int offset = 0; offset < expectedCount; offset++) {
+            IndexedIndicatorValue<?> value = result.values().get(offset);
+            if (value.index() != request.fromInclusive() + offset) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static <T> IndicatorBatchResult<T> cpuResult(IndicatorBatchRequest<T> request, String operationId,

@@ -34,20 +34,31 @@ class AccelerationConfigTest {
     }
 
     @Test
-    void rejectsMalformedMinimumSpeedupProperty() {
-        String previous = System.getProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY);
-        System.setProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY, "fast");
-        try {
-            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                    AccelerationConfig::fromSystemProperties);
+    void rejectsMalformedModeProperty() {
+        IllegalArgumentException exception = parseWithProperty(AccelerationConfig.MODE_PROPERTY, "mlx");
 
-            assertEquals(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY + " must be a decimal value",
-                    exception.getMessage());
+        assertEquals("Invalid value for system property " + AccelerationConfig.MODE_PROPERTY + ": mlx",
+                exception.getMessage());
+    }
+
+    @Test
+    void rejectsMalformedMinimumSpeedupProperty() {
+        IllegalArgumentException exception = parseWithProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY, "fast");
+
+        assertEquals("Invalid value for system property " + AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY + ": fast",
+                exception.getMessage());
+    }
+
+    private static IllegalArgumentException parseWithProperty(String propertyName, String value) {
+        String previous = System.getProperty(propertyName);
+        System.setProperty(propertyName, value);
+        try {
+            return assertThrows(IllegalArgumentException.class, AccelerationConfig::fromSystemProperties);
         } finally {
             if (previous == null) {
-                System.clearProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY);
+                System.clearProperty(propertyName);
             } else {
-                System.setProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY, previous);
+                System.setProperty(propertyName, previous);
             }
         }
     }

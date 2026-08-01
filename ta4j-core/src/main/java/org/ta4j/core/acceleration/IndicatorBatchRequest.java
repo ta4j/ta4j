@@ -23,6 +23,9 @@ public record IndicatorBatchRequest<T>(Indicator<T> indicator, int fromInclusive
     public IndicatorBatchRequest {
         Objects.requireNonNull(indicator, "indicator must not be null");
         Objects.requireNonNull(config, "config must not be null");
+        if (fromInclusive < 0) {
+            throw new IllegalArgumentException("fromInclusive must be >= 0");
+        }
         if (fromInclusive > toInclusive) {
             throw new IllegalArgumentException("fromInclusive must be <= toInclusive");
         }

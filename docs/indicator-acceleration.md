@@ -22,7 +22,7 @@ Optional properties:
 ```bash
 -Dta4j.acceleration.required=true
 -Dta4j.acceleration.minimumSpeedup=0.10
--Dta4j.acceleration.metal.library=build/native/libta4j-metal-accelerator.dylib
+-Dta4j.acceleration.metal.library=/absolute/path/to/libta4j-metal-accelerator.dylib
 ```
 
 `off` is the default. Preferred modes fall back to complete CPU results with typed diagnostics. Required provider mode throws an `AccelerationException` and returns no partial result when a requested provider cannot execute the supported stage.
@@ -60,6 +60,10 @@ Build the local Metal smoke artifact explicitly:
 ```bash
 scripts/acceleration/build-metal-provider.sh
 ```
+
+The build script prints the absolute `.dylib` path. Pass that exact path through
+`-Dta4j.acceleration.metal.library=...`; the provider reports unavailable
+instead of loading native code when the property is absent or relative.
 
 Continue CUDA work explicitly on Windows:
 

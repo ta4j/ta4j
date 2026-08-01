@@ -38,7 +38,7 @@ public final class IndicatorBatchEvaluator {
      * @since 0.23.1
      */
     public static <T> IndicatorBatchResult<T> evaluate(Indicator<T> indicator, int fromInclusive, int toInclusive) {
-        return evaluate(indicator, fromInclusive, toInclusive, SystemConfigHolder.CONFIG);
+        return evaluate(indicator, fromInclusive, toInclusive, SystemConfigHolder.config());
     }
 
     /**
@@ -119,6 +119,27 @@ public final class IndicatorBatchEvaluator {
     }
 
     private static final class SystemConfigHolder {
-        private static final AccelerationConfig CONFIG = AccelerationConfig.fromSystemProperties();
+
+        private static final AccelerationConfig CONFIG;
+        private static final IllegalArgumentException CONFIG_FAILURE;
+
+        static {
+            AccelerationConfig config = null;
+            IllegalArgumentException failure = null;
+            try {
+                config = AccelerationConfig.fromSystemProperties();
+            } catch (IllegalArgumentException e) {
+                failure = e;
+            }
+            CONFIG = config;
+            CONFIG_FAILURE = failure;
+        }
+
+        private static AccelerationConfig config() {
+            if (CONFIG_FAILURE != null) {
+                throw CONFIG_FAILURE;
+            }
+            return CONFIG;
+        }
     }
 }

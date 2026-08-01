@@ -50,7 +50,17 @@ public record MonteCarloPriceForecastSpec(Indicator<Num> priceIndicator,
         if (Double.isNaN(volatilityDecayFactor) || volatilityDecayFactor <= 0d || volatilityDecayFactor >= 1d) {
             throw new IllegalArgumentException("volatilityDecayFactor must be in (0, 1)");
         }
-        quantileProbabilities = List
-                .copyOf(Objects.requireNonNull(quantileProbabilities, "quantileProbabilities must not be null"));
+        List<Double> checkedQuantileProbabilities = Objects.requireNonNull(quantileProbabilities,
+                "quantileProbabilities must not be null");
+        if (checkedQuantileProbabilities.isEmpty()) {
+            throw new IllegalArgumentException("quantileProbabilities must not be empty");
+        }
+        for (Double probability : checkedQuantileProbabilities) {
+            Double value = Objects.requireNonNull(probability, "quantile probability must not be null");
+            if (Double.isNaN(value) || value < 0d || value > 1d) {
+                throw new IllegalArgumentException("quantile probability must be in [0, 1]");
+            }
+        }
+        quantileProbabilities = List.copyOf(checkedQuantileProbabilities);
     }
 }

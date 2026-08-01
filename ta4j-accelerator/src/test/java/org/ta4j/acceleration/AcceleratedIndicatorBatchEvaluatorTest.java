@@ -28,6 +28,7 @@ import org.ta4j.core.acceleration.AccelerationMode;
 import org.ta4j.core.acceleration.IndicatorBatchEvaluator;
 import org.ta4j.core.acceleration.IndicatorBatchRequest;
 import org.ta4j.core.acceleration.IndicatorBatchResult;
+import org.ta4j.core.acceleration.IndexedIndicatorValue;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
@@ -102,6 +103,22 @@ class AcceleratedIndicatorBatchEvaluatorTest {
     }
 
     @Test
+    void invalidProviderResultFallsBackToCpu() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 1);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.METAL, false, 0.10d));
+
+        assertThat(providerFactory.probeCount()).isEqualTo(1);
+        assertThat(result.diagnostics().backendId()).isEqualTo("cpu");
+        assertThat(result.diagnostics().hasCode(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE)).isTrue();
+        assertThat(result.values()).hasSize(3);
+    }
+
+    @Test
     void hybridFallsBackToCompleteCpuResultWhenNoGpuPartitionIsAvailable() {
         MonteCarloPriceForecastIndicator forecast = forecast();
         AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
@@ -161,15 +178,21 @@ class AcceleratedIndicatorBatchEvaluatorTest {
 
         private final boolean available;
         private final boolean nativeInitialized;
+        private final int trailingValuesToDrop;
         private final AtomicInteger probeCount = new AtomicInteger();
 
         private CountingProviderFactory(boolean available) {
-            this(available, false);
+            this(available, false, 0);
         }
 
         private CountingProviderFactory(boolean available, boolean nativeInitialized) {
+            this(available, nativeInitialized, 0);
+        }
+
+        private CountingProviderFactory(boolean available, boolean nativeInitialized, int trailingValuesToDrop) {
             this.available = available;
             this.nativeInitialized = nativeInitialized;
+            this.trailingValuesToDrop = trailingValuesToDrop;
         }
 
         private int probeCount() {
@@ -210,7 +233,11 @@ class AcceleratedIndicatorBatchEvaluatorTest {
                                     "fake provider executed", providerId(), match.operationId())));
                     IndicatorBatchResult<T> scalar = IndicatorBatchEvaluator.evaluate(request.indicator(),
                             request.fromInclusive(), request.toInclusive(), AccelerationConfig.cpu());
-                    return Optional.of(new IndicatorBatchResult<>(scalar.values(), diagnostics));
+                    List<IndexedIndicatorValue<T>> values = scalar.values();
+                    if (trailingValuesToDrop > 0) {
+                        values = values.subList(0, Math.max(0, values.size() - trailingValuesToDrop));
+                    }
+                    return Optional.of(new IndicatorBatchResult<>(values, diagnostics));
                 }
             };
         }
