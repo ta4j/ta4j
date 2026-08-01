@@ -32,4 +32,23 @@ class AccelerationConfigTest {
                 () -> new AccelerationConfig(AccelerationMode.AUTO, false, -0.01d));
         assertThrows(IllegalArgumentException.class, () -> new AccelerationConfig(AccelerationMode.AUTO, false, 1.0d));
     }
+
+    @Test
+    void rejectsMalformedMinimumSpeedupProperty() {
+        String previous = System.getProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY);
+        System.setProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY, "fast");
+        try {
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    AccelerationConfig::fromSystemProperties);
+
+            assertEquals(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY + " must be a decimal value",
+                    exception.getMessage());
+        } finally {
+            if (previous == null) {
+                System.clearProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY);
+            } else {
+                System.setProperty(AccelerationConfig.MINIMUM_SPEEDUP_PROPERTY, previous);
+            }
+        }
+    }
 }

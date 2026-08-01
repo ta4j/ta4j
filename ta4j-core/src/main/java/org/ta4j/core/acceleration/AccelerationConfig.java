@@ -73,9 +73,17 @@ public record AccelerationConfig(AccelerationMode mode, boolean required, double
     public static AccelerationConfig fromSystemProperties() {
         AccelerationMode mode = AccelerationMode.parse(System.getProperty(MODE_PROPERTY));
         boolean required = Boolean.parseBoolean(System.getProperty(REQUIRED_PROPERTY, "false"));
-        double minimumSpeedup = Double
-                .parseDouble(System.getProperty(MINIMUM_SPEEDUP_PROPERTY, Double.toString(DEFAULT_MINIMUM_SPEEDUP)));
+        double minimumSpeedup = parseMinimumSpeedup(
+                System.getProperty(MINIMUM_SPEEDUP_PROPERTY, Double.toString(DEFAULT_MINIMUM_SPEEDUP)));
         return new AccelerationConfig(mode, required, minimumSpeedup);
+    }
+
+    private static double parseMinimumSpeedup(String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(MINIMUM_SPEEDUP_PROPERTY + " must be a decimal value", e);
+        }
     }
 
     /**
