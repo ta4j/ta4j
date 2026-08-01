@@ -130,7 +130,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to Maven 3.9.16, so contributors do not need a separate Maven install.
 
 - **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
-- **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`. The local default runs actionlint and repository script fixtures, repairs license headers and formatting, then runs all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback. Review any source changes it makes before committing.
+- **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`. The local default runs actionlint and repository script fixtures, repairs license headers and formatting, then runs all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback. The Bash entrypoint keeps the default 180-second watchdog as the earliest timeout point, then allows continued Maven output progress until the configurable no-output stall window expires. Review any source changes it makes before committing.
 - **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
 - **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
 - **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
@@ -306,13 +306,23 @@ RoughVolatilityForecastStateIndicator roughStates =
 RoughVolatilityForecastState rough = roughStates.getValue(series.getEndIndex());
 ```
 
-The default estimator reuses EWMA return moments, estimates roughness from a
-120-bar log-variogram window, measures log-volatility vol-of-vol over 60 bars,
-and emits cumulative variance forecasts for horizons one through five. Advanced
-construction can tune those windows, the horizon count, EWMA initialization,
-decay, and the existing EWMA drift mode. It becomes stable only when every
-required window is finite; an invalid return keeps it unavailable until all
-affected windows recover.
+The reusable statistical building block is also available directly:
+
+```java
+HurstExponentIndicator hurst =
+        new HurstExponentIndicator(new ClosePriceIndicator(series), 120);
+Num currentHurst = hurst.getValue(series.getEndIndex());
+```
+
+The standalone indicator reports a rolling log-variogram estimate on `[0, 1]`.
+The rough-state estimator applies its narrower `[0.01, 0.49]` model bound to the
+same component over `log(abs(return) + 1e-8)`. It otherwise reuses EWMA return
+moments, measures log-volatility vol-of-vol over 60 bars, and emits cumulative
+variance forecasts for horizons one through five. Advanced construction can
+tune those windows, the horizon count, EWMA initialization, decay, and the
+existing EWMA drift mode. It becomes stable only when every required window is
+finite; an invalid return keeps it unavailable until all affected windows
+recover.
 
 Use specialized roughness in analog distance only when that modeling choice is
 intentional:

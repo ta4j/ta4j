@@ -9,7 +9,8 @@
  * Use this package when you need volatility-aware or distribution-aware signal
  * shaping, rolling relationship analysis, or regime-conditioned comparisons.
  * Common entry points include
- * {@link org.ta4j.core.indicators.statistics.StandardDeviationIndicator} and
+ * {@link org.ta4j.core.indicators.statistics.StandardDeviationIndicator},
+ * {@link org.ta4j.core.indicators.statistics.HurstExponentIndicator}, and
  * {@link org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator}.
  * Correlation-oriented entry points include
  * {@link org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator},

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -50,6 +51,11 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     @Override
     public final int getLatestSwingIndex(int index) {
         return swingPoints.getLatestSwingIndex(index);
+    }
+
+    @Override
+    public final int getLatestSwingConfirmationIndex(int index) {
+        return swingPoints.getLatestSwingConfirmationIndex(index);
     }
 
     @Override
@@ -118,40 +124,55 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     private final class SwingPointTracker {
         private final IntFunction<Integer> swingIndexDetector;
         private final BarSeries series;
-        private final List<Integer> swingPointIndexes = new ArrayList<>();
+        private final List<ConfirmedSwing> confirmedSwings = new ArrayList<>();
         private int lastScannedIndex = Integer.MIN_VALUE;
+        private long observedRevision;
+        private int observedEndIndex;
+        private Bar observedLastBar;
 
         private SwingPointTracker(IntFunction<Integer> swingIndexDetector, BarSeries series) {
             this.swingIndexDetector = Objects.requireNonNull(swingIndexDetector, "swingIndexDetector cannot be null");
             this.series = Objects.requireNonNull(series, "series cannot be null");
+            this.observedRevision = series.getBarHistoryRevision();
+            this.observedEndIndex = series.getEndIndex();
+            this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
         }
 
-        private int getLatestSwingIndex(int index) {
+        private synchronized int getLatestSwingIndex(int index) {
             ensureScanned(index);
-            if (swingPointIndexes.isEmpty()) {
-                return -1;
-            }
-            for (int i = swingPointIndexes.size() - 1; i >= 0; i--) {
-                final int candidate = swingPointIndexes.get(i);
-                if (candidate <= index) {
-                    return candidate;
-                }
-            }
-            return -1;
+            final ConfirmedSwing latest = latestSwingAvailableAt(index);
+            return latest == null ? -1 : latest.swingIndex();
         }
 
-        private List<Integer> getSwingPointIndexes(int index) {
+        private synchronized int getLatestSwingConfirmationIndex(int index) {
+            ensureScanned(index);
+            final ConfirmedSwing latest = latestSwingAvailableAt(index);
+            return latest == null ? -1 : latest.confirmationIndex();
+        }
+
+        private synchronized List<Integer> getSwingPointIndexes(int index) {
             ensureScanned(index);
             final List<Integer> filtered = new ArrayList<>();
-            for (int swingIndex : swingPointIndexes) {
-                if (swingIndex <= index) {
-                    filtered.add(swingIndex);
+            for (ConfirmedSwing swing : confirmedSwings) {
+                if (swing.confirmationIndex() <= index) {
+                    filtered.add(swing.swingIndex());
                 }
             }
             return Collections.unmodifiableList(filtered);
         }
 
+        private ConfirmedSwing latestSwingAvailableAt(int index) {
+            for (int i = confirmedSwings.size() - 1; i >= 0; i--) {
+                final ConfirmedSwing candidate = confirmedSwings.get(i);
+                if (candidate.confirmationIndex() <= index) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
         private void ensureScanned(int index) {
+            resetIfHistoryChanged();
             final int beginIndex = series.getBeginIndex();
             final int endIndex = series.getEndIndex();
             purgeOutOfRange(beginIndex);
@@ -170,7 +191,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
                 final int swingIndex = swingIndexDetector.apply(currentIndex);
                 if (swingIndex < 0) {
                     if (purgeOnNegativeDetection()) {
-                        swingPointIndexes.clear();
+                        confirmedSwings.clear();
                     }
                     continue;
                 }
@@ -178,28 +199,58 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
                 if (!validSwing) {
                     continue;
                 }
-                while (!swingPointIndexes.isEmpty()
-                        && swingPointIndexes.get(swingPointIndexes.size() - 1) > swingIndex) {
-                    swingPointIndexes.remove(swingPointIndexes.size() - 1);
+                while (!confirmedSwings.isEmpty()
+                        && confirmedSwings.get(confirmedSwings.size() - 1).swingIndex() > swingIndex) {
+                    confirmedSwings.remove(confirmedSwings.size() - 1);
                 }
-                if (swingPointIndexes.isEmpty() || swingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1)) {
-                    swingPointIndexes.add(swingIndex);
+                if (confirmedSwings.isEmpty()
+                        || swingIndex > confirmedSwings.get(confirmedSwings.size() - 1).swingIndex()) {
+                    confirmedSwings.add(new ConfirmedSwing(swingIndex, currentIndex));
                 }
             }
             lastScannedIndex = targetIndex;
+            observedEndIndex = endIndex;
+            observedRevision = series.getBarHistoryRevision();
+            observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+        }
+
+        private void resetIfHistoryChanged() {
+            final long currentRevision = series.getBarHistoryRevision();
+            final int currentEndIndex = series.getEndIndex();
+            final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            final boolean trackedRevisionChanged = currentRevision >= 0L && observedRevision >= 0L
+                    && currentRevision != observedRevision;
+            final boolean fallbackHistoryChanged = currentRevision < 0L && (currentEndIndex < observedEndIndex
+                    || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
+            if (!trackedRevisionChanged && !fallbackHistoryChanged) {
+                observedRevision = currentRevision;
+                observedEndIndex = currentEndIndex;
+                observedLastBar = currentLastBar;
+                return;
+            }
+            confirmedSwings.clear();
+            lastScannedIndex = Integer.MIN_VALUE;
+            observedRevision = currentRevision;
+            observedEndIndex = currentEndIndex;
+            observedLastBar = currentLastBar;
+            AbstractRecentSwingIndicator.this.invalidateCache();
         }
 
         private void purgeOutOfRange(int beginIndex) {
-            if (swingPointIndexes.isEmpty()) {
+            if (confirmedSwings.isEmpty()) {
                 return;
             }
             int firstRetained = 0;
-            while (firstRetained < swingPointIndexes.size() && swingPointIndexes.get(firstRetained) < beginIndex) {
+            while (firstRetained < confirmedSwings.size()
+                    && confirmedSwings.get(firstRetained).swingIndex() < beginIndex) {
                 firstRetained++;
             }
             if (firstRetained > 0) {
-                swingPointIndexes.subList(0, firstRetained).clear();
+                confirmedSwings.subList(0, firstRetained).clear();
             }
         }
+    }
+
+    private record ConfirmedSwing(int swingIndex, int confirmationIndex) {
     }
 }

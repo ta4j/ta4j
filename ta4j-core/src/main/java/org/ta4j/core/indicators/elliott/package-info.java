@@ -54,7 +54,7 @@
  * <li><b>Pluggable one-shot analysis</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner}
  * orchestrates swing detection, scenario generation, and confidence profiles,
- * with pluggable detectors under {@code org.ta4j.core.indicators.elliott.swing}
+ * with pluggable detectors under {@code org.ta4j.core.analysis.elliott.swing}
  * and profile helpers in {@code org.ta4j.core.indicators.elliott.confidence},
  * returning an
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult} with

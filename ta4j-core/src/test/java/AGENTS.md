@@ -19,6 +19,8 @@ These are cross-cutting test rules for ta4j-core. Deeper package guides can add 
 - Profile slow test work from the full gate's Surefire class timings before optimizing; keep measured before/after evidence when a class is targeted.
 - Avoid blanket `AbstractIndicatorTest` parameterization for structural tests. Use both `DoubleNum` and `DecimalNum` only when the behavior under test depends on `NumFactory`, precision, arithmetic, or factory coercion.
 - Keep unit tests isolated from heavyweight fixtures, generated histories, sleeps, and broad end-to-end workflows unless that boundary is the behavior under test.
+- Use the shortest `BarSeries` history and fewest walk-forward folds that cross the behavior's warm-up, boundary, and interaction cases; keep exhaustive series sweeps in one owning test.
+- Reuse immutable parsed fixtures through helpers such as `XlsTestsUtils` instead of reopening or reparsing the same workbook in each test method.
 
 ## Editing hygiene
 

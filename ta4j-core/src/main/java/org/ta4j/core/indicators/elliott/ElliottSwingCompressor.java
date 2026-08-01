@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * This class does not detect swings itself; it operates on the output of
  * {@link ElliottSwingIndicator} or
- * {@link org.ta4j.core.indicators.elliott.swing.SwingDetector}.
+ * {@link org.ta4j.core.analysis.elliott.swing.SwingDetector}.
  *
  * @since 0.22.0
  */

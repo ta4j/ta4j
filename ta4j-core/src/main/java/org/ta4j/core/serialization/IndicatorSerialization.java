@@ -453,7 +453,12 @@ public final class IndicatorSerialization {
 
         for (NumericParameterRequest request : numericRequests) {
             Object value = resolvedValues.get(request.index());
-            Object converted = convertNumericValue(value, request.type(), series);
+            Object converted;
+            try {
+                converted = convertNumericValue(value, request.type(), series);
+            } catch (IllegalArgumentException | ArithmeticException exception) {
+                return Optional.empty();
+            }
             if (converted == null) {
                 return Optional.empty();
             }

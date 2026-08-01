@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.elliott.swing;
+package org.ta4j.core.analysis.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,7 +43,8 @@ class AdaptiveZigZagSwingDetectorTest {
     @Test
     void reusesIndicatorStateAcrossRepeatedLiveDetection() {
         CountingBarSeries series = buildLiveSeries(300);
-        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+        AdaptiveZigZagConfig config = AdaptiveZigZagConfig.defaults();
+        assertThat(config).isEqualTo(new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3));
         AdaptiveZigZagSwingDetector detector = new AdaptiveZigZagSwingDetector(config);
 
         SwingDetectorResult initial = detector.detect(series, series.getEndIndex(), ElliottDegree.SUB_MINUETTE);
