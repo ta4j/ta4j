@@ -186,7 +186,8 @@ public final class AcceleratedIndicatorBatchEvaluator {
         return requested == AccelerationMode.AUTO || requested == AccelerationMode.HYBRID || requested == providerMode;
     }
 
-    private static boolean providerResultMatchesRequest(IndicatorBatchRequest<?> request, IndicatorBatchResult<?> result) {
+    private static boolean providerResultMatchesRequest(IndicatorBatchRequest<?> request,
+            IndicatorBatchResult<?> result) {
         int expectedCount = request.toInclusive() - request.fromInclusive() + 1;
         if (result.values().size() != expectedCount) {
             return false;
