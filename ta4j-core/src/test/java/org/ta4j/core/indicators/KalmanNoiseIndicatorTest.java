@@ -14,6 +14,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -52,11 +53,14 @@ public class KalmanNoiseIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void rejectsInvalidStaticConfiguration() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
         FixedIndicator<Num> source = new FixedIndicator<>(series, numOf(1));
+        Class<? extends RuntimeException> nonFiniteException = numFactory == DecimalNumFactory.getInstance()
+                ? NumberFormatException.class
+                : IllegalArgumentException.class;
 
         assertThrows(IllegalArgumentException.class, () -> new KalmanNoiseIndicator(source, 0));
         assertThrows(IllegalArgumentException.class, () -> new KalmanNoiseIndicator(source, -1));
-        assertThrows(IllegalArgumentException.class, () -> new KalmanNoiseIndicator(source, Double.NaN));
-        assertThrows(IllegalArgumentException.class, () -> new KalmanNoiseIndicator(source, Double.POSITIVE_INFINITY));
+        assertThrows(nonFiniteException, () -> new KalmanNoiseIndicator(source, Double.NaN));
+        assertThrows(nonFiniteException, () -> new KalmanNoiseIndicator(source, Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class, () -> KalmanNoiseIndicator.constant(series, 0));
     }
 
