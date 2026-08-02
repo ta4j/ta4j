@@ -274,7 +274,7 @@ public class BacktestExecutionResultTest {
         assertTrue("Should return empty list when limit is 0", topStrategies.isEmpty());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void getTopStrategiesThrowsExceptionWhenCriteriaVarargsIsNull() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
@@ -283,10 +283,10 @@ public class BacktestExecutionResultTest {
         BacktestExecutionResult result = createBacktestResult(series, List.of(strategy));
 
         AnalysisCriterion[] nullCriteria = null;
-        result.getTopStrategies(1, nullCriteria);
+        assertThrows(NullPointerException.class, () -> result.getTopStrategies(1, nullCriteria));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void getTopStrategiesThrowsExceptionWhenCriteriaListIsNull() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
@@ -295,10 +295,10 @@ public class BacktestExecutionResultTest {
         BacktestExecutionResult result = createBacktestResult(series, List.of(strategy));
 
         List<AnalysisCriterion> nullCriteria = null;
-        result.getTopStrategies(1, nullCriteria);
+        assertThrows(NullPointerException.class, () -> result.getTopStrategies(1, nullCriteria));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void getTopStrategiesThrowsExceptionWhenCriteriaIsEmpty() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
@@ -306,10 +306,10 @@ public class BacktestExecutionResultTest {
 
         BacktestExecutionResult result = createBacktestResult(series, List.of(strategy));
 
-        result.getTopStrategies(1, new ArrayList<>());
+        assertThrows(IllegalArgumentException.class, () -> result.getTopStrategies(1, new ArrayList<>()));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void getTopStrategiesThrowsExceptionWhenLimitIsNegative() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
 
@@ -317,7 +317,7 @@ public class BacktestExecutionResultTest {
 
         BacktestExecutionResult result = createBacktestResult(series, List.of(strategy));
 
-        result.getTopStrategies(-1, new NetProfitCriterion());
+        assertThrows(IllegalArgumentException.class, () -> result.getTopStrategies(-1, new NetProfitCriterion()));
     }
 
     @Test
