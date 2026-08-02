@@ -71,6 +71,15 @@ Continue CUDA work explicitly on Windows:
 powershell -ExecutionPolicy Bypass -File scripts/acceleration/windows-cuda-handoff.ps1 -RepoRoot .
 ```
 
+The decision-complete [CUDA implementation and qualification plan](indicator-acceleration-cuda-plan.md)
+records the frozen native boundary, correctness gates, packaging policy, Windows
+work sequence, paired Metal dependency, and the separate Linux continuation.
+On a Linux CUDA host, print the continuation checklist with:
+
+```bash
+scripts/acceleration/linux-cuda-handoff.sh .
+```
+
 ## Rollback
 
 Disable runtime eligibility without code changes:
