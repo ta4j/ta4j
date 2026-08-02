@@ -183,6 +183,20 @@ class AcceleratedIndicatorBatchEvaluatorTest {
     }
 
     @Test
+    void defaultProviderPredictionIsConservativeAndValidatesInputs() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        IndicatorBatchRequest<Forecast> request = new IndicatorBatchRequest<>(forecast, 20, 22,
+                AccelerationConfig.auto());
+        AdapterMatch<Forecast> match = new ForecastBatchAdapter().match(forecast);
+        IndicatorAccelerationProvider provider = () -> new ProviderCapability("default", AccelerationMode.METAL, true,
+                false, "device", List.of(ForecastBatchAdapter.OPERATION_ID), "");
+
+        assertThat(provider.predictedSpeedup(request, match)).isZero();
+        assertThrows(NullPointerException.class, () -> provider.predictedSpeedup(null, match));
+        assertThrows(NullPointerException.class, () -> provider.predictedSpeedup(request, null));
+    }
+
+    @Test
     void invalidProviderResultFallsBackToCpu() {
         MonteCarloPriceForecastIndicator forecast = forecast();
         CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 1);

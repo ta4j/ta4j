@@ -4,6 +4,7 @@
 package org.ta4j.acceleration.spi;
 
 import java.util.Optional;
+import java.util.Objects;
 
 import org.ta4j.core.acceleration.IndicatorBatchRequest;
 import org.ta4j.core.acceleration.IndicatorBatchResult;
@@ -40,6 +41,8 @@ public interface IndicatorAccelerationProvider {
      * @since 0.23.1
      */
     default <T> double predictedSpeedup(IndicatorBatchRequest<T> request, AdapterMatch<T> match) {
+        Objects.requireNonNull(request, "request must not be null");
+        Objects.requireNonNull(match, "match must not be null");
         return 0d;
     }
 
