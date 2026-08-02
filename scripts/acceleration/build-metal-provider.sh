@@ -10,6 +10,10 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Metal native build requires macOS" >&2
   exit 2
 fi
+if [[ "$(uname -m)" != "arm64" && "$(uname -m)" != "aarch64" ]]; then
+  echo "Metal native build requires macOS arm64" >&2
+  exit 2
+fi
 
 mkdir -p "$output_dir"
 java_home="${JAVA_HOME:-$(/usr/libexec/java_home)}"

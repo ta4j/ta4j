@@ -51,7 +51,7 @@ class MetalBacktestBenchmarkTest {
     void compareTransparentScalarAndMetalBacktests() throws IOException {
         String library = System.getProperty(MetalAccelerationProviderFactory.LIBRARY_PROPERTY);
         assertThat(library).as(MetalAccelerationProviderFactory.LIBRARY_PROPERTY).isNotBlank();
-        System.setProperty(CliIndicatorAccelerationService.QUALIFICATION_PROVIDER_PROPERTY, "metal");
+        CliIndicatorAccelerationService.useQualificationProviderForTests("metal");
         TraceTestLogger logs = new TraceTestLogger();
         logs.open();
         logs.setLoggerLevel(AccelerationRuntime.class, org.apache.logging.log4j.Level.DEBUG);
@@ -81,7 +81,7 @@ class MetalBacktestBenchmarkTest {
         } finally {
             logs.close();
             System.clearProperty(AccelerationRuntime.PROPERTY);
-            System.clearProperty(CliIndicatorAccelerationService.QUALIFICATION_PROVIDER_PROPERTY);
+            CliIndicatorAccelerationService.clearQuarantineForTests();
         }
     }
 
@@ -169,9 +169,15 @@ class MetalBacktestBenchmarkTest {
     }
 
     private static Path outputPath() {
-        Path root = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
-        while (root.getParent() != null && !Files.exists(root.resolve(".git"))) {
-            root = root.getParent();
+        Path workingDirectory = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
+        Path root = workingDirectory;
+        while (!Files.exists(root.resolve(".git"))) {
+            Path parent = root.getParent();
+            if (parent == null) {
+                root = workingDirectory;
+                break;
+            }
+            root = parent;
         }
         String defaultOutput = root
                 .resolve(

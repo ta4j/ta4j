@@ -240,10 +240,10 @@ class Ta4jCliTest {
         Path baseDir = tempDir.resolve("performance-base");
         Path candidateDir = tempDir.resolve("performance-candidate");
         Path comparisonDir = tempDir.resolve("performance-comparison");
-        runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios", "endOnly",
-                "--repetitions", "1", "--warmups", "0", "--output-dir", baseDir.toString());
-        runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios", "endOnly",
-                "--repetitions", "1", "--warmups", "0", "--output-dir", candidateDir.toString());
+        assertThat(runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios",
+                "endOnly", "--repetitions", "1", "--warmups", "0", "--output-dir", baseDir.toString())).isZero();
+        assertThat(runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios",
+                "endOnly", "--repetitions", "1", "--warmups", "0", "--output-dir", candidateDir.toString())).isZero();
 
         int exitCode = runCli("performance", "compare", "--base-dir", baseDir.toString(), "--candidate-dir",
                 candidateDir.toString(), "--output-dir", comparisonDir.toString(), "--max-regression-pct", "100000");

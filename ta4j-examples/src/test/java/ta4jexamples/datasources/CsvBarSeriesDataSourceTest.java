@@ -63,11 +63,10 @@ public class CsvBarSeriesDataSourceTest {
         assumeThat("File " + csvFile + " does not exist", resourceStream, is(notNullValue()));
 
         Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
-        try (resourceStream) {
-            Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-        }
-
         try {
+            try (resourceStream) {
+                Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
             BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
 
             assertNotNull(series, "Should load series from a local filesystem path");
@@ -88,6 +87,11 @@ public class CsvBarSeriesDataSourceTest {
         BarSeries series = dataSource.loadSeries("NONEXISTENT", Duration.ofDays(1), start, end);
 
         assertNull(series, "Should return null for non-existent ticker");
+    }
+
+    @Test
+    public void testInvalidLocalPathStillFallsBackToClasspathLookup() {
+        assertNull(CsvFileBarSeriesDataSource.loadCsvSeries("invalid\0path.csv"));
     }
 
     @Test

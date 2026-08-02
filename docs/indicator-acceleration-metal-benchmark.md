@@ -4,8 +4,9 @@
 
 The production Metal path is now both real and performance-positive on the
 checked Apple M5 Max. In the transparent `BarSeriesManager` workload, the
-scalar median was **262.855 ms** and `-Dta4j.acceleration=auto` selected Metal
-at **120.235 ms**, a **2.19x end-to-end speedup**.
+scalar median was **280.196 ms** and the qualification harness forced Metal
+behind the ordinary `-Dta4j.acceleration=auto` request at **125.716 ms**, a
+**2.23x end-to-end speedup**.
 
 The original pre-production spike used the same workload dimensions but its
 "Metal preferred" provider only probed and self-tested the device before
@@ -13,7 +14,7 @@ falling back to CPU. That run measured 163.398 ms scalar versus 168.196 ms for
 the fallback path, or 0.97x. The useful before/after change is therefore not a
 cross-machine timing comparison: it is that the requested Metal lane moved
 from verified CPU fallback to verified native execution and from a small loss
-to a 2.19x within-run gain.
+to a 2.23x within-run gain.
 
 ## Workload
 
@@ -31,22 +32,23 @@ to a 2.19x within-run gain.
 Each measured run constructed a fresh `DoubleNum` series, EWMA return state,
 Monte Carlo price forecast, strategy, and `BarSeriesManager`. The application
 code was identical between modes; only `ta4j.acceleration` changed from `off`
-to `auto`. The qualification-only provider selector was set to Metal so this
-test measured the backend even if the checked-in crossover policy changed.
+to `auto`. The benchmark test also used a package-private qualification selector
+to measure Metal even if the checked-in crossover policy changed. Applications
+cannot set that selector or bypass the production crossover model.
 
 ## Raw trials
 
 | Trial | Scalar `off` (ms) | Metal `auto` (ms) |
 | ---: | ---: | ---: |
-| 1 | 319.213 | 134.204 |
-| 2 | 264.837 | 120.235 |
-| 3 | 262.322 | 121.980 |
-| 4 | 259.420 | 117.628 |
-| 5 | 262.855 | 116.300 |
-| **Median** | **262.855** | **120.235** |
+| 1 | 334.197 | 135.756 |
+| 2 | 285.164 | 127.696 |
+| 3 | 279.640 | 125.716 |
+| 4 | 280.196 | 120.734 |
+| 5 | 273.185 | 119.040 |
+| **Median** | **280.196** | **125.716** |
 
-The median Metal diagnostic reported one checked chunk, 118.197 ms in provider
-work, 10.363 ms native total, 0.328 ms transfer, and 10.033 ms kernel time.
+The median Metal diagnostic reported one checked chunk, 123.677 ms in provider
+work, 10.042 ms native total, 0.362 ms transfer, and 9.679 ms kernel time.
 
 ## Correctness parity
 
@@ -86,6 +88,7 @@ scripts/acceleration/build-metal-provider.sh
   -Dtest=MetalBacktestBenchmarkTest \
   -Dsurefire.failIfNoSpecifiedTests=false \
   -Dgroups=benchmark \
+  -Dta4j.runBenchmarks=true \
   -Dta4j.excludedTestTags=requires-cuda \
   -Dta4j.acceleration.metal.library="$PWD/ta4j-cli/target/native/metal/package/META-INF/native/macos-aarch64/libta4j-metal-accelerator.dylib" \
   test

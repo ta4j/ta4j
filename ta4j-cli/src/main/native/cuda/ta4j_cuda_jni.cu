@@ -239,6 +239,9 @@ float elapsed_micros(cuda_event& start, cuda_event& finish) {
 }
 
 void throw_java(JNIEnv* environment, const std::string& message) {
+    if (environment->ExceptionCheck()) {
+        return;
+    }
     jclass type = environment->FindClass("java/lang/IllegalStateException");
     if (type != nullptr) {
         std::string bounded = message.substr(0, 1024);
@@ -372,6 +375,9 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
                 || !(decay > 0.0 && decay < 1.0)) {
             throw std::invalid_argument("invalid CUDA ABI or request metadata");
         }
+        if (quantiles_array == nullptr) {
+            throw std::invalid_argument("quantiles must not be null");
+        }
         jsize quantile_count = environment->GetArrayLength(quantiles_array);
         if (quantile_count < 1) {
             throw std::invalid_argument("at least one quantile is required");
@@ -389,8 +395,12 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         std::vector<double> historical_returns = copy_doubles(environment, historical_returns_array,
                                                               static_cast<jsize>(history_count), "historicalReturns");
 
-        int row_length = 4 + quantile_count;
-        std::vector<double> payload(4 + static_cast<std::size_t>(decision_count) * row_length, 0.0);
+        std::size_t row_length = 4U + static_cast<std::size_t>(quantile_count);
+        std::size_t payload_size = 4U + static_cast<std::size_t>(decision_count) * row_length;
+        if (payload_size > static_cast<std::size_t>(std::numeric_limits<jsize>::max())) {
+            throw std::invalid_argument("forecast payload exceeds JNI limits");
+        }
+        std::vector<double> payload(payload_size, 0.0);
         device_buffer<double> device_samples(static_cast<std::size_t>(iteration_count));
         device_buffer<double> device_history(static_cast<std::size_t>(lookback));
         device_buffer<double> device_quantiles(static_cast<std::size_t>(quantile_count));

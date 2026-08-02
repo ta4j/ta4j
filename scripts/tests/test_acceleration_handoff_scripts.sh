@@ -14,6 +14,9 @@ fi
 grep -Fq 'mvnw.cmd' "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
 grep -q "ta4j.forecast.monte-carlo-price.v1" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
 grep -q "cuda-windows-x86_64" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
+grep -q "ta4j.runBenchmarks=true" "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
+grep -q "status --porcelain" "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
+grep -q "uname -m" "$ROOT/scripts/acceleration/build-metal-provider.sh"
 grep -Fq '<extraJar>${ta4j.native.resourceJar}</extraJar>' "$ROOT/ta4j-cli/pom.xml"
 if grep -Fq '<directory>${ta4j.native.package}</directory>' "$ROOT/ta4j-cli/pom.xml"; then
   echo "native profiles must not copy platform libraries into the unclassified CLI jar" >&2

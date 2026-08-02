@@ -91,6 +91,10 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
 
 final class CudaCrossoverModel {
 
+    /**
+     * Intentionally disables AUTO until Linux x86_64 hardware qualification
+     * completes.
+     */
     private static final long QUALIFIED_MINIMUM_WORK = Long.MAX_VALUE;
 
     private CudaCrossoverModel() {

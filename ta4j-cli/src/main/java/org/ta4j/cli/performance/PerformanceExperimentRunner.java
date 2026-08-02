@@ -11,8 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -45,8 +43,6 @@ public final class PerformanceExperimentRunner {
     static final String SUMMARY_FILE = "summary.md";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final NumberFormat INTEGER_FORMAT = NumberFormat.getIntegerInstance(Locale.US);
-    private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
     private static final long COMMAND_TIMEOUT_SECONDS = 5;
 
     private PerformanceExperimentRunner() {
@@ -205,13 +201,13 @@ public final class PerformanceExperimentRunner {
             builder.append("| `")
                     .append(result.get("scenarioId").getAsString())
                     .append("` | ")
-                    .append(INTEGER_FORMAT.format(result.get("barCount").getAsInt()))
+                    .append(String.format(Locale.ROOT, "%,d", result.get("barCount").getAsInt()))
                     .append(" | ")
                     .append(formatMillis(stats.get("medianNanos").getAsLong()))
                     .append(" | ")
                     .append(formatMillis(stats.get("p90Nanos").getAsLong()))
                     .append(" | ")
-                    .append(DECIMAL_FORMAT.format(stats.get("operationsPerSecond").getAsDouble()))
+                    .append(format(stats.get("operationsPerSecond").getAsDouble()))
                     .append(" | ")
                     .append(result.get("checksum").getAsLong())
                     .append(" |")
@@ -221,7 +217,11 @@ public final class PerformanceExperimentRunner {
     }
 
     private static String formatMillis(long nanos) {
-        return DECIMAL_FORMAT.format(nanos / 1_000_000d);
+        return format(nanos / 1_000_000d);
+    }
+
+    private static String format(double value) {
+        return String.format(Locale.ROOT, "%.2f", value);
     }
 
     private static String gitRef() {

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
@@ -32,10 +33,10 @@ import org.ta4j.core.num.DoubleNumFactory;
  */
 public final class CliIndicatorAccelerationService implements Provider {
 
-    static final String QUALIFICATION_PROVIDER_PROPERTY = "ta4j.acceleration.qualification.provider";
-
     private static final double MINIMUM_SPEEDUP = 0.10d;
     private static final Map<String, String> QUARANTINED_PROVIDERS = new ConcurrentHashMap<>();
+    private static final ThreadLocal<String> QUALIFICATION_PROVIDER = ThreadLocal.withInitial(() -> "");
+    private static final ThreadLocal<ForecastAccelerationProvider> TEST_PROVIDER = new ThreadLocal<>();
 
     /**
      * Creates a lazy provider service.
@@ -61,14 +62,13 @@ public final class CliIndicatorAccelerationService implements Provider {
         }
 
         Request<Forecast> forecastRequest = (Request<Forecast>) (Request<?>) request;
-        String selectedProviderId = selectedProviderId();
-        String quarantineReason = QUARANTINED_PROVIDERS.get(selectedProviderId);
+        ProviderSelection selection = providerSelection();
+        String quarantineReason = QUARANTINED_PROVIDERS.get(selection.providerId());
         if (quarantineReason != null) {
-            Backend backend = "metal".equals(selectedProviderId) ? Backend.METAL : Backend.CUDA;
-            return notExecuted(Status.FAILED, backend, DiagnosticCode.PROVIDER_FAILURE, selectedProviderId,
-                    "provider quarantined after failure: " + quarantineReason);
+            return notExecuted(Status.FAILED, selection.backend(), DiagnosticCode.PROVIDER_FAILURE,
+                    selection.providerId(), "provider quarantined after failure: " + quarantineReason);
         }
-        ForecastAccelerationProvider provider = providerForCurrentHost();
+        ForecastAccelerationProvider provider = selection.provider().get();
         Capability capability = provider.capability();
         if (!capability.available()) {
             return (Result<T>) provider.evaluate(forecastRequest);
@@ -89,6 +89,9 @@ public final class CliIndicatorAccelerationService implements Provider {
         } catch (StaleSeriesException exception) {
             return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.STALE_SERIES,
                     capability.providerId(), exception.getMessage());
+        } catch (IllegalArgumentException | ArithmeticException exception) {
+            return notExecuted(Status.SKIPPED, capability.backend(), DiagnosticCode.PROVIDER_UNAVAILABLE,
+                    capability.providerId(), "provider rejected request: " + exception.getMessage());
         } catch (NativeProviderException exception) {
             QUARANTINED_PROVIDERS.putIfAbsent(capability.providerId(), exception.getMessage());
             return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.PROVIDER_FAILURE,
@@ -102,43 +105,54 @@ public final class CliIndicatorAccelerationService implements Provider {
 
     static void clearQuarantineForTests() {
         QUARANTINED_PROVIDERS.clear();
+        QUALIFICATION_PROVIDER.remove();
+        TEST_PROVIDER.remove();
     }
 
-    private static ForecastAccelerationProvider providerForCurrentHost() {
+    static void useQualificationProviderForTests(String providerId) {
+        QUALIFICATION_PROVIDER.set(providerId);
+    }
+
+    static void useProviderForTests(ForecastAccelerationProvider provider) {
+        TEST_PROVIDER.set(provider);
+    }
+
+    private static ProviderSelection providerSelection() {
+        ForecastAccelerationProvider testProvider = TEST_PROVIDER.get();
+        if (testProvider != null) {
+            Capability capability = testProvider.capability();
+            return new ProviderSelection(capability.providerId(), capability.backend(), () -> testProvider);
+        }
         String forced = qualificationProvider();
         if ("metal".equals(forced)) {
-            return new MetalAccelerationProviderFactory().probe();
+            return new ProviderSelection("metal", Backend.METAL, () -> new MetalAccelerationProviderFactory().probe());
         }
         if ("cuda".equals(forced)) {
-            return new CudaAccelerationProviderFactory().probe();
+            return new ProviderSelection("cuda", Backend.CUDA, () -> new CudaAccelerationProviderFactory().probe());
         }
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (operatingSystem.contains("mac")) {
-            return new MetalAccelerationProviderFactory().probe();
+            return new ProviderSelection("metal", Backend.METAL, () -> new MetalAccelerationProviderFactory().probe());
         }
         if (operatingSystem.contains("windows") || operatingSystem.contains("linux")) {
-            return new CudaAccelerationProviderFactory().probe();
+            return new ProviderSelection("cuda", Backend.CUDA, () -> new CudaAccelerationProviderFactory().probe());
         }
         Capability capability = new Capability("none", Backend.CPU, false, false, "",
                 "no Metal or CUDA provider exists for " + operatingSystem);
-        return new UnavailableForecastProvider(capability);
-    }
-
-    private static String selectedProviderId() {
-        String forced = qualificationProvider();
-        if ("metal".equals(forced) || "cuda".equals(forced)) {
-            return forced;
-        }
-        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        return operatingSystem.contains("mac") ? "metal" : "cuda";
+        return new ProviderSelection(capability.providerId(), capability.backend(),
+                () -> new UnavailableForecastProvider(capability));
     }
 
     private static String qualificationProvider() {
-        return System.getProperty(QUALIFICATION_PROVIDER_PROPERTY, "").trim().toLowerCase(Locale.ROOT);
+        return QUALIFICATION_PROVIDER.get().trim().toLowerCase(Locale.ROOT);
     }
 
     private static <T> Result<T> notExecuted(Status status, Backend backend, DiagnosticCode code, String providerId,
             String detail) {
         return new Result<>(status, backend, List.of(), false, 0L, new Diagnostic(code, providerId, detail));
+    }
+
+    private record ProviderSelection(String providerId, Backend backend,
+            Supplier<ForecastAccelerationProvider> provider) {
     }
 }

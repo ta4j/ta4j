@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -191,8 +192,13 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
     public static BarSeries loadCsvSeries(String filename) {
         InputStream stream = null;
         String seriesName = filename;
-        Path localPath = Path.of(filename);
-        if (Files.isRegularFile(localPath)) {
+        Path localPath = null;
+        try {
+            localPath = Path.of(filename);
+        } catch (InvalidPathException exception) {
+            LOG.debug("CSV filename is not a valid local path; trying the classpath: {}", filename, exception);
+        }
+        if (localPath != null && Files.isRegularFile(localPath)) {
             try {
                 stream = Files.newInputStream(localPath);
                 Path fileName = localPath.getFileName();

@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -49,7 +50,7 @@ class CudaBenchmarkTest {
         long cudaMedian = cudaNanos.get(cudaNanos.size() / 2);
         double speedup = (double) scalarMedian / cudaMedian;
         long work = Math.multiplyExact(Math.multiplyExact((long) decisions, paths), horizon);
-        System.out.printf(
+        System.out.printf(Locale.ROOT,
                 "CUDA_BENCHMARK {\"decisions\":%d,\"paths\":%d,\"horizon\":%d,\"work\":%d,\"scalarNanos\":%d,\"cudaNanos\":%d,\"speedup\":%.6f}%n",
                 decisions, paths, horizon, work, scalarMedian, cudaMedian, speedup);
     }

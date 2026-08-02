@@ -142,6 +142,23 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
+    void comparisonIdentifiesMissingRequiredMetadata() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path baseArtifact = baseDir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE);
+        JsonObject base = JsonParser.parseString(Files.readString(baseArtifact)).getAsJsonObject();
+        base.remove("warmups");
+        Files.writeString(baseArtifact, GSON.toJson(base), StandardCharsets.UTF_8);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Performance artifact is missing required field: warmups", exception.getMessage());
+    }
+
+    @Test
     void comparisonRejectsDuplicateResultCells() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
@@ -236,6 +253,8 @@ class PerformanceExperimentRunnerTest {
         JsonObject scaling = comparison.getAsJsonArray("cells").get(1).getAsJsonObject().getAsJsonObject("scaling");
         assertTrue(scaling.get("baseMedianScale").getAsDouble() > 1e300d);
         assertTrue(scaling.get("candidateMedianScale").getAsDouble() > 1e300d);
+        String summary = Files.readString(outputDir.resolve(PerformanceComparison.SUMMARY_FILE));
+        assertTrue(summary.contains("| Infinity |"));
     }
 
     @Test

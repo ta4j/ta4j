@@ -46,7 +46,7 @@ static NSString *const kernelSource = @"#include <metal_stdlib>\n"
         "    return uint(remainder);\n"
         "}\n"
         "float next_unit(thread ulong &state) {\n"
-        "    return float(next_long(state) >> 40) * 0x1.0p-24f;\n"
+        "    return float(next_long(state) >> 11) * 0x1.0p-53f;\n"
         "}\n"
         "float next_gaussian(thread ulong &state) {\n"
         "    float radius = sqrt(-2.0f * log(max(0x1.0p-24f, 1.0f - next_unit(state))));\n"
@@ -170,11 +170,20 @@ static void initializeMetal(void) {
 }
 
 static void throwIllegalState(JNIEnv *environment, NSString *message) {
+    if ((*environment)->ExceptionCheck(environment)) {
+        return;
+    }
     jclass exceptionClass = (*environment)->FindClass(environment, "java/lang/IllegalStateException");
-    (*environment)->ThrowNew(environment, exceptionClass, message.UTF8String);
+    if (exceptionClass != nil) {
+        (*environment)->ThrowNew(environment, exceptionClass, message.UTF8String);
+    }
 }
 
 static id<MTLBuffer> floatBuffer(JNIEnv *environment, jdoubleArray source, jsize count) {
+    if (source == nil) {
+        throwIllegalState(environment, @"metal_forecast_null_input");
+        return nil;
+    }
     id<MTLBuffer> buffer = [device newBufferWithLength:(NSUInteger)count * sizeof(float)
             options:MTLResourceStorageModeShared];
     if (buffer == nil) {
@@ -232,6 +241,11 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniMetalNativeBridge_nativeEva
             throwIllegalState(environment, @"invalid_metal_forecast_request");
             return nil;
         }
+        if (stableArray == nil || pricesArray == nil || meansArray == nil || driftsArray == nil
+                || variancesArray == nil || historyArray == nil || timingsArray == nil) {
+            throwIllegalState(environment, @"metal_forecast_null_input");
+            return nil;
+        }
         NSUInteger cellCount = (NSUInteger)decisionCount * (NSUInteger)iterationCount;
         NSUInteger historyCount = (NSUInteger)decisionCount * (NSUInteger)lookbackBarCount;
         if (cellCount > INT32_MAX || historyCount > INT32_MAX
@@ -258,6 +272,9 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniMetalNativeBridge_nativeEva
                 options:MTLResourceStorageModeShared];
         if (stableBuffer == nil || priceBuffer == nil || meanBuffer == nil || driftBuffer == nil
                 || varianceBuffer == nil || historyBuffer == nil || outputBuffer == nil) {
+            if ((*environment)->ExceptionCheck(environment)) {
+                return nil;
+            }
             throwIllegalState(environment, @"metal_forecast_buffer_allocation_failed");
             return nil;
         }

@@ -71,15 +71,19 @@ forecast fixtures with FP64 reduction. The Java golden corpus covers bounded
 RNG selection for `1`, `2`, `7`, `252`, `256`, and `1000`.
 
 The versioned stream replaces the sequential `SplittableRandom` stream used
-before 0.23.1. A fixed seed is reproducible across scalar, Metal, and CUDA lanes,
-but upgrading can change previously recorded Monte Carlo values for that seed.
+before 0.23.1. A fixed seed reproduces the same integer random stream in every
+lane. CUDA retains FP64 while Metal materializes terminal paths in FP32, so
+cross-lane numeric summaries are checked within the documented tolerance rather
+than for bit identity; stability, sample counts, quantiles, and trading decisions
+must still agree. Upgrading can change previously recorded Monte Carlo values for
+the same seed.
 
 ## Qualification status
 
 - Apple M5 Max Metal is correctness- and performance-qualified for the checked
   forecast workload. A 4,096-bar transparent backtest with 256 decisions,
-  2,048 paths, horizon 32, and lookback 256 measured a 262.855 ms scalar median
-  versus 120.235 ms with Metal, or **2.19x**, over five warm trials. All six
+  2,048 paths, horizon 32, and lookback 256 measured a 280.196 ms scalar median
+  versus 125.716 ms with Metal, or **2.23x**, over five warm trials. All six
   positions, operation indexes, 147 bars in market, and ending equity matched.
   The [full performance report](indicator-acceleration-metal-benchmark.md)
   includes raw trials, parity, reproduction, and the defects it exposed.

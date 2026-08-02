@@ -135,7 +135,7 @@
                                 <configuration>
                                     <executable>bash</executable>
                                     <arguments>
-                                        <argument>${project.parent.basedir}/scripts/acceleration/build-metal-provider.sh</argument>
+                                        <argument>${project.basedir}/../scripts/acceleration/build-metal-provider.sh</argument>
                                         <argument>${ta4j.native.package}/META-INF/native/macos-aarch64</argument>
                                     </arguments>
                                 </configuration>

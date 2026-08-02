@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import com.google.gson.Gson;
@@ -35,7 +35,6 @@ public final class PerformanceComparison {
     static final String SUMMARY_FILE = "summary.md";
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
     private static final double UNBOUNDED_DELTA_PCT = Double.MAX_VALUE;
 
     private PerformanceComparison() {
@@ -58,13 +57,12 @@ public final class PerformanceComparison {
         JsonObject candidate = readPerformanceJson(candidateDir);
         Files.createDirectories(outputDir);
 
-        boolean metadataMatch = base.get("experimentId")
-                .getAsString()
-                .equals(candidate.get("experimentId").getAsString())
-                && base.get("repetitions").getAsInt() == candidate.get("repetitions").getAsInt()
-                && base.get("warmups").getAsInt() == candidate.get("warmups").getAsInt()
-                && base.get("barCounts").equals(candidate.get("barCounts"))
-                && base.get("scenarioIds").equals(candidate.get("scenarioIds"));
+        boolean metadataMatch = required(base, "experimentId").getAsString()
+                .equals(required(candidate, "experimentId").getAsString())
+                && required(base, "repetitions").getAsInt() == required(candidate, "repetitions").getAsInt()
+                && required(base, "warmups").getAsInt() == required(candidate, "warmups").getAsInt()
+                && required(base, "barCounts").equals(required(candidate, "barCounts"))
+                && required(base, "scenarioIds").equals(required(candidate, "scenarioIds"));
         if (!metadataMatch) {
             throw new IllegalStateException("Cannot compare performance artifacts with different experiment inputs");
         }
@@ -167,6 +165,14 @@ public final class PerformanceComparison {
         return byCell;
     }
 
+    private static JsonElement required(JsonObject artifact, String field) {
+        JsonElement value = artifact.get(field);
+        if (value == null || value.isJsonNull()) {
+            throw new IllegalStateException("Performance artifact is missing required field: " + field);
+        }
+        return value;
+    }
+
     private static double percentDelta(long base, long candidate) {
         if (base == 0L) {
             return candidate == 0L ? 0d : UNBOUNDED_DELTA_PCT;
@@ -250,21 +256,26 @@ public final class PerformanceComparison {
     }
 
     private static String formatMillis(long nanos) {
-        return DECIMAL_FORMAT.format(nanos / 1_000_000d);
+        return format(nanos / 1_000_000d);
     }
 
     private static String formatPercent(double percent) {
         if (percent == UNBOUNDED_DELTA_PCT) {
             return "Infinity";
         }
-        return DECIMAL_FORMAT.format(percent);
+        return format(percent);
     }
 
     private static String formatScale(JsonElement scale) {
         if (scale == null || scale.isJsonNull()) {
             return "-";
         }
-        return DECIMAL_FORMAT.format(scale.getAsDouble());
+        double value = scale.getAsDouble();
+        return value == UNBOUNDED_DELTA_PCT ? "Infinity" : format(value);
+    }
+
+    private static String format(double value) {
+        return String.format(Locale.ROOT, "%.2f", value);
     }
 
 }

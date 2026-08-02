@@ -13,7 +13,7 @@ Write-Host "CF-336 Windows CUDA root: $root"
 Write-Host "Operation ABI: ta4j.forecast.monte-carlo-price.v1"
 Write-Host "Implementation record: $root\docs\indicator-acceleration-cuda-plan.md"
 
-if (-not $IsWindows) {
+if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw "The cuda-windows-x86_64 profile requires Windows"
 }
 foreach ($command in @("nvcc", "nvidia-smi", "cmake", "java")) {

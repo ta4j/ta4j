@@ -343,6 +343,7 @@ public abstract class NamedRule extends AbstractRule {
         if (!(connection instanceof JarURLConnection jarConnection)) {
             return;
         }
+        jarConnection.setUseCaches(false);
         try (JarFile jarFile = jarConnection.getJarFile()) {
             String packagePath = basePackage.replace('.', '/') + '/';
             Enumeration<JarEntry> entries = jarFile.entries();
