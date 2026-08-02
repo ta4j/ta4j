@@ -82,8 +82,7 @@ final class NativeLibraryLoader {
         createPrivateDirectories(Path.of(System.getProperty("user.home"), ".ta4j"), directory);
         Path target = directory.resolve(libraryName);
         if (Files.exists(target)) {
-            makeExecutable(target);
-            verifyExtracted(target, actualSha, backend);
+            finalizeExtractedLibrary(target, actualSha, backend);
             return target;
         }
 
@@ -101,12 +100,16 @@ final class NativeLibraryLoader {
             } catch (FileAlreadyExistsException concurrentInstall) {
                 // Another process installed the identical checksum first.
             }
-            makeExecutable(target);
-            verifyExtracted(target, actualSha, backend);
+            finalizeExtractedLibrary(target, actualSha, backend);
         } finally {
             Files.deleteIfExists(temporary);
         }
         return target;
+    }
+
+    static void finalizeExtractedLibrary(Path target, String expectedSha, String backend) throws IOException {
+        verifyExtracted(target, expectedSha, backend);
+        makeExecutable(target);
     }
 
     private static void verifyExtracted(Path target, String expectedSha, String backend) throws IOException {

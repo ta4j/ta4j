@@ -45,4 +45,20 @@ class NativeLibraryLoaderTest {
         assertThatIOException().isThrownBy(() -> NativeLibraryLoader.createPrivateDirectories(privateRoot,
                 privateRoot.resolve("native/metal-abi-1"))).withMessageContaining("writable by other users");
     }
+
+    @Test
+    void rejectsSymbolicLinkBeforeChangingDestinationPermissions() throws Exception {
+        assumeTrue(tempDir.getFileSystem().supportedFileAttributeViews().contains("posix"));
+        Path destination = tempDir.resolve("destination.dylib");
+        Set<PosixFilePermission> originalPermissions = Set.of(PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE);
+        Files.writeString(destination, "native");
+        Files.setPosixFilePermissions(destination, originalPermissions);
+        Path symbolicLink = Files.createSymbolicLink(tempDir.resolve("ta4j.dylib"), destination);
+
+        assertThatIOException()
+                .isThrownBy(() -> NativeLibraryLoader.finalizeExtractedLibrary(symbolicLink, "unused", "metal"))
+                .withMessageContaining("not a regular file");
+        assertThat(Files.getPosixFilePermissions(destination)).containsExactlyInAnyOrderElementsOf(originalPermissions);
+    }
 }
