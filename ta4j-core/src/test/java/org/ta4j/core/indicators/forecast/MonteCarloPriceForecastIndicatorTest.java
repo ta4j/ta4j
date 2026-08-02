@@ -57,8 +57,8 @@ public class MonteCarloPriceForecastIndicatorTest
     public void summarizesTransformedNonnormalPathsExactly() {
         Forecast prediction = explicitHistoricalForecast(Math.log(0.9), Math.log(1.1));
 
-        assertNumEquals(100, prediction.mean());
-        assertNumEquals(100, prediction.median());
+        assertNumEquals(100d, prediction.mean());
+        assertNumEquals(100d, prediction.median());
         assertNumEquals(10d, prediction.standardDeviation());
         assertNumEquals(90d, prediction.quantile(0.0));
         assertNumEquals(110d, prediction.quantile(1.0));

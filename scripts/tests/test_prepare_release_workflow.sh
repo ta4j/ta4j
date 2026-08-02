@@ -58,7 +58,11 @@ test_issue_permissions_declared() {
   echo "Running test_issue_permissions_declared"
 
   local permissions
-  permissions="$(ruby -e 'require "yaml"; workflow = YAML.load_file(ARGV[0]); puts workflow.fetch("permissions").fetch("issues")' "$WORKFLOW")"
+  permissions="$(awk '
+    /^permissions:/ { in_permissions = 1; next }
+    in_permissions && /^[^[:space:]]/ { exit }
+    in_permissions && $1 == "issues:" { sub(/\r$/, "", $2); print $2; exit }
+  ' "$WORKFLOW")"
   if [[ "$permissions" != "write" ]]; then
     fail "prepare-release workflow should request issues: write permission"
   fi

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -52,6 +54,29 @@ public class CsvBarSeriesDataSourceTest {
 
         assertNotNull(series, "Should load series from direct filename");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
+    }
+
+    @Test
+    public void testLoadSeriesFromLocalCsvPath() throws Exception {
+        String csvFile = "AAPL-PT1D-20130102_20131231.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
+        assumeThat("File " + csvFile + " does not exist", resourceStream, is(notNullValue()));
+
+        Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
+        try (resourceStream) {
+            Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        try {
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series, "Should load series from a local filesystem path");
+            assertTrue(series.getBarCount() > 0, "Series should contain bars");
+            assertEquals(tempFile.getFileName().toString(), series.getName(),
+                    "Series name should match the local file");
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 
     @Test

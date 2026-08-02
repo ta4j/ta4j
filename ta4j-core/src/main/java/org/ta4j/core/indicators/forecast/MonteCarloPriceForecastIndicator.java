@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -35,6 +36,8 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     private static final int MAX_EXPONENT = 700;
 
     private final Indicator<Num> priceIndicator;
+    private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
+    private final MonteCarloSettings settings;
     private final MonteCarloSimulation simulation;
 
     /**
@@ -88,7 +91,9 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         super(IndicatorUtils.requireSameSeries(builder.priceIndicator, builder.stateIndicator));
         IndicatorUtils.requireSameSeries(builder.stateIndicator.getReturnIndicator(), builder.stateIndicator);
         this.priceIndicator = builder.priceIndicator;
-        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings());
+        this.stateIndicator = builder.stateIndicator;
+        this.settings = builder.settings();
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, this.settings);
     }
 
     /**
@@ -117,6 +122,10 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     @Override
     protected Forecast calculate(int index) {
+        Forecast accelerated = AccelerationRuntime.value(this, index).orElse(null);
+        if (accelerated != null) {
+            return accelerated;
+        }
         Num price = priceIndicator.getValue(index);
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, getHorizon());
@@ -166,6 +175,25 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     @Override
     public int getHorizon() {
         return simulation.getHorizon();
+    }
+
+    /**
+     * Returns the read-only configuration and source indicators needed by optional
+     * batch acceleration adapters.
+     *
+     * <p>
+     * The returned specification is descriptive only. It does not authorize
+     * arbitrary graph compilation; an accelerator adapter must still validate the
+     * concrete graph, source series, numeric representation, and provider
+     * capability before using it.
+     *
+     * @return acceleration specification for this forecast indicator
+     * @since 0.23.1
+     */
+    public MonteCarloPriceForecastSpec accelerationSpec() {
+        return new MonteCarloPriceForecastSpec(priceIndicator, stateIndicator, settings.horizon(),
+                settings.iterationCount(), settings.lookbackBarCount(), settings.seed(), settings.shockModel(),
+                settings.volatilityUpdateMode(), settings.volatilityDecayFactor(), settings.quantileProbabilities());
     }
 
     private static Indicator<Num> sourceIndicator(
