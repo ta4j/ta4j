@@ -84,6 +84,7 @@ raw machine hostname.
 ### 6) Forecast modeling and calibration
 
 - `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
+- `ta4jexamples.analysis.forecast.KinematicKalmanForecastExample`
 
 Run the ossified BTC daily analog and rolling-conformal walkthrough:
 
@@ -92,6 +93,20 @@ Run the ossified BTC daily analog and rolling-conformal walkthrough:
 ./mvnw -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.analysis.forecast.RollingConformalForecastExample
 ```
+
+Run the ossified S&P 500 weekly kinematic Kalman walkthrough:
+
+```bash
+./mvnw -pl ta4j-examples -am install
+./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.analysis.forecast.KinematicKalmanForecastExample
+```
+
+This example composes ATR-derived process variance with an inverted-CHOP
+measurement-variance regime, shares one cached state across one-, four-, and
+thirteen-week forecasts, and applies rolling conformal calibration to the
+four-week interval. The bundled Yahoo Finance snapshot is fixed through July
+30, 2026; its final July 27 weekly aggregate is an as-of partial week.
 
 ## Suggested progression
 
