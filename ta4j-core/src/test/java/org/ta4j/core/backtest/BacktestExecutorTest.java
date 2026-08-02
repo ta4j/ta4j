@@ -30,18 +30,33 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 
-public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestExecutorTest {
 
-    public BacktestExecutorTest(NumFactory numFactory) {
-        super(numFactory);
+    private static final NumFactory DECIMAL_NUM_FACTORY = DecimalNumFactory.getInstance();
+
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
+
+    private Num numOf(Number value) {
+        return numFactory.numOf(value);
+    }
+
+    private void runWithNumFactory(NumFactory factory, Runnable test) {
+        NumFactory previousFactory = numFactory;
+        numFactory = factory;
+        try {
+            test.run();
+        } finally {
+            numFactory = previousFactory;
+        }
     }
 
     @Test
@@ -95,6 +110,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(1, result.tradingStatements().size());
         assertEquals(numFactory.one(), position.getEntry().getAmount());
         assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void executeWithRuntimeReportAcceptsPositionSizerWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeWithRuntimeReportAcceptsPositionSizer);
     }
 
     @Test
@@ -333,6 +353,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void executeAndKeepTopKWithCommissionsCriterionWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKWithCommissionsCriterion);
+    }
+
+    @Test
     public void executeAndKeepTopKWithHigherIsBetterCriterion() {
         // Create a series with increasing prices to generate different returns
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
@@ -437,6 +462,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void executeAndKeepTopKSkipsNaNStrategiesWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKSkipsNaNStrategies);
+    }
+
+    @Test
     public void executeAndKeepTopKAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
         Strategy smallestEntry = new BaseStrategy(new FixedRule(0), new FixedRule(3));
@@ -456,6 +486,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertSame(smallestEntry, result.tradingStatements().getFirst().getStrategy());
         assertEquals(numFactory.one(), position.getEntry().getAmount());
         assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void executeAndKeepTopKAcceptsPositionSizerWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKAcceptsPositionSizer);
     }
 
     @Test
@@ -534,6 +569,12 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertNotSame(backtestSeries, walkForwardSeries);
         assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
         assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
+    }
+
+    @Test
+    public void executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputsWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY,
+                this::executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputs);
     }
 
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {
