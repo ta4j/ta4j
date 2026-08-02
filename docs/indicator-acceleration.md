@@ -27,7 +27,7 @@ crossover policy.
 Provider absence, an unsupported graph or numeric factory, stale input, memory
 limits, or native failure causes complete scalar recomputation. No partial GPU
 result is published. Set logging for
-`org.ta4j.core.acceleration.AccelerationRuntime` to `DEBUG` to see the selected
+`org.ta4j.core.internal.acceleration.AccelerationRuntime` to `DEBUG` to see the selected
 backend, typed decision code, native status, timings, and fallback detail.
 
 ## Artifact and platform boundary
@@ -70,12 +70,16 @@ Metal uses checked whole-decision chunks. CUDA uses the same versioned RNG and
 forecast fixtures with FP64 reduction. The Java golden corpus covers bounded
 RNG selection for `1`, `2`, `7`, `252`, `256`, and `1000`.
 
+The versioned stream replaces the sequential `SplittableRandom` stream used
+before 0.23.1. A fixed seed is reproducible across scalar, Metal, and CUDA lanes,
+but upgrading can change previously recorded Monte Carlo values for that seed.
+
 ## Qualification status
 
 - Apple M5 Max Metal is correctness- and performance-qualified for the checked
   forecast workload. A 4,096-bar transparent backtest with 256 decisions,
-  2,048 paths, horizon 32, and lookback 256 measured a 312.664 ms scalar median
-  versus 134.693 ms with Metal, or **2.32x**, over five warm trials. All six
+  2,048 paths, horizon 32, and lookback 256 measured a 262.855 ms scalar median
+  versus 120.235 ms with Metal, or **2.19x**, over five warm trials. All six
   positions, operation indexes, 147 bars in market, and ending equity matched.
   The [full performance report](indicator-acceleration-metal-benchmark.md)
   includes raw trials, parity, reproduction, and the defects it exposed.

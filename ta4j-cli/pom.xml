@@ -118,6 +118,7 @@
             <properties>
                 <ta4j.native.classifier>metal-macos-aarch64</ta4j.native.classifier>
                 <ta4j.native.package>${project.build.directory}/native/metal/package</ta4j.native.package>
+                <ta4j.native.resourceJar>${project.build.directory}/native/${ta4j.native.classifier}-resources.jar</ta4j.native.resourceJar>
             </properties>
             <build>
                 <plugins>
@@ -139,26 +140,22 @@
                                     </arguments>
                                 </configuration>
                             </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>3.4.0</version>
-                        <executions>
                             <execution>
-                                <id>package-metal-resource</id>
-                                <phase>process-resources</phase>
+                                <id>bundle-metal-macos-aarch64-resource</id>
+                                <phase>prepare-package</phase>
                                 <goals>
-                                    <goal>copy-resources</goal>
+                                    <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${ta4j.native.package}</directory>
-                                        </resource>
-                                    </resources>
+                                    <executable>${java.home}/bin/jar</executable>
+                                    <arguments>
+                                        <argument>--create</argument>
+                                        <argument>--file</argument>
+                                        <argument>${ta4j.native.resourceJar}</argument>
+                                        <argument>-C</argument>
+                                        <argument>${ta4j.native.package}</argument>
+                                        <argument>.</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
@@ -178,6 +175,9 @@
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadedArtifactAttached>true</shadedArtifactAttached>
                                     <shadedClassifierName>${ta4j.native.classifier}</shadedClassifierName>
+                                    <extraJars>
+                                        <extraJar>${ta4j.native.resourceJar}</extraJar>
+                                    </extraJars>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
@@ -197,6 +197,7 @@
             <properties>
                 <ta4j.native.classifier>cuda-windows-x86_64</ta4j.native.classifier>
                 <ta4j.native.package>${project.build.directory}/native/cuda/package</ta4j.native.package>
+                <ta4j.native.resourceJar>${project.build.directory}/native/${ta4j.native.classifier}-resources.jar</ta4j.native.resourceJar>
             </properties>
             <build>
                 <plugins>
@@ -237,26 +238,22 @@
                                     </arguments>
                                 </configuration>
                             </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>3.4.0</version>
-                        <executions>
                             <execution>
-                                <id>package-cuda-windows-resource</id>
-                                <phase>process-resources</phase>
+                                <id>bundle-cuda-windows-x86_64-resource</id>
+                                <phase>prepare-package</phase>
                                 <goals>
-                                    <goal>copy-resources</goal>
+                                    <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${ta4j.native.package}</directory>
-                                        </resource>
-                                    </resources>
+                                    <executable>${java.home}/bin/jar</executable>
+                                    <arguments>
+                                        <argument>--create</argument>
+                                        <argument>--file</argument>
+                                        <argument>${ta4j.native.resourceJar}</argument>
+                                        <argument>-C</argument>
+                                        <argument>${ta4j.native.package}</argument>
+                                        <argument>.</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
@@ -276,6 +273,9 @@
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadedArtifactAttached>true</shadedArtifactAttached>
                                     <shadedClassifierName>${ta4j.native.classifier}</shadedClassifierName>
+                                    <extraJars>
+                                        <extraJar>${ta4j.native.resourceJar}</extraJar>
+                                    </extraJars>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
@@ -295,6 +295,7 @@
             <properties>
                 <ta4j.native.classifier>cuda-linux-x86_64</ta4j.native.classifier>
                 <ta4j.native.package>${project.build.directory}/native/cuda/package</ta4j.native.package>
+                <ta4j.native.resourceJar>${project.build.directory}/native/${ta4j.native.classifier}-resources.jar</ta4j.native.resourceJar>
             </properties>
             <build>
                 <plugins>
@@ -336,26 +337,22 @@
                                     </arguments>
                                 </configuration>
                             </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>3.4.0</version>
-                        <executions>
                             <execution>
-                                <id>package-cuda-linux-resource</id>
-                                <phase>process-resources</phase>
+                                <id>bundle-cuda-linux-x86_64-resource</id>
+                                <phase>prepare-package</phase>
                                 <goals>
-                                    <goal>copy-resources</goal>
+                                    <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <outputDirectory>${project.build.outputDirectory}</outputDirectory>
-                                    <resources>
-                                        <resource>
-                                            <directory>${ta4j.native.package}</directory>
-                                        </resource>
-                                    </resources>
+                                    <executable>${java.home}/bin/jar</executable>
+                                    <arguments>
+                                        <argument>--create</argument>
+                                        <argument>--file</argument>
+                                        <argument>${ta4j.native.resourceJar}</argument>
+                                        <argument>-C</argument>
+                                        <argument>${ta4j.native.package}</argument>
+                                        <argument>.</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
@@ -375,6 +372,9 @@
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <shadedArtifactAttached>true</shadedArtifactAttached>
                                     <shadedClassifierName>${ta4j.native.classifier}</shadedClassifierName>
+                                    <extraJars>
+                                        <extraJar>${ta4j.native.resourceJar}</extraJar>
+                                    </extraJars>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">

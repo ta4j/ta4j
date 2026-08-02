@@ -20,7 +20,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.acceleration.AccelerationRuntime;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;

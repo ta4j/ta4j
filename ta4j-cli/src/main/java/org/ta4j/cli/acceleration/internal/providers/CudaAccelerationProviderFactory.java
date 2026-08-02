@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
 
 /**
  * Optional Windows or Linux x86_64 CUDA provider factory.
@@ -69,7 +69,16 @@ final class CudaAccelerationProviderFactory {
         if (!load.loaded()) {
             return unavailable(load.detail());
         }
-        CudaProbeResult probe = nativeBridge.probe();
+        CudaProbeResult probe;
+        try {
+            probe = nativeBridge.probe();
+        } catch (LinkageError | RuntimeException exception) {
+            return unavailable("CUDA native self-test failed: " + exception.getClass().getSimpleName() + ": "
+                    + (exception.getMessage() == null ? "no detail" : exception.getMessage()));
+        }
+        if (probe == null) {
+            return unavailable("CUDA native self-test failed: provider returned no result");
+        }
         if (!probe.available()) {
             return unavailable("CUDA native self-test failed: " + probe.detail());
         }

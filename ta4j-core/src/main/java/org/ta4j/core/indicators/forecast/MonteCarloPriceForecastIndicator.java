@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.acceleration.AccelerationRuntime;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -122,10 +122,6 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     @Override
     protected Forecast calculate(int index) {
-        Forecast accelerated = AccelerationRuntime.value(this, index).orElse(null);
-        if (accelerated != null) {
-            return accelerated;
-        }
         Num price = priceIndicator.getValue(index);
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, getHorizon());
@@ -154,7 +150,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
             return Forecast.unstable(index, getHorizon());
         }
-        return super.getValue(index);
+        return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
     }
 
     /**

@@ -12,9 +12,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -117,6 +117,15 @@ class MetalAccelerationProviderTest {
                     }
                 }, false);
         assertThat(rejected.probe().capability().available()).isFalse();
+
+        MetalAccelerationProviderFactory throwing = new MetalAccelerationProviderFactory(
+                () -> new MetalNativeLibrary.LoadResult(true, Path.of("/tmp/throwing.dylib"), ""), new FakeBridge() {
+                    @Override
+                    public MetalProbeResult probe() {
+                        throw new IllegalStateException("pipeline creation failed");
+                    }
+                }, false);
+        assertThat(throwing.probe().capability().detail()).contains("self-test failed", "pipeline creation failed");
     }
 
     @Test

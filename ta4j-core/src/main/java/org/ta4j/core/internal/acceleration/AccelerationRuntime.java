@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.acceleration;
+package org.ta4j.core.internal.acceleration;
 
 import java.util.ArrayList;
 import java.util.Collections;

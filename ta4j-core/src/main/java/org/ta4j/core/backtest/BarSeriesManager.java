@@ -16,7 +16,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.acceleration.AccelerationRuntime;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime;
 import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatementGenerator;

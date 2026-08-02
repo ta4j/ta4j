@@ -4,8 +4,8 @@
 
 The production Metal path is now both real and performance-positive on the
 checked Apple M5 Max. In the transparent `BarSeriesManager` workload, the
-scalar median was **312.664 ms** and `-Dta4j.acceleration=auto` selected Metal
-at **134.693 ms**, a **2.32x end-to-end speedup**.
+scalar median was **262.855 ms** and `-Dta4j.acceleration=auto` selected Metal
+at **120.235 ms**, a **2.19x end-to-end speedup**.
 
 The original pre-production spike used the same workload dimensions but its
 "Metal preferred" provider only probed and self-tested the device before
@@ -13,7 +13,7 @@ falling back to CPU. That run measured 163.398 ms scalar versus 168.196 ms for
 the fallback path, or 0.97x. The useful before/after change is therefore not a
 cross-machine timing comparison: it is that the requested Metal lane moved
 from verified CPU fallback to verified native execution and from a small loss
-to a 2.32x within-run gain.
+to a 2.19x within-run gain.
 
 ## Workload
 
@@ -38,15 +38,15 @@ test measured the backend even if the checked-in crossover policy changed.
 
 | Trial | Scalar `off` (ms) | Metal `auto` (ms) |
 | ---: | ---: | ---: |
-| 1 | 371.049 | 160.429 |
-| 2 | 332.557 | 136.449 |
-| 3 | 312.664 | 134.693 |
-| 4 | 306.225 | 129.388 |
-| 5 | 302.809 | 125.684 |
-| **Median** | **312.664** | **134.693** |
+| 1 | 319.213 | 134.204 |
+| 2 | 264.837 | 120.235 |
+| 3 | 262.322 | 121.980 |
+| 4 | 259.420 | 117.628 |
+| 5 | 262.855 | 116.300 |
+| **Median** | **262.855** | **120.235** |
 
-The median Metal diagnostic reported one checked chunk, 132.412 ms in provider
-work, 10.369 ms native total, 0.368 ms transfer, and 10.000 ms kernel time.
+The median Metal diagnostic reported one checked chunk, 118.197 ms in provider
+work, 10.363 ms native total, 0.328 ms transfer, and 10.033 ms kernel time.
 
 ## Correctness parity
 
@@ -69,7 +69,7 @@ unstable forecasts within the checked tolerance.
    moments. The expanded all-model native test caught a 16% standard-deviation
    error; the kernel now matches the scalar sampling contract.
 3. Java snapshot capture, validation, sample conversion, sorting, and `Forecast`
-   materialization account for roughly 92% of median provider time. The GPU
+   materialization account for roughly 91% of median provider time. The GPU
    kernel is already fast; reducing Java-side copies and reductions is the next
    credible optimization target.
 4. Both lanes show a slower first measured trial despite warmup, so promotion

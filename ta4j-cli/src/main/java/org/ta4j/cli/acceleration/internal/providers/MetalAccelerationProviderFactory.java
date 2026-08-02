@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
 
 final class MetalAccelerationProviderFactory {
 
@@ -47,7 +47,16 @@ final class MetalAccelerationProviderFactory {
         if (!load.loaded()) {
             return unavailable(load.detail());
         }
-        MetalProbeResult probe = nativeBridge.probe();
+        MetalProbeResult probe;
+        try {
+            probe = nativeBridge.probe();
+        } catch (LinkageError | RuntimeException exception) {
+            return unavailable("Metal native self-test failed: " + exception.getClass().getSimpleName() + ": "
+                    + (exception.getMessage() == null ? "no detail" : exception.getMessage()));
+        }
+        if (probe == null) {
+            return unavailable("Metal native self-test failed: provider returned no result");
+        }
         if (!probe.available()) {
             return unavailable("Metal native self-test failed: " + probe.detail());
         }

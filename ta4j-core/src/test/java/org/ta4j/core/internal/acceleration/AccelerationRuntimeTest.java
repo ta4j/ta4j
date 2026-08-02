@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.acceleration;
+package org.ta4j.core.internal.acceleration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,13 +22,13 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
-import org.ta4j.core.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.acceleration.AccelerationRuntime.Status;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Provider;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -117,10 +117,9 @@ class AccelerationRuntimeTest {
             assertEquals(series.numFactory().numOf(100), first.getValue(0));
         }
         System.setProperty(AccelerationRuntime.PROPERTY, "off");
-        ScopeAwareIndicator second = new ScopeAwareIndicator(series);
 
-        assertEquals(series.numFactory().zero(), second.getValue(0));
-        assertFalse(AccelerationRuntime.value(second, 0).isPresent());
+        assertEquals(series.numFactory().zero(), first.getValue(0));
+        assertFalse(AccelerationRuntime.value(first, 0).isPresent());
     }
 
     @Test
@@ -162,8 +161,13 @@ class AccelerationRuntimeTest {
         }
 
         @Override
+        public Num getValue(int index) {
+            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        }
+
+        @Override
         protected Num calculate(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> getBarSeries().numFactory().numOf(index));
+            return getBarSeries().numFactory().numOf(index);
         }
 
         @Override
