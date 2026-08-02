@@ -1,29 +1,61 @@
 param(
-    [string]$RepoRoot = "."
+    [string]$RepoRoot = ".",
+    [ValidateSet("Preflight", "Build", "Integration", "Benchmark", "All")]
+    [string]$Action = "Preflight"
 )
 
 $ErrorActionPreference = "Stop"
-$root = Resolve-Path $RepoRoot
-Write-Host "CF-336 CUDA continuation root: $root"
-Write-Host "Implementation plan: $root\docs\indicator-acceleration-cuda-plan.md"
+$root = (Resolve-Path $RepoRoot).Path
+$maven = Join-Path $root "mvnw.cmd"
+$library = Join-Path $root "ta4j-accelerator\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
 
-$required = @(
-    "nvcc --version",
-    "nvidia-smi",
-    ".\mvnw.cmd -B -pl ta4j-accelerator -am test",
-    ".\mvnw.cmd -B -pl ta4j-accelerator -am '-Dgroups=integration' '-Dta4j.excludedTestTags=' test",
-    "scripts\run-full-build-quiet.ps1"
-)
+Write-Host "CF-336 Windows CUDA root: $root"
+Write-Host "Operation ABI: ta4j.forecast.monte-carlo-price.v1"
+Write-Host "Implementation record: $root\docs\indicator-acceleration-cuda-plan.md"
 
-Write-Host "Required preflight and validation commands:"
-$required | ForEach-Object { Write-Host "  $_" }
+if (-not $IsWindows) {
+    throw "The cuda-windows-x86_64 profile requires Windows"
+}
+foreach ($command in @("nvcc", "nvidia-smi", "cmake", "java")) {
+    if ($null -eq (Get-Command $command -ErrorAction SilentlyContinue)) {
+        throw "Required command is unavailable: $command"
+    }
+}
+nvcc --version | Select-Object -Last 1
+nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader | Select-Object -First 1
+cmake --version | Select-Object -First 1
+java -version
 
-Write-Host ""
-Write-Host "TODO checkpoints:"
-Write-Host "  1. Freeze the operation ABI, RNG vectors, snapshot contract, and tolerance policy."
-Write-Host "  2. Implement the CUDA capability probe without reporting availability before self-test passes."
-Write-Host "  3. Add optional JNI/native packaging for Windows x86_64 without affecting CPU-only Maven users."
-Write-Host "  4. Implement ta4j.forecast.monte-carlo-price.v1 sampling, projection, and reduction."
-Write-Host "  5. Add snapshot, stream/memory, device-loss, and deterministic fallback tests."
-Write-Host "  6. Produce paired CPU/Metal/CUDA/HYBRID JSON reports from the same commit."
-Write-Host "  7. Leave Linux qualification to scripts/acceleration/linux-cuda-handoff.sh."
+if ($Action -eq "Preflight") {
+    return
+}
+
+if ($Action -in @("Build", "All")) {
+    & $maven -B -pl ta4j-accelerator -am -Pcuda-windows-x86_64 -DskipTests package
+    if ($LASTEXITCODE -ne 0) {
+        throw "CUDA classifier build failed with exit code $LASTEXITCODE"
+    }
+}
+if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
+    throw "CUDA DLL is absent; run this script with -Action Build or -Action All first: $library"
+}
+
+if ($Action -in @("Integration", "All")) {
+    & $maven -B -pl ta4j-accelerator -am "-Dtest=CudaNativeIntegrationTest" `
+        "-Dsurefire.failIfNoSpecifiedTests=false" "-Dgroups=integration" "-Dta4j.excludedTestTags=" `
+        "-Dta4j.acceleration.cuda.library=$library" test
+    if ($LASTEXITCODE -ne 0) {
+        throw "CUDA integration tests failed with exit code $LASTEXITCODE"
+    }
+}
+
+if ($Action -in @("Benchmark", "All")) {
+    & (Join-Path $root "scripts\acceleration\benchmark-cuda-provider.ps1") -RepoRoot $root -LibraryPath $library
+}
+
+if ($Action -eq "All") {
+    & (Join-Path $root "scripts\run-full-build-quiet.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Full Windows build failed with exit code $LASTEXITCODE"
+    }
+}

@@ -7,9 +7,13 @@ trap 'rm -rf "$TMP"' EXIT
 
 grep -q "libta4j-metal-accelerator.dylib" "$ROOT/scripts/acceleration/build-metal-provider.sh"
 grep -q "MTLCreateSystemDefaultDevice" "$ROOT/scripts/acceleration/metal-provider-smoke.m"
-grep -q "NOT_IMPLEMENTED" "$ROOT/ta4j-accelerator/src/main/java/org/ta4j/acceleration/internal/providers/CudaAccelerationProviderFactory.java"
-grep -Fq '.\mvnw.cmd' "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
+if grep -q "NOT_IMPLEMENTED" "$ROOT/ta4j-accelerator/src/main/java/org/ta4j/acceleration/internal/providers/CudaAccelerationProviderFactory.java"; then
+  echo "CUDA factory must not retain its unavailable skeleton" >&2
+  exit 1
+fi
+grep -Fq 'mvnw.cmd' "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
 grep -q "ta4j.forecast.monte-carlo-price.v1" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
+grep -q "cuda-windows-x86_64" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
 
 BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$ROOT" >"$TMP/linux-output"
 grep -q "nvidia-smi" "$TMP/linux-output"

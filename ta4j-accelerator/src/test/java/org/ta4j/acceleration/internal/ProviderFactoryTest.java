@@ -19,15 +19,21 @@ import org.ta4j.core.acceleration.AccelerationMode;
 class ProviderFactoryTest {
 
     @Test
-    void cudaSkeletonIsUnavailableAndNotImplemented() {
-        CudaAccelerationProviderFactory factory = new CudaAccelerationProviderFactory();
+    void cudaProviderStaysUnavailableWithoutAnExplicitOrClassifierLibrary() {
+        String previous = System.getProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY);
+        System.clearProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY);
+        try {
+            CudaAccelerationProviderFactory factory = new CudaAccelerationProviderFactory();
 
-        IndicatorAccelerationProvider provider = factory.probe(List.of(ForecastBatchAdapter.OPERATION_ID));
+            IndicatorAccelerationProvider provider = factory.probe(List.of(ForecastBatchAdapter.OPERATION_ID));
 
-        assertThat(provider.capability().mode()).isEqualTo(AccelerationMode.CUDA);
-        assertThat(provider.capability().available()).isFalse();
-        assertThat(provider.capability().nativeInitialized()).isFalse();
-        assertThat(provider.capability().rejectionReason()).contains("NOT_IMPLEMENTED");
+            assertThat(provider.capability().mode()).isEqualTo(AccelerationMode.CUDA);
+            assertThat(provider.capability().available()).isFalse();
+            assertThat(provider.capability().nativeInitialized()).isFalse();
+            assertThat(provider.capability().rejectionReason()).contains("CUDA classifier resource is absent");
+        } finally {
+            restoreProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY, previous);
+        }
     }
 
     @Test
@@ -49,6 +55,14 @@ class ProviderFactoryTest {
             } else {
                 System.setProperty(MetalAccelerationProviderFactory.LIBRARY_PROPERTY, previous);
             }
+        }
+    }
+
+    private static void restoreProperty(String property, String previous) {
+        if (previous == null) {
+            System.clearProperty(property);
+        } else {
+            System.setProperty(property, previous);
         }
     }
 }

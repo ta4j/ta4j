@@ -6,9 +6,7 @@ package org.ta4j.core.indicators.forecast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.SplittableRandom;
 import java.util.TreeSet;
-import java.util.random.RandomGenerator;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -58,9 +56,10 @@ final class MonteCarloSimulation {
         }
 
         ShockSampler sampler = ShockSampler.create(settings.shockModel(), historicalReturns, state, numFactory);
-        RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
         List<Num> terminalValues = new ArrayList<>(settings.iterationCount());
         for (int iteration = 0; iteration < settings.iterationCount(); iteration++) {
+            DeterministicRandom random = DeterministicRandom.forPath(settings.seed(), index, settings.horizon(),
+                    iteration);
             Num cumulativeReturn = simulatePath(random, sampler, state, numFactory);
             if (!Num.isFinite(cumulativeReturn)) {
                 return Forecast.unstable(index, settings.horizon());
@@ -105,7 +104,7 @@ final class MonteCarloSimulation {
         return values;
     }
 
-    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ProjectionState startingState,
+    private Num simulatePath(DeterministicRandom random, ShockSampler sampler, ProjectionState startingState,
             NumFactory numFactory) {
         Num cumulativeReturn = numFactory.zero();
         Num drift = startingState.drift();
@@ -152,18 +151,71 @@ final class MonteCarloSimulation {
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
     }
 
-    private static long mixSeed(long seed, int index, int horizon) {
-        long value = seed;
-        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
-        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
-        value ^= 0x1C69B3F74AC4AE35L + horizon;
-        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
-        return value ^ value >>> 33;
-    }
-
     @FunctionalInterface
     interface TerminalValueMapper {
         Num map(Num cumulativeReturn);
+    }
+
+    static final class DeterministicRandom {
+
+        private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
+        private static final double DOUBLE_UNIT = 0x1.0p-53;
+
+        private long state;
+
+        private DeterministicRandom(long state) {
+            this.state = state;
+        }
+
+        static DeterministicRandom forPath(long seed, int decisionIndex, int horizon, int pathIndex) {
+            if (decisionIndex < 0) {
+                throw new IllegalArgumentException("decisionIndex must be >= 0");
+            }
+            if (horizon < 1) {
+                throw new IllegalArgumentException("horizon must be >= 1");
+            }
+            if (pathIndex < 0) {
+                throw new IllegalArgumentException("pathIndex must be >= 0");
+            }
+            long value = seed;
+            value = mix64(value ^ (Integer.toUnsignedLong(decisionIndex) * 0xD1B54A32D192ED03L));
+            value = mix64(value ^ (Integer.toUnsignedLong(horizon) * 0x94D049BB133111EBL));
+            value = mix64(value ^ (Integer.toUnsignedLong(pathIndex) * 0xDB4F0B9175AE2165L));
+            return new DeterministicRandom(value);
+        }
+
+        int nextInt(int bound) {
+            if (bound <= 0) {
+                throw new IllegalArgumentException("bound must be > 0");
+            }
+            long candidate = nextLong() >>> 1;
+            long remainder = candidate % bound;
+            while (candidate - remainder + bound - 1 < 0L) {
+                candidate = nextLong() >>> 1;
+                remainder = candidate % bound;
+            }
+            return (int) remainder;
+        }
+
+        double nextGaussian() {
+            double radius = Math.sqrt(-2d * Math.log(1d - nextDouble()));
+            return radius * Math.cos(2d * Math.PI * nextDouble());
+        }
+
+        private double nextDouble() {
+            return (nextLong() >>> 11) * DOUBLE_UNIT;
+        }
+
+        private long nextLong() {
+            state += GOLDEN_GAMMA;
+            return mix64(state);
+        }
+
+        private static long mix64(long value) {
+            value = (value ^ value >>> 30) * 0xBF58476D1CE4E5B9L;
+            value = (value ^ value >>> 27) * 0x94D049BB133111EBL;
+            return value ^ value >>> 31;
+        }
     }
 
     private record ProjectionState(Num mean, Num drift, Num variance, Num volatility) {
@@ -185,7 +237,7 @@ final class MonteCarloSimulation {
 
     @FunctionalInterface
     private interface ShockSampler {
-        Num sample(RandomGenerator random);
+        Num sample(DeterministicRandom random);
 
         static ShockSampler create(MonteCarloReturnProjectionIndicator.ShockModel model, List<Num> historicalReturns,
                 ProjectionState state, NumFactory numFactory) {

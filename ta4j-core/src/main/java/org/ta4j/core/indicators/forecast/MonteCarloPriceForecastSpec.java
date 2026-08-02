@@ -39,6 +39,14 @@ public record MonteCarloPriceForecastSpec(Indicator<Num> priceIndicator,
         MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode, double volatilityDecayFactor,
         List<Double> quantileProbabilities) {
 
+    /**
+     * Version of the deterministic per-path sampling contract used by scalar and
+     * native implementations.
+     *
+     * @since 0.23.1
+     */
+    public static final int RNG_VERSION = 1;
+
     public MonteCarloPriceForecastSpec {
         Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
         Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");

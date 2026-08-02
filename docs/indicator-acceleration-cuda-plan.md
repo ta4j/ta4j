@@ -4,22 +4,48 @@ This plan completes CF-336 from the current draft branch without redesigning the
 public batch API. It is the durable handoff for Windows implementation and Linux
 portability work.
 
+## Windows completion record
+
+The Windows lane is implemented for `ta4j.forecast.monte-carlo-price.v1` on
+Windows x86_64, CUDA 13.3, and compute capability 12.0. It adds RNG contract
+version 1, immutable primitive snapshots, a lazy integrity-checked JNI loader,
+native probe/self-test, FP64 CUDA projection and reduction, whole-index HYBRID
+execution, classifier packaging, fake-bridge tests, and RTX 5090 integration.
+
+Qualification on an RTX 5090 with driver 610.88 produced zero parity failures
+across all shock models, both volatility modes, odd/even path counts,
+zero-variance and unstable inputs, public evaluator routing, and concurrency.
+NVIDIA Compute Sanitizer memcheck, racecheck, initcheck, and synccheck each
+reported zero errors. The base jar contains no native resource; the classifier
+contains no Java class; its DLL checksum matches the packaged sidecar.
+
+Five fresh JVMs per workload measured 0.81-0.99x at 8,192 work units,
+1.30-1.35x at 262,144, and 0.86-0.98x at 2,097,152. This is not a stable
+monotonic crossover. Explicit CUDA is correctness-qualified, while AUTO and
+HYBRID remain performance-unqualified and conservatively stay on CPU. No
+cutoff was checked in from a cherry-picked workload.
+
+The only public surface added during native completion is
+`MonteCarloPriceForecastSpec.RNG_VERSION`; the existing configuration type owns
+that contract more clearly than a parallel helper. Native bridge, snapshot,
+provider, and loader types remain package-private; their distinct lifecycle and
+test seams justify internal separation without API expansion.
+
 ## Current state
 
 - Implementation baseline `2c59e8c294cd81015be074391be2f5b84794d86a` contains the dependency-free
   core batch contract, optional accelerator module, explicit Close/SMA and
   forecast adapters, lazy provider discovery, typed CPU fallback, a Metal
   probe/self-test, and an unavailable CUDA factory.
-- Draft PR 1591 is open, mergeable, green, fully reviewed by CodeRabbit, and has
-  no unresolved review threads. CF-336 remains In Review.
-- Neither native provider currently performs forecast computation. The proven
-  CF-329 direct Metal kernel is not yet wired behind the production provider.
-- The Windows host is ready for the main CUDA lane: Windows 11, JDK 25, CUDA
-  13.3, RTX 5090 compute capability 12.0, driver 610.88, and x64 MSVC are
-  installed. Validate them again at implementation time.
-- The existing framework is a safe scaffold, not the complete PRD. Immutable
-  snapshots, versioned RNG fixtures, device reduction, cost-aware AUTO,
-  executable HYBRID partitioning, native packaging, and paired reports remain.
+- PR 1591 carries the implementation. CF-336 remains In Review until the final
+  hosted checks and human merge decision complete.
+- CUDA performs production forecast computation on the qualified Windows
+  matrix. Metal still probes only and is outside the narrowed Windows claim.
+- Qualification used Windows 11, JDK 25, CUDA 13.3, RTX 5090 compute capability
+  12.0, driver 610.88, CMake, and x64 MSVC.
+- Immutable snapshots, versioned RNG fixtures, device reduction, explicit
+  HYBRID execution, native packaging, and Windows evidence are complete. AUTO
+  and HYBRID remain deliberately unqualified by the measured crossover data.
 
 ## Fixed implementation decisions
 
@@ -200,17 +226,14 @@ Acceptance: all Windows gates are green with zero skipped tests in invoked
 profiles, the worktree is clean, reports identify the candidate commit, and the
 CUDA skeleton no longer contains `NOT_IMPLEMENTED` for the qualified operation.
 
-## Paired Metal and release gate
+## Metal release scope
 
-Windows completion is necessary but not sufficient to merge CF-336. On the
-same candidate commit, wire the proven CF-329 Metal sampling/projection/reduction
-path behind the production provider, run the same fixture/report schema on the
-M5 Max, and compare CPU, Metal, CUDA, and HYBRID manifests. The draft stays
-draft and CF-336 stays In Review until both native providers have zero
-correctness/decision failures, exact fallback behavior, acceptable performance
-evidence, and a final ta4j public-API review. If Metal cannot meet the gate, keep
-its provider unavailable and narrow the release claim rather than merging an
-unimplemented peer backend.
+Metal did not run on the Windows host and remains unavailable for forecast
+execution. This branch follows the planned narrow-claim path: it does not claim
+paired cross-platform acceleration, and Metal is not a prerequisite for the
+exact Windows CUDA classifier. A future Metal lane must reuse ABI/RNG fixtures,
+emit the same report schema on Apple hardware, and independently satisfy
+correctness, fallback, performance, and public-API review gates.
 
 ## Separate Linux continuation
 
