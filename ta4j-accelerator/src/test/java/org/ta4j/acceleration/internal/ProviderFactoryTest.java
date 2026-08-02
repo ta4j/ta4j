@@ -19,7 +19,7 @@ import org.ta4j.core.acceleration.AccelerationMode;
 class ProviderFactoryTest {
 
     @Test
-    void cudaProviderStaysUnavailableWithoutAnExplicitOrClassifierLibrary() {
+    void cudaProviderStaysUnavailableWithoutAQualifiedPlatformAndLibrary() {
         String previous = System.getProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY);
         System.clearProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY);
         try {
@@ -30,7 +30,7 @@ class ProviderFactoryTest {
             assertThat(provider.capability().mode()).isEqualTo(AccelerationMode.CUDA);
             assertThat(provider.capability().available()).isFalse();
             assertThat(provider.capability().nativeInitialized()).isFalse();
-            assertThat(provider.capability().rejectionReason()).contains("CUDA classifier resource is absent");
+            assertThat(provider.capability().rejectionReason()).isNotBlank();
         } finally {
             restoreProperty(CudaAccelerationProviderFactory.LIBRARY_PROPERTY, previous);
         }

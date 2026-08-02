@@ -109,7 +109,6 @@
                                         <argument>-B</argument>
                                         <argument>${project.build.directory}/native/cuda</argument>
                                         <argument>-DJAVA_HOME=${java.home}</argument>
-                                        <argument>-DCMAKE_BUILD_TYPE=Release</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

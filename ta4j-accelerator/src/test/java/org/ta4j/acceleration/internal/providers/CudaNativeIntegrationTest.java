@@ -37,6 +37,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 @Tag("integration")
+@Tag("requires-cuda")
 class CudaNativeIntegrationTest {
 
     private static final double RELATIVE_TOLERANCE = 1e-4;
