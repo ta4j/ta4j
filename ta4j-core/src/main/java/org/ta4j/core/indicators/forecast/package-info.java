@@ -22,7 +22,11 @@
  * {@link org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator},
  * rolling calibration through
  * {@link org.ta4j.core.indicators.forecast.RollingConformalForecastProjectionIndicator},
- * and the constructor-first price forecast facade
+ * causal constant-velocity state and analytic price projection through
+ * {@link org.ta4j.core.indicators.forecast.KinematicKalmanForecastStateIndicator}
+ * and
+ * {@link org.ta4j.core.indicators.forecast.KinematicKalmanPriceForecastIndicator},
+ * and the constructor-first simulation facade
  * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}.
  * Framework contracts, state records, point-projection adapters, and explicit
  * analytic conversion bridges live in the {@code state}, {@code projection},
@@ -35,7 +39,9 @@
  * unavailable when no configured tail quantile can be widened. Rough-volatility
  * state reuses canonical EWMA moments and adds bounded log-variogram roughness,
  * log-volatility variability, and deterministic cumulative horizon variances
- * without changing the projection contracts.
+ * without changing the projection contracts. Kinematic Kalman projections hold
+ * decision-index process and measurement noise constant across their configured
+ * horizon, so one cached same-bar state can serve several causal horizons.
  *
  * @since 0.22.9
  */

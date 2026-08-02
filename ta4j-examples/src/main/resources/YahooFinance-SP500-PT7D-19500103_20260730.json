@@ -35746,7 +35746,7 @@
       "highPrice": 6993.080078125,
       "lowPrice": 6780.1298828125,
       "closePrice": 6932.2998046875,
-      "volume": 3.353826E+10,
+      "volume": 33538260000,
       "amount": 0
     },
     {
@@ -35755,7 +35755,7 @@
       "highPrice": 6993.47998046875,
       "lowPrice": 6794.5498046875,
       "closePrice": 6836.169921875,
-      "volume": 3.025878E+10,
+      "volume": 30258780000,
       "amount": 0
     },
     {
@@ -35764,7 +35764,7 @@
       "highPrice": 6915.85986328125,
       "lowPrice": 6775.5,
       "closePrice": 6909.509765625,
-      "volume": 2.110081E+10,
+      "volume": 21100810000,
       "amount": 0
     },
     {
@@ -35773,7 +35773,7 @@
       "highPrice": 6952.509765625,
       "lowPrice": 6815.43017578125,
       "closePrice": 6878.8798828125,
-      "volume": 2.878771E+10,
+      "volume": 28787710000,
       "amount": 0
     },
     {
@@ -35782,16 +35782,196 @@
       "highPrice": 6901.009765625,
       "lowPrice": 6710.419921875,
       "closePrice": 6740.02001953125,
-      "volume": 2.955575E+10,
+      "volume": 29555750000,
       "amount": 0
     },
     {
       "endTime": 1773028800000,
       "openPrice": 6699.7998046875,
       "highPrice": 6845.080078125,
-      "lowPrice": 6636.0400390625,
-      "closePrice": 6781.47998046875,
-      "volume": 1.265436E+10,
+      "lowPrice": 6623.919921875,
+      "closePrice": 6632.18994140625,
+      "volume": 29794740000,
+      "amount": 0
+    },
+    {
+      "endTime": 1773633600000,
+      "openPrice": 6674.3701171875,
+      "highPrice": 6754.2998046875,
+      "lowPrice": 6473.52001953125,
+      "closePrice": 6506.47998046875,
+      "volume": 31514370000,
+      "amount": 0
+    },
+    {
+      "endTime": 1774238400000,
+      "openPrice": 6574.9599609375,
+      "highPrice": 6651.6201171875,
+      "lowPrice": 6356.080078125,
+      "closePrice": 6368.85009765625,
+      "volume": 26385000000,
+      "amount": 0
+    },
+    {
+      "endTime": 1774843200000,
+      "openPrice": 6403.3701171875,
+      "highPrice": 6609.669921875,
+      "lowPrice": 6316.91015625,
+      "closePrice": 6582.68994140625,
+      "volume": 22232740000,
+      "amount": 0
+    },
+    {
+      "endTime": 1775448000000,
+      "openPrice": 6587.66015625,
+      "highPrice": 6845.77001953125,
+      "lowPrice": 6534.5498046875,
+      "closePrice": 6816.89013671875,
+      "volume": 23672630000,
+      "amount": 0
+    },
+    {
+      "endTime": 1776052800000,
+      "openPrice": 6806.47021484375,
+      "highPrice": 7147.52001953125,
+      "lowPrice": 6790.02001953125,
+      "closePrice": 7126.06005859375,
+      "volume": 26415780000,
+      "amount": 0
+    },
+    {
+      "endTime": 1776657600000,
+      "openPrice": 7117.0498046875,
+      "highPrice": 7168.58984375,
+      "lowPrice": 7046.5498046875,
+      "closePrice": 7165.080078125,
+      "volume": 24656950000,
+      "amount": 0
+    },
+    {
+      "endTime": 1777262400000,
+      "openPrice": 7152.72021484375,
+      "highPrice": 7272.52001953125,
+      "lowPrice": 7107.85986328125,
+      "closePrice": 7230.1201171875,
+      "volume": 25378680000,
+      "amount": 0
+    },
+    {
+      "endTime": 1777867200000,
+      "openPrice": 7228.3798828125,
+      "highPrice": 7401.5,
+      "lowPrice": 7174.1201171875,
+      "closePrice": 7398.93017578125,
+      "volume": 28614660000,
+      "amount": 0
+    },
+    {
+      "endTime": 1778472000000,
+      "openPrice": 7385.31005859375,
+      "highPrice": 7517.1201171875,
+      "lowPrice": 7338.5400390625,
+      "closePrice": 7408.5,
+      "volume": 28012420000,
+      "amount": 0
+    },
+    {
+      "endTime": 1779076800000,
+      "openPrice": 7415.06982421875,
+      "highPrice": 7506.31982421875,
+      "lowPrice": 7333.68017578125,
+      "closePrice": 7473.47021484375,
+      "volume": 26707850000,
+      "amount": 0
+    },
+    {
+      "endTime": 1779681600000,
+      "openPrice": 7511.7900390625,
+      "highPrice": 7599.3798828125,
+      "lowPrice": 7499.72021484375,
+      "closePrice": 7580.06005859375,
+      "volume": 24373460000,
+      "amount": 0
+    },
+    {
+      "endTime": 1780286400000,
+      "openPrice": 7582.2900390625,
+      "highPrice": 7620.89990234375,
+      "lowPrice": 7368.6298828125,
+      "closePrice": 7383.740234375,
+      "volume": 29232430000,
+      "amount": 0
+    },
+    {
+      "endTime": 1780891200000,
+      "openPrice": 7440.56982421875,
+      "highPrice": 7483.14990234375,
+      "lowPrice": 7237.85009765625,
+      "closePrice": 7431.4599609375,
+      "volume": 26761320000,
+      "amount": 0
+    },
+    {
+      "endTime": 1781496000000,
+      "openPrice": 7516.75,
+      "highPrice": 7577.919921875,
+      "lowPrice": 7402.60986328125,
+      "closePrice": 7500.580078125,
+      "volume": 25905730000,
+      "amount": 0
+    },
+    {
+      "endTime": 1782100800000,
+      "openPrice": 7500.43994140625,
+      "highPrice": 7530.009765625,
+      "lowPrice": 7294.18017578125,
+      "closePrice": 7354.02001953125,
+      "volume": 32283490000,
+      "amount": 0
+    },
+    {
+      "endTime": 1782705600000,
+      "openPrice": 7391.8798828125,
+      "highPrice": 7540.75,
+      "lowPrice": 7348.8798828125,
+      "closePrice": 7483.240234375,
+      "volume": 23078360000,
+      "amount": 0
+    },
+    {
+      "endTime": 1783310400000,
+      "openPrice": 7506.9599609375,
+      "highPrice": 7579.93017578125,
+      "lowPrice": 7421.81982421875,
+      "closePrice": 7575.39013671875,
+      "volume": 23572040000,
+      "amount": 0
+    },
+    {
+      "endTime": 1783915200000,
+      "openPrice": 7547.52978515625,
+      "highPrice": 7581.5,
+      "lowPrice": 7431.259765625,
+      "closePrice": 7457.68994140625,
+      "volume": 25472080000,
+      "amount": 0
+    },
+    {
+      "endTime": 1784520000000,
+      "openPrice": 7489.18017578125,
+      "highPrice": 7525.93994140625,
+      "lowPrice": 7376,
+      "closePrice": 7411.97998046875,
+      "volume": 25568160000,
+      "amount": 0
+    },
+    {
+      "endTime": 1785124800000,
+      "openPrice": 7464.2001953125,
+      "highPrice": 7480.56982421875,
+      "lowPrice": 7313.919921875,
+      "closePrice": 7316.14990234375,
+      "volume": 16465530000,
       "amount": 0
     }
   ]

@@ -254,17 +254,17 @@ public class IndicatorSerializationTest {
         // Verify the indicator type is correct
         assertThat(descriptor.getType()).isEqualTo("KalmanFilterIndicator");
 
-        // Verify that only constructor parameters are serialized
-        assertThat(descriptor.getParameters()).containsEntry("processNoise", "0.0001");
-        assertThat(descriptor.getParameters()).containsEntry("measurementNoise", "0.001");
-
         // Verify that transient stateful fields are NOT serialized
         assertThat(descriptor.getParameters()).doesNotContainKey("lastProcessedIndex");
         assertThat(descriptor.getParameters()).doesNotContainKey("filter");
         assertThat(descriptor.getParameters()).doesNotContainKey("stateIndicator");
 
-        // Verify only the expected parameters are present
-        assertThat(descriptor.getParameters()).hasSize(2);
+        // Dynamic noise is now part of the constructor graph rather than mutable
+        // filter state. Constant-noise constructors serialize through the same graph.
+        assertThat(descriptor.getParameters()).isEmpty();
+        assertThat(descriptor.getComponents()).hasSize(3);
+        assertThat(descriptor.getComponents().get(1).getType()).isEqualTo("KalmanNoiseIndicator");
+        assertThat(descriptor.getComponents().get(2).getType()).isEqualTo("KalmanNoiseIndicator");
 
         // Verify round-trip deserialization works
         String json = indicator.toJson();
