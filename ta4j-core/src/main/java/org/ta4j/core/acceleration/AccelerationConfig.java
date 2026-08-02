@@ -16,8 +16,9 @@ import java.util.Objects;
  * @param mode           requested execution mode
  * @param required       whether a device/provider request must fail instead of
  *                       returning CPU fallback values
- * @param minimumSpeedup minimum predicted improvement required before a device
- *                       stage is selected, expressed as a fraction
+ * @param minimumSpeedup minimum predicted improvement required before an
+ *                       automatic or hybrid device stage is selected, expressed
+ *                       as a fraction
  * @since 0.23.1
  */
 public record AccelerationConfig(AccelerationMode mode, boolean required, double minimumSpeedup) {

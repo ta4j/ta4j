@@ -6,7 +6,7 @@ portability work.
 
 ## Current state
 
-- Branch head `2c59e8c294cd81015be074391be2f5b84794d86a` contains the dependency-free
+- Implementation baseline `2c59e8c294cd81015be074391be2f5b84794d86a` contains the dependency-free
   core batch contract, optional accelerator module, explicit Close/SMA and
   forecast adapters, lazy provider discovery, typed CPU fallback, a Metal
   probe/self-test, and an unavailable CUDA factory.

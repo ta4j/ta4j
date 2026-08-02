@@ -103,6 +103,86 @@ class AcceleratedIndicatorBatchEvaluatorTest {
     }
 
     @Test
+    void autoKeepsProviderBelowMinimumSpeedupOnCpu() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 0, 0.05d, false, false);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.AUTO, false, 0.10d));
+
+        assertThat(providerFactory.probeCount()).isEqualTo(1);
+        assertThat(providerFactory.evaluationCount()).isZero();
+        assertThat(result.diagnostics().backendId()).isEqualTo("cpu");
+        assertThat(result.diagnostics().hasCode(AccelerationDiagnosticCode.CPU_FASTER)).isTrue();
+    }
+
+    @Test
+    void autoUsesProviderAtMinimumSpeedup() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 0, 0.10d, false, false);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.AUTO, false, 0.10d));
+
+        assertThat(providerFactory.evaluationCount()).isEqualTo(1);
+        assertThat(result.diagnostics().backendId()).isEqualTo("fake-metal");
+    }
+
+    @Test
+    void requiredAutoRejectsProviderBelowMinimumSpeedup() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 0, 0.05d, false, false);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        AccelerationException exception = assertThrows(AccelerationException.class,
+                () -> evaluator.evaluate(forecast, 20, 22, new AccelerationConfig(AccelerationMode.AUTO, true, 0.10d)));
+
+        assertThat(exception.code()).isEqualTo(AccelerationDiagnosticCode.NO_BENEFICIAL_DEVICE_STAGE);
+        assertThat(providerFactory.evaluationCount()).isZero();
+    }
+
+    @Test
+    void autoSkipsUnprofitableProviderAndUsesNextQualifiedProvider() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory slowCuda = new CountingProviderFactory("a-slow-cuda", AccelerationMode.CUDA, true,
+                false, 0, 0.05d, false, false);
+        CountingProviderFactory fastMetal = new CountingProviderFactory("b-fast-metal", AccelerationMode.METAL, true,
+                false, 0, 0.25d, false, false);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(fastMetal, slowCuda));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.AUTO, false, 0.10d));
+
+        assertThat(slowCuda.probeCount()).isEqualTo(1);
+        assertThat(slowCuda.evaluationCount()).isZero();
+        assertThat(fastMetal.probeCount()).isEqualTo(1);
+        assertThat(fastMetal.evaluationCount()).isEqualTo(1);
+        assertThat(result.diagnostics().backendId()).isEqualTo("b-fast-metal");
+    }
+
+    @Test
+    void requiredAutoReportsProviderFailureAfterSkippingSlowerCandidate() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory slowCuda = new CountingProviderFactory("a-slow-cuda", AccelerationMode.CUDA, true,
+                false, 0, 0.05d, false, false);
+        CountingProviderFactory failingMetal = new CountingProviderFactory("b-failing-metal", AccelerationMode.METAL,
+                true, false, 0, 0.25d, false, true);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(failingMetal, slowCuda));
+
+        AccelerationException exception = assertThrows(AccelerationException.class,
+                () -> evaluator.evaluate(forecast, 20, 22, new AccelerationConfig(AccelerationMode.AUTO, true, 0.10d)));
+
+        assertThat(exception.code()).isEqualTo(AccelerationDiagnosticCode.REQUIRED_PROVIDER_UNAVAILABLE);
+    }
+
+    @Test
     void invalidProviderResultFallsBackToCpu() {
         MonteCarloPriceForecastIndicator forecast = forecast();
         CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 1);
@@ -158,6 +238,49 @@ class AcceleratedIndicatorBatchEvaluatorTest {
         assertThat(exception.code()).isEqualTo(AccelerationDiagnosticCode.REQUIRED_PROVIDER_UNAVAILABLE);
     }
 
+    @Test
+    void preferredModeFallsBackWhenProviderProbeFails() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(false, false, 0, 0d, true, false);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.METAL, false, 0.10d));
+
+        assertThat(result.diagnostics().backendId()).isEqualTo("cpu");
+        assertThat(result.diagnostics().hasCode(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE)).isTrue();
+        assertThat(result.values()).hasSize(3);
+    }
+
+    @Test
+    void preferredModeFallsBackWhenProviderExecutionFails() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 0, 0.25d, false, true);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        IndicatorBatchResult<Forecast> result = evaluator.evaluate(forecast, 20, 22,
+                new AccelerationConfig(AccelerationMode.METAL, false, 0.10d));
+
+        assertThat(result.diagnostics().backendId()).isEqualTo("cpu");
+        assertThat(result.diagnostics().hasCode(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE)).isTrue();
+        assertThat(result.values()).hasSize(3);
+    }
+
+    @Test
+    void requiredModeConvertsProviderExecutionFailureToStableException() {
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        CountingProviderFactory providerFactory = new CountingProviderFactory(true, false, 0, 0.25d, false, true);
+        AcceleratedIndicatorBatchEvaluator evaluator = new AcceleratedIndicatorBatchEvaluator(
+                List.of(new ForecastBatchAdapter()), List.of(providerFactory));
+
+        AccelerationException exception = assertThrows(AccelerationException.class, () -> evaluator.evaluate(forecast,
+                20, 22, new AccelerationConfig(AccelerationMode.METAL, true, 0.10d)));
+
+        assertThat(exception.code()).isEqualTo(AccelerationDiagnosticCode.REQUIRED_PROVIDER_UNAVAILABLE);
+    }
+
     private static MonteCarloPriceForecastIndicator forecast() {
         BarSeries series = new MockBarSeriesBuilder()
                 .withData(100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
@@ -176,10 +299,16 @@ class AcceleratedIndicatorBatchEvaluatorTest {
 
     private static final class CountingProviderFactory implements IndicatorAccelerationProviderFactory {
 
+        private final String providerId;
+        private final AccelerationMode mode;
         private final boolean available;
         private final boolean nativeInitialized;
         private final int trailingValuesToDrop;
+        private final double predictedSpeedup;
+        private final boolean failProbe;
+        private final boolean failEvaluation;
         private final AtomicInteger probeCount = new AtomicInteger();
+        private final AtomicInteger evaluationCount = new AtomicInteger();
 
         private CountingProviderFactory(boolean available) {
             this(available, false, 0);
@@ -190,28 +319,52 @@ class AcceleratedIndicatorBatchEvaluatorTest {
         }
 
         private CountingProviderFactory(boolean available, boolean nativeInitialized, int trailingValuesToDrop) {
+            this(available, nativeInitialized, trailingValuesToDrop, 0.25d, false, false);
+        }
+
+        private CountingProviderFactory(boolean available, boolean nativeInitialized, int trailingValuesToDrop,
+                double predictedSpeedup, boolean failProbe, boolean failEvaluation) {
+            this("fake-metal", AccelerationMode.METAL, available, nativeInitialized, trailingValuesToDrop,
+                    predictedSpeedup, failProbe, failEvaluation);
+        }
+
+        private CountingProviderFactory(String providerId, AccelerationMode mode, boolean available,
+                boolean nativeInitialized, int trailingValuesToDrop, double predictedSpeedup, boolean failProbe,
+                boolean failEvaluation) {
+            this.providerId = providerId;
+            this.mode = mode;
             this.available = available;
             this.nativeInitialized = nativeInitialized;
             this.trailingValuesToDrop = trailingValuesToDrop;
+            this.predictedSpeedup = predictedSpeedup;
+            this.failProbe = failProbe;
+            this.failEvaluation = failEvaluation;
         }
 
         private int probeCount() {
             return probeCount.get();
         }
 
+        private int evaluationCount() {
+            return evaluationCount.get();
+        }
+
         @Override
         public String providerId() {
-            return "fake-metal";
+            return providerId;
         }
 
         @Override
         public AccelerationMode mode() {
-            return AccelerationMode.METAL;
+            return mode;
         }
 
         @Override
         public IndicatorAccelerationProvider probe(java.util.Collection<String> operationIds) {
             probeCount.incrementAndGet();
+            if (failProbe) {
+                throw new UnsatisfiedLinkError("fake probe failure");
+            }
             ProviderCapability capability = new ProviderCapability(providerId(), mode(), available, nativeInitialized,
                     available ? "fake device" : "", List.of(ForecastBatchAdapter.OPERATION_ID),
                     available ? "" : "fake unavailable");
@@ -222,13 +375,22 @@ class AcceleratedIndicatorBatchEvaluatorTest {
                 }
 
                 @Override
+                public <T> double predictedSpeedup(IndicatorBatchRequest<T> request, AdapterMatch<T> match) {
+                    return predictedSpeedup;
+                }
+
+                @Override
                 public <T> Optional<IndicatorBatchResult<T>> evaluate(IndicatorBatchRequest<T> request,
                         AdapterMatch<T> match) {
+                    evaluationCount.incrementAndGet();
+                    if (failEvaluation) {
+                        throw new IllegalStateException("fake execution failure");
+                    }
                     if (!capability.available()) {
                         return Optional.empty();
                     }
                     AccelerationDiagnostics diagnostics = new AccelerationDiagnostics(request.config().mode(),
-                            AccelerationMode.METAL, "fake-metal", match.operationId(), false,
+                            capability.mode(), providerId(), match.operationId(), false,
                             List.of(new AccelerationDiagnostic(AccelerationDiagnosticCode.LAZY_PROVIDER_DISCOVERED,
                                     "fake provider executed", providerId(), match.operationId())));
                     IndicatorBatchResult<T> scalar = IndicatorBatchEvaluator.evaluate(request.indicator(),

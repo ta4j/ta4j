@@ -14,6 +14,8 @@ import org.ta4j.core.acceleration.AccelerationMode;
 
 /**
  * Compile-safe CUDA continuation skeleton.
+ *
+ * @since 0.23.1
  */
 public final class CudaAccelerationProviderFactory implements IndicatorAccelerationProviderFactory {
 

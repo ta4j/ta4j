@@ -16,10 +16,16 @@ import org.ta4j.core.acceleration.AccelerationMode;
 
 /**
  * Lazy Metal provider probe.
+ *
+ * @since 0.23.1
  */
 public final class MetalAccelerationProviderFactory implements IndicatorAccelerationProviderFactory {
 
-    /** Optional native library path property. */
+    /**
+     * Optional native library path property.
+     *
+     * @since 0.23.1
+     */
     public static final String LIBRARY_PROPERTY = "ta4j.acceleration.metal.library";
 
     @Override

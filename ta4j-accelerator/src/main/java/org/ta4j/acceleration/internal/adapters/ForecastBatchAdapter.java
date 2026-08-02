@@ -13,10 +13,16 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 
 /**
  * Adapter for the EWMA/state plus Monte Carlo price forecast family.
+ *
+ * @since 0.23.1
  */
 public final class ForecastBatchAdapter implements IndicatorAccelerationAdapter<Forecast> {
 
-    /** Operation ID for accelerated Monte Carlo terminal price forecasts. */
+    /**
+     * Operation ID for accelerated Monte Carlo terminal price forecasts.
+     *
+     * @since 0.23.1
+     */
     public static final String OPERATION_ID = "ta4j.forecast.monte-carlo-price.v1";
 
     @Override

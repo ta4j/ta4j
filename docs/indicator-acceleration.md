@@ -27,6 +27,11 @@ Optional properties:
 
 `off` is the default. Preferred modes fall back to complete CPU results with typed diagnostics. Required provider mode throws an `AccelerationException` and returns no partial result when a requested provider cannot execute the supported stage.
 
+`auto` and `hybrid` apply `minimumSpeedup` to the provider's qualified
+end-to-end prediction before device execution. Providers without crossover
+evidence report zero benefit and remain on CPU. Explicit `metal` and `cuda`
+modes may execute a healthy provider below the automatic threshold.
+
 ## Example
 
 ```java

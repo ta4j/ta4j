@@ -106,28 +106,64 @@ public final class AcceleratedIndicatorBatchEvaluator {
         }
 
         List<AccelerationDiagnostic> diagnostics = new ArrayList<>();
-        Optional<IndicatorAccelerationProvider> provider = selectProvider(config.mode(), match.operationId(),
-                diagnostics);
-        if (provider.isPresent()) {
-            ProviderCapability capability = provider.get().capability();
-            Optional<IndicatorBatchResult<T>> result = provider.get().evaluate(request, match);
-            if (result.isPresent() && providerResultMatchesRequest(request, result.get())) {
-                return result.get();
+        List<IndicatorAccelerationProviderFactory> candidates = providerFactories.stream()
+                .filter(factory -> eligible(config.mode(), factory.mode()))
+                .sorted(Comparator.comparing(IndicatorAccelerationProviderFactory::providerId))
+                .toList();
+        for (IndicatorAccelerationProviderFactory factory : candidates) {
+            Optional<ProviderSelection> selection = probeProvider(factory, match.operationId(), diagnostics);
+            if (selection.isEmpty()) {
+                continue;
             }
-            if (result.isPresent()) {
-                diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
-                        "Provider %s returned an invalid result for requested indices [%d, %d]"
-                                .formatted(capability.providerId(), request.fromInclusive(), request.toInclusive()),
-                        capability.providerId(), match.operationId()));
-            } else {
+            IndicatorAccelerationProvider provider = selection.get().provider();
+            ProviderCapability capability = selection.get().capability();
+            try {
+                boolean executeProvider = true;
+                if (config.mode() == AccelerationMode.AUTO || config.mode() == AccelerationMode.HYBRID) {
+                    double predictedSpeedup = provider.predictedSpeedup(request, match);
+                    if (!Double.isFinite(predictedSpeedup) || predictedSpeedup < 0d) {
+                        executeProvider = false;
+                        diagnostics
+                                .add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
+                                        "Provider %s returned invalid predicted speedup %s"
+                                                .formatted(capability.providerId(), predictedSpeedup),
+                                        capability.providerId(), match.operationId()));
+                    } else if (predictedSpeedup < config.minimumSpeedup()) {
+                        executeProvider = false;
+                        diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.CPU_FASTER,
+                                "Provider %s predicted %.2f%% speedup, below the %.2f%% automatic threshold".formatted(
+                                        capability.providerId(), predictedSpeedup * 100d,
+                                        config.minimumSpeedup() * 100d),
+                                capability.providerId(), match.operationId()));
+                    }
+                }
+                if (executeProvider) {
+                    Optional<IndicatorBatchResult<T>> result = provider.evaluate(request, match);
+                    if (result.isPresent() && providerResultMatchesRequest(request, result.get())) {
+                        return result.get();
+                    }
+                    addRejectedResultDiagnostic(request, match, capability, result, diagnostics);
+                }
+            } catch (LinkageError | RuntimeException exception) {
                 diagnostics.add(new AccelerationDiagnostic(
-                        AccelerationDiagnosticCode.NOT_IMPLEMENTED, "Provider %s did not implement operation %s"
-                                .formatted(capability.providerId(), match.operationId()),
+                        AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE, "Provider %s execution failed: %s"
+                                .formatted(capability.providerId(), failureMessage(exception)),
                         capability.providerId(), match.operationId()));
             }
         }
 
         if (config.required() && config.mode().canUseDevice()) {
+            boolean belowThresholdOnly = diagnostics.stream()
+                    .anyMatch(diagnostic -> diagnostic.code() == AccelerationDiagnosticCode.CPU_FASTER)
+                    && diagnostics.stream()
+                            .noneMatch(
+                                    diagnostic -> diagnostic.code() == AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE
+                                            || diagnostic.code() == AccelerationDiagnosticCode.NOT_IMPLEMENTED);
+            if (belowThresholdOnly) {
+                throw new AccelerationException(AccelerationDiagnosticCode.NO_BENEFICIAL_DEVICE_STAGE,
+                        "No provider met the automatic speedup threshold for operation %s"
+                                .formatted(match.operationId()));
+            }
             throw new AccelerationException(AccelerationDiagnosticCode.REQUIRED_PROVIDER_UNAVAILABLE,
                     "No required provider could execute operation %s".formatted(match.operationId()));
         }
@@ -136,8 +172,14 @@ public final class AcceleratedIndicatorBatchEvaluator {
                     "HYBRID requested, but no executable GPU partition was available; CPU completed the full range",
                     null, match.operationId()));
         }
-        diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
-                "Canonical CPU fallback completed the request", null, match.operationId()));
+        if (diagnostics.stream()
+                .noneMatch(diagnostic -> diagnostic.code() == AccelerationDiagnosticCode.CPU_FASTER
+                        || diagnostic.code() == AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE
+                        || diagnostic.code() == AccelerationDiagnosticCode.NOT_IMPLEMENTED)) {
+            diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
+                    "No eligible provider was available; canonical CPU fallback completed the request", null,
+                    match.operationId()));
+        }
         return cpuResult(request, match.operationId(), diagnostics);
     }
 
@@ -154,15 +196,11 @@ public final class AcceleratedIndicatorBatchEvaluator {
         return AdapterMatch.unsupported(String.join("; ", rejections));
     }
 
-    private Optional<IndicatorAccelerationProvider> selectProvider(AccelerationMode mode, String operationId,
+    private Optional<ProviderSelection> probeProvider(IndicatorAccelerationProviderFactory factory, String operationId,
             List<AccelerationDiagnostic> diagnostics) {
-        List<IndicatorAccelerationProviderFactory> candidates = providerFactories.stream()
-                .filter(factory -> eligible(mode, factory.mode()))
-                .sorted(Comparator.comparing(IndicatorAccelerationProviderFactory::providerId))
-                .toList();
-        for (IndicatorAccelerationProviderFactory factory : candidates) {
-            diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.LAZY_PROVIDER_DISCOVERED,
-                    "Discovered provider factory " + factory.providerId(), factory.providerId(), operationId));
+        diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.LAZY_PROVIDER_DISCOVERED,
+                "Discovered provider factory " + factory.providerId(), factory.providerId(), operationId));
+        try {
             IndicatorAccelerationProvider provider = factory.probe(List.of(operationId));
             ProviderCapability capability = provider.capability();
             if (capability.nativeInitialized()) {
@@ -171,15 +209,40 @@ public final class AcceleratedIndicatorBatchEvaluator {
                         operationId));
             }
             if (capability.available() && capability.supports(operationId)) {
-                return Optional.of(provider);
+                return Optional.of(new ProviderSelection(provider, capability));
             }
             AccelerationDiagnosticCode code = capability.rejectionReason().contains("NOT_IMPLEMENTED")
                     ? AccelerationDiagnosticCode.NOT_IMPLEMENTED
                     : AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE;
             diagnostics.add(new AccelerationDiagnostic(code, capability.rejectionReason(), capability.providerId(),
                     operationId));
+        } catch (LinkageError | RuntimeException exception) {
+            diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
+                    "Provider %s probe failed: %s".formatted(factory.providerId(), failureMessage(exception)),
+                    factory.providerId(), operationId));
         }
         return Optional.empty();
+    }
+
+    private static <T> void addRejectedResultDiagnostic(IndicatorBatchRequest<T> request, AdapterMatch<T> match,
+            ProviderCapability capability, Optional<IndicatorBatchResult<T>> result,
+            List<AccelerationDiagnostic> diagnostics) {
+        if (result.isPresent()) {
+            diagnostics.add(new AccelerationDiagnostic(AccelerationDiagnosticCode.PROVIDER_UNAVAILABLE,
+                    "Provider %s returned an invalid result for requested indices [%d, %d]"
+                            .formatted(capability.providerId(), request.fromInclusive(), request.toInclusive()),
+                    capability.providerId(), match.operationId()));
+        } else {
+            diagnostics.add(new AccelerationDiagnostic(
+                    AccelerationDiagnosticCode.NOT_IMPLEMENTED, "Provider %s did not implement operation %s"
+                            .formatted(capability.providerId(), match.operationId()),
+                    capability.providerId(), match.operationId()));
+        }
+    }
+
+    private static String failureMessage(Throwable failure) {
+        String message = failure.getMessage();
+        return failure.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
     }
 
     private static boolean eligible(AccelerationMode requested, AccelerationMode providerMode) {
@@ -227,5 +290,8 @@ public final class AcceleratedIndicatorBatchEvaluator {
             factories.add(new CudaAccelerationProviderFactory());
         }
         return factories;
+    }
+
+    private record ProviderSelection(IndicatorAccelerationProvider provider, ProviderCapability capability) {
     }
 }

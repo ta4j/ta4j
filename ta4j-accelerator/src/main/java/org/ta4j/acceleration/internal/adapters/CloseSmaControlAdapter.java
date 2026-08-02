@@ -12,10 +12,16 @@ import org.ta4j.core.num.Num;
 
 /**
  * CPU-planned Close/SMA control adapter.
+ *
+ * @since 0.23.1
  */
 public final class CloseSmaControlAdapter implements IndicatorAccelerationAdapter<Num> {
 
-    /** Operation ID for the control graph. */
+    /**
+     * Operation ID for the control graph.
+     *
+     * @since 0.23.1
+     */
     public static final String OPERATION_ID = "ta4j.control.close-sma.v1";
 
     @Override
