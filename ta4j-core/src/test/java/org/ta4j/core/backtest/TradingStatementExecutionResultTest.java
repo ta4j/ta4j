@@ -17,16 +17,20 @@ import java.util.Map;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
@@ -346,8 +350,18 @@ public class TradingStatementExecutionResultTest {
         Strategy strategyOne = new BaseStrategy("strategy-1", new FixedRule(0), new FixedRule(4));
         Strategy strategyTwo = new BaseStrategy("strategy-2", new FixedRule(1), new FixedRule(5));
         Strategy strategyThree = new BaseStrategy("strategy-3", new FixedRule(2), new FixedRule(6));
-        BacktestExecutor executor = new BacktestExecutor(series);
-        return executor.executeWithRuntimeReport(List.of(strategyOne, strategyTwo, strategyThree), numFactory.one());
+        List<TradingStatement> statements = List.of(createTradingStatement(series, strategyOne, 0, 4),
+                createTradingStatement(series, strategyTwo, 1, 5), createTradingStatement(series, strategyThree, 2, 6));
+        return new BacktestExecutionResult(series, statements, BacktestRuntimeReport.empty());
+    }
+
+    private TradingStatement createTradingStatement(BarSeries series, Strategy strategy, int entryIndex,
+            int exitIndex) {
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new ZeroCostModel());
+        tradingRecord.operate(entryIndex, series.getBar(entryIndex).getClosePrice(), numFactory.one());
+        tradingRecord.operate(exitIndex, series.getBar(exitIndex).getClosePrice(), numFactory.one());
+        return new BaseTradingStatement(strategy, tradingRecord, null, null);
     }
 
     private StrategyWalkForwardExecutionResult createWalkForwardResult() {

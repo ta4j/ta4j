@@ -143,8 +143,20 @@ public class TrendLineAndSwingPointAnalysis {
     }
 
     List<SwingObservation> analyzeRecentEthSwings() {
+        return analyzeRecentEthSwings(loadRecentEthSeries());
+    }
+
+    /**
+     * Analyzes the supplied ETH fixtures with every concrete swing method.
+     * Package-private so regression tests can bound immutable fixture windows
+     * without changing the example's default full-data flow.
+     *
+     * @param seriesByDuration ETH bar series grouped by duration
+     * @return one observation for every supplied duration and swing method
+     */
+    List<SwingObservation> analyzeRecentEthSwings(List<RecentEthSeries> seriesByDuration) {
         final List<SwingObservation> observations = new ArrayList<>();
-        for (RecentEthSeries data : loadRecentEthSeries()) {
+        for (RecentEthSeries data : seriesByDuration) {
             final int endIndex = data.series().getEndIndex();
             for (Pair pair : buildSwingMethods(data.series())) {
                 final List<Integer> highs = pair.highs().getSwingPointIndexesUpTo(endIndex);
