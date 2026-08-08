@@ -286,7 +286,7 @@ JFreeChart chart = chartWorkflow.builder()
         .withTitle("Advanced Multi-Indicator Strategy")
         .withSeries(series) // Price bars (candlesticks)
         .withIndicatorOverlay(sma50) // Overlay SMA on price chart
-        .withIndicatorOverlay(ema12) // Overlay EMA on price chart
+        .withIndicatorOverlay(ema12) // Overlay indicators on price chart
         .withTradingRecordOverlay(record) // Mark entry/exit points
         .withSubChart(macd) // MACD indicator in subchart
         .withSubChart(rsi) // RSI indicator in subchart
@@ -389,6 +389,12 @@ Beyond the basic strategy loop, ta4j includes building blocks for batch backtest
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
 
+### Performance
+
+ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` for throughput-first workflows with accepted floating-point tradeoffs. Moving series can cap retained history, indicator values are cached, and independent strategy candidates can be evaluated in parallel.
+
+Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
+
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:
@@ -406,6 +412,8 @@ See [`ta4j-examples/README.md`](ta4j-examples/README.md) for the complete learni
 
 ## Documentation
 
+New to ta4j? Follow the [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html) and run the examples in order. Moving from exploration to serious research? Apply the [realism checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html) before trusting a result. Moving toward live execution? Build around the [live trading runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html), especially its reconciliation and recovery guidance.
+
 | Need | Resource |
 | --- | --- |
 | A guided first hour | [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html) |
@@ -418,22 +426,12 @@ See [`ta4j-examples/README.md`](ta4j-examples/README.md) for the complete learni
 | Troubleshooting | [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html) |
 | Complete API reference | [Javadoc](https://ta4j.github.io/ta4j/) |
 
-## Performance
-
-ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` for throughput-first workflows with accepted floating-point tradeoffs. Moving series can cap retained history, indicator values are cached, and independent strategy candidates can be evaluated in parallel.
-
-Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
-
 ## Community & support
 
 - [Discord](https://discord.gg/HX9MbWZ) for usage questions and design discussion
 - [GitHub Issues](https://github.com/ta4j/ta4j/issues) for reproducible bugs and feature requests
 - [Documentation wiki](https://ta4j.github.io/ta4j-wiki/) for guides and operational references
 - [Javadoc](https://ta4j.github.io/ta4j/) for API-level detail
-
-## What's next?
-
-New to ta4j? Follow the [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html) and run the examples in order. Moving from exploration to serious research? Apply the [realism checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html) before trusting a result. Moving toward live execution? Build around the [live trading runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html), especially its reconciliation and recovery guidance.
 
 ## Contributing
 
