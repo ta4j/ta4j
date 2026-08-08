@@ -38,11 +38,11 @@ only when its checked crossover model predicts at least a 10% end-to-end gain.
 ## Crossover model
 
 `OpenClCrossoverModel` returns `0.25` only for GPU devices with at least
-16,777,216 path-steps of work (decisions x iterations x horizon). CPU ICD
-devices are never auto-selected because scalar Java is competitive with a CPU
-OpenCL lane; the qualification tests force the provider directly and are not
-a production escape hatch. The `0.25` constant is a placeholder pending
-real-GPU measurement on hardware hosts.
+16,777,216 path-steps of work (decisions x iterations x horizon) and at least
+2 GiB of device global memory. CPU ICD devices are never auto-selected because
+scalar Java is competitive with a CPU OpenCL lane; the qualification tests
+force the provider directly and are not a production escape hatch. The `0.25`
+constant is a placeholder pending real-GPU measurement on hardware hosts.
 
 ## Docker validation evidence
 

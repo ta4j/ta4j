@@ -62,7 +62,8 @@ OpenCL device is present; on Linux the automatic order prefers CUDA when its
 crossover ever qualifies and otherwise falls through to OpenCL. OpenCL is the
 vendor-neutral path: NVIDIA, AMD, Intel, and CPU ICDs (for validation) all
 execute the same versioned kernels. GPU OpenCL devices are auto-selected once
-the qualified workload floor is reached; CPU ICD devices (for example PoCL)
+the qualified workload floor and a minimum device memory capability are
+reached; CPU ICD devices (for example PoCL)
 execute only through the internal qualification path used by the validation
 tests. Current macOS releases do not support NVIDIA CUDA or external
 NVIDIA eGPUs, so Metal and CUDA are not competing production choices on one

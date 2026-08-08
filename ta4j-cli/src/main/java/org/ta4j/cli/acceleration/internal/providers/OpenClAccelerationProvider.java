@@ -100,11 +100,21 @@ final class OpenClCrossoverModel {
      */
     private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
 
+    /**
+     * Minimum device global memory for auto-selection. The FP64 forecast kernels
+     * run on padded sample buffers whose size grows with the path count; devices
+     * below this floor (for example small integrated GPUs) cannot beat the JIT
+     * scalar lane and must stay on scalar execution until real-GPU measurement
+     * qualifies them.
+     */
+    private static final long QUALIFIED_MINIMUM_DEVICE_BYTES = 2L * 1024L * 1024L * 1024L;
+
     private OpenClCrossoverModel() {
     }
 
     static double predictedSpeedup(OpenClProbeResult probe, long work) {
-        if (!probe.gpuDevice() || work < QUALIFIED_MINIMUM_WORK) {
+        if (!probe.gpuDevice() || work < QUALIFIED_MINIMUM_WORK
+                || probe.freeMemoryBytes() < QUALIFIED_MINIMUM_DEVICE_BYTES) {
             return 0d;
         }
         return 0.25d;
