@@ -117,6 +117,25 @@ class OpenClProbePayloadTest {
         }
     }
 
+    @Test
+    void probeOkPayloadWithPipeInDeviceNameStillParses() throws Exception {
+        // The native OK payload embeds the device name verbatim (the native
+        // side sanitizes the ERROR detail but not the OK device name). Vendor
+        // device names are arbitrary strings; a '|' inside the name shifts the
+        // fixed numeric fields. The bridge must still parse the trailing
+        // fields (major|minor|free|total|driver|runtime|gpu|detail) instead
+        // of reporting the device unavailable with a number-parse error.
+        ensureStubLoaded();
+        Files.writeString(PAYLOAD_FILE, "OK|Pipe|Device|3|0|8589934592|8589934592|0|0|1|self-test passed",
+                StandardCharsets.US_ASCII);
+
+        OpenClProbeResult result = new JniOpenClNativeBridge().probe();
+
+        assertThat(result.available()).isTrue();
+        assertThat(result.deviceName()).isEqualTo("Pipe|Device");
+        assertThat(result.gpuDevice()).isTrue();
+    }
+
     private static void ensureStubLoaded() throws Exception {
         if (stubLoaded) {
             return;
