@@ -106,7 +106,12 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             }
         }
         if (lastResult != null) {
-            return lastResult;
+            // Non-executed results must still carry the composite's own
+            // identity: the service keys diagnostics and quarantine on the
+            // selection provider id, and advertising "opencl" from capability()
+            // while results carry a member's id ("cuda") re-introduces the
+            // identity split this composite exists to prevent.
+            return underOwnIdentity(lastResult);
         }
         if (lastFailure != null) {
             throw lastFailure;
@@ -127,7 +132,19 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
         // of delegating to the first member, whose provider id ("cuda") the
         // service never consults.
         Capability own = capability();
-        return new Result<>(Status.UNAVAILABLE, own.backend(), List.of(), own.nativeInitialized(), 0L,
-                new Diagnostic(DiagnosticCode.PROVIDER_UNAVAILABLE, own.providerId(), own.detail()));
+        Diagnostic diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_UNAVAILABLE, own.providerId(), own.detail());
+        return new Result<>(Status.UNAVAILABLE, own.backend(), List.of(), own.nativeInitialized(), 0L, diagnostic);
+    }
+
+    /**
+     * Rebuilds a non-executed result with the composite's advertised provider id
+     * and backend while preserving its status, diagnostic code, and detail.
+     */
+    private Result<Forecast> underOwnIdentity(Result<Forecast> result) {
+        Capability own = capability();
+        Diagnostic diagnostic = new Diagnostic(result.diagnostic().code(), own.providerId(),
+                result.diagnostic().detail());
+        return new Result<>(result.status(), own.backend(), List.of(), result.nativeInitialized(),
+                result.elapsedNanos(), diagnostic);
     }
 }
