@@ -613,6 +613,7 @@ class CachedBuffer<T> {
             if ((long) highestResultIndex - firstCachedIndex + 1L > newCapacity) {
                 firstCachedIndex = highestResultIndex - newCapacity + 1;
             }
+            assert firstCachedIndex <= highestResultIndex : "firstCachedIndex must not exceed highestResultIndex";
             for (int i = firstCachedIndex;; i++) {
                 int oldSlot = indexToSlot(i);
                 int newSlot = i % newCapacity;

@@ -1463,6 +1463,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         private final CountDownLatch snapshotBlocked = new CountDownLatch(1);
         private final CountDownLatch releaseSnapshot = new CountDownLatch(1);
         private volatile int snapshotMaximumBarCount = Integer.MAX_VALUE;
+        private volatile int blockTriggerMaximumBarCount = -1;
 
         private RacingSnapshotSeries(List<Bar> bars) {
             super("racing-snapshot", bars);
@@ -1470,6 +1471,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         private void prepareBlockedSnapshot(int maximumBarCount) {
             snapshotMaximumBarCount = maximumBarCount;
+            blockTriggerMaximumBarCount = maximumBarCount;
             blockNextSnapshot.set(true);
         }
 
@@ -1489,7 +1491,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
             BarSeriesChangeSnapshot snapshot = super.getBarSeriesChangeSnapshot(sinceRevision);
             int maximumBarCount = snapshotMaximumBarCount;
-            if (maximumBarCount == 8 && blockNextSnapshot.compareAndSet(true, false)) {
+            if (maximumBarCount == blockTriggerMaximumBarCount && blockNextSnapshot.compareAndSet(true, false)) {
                 snapshotBlocked.countDown();
                 try {
                     assertTrue("Timed out waiting to release older snapshot",
