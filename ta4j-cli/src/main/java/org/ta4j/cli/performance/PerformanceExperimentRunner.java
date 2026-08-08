@@ -259,9 +259,7 @@ public final class PerformanceExperimentRunner {
                 }
                 return Optional.empty();
             }
-            if (reader != null) {
-                reader.join(TimeUnit.SECONDS.toMillis(5));
-            }
+            reader.join(TimeUnit.SECONDS.toMillis(5));
             int exitCode = process.exitValue();
             String output = buffer.toString(StandardCharsets.UTF_8).trim();
             if (exitCode == 0 && !output.isBlank()) {
