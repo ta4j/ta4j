@@ -198,7 +198,12 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
         } catch (InvalidPathException exception) {
             LOG.debug("CSV filename is not a valid local path; trying the classpath: {}", filename, exception);
         }
-        if (localPath != null && Files.isRegularFile(localPath)) {
+        // Classpath resources keep precedence so existing callers that load bundled
+        // example data by relative name are not silently redirected to a stray
+        // local file with the same name. Local files (typically absolute paths from
+        // the CLI) are the fallback.
+        stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        if (stream == null && localPath != null && Files.isRegularFile(localPath)) {
             try {
                 stream = Files.newInputStream(localPath);
                 Path fileName = localPath.getFileName();
@@ -207,8 +212,6 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                 LOG.debug("Unable to open CSV file from filesystem: {}", filename, e);
                 return null;
             }
-        } else {
-            stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
         }
 
         if (stream == null) {
