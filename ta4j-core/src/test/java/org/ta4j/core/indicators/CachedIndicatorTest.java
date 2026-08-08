@@ -261,9 +261,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // overflows.
         int barCount = 200_000;
         int latchIndex = 150_000;
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
-                .withNumFactory(numFactory)
-                .build();
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < barCount; i++) {
             series.barBuilder()
                     .timePeriod(Duration.ofMinutes(1))
