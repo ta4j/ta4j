@@ -8,11 +8,10 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,14 +41,12 @@ public class RecursiveCachedIndicatorConcurrencyTest {
         // overflows.
         int barCount = 200_000;
         int latchIndex = 150_000;
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         for (int i = 0; i < barCount; i++) {
-            series.barBuilder()
-                    .timePeriod(Duration.ofMinutes(1))
-                    .endTime(Instant.EPOCH.plus(Duration.ofMinutes(i)))
-                    .closePrice(1)
-                    .add();
+            series.barBuilder().closePrice(1).add();
         }
 
         LatchingSelfReferencingIndicator indicator = new LatchingSelfReferencingIndicator(series, latchIndex);
@@ -65,9 +62,9 @@ public class RecursiveCachedIndicatorConcurrencyTest {
             });
 
             // Wait until the prefill is in flight at the latch index, then mutate a
-            // bar BELOW the prefill position so the next nested getValue() observes a
-            // revision change and the reconciliation would punch a gap under the
-            // in-flight prefill.
+            // bar BELOW the prefill position while the reader is blocked inside
+            // calculate(), so the next nested getValue() deterministically observes
+            // the revision change (the mutation cannot be overtaken by the prefill).
             assertTrue("prefill never reached the latch index", indicator.reached.await(120, TimeUnit.SECONDS));
             Bar bar = series.getBar(latchIndex);
             Bar replacement = series.barBuilder()
@@ -80,6 +77,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
                     .volume(bar.getVolume())
                     .build();
             series.replaceBar(latchIndex - 50_000, replacement);
+            indicator.proceed.countDown();
 
             reader.get(120, TimeUnit.SECONDS);
             assertNull("recursive read crashed: " + readerFailure.get(), readerFailure.get());
@@ -93,6 +91,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
 
         private final int latchIndex;
         private final CountDownLatch reached = new CountDownLatch(1);
+        private final CountDownLatch proceed = new CountDownLatch(1);
 
         private LatchingSelfReferencingIndicator(BarSeries series, int latchIndex) {
             super(series);
@@ -103,6 +102,11 @@ public class RecursiveCachedIndicatorConcurrencyTest {
         protected Num calculate(int index) {
             if (index == latchIndex) {
                 reached.countDown();
+                try {
+                    assertTrue("prefill did not resume in time", proceed.await(120, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
             if (index == 0) {
                 return getBarSeries().numFactory().one();

@@ -125,6 +125,34 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testSynchronizeClearsWhenRetentionPassesCachedRange() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+        for (int i = 0; i < 5; i++) {
+            buffer.put(i, i);
+        }
+
+        assertEquals(-1, buffer.synchronize(9, 10, -1));
+
+        assertEquals(-1, buffer.getFirstCachedIndex());
+        assertEquals(-1, buffer.getHighestResultIndex());
+        assertFalse(buffer.isCached(4));
+    }
+
+    @Test
+    public void testSynchronizeClearsWhenChangeIsAtOrBelowFirstCachedIndex() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+        for (int i = 3; i < 8; i++) {
+            buffer.put(i, i);
+        }
+
+        assertEquals(-1, buffer.synchronize(3, 10, 3));
+
+        assertEquals(-1, buffer.getFirstCachedIndex());
+        assertEquals(-1, buffer.getHighestResultIndex());
+        assertFalse(buffer.isCached(7));
+    }
+
+    @Test
     public void testWriteStampFlipsDuringWriteLockAndReturnsEvenAfterwards() {
         CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
 

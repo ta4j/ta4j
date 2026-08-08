@@ -163,11 +163,15 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void testBarSeriesChangeSnapshotFallsBackAfterJournalRollover() {
         long initialRevision = seriesWithBars.getBarHistoryRevision();
+        // The change journal retains a bounded number of entries
+        // (BAR_HISTORY_CHANGE_CAPACITY = 64); 65 updates overflow it and force
+        // the conservative index-0 fallback.
         for (int i = 0; i < 65; i++) {
             seriesWithBars.addPrice(numFactory.numOf(100 + i));
         }
 
         BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 65, snapshot.revision());
         assertEquals(0, snapshot.earliestChangedIndex());
     }
 

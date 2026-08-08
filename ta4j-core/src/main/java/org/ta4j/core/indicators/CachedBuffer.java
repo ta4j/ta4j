@@ -124,7 +124,7 @@ class CachedBuffer<T> {
      *                        {@code Integer.MAX_VALUE} for unbounded
      */
     CachedBuffer(int maximumBarCount) {
-        this.maximumCapacity = initialMaximumCapacity(maximumBarCount);
+        this.maximumCapacity = effectiveMaximumCapacity(maximumBarCount);
         this.capacity = Math.min(DEFAULT_UNBOUNDED_CAPACITY, this.maximumCapacity);
         this.buffer = new Object[capacity];
     }
@@ -613,7 +613,15 @@ class CachedBuffer<T> {
             if ((long) highestResultIndex - firstCachedIndex + 1L > newCapacity) {
                 firstCachedIndex = highestResultIndex - newCapacity + 1;
             }
-            assert firstCachedIndex <= highestResultIndex : "firstCachedIndex must not exceed highestResultIndex";
+            if (firstCachedIndex > highestResultIndex) {
+                // Inconsistent empty range: adopt the empty resized buffer instead
+                // of entering the copy loop, which is only bounded by breaking at
+                // highestResultIndex and would otherwise loop until integer
+                // wraparound.
+                buffer = newBuffer;
+                capacity = newCapacity;
+                return;
+            }
             for (int i = firstCachedIndex;; i++) {
                 int oldSlot = indexToSlot(i);
                 int newSlot = i % newCapacity;
