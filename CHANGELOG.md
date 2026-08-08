@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.24.0 (2026-08-08)
+
 ### Added
 - **Dynamic and forecast-ready Kalman indicators**: `KalmanFilterIndicator` now accepts causal per-bar process and measurement noise through `KalmanNoiseIndicator` while preserving its same-bar smoothing API and legacy serialized descriptors. New constant-velocity `KinematicKalmanFilterIndicator` state can be projected through `forecast()` or `forecast(horizon)` into analytic Gaussian price distributions that compose with forecast point adapters and rolling conformal calibration. `KinematicKalmanForecastExample` demonstrates ATR- and CHOP-derived dynamic noise, shared multi-horizon forecasts, and conformal evaluation over an ossified S&P 500 weekly series.
 - **Reusable rolling Hurst estimation**: Added `HurstExponentIndicator` for close prices or any numeric indicator, with a default bounded ten-lag log-variogram regression, explicit maximum-lag tuning, causal full-window warm-up, and dimensionless `[0, 1]` output. `RoughVolatilityForecastStateIndicator` now composes this first-class statistic while retaining its stricter rough-volatility bounds.
