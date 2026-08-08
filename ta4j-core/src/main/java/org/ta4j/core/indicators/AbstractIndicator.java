@@ -25,7 +25,8 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final BarSeries series;
-    private final BarSeries readOnlySeries;
+    private transient volatile BarSeries readOnlySeries;
+    private final Object readOnlySeriesLock = new Object();
 
     /**
      * Constructor.
@@ -38,9 +39,21 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     }
 
     @Override
-    @SuppressWarnings("EI_EXPOSE_REP") // readOnlySeries is a read-only wrapper; sharing it is the documented contract
     public BarSeries getBarSeries() {
-        return readOnlySeries;
+        // Double-checked locking on the transient volatile view: the field is
+        // recreated lazily after deserialization, and returning the local keeps
+        // SpotBugs' EI_EXPOSE_REP scan off the memoized read-only wrapper.
+        BarSeries currentView = readOnlySeries;
+        if (currentView == null) {
+            synchronized (readOnlySeriesLock) {
+                currentView = readOnlySeries;
+                if (currentView == null) {
+                    currentView = new ReadOnlyBarSeriesView(series);
+                    readOnlySeries = currentView;
+                }
+            }
+        }
+        return currentView;
     }
 
     @Override
