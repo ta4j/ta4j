@@ -46,7 +46,12 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             }
         }
         if (source == null) {
-            source = members.get(0).capability();
+            // No member is available. Report the LAST member's reason: on Linux
+            // the composite is selected as "opencl" and the OpenCL probe detail
+            // (for example "device lacks FP64") is the actionable reason users
+            // need, while the first member (CUDA) is only a preference when it
+            // ever qualifies.
+            source = members.get(members.size() - 1).capability();
         }
         // The composite is selected under its own provider id ("opencl"), and
         // the service keys failure quarantine and diagnostics on
@@ -117,8 +122,12 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
                     new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl",
                             "no provider member cleared the automatic speedup threshold"));
         }
-        // All members are unavailable; surface the first member's unavailability
-        // (its evaluate performs no native work).
-        return first.evaluate(request);
+        // All members are unavailable; keep the selection identity and surface
+        // the composite's own reason (the last member's OpenCL detail) instead
+        // of delegating to the first member, whose provider id ("cuda") the
+        // service never consults.
+        Capability own = capability();
+        return new Result<>(Status.UNAVAILABLE, own.backend(), List.of(), own.nativeInitialized(), 0L,
+                new Diagnostic(DiagnosticCode.PROVIDER_UNAVAILABLE, own.providerId(), own.detail()));
     }
 }
