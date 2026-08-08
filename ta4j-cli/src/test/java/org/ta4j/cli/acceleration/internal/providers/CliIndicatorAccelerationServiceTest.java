@@ -133,6 +133,50 @@ class CliIndicatorAccelerationServiceTest {
     }
 
     @Test
+    void legacyRngVersionDisablesAccelerationBecauseNativeLanesCannotReproduceIt() {
+        // -Dta4j.forecast.rngVersion=0 switches the scalar lane to the
+        // pre-0.23.1 shared SplittableRandom stream (see
+        // MonteCarloSimulation.legacyStreamRequested()). The native kernels only
+        // implement the versioned per-path stream, so an accelerated result would
+        // silently publish different values than the scalar lane the property
+        // promises to restore. Transparent acceleration must therefore refuse to
+        // execute and let scalar evaluation serve the legacy values.
+        System.setProperty("ta4j.forecast.rngVersion", "0");
+        try {
+            CliIndicatorAccelerationService.useProviderForTests(new ForecastAccelerationProvider() {
+                private final Capability capability = new Capability("test", Backend.METAL, true, false, "fixture", "");
+
+                @Override
+                public Capability capability() {
+                    return capability;
+                }
+
+                @Override
+                public double predictedSpeedup(Request<Forecast> request) {
+                    return 1d;
+                }
+
+                @Override
+                public Result<Forecast> evaluate(Request<Forecast> request) {
+                    return Result.executed(Backend.METAL, List.of(Forecast.unstable(request.toInclusive(), 2)), true,
+                            1L, new Diagnostic(DiagnosticCode.ACCELERATED, "test", "fixture"));
+                }
+            });
+            MonteCarloPriceForecastIndicator forecast = forecast();
+            int end = forecast.getBarSeries().getEndIndex();
+
+            Result<Forecast> result = new CliIndicatorAccelerationService()
+                    .evaluate(new Request<>(forecast, end - 1, end));
+
+            assertThat(result.status()).isEqualTo(Status.SKIPPED);
+            assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.CPU_FASTER);
+            assertThat(result.diagnostic().detail()).contains("rngVersion");
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
+    }
+
+    @Test
     void providerRequestRejectionFallsBackWithoutEscapingTheTransparentBoundary() {
         CliIndicatorAccelerationService.useProviderForTests(new ForecastAccelerationProvider() {
             private final Capability capability = new Capability("test", Backend.METAL, true, false, "fixture", "");
