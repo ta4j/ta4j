@@ -53,7 +53,8 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
-    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX, org.junit.jupiter.api.condition.OS.MAC })
+    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX,
+            org.junit.jupiter.api.condition.OS.MAC })
     void commandOutputReturnsEmptyWhenProcessTimesOut() {
         Optional<String> output = PerformanceExperimentRunner.commandOutput(100, TimeUnit.MILLISECONDS, "/bin/sh", "-c",
                 "sleep 5; printf late");
@@ -62,7 +63,8 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
-    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX, org.junit.jupiter.api.condition.OS.MAC })
+    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX,
+            org.junit.jupiter.api.condition.OS.MAC })
     void commandOutputReturnsTrimmedOutputForSuccessfulProcess() {
         Optional<String> output = PerformanceExperimentRunner.commandOutput(5, TimeUnit.SECONDS, "/bin/sh", "-c",
                 "printf ' ok '");

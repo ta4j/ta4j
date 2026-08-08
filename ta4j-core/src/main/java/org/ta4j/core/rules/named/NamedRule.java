@@ -259,8 +259,8 @@ public abstract class NamedRule extends AbstractRule {
     }
 
     /**
-     * Restores the default-scan baseline for tests: clears the scanned-package
-     * set and the initialized flag so the next {@link #initializeRegistry(String...)}
+     * Restores the default-scan baseline for tests: clears the scanned-package set
+     * and the initialized flag so the next {@link #initializeRegistry(String...)}
      * or default lookup re-scans. Registered implementations are not removed.
      */
     static void resetRegistryStateForTests() {
