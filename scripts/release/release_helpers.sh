@@ -1675,15 +1675,16 @@ PY
 
 snapshot_metadata_url() {
   local repository_url="$1" artifact="$2" version="$3" cache_buster="$4"
-  printf '%s/org/ta4j/%s/%s/maven-metadata.xml%scacheBust=%s\n' \
-    "${repository_url%/}" "$artifact" "$version" "?" "$cache_buster"
+  printf '%s/org/ta4j/%s/%s/maven-metadata.xml?cacheBust=%s\n' \
+    "${repository_url%/}" "$artifact" "$version" "$cache_buster"
 }
 
 fetch_snapshot_metadata() {
   local curl_command="$1" repository_url="$2" artifact="$3" version="$4" cache_buster="$5" timeout_seconds="$6" output="$7" error_output="$8"
   local metadata_url
   metadata_url="$(snapshot_metadata_url "$repository_url" "$artifact" "$version" "$cache_buster")"
-  "$curl_command" --fail --silent --show-error --location --max-time "$timeout_seconds" \
+  "$curl_command" --fail --silent --show-error --location --max-redirs 5 \
+    --proto '=https' --proto-redir '=https' --max-time "$timeout_seconds" \
     -H "Accept: application/xml" -H "User-Agent: ta4j-release-automation" \
     "$metadata_url" > "$output" 2>"$error_output"
 }
@@ -1805,7 +1806,7 @@ command_snapshot_consumption() {
   local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" metadata_error="" cache_buster=""
   local snapshot_prefix="" timestamped_suffix="" resolved_candidate=""
   local attempts=0 maven_consumable=false start_time elapsed_seconds=0 deadline_epoch=0 remaining_seconds=0 metadata_timeout=0 maven_timeout=0 sleep_seconds=0
-  local deadline_exhausted=false maven_status=0
+  local deadline_exhausted=false maven_status=0 metadata_artifact=""
   publisher_core_sha="$(sha256_file "$publisher_core")"
   publisher_examples_sha="$(sha256_file "$publisher_examples")"
   start_time="$(date +%s)"
@@ -1834,25 +1835,20 @@ command_snapshot_consumption() {
       deadline_exhausted=true
       break
     fi
-    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-parent "$version" "$cache_buster" "$metadata_timeout" "$parent_metadata" "$tmpdir/ta4j-parent-metadata.err" \
-      || metadata_error="ta4j-parent: $(cat "$tmpdir/ta4j-parent-metadata.err")"
-    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
-    if (( remaining_seconds <= 0 )); then
-      deadline_exhausted=true
+    for metadata_artifact in ta4j-parent ta4j-core ta4j-examples; do
+      remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+      if (( remaining_seconds <= 0 )); then
+        deadline_exhausted=true
+        break
+      fi
+      metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
+      fetch_snapshot_metadata "$curl_command" "$repository_url" "$metadata_artifact" "$version" "$cache_buster" \
+        "$metadata_timeout" "$tmpdir/${metadata_artifact}-metadata.xml" "$tmpdir/${metadata_artifact}-metadata.err" \
+        || metadata_error="${metadata_error:+$metadata_error; }${metadata_artifact}: $(cat "$tmpdir/${metadata_artifact}-metadata.err")"
+    done
+    if [[ "$deadline_exhausted" == true ]]; then
       break
     fi
-    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-core "$version" "$cache_buster" "$metadata_timeout" "$core_metadata" "$tmpdir/ta4j-core-metadata.err" \
-      || metadata_error="${metadata_error:+$metadata_error; }ta4j-core: $(cat "$tmpdir/ta4j-core-metadata.err")"
-    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
-    if (( remaining_seconds <= 0 )); then
-      deadline_exhausted=true
-      break
-    fi
-    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-examples "$version" "$cache_buster" "$metadata_timeout" "$examples_metadata" "$tmpdir/ta4j-examples-metadata.err" \
-      || metadata_error="${metadata_error:+$metadata_error; }ta4j-examples: $(cat "$tmpdir/ta4j-examples-metadata.err")"
     if [[ -n "$metadata_error" ]]; then
       printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
     else
@@ -1943,10 +1939,11 @@ command_snapshot_consumption() {
     --arg resolvedCoreSha256 "$resolved_core_sha" \
     --arg publisherExamplesSha256 "$publisher_examples_sha" \
     --arg resolvedExamplesSha256 "$resolved_examples_sha" \
+    --arg metadataError "$metadata_error" \
     --argjson attempts "$attempts" \
     --argjson elapsedSeconds "$elapsed_seconds" \
     --argjson mavenConsumable "$maven_consumable" \
-    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
+    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, metadataError: $metadataError, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
   append_output "maven_consumable" "$maven_consumable" "$github_output"
   append_output "resolved_parent_version" "$resolved_parent_version" "$github_output"
   append_output "resolved_core_version" "$resolved_core_version" "$github_output"

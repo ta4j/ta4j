@@ -785,6 +785,7 @@ test_snapshot_consumption_skips_metadata_after_transport_failure() {
   unset STUB_METADATA_WRITE_FAILURE_ARTIFACT
 
   expect_output_value "$github_output" "maven_consumable" "false"
+  expect_file_contains "$output_file" '"metadataError": "ta4j-parent: metadata transport failed after writing ta4j-parent"'
   expect_file_contains "$log" "fresh metadata fetch failed"
   if [[ -e "$TMP/maven-attempts.txt" ]]; then
     fail "snapshot consumption should not invoke Maven after metadata transport failure"
