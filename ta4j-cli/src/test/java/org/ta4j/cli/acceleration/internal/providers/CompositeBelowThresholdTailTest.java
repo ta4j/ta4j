@@ -55,10 +55,11 @@ class CompositeBelowThresholdTailTest {
     }
 
     @Test
-    void unavailableCompositeStillReportsTheFirstMembersReason() {
-        // Negative control: an all-unavailable composite must keep surfacing the
-        // first member's unavailability (with its real reason) instead of
-        // executing anything.
+    void unavailableCompositeReportsItsOwnIdentityWithTheLastMembersReason() {
+        // Negative control: an all-unavailable composite keeps the selection
+        // identity ("opencl") and surfaces the last member's (OpenCL's)
+        // actionable reason instead of executing anything or misattributing the
+        // failure to the first (CUDA) member.
         ForecastAccelerationProvider cuda = unavailable("cuda", Backend.CUDA, "CUDA driver missing");
         ForecastAccelerationProvider opencl = unavailable("opencl", Backend.OPENCL, "OpenCL ICD missing");
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
@@ -67,8 +68,8 @@ class CompositeBelowThresholdTailTest {
         Result<Forecast> result = composite.evaluate(request());
 
         assertThat(result.status()).isEqualTo(Status.UNAVAILABLE);
-        assertThat(result.diagnostic().providerId()).isEqualTo("cuda");
-        assertThat(result.diagnostic().detail()).contains("CUDA driver missing");
+        assertThat(result.diagnostic().providerId()).isEqualTo("opencl");
+        assertThat(result.diagnostic().detail()).contains("OpenCL ICD missing");
     }
 
     private static ForecastAccelerationProvider member(String providerId, Backend backend, double predictedSpeedup,
