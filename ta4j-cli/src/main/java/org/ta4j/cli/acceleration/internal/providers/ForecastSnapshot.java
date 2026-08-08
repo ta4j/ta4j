@@ -68,7 +68,7 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
                 spec.iterationCount(), spec.quantileProbabilities(), request);
     }
 
-    long estimatedCudaBytes() {
+    long estimatedNativeBytes() {
         long inputDoubles = Math.addExact(Math.multiplyExact((long) decisionCount, 4L),
                 nativeRequest.historicalReturns().length);
         long outputDoubles = Math.addExact(iterationCount,
@@ -76,10 +76,9 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
         return Math.multiplyExact(Math.addExact(inputDoubles, outputDoubles), Double.BYTES);
     }
 
-    List<Forecast> materializeRows(CudaEvaluationResult result, String providerName) {
+    List<Forecast> materializeRows(double[] rows, String providerName) {
         stamp.requireCurrent(series, "before " + providerName + " result publication");
         int rowLength = 4 + quantileProbabilities.size();
-        double[] rows = result.rows();
         if (rows.length != Math.multiplyExact(decisionCount, rowLength)) {
             throw new IllegalStateException(providerName + " result length does not match the immutable request");
         }

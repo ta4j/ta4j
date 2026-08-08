@@ -163,7 +163,7 @@ test_default_invocation_uses_local_repair_gate() {
   expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
   expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should pass verify"
-  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless" "default invocation should include hosted non-demo, non-hardware tests"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless" "default invocation should include hosted non-demo, non-hardware tests"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:check" "default invocation should not duplicate hosted license validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:validate" "default invocation should not duplicate hosted format validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not add a non-CI lifecycle phase"
@@ -181,7 +181,7 @@ test_default_invocation_works_with_system_bash_without_extra_args() {
   output="$(run_quiet_build /bin/bash scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "default invocation should work under system Bash without extra Maven args"
-  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless" "default invocation should include hosted non-demo, non-hardware tests"
+  expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless" "default invocation should include hosted non-demo, non-hardware tests"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should still pass verify"
 
   finish_test_repo

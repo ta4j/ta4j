@@ -41,6 +41,8 @@ The default `ta4j-cli` jar remains JVM-only. Native builds attach classifiers:
 ```bash
 ./mvnw -pl ta4j-cli -am -Pmetal-macos-aarch64 package
 ./mvnw -pl ta4j-cli -am -Pcuda-linux-x86_64 package
+./mvnw -pl ta4j-cli -am -Popencl-linux-x86_64 package
+./mvnw -pl ta4j-cli -am -Popencl-linux-aarch64 package
 ```
 
 ```powershell
@@ -49,11 +51,20 @@ mvnw.cmd -pl ta4j-cli -am -Pcuda-windows-x86_64 package
 
 Packaged libraries have SHA-256 sidecars and are extracted atomically below
 `~/.ta4j/native/`. Absolute developer builds can be supplied with
-`ta4j.acceleration.metal.library` or `ta4j.acceleration.cuda.library`. On a JVM
+`ta4j.acceleration.metal.library`, `ta4j.acceleration.cuda.library`, or
+`ta4j.acceleration.opencl.library`. On a JVM
 that restricts native access, add `--enable-native-access=ALL-UNNAMED`.
 
-Metal is selected only on macOS arm64. CUDA is selected only on Windows or
-Linux x86_64. Current macOS releases do not support NVIDIA CUDA or external
+Metal is selected only on macOS arm64. CUDA is selected only on Windows
+x86_64, with a Linux x86_64 classifier whose hardware qualification is still
+open. OpenCL is selected on Linux x86_64 or aarch64 whenever an FP64-capable
+OpenCL device is present; on Linux the automatic order prefers CUDA when its
+crossover ever qualifies and otherwise falls through to OpenCL. OpenCL is the
+vendor-neutral path: NVIDIA, AMD, Intel, and CPU ICDs (for validation) all
+execute the same versioned kernels. GPU OpenCL devices are auto-selected once
+the qualified workload floor is reached; CPU ICD devices (for example PoCL)
+execute only through the internal qualification path used by the validation
+tests. Current macOS releases do not support NVIDIA CUDA or external
 NVIDIA eGPUs, so Metal and CUDA are not competing production choices on one
 supported host.
 
@@ -93,6 +104,12 @@ the same seed.
   stronger qualified model.
 - Linux CUDA source, loader, and classifier packaging are present but hardware
   qualification remains open. See the [Linux handoff](indicator-acceleration-cuda-linux-handoff.md).
+- Linux OpenCL is correctness-qualified through the PoCL Docker validation
+  matrix on both x86_64 and aarch64: the probe self-tests, the full
+  shock-model/volatility parity matrix, and the transparent end-to-end backtest
+  all pass inside a PoCL container. Automatic selection is gated to GPU
+  devices with at least 16,777,216 path-steps pending real-GPU speedup
+  measurement. See the [OpenCL plan](indicator-acceleration-opencl-plan.md).
 
 The benchmark also exposed two defects before release: manager snapshots were
 initially rejected as non-identical indicator series, preventing transparent

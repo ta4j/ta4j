@@ -14,17 +14,17 @@ import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastSpec;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 
-final class CudaAccelerationProvider implements ForecastAccelerationProvider {
+final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
 
-    static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.cuda.maxBytes";
+    static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.opencl.maxBytes";
 
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
     private final Capability capability;
-    private final CudaNativeBridge nativeBridge;
-    private final CudaProbeResult probe;
+    private final OpenClNativeBridge nativeBridge;
+    private final OpenClProbeResult probe;
 
-    CudaAccelerationProvider(Capability capability, CudaNativeBridge nativeBridge, CudaProbeResult probe) {
+    OpenClAccelerationProvider(Capability capability, OpenClNativeBridge nativeBridge, OpenClProbeResult probe) {
         this.capability = capability;
         this.nativeBridge = nativeBridge;
         this.probe = probe;
@@ -46,32 +46,32 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         } catch (ArithmeticException exception) {
             return 0d;
         }
-        return CudaCrossoverModel.predictedSpeedup(probe, work);
+        return OpenClCrossoverModel.predictedSpeedup(probe, work);
     }
 
     @Override
     public Result<Forecast> evaluate(Request<Forecast> request) {
         MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        return evaluateCuda(request, forecast);
+        return evaluateOpenCl(request, forecast);
     }
 
-    private Result<Forecast> evaluateCuda(Request<Forecast> request, MonteCarloPriceForecastIndicator forecast) {
+    private Result<Forecast> evaluateOpenCl(Request<Forecast> request, MonteCarloPriceForecastIndicator forecast) {
         long started = System.nanoTime();
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
-                "CUDA");
+                "OpenCL");
         validateMemoryCeiling(snapshot.estimatedNativeBytes());
-        CudaEvaluationResult nativeResult;
+        OpenClEvaluationResult nativeResult;
         try {
             nativeResult = nativeBridge.evaluate(snapshot.nativeRequest());
         } catch (LinkageError | RuntimeException exception) {
-            throw new NativeProviderException("CUDA", exception);
+            throw new NativeProviderException("OpenCL", exception);
         }
-        List<Forecast> values = snapshot.materializeRows(nativeResult.rows(), "CUDA");
+        List<Forecast> values = snapshot.materializeRows(nativeResult.rows(), "OpenCL");
         Diagnostic timing = new Diagnostic(DiagnosticCode.ACCELERATED, capability.providerId(),
-                "CUDA timings total=%.3fms transfer=%.3fms kernel=%.3fms reduction=%.3fms".formatted(
+                "OpenCL timings total=%.3fms transfer=%.3fms kernel=%.3fms reduction=%.3fms".formatted(
                         nativeResult.totalMicros() / 1_000d, nativeResult.transferMicros() / 1_000d,
                         nativeResult.kernelMicros() / 1_000d, nativeResult.reductionMicros() / 1_000d));
-        return Result.executed(Backend.CUDA, values, true, System.nanoTime() - started, timing);
+        return Result.executed(Backend.OPENCL, values, true, System.nanoTime() - started, timing);
     }
 
     private void validateMemoryCeiling(long requiredBytes) {
@@ -82,26 +82,26 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         long deviceCeiling = Math.max(1L, probe.freeMemoryBytes() / 2L);
         long ceiling = Math.min(configured, deviceCeiling);
         if (requiredBytes > ceiling) {
-            throw new IllegalArgumentException("CUDA request needs %,d bytes, above the %,d-byte provider ceiling"
+            throw new IllegalArgumentException("OpenCL request needs %,d bytes, above the %,d-byte provider ceiling"
                     .formatted(requiredBytes, ceiling));
         }
     }
 
 }
 
-final class CudaCrossoverModel {
+final class OpenClCrossoverModel {
 
     /**
-     * Intentionally disables AUTO until Linux x86_64 hardware qualification
-     * completes.
+     * Conservative workload floor mirroring the Metal provider's qualified minimum;
+     * placeholder pending real-GPU speedup measurement.
      */
-    private static final long QUALIFIED_MINIMUM_WORK = Long.MAX_VALUE;
+    private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
 
-    private CudaCrossoverModel() {
+    private OpenClCrossoverModel() {
     }
 
-    static double predictedSpeedup(CudaProbeResult probe, long work) {
-        if (probe.computeMajor() != 12 || probe.computeMinor() != 0 || work < QUALIFIED_MINIMUM_WORK) {
+    static double predictedSpeedup(OpenClProbeResult probe, long work) {
+        if (!probe.gpuDevice() || work < QUALIFIED_MINIMUM_WORK) {
             return 0d;
         }
         return 0.25d;

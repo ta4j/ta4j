@@ -125,7 +125,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
-**💡 Also new**: The `ta4j-cli` module exposes compact and lossless serialization v2 inputs, dynamic backtest sizing, Monte Carlo/analog/conformal forecasting, versioned reproducible JSON, stdin pipelines, live catalog discovery, generated completion, and optional transparent Metal/CUDA acceleration. Build it with `./mvnw -pl ta4j-cli -am package`, then run the fat jar from `ta4j-cli/target/`.
+**💡 Also new**: The `ta4j-cli` module exposes compact and lossless serialization v2 inputs, dynamic backtest sizing, Monte Carlo/analog/conformal forecasting, versioned reproducible JSON, stdin pipelines, live catalog discovery, generated completion, and optional transparent Metal/CUDA/OpenCL acceleration. Build it with `./mvnw -pl ta4j-cli -am package`, then run the fat jar from `ta4j-cli/target/`.
 
 ## Build commands: Maven
 
@@ -133,8 +133,8 @@ Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to 
 
 - **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
 - **Contributor quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`. The local default runs actionlint and repository script fixtures, repairs license headers and formatting, then runs all non-demo Maven tests with blocking SpotBugs plus advisory JaCoCo feedback. The Bash entrypoint keeps the default 180-second watchdog as the earliest timeout point, then allows continued Maven output progress until the configurable no-output stall window expires. Review any source changes it makes before committing.
-- **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
-- **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
+- **Maven-only local equivalent:** Use `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`, `mvnw.cmd` with the same arguments, or system Maven 3.9+ when repository preflight checks are not needed.
+- **Hosted validation path:** CI uses `scripts/run-full-build-quiet.sh --validate-only`, equivalent to `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`, so committed source defects still fail without modifying the checkout. You can also run `./mvnw -B license:format formatter:format` as a focused repair command.
 - **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
 - **JaCoCo-only local gate:** Use `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
 - **Focused coverage report:** Use `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
@@ -1463,7 +1463,7 @@ For performance tuning guidance, start with:
 - [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
 - [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
 - `scripts/benchmark-backtest-throughput.sh` for controlled `HEAD^` vs `HEAD` comparisons using `matrix_performance.json` cells/min and hypotheses/min
-- [Transparent indicator acceleration](docs/indicator-acceleration.md) for `BarSeriesManager` GPU selection, scalar fallback diagnostics, native classifiers, measured Metal results, and CUDA qualification status
+- [Transparent indicator acceleration](docs/indicator-acceleration.md) for `BarSeriesManager` GPU selection, scalar fallback diagnostics, native classifiers, measured Metal results, CUDA qualification status, and the [Linux OpenCL plan](docs/indicator-acceleration-opencl-plan.md)
 - [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support

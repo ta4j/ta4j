@@ -33,7 +33,7 @@ import org.ta4j.core.num.DoubleNumFactory;
  */
 public final class CliIndicatorAccelerationService implements Provider {
 
-    private static final double MINIMUM_SPEEDUP = 0.10d;
+    static final double MINIMUM_SPEEDUP = 0.10d;
     private static final Map<String, String> QUARANTINED_PROVIDERS = new ConcurrentHashMap<>();
     private static final ThreadLocal<String> QUALIFICATION_PROVIDER = ThreadLocal.withInitial(() -> "");
     private static final ThreadLocal<ForecastAccelerationProvider> TEST_PROVIDER = new ThreadLocal<>();
@@ -130,15 +130,23 @@ public final class CliIndicatorAccelerationService implements Provider {
         if ("cuda".equals(forced)) {
             return new ProviderSelection("cuda", Backend.CUDA, () -> new CudaAccelerationProviderFactory().probe());
         }
+        if ("opencl".equals(forced)) {
+            return new ProviderSelection("opencl", Backend.OPENCL,
+                    () -> new OpenClAccelerationProviderFactory().probe());
+        }
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (operatingSystem.contains("mac")) {
             return new ProviderSelection("metal", Backend.METAL, () -> new MetalAccelerationProviderFactory().probe());
         }
-        if (operatingSystem.contains("windows") || operatingSystem.contains("linux")) {
+        if (operatingSystem.contains("windows")) {
             return new ProviderSelection("cuda", Backend.CUDA, () -> new CudaAccelerationProviderFactory().probe());
         }
+        if (operatingSystem.contains("linux")) {
+            return new ProviderSelection("opencl", Backend.OPENCL, () -> new CompositeForecastAccelerationProvider(List
+                    .of(new CudaAccelerationProviderFactory()::probe, new OpenClAccelerationProviderFactory()::probe)));
+        }
         Capability capability = new Capability("none", Backend.CPU, false, false, "",
-                "no Metal or CUDA provider exists for " + operatingSystem);
+                "no Metal, CUDA, or OpenCL provider exists for " + operatingSystem);
         return new ProviderSelection(capability.providerId(), capability.backend(),
                 () -> new UnavailableForecastProvider(capability));
     }

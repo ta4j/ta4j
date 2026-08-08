@@ -100,9 +100,9 @@ public class ReadmeContentManagerTest {
         assertTrue(readme.contains("scripts/run-full-build-quiet.sh"));
         assertTrue(readme.contains("scripts/run-full-build-quiet.ps1"));
         assertTrue(readme.contains(
-                "./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless"));
+                "./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless"));
         assertTrue(readme.contains(
-                "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-display,requires-headless"));
+                "./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless"));
         assertTrue(readme.contains("./mvnw -B license:format formatter:format"));
         assertTrue(contributing.contains("Java 25+"));
 

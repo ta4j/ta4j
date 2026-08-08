@@ -1,0 +1,15 @@
+# OpenCL acceleration validation image (Ubuntu Noble + PoCL CPU ICD).
+# Usage:
+#   docker build -f scripts/acceleration/Dockerfile.opencl-validate -t ta4j-opencl-validate .
+#   docker run --rm -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
+#     bash scripts/acceleration/validate-opencl-linux.sh /workspace aarch64 --benchmark
+#   docker run --rm --platform linux/amd64 -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
+#     bash scripts/acceleration/validate-opencl-linux.sh /workspace x86_64
+FROM eclipse-temurin:25-jdk-noble
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake make gcc libc6-dev ocl-icd-opencl-dev pocl-opencl-icd clinfo \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+ENTRYPOINT ["bash"]

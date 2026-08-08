@@ -1,0 +1,281 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.cli.acceleration.internal.providers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
+
+class OpenClAccelerationProviderTest {
+
+    private String previousLibrary;
+    private String previousMaxMemory;
+
+    @BeforeEach
+    void captureProperties() {
+        previousLibrary = System.getProperty(OpenClAccelerationProviderFactory.LIBRARY_PROPERTY);
+        previousMaxMemory = System.getProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY);
+    }
+
+    @AfterEach
+    void restorePropertiesAndCache() {
+        restoreProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, previousMaxMemory);
+        restoreProperty(OpenClAccelerationProviderFactory.LIBRARY_PROPERTY, previousLibrary);
+        OpenClAccelerationProviderFactory.clearProbeCacheForTests();
+    }
+
+    @Test
+    void fakeBridgeMaterializesValidatedOrderedForecasts() {
+        MonteCarloPriceForecastIndicator forecast = forecast(doubleSeries());
+        Request<Forecast> request = request(forecast);
+
+        Result<Forecast> result = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult))
+                .evaluate(request);
+
+        assertThat(result.backend()).isEqualTo(Backend.OPENCL);
+        assertThat(result.values()).hasSize(request.size()).allSatisfy(value -> {
+            assertThat(value.isStable()).isTrue();
+            assertThat(value.mean().doubleValue()).isEqualTo(100d);
+            assertThat(value.standardDeviation().doubleValue()).isZero();
+        });
+    }
+
+    @Test
+    void staleSnapshotFailsBeforePublication() {
+        BarSeries series = doubleSeries();
+        MonteCarloPriceForecastIndicator forecast = forecast(series);
+        FakeBridge bridge = new FakeBridge(request -> {
+            series.addPrice(999d);
+            return constantResult(request);
+        });
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> provider(bridge).evaluate(request(forecast)));
+
+        assertThat(exception).hasMessageContaining("BarSeries changed");
+    }
+
+    @Test
+    void invalidNativeQuantilesAreRejectedAtomically() {
+        MonteCarloPriceForecastIndicator forecast = forecast(doubleSeries());
+        FakeBridge bridge = new FakeBridge(request -> {
+            OpenClEvaluationResult valid = constantResult(request);
+            double[] rows = valid.rows();
+            rows[5] = 101d;
+            rows[6] = 99d;
+            return new OpenClEvaluationResult(1d, 1d, 1d, 1d, rows);
+        });
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> provider(bridge).evaluate(request(forecast)));
+
+        assertThat(exception).hasMessageContaining("quantiles are not monotone");
+    }
+
+    @Test
+    void decimalPrecisionAndMemoryCeilingFailBeforeNativeExecution() {
+        AtomicInteger evaluations = new AtomicInteger();
+        FakeBridge bridge = new FakeBridge(request -> {
+            evaluations.incrementAndGet();
+            return constantResult(request);
+        });
+        MonteCarloPriceForecastIndicator decimalForecast = forecast(
+                new MockBarSeriesBuilder().withData(prices()).build());
+        assertThrows(IllegalArgumentException.class, () -> provider(bridge).evaluate(request(decimalForecast)));
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, "1");
+        MonteCarloPriceForecastIndicator doubleForecast = forecast(doubleSeries());
+        assertThrows(IllegalArgumentException.class, () -> provider(bridge).evaluate(request(doubleForecast)));
+        assertThat(evaluations).hasValue(0);
+    }
+
+    @Test
+    void productionProbeCachesSuccessAndRejectsUnavailableDevice() {
+        AtomicInteger loads = new AtomicInteger();
+        AtomicInteger probes = new AtomicInteger();
+        FakeBridge bridge = new FakeBridge(OpenClAccelerationProviderTest::constantResult) {
+            @Override
+            public OpenClProbeResult probe() {
+                probes.incrementAndGet();
+                return qualifiedProbe();
+            }
+        };
+        System.setProperty(OpenClAccelerationProviderFactory.LIBRARY_PROPERTY, "/qualified/libta4j-opencl.so");
+        OpenClAccelerationProviderFactory factory = new OpenClAccelerationProviderFactory(() -> {
+            loads.incrementAndGet();
+            return new OpenClNativeLibrary.LoadResult(true, Path.of("/qualified/libta4j-opencl.so"), "");
+        }, bridge, true);
+
+        assertThat(factory.probe().capability().available()).isTrue();
+        assertThat(factory.probe().capability().available()).isTrue();
+        assertThat(loads).hasValue(1);
+        assertThat(probes).hasValue(1);
+
+        OpenClAccelerationProviderFactory rejected = new OpenClAccelerationProviderFactory(
+                () -> new OpenClNativeLibrary.LoadResult(true, Path.of("/unavailable/libta4j-opencl.so"), ""),
+                new FakeBridge(OpenClAccelerationProviderTest::constantResult) {
+                    @Override
+                    public OpenClProbeResult probe() {
+                        return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "device lacks FP64");
+                    }
+                }, false);
+        assertThat(rejected.probe().capability().available()).isFalse();
+        assertThat(rejected.probe().capability().detail()).contains("device lacks FP64");
+
+        OpenClAccelerationProviderFactory throwing = new OpenClAccelerationProviderFactory(
+                () -> new OpenClNativeLibrary.LoadResult(true, Path.of("/throwing/libta4j-opencl.so"), ""),
+                new FakeBridge(OpenClAccelerationProviderTest::constantResult) {
+                    @Override
+                    public OpenClProbeResult probe() {
+                        throw new IllegalStateException("context creation failed");
+                    }
+                }, false);
+        assertThat(throwing.probe().capability().detail()).contains("self-test failed", "context creation failed");
+    }
+
+    @Test
+    void crossoverRequiresGpuDeviceAndQualifiedWorkload() {
+        MonteCarloPriceForecastIndicator small = forecast(doubleSeries());
+        Request<Forecast> smallRequest = request(small);
+        assertThat(
+                provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult)).predictedSpeedup(smallRequest))
+                .isZero();
+
+        MonteCarloPriceForecastIndicator large = largeForecast();
+        Request<Forecast> largeRequest = request(large);
+        OpenClAccelerationProvider cpuProvider = provider(
+                new FakeBridge(OpenClAccelerationProviderTest::constantResult), cpuProbe());
+        assertThat(cpuProvider.predictedSpeedup(largeRequest)).isZero();
+
+        OpenClAccelerationProvider gpuProvider = provider(
+                new FakeBridge(OpenClAccelerationProviderTest::constantResult), qualifiedProbe());
+        assertThat(gpuProvider.predictedSpeedup(largeRequest)).isEqualTo(0.25d);
+    }
+
+    private static OpenClAccelerationProvider provider(OpenClNativeBridge bridge) {
+        return provider(bridge, qualifiedProbe());
+    }
+
+    private static OpenClAccelerationProvider provider(OpenClNativeBridge bridge, OpenClProbeResult probe) {
+        Capability capability = new Capability("opencl", Backend.OPENCL, true, true, probe.deviceName(), "");
+        return new OpenClAccelerationProvider(capability, bridge, probe);
+    }
+
+    private static OpenClProbeResult qualifiedProbe() {
+        return new OpenClProbeResult(true, "OpenCL GPU", 3, 0, 16L * 1024 * 1024 * 1024, 32L * 1024 * 1024 * 1024, 0, 0,
+                true, "self-test passed");
+    }
+
+    private static OpenClProbeResult cpuProbe() {
+        return new OpenClProbeResult(true, "PoCL CPU", 3, 0, 16L * 1024 * 1024 * 1024, 32L * 1024 * 1024 * 1024, 0, 0,
+                false, "self-test passed");
+    }
+
+    private static OpenClEvaluationResult constantResult(NativeForecastRequest request) {
+        int rowLength = 4 + request.quantiles().length;
+        double[] rows = new double[request.decisionCount() * rowLength];
+        int[] stable = request.stable();
+        for (int decision = 0; decision < request.decisionCount(); decision++) {
+            int offset = decision * rowLength;
+            if (stable[decision] == 0) {
+                rows[offset] = 1d;
+                continue;
+            }
+            rows[offset + 1] = 100d;
+            rows[offset + 2] = 100d;
+            rows[offset + 3] = 0d;
+            for (int quantile = 0; quantile < request.quantiles().length; quantile++) {
+                rows[offset + 4 + quantile] = 100d;
+            }
+        }
+        return new OpenClEvaluationResult(4d, 1d, 1d, 1d, rows);
+    }
+
+    private static Request<Forecast> request(MonteCarloPriceForecastIndicator forecast) {
+        int toInclusive = forecast.getBarSeries().getEndIndex();
+        return new Request<>(forecast, toInclusive - 2, toInclusive);
+    }
+
+    private static MonteCarloPriceForecastIndicator largeForecast() {
+        BarSeries series = doubleSeries();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnIndicator returns = new LogReturnIndicator(close);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        return MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(1024)
+                .iterationCount(16384)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .build();
+    }
+
+    private static MonteCarloPriceForecastIndicator forecast(BarSeries series) {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnIndicator returns = new LogReturnIndicator(close);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        return MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(3)
+                .iterationCount(64)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .build();
+    }
+
+    private static BarSeries doubleSeries() {
+        return new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices()).build();
+    }
+
+    private static double[] prices() {
+        double[] prices = new double[80];
+        for (int i = 0; i < prices.length; i++) {
+            prices[i] = 100d + i * 0.1d;
+        }
+        return prices;
+    }
+
+    private static class FakeBridge implements OpenClNativeBridge {
+
+        private final Function<NativeForecastRequest, OpenClEvaluationResult> evaluation;
+
+        private FakeBridge(Function<NativeForecastRequest, OpenClEvaluationResult> evaluation) {
+            this.evaluation = evaluation;
+        }
+
+        @Override
+        public OpenClProbeResult probe() {
+            return qualifiedProbe();
+        }
+
+        @Override
+        public OpenClEvaluationResult evaluate(NativeForecastRequest request) {
+            return evaluation.apply(request);
+        }
+    }
+
+    private static void restoreProperty(String property, String previous) {
+        if (previous == null) {
+            System.clearProperty(property);
+        } else {
+            System.setProperty(property, previous);
+        }
+    }
+}

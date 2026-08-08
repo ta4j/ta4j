@@ -307,7 +307,9 @@ public final class AccelerationRuntime {
         /** Apple Metal. */
         METAL,
         /** NVIDIA CUDA. */
-        CUDA
+        CUDA,
+        /** Khronos OpenCL. */
+        OPENCL
     }
 
     /**
