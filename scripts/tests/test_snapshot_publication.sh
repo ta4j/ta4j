@@ -121,11 +121,11 @@ for artifact in ta4j-parent ta4j-core ta4j-examples; do
   extension=jar
   if [[ "$artifact" == "ta4j-parent" ]]; then
     extension=pom
-    printf '<project/>\n' > "$directory/$artifact-$STUB_VERSION.pom"
+    printf '<project/>\n' > "$directory/$artifact-$STUB_RESOLVED_VERSION.pom"
   elif [[ "$artifact" == "ta4j-core" ]]; then
-    cp "$STUB_CORE_SOURCE" "$directory/$artifact-$STUB_VERSION.jar"
+    cp "$STUB_CORE_SOURCE" "$directory/$artifact-$STUB_RESOLVED_VERSION.jar"
   else
-    cp "$STUB_EXAMPLES_SOURCE" "$directory/$artifact-$STUB_VERSION.jar"
+    cp "$STUB_EXAMPLES_SOURCE" "$directory/$artifact-$STUB_RESOLVED_VERSION.jar"
   fi
   if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
     continue
@@ -148,6 +148,63 @@ EOF
   chmod +x "$path"
 }
 
+write_metadata_curl_stub() {
+  local path="$1"
+  cat > "$path" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+url=""
+for argument in "$@"; do
+  url="$argument"
+done
+printf '%s\n' "$url" >> "$STUB_CURL_LOG"
+artifact=""
+for candidate in ta4j-parent ta4j-core ta4j-examples; do
+  if [[ "$url" == *"/org/ta4j/$candidate/"* ]]; then
+    artifact="$candidate"
+    break
+  fi
+done
+[[ -n "$artifact" ]] || exit 2
+if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
+  echo "metadata unavailable for $artifact" >&2
+  exit 22
+fi
+cat "$STUB_METADATA_DIR/$artifact.xml"
+EOF
+  chmod +x "$path"
+}
+
+write_consumption_metadata_fixture() {
+  local directory="$1"
+  local version="$2"
+  local resolved="$3"
+  mkdir -p "$directory"
+  cat > "$directory/ta4j-parent.xml" <<EOF
+<metadata>
+  <version>${version}</version>
+  <versioning>
+    <snapshotVersions>
+      <snapshotVersion><extension>pom</extension><value>${resolved}</value></snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>
+EOF
+  for artifact in ta4j-core ta4j-examples; do
+    cat > "$directory/$artifact.xml" <<EOF
+<metadata>
+  <version>${version}</version>
+  <versioning>
+    <snapshotVersions>
+      <snapshotVersion><extension>jar</extension><value>${resolved}</value></snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>
+EOF
+  done
+}
+
 prepare_consumption_fixture() {
   local root="$1"
   local version="$2"
@@ -167,6 +224,10 @@ run_consumption_fixture() {
   local output="$8"
   local github_output="$9"
   local log="${10}"
+  local curl_stub="$TMP/curl-stub"
+  local metadata_dir="$TMP/metadata"
+  write_metadata_curl_stub "$curl_stub"
+  write_consumption_metadata_fixture "$metadata_dir" "$version" "${version%-SNAPSHOT}-20260714.120000-1"
 
   STUB_VERSION="$version" \
   STUB_RESOLVED_VERSION="${version%-SNAPSHOT}-20260714.120000-1" \
@@ -174,6 +235,9 @@ run_consumption_fixture() {
   STUB_ATTEMPT_FILE="$TMP/maven-attempts.txt" \
   STUB_CORE_SOURCE="$core_source" \
   STUB_EXAMPLES_SOURCE="$examples_source" \
+  STUB_METADATA_DIR="$metadata_dir" \
+  STUB_CURL_LOG="$TMP/curl.log" \
+  RELEASE_HELPERS_CURL_COMMAND="$curl_stub" \
     bash "$SCRIPT" snapshot-consumption \
       --version "$version" \
       --maven-command "$maven_stub" \
@@ -452,6 +516,7 @@ test_snapshot_consumption_immediate_success() {
   expect_output_value "$github_output" "snapshot_consumption_attempts" "1"
   expect_output_value "$github_output" "resolved_core_version" "0.23.1-20260714.120000-1"
   expect_file_contains "$output_file" '"mavenConsumable": true'
+  expect_file_contains "$TMP/curl.log" "cacheBust="
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_immediate_success"

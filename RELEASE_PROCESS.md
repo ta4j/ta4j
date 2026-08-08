@@ -110,7 +110,7 @@ Secrets and variables:
 - Verifies pushed tag points to expected release commit and is reachable from default branch.
 
 5. Observe post-publish workflows
-- The `snapshot.yml` run started by the release PR merge should deploy the next snapshot, then retry an isolated Maven Dependency Plugin `3.11.0` consumer every 15 seconds for at most five minutes. It stays non-green until the exact newly deployed parent/core/examples timestamped coordinates resolve and the core/examples JAR checksums match the publisher workspace.
+- The `snapshot.yml` run started by the release PR merge should deploy the next snapshot, then retry an isolated Maven Dependency Plugin `3.11.0` consumer every 15 seconds for at most five minutes. Each attempt fetches cache-busted artifact metadata directly from the snapshot repository, resolves the resulting immutable parent/core/examples timestamped coordinates, and compares the core/examples JAR checksums with the publisher workspace. This avoids stale CDN `-SNAPSHOT` metadata causing a false verification failure.
 - `github-release.yml` should run from tag push.
 - `release-health.yml` may first report snapshot publication as pending during the async handoff, then should report `OK` after it retrieves the exact timestamped core POM/JAR. Top-level `<latest>` is informational only.
 
@@ -259,7 +259,7 @@ Look for these files first:
 - `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
 - `javadoc-warnings.txt`: Javadoc warning baseline comparison from release artifact/deploy logs; new warnings beyond the tracked `scripts/release/javadoc-warning-baseline.txt` debt fail publish.
 - `.agents/logs/full-build-*.log`: release-candidate full build log.
-- `snapshot-consumption.json`: exact timestamped parent/core/examples coordinates, publisher and resolved JAR checksums, attempts, elapsed time, and `mavenConsumable` result.
+- `snapshot-consumption.json`: exact timestamped parent/core/examples coordinates obtained from cache-busted metadata, publisher and resolved JAR checksums, attempts, elapsed time, and `mavenConsumable` result.
 - `snapshot-consumption.log`: bounded, redacted Maven consumer attempts used by the post-deploy gate.
 
 If a grouped section fails, inspect the matching artifact before rerunning. Avoid rerunning publish until tag state, artifact state, and Central deployment state are understood.

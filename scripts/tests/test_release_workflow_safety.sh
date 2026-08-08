@@ -553,6 +553,10 @@ test_snapshot_workflow_guarantees_exact_consumability() {
     "release health should retrieve exact version-level POM/JAR artifacts"
   expect_file_contains "$WORKFLOWS/release-health.yml" "snapshot metadata latest (informational)" \
     "release health should not treat top-level latest as authoritative"
+  expect_file_contains "$ROOT/scripts/release/release_helpers.sh" "cacheBust=" \
+    "snapshot consumption should bypass stale CDN metadata with a cache-busted fetch"
+  expect_file_contains "$ROOT/scripts/release/release_helpers.sh" "write_snapshot_consumer_pom" \
+    "snapshot consumption should resolve immutable timestamped coordinates"
 
   pass "test_snapshot_workflow_guarantees_exact_consumability"
 }

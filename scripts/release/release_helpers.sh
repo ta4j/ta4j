@@ -1672,15 +1672,50 @@ if snapshot_versions is not None:
 PY
 }
 
-snapshot_metadata_file() {
-  local artifact_directory="$1"
-  local metadata="$artifact_directory/maven-metadata-${SNAPSHOT_REPOSITORY_ID}.xml"
-  [[ -f "$metadata" ]] && printf '%s\n' "$metadata"
-  return 0
+snapshot_metadata_url() {
+  local repository_url="$1" artifact="$2" version="$3" cache_buster="$4" separator="?"
+  [[ "$repository_url" == *\?* ]] && separator="&"
+  printf '%s/org/ta4j/%s/%s/maven-metadata.xml%scacheBust=%s\n' \
+    "${repository_url%/}" "$artifact" "$version" "$separator" "$cache_buster"
+}
+
+fetch_snapshot_metadata() {
+  local curl_command="$1" repository_url="$2" artifact="$3" version="$4" cache_buster="$5" output="$6" error_output="$7"
+  local metadata_url
+  metadata_url="$(snapshot_metadata_url "$repository_url" "$artifact" "$version" "$cache_buster")"
+  "$curl_command" --fail --silent --show-error --location --max-time 30 \
+    -H "Accept: application/xml" -H "User-Agent: ta4j-release-automation" \
+    "$metadata_url" > "$output" 2>"$error_output"
+}
+
+write_snapshot_consumer_pom() {
+  local output="$1" repository_url="$2" parent_version="$3" core_version="$4" examples_version="$5"
+  cat > "$output" <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.ta4j.verify</groupId>
+  <artifactId>snapshot-consumer</artifactId>
+  <version>1.0.0</version>
+  <repositories>
+    <repository>
+      <id>${SNAPSHOT_REPOSITORY_ID}</id>
+      <url>${repository_url}</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${parent_version}</version><type>pom</type></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${core_version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${examples_version}</version></dependency>
+  </dependencies>
+</project>
+EOF
 }
 
 command_snapshot_consumption() {
   local version="" maven_command="./mvnw" repository_url="$SNAPSHOT_REPOSITORY_URL" publisher_root="$PWD"
+  local curl_command="${RELEASE_HELPERS_CURL_COMMAND:-curl}"
   local max_attempts=20 retry_seconds=15 output="snapshot-consumption.json" github_output="" log="snapshot-consumption.log"
   while (($#)); do
     case "$1" in
@@ -1708,6 +1743,12 @@ command_snapshot_consumption() {
     maven_command="$(cd "$(dirname "$maven_command")" && pwd -P)/$(basename "$maven_command")"
   fi
   [[ -x "$maven_command" ]] || die "Maven command is not executable: $maven_command"
+  if [[ "$curl_command" != */* ]]; then
+    curl_command="$(command -v "$curl_command" || true)"
+  elif [[ "$curl_command" != /* ]]; then
+    curl_command="$(cd "$(dirname "$curl_command")" && pwd -P)/$(basename "$curl_command")"
+  fi
+  [[ -x "$curl_command" ]] || die "curl command is not executable: $curl_command"
   publisher_root="$(cd "$publisher_root" && pwd -P)"
 
   local publisher_core="$publisher_root/ta4j-core/target/ta4j-core-${version}.jar"
@@ -1722,35 +1763,13 @@ command_snapshot_consumption() {
   raw_log="$tmpdir/maven.log"
   redacted_log="$tmpdir/maven-redacted.log"
   mkdir -p "$local_repo" "$(dirname "$output")" "$(dirname "$log")"
-  cat > "$consumer_pom" <<EOF
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>org.ta4j.verify</groupId>
-  <artifactId>snapshot-consumer</artifactId>
-  <version>1.0.0</version>
-  <repositories>
-    <repository>
-      <id>${SNAPSHOT_REPOSITORY_ID}</id>
-      <url>${repository_url}</url>
-      <releases><enabled>false</enabled></releases>
-      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
-    </repository>
-  </repositories>
-  <dependencies>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${version}</version><type>pom</type></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${version}</version></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${version}</version></dependency>
-  </dependencies>
-</project>
-EOF
 
   local publisher_core_sha publisher_examples_sha resolved_core resolved_examples resolved_core_sha="" resolved_examples_sha=""
-  local parent_metadata core_metadata examples_metadata resolved_parent_version="" resolved_core_version="" resolved_examples_version=""
+  local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml"
+  local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" metadata_error="" cache_buster=""
   local attempts=0 maven_consumable=false start_time elapsed_seconds=0
   publisher_core_sha="$(sha256_file "$publisher_core")"
   publisher_examples_sha="$(sha256_file "$publisher_examples")"
-  resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${version}.jar"
-  resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${version}.jar"
   start_time="$(date +%s)"
   : > "$raw_log"
 
@@ -1762,26 +1781,36 @@ EOF
     resolved_core_sha=""
     resolved_examples_sha=""
     rm -rf "$local_repo/org/ta4j"
+    rm -f "$parent_metadata" "$core_metadata" "$examples_metadata"
     printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
-    if "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
-      "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
+    cache_buster="$(date +%s)-${attempts}"
+    metadata_error=""
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-parent "$version" "$cache_buster" "$parent_metadata" "$tmpdir/ta4j-parent-metadata.err" \
+      || metadata_error="ta4j-parent: $(cat "$tmpdir/ta4j-parent-metadata.err")"
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-core "$version" "$cache_buster" "$core_metadata" "$tmpdir/ta4j-core-metadata.err" \
+      || metadata_error="${metadata_error:+$metadata_error; }ta4j-core: $(cat "$tmpdir/ta4j-core-metadata.err")"
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-examples "$version" "$cache_buster" "$examples_metadata" "$tmpdir/ta4j-examples-metadata.err" \
+      || metadata_error="${metadata_error:+$metadata_error; }ta4j-examples: $(cat "$tmpdir/ta4j-examples-metadata.err")"
+    [[ -z "$metadata_error" ]] || printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
+    resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
+    resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
+    resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
+    if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
+      printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
+    else
+      write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"
+      resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
+      resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
+    fi
+    if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]] && \
+      "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
+        "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
       if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
         resolved_core_sha="$(sha256_file "$resolved_core")"
         resolved_examples_sha="$(sha256_file "$resolved_examples")"
         if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
           maven_consumable=true
-          parent_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-parent/${version}")"
-          core_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-core/${version}")"
-          examples_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-examples/${version}")"
-          resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
-          resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
-          resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
-          if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
-            maven_consumable=false
-            printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
-          else
-            break
-          fi
+          break
         else
           printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
             "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
