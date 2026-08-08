@@ -59,8 +59,15 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         long started = System.nanoTime();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
+        // The native kernels sort samples padded to the next power of two
+        // (bitonic sort), so the device samples buffer holds
+        // nextPowerOfTwo(iterationCount) doubles, not iterationCount. The
+        // ceiling must cover the padded allocation or a request just above a
+        // power-of-two boundary can allocate nearly twice its estimate on the
+        // device.
+        long paddedIterations = nextPowerOfTwo(spec.iterationCount());
         validateMemoryCeiling(ForecastSnapshot.estimatedNativeBytes(decisions, spec.lookbackBarCount(),
-                spec.iterationCount(), spec.quantileProbabilities().size()));
+                paddedIterations, spec.quantileProbabilities().size()));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;
@@ -88,6 +95,18 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
             throw new IllegalArgumentException("OpenCL request needs %,d bytes, above the %,d-byte provider ceiling"
                     .formatted(requiredBytes, ceiling));
         }
+    }
+
+    /**
+     * Mirrors the native {@code next_power_of_two} used to size the bitonic-sort
+     * sample buffer.
+     */
+    private static long nextPowerOfTwo(long value) {
+        long power = 1L;
+        while (power < value) {
+            power <<= 1;
+        }
+        return power;
     }
 
 }
