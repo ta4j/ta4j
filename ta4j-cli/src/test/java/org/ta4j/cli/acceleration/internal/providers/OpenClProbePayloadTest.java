@@ -33,7 +33,7 @@ class OpenClProbePayloadTest {
     private static final Path STUB_SOURCE = Path.of("src/test/resources/native-stubs/opencl_probe_stub.c")
             .toAbsolutePath();
     private static final Path STUB_LIBRARY = Path.of(System.getProperty("java.io.tmpdir"))
-            .resolve("libJniOpenClProbeStub.dylib");
+            .resolve("libJniOpenClProbeStub" + librarySuffix());
     private static volatile boolean stubCompiled;
     private static volatile boolean stubLoaded;
 
@@ -88,11 +88,20 @@ class OpenClProbePayloadTest {
             Path library = Path.of(System.getProperty("java.io.tmpdir"))
                     .resolve("libJniOpenClProbeStub-linux.dylib");
             Files.deleteIfExists(library);
+            String originalOsName = System.getProperty("os.name");
             try {
+                // The production compile path picks the platform include
+                // directory from os.name; simulate the Linux CI host.
+                System.setProperty("os.name", "linux");
                 compileStub(fakeJdk.toString(), library);
                 assertThat(Files.isRegularFile(library)).as("stub must compile against the Linux JDK layout")
                         .isTrue();
             } finally {
+                if (originalOsName == null) {
+                    System.clearProperty("os.name");
+                } else {
+                    System.setProperty("os.name", originalOsName);
+                }
                 Files.deleteIfExists(library);
             }
         } finally {
@@ -126,7 +135,7 @@ class OpenClProbePayloadTest {
 
     private static void compileStub(String javaHome, Path library) throws Exception {
         Path include = Path.of(javaHome, "include");
-        Path includePlatform = Path.of(javaHome, "include", "darwin");
+        Path includePlatform = platformIncludeDirectory(javaHome);
         Files.deleteIfExists(library);
         Process process = new ProcessBuilder("cc", "-shared", "-fPIC", "-I" + include, "-I" + includePlatform, "-o",
                 library.toString(), STUB_SOURCE.toString()).redirectErrorStream(true).start();
@@ -141,5 +150,35 @@ class OpenClProbePayloadTest {
         if (!Files.isRegularFile(library)) {
             throw new IOException("OpenCL probe stub was not produced at " + library);
         }
+    }
+
+    /**
+     * The JDK's platform-specific include directory (where {@code jni_md.h}
+     * lives) differs per OS: {@code include/darwin} on macOS, {@code
+     * include/linux} on Linux, {@code include/win32} on Windows. Hosted CI
+     * runs on ubuntu-latest, so the macOS layout must not be hardcoded.
+     */
+    private static Path platformIncludeDirectory(String javaHome) {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        String platform;
+        if (os.contains("mac")) {
+            platform = "darwin";
+        } else if (os.contains("win")) {
+            platform = "win32";
+        } else {
+            platform = "linux";
+        }
+        return Path.of(javaHome, "include", platform);
+    }
+
+    private static String librarySuffix() {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        if (os.contains("win")) {
+            return ".dll";
+        }
+        if (os.contains("mac")) {
+            return ".dylib";
+        }
+        return ".so";
     }
 }
