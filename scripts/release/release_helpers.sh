@@ -1674,10 +1674,9 @@ PY
 }
 
 snapshot_metadata_url() {
-  local repository_url="$1" artifact="$2" version="$3" cache_buster="$4" separator="?"
-  [[ "$repository_url" == *\?* ]] && separator="&"
+  local repository_url="$1" artifact="$2" version="$3" cache_buster="$4"
   printf '%s/org/ta4j/%s/%s/maven-metadata.xml%scacheBust=%s\n' \
-    "${repository_url%/}" "$artifact" "$version" "$separator" "$cache_buster"
+    "${repository_url%/}" "$artifact" "$version" "?" "$cache_buster"
 }
 
 fetch_snapshot_metadata() {
@@ -1910,7 +1909,7 @@ command_snapshot_consumption() {
             fi
           else
             maven_status=$?
-            if (( maven_status == 124 )); then
+            if (( maven_status == 124 || maven_status == 137 )); then
               deadline_exhausted=true
               printf 'Maven snapshot resolution timed out with the five-minute deadline\n' >> "$raw_log"
             fi

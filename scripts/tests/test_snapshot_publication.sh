@@ -106,6 +106,9 @@ for argument in "$@"; do
 done
 [[ -n "$local_repo" ]] || exit 2
 [[ -s "$pom_file" ]] || exit 2
+if [[ -n "${STUB_POM_CAPTURE:-}" ]]; then
+  cp "$pom_file" "$STUB_POM_CAPTURE"
+fi
 
 attempt=0
 if [[ -f "$STUB_ATTEMPT_FILE" ]]; then
@@ -295,6 +298,7 @@ run_consumption_fixture() {
   STUB_EXAMPLES_SOURCE="$examples_source" \
   STUB_METADATA_DIR="$metadata_dir" \
   STUB_CURL_LOG="$TMP/curl.log" \
+  STUB_POM_CAPTURE="$TMP/consumer.pom" \
   RELEASE_HELPERS_CURL_COMMAND="$curl_stub" \
     bash "$SCRIPT" snapshot-consumption \
       --version "$version" \
@@ -843,6 +847,7 @@ test_snapshot_consumption_escapes_repository_url_in_pom() {
     "$output_file" "$github_output" "$log" "$repository_url"
 
   expect_output_value "$github_output" "maven_consumable" "true"
+  expect_file_contains "$TMP/consumer.pom" "ampersand&amp;path"
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_escapes_repository_url_in_pom"
