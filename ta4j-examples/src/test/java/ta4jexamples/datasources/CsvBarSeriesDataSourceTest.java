@@ -68,8 +68,8 @@ public class CsvBarSeriesDataSourceTest {
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile);
         assumeThat("File " + bundledFile + " does not exist", resourceStream, is(notNullValue()));
         int bundledBarCount;
-        try (resourceStream) {
-            bundledBarCount = new java.io.InputStreamReader(resourceStream).read() == -1 ? 0 : 252;
+        try (resourceStream; java.io.InputStreamReader reader = new java.io.InputStreamReader(resourceStream)) {
+            bundledBarCount = reader.read() == -1 ? 0 : 252;
         }
 
         Path shadow = Path.of(bundledFile);
