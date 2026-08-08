@@ -343,7 +343,7 @@ public class CachedIndicatorBenchmark {
             this.operations = operations;
             this.durationNanos = durationNanos;
             this.checksum = checksum;
-            this.throughputOpsPerSecond = operations / (durationNanos / 1_000_000_000d);
+            this.throughputOpsPerSecond = operations == 0 ? 0.0 : operations / (durationNanos / 1_000_000_000d);
         }
 
         long getOperations() {
