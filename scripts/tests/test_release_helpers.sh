@@ -186,7 +186,7 @@ EOF
     fail "refusal secret should not be written to files or logs"
   fi
 
-  long_refusal="$(awk 'BEGIN { for (i = 0; i < 2500; i++) printf "x" }')"
+  long_refusal="$(awk 'BEGIN { for (i = 0; i < 4500; i++) printf "x" }')"
   jq -n --arg refusal "$long_refusal" \
     '{status:"completed",output:[{type:"message",role:"assistant",content:[{type:"refusal",refusal:$refusal}]}]}' > response.json
   if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >long-refusal.log 2>&1; then
@@ -564,7 +564,7 @@ test_build_ai_request_compacts_oversized_dossier() {
     "metadata should record compact prompt profile"
   expect_file_contains request.json "full release-dossier.md is preserved" \
     "compact prompt should tell the model where the full dossier lives"
-  expect_file_contains request.json '"reasoning": {' \
+  expect_file_contains request.json '"effort": "high"' \
     "request should pin high reasoning effort"
   expect_file_contains request.json '"input"' \
     "request should use the Responses API input field"

@@ -538,7 +538,9 @@ jobs:
             echo "Unsupported aiMode '${AI_MODE:-}' for AI request build." >&2
             exit 1
           fi
-          if ! jq -e '.model == "gpt-5.6-luna" and .reasoning.effort == "high" and (.input | type == "array" and length > 0)' request.json > /dev/null; then
+          if ! jq -e --arg model "${{ steps.model_config.outputs.model_id }}" \
+            --arg effort "${{ steps.model_config.outputs.reasoning_effort }}" \
+            '.model == $model and .reasoning.effort == $effort and (.input | type == "array" and length > 0)' request.json > /dev/null; then
             echo "audit:request_json_valid=false" >&2
             exit 1
           fi
