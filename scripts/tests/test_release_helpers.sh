@@ -558,11 +558,12 @@ test_build_ai_request_compacts_oversized_dossier() {
   expect_json_value release-ai-request-metadata.json provider openai
   expect_json_value release-ai-request-metadata.json reasoningEffort high
   expect_json_value request.json store false
+  expect_json_value request.json max_output_tokens 4096
   expect_json_value release-ai-request-metadata.json fullDossierTruncatedForPrompt true
   expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
   expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
     "metadata should record compact prompt profile"
-  expect_file_contains request.json "full release-dossier.md is preserved" \
+  expect_file_contains request.json "The full release-dossier.md is preserved in the scheduler audit artifact." \
     "compact prompt should tell the model where the full dossier lives"
   expect_file_contains request.json '"effort": "high"' \
     "request should pin high reasoning effort"

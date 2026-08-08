@@ -357,6 +357,7 @@ build_ai_request_payload() {
       model: $model,
       reasoning: {effort: $reasoning_effort},
       store: false,
+      max_output_tokens: 4096,
       input: [
         {
           role: "system",
