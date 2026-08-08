@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
@@ -200,6 +201,163 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 .add();
 
         assertNumEquals(30, closePrice.getValue(2));
+    }
+
+    @Test
+    public void firstBarValueRefreshesWhenFirstRetainedBarIsReplaced() {
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        barSeries.setMaximumBarCount(3);
+        // Removed bars: 0,1 -> first retained bar index is 2 with close price 3
+        assertEquals(2, barSeries.getRemovedBarsCount());
+        FirstBarReadingIndicator indicator = new FirstBarReadingIndicator(barSeries);
+        assertNumEquals(3, indicator.getValue(0));
+
+        // Replace the first retained bar (index 2) with a new close price of 30.
+        Bar replaced = barSeries.getBar(2);
+        Bar replacement = barSeries.barBuilder()
+                .timePeriod(replaced.getTimePeriod())
+                .endTime(replaced.getEndTime())
+                .openPrice(30)
+                .highPrice(30)
+                .lowPrice(30)
+                .closePrice(30)
+                .volume(replaced.getVolume())
+                .build();
+        barSeries.replaceBar(2, replacement);
+
+        // The pruned index 0 maps to the first retained bar, whose value changed.
+        assertNumEquals(30, indicator.getValue(0));
+        int countAfterFirstBarRefresh = indicator.getCalculationCount();
+
+        // Negative control: replacing a bar above the first retained index must
+        // keep the cached first-bar value valid (no recomputation needed), so the
+        // first-bar cache must NOT be cleared for unrelated changes.
+        Bar aboveReplaced = barSeries.getBar(3);
+        Bar aboveReplacement = barSeries.barBuilder()
+                .timePeriod(aboveReplaced.getTimePeriod())
+                .endTime(aboveReplaced.getEndTime())
+                .openPrice(40)
+                .highPrice(40)
+                .lowPrice(40)
+                .closePrice(40)
+                .volume(aboveReplaced.getVolume())
+                .build();
+        barSeries.replaceBar(3, aboveReplacement);
+
+        assertNumEquals(30, indicator.getValue(0));
+        assertEquals(countAfterFirstBarRefresh, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void recursivePrefillSurvivesConcurrentSeriesRevisionChange() throws Exception {
+        // A recursive indicator's iterative prefill must survive a concurrent series
+        // revision change. The snapshot reconciliation introduced with the moving-
+        // series cache sync truncates the ring buffer from within the nested
+        // getValue() calls of an in-flight prefill; the gap cannot be refilled
+        // iteratively (the prefill depth guard skips the nested prefill), and the
+        // recursive fallback then walks the gap index by index until the stack
+        // overflows.
+        int barCount = 200_000;
+        int latchIndex = 150_000;
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withNumFactory(numFactory)
+                .build();
+        for (int i = 0; i < barCount; i++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofMinutes(1))
+                    .endTime(Instant.EPOCH.plus(Duration.ofMinutes(i)))
+                    .closePrice(1)
+                    .add();
+        }
+
+        LatchingSelfReferencingIndicator indicator = new LatchingSelfReferencingIndicator(series, latchIndex);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            AtomicReference<Throwable> readerFailure = new AtomicReference<>();
+            Future<?> reader = pool.submit(() -> {
+                try {
+                    indicator.getValue(barCount - 1);
+                } catch (Throwable t) {
+                    readerFailure.set(t);
+                }
+            });
+
+            // Wait until the prefill is in flight at the latch index, then mutate a
+            // bar BELOW the prefill position so the next nested getValue() observes a
+            // revision change and the reconciliation would punch a gap under the
+            // in-flight prefill.
+            assertTrue("prefill never reached the latch index", indicator.reached.await(120, TimeUnit.SECONDS));
+            Bar bar = series.getBar(latchIndex);
+            Bar replacement = series.barBuilder()
+                    .timePeriod(bar.getTimePeriod())
+                    .endTime(bar.getEndTime())
+                    .openPrice(500)
+                    .highPrice(500)
+                    .lowPrice(500)
+                    .closePrice(500)
+                    .volume(bar.getVolume())
+                    .build();
+            series.replaceBar(latchIndex - 50_000, replacement);
+
+            reader.get(120, TimeUnit.SECONDS);
+            assertNull("recursive read crashed: " + readerFailure.get(), readerFailure.get());
+            assertNumEquals(barCount, indicator.getValue(barCount - 1));
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private static final class FirstBarReadingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculationCount = new AtomicInteger();
+
+        private FirstBarReadingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        int getCalculationCount() {
+            return calculationCount.get();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class LatchingSelfReferencingIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final int latchIndex;
+        private final CountDownLatch reached = new CountDownLatch(1);
+
+        private LatchingSelfReferencingIndicator(BarSeries series, int latchIndex) {
+            super(series);
+            this.latchIndex = latchIndex;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == latchIndex) {
+                reached.countDown();
+            }
+            if (index == 0) {
+                return getBarSeries().numFactory().one();
+            }
+            return getValue(index - 1).plus(getBarSeries().numFactory().one());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     @Test // should be not null

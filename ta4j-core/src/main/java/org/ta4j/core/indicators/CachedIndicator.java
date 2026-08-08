@@ -197,11 +197,29 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
+            if (cache.isWriteLockedByCurrentThread()) {
+                // Called recursively from calculate()/prefill on this thread while the
+                // ring's write lock is held. Applying a destructive range trim here would
+                // punch a hole in the cache that an in-flight iterative prefill cannot
+                // refill (the prefill depth guard skips nested prefills), forcing the
+                // recursive fallback to walk the gap index by index until the stack
+                // overflows. Defer the trim and the observation advance to the next
+                // top-level read, which reconciles against the full change journal.
+                return snapshot;
+            }
+
             int invalidateFrom = snapshot.earliestChangedIndex();
             int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
             int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
 
-            if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex() || invalidateFrom == 0) {
+            // The first-bar cache holds the indicator value for the first available
+            // bar, i.e. series index firstRetainedIndex. Any published change at or
+            // below that index alters the data the cached value was computed from, so
+            // the cache must be cleared whenever such a change is observed - not only
+            // when index 0 changes (a replaced first available bar at index
+            // removedBarsCount > 0 would otherwise keep serving the stale value).
+            if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex()
+                    || (invalidateFrom >= 0 && invalidateFrom <= firstRetainedIndex)) {
                 clearFirstBarCache();
             }
 
