@@ -121,6 +121,76 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
+    void memoryCeilingAccountsForThePaddedNativeSampleBuffer() {
+        // The OpenCL kernels sort padded samples: the device samples buffer is
+        // nextPowerOfTwo(iterationCount) doubles (ta4j_opencl_jni.c), which for
+        // an iteration count just above a power of two is almost twice the raw
+        // count. The provider ceiling estimate counts iterationCount directly,
+        // so a request whose estimate passes the ceiling can still allocate
+        // nearly twice the ceiling on the device. The estimate must cover the
+        // padded buffer, mirroring the native layout.
+        int iterationCount = (1 << 20) + 1; // just above a power of two
+        BarSeries series = doubleSeries();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnIndicator returns = new LogReturnIndicator(close);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(2)
+                .iterationCount(iterationCount)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .quantiles(0.5)
+                .build();
+        int end = forecast.getBarSeries().getEndIndex();
+        Request<Forecast> request = new Request<>(forecast, end, end);
+        long estimate = ForecastSnapshot.estimatedNativeBytes(1L, 16L, iterationCount, 1L);
+        long paddedSamples = (long) nextPowerOfTwo(iterationCount) * Double.BYTES;
+        long ceiling = estimate + (paddedSamples - estimate) / 2L; // between raw estimate and padded allocation
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(ceiling));
+        OpenClAccelerationProvider provider = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> provider.evaluate(request));
+        assertThat(exception).hasMessageContaining("above the");
+    }
+
+    @Test
+    void powerOfTwoIterationCountIsUnaffectedByThePaddedCeiling() {
+        // Negative control: for an exact power-of-two iteration count the native
+        // padded buffer equals the raw count, so the padded estimate must not
+        // reject requests the raw estimate accepts.
+        int iterationCount = 1 << 20;
+        BarSeries series = doubleSeries();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnIndicator returns = new LogReturnIndicator(close);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(2)
+                .iterationCount(iterationCount)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .quantiles(0.5)
+                .build();
+        int end = forecast.getBarSeries().getEndIndex();
+        Request<Forecast> request = new Request<>(forecast, end, end);
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(1L << 31));
+        OpenClAccelerationProvider provider = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
+
+        Result<Forecast> result = provider.evaluate(request);
+        assertThat(result.status()).isEqualTo(org.ta4j.core.internal.acceleration.AccelerationRuntime.Status.EXECUTED);
+    }
+
+    private static long nextPowerOfTwo(long value) {
+        long power = 1L;
+        while (power < value) {
+            power <<= 1;
+        }
+        return power;
+    }
+
+    @Test
     void decimalPrecisionAndMemoryCeilingFailBeforeNativeExecution() {
         AtomicInteger evaluations = new AtomicInteger();
         FakeBridge bridge = new FakeBridge(request -> {
