@@ -66,6 +66,48 @@ class OpenClProbePayloadTest {
         assertThat(result.gpuDevice()).isFalse();
     }
 
+    @Test
+    void stubCompilesAgainstALinuxStyleJdkLayout() throws Exception {
+        // Hosted CI (test.yml) runs the full gate on ubuntu-latest, where the
+        // JDK's platform include directory is include/linux (jni_md.h lives
+        // there), not include/darwin. This untagged test must therefore not
+        // hardcode the macOS layout. Reproduce the Linux JDK layout locally
+        // and compile through the same production command path to prove the
+        // stub builds on the CI platform.
+        Path fakeJdk = Files.createTempDirectory("ta4j-fake-linux-jdk-");
+        Path fakeInclude = fakeJdk.resolve("include");
+        Path realInclude = Path.of(System.getProperty("java.home"), "include");
+        try {
+            Files.createDirectories(fakeInclude.resolve("linux"));
+            Files.copy(realInclude.resolve("jni.h"), fakeInclude.resolve("jni.h"),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(realInclude.resolve("darwin").resolve("jni_md.h"),
+                    fakeInclude.resolve("linux").resolve("jni_md.h"),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            Path library = Path.of(System.getProperty("java.io.tmpdir"))
+                    .resolve("libJniOpenClProbeStub-linux.dylib");
+            Files.deleteIfExists(library);
+            try {
+                compileStub(fakeJdk.toString(), library);
+                assertThat(Files.isRegularFile(library)).as("stub must compile against the Linux JDK layout")
+                        .isTrue();
+            } finally {
+                Files.deleteIfExists(library);
+            }
+        } finally {
+            try (var paths = Files.walk(fakeJdk)) {
+                paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ignored) {
+                        // best-effort temp cleanup
+                    }
+                });
+            }
+        }
+    }
+
     private static void ensureStubLoaded() throws Exception {
         if (stubLoaded) {
             return;
@@ -79,12 +121,15 @@ class OpenClProbePayloadTest {
     }
 
     private static void compileStub() throws Exception {
-        String javaHome = System.getProperty("java.home");
+        compileStub(System.getProperty("java.home"), STUB_LIBRARY);
+    }
+
+    private static void compileStub(String javaHome, Path library) throws Exception {
         Path include = Path.of(javaHome, "include");
         Path includePlatform = Path.of(javaHome, "include", "darwin");
-        Files.deleteIfExists(STUB_LIBRARY);
+        Files.deleteIfExists(library);
         Process process = new ProcessBuilder("cc", "-shared", "-fPIC", "-I" + include, "-I" + includePlatform, "-o",
-                STUB_LIBRARY.toString(), STUB_SOURCE.toString()).redirectErrorStream(true).start();
+                library.toString(), STUB_SOURCE.toString()).redirectErrorStream(true).start();
         if (!process.waitFor(120, TimeUnit.SECONDS)) {
             process.destroyForcibly();
             throw new IOException("timed out compiling the OpenCL probe stub");
@@ -93,8 +138,8 @@ class OpenClProbePayloadTest {
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             throw new IOException("failed to compile the OpenCL probe stub:\n" + output);
         }
-        if (!Files.isRegularFile(STUB_LIBRARY)) {
-            throw new IOException("OpenCL probe stub was not produced at " + STUB_LIBRARY);
+        if (!Files.isRegularFile(library)) {
+            throw new IOException("OpenCL probe stub was not produced at " + library);
         }
     }
 }
