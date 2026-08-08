@@ -95,6 +95,48 @@ class CompositeForecastAccelerationProviderTest {
         assertThat(result.backend()).isEqualTo(Backend.OPENCL);
     }
 
+    @Test
+    void allUnavailableCompositeSurfacesTheSelectionIdentityAndOpenClDetail() {
+        // The automatic Linux selection is "opencl" and the composite advertises
+        // that identity. When no member is available, evaluate() must keep the
+        // selection identity instead of delegating to the first member's ("cuda")
+        // result: diagnostics and quarantine key on the advertised identity, and
+        // Linux users need the OpenCL probe detail (the universal provider's
+        // reason, e.g. "device lacks FP64") to diagnose why acceleration is off.
+        ForecastAccelerationProvider cuda = unavailable("cuda", Backend.CUDA, "CUDA driver missing");
+        ForecastAccelerationProvider opencl = unavailable("opencl", Backend.OPENCL, "device lacks FP64");
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        Result<Forecast> result = composite.evaluate(request());
+
+        assertThat(result.status()).isEqualTo(Status.UNAVAILABLE);
+        assertThat(result.diagnostic().providerId()).isEqualTo("opencl");
+        assertThat(result.diagnostic().detail()).contains("FP64");
+    }
+
+    @Test
+    void availableCompositeStillAdvertisesTheFirstAvailableMemberUnderItsOwnIdentity() {
+        // Negative control: when a member IS available the composite must keep
+        // advertising the first available member's device under its own
+        // provider id, and evaluation must still execute the qualified member.
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d,
+                request -> {
+                    throw new AssertionError("below-threshold member must not execute");
+                });
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
+                CompositeForecastAccelerationProviderTest::executedResult);
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        assertThat(composite.capability().providerId()).isEqualTo("opencl");
+        assertThat(composite.capability().deviceName()).isEqualTo("fixture-cuda");
+        assertThat(composite.capability().available()).isTrue();
+
+        Result<Forecast> result = composite.evaluate(request());
+        assertThat(result.status()).isEqualTo(Status.EXECUTED);
+    }
+
     private static ForecastAccelerationProvider member(String providerId, Backend backend, double predictedSpeedup,
             Function<Request<Forecast>, Result<Forecast>> evaluation) {
         Capability capability = new Capability(providerId, backend, true, true, "fixture-" + providerId, "");
