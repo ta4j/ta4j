@@ -112,8 +112,8 @@ the same seed.
   matrix on both x86_64 and aarch64: the probe self-tests, the full
   shock-model/volatility parity matrix, and the transparent end-to-end backtest
   all pass inside a PoCL container. Automatic selection is gated to GPU
-  devices with at least 16,777,216 path-steps pending real-GPU speedup
-  measurement. See the [OpenCL plan](indicator-acceleration-opencl-plan.md)
+  devices with at least 16,777,216 path-steps and at least 2 GiB of device
+  global memory pending real-GPU speedup measurement. See the [OpenCL plan](indicator-acceleration-opencl-plan.md)
   and the [committed benchmark report](indicator-acceleration-opencl-benchmark.md).
 
 The benchmark also exposed two defects before release: manager snapshots were
