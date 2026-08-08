@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
@@ -104,6 +106,19 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
         if (lastFailure != null) {
             throw lastFailure;
         }
-        return members.get(0).evaluate(request);
+        ForecastAccelerationProvider first = members.get(0);
+        if (first.capability().available()) {
+            // No member cleared the automatic speedup threshold. Executing
+            // member 0 here would run a native kernel the crossover model
+            // explicitly declined (for example the unqualified CUDA lane on
+            // Linux), defeating the device-capability and workload gates.
+            // Report the skip so the caller falls back to scalar execution.
+            return new Result<>(Status.SKIPPED, Backend.OPENCL, List.of(), false, 0L,
+                    new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl",
+                            "no provider member cleared the automatic speedup threshold"));
+        }
+        // All members are unavailable; surface the first member's unavailability
+        // (its evaluate performs no native work).
+        return first.evaluate(request);
     }
 }
