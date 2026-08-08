@@ -146,11 +146,21 @@ public final class RsiThresholdRule extends NamedRule {
     }
 
     private static String formatThreshold(Num threshold) {
-        double value = threshold.doubleValue();
-        if (Double.isFinite(value) && value == Math.rint(value)) {
-            return Long.toString((long) value);
+        String canonical = threshold.toString();
+        // Compact only when the canonical decimal string is an exact integer.
+        // Never round through double: high-precision values such as
+        // "30.0000000000000000000001" would collapse to "30" and break label
+        // round-trips through rule JSON reconstruction.
+        try {
+            java.math.BigDecimal value = new java.math.BigDecimal(canonical);
+            if (value.stripTrailingZeros().scale() <= 0) {
+                return value.toBigIntegerExact().toString();
+            }
+        } catch (NumberFormatException ignored) {
+            // Non-decimal canonical form (for example a custom Num toString);
+            // keep the canonical string verbatim.
         }
-        return threshold.toString();
+        return canonical;
     }
 
     private static void validateParams(String... params) {

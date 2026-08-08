@@ -3,6 +3,7 @@
  */
 package org.ta4j.cli.performance;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
@@ -233,15 +234,36 @@ public final class PerformanceExperimentRunner {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);
         Process process = null;
+        Thread reader = null;
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try {
             process = processBuilder.start();
+            // Drain the child's merged output concurrently so a chatty child
+            // cannot block forever on a full pipe buffer while we wait for it
+            // to exit (the OS pipe is typically 64 KiB or smaller).
+            java.io.InputStream stream = process.getInputStream();
+            reader = new Thread(() -> {
+                try {
+                    stream.transferTo(buffer);
+                } catch (IOException ignored) {
+                    // Best-effort drain; the exit code is authoritative.
+                }
+            }, "performance-command-output");
+            reader.setDaemon(true);
+            reader.start();
             if (!process.waitFor(timeout, unit)) {
                 process.destroyForcibly();
-                process.waitFor();
+                if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                    // destroyForcibly should terminate promptly; never wait
+                    // unboundedly on a child that refuses to die.
+                }
                 return Optional.empty();
             }
+            if (reader != null) {
+                reader.join(TimeUnit.SECONDS.toMillis(5));
+            }
             int exitCode = process.exitValue();
-            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            String output = buffer.toString(StandardCharsets.UTF_8).trim();
             if (exitCode == 0 && !output.isBlank()) {
                 return Optional.of(output);
             }

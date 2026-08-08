@@ -47,4 +47,20 @@ class RsiThresholdRuleTest {
         assertEquals("threshold", missingThreshold.getMessage());
         assertEquals("closePriceIndicator", missingClosePrice.getMessage());
     }
+
+    @Test
+    void highPrecisionThresholdLabelPreservesCanonicalDecimalString() {
+        BarSeries series = new MockBarSeriesBuilder()
+                .withNumFactory(org.ta4j.core.num.DecimalNumFactory.getInstance(40))
+                .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 11d, 12d, 13d, 14d, 15d, 16d, 17d, 18d, 19d, 20d)
+                .build();
+        String threshold = "30.0000000000000000000001";
+        RsiThresholdRule original = new RsiThresholdRule(series, "ABOVE", "14", threshold);
+
+        Rule restored = Rule.fromJson(series, original.toJson());
+
+        assertEquals("RsiThresholdRule_ABOVE_14_" + threshold, original.getName());
+        assertEquals(original.getName(), restored.getName());
+        assertTrue(restored.isSatisfied(series.getEndIndex()));
+    }
 }

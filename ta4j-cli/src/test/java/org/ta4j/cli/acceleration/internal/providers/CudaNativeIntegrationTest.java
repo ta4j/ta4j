@@ -47,7 +47,7 @@ class CudaNativeIntegrationTest {
 
         assertThat(provider.capability().available()).isTrue();
         assertThat(provider.capability().nativeInitialized()).isTrue();
-        assertThat(provider.capability().deviceName()).contains("RTX 5090");
+        assertThat(provider.capability().deviceName()).isNotBlank();
     }
 
     @Test

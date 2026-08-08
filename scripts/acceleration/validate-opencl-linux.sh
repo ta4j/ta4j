@@ -22,7 +22,7 @@ if ! command -v clinfo >/dev/null 2>&1; then
     echo "error: clinfo is not installed" >&2
     exit 1
 fi
-CLINFO_FILE="$(mktemp)"
+CLINFO_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-opencl-clinfo.XXXXXX")"
 trap 'rm -f "$CLINFO_FILE"' EXIT
 clinfo >"$CLINFO_FILE"
 if ! grep -qi 'cl_khr_fp64' "$CLINFO_FILE"; then

@@ -9,6 +9,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.TestUnregisterRule;
 
 import java.io.IOException;
 import java.net.URL;
@@ -25,6 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class NamedRuleTest {
+
+    @org.junit.jupiter.api.BeforeEach
+    void resetScanState() {
+        // SCANNED_PACKAGES / DEFAULT_PACKAGES_INITIALIZED persist for the whole
+        // JVM, so without a reset each test observes registry contents produced
+        // by whichever scan ran first. Restore a deterministic scan baseline.
+        NamedRule.resetRegistryStateForTests();
+    }
 
     @AfterEach
     void tearDown() {
@@ -163,29 +172,6 @@ class NamedRuleTest {
         assertThat(restored.getName()).isEqualTo(original.getName());
         assertThat(restored.isSatisfied(3)).isTrue();
         assertThat(restored.isSatisfied(0)).isFalse();
-    }
-
-    private static final class TestUnregisterRule extends NamedRule {
-
-        private final ClosePredicate closePredicate;
-
-        private TestUnregisterRule(ClosePredicate closePredicate) {
-            super(NamedRule.buildLabel(TestUnregisterRule.class, closePredicate.name()));
-            this.closePredicate = closePredicate;
-        }
-
-        public TestUnregisterRule(String... parameters) {
-            this(ClosePredicate.valueOf(parameters[0]));
-        }
-
-        @Override
-        public boolean isSatisfied(int index, org.ta4j.core.TradingRecord tradingRecord) {
-            return closePredicate == ClosePredicate.ALWAYS;
-        }
-
-        private enum ClosePredicate {
-            ALWAYS
-        }
     }
 
     private static final class FirstRuleHolder {

@@ -12,5 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake make gcc libc6-dev ocl-icd-opencl-dev pocl-opencl-icd clinfo \
     && rm -rf /var/lib/apt/lists/*
 
+# Runs as root so the bind mount and the optional /root/.m2 cache stay
+# writable; developer-hosted Docker Desktop already maps container ownership to
+# the host user. Linux CI that must avoid root-owned checkout files should run
+# with `--user "$(id -u):$(id -g)"` and set HOME to a writable directory.
 WORKDIR /workspace
 ENTRYPOINT ["bash"]

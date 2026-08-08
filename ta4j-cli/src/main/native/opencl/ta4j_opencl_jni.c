@@ -957,9 +957,10 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                              sizeof(error))
             || !copy_doubles(environment, historical_returns_array, (jsize)history_count, "historicalReturns",
                              &historical_returns, error, sizeof(error))) {
+        // Fall through to cleanup so the buffers allocated by the earlier
+        // copies in this chain are released.
         throw_java(environment, error);
-        pthread_mutex_unlock(&STATE_MUTEX);
-        return NULL;
+        goto cleanup;
     }
 
     payload = (double*)calloc(payload_size, sizeof(double));

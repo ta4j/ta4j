@@ -4,11 +4,15 @@
 
 The production Linux OpenCL path is real and correctness-qualified on the
 checked PoCL CPU lane inside the `eclipse-temurin:25-jdk-noble` validation
-container (`aarch64` native on Apple silicon). In the transparent
+container (`aarch64` native on Apple Silicon). In the transparent
 `BarSeriesManager` workload, the scalar median was **544.185 ms** and the
 OpenCL median was **390.010 ms**, a **1.395x end-to-end speedup**. Every
-automatic trial reported `effectiveBackend=opencl` with the same positions,
-operation indexes, bars in market, and ending equity as scalar. PoCL is a CPU
+qualification trial reported `effectiveBackend=opencl` with the same positions,
+operation indexes, bars in market, and ending equity as scalar. These trials
+ran through the package-private qualification selector (see Workload below),
+not production `auto` selection: the checked-in crossover model excludes CPU
+ICD devices by design, so this lane proves the native implementation, not the
+production selection rule. PoCL is a CPU
 ICD, so this speedup documents the validation lane and is not a hardware
 claim; real-GPU measurement on NVIDIA, AMD, or Intel hosts remains an open
 item in the [OpenCL plan](indicator-acceleration-opencl-plan.md).

@@ -30,8 +30,18 @@ fi
 if [[ ! -f "$EVIDENCE_DOC" ]]; then
     fail "OpenCL benchmark evidence doc is absent: $EVIDENCE_DOC"
 fi
-if ! git -C "$ROOT" ls-files --error-unmatch "$EVIDENCE_DOC" >/dev/null 2>&1; then
-    fail "OpenCL benchmark evidence doc is not committed: $EVIDENCE_DOC"
+# HEAD-based: the evidence document must be committed in the current commit,
+# not merely present in the index, and both docs must point at it.
+EVIDENCE_RELATIVE="docs/indicator-acceleration-opencl-benchmark.md"
+if ! git -C "$ROOT" cat-file -e "HEAD:$EVIDENCE_RELATIVE" >/dev/null 2>&1; then
+    fail "OpenCL benchmark evidence doc is not committed at HEAD: $EVIDENCE_DOC"
+fi
+EVIDENCE_NAME="$(basename "$EVIDENCE_DOC")"
+if ! grep -Fq "$EVIDENCE_NAME" "$PLAN_DOC"; then
+    fail "docs/indicator-acceleration-opencl-plan.md must reference the committed evidence $EVIDENCE_NAME"
+fi
+if ! grep -Fq "$EVIDENCE_NAME" "$ACCEL_DOC"; then
+    fail "docs/indicator-acceleration.md must reference the committed evidence $EVIDENCE_NAME"
 fi
 
 pass "OpenCL qualification evidence is committed and referenced"
