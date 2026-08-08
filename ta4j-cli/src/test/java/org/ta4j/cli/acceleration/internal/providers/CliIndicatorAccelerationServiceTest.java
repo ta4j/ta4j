@@ -100,7 +100,28 @@ class CliIndicatorAccelerationServiceTest {
 
     @Test
     void quarantinedProviderFailsClosedWithoutNativeExecution() {
-        CliIndicatorAccelerationService.useQualificationProviderForTests("metal");
+        // An automatic (non-qualification) evaluation must fail closed after a
+        // quarantine so a known-broken native path is not re-run on every
+        // request. The explicit qualification route is the operator's escape
+        // hatch and is covered by QualificationAfterQuarantineTest.
+        CliIndicatorAccelerationService.useProviderForTests(new ForecastAccelerationProvider() {
+            private final Capability capability = new Capability("metal", Backend.METAL, true, true, "fixture", "");
+
+            @Override
+            public Capability capability() {
+                return capability;
+            }
+
+            @Override
+            public double predictedSpeedup(Request<Forecast> request) {
+                return 1d;
+            }
+
+            @Override
+            public Result<Forecast> evaluate(Request<Forecast> request) {
+                throw new AssertionError("quarantined provider must not execute");
+            }
+        });
         CliIndicatorAccelerationService.quarantineForTests("metal", "device lost");
         MonteCarloPriceForecastIndicator forecast = forecast();
         int end = forecast.getBarSeries().getEndIndex();

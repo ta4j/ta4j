@@ -65,7 +65,7 @@ public final class CliIndicatorAccelerationService implements Provider {
         Request<Forecast> forecastRequest = (Request<Forecast>) (Request<?>) request;
         ProviderSelection selection = providerSelection();
         String quarantineReason = QUARANTINED_PROVIDERS.get(selection.providerId());
-        if (quarantineReason != null) {
+        if (quarantineReason != null && !qualificationProvider().equals(selection.providerId())) {
             return notExecuted(Status.FAILED, selection.backend(), DiagnosticCode.PROVIDER_FAILURE,
                     selection.providerId(), "provider quarantined after failure: " + quarantineReason);
         }
