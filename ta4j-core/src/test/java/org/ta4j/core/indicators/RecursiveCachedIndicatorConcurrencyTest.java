@@ -41,8 +41,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
         // overflows.
         int barCount = 200_000;
         int latchIndex = 150_000;
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
-                .withNumFactory(DoubleNumFactory.getInstance())
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         for (int i = 0; i < barCount; i++) {
