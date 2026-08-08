@@ -631,6 +631,8 @@ class CachedBuffer<T> {
     private void clearRange(int fromIndex, int toIndex) {
         for (int i = fromIndex; i <= toIndex; i++) {
             buffer[indexToSlot(i)] = NOT_COMPUTED;
+            // Break at toIndex instead of relying on i <= toIndex alone: the
+            // guard also keeps i++ from overflowing when toIndex == Integer.MAX_VALUE.
             if (i == toIndex) {
                 break;
             }

@@ -26,6 +26,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     private final BarSeries series;
     private transient volatile BarSeries readOnlySeries;
+    private final Object readOnlySeriesLock = new Object();
 
     /**
      * Constructor.
@@ -41,7 +42,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     public BarSeries getBarSeries() {
         BarSeries currentView = readOnlySeries;
         if (currentView == null) {
-            synchronized (this) {
+            synchronized (readOnlySeriesLock) {
                 currentView = readOnlySeries;
                 if (currentView == null) {
                     currentView = new ReadOnlyBarSeriesView(series);
