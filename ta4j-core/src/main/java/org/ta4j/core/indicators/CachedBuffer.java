@@ -124,7 +124,7 @@ class CachedBuffer<T> {
      *                        {@code Integer.MAX_VALUE} for unbounded
      */
     CachedBuffer(int maximumBarCount) {
-        this.maximumCapacity = effectiveMaximumCapacity(maximumBarCount);
+        this.maximumCapacity = initialMaximumCapacity(maximumBarCount);
         this.capacity = Math.min(DEFAULT_UNBOUNDED_CAPACITY, this.maximumCapacity);
         this.buffer = new Object[capacity];
     }
