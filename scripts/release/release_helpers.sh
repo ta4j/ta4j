@@ -6,9 +6,14 @@ SNAPSHOT_METADATA_URL="${SNAPSHOT_REPOSITORY_URL}org/ta4j/ta4j-parent/maven-meta
 SNAPSHOT_REPOSITORY_ID="central-portal-snapshots"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
 MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
-AI_REQUEST_METADATA_SCHEMA_VERSION=1
-AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=1
+AI_REQUEST_METADATA_SCHEMA_VERSION=2
+AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=2
 DEFAULT_AI_REQUEST_MAX_BYTES=600000
+OPENAI_RELEASE_MODEL="gpt-5.6-luna"
+OPENAI_REASONING_EFFORT="high"
+OPENAI_RESPONSES_ENDPOINT="https://api.openai.com/v1/responses"
+OPENAI_MODELS_ENDPOINT="https://api.openai.com/v1/models"
+RETRYABLE_PREFLIGHT_EXIT_CODE=75
 
 TMP_HELPER_PATHS=()
 cleanup_release_helper_tmps() {
@@ -38,9 +43,10 @@ usage() {
 Usage: release_helpers.sh <command> [options]
 
 Commands:
-  catalog-preflight
+  model-preflight
   build-dossier
   build-ai-request
+  extract-response-content
   ai-transport-diagnostics
   parse-decision
   release-pr-review-plan
@@ -332,82 +338,153 @@ build_ai_request_payload() {
     --arg artifact_note "$artifact_note" \
     '{
       model: $model,
-      temperature: 0,
-      messages: [
+      reasoning: {effort: "high"},
+      input: [
         {
           role: "system",
-          content: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier."
+          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier."}]
         },
         {
           role: "user",
-          content: (
+          content: [{type: "input_text", text: (
             "Decide whether ta4j should cut a release from this dossier. If yes, choose bump patch or minor. Major is disabled for this workflow.\n\n"
             + "SemVer rules:\n" + $semver + "\n\n"
             + "Return JSON only with this shape:\n"
             + "{\"should_release\": true|false, \"bump\": \"patch|minor\", \"confidence\": 0.0-1.0, \"reason\": \"1-2 sentences\", \"evidence\": [\"specific dossier facts\"], \"risks\": [\"release risks or empty array\"], \"missing\": [\"missing changelog/javadoc/test evidence or empty array\"]}."
             + $artifact_note + "\n\n" + $dossier
-          )
+          )}]
         }
       ]
     }'
 }
 
-command_catalog_preflight() {
-  local model="" catalog_url="https://models.github.ai/catalog/models" catalog_file="" timeout_seconds=30 output="release-ai-model.json"
+command_model_preflight() {
+  local model="$OPENAI_RELEASE_MODEL" model_url="" model_file="" response_status="" timeout_seconds=30 output="release-ai-model.json"
   while (($#)); do
     case "$1" in
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
-      --catalog-url) require_value "$1" "${2:-}"; catalog_url="$2"; shift 2 ;;
-      --catalog-file) require_value "$1" "${2:-}"; catalog_file="$2"; shift 2 ;;
+      --model-url) require_value "$1" "${2:-}"; model_url="$2"; shift 2 ;;
+      --model-file) require_value "$1" "${2:-}"; model_file="$2"; shift 2 ;;
+      --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
       --timeout-seconds) require_value "$1" "${2:-}"; timeout_seconds="$2"; shift 2 ;;
       --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      *) die "Unknown catalog-preflight option: $1" ;;
+      *) die "Unknown model-preflight option: $1" ;;
     esac
   done
   [[ -n "$model" ]] || die "--model is required"
+  model_url="${model_url:-${OPENAI_MODELS_ENDPOINT}/${model}}"
 
-  local catalog_json selected available
-  catalog_json="$(new_tmp_file)"
-  selected="$(new_tmp_file)"
-  if [[ -n "$catalog_file" ]]; then
-    cp "$catalog_file" "$catalog_json"
+  local model_json headers_file curl_error_file curl_exit_code=0 error_preview selected_id
+  model_json="$(new_tmp_file)"
+  headers_file="$(new_tmp_file)"
+  curl_error_file="$(new_tmp_file)"
+  if [[ -n "$model_file" ]]; then
+    cp "$model_file" "$model_json"
+    response_status="${response_status:-200}"
   else
-    curl --fail --silent --show-error --location --max-time "$timeout_seconds" \
-      -H "Accept: application/json" -H "User-Agent: ta4j-release-automation" \
-      "$catalog_url" > "$catalog_json"
+    local status_file
+    status_file="$(new_tmp_file)"
+    if curl --silent --show-error --location --http1.1 \
+      --connect-timeout 10 --max-time "$timeout_seconds" \
+      -D "$headers_file" -o "$model_json" -w '%{http_code}' \
+      -H "Accept: application/json" \
+      -H "Authorization: Bearer ${OPENAI_API_KEY:-}" \
+      -H "User-Agent: ta4j-release-automation" \
+      "$model_url" > "$status_file" 2> "$curl_error_file"; then
+      curl_exit_code=0
+    else
+      curl_exit_code=$?
+    fi
+    response_status="$(tr -cd '0-9' < "$status_file" 2>/dev/null || true)"
+    response_status="${response_status:-000}"
   fi
-  jq -e 'type == "array"' "$catalog_json" >/dev/null || die "model catalog response must be a JSON array"
 
-  if ! jq -S --arg model "$model" 'map(select(.id == $model)) | first // empty' "$catalog_json" > "$selected" || [[ ! -s "$selected" ]]; then
-    available="$(jq -r '.[].id // empty' "$catalog_json" | sort | paste -sd ', ' -)"
-    echo "::error::Configured RELEASE_AI_MODEL '$model' was not found in the GitHub Models catalog." >&2
-    echo "Available models: $available" >&2
+  if jq -e . "$model_json" >/dev/null 2>&1; then
+    selected_id="$(jq -r '.id // empty' "$model_json")"
+  else
+    selected_id=""
+  fi
+  error_preview="$(head -c 2000 "$model_json" 2>/dev/null | redact_text || true)"
+  if [[ -s "$curl_error_file" ]]; then
+    error_preview="${error_preview}${error_preview:+$'\n'}$(head -c 1000 "$curl_error_file" | redact_text)"
+  fi
+
+  if [[ "$curl_exit_code" -eq 0 && "$response_status" == "200" && "$selected_id" == "$model" ]]; then
+    jq -S --arg provider "openai" --arg endpoint "$model_url" --arg httpStatus "$response_status" --arg curlExitCode "$curl_exit_code" \
+      '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: true, httpStatus: $httpStatus, curlExitCode: $curlExitCode, id: .id, object: (.object // ""), owned_by: (.owned_by // ""), created: (.created // null)}' \
+      "$model_json" > "$output"
+    append_output "model_id" "$(jq -r '.id' "$output")"
+    append_output "model_provider" "openai"
+    append_output "model_endpoint" "$model_url"
+    append_output "model_http_status" "$response_status"
+    printf 'audit:model_preflight provider=openai model=%s status=%s endpoint=%s\n' "$model" "$response_status" "$model_url"
+    return 0
+  fi
+
+  jq -S -n \
+    --arg provider "openai" \
+    --arg endpoint "$model_url" \
+    --arg requestedModel "$model" \
+    --arg responseModel "$selected_id" \
+    --arg httpStatus "$response_status" \
+    --arg curlExitCode "$curl_exit_code" \
+    --arg errorPreview "$error_preview" \
+    '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: false, requestedModel: $requestedModel, responseModel: $responseModel, httpStatus: $httpStatus, curlExitCode: $curlExitCode, errorPreview: $errorPreview}' > "$output"
+  append_output "model_provider" "openai"
+  append_output "model_endpoint" "$model_url"
+  append_output "model_http_status" "$response_status"
+  echo "::error::OpenAI model preflight failed for '$model' (HTTP $response_status, curl exit $curl_exit_code)." >&2
+  if [[ -n "$error_preview" ]]; then
+    printf 'OpenAI preflight response (truncated): %s\n' "$error_preview" >&2
+  fi
+  printf 'audit:model_preflight provider=openai model=%s status=%s curl_exit=%s available=false\n' "$model" "$response_status" "$curl_exit_code" >&2
+  if [[ "$curl_exit_code" -ne 0 || "$response_status" == "000" || "$response_status" == "408" || "$response_status" == "429" || "$response_status" =~ ^5[0-9][0-9]$ ]]; then
+    return "$RETRYABLE_PREFLIGHT_EXIT_CODE"
+  fi
+  return 1
+}
+
+command_extract_response_content() {
+  local raw_file="response.json" output="ai-content.txt" failure_reason_output="" github_output=""
+  while (($#)); do
+    case "$1" in
+      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      --failure-reason-output) require_value "$1" "${2:-}"; failure_reason_output="$2"; shift 2 ;;
+      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
+      *) die "Unknown extract-response-content option: $1" ;;
+    esac
+  done
+
+  local reason="" content="" response_state="unknown" refusal=""
+  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
+    reason="OpenAI response was not valid JSON"
+  else
+    response_state="$(jq -r '.status // "unknown"' "$raw_file")"
+    if [[ "$response_state" != "completed" ]]; then
+      reason="OpenAI response was incomplete (status: $response_state)"
+    else
+      content="$(jq -r '[.output[]? | select(.type == "message") | .content[]? | select(.type == "output_text") | .text] | map(select(type == "string" and length > 0)) | join("\n")' "$raw_file" 2>/dev/null || true)"
+      if [[ -z "$content" ]]; then
+        refusal="$(jq -r '[.output[]?.content[]? | select(.type == "refusal") | .refusal // empty] | join("; ")' "$raw_file" 2>/dev/null || true)"
+        reason="${refusal:-OpenAI response did not contain output_text content}"
+      fi
+    fi
+  fi
+
+  if [[ -n "$reason" ]]; then
+    : > "$output"
+    [[ -n "$failure_reason_output" ]] && printf '%s\n' "$reason" > "$failure_reason_output"
+    append_output "response_content_status" "failed" "$github_output"
+    append_output "response_content_failure_reason" "$reason" "$github_output"
+    echo "::error::$reason" >&2
     return 1
   fi
 
-  jq -S --arg fallback "$model" '{
-    id: (.id // $fallback),
-    name: (.name // ""),
-    publisher: (.publisher // ""),
-    summary: (.summary // ""),
-    rate_limit_tier: (.rate_limit_tier // ""),
-    max_input_tokens: ((.limits.max_input_tokens // "") | tostring),
-    max_output_tokens: ((.limits.max_output_tokens // "") | tostring),
-    html_url: (.html_url // "")
-  }' "$selected" > "$output"
-
-  append_output "model_id" "$(jq -r '.id' "$output")"
-  append_output "model_name" "$(jq -r '.name' "$output")"
-  append_output "model_summary" "$(jq -r '.summary' "$output")"
-  append_output "model_rate_limit_tier" "$(jq -r '.rate_limit_tier' "$output")"
-  append_output "model_max_input_tokens" "$(jq -r '.max_input_tokens' "$output")"
-  append_output "model_max_output_tokens" "$(jq -r '.max_output_tokens' "$output")"
-  append_output "model_html_url" "$(jq -r '.html_url' "$output")"
-  printf 'audit:model_catalog_preflight model=%s max_input_tokens=%s max_output_tokens=%s rate_limit_tier=%s\n' \
-    "$(jq -r '.id' "$output")" \
-    "$(jq -r '.max_input_tokens // "unknown"' "$output")" \
-    "$(jq -r '.max_output_tokens // "unknown"' "$output")" \
-    "$(jq -r '.rate_limit_tier // "unknown"' "$output")"
+  printf '%s\n' "$content" > "$output"
+  [[ -n "$failure_reason_output" ]] && : > "$failure_reason_output"
+  append_output "response_content_status" "ok" "$github_output"
+  printf 'audit:response_content status=completed output_text_chars=%s\n' "${#content}"
 }
 
 command_build_dossier() {
@@ -666,6 +743,9 @@ EOF
   jq -S -n \
     --arg generatedAt "$(iso_utc_now)" \
     --arg model "$model" \
+    --arg provider "openai" \
+    --arg endpoint "$OPENAI_RESPONSES_ENDPOINT" \
+    --arg reasoningEffort "$OPENAI_REASONING_EFFORT" \
     --arg semverRulesSource "$rules_source" \
     --arg promptProfile "$prompt_profile" \
     --arg fullDossierPath "$dossier" \
@@ -687,6 +767,9 @@ EOF
       schemaVersion: $schemaVersion,
       generatedAt: $generatedAt,
       model: $model,
+      provider: $provider,
+      endpoint: $endpoint,
+      reasoningEffort: $reasoningEffort,
       semverRulesSource: $semverRulesSource,
       promptProfile: $promptProfile,
       artifactBackedContext: $artifactBackedContext,
@@ -709,8 +792,8 @@ EOF
     echo "::error::AI request JSON is ${request_size} bytes, above transport budget ${max_request_bytes} bytes." >&2
     return 1
   fi
-  printf 'audit:ai_request file=%s model=%s semver_rules_source=%s prompt_profile=%s request_json_size_bytes=%s max_request_bytes=%s\n' \
-    "$output" "$model" "$rules_source" "$prompt_profile" "$request_size" "$max_request_bytes"
+  printf 'audit:ai_request provider=openai endpoint=%s model=%s reasoning_effort=%s semver_rules_source=%s prompt_profile=%s request_json_size_bytes=%s max_request_bytes=%s\n' \
+    "$OPENAI_RESPONSES_ENDPOINT" "$model" "$OPENAI_REASONING_EFFORT" "$rules_source" "$prompt_profile" "$request_size" "$max_request_bytes"
   append_output "request_json_size_bytes" "$request_size"
   append_output "request_max_bytes" "$max_request_bytes"
   append_output "request_metadata_path" "$metadata_output"
@@ -772,11 +855,15 @@ parse_key_value_log_file() {
 }
 
 command_ai_transport_diagnostics() {
-  local ai_mode="full" model="" response_status="000" curl_exit_code="unknown" attempts="1" request_metadata="release-ai-request-metadata.json" release_audit="release-audit.json" curl_error="curl-error.log" curl_metrics="curl-metrics.log" response_headers="response-headers.txt" response="response.json" output="release-ai-transport-diagnostics.json" fallback_output="ai-content.txt"
+  local ai_mode="full" model="" provider="openai" endpoint="$OPENAI_RESPONSES_ENDPOINT" reasoning_effort="$OPENAI_REASONING_EFFORT" failure_reason="" response_status="000" curl_exit_code="unknown" attempts="1" request_metadata="release-ai-request-metadata.json" release_audit="release-audit.json" curl_error="curl-error.log" curl_metrics="curl-metrics.log" response_headers="response-headers.txt" response="response.json" output="release-ai-transport-diagnostics.json" fallback_output="ai-content.txt"
   while (($#)); do
     case "$1" in
       --ai-mode) require_value "$1" "${2:-}"; ai_mode="$2"; shift 2 ;;
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
+      --provider) require_value "$1" "${2:-}"; provider="$2"; shift 2 ;;
+      --endpoint) require_value "$1" "${2:-}"; endpoint="$2"; shift 2 ;;
+      --reasoning-effort) require_value "$1" "${2:-}"; reasoning_effort="$2"; shift 2 ;;
+      --failure-reason) require_value "$1" "${2:-}"; failure_reason="$2"; shift 2 ;;
       --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
       --curl-exit-code) require_value "$1" "${2:-}"; curl_exit_code="$2"; shift 2 ;;
       --attempts) require_value "$1" "${2:-}"; attempts="$2"; shift 2 ;;
@@ -797,11 +884,12 @@ command_ai_transport_diagnostics() {
     classification="transport_failure_before_http_response"
     connection_closed_during="unknown_before_response"
   fi
-  if [[ "$curl_exit_code" == "18" ]]; then
+  if [[ -n "$failure_reason" ]]; then
+    classification="response_validation_failure"
+    reason="$failure_reason"
+  elif [[ "$curl_exit_code" == "18" ]]; then
     classification="curl_partial_file_transport_close"
     connection_closed_during="response_read"
-  fi
-  if [[ "$curl_exit_code" == "18" ]]; then
     reason="AI response transfer closed before completion (curl exit ${curl_exit_code}, HTTP ${response_status})"
   elif [[ "$curl_exit_code" != "0" && "$curl_exit_code" != "unknown" ]]; then
     reason="AI transport failed with curl exit ${curl_exit_code} (HTTP ${response_status})"
@@ -823,6 +911,8 @@ command_ai_transport_diagnostics() {
   parse_key_value_log_file "$curl_metrics" "$metrics_json"
   headers_tail="$(tail_redacted_file "$response_headers" 80 8000)"
   response_preview="$(tail_redacted_file "$response" 20 2000)"
+  local openai_request_id
+  openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
 
   jq -S -n \
     --arg generatedAt "$(iso_utc_now)" \
@@ -830,6 +920,11 @@ command_ai_transport_diagnostics() {
     --arg connectionClosedDuring "$connection_closed_during" \
     --arg aiMode "$ai_mode" \
     --arg model "$model" \
+    --arg provider "$provider" \
+    --arg endpoint "$endpoint" \
+    --arg reasoningEffort "$reasoning_effort" \
+    --arg openaiRequestId "$openai_request_id" \
+    --arg failureReason "$reason" \
     --arg attempts "$attempts" \
     --arg responseStatus "$response_status" \
     --arg curlExitCode "$curl_exit_code" \
@@ -848,6 +943,11 @@ command_ai_transport_diagnostics() {
       connectionClosedDuring: $connectionClosedDuring,
       aiMode: $aiMode,
       model: $model,
+      provider: $provider,
+      endpoint: $endpoint,
+      reasoningEffort: $reasoningEffort,
+      openaiRequestId: $openaiRequestId,
+      failureReason: $failureReason,
       attempts: $attempts,
       responseStatus: $responseStatus,
       curlExitCode: $curlExitCode,
@@ -861,7 +961,7 @@ command_ai_transport_diagnostics() {
       recovery: [
         "Do not rerun billed aiMode=full blindly with the same request.",
         "Inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json from the audit artifact.",
-        "Use aiMode=probe to validate GitHub Models connectivity without sending the full release dossier.",
+        "Use aiMode=probe to validate OpenAI connectivity without sending the full release dossier.",
         "Retry aiMode=full only after request size, provider status, or scheduler compaction policy has been reviewed."
       ]
     }' > "$output"
@@ -877,7 +977,7 @@ command_ai_transport_diagnostics() {
       warning: $warning,
       reason: $reason,
       evidence: [],
-      risks: ["GitHub Models transport failed before a usable release decision was returned"],
+      risks: ["OpenAI transport or response validation failed before a usable release decision was returned"],
       missing: ["Review " + $output + " before another billed full AI scheduler call"]
     }' > "$fallback_output"
   printf 'audit:ai_transport_diagnostics classification=%s status=%s curl_exit=%s response_bytes=%s output=%s\n' \
@@ -1693,9 +1793,10 @@ main() {
   fi
   shift
   case "$command" in
-    catalog-preflight) command_catalog_preflight "$@" ;;
+    model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
+    extract-response-content) command_extract_response_content "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;
     parse-decision) command_parse_decision "$@" ;;
     release-pr-review-plan) command_release_pr_review_plan "$@" ;;

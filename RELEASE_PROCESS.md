@@ -13,7 +13,7 @@ Core release invariant:
 ## 1. At a Glance
 
 Preferred path (PR mode):
-1. Scheduler (`release-scheduler.yml`) builds a release dossier, validates the configured GitHub Models catalog entry, asks the model for a SemVer decision, and dispatches prepare when appropriate.
+1. Scheduler (`release-scheduler.yml`) builds a release dossier, validates OpenAI access to the pinned `gpt-5.6-luna` model, asks it for a SemVer decision with reasoning effort `high`, and dispatches prepare when appropriate.
 2. Prepare release (`prepare-release.yml`) creates release + next-snapshot commits on `release/<version>`.
 3. Maintainer reviews and merges release PR into `master` using a **merge commit**.
 4. The merge's `master` push immediately starts `snapshot.yml`; in parallel, `publish-release.yml` validates metadata/ancestry, runs the release-candidate gate, validates the artifact manifest, tags, deploys to Maven Central, and pushes the tag without dispatching a duplicate snapshot run.
@@ -136,8 +136,8 @@ Expected behavior:
 - GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
-- `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling GitHub Models, record the prompt profile and byte budget in `release-ai-request-metadata.json`, and capture `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport failure occurs.
-- `release-scheduler.yml` uses a weekly Monday cron plus an internal 14-day cadence guard anchored at `2026-06-29`. Only due scheduled runs continue into GitHub Models setup, token checks, dossier/request generation, and the single inference call; off-cadence scheduled runs record `scheduler_due=false`, recommend no release, and skip scheduler discussion posts.
+- `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling OpenAI, records the prompt profile, provider, endpoint, reasoning effort, and byte budget in `release-ai-request-metadata.json`, and captures `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport or response-validation failure occurs.
+- `release-scheduler.yml` uses a weekly Monday cron plus an internal 14-day cadence guard anchored at `2026-06-29`. Only due scheduled runs continue into OpenAI key checks, model preflight, dossier/request generation, and the single inference call; off-cadence scheduled runs record `scheduler_due=false`, recommend no release, and skip scheduler discussion posts.
 - Required scheduler inference uses one curl attempt. The workflow intentionally avoids curl retries or workflow-level repeated model calls; failed full AI calls preserve diagnostics and must be reviewed before another billed `aiMode=full` run.
 
 ---
@@ -271,7 +271,7 @@ If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an H
 - `release-ai-transport-diagnostics.json` for curl exit code, HTTP status, captured headers, transfer metrics, response preview, and recovery guidance.
 - `curl-error.log`, `curl-metrics.log`, and `response-headers.txt` for low-level provider or gateway symptoms.
 
-Use `aiMode=probe` to validate GitHub Models connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, or scheduler compaction policy has been reviewed from the artifacts above.
+Use `aiMode=probe` to validate OpenAI key/model access and Responses API connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, response validation, or scheduler compaction policy has been reviewed from the artifacts above.
 
 ---
 
@@ -308,7 +308,7 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | `MAVEN_CENTRAL_TOKEN_PASS` | publish, snapshot | Maven Central auth password/token |
 | `GPG_PRIVATE_KEY` | publish, snapshot | artifact signing key |
 | `GPG_PASSPHRASE` | publish, snapshot | signing key passphrase |
-| `GH_MODELS_TOKEN` | scheduler | model API access |
+| `OPENAI_API_KEY` | scheduler | direct OpenAI API access for `gpt-5.6-luna` |
 | `GH_TA4J_REPO_TOKEN` | prepare, publish, github-release | PAT for release pushes/release creation |
 
 ### 10.2 Optional secrets
@@ -329,7 +329,6 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | `RELEASE_DISCUSSION_NUMBER` | publish | publish summary discussion |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | scheduler, health | scheduler/health discussion |
 | `RELEASE_SCHEDULER_ENABLED` | scheduler | enable scheduled release decisions |
-| `RELEASE_AI_MODEL` | scheduler | GitHub Models model override; default should be `openai/gpt-4.1` |
 | `RELEASE_PR_STALE_DAYS` | health | stale release PR threshold |
 
 ### 10.4 Environment

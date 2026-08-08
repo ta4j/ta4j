@@ -62,58 +62,163 @@ expect_json_compact() {
   fi
 }
 
-write_catalog_fixture() {
-  cat > catalog.json <<'EOF'
-[
-  {
-    "id": "openai/gpt-4.1",
-    "name": "OpenAI GPT-4.1",
-    "publisher": "OpenAI",
-    "summary": "Large-context model",
-    "rate_limit_tier": "high",
-    "limits": {
-      "max_input_tokens": 1048576,
-      "max_output_tokens": 32768
-    },
-    "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4-1"
-  }
-]
+write_model_fixture() {
+  cat > model.json <<'EOF'
+{
+  "id": "gpt-5.6-luna",
+  "object": "model",
+  "created": 1771200000,
+  "owned_by": "openai"
+}
 EOF
 }
 
-test_catalog_preflight_accepts_configured_model() {
-  echo "Running test_catalog_preflight_accepts_configured_model"
+test_model_preflight_accepts_exact_model() {
+  echo "Running test_model_preflight_accepts_exact_model"
   run_test
-  write_catalog_fixture
+  write_model_fixture
 
-  GITHUB_OUTPUT=outputs.txt bash "$SCRIPT" catalog-preflight \
-    --model openai/gpt-4.1 \
-    --catalog-file catalog.json \
+  GITHUB_OUTPUT=outputs.txt bash "$SCRIPT" model-preflight \
+    --model gpt-5.6-luna \
+    --model-file model.json \
     --output release-ai-model.json
 
-  expect_json_value release-ai-model.json id openai/gpt-4.1
-  expect_json_value release-ai-model.json max_input_tokens 1048576
-  expect_file_contains outputs.txt "model_id=openai/gpt-4.1" "catalog preflight should emit model id"
+  expect_json_value release-ai-model.json id gpt-5.6-luna
+  expect_json_value release-ai-model.json provider openai
+  expect_json_value release-ai-model.json endpoint https://api.openai.com/v1/models/gpt-5.6-luna
+  expect_json_value release-ai-model.json httpStatus 200
+  expect_file_contains outputs.txt "model_id=gpt-5.6-luna" "model preflight should emit model id"
+  expect_file_contains outputs.txt "model_http_status=200" "model preflight should emit HTTP status"
 
   finish_test
-  pass "test_catalog_preflight_accepts_configured_model"
+  pass "test_model_preflight_accepts_exact_model"
 }
 
-test_catalog_preflight_rejects_missing_model() {
-  echo "Running test_catalog_preflight_rejects_missing_model"
+test_model_preflight_rejects_wrong_model() {
+  echo "Running test_model_preflight_rejects_wrong_model"
   run_test
-  write_catalog_fixture
+  cat > model.json <<'EOF'
+{"id":"gpt-5.6-terra","object":"model","owned_by":"openai"}
+EOF
 
-  if bash "$SCRIPT" catalog-preflight \
-    --model openai/missing \
-    --catalog-file catalog.json \
+  if bash "$SCRIPT" model-preflight \
+    --model gpt-5.6-luna \
+    --model-file model.json \
     --output release-ai-model.json >preflight.log 2>&1; then
-    fail "catalog preflight should reject an unavailable model"
+    fail "model preflight should reject a different model ID"
   fi
-  expect_file_contains preflight.log "openai/missing" "failure should name missing model"
+  expect_json_value release-ai-model.json responseModel gpt-5.6-terra
+  expect_file_contains preflight.log "gpt-5.6-luna" "failure should name requested model"
 
   finish_test
-  pass "test_catalog_preflight_rejects_missing_model"
+  pass "test_model_preflight_rejects_wrong_model"
+}
+
+test_model_preflight_classifies_retryable_and_permanent_statuses() {
+  echo "Running test_model_preflight_classifies_retryable_and_permanent_statuses"
+  run_test
+  write_model_fixture
+
+  if bash "$SCRIPT" model-preflight --model gpt-5.6-luna --model-file model.json --response-status 429 --output retryable.json >retryable.log 2>&1; then
+    fail "429 preflight failure should be retryable"
+  else
+    retryable_status=$?
+  fi
+  if [[ "$retryable_status" != "75" ]]; then
+    fail "429 should return retryable exit code 75 (got $retryable_status)"
+  fi
+  expect_json_value retryable.json httpStatus 429
+
+  if bash "$SCRIPT" model-preflight --model gpt-5.6-luna --model-file model.json --response-status 401 --output permanent.json >permanent.log 2>&1; then
+    fail "401 preflight failure should be permanent"
+  else
+    permanent_status=$?
+  fi
+  if [[ "$permanent_status" == "75" ]]; then
+    fail "401 should not return retryable exit code"
+  fi
+  expect_json_value permanent.json httpStatus 401
+
+  finish_test
+  pass "test_model_preflight_classifies_retryable_and_permanent_statuses"
+}
+
+test_extract_response_content_accepts_output_messages() {
+  echo "Running test_extract_response_content_accepts_output_messages"
+  run_test
+
+  cat > response.json <<'EOF'
+{
+  "status": "completed",
+  "output": [
+    {"type":"reasoning","summary":[{"type":"summary_text","text":"private reasoning"}]},
+    {"type":"message","role":"assistant","content":[
+      {"type":"output_text","text":"{\"should_release\":false,"},
+      {"type":"output_text","text":"\"bump\":\"patch\"}"}
+    ]}
+  ]
+}
+EOF
+  bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt
+  expect_file_contains ai-content.txt '"should_release":false' "response extraction should collect output text"
+  expect_file_contains ai-content.txt '"bump":"patch"' "response extraction should join output fragments"
+  if [[ -s failure.txt ]]; then
+    fail "successful response extraction should clear failure file"
+  fi
+
+  finish_test
+  pass "test_extract_response_content_accepts_output_messages"
+}
+
+test_extract_response_content_rejects_refusal_and_incomplete_responses() {
+  echo "Running test_extract_response_content_rejects_refusal_and_incomplete_responses"
+  run_test
+
+  cat > response.json <<'EOF'
+{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"request refused"}]}]}
+EOF
+  if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >refusal.log 2>&1; then
+    fail "refusal response should fail extraction"
+  fi
+  expect_file_contains failure.txt "request refused" "refusal reason should be preserved"
+
+  cat > response.json <<'EOF'
+{"status":"incomplete","output":[]}
+EOF
+  if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >incomplete.log 2>&1; then
+    fail "incomplete response should fail extraction"
+  fi
+  expect_file_contains failure.txt "incomplete" "incomplete response reason should be preserved"
+
+  finish_test
+  pass "test_extract_response_content_rejects_refusal_and_incomplete_responses"
+}
+
+test_ai_transport_diagnostics_records_response_validation_failure() {
+  echo "Running test_ai_transport_diagnostics_records_response_validation_failure"
+  run_test
+
+  printf '{"status":"completed","output":[]}' > response.json
+  bash "$SCRIPT" ai-transport-diagnostics \
+    --ai-mode probe \
+    --model gpt-5.6-luna \
+    --provider openai \
+    --endpoint https://api.openai.com/v1/responses \
+    --reasoning-effort high \
+    --failure-reason "OpenAI response did not contain output_text content" \
+    --response-status 200 \
+    --curl-exit-code 0 \
+    --output release-ai-transport-diagnostics.json \
+    --fallback-output ai-content.txt
+
+  expect_json_value release-ai-transport-diagnostics.json classification response_validation_failure
+  expect_file_contains release-ai-transport-diagnostics.json "output_text content" \
+    "response validation diagnostic should preserve the extraction reason"
+  expect_file_contains ai-content.txt "OpenAI response did not contain output_text content" \
+    "response validation fallback should preserve the extraction reason"
+
+  finish_test
+  pass "test_ai_transport_diagnostics_records_response_validation_failure"
 }
 
 test_parse_decision_normalizes_major_and_invalid_json() {
@@ -363,7 +468,7 @@ test_build_ai_request_compacts_oversized_dossier() {
   } > release-dossier.md
 
   bash "$SCRIPT" build-ai-request \
-    --model openai/gpt-4.1 \
+    --model gpt-5.6-luna \
     --dossier release-dossier.md \
     --max-dossier-chars 12000 \
     --max-request-bytes 12000 \
@@ -375,12 +480,18 @@ test_build_ai_request_compacts_oversized_dossier() {
     fail "compact request should stay under forced transport budget (got ${request_size})"
   fi
   expect_json_value release-ai-request-metadata.json artifactBackedContext true
+  expect_json_value release-ai-request-metadata.json provider openai
+  expect_json_value release-ai-request-metadata.json reasoningEffort high
   expect_json_value release-ai-request-metadata.json fullDossierTruncatedForPrompt true
   expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
   expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
     "metadata should record compact prompt profile"
   expect_file_contains request.json "full release-dossier.md is preserved" \
     "compact prompt should tell the model where the full dossier lives"
+  expect_file_contains request.json '"reasoning": {' \
+    "request should pin high reasoning effort"
+  expect_file_contains request.json '"input"' \
+    "request should use the Responses API input field"
   expect_file_contains request.json "@since 1.0.1" \
     "compact prompt should preserve late dossier signals from the full dossier"
 
@@ -393,7 +504,7 @@ test_ai_transport_diagnostics_records_curl_exit_18() {
   run_test
 
   cat > release-ai-request-metadata.json <<'EOF'
-{"schemaVersion":1,"promptProfile":"compact-artifact-backed-v1","requestJsonSizeBytes":11900}
+{"schemaVersion":2,"provider":"openai","endpoint":"https://api.openai.com/v1/responses","reasoningEffort":"high","promptProfile":"compact-artifact-backed-v1","requestJsonSizeBytes":11900}
 EOF
   cat > release-audit.json <<'EOF'
 {"changed_file_count":334,"selected_diff_truncated":true}
@@ -417,7 +528,10 @@ EOF
 
   bash "$SCRIPT" ai-transport-diagnostics \
     --ai-mode full \
-    --model openai/gpt-4.1 \
+    --model gpt-5.6-luna \
+    --provider openai \
+    --endpoint https://api.openai.com/v1/responses \
+    --reasoning-effort high \
     --response-status 200 \
     --curl-exit-code 18 \
     --attempts 1 \
@@ -427,6 +541,8 @@ EOF
   expect_json_value release-ai-transport-diagnostics.json classification curl_partial_file_transport_close
   expect_json_value release-ai-transport-diagnostics.json connectionClosedDuring response_read
   expect_json_value release-ai-transport-diagnostics.json responseStatus 200
+  expect_json_value release-ai-transport-diagnostics.json provider openai
+  expect_json_value release-ai-transport-diagnostics.json reasoningEffort high
   expect_file_contains release-ai-transport-diagnostics.json "Do not rerun billed aiMode=full blindly" \
     "diagnostics should include non-blind rerun guidance"
   expect_json_value ai-content.txt should_release false
@@ -507,8 +623,12 @@ EOF
   pass "test_javadoc_warning_baseline_rejects_new_warnings"
 }
 
-test_catalog_preflight_accepts_configured_model
-test_catalog_preflight_rejects_missing_model
+test_model_preflight_accepts_exact_model
+test_model_preflight_rejects_wrong_model
+test_model_preflight_classifies_retryable_and_permanent_statuses
+test_extract_response_content_accepts_output_messages
+test_extract_response_content_rejects_refusal_and_incomplete_responses
+test_ai_transport_diagnostics_records_response_validation_failure
 test_parse_decision_normalizes_major_and_invalid_json
 test_release_pr_review_plan_defaults_to_owner
 test_release_pr_review_plan_skips_self_review_without_failing
