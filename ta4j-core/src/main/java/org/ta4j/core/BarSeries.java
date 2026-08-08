@@ -44,7 +44,7 @@ public interface BarSeries extends Serializable {
      *                             no index has been removed
      * @param maximumBarCount      current maximum number of retained bars
      * @param endIndex             current series end index
-     * @since 0.23.1
+     * @since 0.24.1
      */
     record BarSeriesChangeSnapshot(long revision, int earliestChangedIndex, int removedThroughIndex,
             int maximumBarCount, int endIndex) implements Serializable {
@@ -168,7 +168,7 @@ public interface BarSeries extends Serializable {
      *
      * @param sinceRevision last revision observed by the caller
      * @return current change snapshot
-     * @since 0.23.1
+     * @since 0.24.1
      */
     default BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
         long currentRevision = getBarHistoryRevision();

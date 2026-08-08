@@ -186,7 +186,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * @param series indicator bar series
      * @return the synchronized series snapshot
-     * @since 0.23.1
+     * @since 0.24.1
      */
     protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
         boolean reconciliationRequired = false;

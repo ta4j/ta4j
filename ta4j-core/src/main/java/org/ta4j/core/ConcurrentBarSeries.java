@@ -261,7 +261,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     /**
      * {@inheritDoc}
      *
-     * @since 0.23.1
+     * @since 0.24.1
      */
     @Override
     public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {

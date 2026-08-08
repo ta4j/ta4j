@@ -1,6 +1,6 @@
 ## Unreleased
 
-- _No changes yet._
+- **Cached indicators stay synchronized with moving and revised series**: `CachedIndicator` now consumes exact `BarSeries` change snapshots to invalidate replaced-history tails, discard removed prefixes, and reconcile cache limits changed after indicator construction. Bounded caches also expand backward in place instead of rebuilding their full storage on every reverse read.
 
 ## 0.24.0 (2026-08-08)
 
@@ -36,7 +36,6 @@
 - **Quiet quality gates complete faster without losing checks**: Repository script fixtures now run in parallel under the quiet build preflight, metadata validation fixtures fake Maven effective-model lookups instead of launching Maven repeatedly, and structural backtest-result tests avoid duplicate numeric-factory parameterization while execution-sensitive coverage remains cross-factory. The shell quiet build now keeps successful fixture chatter and Maven INFO banners out of stdout, passing through only WARN/ERROR-level log lines before a compact elapsed-time, test, coverage, and log-path footer.
 
 ### Fixed
-- **Cached indicators stay synchronized with moving and revised series**: `CachedIndicator` now consumes exact `BarSeries` change snapshots to invalidate replaced-history tails, discard removed prefixes, and reconcile cache limits changed after indicator construction. Bounded caches also expand backward in place instead of rebuilding their full storage on every reverse read.
 - **Recent swing results remain causal and recover under live revisions**: Confirmation indexes now prevent later-discovered pivots from leaking into historical queries, terminal-bar replacement rewinds swing tracking, and dynamic ZigZag candidates formed during ATR warm-up pin the first finite threshold instead of remaining permanently unconfirmable.
 - **Recent swing detector adapters preserve detector prices**: Custom detector-backed recent swing indicators now report the detector's `SwingPivot.price()` for confirmed pivot values, and prominence swing unstable bars now reflect the causal partial-baseline confirmation boundary instead of requiring the full prominence lookback.
 - **Quiet full-build watchdog respects active Maven progress**: The Bash quiet build keeps the default 180-second watchdog as the earliest timeout boundary, but now lets a resource-constrained Maven reactor continue when output is still progressing and reports no-output stall evidence when it terminates a genuinely stalled build.
