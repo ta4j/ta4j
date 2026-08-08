@@ -79,6 +79,27 @@ class CompositeForecastAccelerationProviderTest {
     }
 
     @Test
+    void allUnavailableMembersReportTheCompositeOwnIdentity() {
+        // The composite is selected under its own provider id ("opencl") and
+        // advertises that identity from capability(). When no member can
+        // execute, the fallback result must carry the same identity; otherwise
+        // every Linux host without accelerators reports a "cuda"-attributed
+        // UNAVAILABLE result under an "opencl" selection, and diagnostics
+        // attribute the composite's decision to a member the service never
+        // selected.
+        ForecastAccelerationProvider cuda = unavailable("cuda", Backend.CUDA, "CUDA driver missing");
+        ForecastAccelerationProvider opencl = unavailable("opencl", Backend.OPENCL, "no OpenCL device");
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        Result<Forecast> result = composite.evaluate(request());
+
+        assertThat(result.status()).isEqualTo(Status.UNAVAILABLE);
+        assertThat(result.diagnostic().providerId()).isEqualTo("opencl");
+        assertThat(result.backend()).isEqualTo(Backend.OPENCL);
+    }
+
+    @Test
     void memberBelowSpeedupThresholdIsSkippedInFavorOfQualifiedMember() {
         ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d,
                 request -> {
