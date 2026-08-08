@@ -1734,6 +1734,7 @@ command_snapshot_consumption() {
   [[ -n "$version" ]] || die "--version is required"
   [[ "$version" == *-SNAPSHOT ]] || die "snapshot consumption requires a -SNAPSHOT version: $version"
   [[ "$repository_url" == https://* ]] || die "--repository-url must use https"
+  [[ "$repository_url" != *\?* && "$repository_url" != *\#* ]] || die "--repository-url must not contain query or fragment components"
   [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]] || die "--max-attempts must be a positive integer"
   [[ "$retry_seconds" =~ ^[0-9]+$ ]] || die "--retry-seconds must be a non-negative integer"
 
