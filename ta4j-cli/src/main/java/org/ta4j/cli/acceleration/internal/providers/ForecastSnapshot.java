@@ -69,10 +69,21 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
     }
 
     long estimatedNativeBytes() {
-        long inputDoubles = Math.addExact(Math.multiplyExact((long) decisionCount, 4L),
-                nativeRequest.historicalReturns().length);
+        return estimatedNativeBytes(nativeRequest.decisionCount(), nativeRequest.lookbackBarCount(),
+                nativeRequest.iterationCount(), nativeRequest.quantiles().length);
+    }
+
+    /**
+     * Computes the native payload estimate from request dimensions alone, so
+     * providers can enforce their memory ceiling before any capture work or
+     * allocation happens.
+     */
+    static long estimatedNativeBytes(long decisionCount, long lookbackBarCount, long iterationCount,
+            long quantileCount) {
+        long inputDoubles = Math.addExact(Math.multiplyExact(decisionCount, 4L),
+                Math.multiplyExact(decisionCount, lookbackBarCount));
         long outputDoubles = Math.addExact(iterationCount,
-                Math.multiplyExact((long) decisionCount, 4L + quantileProbabilities.size()));
+                Math.multiplyExact(decisionCount, 4L + quantileCount));
         return Math.multiplyExact(Math.addExact(inputDoubles, outputDoubles), Double.BYTES);
     }
 

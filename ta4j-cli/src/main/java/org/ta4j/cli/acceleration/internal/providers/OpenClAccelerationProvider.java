@@ -57,9 +57,12 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
 
     private Result<Forecast> evaluateOpenCl(Request<Forecast> request, MonteCarloPriceForecastIndicator forecast) {
         long started = System.nanoTime();
+        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
+        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
+        validateMemoryCeiling(ForecastSnapshot.estimatedNativeBytes(decisions, spec.lookbackBarCount(),
+                spec.iterationCount(), spec.quantileProbabilities().size()));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
-        validateMemoryCeiling(snapshot.estimatedNativeBytes());
         OpenClEvaluationResult nativeResult;
         try {
             nativeResult = nativeBridge.evaluate(snapshot.nativeRequest());
