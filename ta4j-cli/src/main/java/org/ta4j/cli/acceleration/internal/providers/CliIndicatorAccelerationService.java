@@ -61,6 +61,16 @@ public final class CliIndicatorAccelerationService implements Provider {
             return notExecuted(Status.SKIPPED, Backend.CPU, DiagnosticCode.UNSUPPORTED, "none",
                     "forecast acceleration requires DoubleNum and log-return state");
         }
+        if (legacyRngStreamRequested()) {
+            // -Dta4j.forecast.rngVersion=0 selects the pre-0.23.1 shared
+            // SplittableRandom stream on the scalar lane. Native kernels only
+            // implement the versioned per-path stream (RNG version 1), so an
+            // accelerated result would silently publish different values than
+            // the scalar lane the property promises to restore. Fall back to
+            // scalar so the documented legacy values actually materialize.
+            return notExecuted(Status.SKIPPED, Backend.CPU, DiagnosticCode.CPU_FASTER, "none",
+                    "ta4j.forecast.rngVersion=0 requests the legacy stream, which native lanes cannot reproduce");
+        }
 
         Request<Forecast> forecastRequest = (Request<Forecast>) (Request<?>) request;
         ProviderSelection selection = providerSelection();
@@ -166,6 +176,19 @@ public final class CliIndicatorAccelerationService implements Provider {
 
     private static String qualificationProvider() {
         return QUALIFICATION_PROVIDER.get().trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * True when the pre-0.23.1 shared {@link java.util.SplittableRandom} stream
+     * was requested via {@code -Dta4j.forecast.rngVersion=0}. Native lanes
+     * cannot reproduce that stream, so acceleration must not engage.
+     */
+    private static boolean legacyRngStreamRequested() {
+        String configured = System.getProperty("ta4j.forecast.rngVersion");
+        if (configured == null || configured.isBlank()) {
+            return false;
+        }
+        return "0".equals(configured.trim());
     }
 
     private static <T> Result<T> notExecuted(Status status, Backend backend, DiagnosticCode code, String providerId,
