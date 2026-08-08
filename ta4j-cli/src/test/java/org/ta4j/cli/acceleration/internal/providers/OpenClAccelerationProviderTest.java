@@ -200,6 +200,25 @@ class OpenClAccelerationProviderTest {
         assertThat(gpuProvider.predictedSpeedup(largeRequest)).isEqualTo(0.25d);
     }
 
+    @Test
+    void autoCrossoverDoesNotEngageDevicesWithoutQualifyingCapability() {
+        // The automatic selection contract promises a qualified GPU that is
+        // expected to beat scalar execution. The crossover model must therefore
+        // distinguish devices by their reported capability. A first-generation
+        // integrated GPU with 512MB of global memory cannot beat a JIT scalar
+        // lane on the FP64-heavy forecast kernels, so it must never be
+        // auto-selected.
+        MonteCarloPriceForecastIndicator large = largeForecast();
+        Request<Forecast> largeRequest = request(large);
+
+        OpenClProbeResult weakIntegratedGpu = new OpenClProbeResult(true, "Weak Integrated GPU", 1, 2,
+                512L * 1024 * 1024, 1L * 1024 * 1024 * 1024, 0, 0, true, "self-test passed");
+        OpenClAccelerationProvider weakProvider = provider(
+                new FakeBridge(OpenClAccelerationProviderTest::constantResult), weakIntegratedGpu);
+
+        assertThat(weakProvider.predictedSpeedup(largeRequest)).isZero();
+    }
+
     private static OpenClAccelerationProvider provider(OpenClNativeBridge bridge) {
         return provider(bridge, qualifiedProbe());
     }
