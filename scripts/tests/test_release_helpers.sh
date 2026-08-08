@@ -186,6 +186,17 @@ EOF
     fail "refusal secret should not be written to files or logs"
   fi
 
+  long_refusal="$(awk 'BEGIN { for (i = 0; i < 2500; i++) printf "x" }')"
+  jq -n --arg refusal "$long_refusal" \
+    '{status:"completed",output:[{type:"message",role:"assistant",content:[{type:"refusal",refusal:$refusal}]}]}' > response.json
+  if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >long-refusal.log 2>&1; then
+    fail "long refusal response should fail extraction"
+  fi
+  failure_bytes="$(wc -c < failure.txt | tr -d ' ')"
+  if [[ "$failure_bytes" -gt 2001 ]]; then
+    fail "sanitized long refusal reason should be bounded to 2000 bytes plus newline"
+  fi
+
   cat > response.json <<'EOF'
 {"status":"incomplete","output":[]}
 EOF

@@ -114,7 +114,8 @@ redact_log_text() {
 
 sanitize_untrusted_text() {
   local value="${1:-}"
-  printf '%s' "$value" | redact_text | tr '\r\n' ' ' | head -c 2000
+  value="$(printf '%s' "$value" | redact_text | tr '\r\n' ' ')"
+  printf '%s' "${value:0:2000}"
 }
 
 github_error_annotation() {
