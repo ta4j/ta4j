@@ -110,7 +110,8 @@ the same seed.
   shock-model/volatility parity matrix, and the transparent end-to-end backtest
   all pass inside a PoCL container. Automatic selection is gated to GPU
   devices with at least 16,777,216 path-steps pending real-GPU speedup
-  measurement. See the [OpenCL plan](indicator-acceleration-opencl-plan.md).
+  measurement. See the [OpenCL plan](indicator-acceleration-opencl-plan.md)
+  and the [committed benchmark report](indicator-acceleration-opencl-benchmark.md).
 
 The benchmark also exposed two defects before release: manager snapshots were
 initially rejected as non-identical indicator series, preventing transparent

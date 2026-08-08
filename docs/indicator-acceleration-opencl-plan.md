@@ -61,7 +61,7 @@ probe and parity suite. The aarch64 run also passed
 `OpenClBacktestBenchmarkTest`: every automatic trial reported
 `effectiveBackend=opencl` with positions, operation indexes, bars in market,
 and ending equity identical to scalar. See
-`.agents/benchmarks/cf-336-validation/cf-336-transparent-opencl-backtest.json`
+[the committed benchmark report](indicator-acceleration-opencl-benchmark.md)
 for raw trials and the measured speedup (PoCL is a CPU ICD, so the reported
 speedup documents the lane and is not a hardware claim).
 
