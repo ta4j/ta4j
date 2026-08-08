@@ -370,7 +370,7 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
   request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
 	  expect_section_contains "$request_section" "audit:ai_probe_request" \
 	    "release scheduler probe mode should build a tiny probe request"
-	  expect_section_contains "$request_section" "max_output_tokens: 64" \
+  expect_section_contains "$request_section" "max_output_tokens: 256" \
 	    "release scheduler probe request should cap response size"
   expect_section_contains "$request_section" 'reasoning: {effort: "high"}' \
     "release scheduler probe request should use high reasoning effort"

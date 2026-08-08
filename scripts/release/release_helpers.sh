@@ -114,7 +114,7 @@ redact_log_text() {
 
 sanitize_untrusted_text() {
   local value="${1:-}"
-  printf '%s' "$value" | head -c 2000 | redact_text | tr '\r\n' ' '
+  printf '%s' "$value" | redact_text | tr '\r\n' ' ' | head -c 2000
 }
 
 github_error_annotation() {
@@ -348,12 +348,13 @@ build_ai_request_payload() {
   fi
   jq -S -n \
     --arg model "$model" \
+    --arg reasoning_effort "$OPENAI_REASONING_EFFORT" \
     --rawfile semver "$semver_file" \
     --rawfile dossier "$dossier_file" \
     --arg artifact_note "$artifact_note" \
     '{
       model: $model,
-      reasoning: {effort: "high"},
+      reasoning: {effort: $reasoning_effort},
       store: false,
       input: [
         {
@@ -981,7 +982,7 @@ command_ai_transport_diagnostics() {
   headers_tail="$(tail_redacted_file "$response_headers" 80 8000)"
   response_preview="$(jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' "$response" 2>/dev/null | head -c 2000 || true)"
   local openai_request_id
-  openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
+  openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
 
   jq -S -n \
     --arg generatedAt "$(iso_utc_now)" \

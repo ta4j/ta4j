@@ -194,6 +194,12 @@ EOF
   fi
   expect_file_contains failure.txt "incomplete" "incomplete response reason should be preserved"
 
+  printf '<html>502 Bad Gateway</html>' > response.json
+  if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >invalid.log 2>&1; then
+    fail "non-JSON response should fail extraction"
+  fi
+  expect_file_contains failure.txt "not valid JSON" "invalid JSON reason should be preserved"
+
   finish_test
   pass "test_extract_response_content_rejects_refusal_and_incomplete_responses"
 }
