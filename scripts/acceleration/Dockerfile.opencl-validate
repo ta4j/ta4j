@@ -1,10 +1,11 @@
 # OpenCL acceleration validation image (Ubuntu Noble + PoCL CPU ICD).
-# Usage:
+# Usage (note: ENTRYPOINT is ["bash"], so pass the script directly - a leading
+# "bash" argument would run `bash bash script` and fail with ENOEXEC):
 #   docker build -f scripts/acceleration/Dockerfile.opencl-validate -t ta4j-opencl-validate .
 #   docker run --rm -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
-#     bash scripts/acceleration/validate-opencl-linux.sh /workspace aarch64 --benchmark
+#     scripts/acceleration/validate-opencl-linux.sh /workspace aarch64 --benchmark
 #   docker run --rm --platform linux/amd64 -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
-#     bash scripts/acceleration/validate-opencl-linux.sh /workspace x86_64
+#     scripts/acceleration/validate-opencl-linux.sh /workspace x86_64
 FROM eclipse-temurin:25-jdk-noble
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
