@@ -86,7 +86,10 @@ The versioned stream replaces the sequential `SplittableRandom` stream used
 before 0.23.1. A fixed seed reproduces the same integer random stream in every
 lane. Applications that must reproduce pre-0.23.1 seeded values can restore the
 legacy stream with `-Dta4j.forecast.rngVersion=0`; the default stays on the
-versioned per-path stream that matches the native kernels. CUDA retains FP64
+versioned per-path stream that matches the native kernels. While the legacy
+stream is active, transparent acceleration is disabled so the documented
+legacy values always materialize (native kernels implement only the versioned
+stream). CUDA retains FP64
 while Metal materializes terminal paths in FP32, so
 cross-lane numeric summaries are checked within the documented tolerance rather
 than for bit identity; stability, sample counts, quantiles, and trading decisions
