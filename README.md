@@ -116,6 +116,12 @@ cd ta4j
 
 On Windows, use `mvnw.cmd` instead of `./mvnw`. The example loads bundled Bitcoin data, evaluates a strategy, prints performance metrics, and displays a chart when a graphical environment is available.
 
+Run another example by overriding the configured main class:
+
+```bash
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
+```
+
 ### Use the core API
 
 The essential model is:
@@ -437,6 +443,10 @@ New to ta4j? Follow the [Canonical User Journey](https://ta4j.github.io/ta4j-wik
 
 Read the [contribution guide](.github/CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), and [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html). Contributions should include focused tests and an appropriate `CHANGELOG.md` entry.
 
+Contributor reference:
+
+- [Build commands: Maven](#build-commands-maven)
+
 ### Build commands: Maven
 
 <details>
@@ -445,12 +455,13 @@ Read the [contribution guide](.github/CONTRIBUTING.md), [Code of Conduct](CODE_O
 The repository requires Java 25+ and includes Maven Wrapper scripts pinned to Maven 3.9.16.
 
 - Standard wrapper: use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or system Maven 3.9+ intentionally.
-- Recommended local quality path: `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`.
+- Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`.
 - Maven-only repair and verification: `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
 - CI-equivalent validation: `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
 - Focused formatting repair: `./mvnw -B license:format formatter:format`
 - SpotBugs gate: `./mvnw -pl ta4j-core -am clean compile spotbugs:check`
 - JaCoCo gate: `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
+- Focused coverage report: `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report`
 
 Run the full quality path before opening or updating a pull request and review any license-header or formatting repairs before committing them.
 
