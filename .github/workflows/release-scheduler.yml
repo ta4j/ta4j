@@ -488,7 +488,7 @@ jobs:
                 model: $model,
                 reasoning: {effort: "high"},
                 store: false,
-                max_output_tokens: 256,
+                max_output_tokens: 4096,
                 input: [
                   {
                     role: "system",

@@ -253,6 +253,7 @@ Look for these files first:
 - `release-ai-request-metadata.json`: scheduler AI prompt profile, byte budget, request size, full/prompt dossier sizes, and whether the prompt was compacted against the full dossier artifact.
 - `release-decision.json`: normalized AI release decision.
 - `release-ai-transport-diagnostics.json`: structured scheduler diagnostics for curl/provider transport failures, including request metadata, curl status, response size, captured headers, metrics, and recovery guidance.
+- `response-content-failure.txt`: sanitized reason recorded when the OpenAI response is not valid JSON, is incomplete, is a refusal, or contains no `output_text` content.
 - `release-audit.json`: workflow-local release metadata.
 - `tag-resolution.txt`: resolved latest/reachable/first-parent tag state.
 - `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
@@ -270,7 +271,6 @@ Snapshot consumers must configure `https://central.sonatype.com/repository/maven
 If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an HTTP response, do not rerun the same full request blindly. First inspect:
 - `release-ai-request-metadata.json` for prompt profile, full dossier size, prompt dossier size, request byte size, and configured transport budget.
 - `release-ai-transport-diagnostics.json` for curl exit code, HTTP status, captured headers, transfer metrics, response preview, and recovery guidance.
-- `response-content-failure.txt` for the sanitized response-validation reason when OpenAI returns an incomplete, refused, malformed, or text-missing response.
 - `curl-error.log`, `curl-metrics.log`, and `response-headers.txt` for low-level provider or gateway symptoms.
 
 Use `aiMode=probe` to validate OpenAI key/model access and Responses API connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, response validation, or scheduler compaction policy has been reviewed from the artifacts above.
