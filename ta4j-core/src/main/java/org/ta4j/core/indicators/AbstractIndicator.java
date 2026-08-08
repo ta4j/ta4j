@@ -25,8 +25,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final BarSeries series;
-    private transient volatile BarSeries readOnlySeries;
-    private final Object readOnlySeriesLock = new Object();
+    private final BarSeries readOnlySeries;
 
     /**
      * Constructor.
@@ -40,17 +39,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
 
     @Override
     public BarSeries getBarSeries() {
-        BarSeries currentView = readOnlySeries;
-        if (currentView == null) {
-            synchronized (readOnlySeriesLock) {
-                currentView = readOnlySeries;
-                if (currentView == null) {
-                    currentView = new ReadOnlyBarSeriesView(series);
-                    readOnlySeries = currentView;
-                }
-            }
-        }
-        return currentView;
+        return readOnlySeries;
     }
 
     @Override

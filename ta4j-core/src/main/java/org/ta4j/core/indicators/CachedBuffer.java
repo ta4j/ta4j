@@ -122,9 +122,21 @@ class CachedBuffer<T> {
      *
      * @param maximumBarCount the maximum bar count from the series, or
      *                        {@code Integer.MAX_VALUE} for unbounded
+     * @return a new empty buffer
+     * @throws IllegalArgumentException when {@code maximumBarCount} is not
+     *                                  strictly positive
      */
-    CachedBuffer(int maximumBarCount) {
-        this.maximumCapacity = initialMaximumCapacity(maximumBarCount);
+    static <T> CachedBuffer<T> of(int maximumBarCount) {
+        return new CachedBuffer<>(effectiveMaximumCapacity(maximumBarCount));
+    }
+
+    /**
+     * Creates a new cached buffer with a validated capacity ceiling.
+     *
+     * @param maximumCapacity the effective capacity ceiling, strictly positive
+     */
+    private CachedBuffer(int maximumCapacity) {
+        this.maximumCapacity = maximumCapacity;
         this.capacity = Math.min(DEFAULT_UNBOUNDED_CAPACITY, this.maximumCapacity);
         this.buffer = new Object[capacity];
     }

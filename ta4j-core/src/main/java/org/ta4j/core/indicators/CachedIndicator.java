@@ -110,7 +110,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private CachedIndicator(Config config) {
         super(config.series());
         BarSeriesChangeSnapshot snapshot = config.snapshot();
-        this.cache = new CachedBuffer<>(snapshot.maximumBarCount());
+        this.cache = CachedBuffer.of(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
         this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
     }

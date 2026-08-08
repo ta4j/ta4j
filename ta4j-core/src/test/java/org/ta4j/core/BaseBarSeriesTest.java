@@ -176,6 +176,21 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testBarSeriesChangeSnapshotResolvesExactIndexAtJournalCapacity() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+        // Exactly BAR_HISTORY_CHANGE_CAPACITY (64) updates still fit in the
+        // journal, so the exact changed index must survive.
+        seriesWithBars.replaceBar(1, testBars.get(1));
+        for (int i = 0; i < 63; i++) {
+            seriesWithBars.addPrice(numFactory.numOf(100 + i));
+        }
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 64, snapshot.revision());
+        assertEquals(1, snapshot.earliestChangedIndex());
+    }
+
+    @Test
     public void testBarSeriesChangeSnapshotIncludesWindowAndCapacityChanges() {
         long initialRevision = seriesWithBars.getBarHistoryRevision();
 

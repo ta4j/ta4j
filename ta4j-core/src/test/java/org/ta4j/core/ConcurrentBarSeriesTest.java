@@ -2045,7 +2045,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
-    public void testChangeSnapshotIsCoherentUnderSeriesLock() {
+    public void testChangeSnapshotReportsDelegatedRevisionAndWindowState() {
         ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("changeSnapshot")
                 .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
