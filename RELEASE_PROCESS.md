@@ -259,7 +259,7 @@ Look for these files first:
 - `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
 - `javadoc-warnings.txt`: Javadoc warning baseline comparison from release artifact/deploy logs; new warnings beyond the tracked `scripts/release/javadoc-warning-baseline.txt` debt fail publish.
 - `.agents/logs/full-build-*.log`: release-candidate full build log.
-- `snapshot-consumption.json`: exact timestamped parent/core/examples coordinates obtained from cache-busted metadata, publisher and resolved JAR checksums, attempts, elapsed time, and `mavenConsumable` result.
+- `snapshot-consumption.json`: exact timestamped parent/core/examples coordinates obtained from cache-busted metadata, publisher and resolved JAR checksums, `metadataError` for a failed fresh metadata fetch, attempts, elapsed time, and `mavenConsumable` result.
 - `snapshot-consumption.log`: bounded, redacted Maven consumer attempts used by the post-deploy gate.
 
 If a grouped section fails, inspect the matching artifact before rerunning. Avoid rerunning publish until tag state, artifact state, and Central deployment state are understood.
