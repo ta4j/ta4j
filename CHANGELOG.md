@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.24.0 (2026-08-08)
+
 ### Added
 - **Dynamic and forecast-ready Kalman indicators**: `KalmanFilterIndicator` now accepts causal per-bar process and measurement noise through `KalmanNoiseIndicator` while preserving its same-bar smoothing API and legacy serialized descriptors. New constant-velocity `KinematicKalmanFilterIndicator` state can be projected through `forecast()` or `forecast(horizon)` into analytic Gaussian price distributions that compose with forecast point adapters and rolling conformal calibration. `KinematicKalmanForecastExample` demonstrates ATR- and CHOP-derived dynamic noise, shared multi-horizon forecasts, and conformal evaluation over an ossified S&P 500 weekly series.
 - **Reusable rolling Hurst estimation**: Added `HurstExponentIndicator` for close prices or any numeric indicator, with a default bounded ten-lag log-variogram regression, explicit maximum-lag tuning, causal full-window warm-up, and dimensionless `[0, 1]` output. `RoughVolatilityForecastStateIndicator` now composes this first-class statistic while retaining its stricter rough-volatility bounds.
@@ -20,6 +24,7 @@
 - **0.24.0 deprecation cleanup**: Removed the scheduled compatibility shims for the moved drawdown criteria, `MACDVIndicator`, and legacy Gson JSON serialization types. Use `org.ta4j.core.criteria.drawdown.*`, `org.ta4j.core.indicators.macd.MACDVIndicator`, and `JsonFileBarSeriesDataSource` instead.
 
 ### Changed
+- **Snapshot verification bypasses stale CDN metadata**: The isolated Maven consumer now fetches cache-busted timestamped coordinates directly from the snapshot repository before resolving artifacts, so post-deploy verification compares the newly published build instead of a cached older `-SNAPSHOT` mapping.
 - **AI release scheduling now uses direct OpenAI Responses API inference**: `release-scheduler.yml` no longer depends on the retired GitHub Models service; it preflights the exact `gpt-5.6-luna` model, sends the existing SemVer dossier with reasoning effort `high`, disables provider-side response storage, omits reasoning output from audit artifacts, and records provider-aware request and failure diagnostics while preserving probe/full/skip and dry-run safety. Manual dispatches now default to `aiMode=full` after the validated probe rollout.
 - **Test runtime guidance now protects the contributor feedback loop**: Maintainers are directed to track the Surefire top five, iterate with focused module tests without repeated `clean`, keep `BarSeries` and fold fixtures minimal, reuse immutable parsed data, and retain only one exhaustive sweep per behavior.
 - **CHOP uses explicit output representation without breaking legacy scales**: `ChopIndicator` now defaults to conventional percentage output, accepts `ReturnRepresentation.DECIMAL` or `PERCENTAGE`, uses composed rolling ATR totals and native `Num` logarithms, and returns unavailable values for incomplete or undefined windows. Its integer-scale constructor remains as a deprecated compatibility adapter, including arbitrary custom scales and lossless descriptor/JSON reconstruction.

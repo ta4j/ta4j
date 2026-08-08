@@ -68,7 +68,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.23.0</version>
+  <version>0.24.0</version>
 </dependency>
 ```
 
@@ -89,7 +89,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.23.1-SNAPSHOT</version>
+  <version>0.24.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -103,7 +103,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.23.0</version>
+  <version>0.24.0</version>
 </dependency>
 ```
 
@@ -117,7 +117,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.23.1-SNAPSHOT</version>
+  <version>0.24.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -1535,7 +1535,7 @@ Snapshots are available at:
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
-Snapshots are consumed from this repository directly; they are not expected to appear in normal Maven Central release search. Portal snapshot browsing may also be unavailable independently of publishing. A green snapshot workflow means an isolated Maven consumer resolved the exact newly deployed `ta4j-parent`, `ta4j-core`, and `ta4j-examples` build and matched the core/examples JAR checksums.
+Snapshots are consumed from this repository directly; they are not expected to appear in normal Maven Central release search. Portal snapshot browsing may also be unavailable independently of publishing. A green snapshot workflow means an isolated Maven consumer fetched cache-busted metadata, independently resolved the exact newly deployed timestamped coordinates for `ta4j-parent`, `ta4j-core`, and `ta4j-examples`, and matched the core/examples JAR checksums.
 
 ### Stable releases
 
