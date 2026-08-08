@@ -81,11 +81,12 @@ class OpenClProbePayloadTest {
             Files.createDirectories(fakeInclude.resolve("linux"));
             Files.copy(realInclude.resolve("jni.h"), fakeInclude.resolve("jni.h"),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(realInclude.resolve("darwin").resolve("jni_md.h"),
+            Files.copy(platformIncludeDirectory(System.getProperty("java.home")).resolve("jni_md.h"),
                     fakeInclude.resolve("linux").resolve("jni_md.h"),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            Path library = Path.of(System.getProperty("java.io.tmpdir")).resolve("libJniOpenClProbeStub-linux.dylib");
+            Path library = Path.of(System.getProperty("java.io.tmpdir"))
+                    .resolve("libJniOpenClProbeStub-linux" + librarySuffix());
             Files.deleteIfExists(library);
             String originalOsName = System.getProperty("os.name");
             try {
