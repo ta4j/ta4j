@@ -210,6 +210,10 @@ if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
   exit 22
 fi
 cat "$STUB_METADATA_DIR/$artifact.xml"
+if [[ "${STUB_METADATA_WRITE_FAILURE_ARTIFACT:-}" == "$artifact" ]]; then
+  echo "metadata transport failed after writing $artifact" >&2
+  exit 22
+fi
 EOF
   chmod +x "$path"
 }
@@ -272,6 +276,7 @@ run_consumption_fixture() {
   local output="$8"
   local github_output="$9"
   local log="${10}"
+  local repository_url="${11:-https://central.sonatype.com/repository/maven-snapshots/}"
   local curl_stub="$TMP/curl-stub"
   local metadata_dir="$TMP/metadata"
   local parent_resolved="${version%-SNAPSHOT}-20260714.120000-2"
@@ -294,7 +299,7 @@ run_consumption_fixture() {
     bash "$SCRIPT" snapshot-consumption \
       --version "$version" \
       --maven-command "$maven_stub" \
-      --repository-url "https://central.sonatype.com/repository/maven-snapshots/" \
+      --repository-url "$repository_url" \
       --publisher-root "$publisher_root" \
       --max-attempts "$max_attempts" \
       --retry-seconds 0 \
@@ -744,10 +749,68 @@ test_snapshot_consumption_retries_missing_local_metadata() {
 
   expect_output_value "$github_output" "maven_consumable" "false"
   expect_output_value "$github_output" "snapshot_consumption_attempts" "2"
-  expect_file_contains "$log" "missing timestamped parent/core/examples coordinates"
+  expect_file_contains "$log" "fresh metadata fetch failed"
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_retries_missing_local_metadata"
+}
+
+test_snapshot_consumption_skips_metadata_after_transport_failure() {
+  echo "Running test_snapshot_consumption_skips_metadata_after_transport_failure"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher"
+  local maven_stub="$TMP/mvn-stub"
+  local output_file="$TMP/snapshot-consumption.json"
+  local github_output="$TMP/github-output.txt"
+  local log="$TMP/snapshot-consumption.log"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+
+  export STUB_METADATA_WRITE_FAILURE_ARTIFACT=ta4j-parent
+  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$output_file" "$github_output" "$log"; then
+    unset STUB_METADATA_WRITE_FAILURE_ARTIFACT
+    fail "snapshot consumption should reject metadata after a transport failure"
+  fi
+  unset STUB_METADATA_WRITE_FAILURE_ARTIFACT
+
+  expect_output_value "$github_output" "maven_consumable" "false"
+  expect_file_contains "$log" "fresh metadata fetch failed"
+  if [[ -e "$TMP/maven-attempts.txt" ]]; then
+    fail "snapshot consumption should not invoke Maven after metadata transport failure"
+  fi
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_skips_metadata_after_transport_failure"
+}
+
+test_snapshot_consumption_escapes_repository_url_in_pom() {
+  echo "Running test_snapshot_consumption_escapes_repository_url_in_pom"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher"
+  local maven_stub="$TMP/mvn-stub"
+  local output_file="$TMP/snapshot-consumption.json"
+  local github_output="$TMP/github-output.txt"
+  local log="$TMP/snapshot-consumption.log"
+  local repository_url="https://central.sonatype.com/repository/maven-snapshots/ampersand&path/"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+
+  run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$output_file" "$github_output" "$log" "$repository_url"
+
+  expect_output_value "$github_output" "maven_consumable" "true"
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_escapes_repository_url_in_pom"
 }
 
 test_snapshot_consumption_rejects_missing_publisher_module() {
@@ -829,6 +892,8 @@ test_snapshot_consumption_checksum_mismatch
 test_snapshot_consumption_clears_checksums_after_later_failure
 test_snapshot_consumption_ignores_ambiguous_metadata_files
 test_snapshot_consumption_retries_missing_local_metadata
+test_snapshot_consumption_skips_metadata_after_transport_failure
+test_snapshot_consumption_escapes_repository_url_in_pom
 test_snapshot_consumption_rejects_missing_publisher_module
 test_snapshot_consumption_rejects_release_version
 test_snapshot_consumption_rejects_repository_query

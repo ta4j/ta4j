@@ -1688,8 +1688,14 @@ fetch_snapshot_metadata() {
     "$metadata_url" > "$output" 2>"$error_output"
 }
 
+xml_escape_text() {
+  python3 -c 'import html, sys; sys.stdout.write(html.escape(sys.stdin.read(), quote=True))'
+}
+
 write_snapshot_consumer_pom() {
   local output="$1" repository_url="$2" parent_version="$3" core_version="$4" examples_version="$5"
+  local repository_url_xml
+  repository_url_xml="$(printf '%s' "$repository_url" | xml_escape_text)"
   cat > "$output" <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
@@ -1699,7 +1705,7 @@ write_snapshot_consumer_pom() {
   <repositories>
     <repository>
       <id>${SNAPSHOT_REPOSITORY_ID}</id>
-      <url>${repository_url}</url>
+      <url>${repository_url_xml}</url>
       <releases><enabled>true</enabled></releases>
       <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
     </repository>
@@ -1792,32 +1798,35 @@ command_snapshot_consumption() {
       || metadata_error="${metadata_error:+$metadata_error; }ta4j-core: $(cat "$tmpdir/ta4j-core-metadata.err")"
     fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-examples "$version" "$cache_buster" "$examples_metadata" "$tmpdir/ta4j-examples-metadata.err" \
       || metadata_error="${metadata_error:+$metadata_error; }ta4j-examples: $(cat "$tmpdir/ta4j-examples-metadata.err")"
-    [[ -z "$metadata_error" ]] || printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
-    resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
-    resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
-    resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
-    if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
-      printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
+    if [[ -n "$metadata_error" ]]; then
+      printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
     else
-      write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"
-      resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
-      resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
-    fi
-    if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]] && \
-      "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
-        "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
-      if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
-        resolved_core_sha="$(sha256_file "$resolved_core")"
-        resolved_examples_sha="$(sha256_file "$resolved_examples")"
-        if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
-          maven_consumable=true
-          break
-        else
-          printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
-            "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
-        fi
+      resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
+      resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
+      resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
+      if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
+        printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
       else
-        printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+        write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"
+        resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
+        resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
+      fi
+      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]] && \
+        "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
+          "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
+        if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
+          resolved_core_sha="$(sha256_file "$resolved_core")"
+          resolved_examples_sha="$(sha256_file "$resolved_examples")"
+          if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
+            maven_consumable=true
+            break
+          else
+            printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
+              "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
+          fi
+        else
+          printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+        fi
       fi
     fi
     if (( attempts < max_attempts && retry_seconds > 0 )); then
