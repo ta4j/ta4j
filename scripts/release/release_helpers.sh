@@ -6,6 +6,7 @@ SNAPSHOT_METADATA_URL="${SNAPSHOT_REPOSITORY_URL}org/ta4j/ta4j-parent/maven-meta
 SNAPSHOT_REPOSITORY_ID="central-portal-snapshots"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
 MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
+SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS=300
 AI_REQUEST_METADATA_SCHEMA_VERSION=2
 AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=2
 DEFAULT_AI_REQUEST_MAX_BYTES=600000
@@ -1680,12 +1681,41 @@ snapshot_metadata_url() {
 }
 
 fetch_snapshot_metadata() {
-  local curl_command="$1" repository_url="$2" artifact="$3" version="$4" cache_buster="$5" output="$6" error_output="$7"
+  local curl_command="$1" repository_url="$2" artifact="$3" version="$4" cache_buster="$5" timeout_seconds="$6" output="$7" error_output="$8"
   local metadata_url
   metadata_url="$(snapshot_metadata_url "$repository_url" "$artifact" "$version" "$cache_buster")"
-  "$curl_command" --fail --silent --show-error --location --max-time 30 \
+  "$curl_command" --fail --silent --show-error --location --max-time "$timeout_seconds" \
     -H "Accept: application/xml" -H "User-Agent: ta4j-release-automation" \
     "$metadata_url" > "$output" 2>"$error_output"
+}
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=KILL "$timeout_seconds" "$@"
+    return $?
+  fi
+
+  "$@" &
+  local pid=$!
+  local elapsed=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      kill -KILL "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$pid"
+}
+
+snapshot_consumption_remaining_seconds() {
+  local deadline_epoch="$1"
+  local remaining=$(( deadline_epoch - $(date +%s) ))
+  (( remaining > 0 )) && printf '%s\n' "$remaining" || printf '0\n'
 }
 
 xml_escape_text() {
@@ -1774,13 +1804,20 @@ command_snapshot_consumption() {
   local publisher_core_sha publisher_examples_sha resolved_core resolved_examples resolved_core_sha="" resolved_examples_sha=""
   local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml"
   local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" metadata_error="" cache_buster=""
-  local attempts=0 maven_consumable=false start_time elapsed_seconds=0
+  local attempts=0 maven_consumable=false start_time elapsed_seconds=0 deadline_epoch=0 remaining_seconds=0 metadata_timeout=0 maven_timeout=0 sleep_seconds=0
+  local deadline_exhausted=false maven_status=0
   publisher_core_sha="$(sha256_file "$publisher_core")"
   publisher_examples_sha="$(sha256_file "$publisher_examples")"
   start_time="$(date +%s)"
+  deadline_epoch=$(( start_time + SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS ))
   : > "$raw_log"
 
   while (( attempts < max_attempts )); do
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
     attempts=$((attempts + 1))
     resolved_parent_version=""
     resolved_core_version=""
@@ -1792,11 +1829,29 @@ command_snapshot_consumption() {
     printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
     cache_buster="$(date +%s)-${attempts}"
     metadata_error=""
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-parent "$version" "$cache_buster" "$parent_metadata" "$tmpdir/ta4j-parent-metadata.err" \
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
+    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-parent "$version" "$cache_buster" "$metadata_timeout" "$parent_metadata" "$tmpdir/ta4j-parent-metadata.err" \
       || metadata_error="ta4j-parent: $(cat "$tmpdir/ta4j-parent-metadata.err")"
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-core "$version" "$cache_buster" "$core_metadata" "$tmpdir/ta4j-core-metadata.err" \
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
+    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-core "$version" "$cache_buster" "$metadata_timeout" "$core_metadata" "$tmpdir/ta4j-core-metadata.err" \
       || metadata_error="${metadata_error:+$metadata_error; }ta4j-core: $(cat "$tmpdir/ta4j-core-metadata.err")"
-    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-examples "$version" "$cache_buster" "$examples_metadata" "$tmpdir/ta4j-examples-metadata.err" \
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
+    metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
+    fetch_snapshot_metadata "$curl_command" "$repository_url" ta4j-examples "$version" "$cache_buster" "$metadata_timeout" "$examples_metadata" "$tmpdir/ta4j-examples-metadata.err" \
       || metadata_error="${metadata_error:+$metadata_error; }ta4j-examples: $(cat "$tmpdir/ta4j-examples-metadata.err")"
     if [[ -n "$metadata_error" ]]; then
       printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
@@ -1811,29 +1866,50 @@ command_snapshot_consumption() {
         resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
         resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
       fi
-      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]] && \
-        "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
-          "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
-        if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
-          resolved_core_sha="$(sha256_file "$resolved_core")"
-          resolved_examples_sha="$(sha256_file "$resolved_examples")"
-          if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
-            maven_consumable=true
-            break
-          else
-            printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
-              "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
-          fi
+      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]]; then
+        remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+        if (( remaining_seconds <= 0 )); then
+          deadline_exhausted=true
         else
-          printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+          maven_timeout="$remaining_seconds"
+          if run_with_timeout "$maven_timeout" "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
+            "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
+            if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
+              resolved_core_sha="$(sha256_file "$resolved_core")"
+              resolved_examples_sha="$(sha256_file "$resolved_examples")"
+              if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
+                maven_consumable=true
+                break
+              else
+                printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
+                  "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
+              fi
+            else
+              printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+            fi
+          else
+            maven_status=$?
+            if (( maven_status == 124 )); then
+              deadline_exhausted=true
+              printf 'Maven snapshot resolution timed out with the five-minute deadline\n' >> "$raw_log"
+            fi
+          fi
         fi
       fi
     fi
-    if (( attempts < max_attempts && retry_seconds > 0 )); then
-      sleep "$retry_seconds"
+    if [[ "$deadline_exhausted" == true ]]; then
+      break
+    fi
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( attempts < max_attempts && retry_seconds > 0 && remaining_seconds > 0 )); then
+      sleep_seconds=$(( retry_seconds < remaining_seconds ? retry_seconds : remaining_seconds ))
+      sleep "$sleep_seconds"
     fi
   done
 
+  if [[ "$deadline_exhausted" == true ]]; then
+    printf 'snapshot consumption deadline exhausted after %s seconds\n' "$SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS" >> "$raw_log"
+  fi
   elapsed_seconds=$(( $(date +%s) - start_time ))
   redact_log_text < "$raw_log" > "$redacted_log"
   copy_prefix_with_notice "$redacted_log" "$log" 200000 "[TRUNCATED: snapshot consumption log exceeded 200000 bytes]"

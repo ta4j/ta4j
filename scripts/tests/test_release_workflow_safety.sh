@@ -557,6 +557,10 @@ test_snapshot_workflow_guarantees_exact_consumability() {
     "snapshot consumption should bypass stale CDN metadata with a cache-busted fetch"
   expect_file_contains "$ROOT/scripts/release/release_helpers.sh" "write_snapshot_consumer_pom" \
     "snapshot consumption should resolve immutable timestamped coordinates"
+  expect_file_contains "$ROOT/scripts/release/release_helpers.sh" "SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS=300" \
+    "snapshot consumption should enforce the documented five-minute deadline"
+  expect_file_contains "$ROOT/scripts/release/release_helpers.sh" "run_with_timeout" \
+    "snapshot consumption should bound Maven resolution by the remaining deadline"
 
   pass "test_snapshot_workflow_guarantees_exact_consumability"
 }

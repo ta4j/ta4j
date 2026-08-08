@@ -860,16 +860,21 @@ test_snapshot_consumption_rejects_repository_query() {
 
   TMP="$(new_temp_dir)"
   local maven_stub="$TMP/mvn-stub"
+  local repository_url
   write_maven_stub "$maven_stub"
-  if bash "$SCRIPT" snapshot-consumption \
-    --version "0.23.1-SNAPSHOT" \
-    --maven-command "$maven_stub" \
-    --repository-url "https://central.sonatype.com/repository/maven-snapshots/?mirror=1" \
-    --publisher-root "$TMP" \
-    --output "$TMP/output.json" 2>"$TMP/error"; then
-    fail "snapshot consumption should reject a repository URL with a query"
-  fi
-  expect_file_contains "$TMP/error" "must not contain query or fragment components"
+  for repository_url in \
+    "https://central.sonatype.com/repository/maven-snapshots/?mirror=1" \
+    "https://central.sonatype.com/repository/maven-snapshots/#fragment"; do
+    if bash "$SCRIPT" snapshot-consumption \
+      --version "0.23.1-SNAPSHOT" \
+      --maven-command "$maven_stub" \
+      --repository-url "$repository_url" \
+      --publisher-root "$TMP" \
+      --output "$TMP/output.json" 2>"$TMP/error"; then
+      fail "snapshot consumption should reject a repository URL with a query or fragment"
+    fi
+    expect_file_contains "$TMP/error" "must not contain query or fragment components"
+  done
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_rejects_repository_query"
