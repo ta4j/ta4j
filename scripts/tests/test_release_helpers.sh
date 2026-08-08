@@ -175,12 +175,16 @@ test_extract_response_content_rejects_refusal_and_incomplete_responses() {
   run_test
 
   cat > response.json <<'EOF'
-{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"request refused"}]}]}
+{"status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"refusal","refusal":"request refused sk-proj-1234567890abcdefghijklmnop"}]}]}
 EOF
   if bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >refusal.log 2>&1; then
     fail "refusal response should fail extraction"
   fi
   expect_file_contains failure.txt "request refused" "refusal reason should be preserved"
+  expect_file_contains failure.txt "[REDACTED_OPENAI_KEY]" "refusal reason should redact OpenAI-shaped secrets"
+  if grep -Fq "sk-proj-1234567890abcdefghijklmnop" failure.txt refusal.log; then
+    fail "refusal secret should not be written to files or logs"
+  fi
 
   cat > response.json <<'EOF'
 {"status":"incomplete","output":[]}
@@ -192,6 +196,34 @@ EOF
 
   finish_test
   pass "test_extract_response_content_rejects_refusal_and_incomplete_responses"
+}
+
+test_sanitize_response_artifact_omits_reasoning_output() {
+  echo "Running test_sanitize_response_artifact_omits_reasoning_output"
+  run_test
+
+  cat > response.json <<'EOF'
+{
+  "id": "resp_123",
+  "model": "gpt-5.6-luna",
+  "status": "completed",
+  "output": [
+    {"type":"reasoning","encrypted_content":"private chain of thought"},
+    {"type":"message","role":"assistant","content":[{"type":"output_text","text":"{\"should_release\":false}"}]}
+  ]
+}
+EOF
+  bash "$SCRIPT" sanitize-response --raw-file response.json --output sanitized-response.json
+
+  expect_json_value sanitized-response.json reasoningOutputOmitted true
+  expect_file_contains sanitized-response.json 'should_release' \
+    "sanitized response should retain output message text"
+  if grep -Fq '"type": "reasoning"' sanitized-response.json || grep -Fq "private chain of thought" sanitized-response.json; then
+    fail "sanitized response should omit reasoning output"
+  fi
+
+  finish_test
+  pass "test_sanitize_response_artifact_omits_reasoning_output"
 }
 
 test_ai_transport_diagnostics_records_response_validation_failure() {
@@ -482,6 +514,7 @@ test_build_ai_request_compacts_oversized_dossier() {
   expect_json_value release-ai-request-metadata.json artifactBackedContext true
   expect_json_value release-ai-request-metadata.json provider openai
   expect_json_value release-ai-request-metadata.json reasoningEffort high
+  expect_json_value request.json store false
   expect_json_value release-ai-request-metadata.json fullDossierTruncatedForPrompt true
   expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
   expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
@@ -628,6 +661,7 @@ test_model_preflight_rejects_wrong_model
 test_model_preflight_classifies_retryable_and_permanent_statuses
 test_extract_response_content_accepts_output_messages
 test_extract_response_content_rejects_refusal_and_incomplete_responses
+test_sanitize_response_artifact_omits_reasoning_output
 test_ai_transport_diagnostics_records_response_validation_failure
 test_parse_decision_normalizes_major_and_invalid_json
 test_release_pr_review_plan_defaults_to_owner

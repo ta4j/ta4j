@@ -487,6 +487,7 @@ jobs:
               '{
                 model: $model,
                 reasoning: {effort: "high"},
+                store: false,
                 max_output_tokens: 64,
                 input: [
                   {
@@ -640,15 +641,15 @@ jobs:
           CURL_EXIT_CODE: ${{ steps.ai_call.outputs.curl_exit_code }}
           ATTEMPTS: ${{ steps.ai_call.outputs.attempts }}
         run: |
-          err_msg=$(jq -r '.error.message // empty' response.json 2>/dev/null || true)
-          if [ -z "$err_msg" ] && [ "${RESPONSE_STATUS:-}" = "000" ]; then
+          if [ "${RESPONSE_STATUS:-}" = "000" ]; then
             err_msg="AI call failed before an HTTP response (curl exit ${CURL_EXIT_CODE:-unknown})"
+          else
+            err_msg="AI call failed (HTTP ${RESPONSE_STATUS:-unknown}, curl exit ${CURL_EXIT_CODE:-unknown})"
           fi
-          err_msg=${err_msg:-"AI call failed (http ${RESPONSE_STATUS})"}
           echo "audit:ai_request_failed mode=${AI_MODE:-unknown} attempts=${ATTEMPTS:-unknown} status=$RESPONSE_STATUS curl_exit=${CURL_EXIT_CODE:-unknown}" >&2
-          echo "response (truncated to 500 chars):"
-          head -c 500 response.json || true
-          echo ""
+          echo "response metadata (bounded):"
+          jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' response.json 2>/dev/null | head -c 500 || echo "response metadata unavailable"
+          echo
           echo "curl diagnostics (last 20 lines):"
           tail -n 20 curl-error.log || true
           echo "curl metrics (last 40 lines):"
@@ -724,6 +725,19 @@ jobs:
             printf '%s\n' "$content"
             echo "$delim"
           } >> $GITHUB_OUTPUT
+
+      - name: Sanitize AI response artifact
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f response.json ]; then
+            bash scripts/release/release_helpers.sh sanitize-response \
+              --raw-file response.json \
+              --output response-sanitized.json
+            mv response-sanitized.json response.json
+          else
+            jq -S -n '{schemaVersion: 1, status: "missing", reasoningOutputOmitted: true}' > response.json
+          fi
 
       - name: Parse AI JSON
         id: parsed

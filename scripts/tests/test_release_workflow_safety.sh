@@ -372,8 +372,10 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 	    "release scheduler probe mode should build a tiny probe request"
 	  expect_section_contains "$request_section" "max_output_tokens: 64" \
 	    "release scheduler probe request should cap response size"
-	  expect_section_contains "$request_section" 'reasoning: {effort: "high"}' \
-	    "release scheduler probe request should use high reasoning effort"
+  expect_section_contains "$request_section" 'reasoning: {effort: "high"}' \
+    "release scheduler probe request should use high reasoning effort"
+  expect_section_contains "$request_section" 'store: false' \
+    "release scheduler probe request should disable provider-side response storage"
 	  expect_section_contains "$request_section" "input:" \
 	    "release scheduler should build Responses API input items"
 	  expect_section_contains "$request_section" "release-ai-request-metadata.json" \
@@ -437,8 +439,10 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
 	  expect_section_contains "$ai_failure_section" "steps.ai_call.outputs.curl_exit_code != '0'" \
 	    "release scheduler failure path should run when curl fails even if HTTP status is 200"
-	  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
-	    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
+    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" "response metadata (bounded)" \
+    "release scheduler failure path should avoid logging raw model responses"
 	  expect_section_contains "$ai_failure_section" "ai-transport-diagnostics" \
 	    "release scheduler failure path should write structured transport diagnostics"
 	  expect_section_contains "$ai_failure_section" "release-ai-transport-diagnostics.json" \
@@ -456,8 +460,10 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	    "release scheduler should parse AI content only when curl completed cleanly"
 	  expect_section_contains "$ai_extract_section" "extract-response-content" \
 	    "release scheduler should parse Responses API output messages"
-	  expect_section_contains "$ai_extract_section" "response-content-failure.txt" \
-	    "release scheduler should preserve response validation failure reasons"
+  expect_section_contains "$ai_extract_section" "response-content-failure.txt" \
+    "release scheduler should preserve response validation failure reasons"
+  expect_section_contains "$ai_extract_section" "sanitize-response" \
+    "release scheduler should sanitize the uploaded response artifact"
 
 	  local artifact_section
 	  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"

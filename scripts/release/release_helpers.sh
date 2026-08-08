@@ -47,6 +47,7 @@ Commands:
   build-dossier
   build-ai-request
   extract-response-content
+  sanitize-response
   ai-transport-diagnostics
   parse-decision
   release-pr-review-plan
@@ -104,11 +105,25 @@ append_output() {
 }
 
 redact_text() {
-  perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g; s#(?<![A-Za-z0-9_])(?=[A-Za-z0-9+/=_-]{32,})(?=.*[0-9])[A-Za-z0-9+/=_-]{32,}#[REDACTED_SECRET]#g'
+  perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g; s#sk-[A-Za-z0-9_-]{16,}#[REDACTED_OPENAI_KEY]#g; s#(?<![A-Za-z0-9_])(?=[A-Za-z0-9+/=_-]{32,})(?=.*[0-9])[A-Za-z0-9+/=_-]{32,}#[REDACTED_SECRET]#g'
 }
 
 redact_log_text() {
   perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g'
+}
+
+sanitize_untrusted_text() {
+  local value="${1:-}"
+  printf '%s' "$value" | head -c 2000 | redact_text | tr '\r\n' ' '
+}
+
+github_error_annotation() {
+  local value
+  value="$(sanitize_untrusted_text "${1:-}")"
+  value="${value//'%'/'%25'}"
+  value="${value//$'\r'/'%0D'}"
+  value="${value//$'\n'/'%0A'}"
+  printf '%s' "$value"
 }
 
 iso_utc_now() {
@@ -339,6 +354,7 @@ build_ai_request_payload() {
     '{
       model: $model,
       reasoning: {effort: "high"},
+      store: false,
       input: [
         {
           role: "system",
@@ -473,11 +489,12 @@ command_extract_response_content() {
   fi
 
   if [[ -n "$reason" ]]; then
+    reason="$(sanitize_untrusted_text "$reason")"
     : > "$output"
     [[ -n "$failure_reason_output" ]] && printf '%s\n' "$reason" > "$failure_reason_output"
     append_output "response_content_status" "failed" "$github_output"
     append_output "response_content_failure_reason" "$reason" "$github_output"
-    echo "::error::$reason" >&2
+    echo "::error::$(github_error_annotation "$reason")" >&2
     return 1
   fi
 
@@ -485,6 +502,58 @@ command_extract_response_content() {
   [[ -n "$failure_reason_output" ]] && : > "$failure_reason_output"
   append_output "response_content_status" "ok" "$github_output"
   printf 'audit:response_content status=completed output_text_chars=%s\n' "${#content}"
+}
+
+command_sanitize_response_artifact() {
+  local raw_file="response.json" output="response.json"
+  while (($#)); do
+    case "$1" in
+      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      *) die "Unknown sanitize-response option: $1" ;;
+    esac
+  done
+
+  local sanitized
+  sanitized="$(new_tmp_file)"
+  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
+    jq -S -n '{schemaVersion: 1, status: "invalid", reasoningOutputOmitted: true}' > "$sanitized"
+  else
+    jq -S '
+      {
+        schemaVersion: 1,
+        object: (.object // "response"),
+        id: (.id // ""),
+        model: (.model // ""),
+        status: (.status // "unknown"),
+        createdAt: (.created_at // null),
+        completedAt: (.completed_at // null),
+        error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end),
+        incompleteDetails: (.incomplete_details // null),
+        usage: (.usage // null),
+        output: [
+          .output[]?
+          | select(.type == "message")
+          | {
+              type: "message",
+              role: (.role // "assistant"),
+              content: [
+                .content[]?
+                | if .type == "output_text" then {type: "output_text", text: .text}
+                  elif .type == "refusal" then {type: "refusal", refusal: "[REDACTED_REFUSAL]"}
+                  else empty
+                  end
+              ]
+            }
+          | select(.content | length > 0)
+        ],
+        reasoningOutputOmitted: true
+      }
+    ' "$raw_file" > "$sanitized"
+  fi
+  mkdir -p "$(dirname "$output")"
+  mv "$sanitized" "$output"
+  printf 'audit:response_artifact_sanitized output=%s reasoning_output_omitted=true\n' "$output"
 }
 
 command_build_dossier() {
@@ -886,7 +955,7 @@ command_ai_transport_diagnostics() {
   fi
   if [[ -n "$failure_reason" ]]; then
     classification="response_validation_failure"
-    reason="$failure_reason"
+    reason="$(sanitize_untrusted_text "$failure_reason")"
   elif [[ "$curl_exit_code" == "18" ]]; then
     classification="curl_partial_file_transport_close"
     connection_closed_during="response_read"
@@ -910,7 +979,7 @@ command_ai_transport_diagnostics() {
   parse_key_value_log_file "$curl_error" "$attempts_json"
   parse_key_value_log_file "$curl_metrics" "$metrics_json"
   headers_tail="$(tail_redacted_file "$response_headers" 80 8000)"
-  response_preview="$(tail_redacted_file "$response" 20 2000)"
+  response_preview="$(jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' "$response" 2>/dev/null | head -c 2000 || true)"
   local openai_request_id
   openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
 
@@ -1797,6 +1866,7 @@ main() {
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
     extract-response-content) command_extract_response_content "$@" ;;
+    sanitize-response) command_sanitize_response_artifact "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;
     parse-decision) command_parse_decision "$@" ;;
     release-pr-review-plan) command_release_pr_review_plan "$@" ;;
