@@ -14,6 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
@@ -24,6 +26,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
 
 class OpenClAccelerationProviderTest {
 
@@ -89,6 +92,32 @@ class OpenClAccelerationProviderTest {
                 () -> provider(bridge).evaluate(request(forecast)));
 
         assertThat(exception).hasMessageContaining("quantiles are not monotone");
+    }
+
+    @Test
+    void memoryCeilingRejectsBeforeAnyCaptureWork() {
+        // A request above the configured ceiling must be rejected up front. It must
+        // not first run the full snapshot capture (which allocates
+        // decisionCount x lookbackBarCount doubles and reads every history cell),
+        // because for large backtests that allocation itself exhausts the heap and
+        // turns a documented scalar fallback into an OutOfMemoryError.
+        AtomicInteger reads = new AtomicInteger();
+        BarSeries series = doubleSeries();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        CountingReturnIndicator returns = new CountingReturnIndicator(new LogReturnIndicator(close), reads);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(3)
+                .iterationCount(64)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .build();
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, "1");
+        OpenClAccelerationProvider provider = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
+
+        assertThrows(IllegalArgumentException.class, () -> provider.evaluate(request(forecast)));
+        assertThat(reads).hasValue(0);
     }
 
     @Test
@@ -250,6 +279,38 @@ class OpenClAccelerationProviderTest {
             prices[i] = 100d + i * 0.1d;
         }
         return prices;
+    }
+
+    private static final class CountingReturnIndicator implements ReturnIndicator {
+
+        private final ReturnIndicator delegate;
+        private final AtomicInteger reads;
+
+        private CountingReturnIndicator(ReturnIndicator delegate, AtomicInteger reads) {
+            this.delegate = delegate;
+            this.reads = reads;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            reads.incrementAndGet();
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return delegate.getBarSeries();
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return delegate.getReturnRepresentation();
+        }
     }
 
     private static class FakeBridge implements OpenClNativeBridge {
