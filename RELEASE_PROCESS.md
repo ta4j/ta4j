@@ -26,10 +26,11 @@ Emergency path (direct push mode):
 
 Validation path (dry run):
 1. Manually run any mutating release workflow and keep its default `dryRun=true`.
-2. Inspect the computed release/tag/snapshot values, workflow summary, and audit artifacts.
-3. Rerun manually with `dryRun=false` only when intentionally mutating, or let the scheduled/push/merge release path run with its explicit `dryRun=false`.
-4. Prepare dry-runs still run the read-only release-ready and next-cycle deprecation scans and upload their reports.
-5. No release commits, managed cleanup issue mutations, branch/tag push, Maven Central deploy, GitHub Release creation, snapshot deploy, or discussion/comment mutation occur.
+2. The scheduler's manual `aiMode` default is `full` after OpenAI access has been validated; choose `aiMode=probe` for a connectivity-only check.
+3. Inspect the computed release/tag/snapshot values, workflow summary, and audit artifacts.
+4. Rerun manually with `dryRun=false` only when intentionally mutating, or let the scheduled/push/merge release path run with its explicit `dryRun=false`.
+5. Prepare dry-runs still run the read-only release-ready and next-cycle deprecation scans and upload their reports.
+6. No release commits, managed cleanup issue mutations, branch/tag push, Maven Central deploy, GitHub Release creation, snapshot deploy, or discussion/comment mutation occur.
 
 ---
 

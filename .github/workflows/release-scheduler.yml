@@ -26,7 +26,7 @@ on:
       aiMode:
         description: "AI execution mode: probe sends a tiny request; full sends the release dossier; skip avoids OpenAI"
         required: false
-        default: probe
+        default: full
         type: choice
         options:
           - probe
@@ -185,7 +185,7 @@ jobs:
           set -euo pipefail
           event="${EVENT_NAME:-}"
           if [ "$event" = "workflow_dispatch" ]; then
-            raw="${AI_MODE_INPUT:-probe}"
+            raw="${AI_MODE_INPUT:-full}"
           else
             raw="full"
           fi

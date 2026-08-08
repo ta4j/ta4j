@@ -325,8 +325,8 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 
   local input_section
   input_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "aiMode:" "permissions:")"
-  expect_section_contains "$input_section" "default: probe" \
-    "release scheduler manual AI mode should default to probe"
+  expect_section_contains "$input_section" "default: full" \
+    "release scheduler manual AI mode should default to full"
   expect_section_contains "$input_section" "type: choice" \
     "release scheduler AI mode should be a choice input"
   expect_section_contains "$input_section" "- probe" \
@@ -338,8 +338,8 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 
   local mode_section
   mode_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI execution mode" "Read version from pom.xml")"
-  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-probe}"' \
-    "manual release scheduler runs should default AI mode to probe"
+  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-full}"' \
+    "manual release scheduler runs should default AI mode to full"
   expect_section_contains "$mode_section" 'raw="full"' \
     "scheduled release scheduler runs should keep full AI analysis"
   expect_section_contains "$mode_section" 'full|probe|skip)' \
