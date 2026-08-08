@@ -16,6 +16,15 @@ expect_file_contains() {
   fi
 }
 
+expect_file_not_contains() {
+  local file="$1"
+  local needle="$2"
+  local msg="$3"
+  if grep -Fq -- "$needle" "$file"; then
+    fail "$msg (unexpected: '$needle' in ${file#"$ROOT"/})"
+  fi
+}
+
 line_of() {
   local file="$1"
   local needle="$2"
@@ -316,8 +325,8 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 
   local input_section
   input_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "aiMode:" "permissions:")"
-  expect_section_contains "$input_section" "default: probe" \
-    "release scheduler manual AI mode should default to probe"
+  expect_section_contains "$input_section" "default: full" \
+    "release scheduler manual AI mode should default to full"
   expect_section_contains "$input_section" "type: choice" \
     "release scheduler AI mode should be a choice input"
   expect_section_contains "$input_section" "- probe" \
@@ -329,8 +338,8 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 
   local mode_section
   mode_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI execution mode" "Read version from pom.xml")"
-  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-probe}"' \
-    "manual release scheduler runs should default AI mode to probe"
+  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-full}"' \
+    "manual release scheduler runs should default AI mode to full"
   expect_section_contains "$mode_section" 'raw="full"' \
     "scheduled release scheduler runs should keep full AI analysis"
   expect_section_contains "$mode_section" 'full|probe|skip)' \
@@ -338,8 +347,20 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" "No release - AI execution skipped" \
     "release scheduler should expose an explicit no-model-call skip path"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve AI model" \
-    "release scheduler should resolve the configured model without a remote catalog call"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "gpt-5.6-luna" \
+    "release scheduler should pin the exact OpenAI model"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'reasoning_effort="high"' \
+    "release scheduler should pin high reasoning effort"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "OPENAI_API_KEY" \
+    "release scheduler should use the OpenAI repository secret"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "https://api.openai.com/v1/responses" \
+    "release scheduler should call the OpenAI Responses API"
+  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "models.github.ai" \
+    "release scheduler should not call the retired GitHub Models endpoint"
+  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "GH_MODELS_TOKEN" \
+    "release scheduler should not require the retired GitHub Models secret"
+  expect_file_not_contains "$WORKFLOWS/release-scheduler.yml" "RELEASE_AI_MODEL" \
+    "release scheduler should not allow an unpinned model override"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'" \
     "release scheduler model token checks should skip aiMode=skip"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full'" \
@@ -349,8 +370,14 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
   request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
 	  expect_section_contains "$request_section" "audit:ai_probe_request" \
 	    "release scheduler probe mode should build a tiny probe request"
-	  expect_section_contains "$request_section" "max_tokens: 64" \
+  expect_section_contains "$request_section" "max_output_tokens: 4096" \
 	    "release scheduler probe request should cap response size"
+  expect_section_contains "$request_section" 'reasoning: {effort: "high"}' \
+    "release scheduler probe request should use high reasoning effort"
+  expect_section_contains "$request_section" 'store: false' \
+    "release scheduler probe request should disable provider-side response storage"
+	  expect_section_contains "$request_section" "input:" \
+	    "release scheduler should build Responses API input items"
 	  expect_section_contains "$request_section" "release-ai-request-metadata.json" \
 	    "release scheduler should emit request metadata for probe and full AI modes"
 	  expect_section_contains "$request_section" "--max-request-bytes" \
@@ -362,6 +389,10 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 	    "release scheduler should avoid nested curl retries that multiply model calls"
 	  expect_section_contains "$call_section" 'attempts=1' \
 	    "release scheduler full and probe AI modes should make one model call"
+	  expect_section_contains "$call_section" 'ai_max_time=600' \
+	    "full AI requests should have a bounded high-effort timeout"
+	  expect_section_contains "$call_section" '--max-time "$ai_max_time"' \
+	    "AI requests should use the selected bounded timeout"
 	  expect_section_contains "$call_section" 'billed_full_retry=false' \
 	    "release scheduler should not repeat the same billed full AI request after transport failure"
 
@@ -380,10 +411,12 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
   echo "Running test_release_scheduler_ai_failures_remain_diagnostic_and_red"
 
-  local catalog_section
-  catalog_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Preflight GitHub Models catalog" "Build release dossier")"
-  expect_section_contains "$catalog_section" "audit:model_catalog_retry" \
-    "release scheduler catalog preflight should retry transient GitHub Models failures"
+  local preflight_section
+  preflight_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Preflight OpenAI model access" "Build release dossier")"
+  expect_section_contains "$preflight_section" "audit:model_preflight_retry" \
+    "release scheduler model preflight should retry transient OpenAI failures"
+  expect_section_contains "$preflight_section" '[ "$status" -ne 75 ]' \
+    "release scheduler model preflight should stop on permanent failures"
 
   local ai_call_section
   ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API once" "Handle AI API failure")"
@@ -396,7 +429,11 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	  expect_section_contains "$ai_call_section" "--show-error" \
 	    "release scheduler curl invocation should preserve transport errors"
   expect_section_contains "$ai_call_section" "--http1.1" \
-    "release scheduler should avoid GitHub Models HTTP/2 stream cancellations"
+    "release scheduler should avoid HTTP/2 stream cancellations"
+  expect_section_contains "$ai_call_section" "api.openai.com/v1/responses" \
+    "release scheduler should call the OpenAI Responses API"
+  expect_section_contains "$ai_call_section" "X-Client-Request-Id" \
+    "release scheduler should provide a bounded OpenAI client request ID"
 	  expect_section_contains "$ai_call_section" "curl_exit_code=\$?" \
 	    "release scheduler should capture curl exit status"
 	  expect_section_contains "$ai_call_section" "audit:ai_request_attempt attempt=\$attempt status=\$response_status curl_exit=\$curl_exit_code response_bytes=\$response_bytes" \
@@ -406,8 +443,10 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
 	  expect_section_contains "$ai_failure_section" "steps.ai_call.outputs.curl_exit_code != '0'" \
 	    "release scheduler failure path should run when curl fails even if HTTP status is 200"
-	  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
-	    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
+    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" "response metadata (bounded)" \
+    "release scheduler failure path should avoid logging raw model responses"
 	  expect_section_contains "$ai_failure_section" "ai-transport-diagnostics" \
 	    "release scheduler failure path should write structured transport diagnostics"
 	  expect_section_contains "$ai_failure_section" "release-ai-transport-diagnostics.json" \
@@ -423,6 +462,12 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	  ai_extract_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Extract AI response content" "Parse AI JSON")"
 	  expect_section_contains "$ai_extract_section" "steps.ai_call.outputs.curl_exit_code == '0'" \
 	    "release scheduler should parse AI content only when curl completed cleanly"
+	  expect_section_contains "$ai_extract_section" "extract-response-content" \
+	    "release scheduler should parse Responses API output messages"
+  expect_section_contains "$ai_extract_section" "response-content-failure.txt" \
+    "release scheduler should preserve response validation failure reasons"
+  expect_section_contains "$ai_extract_section" "sanitize-response" \
+    "release scheduler should sanitize the uploaded response artifact"
 
 	  local artifact_section
 	  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"
@@ -436,6 +481,8 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	    "release scheduler audit artifact should include request metadata"
 	  expect_section_contains "$artifact_section" "release-ai-transport-diagnostics.json" \
 	    "release scheduler audit artifact should include structured transport diagnostics"
+	  expect_section_contains "$artifact_section" "response-content-failure.txt" \
+	    "release scheduler audit artifact should include response validation failures"
 
 	  local summary_section
 	  summary_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Debug decision summary" "Upload release scheduler audit artifacts")"

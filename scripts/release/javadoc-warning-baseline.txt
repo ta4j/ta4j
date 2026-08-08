@@ -11,5 +11,3 @@ ta4j-core/src/main/java/org/ta4j/core/criteria/ReturnRepresentation.java: warnin
 ta4j-examples/src/main/java/ta4jexamples/backtesting/CoinbaseBacktest.java: warning: invalid input: '&'
 ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysisReport.java: warning: reference not found: ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)
 ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysisReport.java: warning: reference not found: ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)
-ta4j-examples/src/main/java/ta4jexamples/datasources/json/JsonBarsSerializer.java: warning: reference not found: JsonFileBarSeriesDataSource
-ta4j-examples/src/main/java/ta4jexamples/datasources/json/JsonBarsSerializer.java: warning: reference not found: JsonFileBarSeriesDataSource#loadSeries(String)
