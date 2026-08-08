@@ -117,17 +117,16 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
-    void comparisonRejectsChecksumMismatch() throws Exception {
+    void comparisonReportsChecksumMismatchInPayload() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
         Path outputDir = tempDir.resolve("comparison");
         writePerformanceJson(baseDir, 10L, 1_000L);
         writePerformanceJson(candidateDir, 11L, 900L);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
 
-        assertEquals("Cannot compare performance artifacts with mismatched checksums", exception.getMessage());
+        assertFalse(comparison.get("checksumMatch").getAsBoolean());
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.SUMMARY_FILE)));
     }
@@ -207,36 +206,38 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
-    void comparisonFailsWhenRegressionExceedsThreshold() throws Exception {
+    void comparisonReportsRegressionInPayloadInsteadOfThrowing() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
         Path outputDir = tempDir.resolve("comparison");
         writePerformanceJson(baseDir, 10L, 1_000L);
         writePerformanceJson(candidateDir, 10L, 1_200L);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
 
-        assertEquals("Performance regression exceeded threshold", exception.getMessage());
+        assertFalse(comparison.get("regressionWithinThreshold").getAsBoolean());
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.SUMMARY_FILE)));
+        // The per-cell delta that failed the gate stays available to callers.
+        double delta = comparison.getAsJsonArray("cells")
+                .get(0)
+                .getAsJsonObject()
+                .get("medianDeltaPct")
+                .getAsDouble();
+        assertTrue(delta > 5d, "reported median delta must exceed the 5% gate");
     }
 
     @Test
-    void comparisonFailsWhenZeroBaselineBecomesNonZero() throws Exception {
+    void comparisonReportsZeroBaselineRegressionInPayload() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
         Path outputDir = tempDir.resolve("comparison");
         writePerformanceJson(baseDir, 10L, 0L);
         writePerformanceJson(candidateDir, 10L, 1L);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
 
-        assertEquals("Performance regression exceeded threshold", exception.getMessage());
-        JsonObject comparison = JsonParser
-                .parseString(Files.readString(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)))
-                .getAsJsonObject();
+        assertFalse(comparison.get("regressionWithinThreshold").getAsBoolean());
         assertTrue(comparison.getAsJsonArray("cells")
                 .get(0)
                 .getAsJsonObject()

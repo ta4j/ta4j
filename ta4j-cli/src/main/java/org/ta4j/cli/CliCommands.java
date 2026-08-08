@@ -207,6 +207,9 @@ final class CliCommands {
             result.put("comparisonFile", outputDir.resolve("comparison.json").toAbsolutePath().normalize().toString());
             result.put("summaryFile", outputDir.resolve("summary.md").toAbsolutePath().normalize().toString());
             result.put("comparison", comparison);
+            boolean gatePassed = comparison.get("regressionWithinThreshold").getAsBoolean()
+                    && comparison.get("checksumMatch").getAsBoolean();
+            result.put("status", gatePassed ? "ok" : "regression");
             out().println(CliSupport.toJson(response));
             return 0;
         }

@@ -100,7 +100,7 @@ public final class CliIndicatorAccelerationService implements Provider {
         } catch (StaleSeriesException exception) {
             return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.STALE_SERIES,
                     capability.providerId(), exception.getMessage());
-        } catch (IllegalArgumentException | ArithmeticException exception) {
+        } catch (IllegalArgumentException | ArithmeticException | IllegalStateException exception) {
             return notExecuted(Status.SKIPPED, capability.backend(), DiagnosticCode.PROVIDER_UNAVAILABLE,
                     capability.providerId(), "provider rejected request: " + exception.getMessage());
         } catch (NativeProviderException exception) {

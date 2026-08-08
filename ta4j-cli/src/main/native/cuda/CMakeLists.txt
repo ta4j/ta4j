@@ -29,6 +29,10 @@ foreach(JNI_INCLUDE_DIR IN LISTS JNI_INCLUDE_DIRS)
 endforeach()
 find_package(CUDAToolkit 13.3 REQUIRED)
 
+if(NOT DEFINED TA4J_CUDA_ARCHITECTURES)
+    set(TA4J_CUDA_ARCHITECTURES "80-real;90-real;120-real;120-virtual")
+endif()
+
 add_library(ta4j-cuda-accelerator SHARED ta4j_cuda_jni.cu)
 target_include_directories(ta4j-cuda-accelerator PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_libraries(ta4j-cuda-accelerator PRIVATE CUDA::cudart)
@@ -37,7 +41,7 @@ target_compile_options(ta4j-cuda-accelerator PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
     $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<PLATFORM_ID:Windows>>:-Xcompiler=/Zc:preprocessor>)
 set_target_properties(ta4j-cuda-accelerator PROPERTIES
-    CUDA_ARCHITECTURES "120-real;120-virtual"
+    CUDA_ARCHITECTURES "${TA4J_CUDA_ARCHITECTURES}"
     CUDA_SEPARABLE_COMPILATION ON
     BUILD_RPATH_USE_ORIGIN ON
     INSTALL_RPATH "$ORIGIN"

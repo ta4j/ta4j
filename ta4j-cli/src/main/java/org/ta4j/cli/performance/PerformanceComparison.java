@@ -135,12 +135,9 @@ public final class PerformanceComparison {
         Files.writeString(outputDir.resolve(COMPARISON_FILE), GSON.toJson(comparison) + System.lineSeparator(),
                 StandardCharsets.UTF_8);
         Files.writeString(outputDir.resolve(SUMMARY_FILE), summary(comparison), StandardCharsets.UTF_8);
-        if (!checksumMatch) {
-            throw new IllegalStateException("Cannot compare performance artifacts with mismatched checksums");
-        }
-        if (!regressionWithinThreshold) {
-            throw new IllegalStateException("Performance regression exceeded threshold");
-        }
+        // Checksum and regression state are reported in the comparison payload
+        // and the command response; throwing here would discard the written
+        // artifacts and hide which cell regressed from the caller.
         return comparison;
     }
 

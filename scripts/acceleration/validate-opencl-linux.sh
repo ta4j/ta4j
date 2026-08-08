@@ -53,6 +53,8 @@ echo "==> Running OpenClNativeIntegrationTest (probe self-test + scalar parity)"
     test
 
 if [[ "$BENCHMARK" == "--benchmark" ]]; then
+    REPORT="$ROOT/.agents/benchmarks/cf-336-validation/cf-336-transparent-opencl-backtest.json"
+    rm -f "$REPORT"
     echo "==> Running OpenClBacktestBenchmarkTest (transparent end-to-end backtest)"
     ./mvnw -B -ntp -pl ta4j-cli -am \
         -Dtest=OpenClBacktestBenchmarkTest \
@@ -62,7 +64,6 @@ if [[ "$BENCHMARK" == "--benchmark" ]]; then
         -Dta4j.excludedTestTags="$EXCLUDED" \
         -Dta4j.acceleration.opencl.library="$LIBRARY" \
         test
-    REPORT="$ROOT/.agents/benchmarks/cf-336-validation/cf-336-transparent-opencl-backtest.json"
     if [[ ! -f "$REPORT" ]]; then
         echo "error: benchmark report was not written at $REPORT" >&2
         exit 1

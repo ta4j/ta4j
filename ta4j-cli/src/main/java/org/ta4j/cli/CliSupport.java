@@ -134,7 +134,8 @@ final class CliSupport {
     private static final String INDICATOR_INPUT_GUIDANCE = "Use --indicator with compact shorthand or serialized JSON, or use --indicator-json-file.";
     private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
 
-    private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().setPrettyPrinting()
+            .create();
 
     private CliSupport() {
     }

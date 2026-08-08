@@ -105,6 +105,12 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
                 lastFailure = exception;
             }
         }
+        if (lastFailure != null) {
+            // A native failure dominates a later non-executed result: the
+            // service must quarantine the composite rather than silently
+            // accepting a member that merely declined to run.
+            throw lastFailure;
+        }
         if (lastResult != null) {
             // Non-executed results must still carry the composite's own
             // identity: the service keys diagnostics and quarantine on the
@@ -112,9 +118,6 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             // while results carry a member's id ("cuda") re-introduces the
             // identity split this composite exists to prevent.
             return underOwnIdentity(lastResult);
-        }
-        if (lastFailure != null) {
-            throw lastFailure;
         }
         ForecastAccelerationProvider first = members.get(0);
         if (first.capability().available()) {
