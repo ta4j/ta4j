@@ -94,7 +94,10 @@ public final class CliIndicatorAccelerationService implements Provider {
             return notExecuted(Status.SKIPPED, capability.backend(), DiagnosticCode.PROVIDER_UNAVAILABLE,
                     capability.providerId(), "provider rejected request: " + exception.getMessage());
         } catch (NativeProviderException exception) {
-            QUARANTINED_PROVIDERS.putIfAbsent(capability.providerId(), exception.getMessage());
+            // Quarantine under the selection id so the early lookup in later
+            // evaluations hits even when the composite advertises a member's
+            // capability id (for example CUDA) under the "opencl" selection.
+            QUARANTINED_PROVIDERS.putIfAbsent(selection.providerId(), exception.getMessage());
             return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.PROVIDER_FAILURE,
                     capability.providerId(), exception.getMessage());
         }
