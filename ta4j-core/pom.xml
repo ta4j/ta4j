@@ -106,7 +106,7 @@
                 <configuration>
                     <bnd>
                         <![CDATA[
-						-exportcontents: !org.ta4j.core.internal.*,${packages;NAMED;*org.ta4j.core*}
+						-exportcontents: ${packages;NAMED;*org.ta4j.core*}
 						]]>
                     </bnd>
                 </configuration>
