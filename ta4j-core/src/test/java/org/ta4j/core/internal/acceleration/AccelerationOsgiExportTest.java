@@ -14,8 +14,8 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * Locks the OSGi packaging contract of the newly-added public acceleration
- * API. {@link AccelerationRuntime} and its nested SPI types ({@code Provider},
+ * Locks the OSGi packaging contract of the newly-added public acceleration API.
+ * {@link AccelerationRuntime} and its nested SPI types ({@code Provider},
  * {@code Request}, {@code Result}, {@code Backend}, {@code Status},
  * {@code Diagnostic}, {@code Scope}) are documented public API ({@code @since
  * 0.23.1}) implemented by provider artifacts such as ta4j-cli. The bundle must
@@ -36,8 +36,8 @@ public class AccelerationOsgiExportTest {
         assertTrue("ta4j-core pom must declare the bnd -exportcontents directive", matcher.find());
         String exportContents = matcher.group(1).trim();
 
-        assertFalse("bnd -exportcontents must not blanket-exclude the public acceleration SPI package ("
-                + SPI_PACKAGE + "): " + exportContents, exportContents.contains("!org.ta4j.core.internal.*"));
+        assertFalse("bnd -exportcontents must not blanket-exclude the public acceleration SPI package (" + SPI_PACKAGE
+                + "): " + exportContents, exportContents.contains("!org.ta4j.core.internal.*"));
 
         // The package must still be covered by the include pattern so provider
         // bundles (ta4j-cli) can import it.

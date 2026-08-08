@@ -49,10 +49,11 @@ class QualificationAfterQuarantineTest {
     void explicitQualificationCanStillAttemptAQuarantinedProvider() {
         // Phase 1: a Linux-style composite whose members both fail natively
         // quarantines the "opencl" selection id through the real service path.
-        CliIndicatorAccelerationService.useProviderSelectionForTests(() -> new CliIndicatorAccelerationService.ProviderSelection(
-                "opencl", Backend.OPENCL, () -> new CompositeForecastAccelerationProvider(List.of(
-                        (Supplier<ForecastAccelerationProvider>) () -> throwingMember("cuda", "device lost"),
-                        () -> throwingMember("opencl", "out of resources")))));
+        CliIndicatorAccelerationService.useProviderSelectionForTests(
+                () -> new CliIndicatorAccelerationService.ProviderSelection("opencl", Backend.OPENCL,
+                        () -> new CompositeForecastAccelerationProvider(List.of(
+                                (Supplier<ForecastAccelerationProvider>) () -> throwingMember("cuda", "device lost"),
+                                () -> throwingMember("opencl", "out of resources")))));
         MonteCarloPriceForecastIndicator forecast = forecast();
         int end = forecast.getBarSeries().getEndIndex();
         Request<Forecast> request = new Request<>(forecast, end - 1, end);
@@ -89,8 +90,7 @@ class QualificationAfterQuarantineTest {
 
         MonteCarloPriceForecastIndicator forecast = forecast();
         int end = forecast.getBarSeries().getEndIndex();
-        Result<Forecast> result = new CliIndicatorAccelerationService()
-                .evaluate(new Request<>(forecast, end - 1, end));
+        Result<Forecast> result = new CliIndicatorAccelerationService().evaluate(new Request<>(forecast, end - 1, end));
 
         assertThat(attempts).hasValue(0);
         assertThat(result.status()).isEqualTo(Status.FAILED);
@@ -120,8 +120,8 @@ class QualificationAfterQuarantineTest {
     }
 
     private static ForecastAccelerationProvider throwingMember(String providerId, String detail) {
-        Capability capability = new Capability(providerId,
-                providerId.equals("cuda") ? Backend.CUDA : Backend.OPENCL, true, true, "fixture-" + providerId, "");
+        Capability capability = new Capability(providerId, providerId.equals("cuda") ? Backend.CUDA : Backend.OPENCL,
+                true, true, "fixture-" + providerId, "");
         return new ForecastAccelerationProvider() {
             @Override
             public Capability capability() {

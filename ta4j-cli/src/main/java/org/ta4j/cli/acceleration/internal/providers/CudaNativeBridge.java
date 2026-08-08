@@ -52,8 +52,8 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
         if (!"OK".equals(fields[0])) {
             // Native failure payloads leave the numeric fields empty; the last
             // field carries the actionable detail and must be surfaced as-is.
-            return new CudaProbeResult(false, String.join("|", Arrays.copyOfRange(fields, 1, tail)), 0, 0, 0L, 0L, 0,
-                    0, fields[fields.length - 1]);
+            return new CudaProbeResult(false, String.join("|", Arrays.copyOfRange(fields, 1, tail)), 0, 0, 0L, 0L, 0, 0,
+                    fields[fields.length - 1]);
         }
         try {
             return new CudaProbeResult(true, String.join("|", Arrays.copyOfRange(fields, 1, tail)),

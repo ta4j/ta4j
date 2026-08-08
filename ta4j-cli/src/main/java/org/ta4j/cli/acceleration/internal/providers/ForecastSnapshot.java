@@ -82,8 +82,7 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             long quantileCount) {
         long inputDoubles = Math.addExact(Math.multiplyExact(decisionCount, 4L),
                 Math.multiplyExact(decisionCount, lookbackBarCount));
-        long outputDoubles = Math.addExact(iterationCount,
-                Math.multiplyExact(decisionCount, 4L + quantileCount));
+        long outputDoubles = Math.addExact(iterationCount, Math.multiplyExact(decisionCount, 4L + quantileCount));
         return Math.multiplyExact(Math.addExact(inputDoubles, outputDoubles), Double.BYTES);
     }
 

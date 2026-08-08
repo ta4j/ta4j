@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test;
  * number-parse error and users cannot diagnose why OpenCL is unavailable.
  *
  * <p>
- * The native library cannot be built on macOS, so this test compiles a tiny
- * JNI stub (see {@code ta4j-cli/src/test/resources/native-stubs}) that serves
+ * The native library cannot be built on macOS, so this test compiles a tiny JNI
+ * stub (see {@code ta4j-cli/src/test/resources/native-stubs}) that serves
  * configurable payloads through the real {@link JniOpenClNativeBridge} parsing
  * code. The stub is only used to exercise the Java-side payload contract.
  */
@@ -85,8 +85,7 @@ class OpenClProbePayloadTest {
                     fakeInclude.resolve("linux").resolve("jni_md.h"),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            Path library = Path.of(System.getProperty("java.io.tmpdir"))
-                    .resolve("libJniOpenClProbeStub-linux.dylib");
+            Path library = Path.of(System.getProperty("java.io.tmpdir")).resolve("libJniOpenClProbeStub-linux.dylib");
             Files.deleteIfExists(library);
             String originalOsName = System.getProperty("os.name");
             try {
@@ -94,8 +93,7 @@ class OpenClProbePayloadTest {
                 // directory from os.name; simulate the Linux CI host.
                 System.setProperty("os.name", "linux");
                 compileStub(fakeJdk.toString(), library);
-                assertThat(Files.isRegularFile(library)).as("stub must compile against the Linux JDK layout")
-                        .isTrue();
+                assertThat(Files.isRegularFile(library)).as("stub must compile against the Linux JDK layout").isTrue();
             } finally {
                 if (originalOsName == null) {
                     System.clearProperty("os.name");
@@ -172,10 +170,10 @@ class OpenClProbePayloadTest {
     }
 
     /**
-     * The JDK's platform-specific include directory (where {@code jni_md.h}
-     * lives) differs per OS: {@code include/darwin} on macOS, {@code
-     * include/linux} on Linux, {@code include/win32} on Windows. Hosted CI
-     * runs on ubuntu-latest, so the macOS layout must not be hardcoded.
+     * The JDK's platform-specific include directory (where {@code jni_md.h} lives)
+     * differs per OS: {@code include/darwin} on macOS, {@code
+     * include/linux} on Linux, {@code include/win32} on Windows. Hosted CI runs on
+     * ubuntu-latest, so the macOS layout must not be hardcoded.
      */
     private static Path platformIncludeDirectory(String javaHome) {
         String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);

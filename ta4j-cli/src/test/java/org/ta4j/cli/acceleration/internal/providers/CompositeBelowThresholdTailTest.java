@@ -29,12 +29,12 @@ import org.ta4j.core.num.DoubleNumFactory;
  * "evaluation executes the first member whose crossover prediction clears the
  * service threshold", yet the tail of {@code evaluate()} still calls
  * {@code members.get(0).evaluate(request)} when no member ran. That executes
- * member 0 with neither an availability nor a speedup-threshold check: on
- * Linux the composite is built with CUDA first, and CUDA's crossover model
+ * member 0 with neither an availability nor a speedup-threshold check: on Linux
+ * the composite is built with CUDA first, and CUDA's crossover model
  * intentionally never qualifies (compute 12.0 and an unreachable work floor),
- * so the tail would run the unqualified CUDA native kernel. The crossover
- * gates added by the device-capability remediation (GPU-only, workload floor,
- * 2 GiB device memory) exist precisely to keep below-threshold devices from
+ * so the tail would run the unqualified CUDA native kernel. The crossover gates
+ * added by the device-capability remediation (GPU-only, workload floor, 2 GiB
+ * device memory) exist precisely to keep below-threshold devices from
  * executing; the tail defeats them.
  */
 class CompositeBelowThresholdTailTest {

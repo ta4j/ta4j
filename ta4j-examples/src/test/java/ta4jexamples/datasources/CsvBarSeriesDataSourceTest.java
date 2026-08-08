@@ -75,8 +75,7 @@ public class CsvBarSeriesDataSourceTest {
         Path shadow = Path.of(bundledFile);
         boolean created = false;
         try {
-            Files.writeString(shadow,
-                    "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n");
+            Files.writeString(shadow, "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n");
             created = true;
             BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile);
             assertNotNull(series, "Should load series from the bundled resource");

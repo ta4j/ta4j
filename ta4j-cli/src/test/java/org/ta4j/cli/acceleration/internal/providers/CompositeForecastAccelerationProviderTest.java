@@ -59,8 +59,7 @@ class CompositeForecastAccelerationProviderTest {
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
                 List.of(() -> cuda, () -> opencl));
 
-        assertThatThrownBy(() -> composite.evaluate(request()))
-                .isInstanceOf(NativeProviderException.class)
+        assertThatThrownBy(() -> composite.evaluate(request())).isInstanceOf(NativeProviderException.class)
                 .hasMessageContaining("OpenCL");
     }
 
@@ -101,10 +100,9 @@ class CompositeForecastAccelerationProviderTest {
 
     @Test
     void memberBelowSpeedupThresholdIsSkippedInFavorOfQualifiedMember() {
-        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d,
-                request -> {
-                    throw new AssertionError("below-threshold member must not execute");
-                });
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d, request -> {
+            throw new AssertionError("below-threshold member must not execute");
+        });
         ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
                 CompositeForecastAccelerationProviderTest::executedResult);
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
@@ -141,10 +139,9 @@ class CompositeForecastAccelerationProviderTest {
         // Negative control: when a member IS available the composite must keep
         // advertising the first available member's device under its own
         // provider id, and evaluation must still execute the qualified member.
-        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d,
-                request -> {
-                    throw new AssertionError("below-threshold member must not execute");
-                });
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d, request -> {
+            throw new AssertionError("below-threshold member must not execute");
+        });
         ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
                 CompositeForecastAccelerationProviderTest::executedResult);
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(

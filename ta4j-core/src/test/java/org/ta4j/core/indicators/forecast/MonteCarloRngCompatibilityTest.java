@@ -36,10 +36,10 @@ import org.ta4j.core.num.DoubleNumFactory;
 public class MonteCarloRngCompatibilityTest {
 
     /**
-     * System property selecting the forecast RNG stream. Version {@code 0}
-     * restores the historical shared {@link SplittableRandom} stream seeded per
-     * decision; version {@code 1} (default) uses the deterministic per-path
-     * stream introduced for native parity.
+     * System property selecting the forecast RNG stream. Version {@code 0} restores
+     * the historical shared {@link SplittableRandom} stream seeded per decision;
+     * version {@code 1} (default) uses the deterministic per-path stream introduced
+     * for native parity.
      */
     static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
@@ -100,9 +100,9 @@ public class MonteCarloRngCompatibilityTest {
     }
 
     /**
-     * Replays the exact historical algorithm: one shared
-     * {@link SplittableRandom} seeded with the legacy {@code mixSeed} derivation
-     * for the whole decision, bootstrapping from the same historical returns.
+     * Replays the exact historical algorithm: one shared {@link SplittableRandom}
+     * seeded with the legacy {@code mixSeed} derivation for the whole decision,
+     * bootstrapping from the same historical returns.
      */
     private static Forecast legacyExpectedForecast() {
         List<Num> history = List.of(numOf(Math.log(0.9d)), numOf(Math.log(1.1d)));
@@ -152,8 +152,7 @@ public class MonteCarloRngCompatibilityTest {
         }
     }
 
-    private static final class FixedReturnStateIndicator
-            implements ReturnForecastStateIndicator<ReturnForecastState> {
+    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator<ReturnForecastState> {
 
         private final ReturnIndicator returns;
         private final ReturnRepresentation representation;

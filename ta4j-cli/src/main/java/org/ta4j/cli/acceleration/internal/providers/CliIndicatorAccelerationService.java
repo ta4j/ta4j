@@ -179,9 +179,9 @@ public final class CliIndicatorAccelerationService implements Provider {
     }
 
     /**
-     * True when the pre-0.23.1 shared {@link java.util.SplittableRandom} stream
-     * was requested via {@code -Dta4j.forecast.rngVersion=0}. Native lanes
-     * cannot reproduce that stream, so acceleration must not engage.
+     * True when the pre-0.23.1 shared {@link java.util.SplittableRandom} stream was
+     * requested via {@code -Dta4j.forecast.rngVersion=0}. Native lanes cannot
+     * reproduce that stream, so acceleration must not engage.
      */
     private static boolean legacyRngStreamRequested() {
         String configured = System.getProperty("ta4j.forecast.rngVersion");
@@ -196,7 +196,6 @@ public final class CliIndicatorAccelerationService implements Provider {
         return new Result<>(status, backend, List.of(), false, 0L, new Diagnostic(code, providerId, detail));
     }
 
-    record ProviderSelection(String providerId, Backend backend,
-            Supplier<ForecastAccelerationProvider> provider) {
+    record ProviderSelection(String providerId, Backend backend, Supplier<ForecastAccelerationProvider> provider) {
     }
 }

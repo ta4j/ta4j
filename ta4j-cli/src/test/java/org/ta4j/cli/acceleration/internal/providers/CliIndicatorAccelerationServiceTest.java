@@ -51,41 +51,43 @@ class CliIndicatorAccelerationServiceTest {
         // first available member's capability (CUDA here) while the selection's
         // providerId is "opencl". A failing member must quarantine the selection
         // so later evaluations fail closed instead of re-running native code.
-        CliIndicatorAccelerationService.useProviderSelectionForTests(() -> new CliIndicatorAccelerationService.ProviderSelection(
-                "opencl", Backend.OPENCL, () -> new CompositeForecastAccelerationProvider(List.of(
-                        () -> new ForecastAccelerationProvider() {
-                            @Override
-                            public Capability capability() {
-                                return new Capability("cuda", Backend.CUDA, true, true, "fixture-gpu", "");
-                            }
+        CliIndicatorAccelerationService
+                .useProviderSelectionForTests(() -> new CliIndicatorAccelerationService.ProviderSelection("opencl",
+                        Backend.OPENCL, () -> new CompositeForecastAccelerationProvider(
+                                List.of(() -> new ForecastAccelerationProvider() {
+                                    @Override
+                                    public Capability capability() {
+                                        return new Capability("cuda", Backend.CUDA, true, true, "fixture-gpu", "");
+                                    }
 
-                            @Override
-                            public double predictedSpeedup(Request<Forecast> request) {
-                                return 1d;
-                            }
+                                    @Override
+                                    public double predictedSpeedup(Request<Forecast> request) {
+                                        return 1d;
+                                    }
 
-                            @Override
-                            public Result<Forecast> evaluate(Request<Forecast> request) {
-                                throw new NativeProviderException("CUDA", new IllegalStateException("device lost"));
-                            }
-                        },
-                        () -> new ForecastAccelerationProvider() {
-                            @Override
-                            public Capability capability() {
-                                return new Capability("opencl", Backend.OPENCL, true, true, "fixture-opencl", "");
-                            }
+                                    @Override
+                                    public Result<Forecast> evaluate(Request<Forecast> request) {
+                                        throw new NativeProviderException("CUDA",
+                                                new IllegalStateException("device lost"));
+                                    }
+                                }, () -> new ForecastAccelerationProvider() {
+                                    @Override
+                                    public Capability capability() {
+                                        return new Capability("opencl", Backend.OPENCL, true, true, "fixture-opencl",
+                                                "");
+                                    }
 
-                            @Override
-                            public double predictedSpeedup(Request<Forecast> request) {
-                                return 0d;
-                            }
+                                    @Override
+                                    public double predictedSpeedup(Request<Forecast> request) {
+                                        return 0d;
+                                    }
 
-                            @Override
-                            public Result<Forecast> evaluate(Request<Forecast> request) {
-                                return Result.notExecuted(Status.SKIPPED, Backend.OPENCL,
-                                        new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl", "below threshold"));
-                            }
-                        }))));
+                                    @Override
+                                    public Result<Forecast> evaluate(Request<Forecast> request) {
+                                        return Result.notExecuted(Status.SKIPPED, Backend.OPENCL,
+                                                new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl", "below threshold"));
+                                    }
+                                }))));
         MonteCarloPriceForecastIndicator forecast = forecast();
         int end = forecast.getBarSeries().getEndIndex();
         Request<Forecast> request = new Request<>(forecast, end - 1, end);
