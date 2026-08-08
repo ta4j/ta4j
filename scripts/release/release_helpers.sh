@@ -1693,7 +1693,7 @@ run_with_timeout() {
   local timeout_seconds="$1"
   shift
   if command -v timeout >/dev/null 2>&1; then
-    timeout --signal=KILL "$timeout_seconds" "$@"
+    timeout -s KILL "$timeout_seconds" "$@"
     return $?
   fi
 
@@ -1804,6 +1804,7 @@ command_snapshot_consumption() {
   local publisher_core_sha publisher_examples_sha resolved_core resolved_examples resolved_core_sha="" resolved_examples_sha=""
   local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml"
   local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" metadata_error="" cache_buster=""
+  local snapshot_prefix="" timestamped_suffix="" resolved_candidate=""
   local attempts=0 maven_consumable=false start_time elapsed_seconds=0 deadline_epoch=0 remaining_seconds=0 metadata_timeout=0 maven_timeout=0 sleep_seconds=0
   local deadline_exhausted=false maven_status=0
   publisher_core_sha="$(sha256_file "$publisher_core")"
@@ -1859,6 +1860,26 @@ command_snapshot_consumption() {
       resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
       resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
       resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
+      snapshot_prefix="${version%-SNAPSHOT}-"
+      for resolved_candidate in "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"; do
+        if [[ -n "$resolved_candidate" ]]; then
+          if [[ "$resolved_candidate" != "$snapshot_prefix"* ]]; then
+            printf 'resolved coordinate does not match requested snapshot base: %s\n' "$resolved_candidate" >> "$raw_log"
+            resolved_parent_version=""
+            resolved_core_version=""
+            resolved_examples_version=""
+            break
+          fi
+          timestamped_suffix="${resolved_candidate#"$snapshot_prefix"}"
+          if [[ ! "$timestamped_suffix" =~ ^[0-9]{8}\.[0-9]{6}-[0-9]+$ ]]; then
+            printf 'resolved coordinate is not timestamped for the requested snapshot: %s\n' "$resolved_candidate" >> "$raw_log"
+            resolved_parent_version=""
+            resolved_core_version=""
+            resolved_examples_version=""
+            break
+          fi
+        fi
+      done
       if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
         printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
       else

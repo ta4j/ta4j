@@ -279,9 +279,9 @@ run_consumption_fixture() {
   local repository_url="${11:-https://central.sonatype.com/repository/maven-snapshots/}"
   local curl_stub="$TMP/curl-stub"
   local metadata_dir="$TMP/metadata"
-  local parent_resolved="${version%-SNAPSHOT}-20260714.120000-2"
-  local core_resolved="${version%-SNAPSHOT}-20260714.120000-1"
-  local examples_resolved="${version%-SNAPSHOT}-20260714.120000-3"
+  local parent_resolved="${STUB_METADATA_PARENT_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-2}"
+  local core_resolved="${STUB_METADATA_CORE_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-1}"
+  local examples_resolved="${STUB_METADATA_EXAMPLES_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-3}"
   write_metadata_curl_stub "$curl_stub"
   write_consumption_metadata_fixture "$metadata_dir" "$version" "$parent_resolved" "$core_resolved" "$examples_resolved"
 
@@ -573,7 +573,9 @@ test_snapshot_consumption_immediate_success() {
   expect_output_value "$github_output" "maven_consumable" "true"
   expect_output_value "$github_output" "snapshot_consumption_attempts" "1"
   expect_output_value "$github_output" "resolved_core_version" "0.23.1-20260714.120000-1"
+  expect_output_value "$github_output" "resolved_examples_version" "0.23.1-20260714.120000-3"
   expect_file_contains "$output_file" '"mavenConsumable": true'
+  expect_file_contains "$log" "consumer coordinates validated"
   for artifact in ta4j-parent ta4j-core ta4j-examples; do
     expect_file_contains "$TMP/curl.log" "/org/ta4j/${artifact}/${version}/maven-metadata.xml?cacheBust="
   done
@@ -788,6 +790,39 @@ test_snapshot_consumption_skips_metadata_after_transport_failure() {
   pass "test_snapshot_consumption_skips_metadata_after_transport_failure"
 }
 
+test_snapshot_consumption_rejects_wrong_coordinate_base() {
+  echo "Running test_snapshot_consumption_rejects_wrong_coordinate_base"
+
+  TMP="$(new_temp_dir)"
+  local version="0.23.1-SNAPSHOT"
+  local publisher_root="$TMP/publisher"
+  local maven_stub="$TMP/mvn-stub"
+  local output_file="$TMP/snapshot-consumption.json"
+  local github_output="$TMP/github-output.txt"
+  local log="$TMP/snapshot-consumption.log"
+  prepare_consumption_fixture "$publisher_root" "$version"
+  write_maven_stub "$maven_stub"
+
+  export STUB_METADATA_CORE_RESOLVED_VERSION="0.99.1-20260714.120000-7"
+  if run_consumption_fixture "$publisher_root" "$maven_stub" "$version" 1 1 \
+    "$publisher_root/ta4j-core/target/ta4j-core-${version}.jar" \
+    "$publisher_root/ta4j-examples/target/ta4j-examples-${version}.jar" \
+    "$output_file" "$github_output" "$log"; then
+    unset STUB_METADATA_CORE_RESOLVED_VERSION
+    fail "snapshot consumption should reject a coordinate from a different snapshot base"
+  fi
+  unset STUB_METADATA_CORE_RESOLVED_VERSION
+
+  expect_output_value "$github_output" "maven_consumable" "false"
+  expect_file_contains "$log" "does not match requested snapshot base"
+  if [[ -e "$TMP/maven-attempts.txt" ]]; then
+    fail "snapshot consumption should not invoke Maven for a wrong coordinate base"
+  fi
+
+  rm -rf "$TMP"
+  pass "test_snapshot_consumption_rejects_wrong_coordinate_base"
+}
+
 test_snapshot_consumption_escapes_repository_url_in_pom() {
   echo "Running test_snapshot_consumption_escapes_repository_url_in_pom"
 
@@ -898,6 +933,7 @@ test_snapshot_consumption_clears_checksums_after_later_failure
 test_snapshot_consumption_ignores_ambiguous_metadata_files
 test_snapshot_consumption_retries_missing_local_metadata
 test_snapshot_consumption_skips_metadata_after_transport_failure
+test_snapshot_consumption_rejects_wrong_coordinate_base
 test_snapshot_consumption_escapes_repository_url_in_pom
 test_snapshot_consumption_rejects_missing_publisher_module
 test_snapshot_consumption_rejects_release_version
