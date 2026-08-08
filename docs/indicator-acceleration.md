@@ -84,7 +84,10 @@ RNG selection for `1`, `2`, `7`, `252`, `256`, and `1000`.
 
 The versioned stream replaces the sequential `SplittableRandom` stream used
 before 0.23.1. A fixed seed reproduces the same integer random stream in every
-lane. CUDA retains FP64 while Metal materializes terminal paths in FP32, so
+lane. Applications that must reproduce pre-0.23.1 seeded values can restore the
+legacy stream with `-Dta4j.forecast.rngVersion=0`; the default stays on the
+versioned per-path stream that matches the native kernels. CUDA retains FP64
+while Metal materializes terminal paths in FP32, so
 cross-lane numeric summaries are checked within the documented tolerance rather
 than for bit identity; stability, sample counts, quantiles, and trading decisions
 must still agree. Upgrading can change previously recorded Monte Carlo values for
