@@ -219,11 +219,7 @@ class PerformanceExperimentRunnerTest {
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.SUMMARY_FILE)));
         // The per-cell delta that failed the gate stays available to callers.
-        double delta = comparison.getAsJsonArray("cells")
-                .get(0)
-                .getAsJsonObject()
-                .get("medianDeltaPct")
-                .getAsDouble();
+        double delta = comparison.getAsJsonArray("cells").get(0).getAsJsonObject().get("medianDeltaPct").getAsDouble();
         assertTrue(delta > 5d, "reported median delta must exceed the 5% gate");
     }
 
