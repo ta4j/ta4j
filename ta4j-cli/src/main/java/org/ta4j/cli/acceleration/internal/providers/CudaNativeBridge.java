@@ -41,19 +41,25 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
         if (payload == null || payload.isBlank()) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, "CUDA probe returned no metadata");
         }
-        String[] fields = payload.split("\\|", 9);
-        if (fields.length != 9) {
+        // Fixed trailing layout: major|minor|free|total|driver|runtime|detail.
+        // Anchor the trailing fields from the end so a '|' inside the device
+        // name cannot shift the numeric fields.
+        String[] fields = payload.split("\\|", -1);
+        if (fields.length < 9) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, "Malformed CUDA probe metadata");
         }
+        int tail = fields.length - 7;
         if (!"OK".equals(fields[0])) {
             // Native failure payloads leave the numeric fields empty; the last
             // field carries the actionable detail and must be surfaced as-is.
-            return new CudaProbeResult(false, fields[1], 0, 0, 0L, 0L, 0, 0, fields[8]);
+            return new CudaProbeResult(false, String.join("|", Arrays.copyOfRange(fields, 1, tail)), 0, 0, 0L, 0L, 0,
+                    0, fields[fields.length - 1]);
         }
         try {
-            return new CudaProbeResult(true, fields[1], Integer.parseInt(fields[2]), Integer.parseInt(fields[3]),
-                    Long.parseLong(fields[4]), Long.parseLong(fields[5]), Integer.parseInt(fields[6]),
-                    Integer.parseInt(fields[7]), fields[8]);
+            return new CudaProbeResult(true, String.join("|", Arrays.copyOfRange(fields, 1, tail)),
+                    Integer.parseInt(fields[tail]), Integer.parseInt(fields[tail + 1]),
+                    Long.parseLong(fields[tail + 2]), Long.parseLong(fields[tail + 3]),
+                    Integer.parseInt(fields[tail + 4]), Integer.parseInt(fields[tail + 5]), fields[tail + 6]);
         } catch (NumberFormatException exception) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0,
                     "Malformed CUDA probe number: " + exception.getMessage());
