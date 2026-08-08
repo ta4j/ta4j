@@ -389,6 +389,10 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 	    "release scheduler should avoid nested curl retries that multiply model calls"
 	  expect_section_contains "$call_section" 'attempts=1' \
 	    "release scheduler full and probe AI modes should make one model call"
+	  expect_section_contains "$call_section" 'ai_max_time=600' \
+	    "full AI requests should have a bounded high-effort timeout"
+	  expect_section_contains "$call_section" '--max-time "$ai_max_time"' \
+	    "AI requests should use the selected bounded timeout"
 	  expect_section_contains "$call_section" 'billed_full_retry=false' \
 	    "release scheduler should not repeat the same billed full AI request after transport failure"
 

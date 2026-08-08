@@ -569,6 +569,11 @@ jobs:
           echo "audit:external_call target=api.openai.com/v1/responses payload=request.json sanitized=true"
 
           attempts=1
+          ai_max_time=120
+          if [ "${AI_MODE:-full}" = "full" ]; then
+            ai_max_time=600
+          fi
+          echo "audit:curl_max_time_seconds=$ai_max_time"
           response_status=000
           curl_exit_code=0
           : > response.json
@@ -584,7 +589,7 @@ jobs:
             : > "$attempt_headers"
             : > "$attempt_metrics"
             if curl --silent --show-error --location --http1.1 \
-              --connect-timeout 10 --max-time 120 \
+              --connect-timeout 10 --max-time "$ai_max_time" \
               -D "$attempt_headers" \
               -o response.json \
               -w 'curl_json=%{json}\nhttp_code=%{http_code}\ntime_namelookup=%{time_namelookup}\ntime_connect=%{time_connect}\ntime_appconnect=%{time_appconnect}\ntime_starttransfer=%{time_starttransfer}\ntime_total=%{time_total}\nsize_upload=%{size_upload}\nsize_download=%{size_download}\nspeed_download=%{speed_download}\nnum_connects=%{num_connects}\nremote_ip=%{remote_ip}\nhttp_version=%{http_version}\n' \

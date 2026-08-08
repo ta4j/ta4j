@@ -270,6 +270,7 @@ Snapshot consumers must configure `https://central.sonatype.com/repository/maven
 If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an HTTP response, do not rerun the same full request blindly. First inspect:
 - `release-ai-request-metadata.json` for prompt profile, full dossier size, prompt dossier size, request byte size, and configured transport budget.
 - `release-ai-transport-diagnostics.json` for curl exit code, HTTP status, captured headers, transfer metrics, response preview, and recovery guidance.
+- `response-content-failure.txt` for the sanitized response-validation reason when OpenAI returns an incomplete, refused, malformed, or text-missing response.
 - `curl-error.log`, `curl-metrics.log`, and `response-headers.txt` for low-level provider or gateway symptoms.
 
 Use `aiMode=probe` to validate OpenAI key/model access and Responses API connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, response validation, or scheduler compaction policy has been reviewed from the artifacts above.

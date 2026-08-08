@@ -259,6 +259,32 @@ test_ai_transport_diagnostics_records_response_validation_failure() {
   pass "test_ai_transport_diagnostics_records_response_validation_failure"
 }
 
+test_ai_transport_diagnostics_records_openai_request_id() {
+  echo "Running test_ai_transport_diagnostics_records_openai_request_id"
+  run_test
+
+  printf '%s\n' 'HTTP/2 200' 'x-request-id: req_fixture_123' > response-headers.txt
+  printf '%s\n' '{}' > response.json
+  bash "$SCRIPT" ai-transport-diagnostics \
+    --ai-mode probe \
+    --model gpt-5.6-luna \
+    --provider openai \
+    --endpoint https://api.openai.com/v1/responses \
+    --reasoning-effort high \
+    --failure-reason "OpenAI response validation fixture" \
+    --response-status 200 \
+    --curl-exit-code 0 \
+    --response-headers response-headers.txt \
+    --response response.json \
+    --output release-ai-transport-diagnostics.json \
+    --fallback-output ai-content.txt
+
+  expect_json_value release-ai-transport-diagnostics.json openaiRequestId req_fixture_123
+
+  finish_test
+  pass "test_ai_transport_diagnostics_records_openai_request_id"
+}
+
 test_parse_decision_normalizes_major_and_invalid_json() {
   echo "Running test_parse_decision_normalizes_major_and_invalid_json"
   run_test
@@ -669,6 +695,7 @@ test_extract_response_content_accepts_output_messages
 test_extract_response_content_rejects_refusal_and_incomplete_responses
 test_sanitize_response_artifact_omits_reasoning_output
 test_ai_transport_diagnostics_records_response_validation_failure
+test_ai_transport_diagnostics_records_openai_request_id
 test_parse_decision_normalizes_major_and_invalid_json
 test_release_pr_review_plan_defaults_to_owner
 test_release_pr_review_plan_skips_self_review_without_failing
