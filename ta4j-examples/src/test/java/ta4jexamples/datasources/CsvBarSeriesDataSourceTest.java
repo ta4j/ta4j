@@ -57,6 +57,39 @@ public class CsvBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testRelativeLocalFileDoesNotShadowBundledClasspathResource() throws Exception {
+        // Regression: loadCsvSeries(...) has always resolved a relative filename
+        // against the classpath, and existing callers (loadSeriesFromFile(),
+        // example-driven tooling) rely on the bundled example data. The local-file
+        // support must not silently prefer a stray local file that happens to share
+        // the relative name, because callers would start analyzing different data
+        // without any signal.
+        String bundledFile = "AAPL-PT1D-20130102_20131231.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile);
+        assumeThat("File " + bundledFile + " does not exist", resourceStream, is(notNullValue()));
+        int bundledBarCount;
+        try (resourceStream) {
+            bundledBarCount = new java.io.InputStreamReader(resourceStream).read() == -1 ? 0 : 252;
+        }
+
+        Path shadow = Path.of(bundledFile);
+        boolean created = false;
+        try {
+            Files.writeString(shadow,
+                    "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n");
+            created = true;
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile);
+            assertNotNull(series, "Should load series from the bundled resource");
+            assertEquals(bundledBarCount, series.getBarCount(),
+                    "Bundled classpath data must win over a same-named local file");
+        } finally {
+            if (created) {
+                Files.deleteIfExists(shadow);
+            }
+        }
+    }
+
+    @Test
     public void testLoadSeriesFromLocalCsvPath() throws Exception {
         String csvFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
