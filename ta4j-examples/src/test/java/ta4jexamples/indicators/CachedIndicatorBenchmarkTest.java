@@ -71,6 +71,20 @@ class CachedIndicatorBenchmarkTest {
     }
 
     @Test
+    void reverseReadScenarioHandlesWindowLargerThanSeries() {
+        int barCount = 8;
+        int maximumBarCountHint = 64;
+
+        CachedIndicatorBenchmark.ScenarioResult result = benchmark.runReverseReadScenario(barCount,
+                maximumBarCountHint);
+
+        // The whole series fits the warm cache window, so no reverse reads remain.
+        assertEquals(0, result.getOperations(), "No operations should remain when the hint covers the series");
+        assertEquals(0L, result.getChecksum(), "Checksum should be zero for an empty reverse window");
+        assertEquals(0.0d, result.getThroughputOpsPerSecond(), "Zero operations should report zero throughput");
+    }
+
+    @Test
     void lastBarHotReadsScenarioKeepsSmaStableAcrossHits() {
         int barCount = 48;
         int smaPeriod = 8;

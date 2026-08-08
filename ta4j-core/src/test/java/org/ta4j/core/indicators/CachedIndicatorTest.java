@@ -249,30 +249,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(countAfterFirstBarRefresh, indicator.getCalculationCount());
     }
 
-    private static final class FirstBarReadingIndicator extends CachedIndicator<Num> {
-
-        private final AtomicInteger calculationCount = new AtomicInteger();
-
-        private FirstBarReadingIndicator(BarSeries series) {
-            super(series);
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            calculationCount.incrementAndGet();
-            return getBarSeries().getBar(index).getClosePrice();
-        }
-
-        int getCalculationCount() {
-            return calculationCount.get();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-    }
-
     @Test // should be not null
     public void getValueWithNullBarSeries() {
 
@@ -1418,6 +1394,30 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             }
             return new BarSeriesChangeSnapshot(snapshot.revision(), snapshot.earliestChangedIndex(),
                     snapshot.removedThroughIndex(), maximumBarCount, snapshot.endIndex());
+        }
+    }
+
+    private static final class FirstBarReadingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculationCount = new AtomicInteger();
+
+        private FirstBarReadingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        int getCalculationCount() {
+            return calculationCount.get();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 
