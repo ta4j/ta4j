@@ -5,13 +5,18 @@ package org.ta4j.cli.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.function.Supplier;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
 import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -38,6 +43,59 @@ class CliIndicatorAccelerationServiceTest {
 
         assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
         assertThat(result.values()).isEmpty();
+    }
+
+    @Test
+    void linuxCompositeFailureIsQuarantinedUnderTheSelectionProviderId() {
+        // Mirrors the automatic Linux selection: the composite advertises the
+        // first available member's capability (CUDA here) while the selection's
+        // providerId is "opencl". A failing member must quarantine the selection
+        // so later evaluations fail closed instead of re-running native code.
+        CliIndicatorAccelerationService.useProviderSelectionForTests(() -> new CliIndicatorAccelerationService.ProviderSelection(
+                "opencl", Backend.OPENCL, () -> new CompositeForecastAccelerationProvider(List.of(
+                        () -> new ForecastAccelerationProvider() {
+                            @Override
+                            public Capability capability() {
+                                return new Capability("cuda", Backend.CUDA, true, true, "fixture-gpu", "");
+                            }
+
+                            @Override
+                            public double predictedSpeedup(Request<Forecast> request) {
+                                return 1d;
+                            }
+
+                            @Override
+                            public Result<Forecast> evaluate(Request<Forecast> request) {
+                                throw new NativeProviderException("CUDA", new IllegalStateException("device lost"));
+                            }
+                        },
+                        () -> new ForecastAccelerationProvider() {
+                            @Override
+                            public Capability capability() {
+                                return new Capability("opencl", Backend.OPENCL, true, true, "fixture-opencl", "");
+                            }
+
+                            @Override
+                            public double predictedSpeedup(Request<Forecast> request) {
+                                return 0d;
+                            }
+
+                            @Override
+                            public Result<Forecast> evaluate(Request<Forecast> request) {
+                                return Result.notExecuted(Status.SKIPPED, Backend.OPENCL,
+                                        new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl", "below threshold"));
+                            }
+                        }))));
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        int end = forecast.getBarSeries().getEndIndex();
+        Request<Forecast> request = new Request<>(forecast, end - 1, end);
+
+        Result<Forecast> first = new CliIndicatorAccelerationService().evaluate(request);
+        assertThat(first.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_FAILURE);
+
+        Result<Forecast> second = new CliIndicatorAccelerationService().evaluate(request);
+        assertThat(second.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_FAILURE);
+        assertThat(second.diagnostic().detail()).contains("quarantined");
     }
 
     @Test

@@ -37,6 +37,7 @@ public final class CliIndicatorAccelerationService implements Provider {
     private static final Map<String, String> QUARANTINED_PROVIDERS = new ConcurrentHashMap<>();
     private static final ThreadLocal<String> QUALIFICATION_PROVIDER = ThreadLocal.withInitial(() -> "");
     private static final ThreadLocal<ForecastAccelerationProvider> TEST_PROVIDER = new ThreadLocal<>();
+    private static final ThreadLocal<Supplier<ProviderSelection>> TEST_SELECTION = new ThreadLocal<>();
 
     /**
      * Creates a lazy provider service.
@@ -107,6 +108,7 @@ public final class CliIndicatorAccelerationService implements Provider {
         QUARANTINED_PROVIDERS.clear();
         QUALIFICATION_PROVIDER.remove();
         TEST_PROVIDER.remove();
+        TEST_SELECTION.remove();
     }
 
     static void useQualificationProviderForTests(String providerId) {
@@ -117,7 +119,15 @@ public final class CliIndicatorAccelerationService implements Provider {
         TEST_PROVIDER.set(provider);
     }
 
+    static void useProviderSelectionForTests(Supplier<ProviderSelection> selection) {
+        TEST_SELECTION.set(selection);
+    }
+
     private static ProviderSelection providerSelection() {
+        Supplier<ProviderSelection> testSelection = TEST_SELECTION.get();
+        if (testSelection != null) {
+            return testSelection.get();
+        }
         ForecastAccelerationProvider testProvider = TEST_PROVIDER.get();
         if (testProvider != null) {
             Capability capability = testProvider.capability();
@@ -160,7 +170,7 @@ public final class CliIndicatorAccelerationService implements Provider {
         return new Result<>(status, backend, List.of(), false, 0L, new Diagnostic(code, providerId, detail));
     }
 
-    private record ProviderSelection(String providerId, Backend backend,
+    record ProviderSelection(String providerId, Backend backend,
             Supplier<ForecastAccelerationProvider> provider) {
     }
 }
