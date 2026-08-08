@@ -16,6 +16,9 @@
 - **Return estimators share one validated moment component**: Added minimal `ForecastState` lifecycle, composable `ReturnMomentState` and `ReturnMoments`, canonical variance-derived volatility, and typed `ReturnForecastStateIndicator<S>` composition for EWMA and richer state models.
 - **Summary-only price conversion is explicit**: Added `LognormalApproximationPriceForecastIndicator` for operators who intentionally want one coherent moment-matched analytic price distribution.
 
+### Removed
+- **0.24.0 deprecation cleanup**: Removed the scheduled compatibility shims for the moved drawdown criteria, `MACDVIndicator`, and legacy Gson JSON serialization types. Use `org.ta4j.core.criteria.drawdown.*`, `org.ta4j.core.indicators.macd.MACDVIndicator`, and `JsonFileBarSeriesDataSource` instead.
+
 ### Changed
 - **AI release scheduling now uses direct OpenAI Responses API inference**: `release-scheduler.yml` no longer depends on the retired GitHub Models service; it preflights the exact `gpt-5.6-luna` model, sends the existing SemVer dossier with reasoning effort `high`, disables provider-side response storage, omits reasoning output from audit artifacts, and records provider-aware request and failure diagnostics while preserving probe/full/skip and dry-run safety. Manual dispatches now default to `aiMode=full` after the validated probe rollout.
 - **Test runtime guidance now protects the contributor feedback loop**: Maintainers are directed to track the Surefire top five, iterate with focused module tests without repeated `clean`, keep `BarSeries` and fold fixtures minimal, reuse immutable parsed data, and retain only one exhaustive sweep per behavior.
