@@ -6,7 +6,9 @@ package org.ta4j.core.indicators.forecast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.SplittableRandom;
 import java.util.TreeSet;
+import java.util.random.RandomGenerator;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -19,6 +21,14 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 final class MonteCarloSimulation {
+
+    /**
+     * Selects the forecast RNG stream. Version {@code 0} restores the historical
+     * shared {@link SplittableRandom} stream seeded per decision (values produced
+     * by releases before 0.23.1); version {@code 1} (default) uses the
+     * deterministic per-path stream required for native parity.
+     */
+    static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
     private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
     private final ReturnIndicator returnIndicator;
@@ -57,23 +67,27 @@ final class MonteCarloSimulation {
 
         ShockSampler sampler = ShockSampler.create(settings.shockModel(), historicalReturns, state, numFactory);
         List<Num> terminalValues = new ArrayList<>(settings.iterationCount());
-        for (int iteration = 0; iteration < settings.iterationCount(); iteration++) {
-            DeterministicRandom random = DeterministicRandom.forPath(settings.seed(), index, settings.horizon(),
-                    iteration);
-            Num cumulativeReturn = simulatePath(random, sampler, state, numFactory);
-            if (!Num.isFinite(cumulativeReturn)) {
-                return Forecast.unstable(index, settings.horizon());
+        if (legacyStreamRequested()) {
+            RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
+            for (int iteration = 0; iteration < settings.iterationCount(); iteration++) {
+                Num cumulativeReturn = simulatePath(random, sampler, state, numFactory);
+                Num terminalValue = terminalValue(cumulativeReturn, mapper);
+                if (terminalValue == null) {
+                    return Forecast.unstable(index, settings.horizon());
+                }
+                terminalValues.add(terminalValue);
             }
-            Num terminalValue;
-            try {
-                terminalValue = mapper.map(cumulativeReturn);
-            } catch (ArithmeticException exception) {
-                return Forecast.unstable(index, settings.horizon());
+        } else {
+            for (int iteration = 0; iteration < settings.iterationCount(); iteration++) {
+                DeterministicRandom random = DeterministicRandom.forPath(settings.seed(), index, settings.horizon(),
+                        iteration);
+                Num cumulativeReturn = simulatePath(random, sampler, state, numFactory);
+                Num terminalValue = terminalValue(cumulativeReturn, mapper);
+                if (terminalValue == null) {
+                    return Forecast.unstable(index, settings.horizon());
+                }
+                terminalValues.add(terminalValue);
             }
-            if (!Num.isFinite(terminalValue)) {
-                return Forecast.unstable(index, settings.horizon());
-            }
-            terminalValues.add(terminalValue);
         }
         return Forecast.ofSamples(index, settings.horizon(), terminalValues, settings.quantileProbabilities());
     }
@@ -85,6 +99,36 @@ final class MonteCarloSimulation {
 
     int getHorizon() {
         return settings.horizon();
+    }
+
+    private static boolean legacyStreamRequested() {
+        String configured = System.getProperty(RNG_VERSION_PROPERTY);
+        if (configured == null || configured.isBlank()) {
+            return false;
+        }
+        return "0".equals(configured.trim());
+    }
+
+    private static Num terminalValue(Num cumulativeReturn, TerminalValueMapper mapper) {
+        if (!Num.isFinite(cumulativeReturn)) {
+            return null;
+        }
+        Num terminalValue;
+        try {
+            terminalValue = mapper.map(cumulativeReturn);
+        } catch (ArithmeticException exception) {
+            return null;
+        }
+        return Num.isFinite(terminalValue) ? terminalValue : null;
+    }
+
+    private static long mixSeed(long seed, int index, int horizon) {
+        long value = seed;
+        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
+        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
+        value ^= 0x1C69B3F74AC4AE35L + horizon;
+        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
+        return value ^ value >>> 33;
     }
 
     private List<Num> historicalReturns(int index, NumFactory numFactory) {
@@ -104,7 +148,7 @@ final class MonteCarloSimulation {
         return values;
     }
 
-    private Num simulatePath(DeterministicRandom random, ShockSampler sampler, ProjectionState startingState,
+    private Num simulatePath(RandomGenerator random, ShockSampler sampler, ProjectionState startingState,
             NumFactory numFactory) {
         Num cumulativeReturn = numFactory.zero();
         Num drift = startingState.drift();
@@ -156,7 +200,7 @@ final class MonteCarloSimulation {
         Num map(Num cumulativeReturn);
     }
 
-    static final class DeterministicRandom {
+    static final class DeterministicRandom implements RandomGenerator {
 
         private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
         private static final double DOUBLE_UNIT = 0x1.0p-53;
@@ -184,7 +228,8 @@ final class MonteCarloSimulation {
             return new DeterministicRandom(value);
         }
 
-        int nextInt(int bound) {
+        @Override
+        public int nextInt(int bound) {
             if (bound <= 0) {
                 throw new IllegalArgumentException("bound must be > 0");
             }
@@ -197,18 +242,36 @@ final class MonteCarloSimulation {
             return (int) remainder;
         }
 
-        double nextGaussian() {
+        @Override
+        public double nextGaussian() {
             double radius = Math.sqrt(-2d * Math.log(1d - nextDouble()));
             return radius * Math.cos(2d * Math.PI * nextDouble());
         }
 
-        private double nextDouble() {
+        @Override
+        public int nextInt() {
+            return (int) nextLong();
+        }
+
+        @Override
+        public long nextLong() {
+            state += GOLDEN_GAMMA;
+            return mix64(state);
+        }
+
+        @Override
+        public double nextDouble() {
             return (nextLong() >>> 11) * DOUBLE_UNIT;
         }
 
-        private long nextLong() {
-            state += GOLDEN_GAMMA;
-            return mix64(state);
+        @Override
+        public float nextFloat() {
+            return (float) nextDouble();
+        }
+
+        @Override
+        public boolean nextBoolean() {
+            return nextLong() < 0L;
         }
 
         private static long mix64(long value) {
@@ -237,7 +300,7 @@ final class MonteCarloSimulation {
 
     @FunctionalInterface
     private interface ShockSampler {
-        Num sample(DeterministicRandom random);
+        Num sample(RandomGenerator random);
 
         static ShockSampler create(MonteCarloReturnProjectionIndicator.ShockModel model, List<Num> historicalReturns,
                 ProjectionState state, NumFactory numFactory) {
