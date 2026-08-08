@@ -38,6 +38,7 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
     }
 
     @Override
+    @SuppressWarnings("EI_EXPOSE_REP") // readOnlySeries is a read-only wrapper; sharing it is the documented contract
     public BarSeries getBarSeries() {
         return readOnlySeries;
     }

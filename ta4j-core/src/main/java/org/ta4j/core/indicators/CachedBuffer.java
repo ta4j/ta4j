@@ -123,8 +123,8 @@ class CachedBuffer<T> {
      * @param maximumBarCount the maximum bar count from the series, or
      *                        {@code Integer.MAX_VALUE} for unbounded
      * @return a new empty buffer
-     * @throws IllegalArgumentException when {@code maximumBarCount} is not
-     *                                  strictly positive
+     * @throws IllegalArgumentException when {@code maximumBarCount} is not strictly
+     *                                  positive
      */
     static <T> CachedBuffer<T> of(int maximumBarCount) {
         return new CachedBuffer<>(effectiveMaximumCapacity(maximumBarCount));

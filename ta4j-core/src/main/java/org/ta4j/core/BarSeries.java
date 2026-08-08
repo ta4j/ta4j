@@ -161,10 +161,10 @@ public interface BarSeries extends Serializable {
      * retain the legacy best-effort cache behavior.
      *
      * <p>
-     * The returned components must describe one coherent point in time. The
-     * default implementation reads the series state through several separate
-     * calls, so implementations whose state can change concurrently must override
-     * this method and build the snapshot while holding their own lock.
+     * The returned components must describe one coherent point in time. The default
+     * implementation reads the series state through several separate calls, so
+     * implementations whose state can change concurrently must override this method
+     * and build the snapshot while holding their own lock.
      *
      * @param sinceRevision last revision observed by the caller
      * @return current change snapshot
