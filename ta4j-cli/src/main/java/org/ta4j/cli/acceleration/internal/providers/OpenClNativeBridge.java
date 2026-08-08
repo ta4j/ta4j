@@ -45,10 +45,15 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
         if (fields.length != 10) {
             return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "Malformed OpenCL probe metadata");
         }
+        if (!"OK".equals(fields[0])) {
+            // Native failure payloads leave the numeric fields empty; the last
+            // field carries the actionable detail and must be surfaced as-is.
+            return new OpenClProbeResult(false, fields[1], 0, 0, 0L, 0L, 0, 0, false, fields[9]);
+        }
         try {
-            return new OpenClProbeResult("OK".equals(fields[0]), fields[1], Integer.parseInt(fields[2]),
-                    Integer.parseInt(fields[3]), Long.parseLong(fields[4]), Long.parseLong(fields[5]),
-                    Integer.parseInt(fields[6]), Integer.parseInt(fields[7]), "1".equals(fields[8]), fields[9]);
+            return new OpenClProbeResult(true, fields[1], Integer.parseInt(fields[2]), Integer.parseInt(fields[3]),
+                    Long.parseLong(fields[4]), Long.parseLong(fields[5]), Integer.parseInt(fields[6]),
+                    Integer.parseInt(fields[7]), "1".equals(fields[8]), fields[9]);
         } catch (NumberFormatException exception) {
             return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false,
                     "Malformed OpenCL probe number: " + exception.getMessage());

@@ -45,10 +45,15 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
         if (fields.length != 9) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, "Malformed CUDA probe metadata");
         }
+        if (!"OK".equals(fields[0])) {
+            // Native failure payloads leave the numeric fields empty; the last
+            // field carries the actionable detail and must be surfaced as-is.
+            return new CudaProbeResult(false, fields[1], 0, 0, 0L, 0L, 0, 0, fields[8]);
+        }
         try {
-            return new CudaProbeResult("OK".equals(fields[0]), fields[1], Integer.parseInt(fields[2]),
-                    Integer.parseInt(fields[3]), Long.parseLong(fields[4]), Long.parseLong(fields[5]),
-                    Integer.parseInt(fields[6]), Integer.parseInt(fields[7]), fields[8]);
+            return new CudaProbeResult(true, fields[1], Integer.parseInt(fields[2]), Integer.parseInt(fields[3]),
+                    Long.parseLong(fields[4]), Long.parseLong(fields[5]), Integer.parseInt(fields[6]),
+                    Integer.parseInt(fields[7]), fields[8]);
         } catch (NumberFormatException exception) {
             return new CudaProbeResult(false, "", 0, 0, 0L, 0L, 0, 0,
                     "Malformed CUDA probe number: " + exception.getMessage());
