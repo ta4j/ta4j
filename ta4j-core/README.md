@@ -94,6 +94,43 @@ Example workflow: score `NetMomentumIndicator` zero crossings against causal
 `ZigZagPivotHighIndicator` / `ZigZagPivotLowIndicator` confirmation events
 (see `ta4jexamples.analysis.EventSynchronizationExample`).
 
+## Measure lead/lag, shape, and event dependence
+
+Three complementary analyzers under `org.ta4j.core.indicators.statistics` and
+`org.ta4j.core.analysis.event` answer relationship questions the rolling
+indicators leave open:
+
+- **Lead/lag structure over a lag range** — `LeadLagCorrelationAnalyzer`
+  scans an inclusive lag range and returns a full `LagCorrelationProfile`
+  (one `LagCorrelationPoint` per lag, undefined lags retained), every lag
+  tying for the best score, and one deterministic selected lag (smallest
+  absolute, then smallest signed). The lag sign convention matches
+  `LaggedCorrelationIndicator`: positive means the first indicator leads the
+  second. Selection policy picks the maximum signed or maximum absolute
+  correlation; the selected correlation always keeps its original sign.
+- **Shape similarity under time distortion** —
+  `DynamicTimeWarpingDistanceIndicator` computes the minimum-cost monotonic
+  alignment between two rolling windows. The default configuration compares
+  shapes (z-score normalization, squared local distance) inside a bounded
+  Sakoe–Chiba band with path-length normalization; unconstrained warping is
+  an explicit opt-in. A zero radius reduces the distance to the pointwise
+  local distance. Complexity is `O(W * min(W, 2r + 1))` time and `O(W)`
+  memory for window `W` and radius `r`.
+- **Continuous predictor vs sparse future event** —
+  `EventMutualInformationEvaluator` measures how much a continuous indicator
+  state reduces uncertainty about whether a target event occurs in an
+  explicit `[start, end]` future bar window. It reports raw MI (nats), target
+  entropy, normalized MI (`MI / H(Y)`), event prevalence, and bin
+  diagnostics. Equal-frequency binning never splits tied predictor values;
+  a non-finite sample makes the result undefined instead of silently
+  dropping data, and target windows never cross the evaluation partition
+  boundary (no look-ahead into validation).
+
+These tools describe association, not causation. The deterministic
+cross-capability demo `ta4jexamples.analysis.LeadLagDtwEventAnalysisExample`
+shows Net Momentum versus close price through all three lenses on a
+synthetic series.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
