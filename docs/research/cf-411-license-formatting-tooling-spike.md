@@ -269,13 +269,11 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"
 SPIKE_SOURCE_ROOT=$(git rev-parse --show-toplevel)
 java_version=$(java --version | awk 'NR == 1 {print $2}')
-maven_version=$("$SPIKE_SOURCE_ROOT/mvnw" --version | awk 'NR == 1 {print $3}')
 architecture=$(uname -m)
 if [[ "$java_version" != 25.0.4 ]] \
-  || [[ "$maven_version" != 3.9.16 ]] \
   || [[ "$architecture" != arm64 ]]; then
-  printf 'Expected OpenJDK 25.0.4, Maven 3.9.16, and arm64; got %s, %s, and %s\n' \
-    "$java_version" "$maven_version" "$architecture" >&2
+  printf 'Expected OpenJDK 25.0.4 and arm64; got %s and %s\n' \
+    "$java_version" "$architecture" >&2
   exit 1
 fi
 : "${CF411_RESULTS_FILE:?Set CF411_RESULTS_FILE to a new absolute CSV path}"
@@ -296,7 +294,6 @@ if [[ "$CF411_RESULTS_FILE" == "$SPIKE_ROOT"/* ]]; then
 fi
 mkdir -p "$(dirname "$CF411_RESULTS_FILE")"
 RESULTS_FILE=$CF411_RESULTS_FILE
-printf 'candidate,operation,repeat,wall_seconds,exit_code\n' >"$RESULTS_FILE"
 cleanup_spike() {
   if [[ "${SPIKE_ROOT:-}" == /tmp/cf411-formatting-spike.* ]]; then
     rm -rf -- "$SPIKE_ROOT"
@@ -305,9 +302,19 @@ cleanup_spike() {
 trap cleanup_spike EXIT
 for candidate in baseline specialist spotless hybrid rat; do
   mkdir -p "$SPIKE_ROOT/$candidate"
-  git archive --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
+  git -C "$SPIKE_SOURCE_ROOT" archive \
+    --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
     | tar -xf - -C "$SPIKE_ROOT/$candidate"
 done
+maven_distribution_version=$(
+  "$SPIKE_ROOT/baseline/mvnw" --version | awk 'NR == 1 {print $3}'
+)
+if [[ "$maven_distribution_version" != 3.9.16 ]]; then
+  printf 'Expected pinned Maven distribution 3.9.16; got %s\n' \
+    "$maven_distribution_version" >&2
+  exit 1
+fi
+printf 'candidate,operation,repeat,wall_seconds,exit_code\n' >"$RESULTS_FILE"
 CF411_UNTOUCHED_JAVA_HASH=$(
   cd "$SPIKE_ROOT/baseline" || exit 1
   find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
