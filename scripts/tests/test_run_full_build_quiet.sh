@@ -84,9 +84,9 @@ if [[ "${FAKE_MAVEN_CAPS:-0}" == "1" ]]; then
 fi
 if [[ "${FAKE_MAVEN_UNFORMATTED:-0}" == "1" ]]; then
   for arg in "$@"; do
-    if [[ "$arg" == "formatter:format" ]]; then
+    if [[ "$arg" == "spotless:apply" ]]; then
       echo formatted > "$FAKE_SOURCE_FILE"
-    elif [[ "$arg" == "formatter:validate" ]]; then
+    elif [[ "$arg" == "spotless:check" ]]; then
     echo "[ERROR] File has not been previously formatted."
     echo "[INFO] BUILD FAILURE"
     exit 8
@@ -161,11 +161,11 @@ test_default_invocation_uses_local_repair_gate() {
   expect_not_contains "$output" "[INFO] BUILD SUCCESS" "script should not print INFO-level Maven success lines"
   expect_file_contains_line "$TMP/maven-args.txt" "clean" "default invocation should clean generated output"
   expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
-  expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
+  expect_file_contains_line "$TMP/maven-args.txt" "spotless:apply" "default invocation should repair formatting"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should pass verify"
   expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless" "default invocation should include hosted non-demo, non-hardware tests"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:check" "default invocation should not duplicate hosted license validation"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:validate" "default invocation should not duplicate hosted format validation"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "spotless:check" "default invocation should not duplicate hosted format validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not add a non-CI lifecycle phase"
 
   finish_test_repo
@@ -255,9 +255,9 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
   expect_contains "$output" "Build: failed" "format validation failure should be summarized"
   expect_file_contains_line "$source_file" "unformatted" "validate-only gate must leave unformatted source unchanged"
   expect_file_contains_line "$TMP/maven-args.txt" "license:check" "validate-only should check license headers"
-  expect_file_contains_line "$TMP/maven-args.txt" "formatter:validate" "validate-only should validate formatting"
+  expect_file_contains_line "$TMP/maven-args.txt" "spotless:check" "validate-only should validate formatting"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:format" "validate-only must not repair license headers"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:format" "validate-only must not repair formatting"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "spotless:apply" "validate-only must not repair formatting"
 
   finish_test_repo
   pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
@@ -499,9 +499,9 @@ test_powershell_entrypoint_classifier_parity() {
 
   local ps1
   ps1="$(<scripts/run-full-build-quiet.ps1)"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"formatter:format\", \"verify\")" "PowerShell local default should repair source"
+  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"spotless:apply\", \"verify\")" "PowerShell local default should repair source"
   expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"formatter:validate\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
+  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"spotless:check\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
 
   if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
     local output

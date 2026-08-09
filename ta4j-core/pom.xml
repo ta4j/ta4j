@@ -27,6 +27,7 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -65,6 +66,21 @@
     </dependencies>
     <build>
         <plugins>
+            <!-- Override parent: header lives in parent dir (avoids CWD dependency when building from workspace root) -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>${project.parent.basedir}/license-header.txt</header>
+                            <includes>
+                                <include>**/*.java</include>
+                            </includes>
+                        </licenseSet>
+                    </licenseSets>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>

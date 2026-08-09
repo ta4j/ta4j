@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+- **Formatting now uses a smaller format-only Spotless stack (`CF-411`)**: Mycila 5.1.1 continues to own license headers, while Spotless 3.9.0 replaces formatter-maven-plugin and applies the existing Eclipse profile through `spotless:apply` / `spotless:check` in local and hosted quality gates.
+- **Cached indicators stay synchronized with moving and revised series**: `CachedIndicator` now consumes exact `BarSeries` change snapshots to invalidate replaced-history tails, discard removed prefixes, and reconcile cache limits changed after indicator construction. Bounded caches also expand backward in place instead of rebuilding their full storage on every reverse read.
 
 ## 0.24.0 (2026-08-08)
 

@@ -19,6 +19,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,6 +54,199 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         Num firstTime = sma.getValue(4);
         Num secondTime = sma.getValue(4);
         assertEquals(firstTime, secondTime);
+    }
+
+    @Test
+    public void readOnlySeriesViewIsStableAndDelegatesChangeSnapshots() {
+        TestIndicator indicator = new TestIndicator(series);
+        BarSeries firstView = indicator.getBarSeries();
+        long initialRevision = firstView.getBarHistoryRevision();
+
+        assertSame(firstView, indicator.getBarSeries());
+        ((BaseBarSeries) series).replaceBar(1, series.getBar(1));
+
+        assertEquals(initialRevision + 1, firstView.getBarHistoryRevision());
+        assertEquals(1, firstView.getBarSeriesChangeSnapshot(initialRevision).earliestChangedIndex());
+    }
+
+    @Test
+    public void nonTerminalReplacementInvalidatesGenericDownstreamTail() {
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        SMAIndicator sma = new SMAIndicator(new ClosePriceIndicator(barSeries), 3);
+        assertNumEquals(3, sma.getValue(3));
+
+        Bar replaced = barSeries.getBar(1);
+        Bar replacement = barSeries.barBuilder()
+                .timePeriod(replaced.getTimePeriod())
+                .endTime(replaced.getEndTime())
+                .openPrice(20)
+                .highPrice(20)
+                .lowPrice(20)
+                .closePrice(20)
+                .volume(replaced.getVolume())
+                .build();
+        barSeries.replaceBar(1, replacement);
+
+        assertNumEquals(9, sma.getValue(3));
+    }
+
+    @Test
+    public void multipleSkippedRevisionsInvalidateFromEarliestChangedIndex() {
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        CountingInvalidatableIndicator indicator = new CountingInvalidatableIndicator(barSeries);
+        indicator.getValue(0);
+        indicator.getValue(1);
+        indicator.getValue(2);
+        indicator.getValue(3);
+
+        barSeries.replaceBar(3, barSeries.getBar(3));
+        barSeries.replaceBar(1, barSeries.getBar(1));
+
+        indicator.getValue(0);
+        indicator.getValue(1);
+        indicator.getValue(2);
+        indicator.getValue(3);
+        assertEquals(7, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void existingIndicatorReconcilesMaximumBarCountChanges() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 1d, 2d, 3d, 4d, 5d)
+                .build();
+        TestIndicator indicator = new TestIndicator(barSeries);
+        for (int i = 0; i <= barSeries.getEndIndex(); i++) {
+            indicator.getValue(i);
+        }
+
+        barSeries.setMaximumBarCount(2);
+        assertNumEquals(4, indicator.getValue(4));
+        assertNumEquals(5, indicator.getValue(5));
+
+        barSeries.setMaximumBarCount(4);
+        Bar lastBar = barSeries.getLastBar();
+        barSeries.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(6)
+                .add();
+        assertNumEquals(6, indicator.getValue(6));
+    }
+
+    @Test
+    public void concurrentSnapshotSynchronizationRetriesAfterLosingObservationRace() throws Exception {
+        BarSeries source = new MockBarSeriesBuilder().withData(0d, 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d).build();
+        RacingSnapshotSeries barSeries = new RacingSnapshotSeries(source.getBarData());
+        TestIndicator indicator = new TestIndicator(barSeries);
+        for (int i = 0; i < barSeries.getEndIndex(); i++) {
+            indicator.getValue(i);
+        }
+
+        barSeries.prepareBlockedSnapshot(8);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Num> olderSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
+            assertTrue("Older snapshot was not captured", barSeries.awaitBlockedSnapshot());
+
+            barSeries.setSnapshotMaximumBarCount(2);
+            Future<Num> newerSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
+            assertNumEquals(9, newerSnapshotRead.get(30, TimeUnit.SECONDS));
+
+            barSeries.releaseBlockedSnapshot();
+            assertNumEquals(9, olderSnapshotRead.get(30, TimeUnit.SECONDS));
+        } finally {
+            barSeries.releaseBlockedSnapshot();
+            executor.shutdownNow();
+        }
+
+        indicator.getValue(6);
+        assertEquals(6, indicator.getCache().getFirstCachedIndex());
+        assertEquals(7, indicator.getCache().getHighestResultIndex());
+    }
+
+    @Test
+    public void recursiveIndicatorRewindsBeforeIterativePrefill() {
+        double[] data = new double[200];
+        Arrays.fill(data, 1d);
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(data)
+                .build();
+        SelfReferencingIndicator indicator = new SelfReferencingIndicator(barSeries);
+        assertNumEquals(200, indicator.getValue(199));
+        assertEquals(200, indicator.getCalculationCount());
+
+        barSeries.replaceBar(50, barSeries.getBar(50));
+
+        assertNumEquals(200, indicator.getValue(199));
+        assertEquals(350, indicator.getCalculationCount());
+    }
+
+    @Test
+    public void mutatedLastBarIsRecomputedAfterItBecomesHistorical() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        assertNumEquals(3, closePrice.getValue(2));
+
+        barSeries.addPrice(30);
+        Bar lastBar = barSeries.getLastBar();
+        barSeries.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime().plus(lastBar.getTimePeriod()))
+                .closePrice(4)
+                .add();
+
+        assertNumEquals(30, closePrice.getValue(2));
+    }
+
+    @Test
+    public void firstBarValueRefreshesWhenFirstRetainedBarIsReplaced() {
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        barSeries.setMaximumBarCount(3);
+        // Removed bars: 0,1 -> first retained bar index is 2 with close price 3
+        assertEquals(2, barSeries.getRemovedBarsCount());
+        FirstBarReadingIndicator indicator = new FirstBarReadingIndicator(barSeries);
+        assertNumEquals(3, indicator.getValue(0));
+
+        // Replace the first retained bar (index 2) with a new close price of 30.
+        Bar replaced = barSeries.getBar(2);
+        Bar replacement = barSeries.barBuilder()
+                .timePeriod(replaced.getTimePeriod())
+                .endTime(replaced.getEndTime())
+                .openPrice(30)
+                .highPrice(30)
+                .lowPrice(30)
+                .closePrice(30)
+                .volume(replaced.getVolume())
+                .build();
+        barSeries.replaceBar(2, replacement);
+
+        // The pruned index 0 maps to the first retained bar, whose value changed.
+        assertNumEquals(30, indicator.getValue(0));
+        int countAfterFirstBarRefresh = indicator.getCalculationCount();
+
+        // Negative control: replacing a bar above the first retained index must
+        // keep the cached first-bar value valid (no recomputation needed), so the
+        // first-bar cache must NOT be cleared for unrelated changes.
+        Bar aboveReplaced = barSeries.getBar(3);
+        Bar aboveReplacement = barSeries.barBuilder()
+                .timePeriod(aboveReplaced.getTimePeriod())
+                .endTime(aboveReplaced.getEndTime())
+                .openPrice(40)
+                .highPrice(40)
+                .lowPrice(40)
+                .closePrice(40)
+                .volume(aboveReplaced.getVolume())
+                .build();
+        barSeries.replaceBar(3, aboveReplacement);
+
+        assertNumEquals(30, indicator.getValue(0));
+        assertEquals(countAfterFirstBarRefresh, indicator.getCalculationCount());
     }
 
     @Test // should be not null
@@ -1151,6 +1345,79 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getHighestResultIndex() {
             return highestResultIndex;
+        }
+    }
+
+    private static final class RacingSnapshotSeries extends BaseBarSeries {
+
+        private final AtomicBoolean blockNextSnapshot = new AtomicBoolean();
+        private final CountDownLatch snapshotBlocked = new CountDownLatch(1);
+        private final CountDownLatch releaseSnapshot = new CountDownLatch(1);
+        private volatile int snapshotMaximumBarCount = Integer.MAX_VALUE;
+        private volatile int blockTriggerMaximumBarCount = -1;
+
+        private RacingSnapshotSeries(List<Bar> bars) {
+            super("racing-snapshot", bars);
+        }
+
+        private void prepareBlockedSnapshot(int maximumBarCount) {
+            snapshotMaximumBarCount = maximumBarCount;
+            blockTriggerMaximumBarCount = maximumBarCount;
+            blockNextSnapshot.set(true);
+        }
+
+        private boolean awaitBlockedSnapshot() throws InterruptedException {
+            return snapshotBlocked.await(30, TimeUnit.SECONDS);
+        }
+
+        private void releaseBlockedSnapshot() {
+            releaseSnapshot.countDown();
+        }
+
+        private void setSnapshotMaximumBarCount(int maximumBarCount) {
+            snapshotMaximumBarCount = maximumBarCount;
+        }
+
+        @Override
+        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+            BarSeriesChangeSnapshot snapshot = super.getBarSeriesChangeSnapshot(sinceRevision);
+            int maximumBarCount = snapshotMaximumBarCount;
+            if (maximumBarCount == blockTriggerMaximumBarCount && blockNextSnapshot.compareAndSet(true, false)) {
+                snapshotBlocked.countDown();
+                try {
+                    assertTrue("Timed out waiting to release older snapshot",
+                            releaseSnapshot.await(30, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    fail("Interrupted while waiting to release older snapshot");
+                }
+            }
+            return new BarSeriesChangeSnapshot(snapshot.revision(), snapshot.earliestChangedIndex(),
+                    snapshot.removedThroughIndex(), maximumBarCount, snapshot.endIndex());
+        }
+    }
+
+    private static final class FirstBarReadingIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculationCount = new AtomicInteger();
+
+        private FirstBarReadingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculationCount.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        int getCalculationCount() {
+            return calculationCount.get();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
         }
     }
 
