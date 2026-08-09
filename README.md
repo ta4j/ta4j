@@ -456,14 +456,14 @@ The repository requires Java 25+ and includes Maven Wrapper scripts pinned to Ma
 
 - Standard wrapper: use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or system Maven 3.9+ intentionally.
 - Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`.
-- Maven-only repair and verification: `./mvnw -B clean license:format formatter:format verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- CI-equivalent validation: `./mvnw -B clean license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- Focused formatting repair: `./mvnw -B license:format formatter:format`
+- Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- CI-equivalent validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- Focused formatting repair: `./mvnw -B license:format spotless:apply`
 - SpotBugs gate: `./mvnw -pl ta4j-core -am clean compile spotbugs:check`
 - JaCoCo gate: `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
 - Focused coverage report: `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report`
 
-Run the full quality path before opening or updating a pull request and review any license-header or formatting repairs before committing them.
+Run the full quality path before opening or updating a pull request and review any license-header or formatting repairs before committing them. Eclipse users can import `code-formatter.xml`; IntelliJ users should use an Eclipse-format-profile integration. Maven remains the authoritative formatter entrypoint.
 
 </details>
 
