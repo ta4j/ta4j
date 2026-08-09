@@ -70,14 +70,14 @@ Spotless and the current formatter both normalized the CRLF fixture to the repos
 
 ## Runtime results
 
-Wall-clock seconds; lower is better. Full-reactor rows are two independent `clean ... verify` runs. Focused rows report the median of repeated warm runs.
+Wall-clock seconds; lower is better. Full-reactor rows are two independent `clean ... verify` runs. Idempotent repair and validation rows report the median of repeated post-repair runs; dirty repair is the first repair of the deliberately malformed corpus.
 
-| Candidate | Warm repair | Warm validation | Full-reactor range | Full-reactor median | Versus baseline |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Mycila 5.0.0 + formatter 2.29.0 | 2.85 | 2.04 | 67.78–75.12 | 71.45 | Baseline |
-| Mycila 5.1.1 + formatter 2.29.0 | 2.99 | 2.05 | 77.34–93.33 | 85.34 | +19.4% |
-| Spotless 3.9.0 consolidated | 2.03 | 1.56 | 58.77–58.99 | 58.88 | -17.6%, but with churn |
-| Mycila 5.1.1 + Spotless format-only | 1.62 | 1.31 | 62.79–64.10 | 63.45 | -11.2%, byte-identical |
+| Candidate | Dirty repair | Idempotent repair | Warm validation | Full-reactor range | Full-reactor median | Versus baseline |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Mycila 5.0.0 + formatter 2.29.0 | 4.32 | 2.85 | 2.04 | 67.78–75.12 | 71.45 | Baseline |
+| Mycila 5.1.1 + formatter 2.29.0 | 5.02 | 2.99 | 2.05 | 77.34–93.33 | 85.34 | +19.4% |
+| Spotless 3.9.0 consolidated | 5.78 | 2.03 | 1.56 | 58.77–58.99 | 58.88 | -17.6%, but with churn |
+| Mycila 5.1.1 + Spotless format-only | 2.33 | 1.62 | 1.31 | 62.79–64.10 | 63.45 | -11.2%, byte-identical |
 
 The specialist full-gate variance is too large to attribute to Mycila itself; its focused results are effectively equal to the baseline. The Spotless-backed candidates consistently reduce formatter overhead. With only two full-reactor repetitions, these values are directional rather than a general performance guarantee.
 
@@ -179,6 +179,91 @@ Rollback is a single configuration/command-map revert: restore formatter-maven-p
 ## Reproduction commands
 
 Candidate copies were built from `git archive 6d8f05a2e63512bf1b84568594165b4100293bfc`. With `JAVA_HOME` set to Homebrew OpenJDK 25, the decisive commands were:
+
+### Exact candidate construction
+
+Create four independent copies from the pinned baseline:
+
+```bash
+SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
+for candidate in baseline specialist spotless hybrid; do
+  mkdir -p "$SPIKE_ROOT/$candidate"
+  git archive --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
+    | tar -xf - -C "$SPIKE_ROOT/$candidate"
+done
+```
+
+Leave `baseline` unchanged. In `specialist/pom.xml`, change only Mycila's version from 5.0.0 to 5.1.1.
+
+In the disposable `spotless` copy, leave the current plugins present but invoke only Spotless goals; because neither current plugin has a lifecycle execution, this isolates the candidate behavior without changing the benchmark path. Add `spotless-license-header.txt` at the repository root with the following exact content because Spotless does not wrap ta4j's existing raw `license-header.txt` in a Java block comment:
+
+```text
+/*
+ * SPDX-License-Identifier: MIT
+ */
+```
+
+Add this plugin alongside the existing plugins:
+
+```xml
+<plugin>
+    <groupId>com.diffplug.spotless</groupId>
+    <artifactId>spotless-maven-plugin</artifactId>
+    <version>3.9.0</version>
+    <configuration>
+        <java>
+            <eclipse>
+                <version>4.37</version>
+                <file>${maven.multiModuleProjectDirectory}/code-formatter.xml</file>
+            </eclipse>
+            <licenseHeader>
+                <file>${maven.multiModuleProjectDirectory}/spotless-license-header.txt</file>
+            </licenseHeader>
+        </java>
+    </configuration>
+</plugin>
+```
+
+The scored migration removes the two superseded plugins; their presence in this goal-isolation copy does not affect `spotless:apply`, `spotless:check`, or `verify`, and the dependency/advisory table resolves each candidate plugin classpath independently.
+
+In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Do not configure Spotless's `licenseHeader` step.
+
+Apply the same deterministic dirty corpus to each candidate before its rejection and repair trials:
+
+```bash
+for candidate in baseline specialist spotless hybrid; do
+  root="$SPIKE_ROOT/$candidate"
+  sed -i '' '1,3d' "$root/ta4j-core/src/main/java/org/ta4j/core/Bar.java"
+  perl -0pi -e \
+    's/public interface Bar extends Serializable \{/public   interface Bar extends Serializable\{/' \
+    "$root/ta4j-core/src/main/java/org/ta4j/core/Bar.java"
+  perl -0pi -e \
+    's/public class EMAIndicator extends AbstractEMAIndicator \{/public  class EMAIndicator extends AbstractEMAIndicator\{/' \
+    "$root/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/EMAIndicator.java"
+  perl -pi -e 's/\n/\r\n/g' \
+    "$root/ta4j-core/src/test/java/org/ta4j/core/BarSeriesTest.java"
+done
+```
+
+After repair, calculate the reported aggregate Java-tree hash from each candidate root:
+
+```bash
+find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
+  | LC_ALL=C sort \
+  | xargs shasum -a 256 \
+  | shasum -a 256
+```
+
+The consolidated candidate's differing aggregate hash is fully accounted for by:
+
+```bash
+diff -rq baseline/ta4j-core/src spotless/ta4j-core/src
+diff -u \
+  baseline/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
+  spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java
+```
+
+### Candidate executions
 
 ```bash
 # Current and upgraded-specialist candidates
