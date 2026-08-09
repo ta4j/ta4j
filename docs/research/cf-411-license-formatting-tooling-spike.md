@@ -48,7 +48,7 @@ The deterministic dirty corpus changed representative production and test files:
 - converted `BarSeriesTest.java` to CRLF;
 - retained Javadocs, annotations, imports, multi-module inheritance, and the legacy two-header `TrailingStopLossRuleTest.java` edge case.
 
-For each candidate the trial first proved that non-mutating validation rejected the dirty corpus, then repaired it, compared all Java outputs, ran two idempotent repair repetitions, ran three warm validation repetitions, and ran two clean full-reactor repetitions. The aggregate Java-tree hash for the current, upgraded-specialist, and recommended hybrid outputs was:
+For each formatting candidate the trial first proved that non-mutating validation rejected the dirty corpus, then repaired it, compared all Java outputs, ran two idempotent repair repetitions, ran three warm validation repetitions, and ran two clean full-reactor repetitions. The aggregate Java-tree hash for the current, upgraded-specialist, and recommended hybrid outputs was:
 
 ```text
 902f8eae205ce91a7b1b4cfecf45a6e873dd62e49be3f61726e0b25c317ed506
@@ -182,10 +182,19 @@ Candidate copies were built from `git archive 6d8f05a2e63512bf1b84568594165b4100
 
 ### Exact candidate construction
 
-Create five independent copies from the pinned baseline:
+Run the following Bash blocks in the same shell session. Create five independent copies from the pinned baseline:
 
 ```bash
+set -euo pipefail
+export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
+export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"
 SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
+cleanup_spike() {
+  if [[ "${SPIKE_ROOT:-}" == /tmp/cf411-formatting-spike.* ]]; then
+    rm -rf -- "$SPIKE_ROOT"
+  fi
+}
+trap cleanup_spike EXIT
 for candidate in baseline specialist spotless hybrid rat; do
   mkdir -p "$SPIKE_ROOT/$candidate"
   git archive --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
@@ -258,7 +267,145 @@ for candidate in baseline specialist spotless hybrid; do
 done
 ```
 
-After repair, calculate the reported aggregate Java-tree hash from each formatting candidate root:
+### Candidate executions
+
+The timing helper records wall seconds and exit status for every measured invocation. Expected dirty-corpus failures are accepted only when their logs identify `Bar.java`; unrelated failures stop the script.
+
+```bash
+RESULTS_FILE="$SPIKE_ROOT/runtime-results.tsv"
+printf 'candidate\toperation\trepeat\twall_seconds\texit_code\n' >"$RESULTS_FILE"
+
+measure() {
+  candidate=$1
+  operation=$2
+  repeat=$3
+  shift 3
+  timing_file=$(mktemp "$SPIKE_ROOT/timing.XXXXXX")
+  if /usr/bin/time -p -o "$timing_file" "$@"; then
+    status=0
+  else
+    status=$?
+  fi
+  elapsed=$(awk '$1 == "real" {print $2}' "$timing_file")
+  rm -f -- "$timing_file"
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$candidate" "$operation" "$repeat" "$elapsed" "$status" \
+    | tee -a "$RESULTS_FILE"
+  return "$status"
+}
+
+expect_dirty_failure() {
+  candidate=$1
+  operation=$2
+  repeat=$3
+  expected=$4
+  shift 4
+  log_file=$(mktemp "$SPIKE_ROOT/expected-failure.XXXXXX")
+  if measure "$candidate" "$operation" "$repeat" "$@" >"$log_file" 2>&1; then
+    cat "$log_file" >&2
+    echo "Expected dirty validation to fail for $candidate" >&2
+    exit 1
+  fi
+  if ! rg -q "$expected" "$log_file"; then
+    cat "$log_file" >&2
+    echo "Dirty validation for $candidate failed for an unexpected reason" >&2
+    exit 1
+  fi
+  rm -f -- "$log_file"
+}
+
+# Current and upgraded-specialist candidates
+for candidate in baseline specialist; do
+  (
+    cd "$SPIKE_ROOT/$candidate" || exit 1
+    expect_dirty_failure "$candidate" dirty-license-check 1 'Bar\.java' \
+      ./mvnw -q -B license:check
+    expect_dirty_failure "$candidate" dirty-format-check 1 \
+      'Bar\.java|EMAIndicator\.java|BarSeriesTest\.java' \
+      ./mvnw -q -B formatter:validate
+    measure "$candidate" dirty-repair 1 \
+      ./mvnw -q -B license:format formatter:format
+    for repeat in 1 2; do
+      measure "$candidate" idempotent-repair "$repeat" \
+        ./mvnw -q -B license:format formatter:format
+    done
+    for repeat in 1 2 3; do
+      measure "$candidate" warm-validation "$repeat" \
+        ./mvnw -q -B license:check formatter:validate
+    done
+    for repeat in 1 2; do
+      measure "$candidate" full-reactor "$repeat" \
+        ./mvnw -q -B clean license:check formatter:validate verify \
+        -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+    done
+  )
+done
+
+# Consolidated Spotless candidate
+(
+  cd "$SPIKE_ROOT/spotless" || exit 1
+  expect_dirty_failure spotless dirty-validation 1 'Bar\.java' \
+    ./mvnw -q -B spotless:check
+  measure spotless dirty-repair 1 ./mvnw -q -B spotless:apply
+  for repeat in 1 2; do
+    measure spotless idempotent-repair "$repeat" ./mvnw -q -B spotless:apply
+  done
+  for repeat in 1 2 3; do
+    measure spotless warm-validation "$repeat" ./mvnw -q -B spotless:check
+  done
+  for repeat in 1 2; do
+    measure spotless full-reactor "$repeat" \
+      ./mvnw -q -B clean spotless:check verify \
+      -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+  done
+)
+
+# Recommended hybrid candidate
+(
+  cd "$SPIKE_ROOT/hybrid" || exit 1
+  expect_dirty_failure hybrid dirty-license-check 1 'Bar\.java' \
+    ./mvnw -q -B license:check
+  expect_dirty_failure hybrid dirty-format-check 1 \
+    'Bar\.java|EMAIndicator\.java|BarSeriesTest\.java' \
+    ./mvnw -q -B spotless:check
+  measure hybrid dirty-repair 1 ./mvnw -q -B license:format spotless:apply
+  for repeat in 1 2; do
+    measure hybrid idempotent-repair "$repeat" \
+      ./mvnw -q -B license:format spotless:apply
+  done
+  for repeat in 1 2 3; do
+    measure hybrid warm-validation "$repeat" \
+      ./mvnw -q -B license:check spotless:check
+  done
+  for repeat in 1 2; do
+    measure hybrid full-reactor "$repeat" \
+      ./mvnw -q -B clean license:check spotless:check verify \
+      -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+  done
+)
+
+# RAT's audit-only Java corpus
+(
+  cd "$SPIKE_ROOT/rat" || exit 1
+  measure rat clean-validation 1 ./mvnw -q -B apache-rat:check
+  sed -i '' '1,3d' ta4j-core/src/main/java/org/ta4j/core/Bar.java
+  rat_log="$SPIKE_ROOT/rat-dirty.log"
+  if measure rat dirty-validation 1 ./mvnw -q -B apache-rat:check \
+    >"$rat_log" 2>&1; then
+    cat "$rat_log" >&2
+    echo "Expected RAT to reject the missing Bar.java header" >&2
+    exit 1
+  fi
+  if ! rg -q 'ta4j-core/src/main/java/org/ta4j/core/Bar\.java|Bar\.java' \
+    "$rat_log" target/rat.txt; then
+    cat "$rat_log" >&2
+    echo "RAT failed without reporting the mutated Bar.java" >&2
+    exit 1
+  fi
+)
+```
+
+After the repair and repeated validation runs, calculate the aggregate Java-tree hashes and compare both reactor modules:
 
 ```bash
 for candidate in baseline specialist spotless hybrid; do
@@ -270,63 +417,65 @@ for candidate in baseline specialist spotless hybrid; do
       | shasum -a 256
   )
 done
-```
 
-The consolidated candidate's differing aggregate hash is fully accounted for by:
-
-```bash
 (
   cd "$SPIKE_ROOT" || exit 1
-  diff -rq baseline/ta4j-core/src spotless/ta4j-core/src
+  core_diff="$SPIKE_ROOT/spotless-core.diff"
+  if diff -rq baseline/ta4j-core/src spotless/ta4j-core/src >"$core_diff"; then
+    echo "Expected the consolidated candidate's bounded legacy-header difference" >&2
+    exit 1
+  else
+    diff_status=$?
+  fi
+  if [[ "$diff_status" -ne 1 ]] \
+    || [[ $(wc -l <"$core_diff") -ne 1 ]] \
+    || ! rg -q 'TrailingStopLossRuleTest\.java' "$core_diff"; then
+    cat "$core_diff" >&2
+    echo "Unexpected consolidated candidate core diff" >&2
+    exit 1
+  fi
   diff -rq baseline/ta4j-examples/src spotless/ta4j-examples/src
-  diff -u \
+  if diff -u \
     baseline/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
-    spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java
-)
-```
-
-### Candidate executions
-
-```bash
-# Current and upgraded-specialist candidates
-for candidate in baseline specialist; do
-  (
-    cd "$SPIKE_ROOT/$candidate" || exit 1
-    ./mvnw -q -B license:check formatter:validate
-    ./mvnw -q -B license:format formatter:format
-    ./mvnw -q -B clean license:check formatter:validate verify \
-      -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
-  )
-done
-
-# Consolidated Spotless candidate
-(
-  cd "$SPIKE_ROOT/spotless" || exit 1
-  ./mvnw -q -B spotless:check
-  ./mvnw -q -B spotless:apply
-  ./mvnw -q -B clean spotless:check verify \
-    -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
-)
-
-# Recommended hybrid candidate
-(
-  cd "$SPIKE_ROOT/hybrid" || exit 1
-  ./mvnw -q -B license:check spotless:check
-  ./mvnw -q -B license:format spotless:apply
-  ./mvnw -q -B clean license:check spotless:check verify \
-    -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
-)
-
-# RAT's audit-only Java corpus
-(
-  cd "$SPIKE_ROOT/rat" || exit 1
-  ./mvnw -q -B apache-rat:check
-  sed -i '' '1,3d' ta4j-core/src/main/java/org/ta4j/core/Bar.java
-  if ./mvnw -q -B apache-rat:check; then
-    echo "Expected RAT to reject the missing Bar.java header" >&2
+    spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java; then
+    echo "Expected the detailed legacy-header diff" >&2
+    exit 1
+  elif [[ $? -ne 1 ]]; then
+    echo "Unable to compare the legacy-header outputs" >&2
     exit 1
   fi
 )
+```
+
+Finally, summarize the captured successful timings. The medians and full-reactor ranges printed here are the values transcribed into the runtime table and the checked-in raw-results CSV.
+
+```bash
+python3 - "$RESULTS_FILE" <<'PY'
+import csv
+import statistics
+import sys
+from collections import defaultdict
+
+groups = defaultdict(list)
+with open(sys.argv[1], newline="", encoding="utf-8") as source:
+    for row in csv.DictReader(source, delimiter="\t"):
+        if row["exit_code"] == "0" and row["operation"] in {
+            "dirty-repair", "idempotent-repair", "warm-validation", "full-reactor"
+        }:
+            groups[(row["candidate"], row["operation"])].append(
+                float(row["wall_seconds"])
+            )
+
+for (candidate, operation), values in sorted(groups.items()):
+    print(
+        candidate,
+        operation,
+        f"runs={len(values)}",
+        f"median={statistics.median(values):.2f}",
+        f"range={min(values):.2f}-{max(values):.2f}",
+        sep="\t",
+    )
+PY
 ```
 
 No candidate POM, candidate header, generated output, or repository-wide reformat from the temporary benchmark copies is present in this spike branch.
