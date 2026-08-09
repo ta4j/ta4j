@@ -59,6 +59,34 @@ window is not ready or the statistic is undefined.
 | Does knowing one discretized state reduce uncertainty about another? | `MutualInformationIndicator` | Equal-width bins for v1; reports natural-log mutual information in nats |
 | Does correlation only matter inside a trend, volatility, or custom state? | `RegimeSegmentedCorrelationIndicator` | Filters each rolling window with an `Indicator<Boolean>` regime selector |
 
+## Evaluate sparse events
+
+When events are sparse and near-coincident rather than timestamp-identical,
+Pearson-style correlation is a poor measure. The event-analysis API under
+`org.ta4j.core.analysis.event` scores two Boolean event streams over the same
+series with deterministic one-to-one matching:
+
+- `EventSignal` adapters for `Indicator<Boolean>`, stateless `Rule`, and
+  explicit `IntPredicate` sources (`EventSignals.fromIndicator(...)`,
+  `EventSignals.fromRule(...)`, `EventSignals.fromPredicate(...)`).
+- `EventSynchronizationEvaluator` matches predicted against reference events
+  within asymmetric lead/lag tolerance windows, maximizing matched pairs,
+  then minimizing total absolute lag, then the worst lag, with stable
+  index-based tie-breaking.
+- `EventSynchronizationResult` carries precision, recall, F1, counts, matched
+  pairs with signed offsets, unmatched event indexes, lag summaries, and the
+  applied empty-event policy in one immutable result.
+
+Signed lag convention: `offset = referenceIndex - predictedIndex`; a positive
+offset means the prediction leads the reference, a negative offset means it
+lags. An inclusive `[startIndex, endIndex]` evaluation range isolates training
+and validation windows — events outside the range can never satisfy an
+in-range event.
+
+Example workflow: score `NetMomentumIndicator` zero crossings against causal
+`ZigZagPivotHighIndicator` / `ZigZagPivotLowIndicator` confirmation events
+(see `ta4jexamples.analysis.EventSynchronizationExample`).
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

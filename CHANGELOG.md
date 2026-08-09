@@ -1,5 +1,7 @@
 ## Unreleased
 
+- **Windowed event synchronization and F1 evaluation (`CF-453`)**: Added the `org.ta4j.core.analysis.event` package with `EventSignal` adapters for Boolean indicators, stateless rules, and predicates; an `EventSynchronizationEvaluator` that matches two sparse event streams one-to-one within asymmetric lead/lag tolerance windows (maximum cardinality, then minimum total and worst absolute lag, then deterministic index-ordered ties); and an immutable `EventSynchronizationResult` with precision, recall, F1, match provenance, unmatched indexes, and lag summaries. Explicit inclusive evaluation ranges keep training and validation windows isolated, empty event sets default to undefined metrics so an optimizer cannot game an empty target window, and the Net Momentum × ZigZag confirmation workflow ships as a runnable example with a benchmark fixture over 100,000 bars.
+
 - **Cached indicators stay synchronized with moving and revised series**: `CachedIndicator` now consumes exact `BarSeries` change snapshots to invalidate replaced-history tails, discard removed prefixes, and reconcile cache limits changed after indicator construction. Bounded caches also expand backward in place instead of rebuilding their full storage on every reverse read.
 
 ## 0.24.0 (2026-08-08)
