@@ -1,6 +1,6 @@
 ## Unreleased
 
-- _No changes yet._
+- **Cached indicators stay synchronized with moving and revised series**: `CachedIndicator` now consumes exact `BarSeries` change snapshots to invalidate replaced-history tails, discard removed prefixes, and reconcile cache limits changed after indicator construction. Bounded caches also expand backward in place instead of rebuilding their full storage on every reverse read.
 
 ## 0.24.0 (2026-08-08)
 

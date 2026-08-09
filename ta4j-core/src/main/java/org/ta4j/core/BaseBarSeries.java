@@ -12,7 +12,9 @@ import org.ta4j.core.num.NumFactory;
 
 import java.io.Serial;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,6 +31,7 @@ public class BaseBarSeries implements BarSeries {
 
     @Serial
     private static final long serialVersionUID = -1878027009398790126L;
+    private static final int BAR_HISTORY_CHANGE_CAPACITY = 64;
 
     /**
      * The logger.
@@ -69,6 +72,7 @@ public class BaseBarSeries implements BarSeries {
      */
     private int removedBarsCount = 0;
     private long barHistoryRevision;
+    private transient Deque<BarHistoryChange> barHistoryChanges;
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -174,6 +178,9 @@ public class BaseBarSeries implements BarSeries {
             boolean constrained, NumFactory numFactory, BarBuilderFactory barBuilderFactory) {
     }
 
+    private record BarHistoryChange(long revision, int changedIndex) {
+    }
+
     @Override
     public BaseBarSeries getSubSeries(final int startIndex, final int endIndex) {
         if (startIndex < 0) {
@@ -266,12 +273,23 @@ public class BaseBarSeries implements BarSeries {
     /**
      * {@inheritDoc}
      *
+     * @since 0.24.1
+     */
+    @Override
+    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
+                this.removedBarsCount - 1, this.maximumBarCount, this.seriesEndIndex);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.22.9
      */
     @Override
     public void clear() {
         if (!this.bars.isEmpty()) {
-            this.barHistoryRevision++;
+            recordBarHistoryChange(0);
         }
         this.bars.clear();
         this.seriesBeginIndex = -1;
@@ -332,7 +350,7 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             if (replace) {
                 this.bars.set(this.bars.size() - 1, bar);
-                this.barHistoryRevision++;
+                recordBarHistoryChange(this.seriesEndIndex);
                 return;
             }
             if (this.seriesEndIndex == Integer.MAX_VALUE) {
@@ -385,7 +403,7 @@ public class BaseBarSeries implements BarSeries {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
         this.bars.set(innerIndex, bar);
-        this.barHistoryRevision++;
+        recordBarHistoryChange(index);
     }
 
     @Override
@@ -396,13 +414,44 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
         getLastBar().addTrade(tradeVolume, tradePrice);
-        this.barHistoryRevision++;
+        recordBarHistoryChange(this.seriesEndIndex);
     }
 
     @Override
     public void addPrice(final Num price) {
         getLastBar().addPrice(price);
+        recordBarHistoryChange(this.seriesEndIndex);
+    }
+
+    private void recordBarHistoryChange(final int changedIndex) {
         this.barHistoryRevision++;
+        if (this.barHistoryChanges == null) {
+            this.barHistoryChanges = new ArrayDeque<>(BAR_HISTORY_CHANGE_CAPACITY);
+        } else if (this.barHistoryChanges.size() == BAR_HISTORY_CHANGE_CAPACITY) {
+            this.barHistoryChanges.removeFirst();
+        }
+        this.barHistoryChanges.addLast(new BarHistoryChange(this.barHistoryRevision, changedIndex));
+    }
+
+    private int earliestChangedIndexSince(final long sinceRevision) {
+        if (sinceRevision == this.barHistoryRevision) {
+            return -1;
+        }
+        if (sinceRevision < 0L || sinceRevision > this.barHistoryRevision || this.barHistoryChanges == null
+                || this.barHistoryChanges.isEmpty()) {
+            return 0;
+        }
+        BarHistoryChange oldestChange = this.barHistoryChanges.getFirst();
+        if (sinceRevision < oldestChange.revision() - 1L) {
+            return 0;
+        }
+        int earliestChangedIndex = Integer.MAX_VALUE;
+        for (BarHistoryChange change : this.barHistoryChanges) {
+            if (change.revision() > sinceRevision) {
+                earliestChangedIndex = Math.min(earliestChangedIndex, change.changedIndex());
+            }
+        }
+        return earliestChangedIndex == Integer.MAX_VALUE ? 0 : earliestChangedIndex;
     }
 
     /**
