@@ -14,7 +14,7 @@ Adopt a hybrid in a separately reviewed implementation change:
 2. Replace `net.revelc.code.formatter:formatter-maven-plugin` 2.29.0 with `com.diffplug.spotless:spotless-maven-plugin` 3.9.0, configured only with Eclipse JDT 4.37 and the existing `code-formatter.xml`.
 3. Do not enable Spotless license-header handling and do not add Apache RAT.
 
-This is the best measured path because it is byte-identical to the current stack across all 1,463 tracked Java files, preserves the one legacy full MIT notice, reduces the median Java 25 full-reactor gate from 71.45s to 63.45s (11.2%), reduces warm validation from about 2.0s to about 1.3s, and reduces the statically resolved plugin runtime surface from 65 to 42 artifacts. The spike itself does not migrate production tooling.
+This is the best grounded path because it is byte-identical to the current stack across all 1,463 tracked Java files, preserves the one legacy full MIT notice, and reduces the statically resolved plugin runtime surface from 65 to 42 artifacts. Its observed Java 25 median was 63.45s versus the baseline's 71.45s, but the fixed candidate order shared Maven and operating-system caches, so the 11.2% difference is directional and is not used as causal evidence or as a decision-score advantage. The spike itself does not migrate production tooling.
 
 ## Current state and current releases
 
@@ -40,6 +40,8 @@ The benchmark used isolated tar snapshots of the same baseline, not the delivery
 - Maven Wrapper 3.9.16
 - macOS 26.6.1, Apple Silicon
 - 1,463 tracked Java files in the two-module reactor
+
+The recorded candidates ran once in fixed order—baseline, upgraded specialist, consolidated Spotless, then hybrid—against the same pre-existing Maven cache, without filesystem-cache eviction. Repetitions within each candidate were warm. This controls the source tree and command sequence but not cross-candidate cache state; runtime comparisons are therefore descriptive only. A follow-up performance claim would require a separate counterbalanced or isolated-cache benchmark.
 
 The deterministic dirty corpus changed representative production and test files:
 
@@ -72,14 +74,14 @@ Spotless and the current formatter both normalized the CRLF fixture to the repos
 
 Wall-clock seconds; lower is better. Full-reactor rows are two independent `clean ... verify` runs. Idempotent repair and validation rows report the median of repeated post-repair runs; dirty repair is the first repair of the deliberately malformed corpus.
 
-| Candidate | Dirty repair | Idempotent repair | Warm validation | Full-reactor range | Full-reactor median | Versus baseline |
+| Candidate | Dirty repair | Idempotent repair | Warm validation | Full-reactor range | Full-reactor median | Observed versus baseline |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Mycila 5.0.0 + formatter 2.29.0 | 4.32 | 2.85 | 2.04 | 67.78–75.12 | 71.45 | Baseline |
 | Mycila 5.1.1 + formatter 2.29.0 | 5.02 | 2.99 | 2.05 | 77.34–93.33 | 85.34 | +19.4% |
 | Spotless 3.9.0 consolidated | 5.78 | 2.03 | 1.56 | 58.77–58.99 | 58.88 | -17.6%, but with churn |
 | Mycila 5.1.1 + Spotless format-only | 2.33 | 1.62 | 1.31 | 62.79–64.10 | 63.45 | -11.2%, byte-identical |
 
-The specialist full-gate variance is too large to attribute to Mycila itself; its focused results are effectively equal to the baseline. The Spotless-backed candidates consistently reduce formatter overhead. With only two full-reactor repetitions, these values are directional rather than a general performance guarantee.
+The specialist full-gate variance is too large to attribute to Mycila itself; its focused results are effectively equal to the baseline. Spotless-backed candidates were faster in this fixed-order run, but the hybrid ran after Spotless artifacts and filesystem data had already been warmed. With only two full-reactor repetitions and no counterbalancing, these observations are not a causal performance comparison.
 
 ## Dependency and advisory surface
 
@@ -99,14 +101,14 @@ Spotless provisions the selected Eclipse formatter through its Eclipse/P2 path a
 
 ## Decision matrix
 
-Scores are 1–5. Weighted total is out of 100: behavior parity 30%, migration churn/safety 20%, measured performance 15%, maintenance 15%, dependency/advisory surface 10%, contributor and IDE ergonomics 10%.
+Scores are 1–5. Weighted total is out of 100: behavior parity 30%, migration churn/safety 20%, performance 15%, maintenance 15%, dependency/advisory surface 10%, contributor and IDE ergonomics 10%. Performance is held neutral at 3 for every candidate because the fixed-order shared-cache measurements are order-confounded.
 
 | Candidate | Parity | Safety | Performance | Maintenance | Surface | Ergonomics | Weighted |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Keep pinned stack | 5 | 5 | 3 | 3 | 2 | 4 | 80.0 |
 | Upgrade Mycila, keep formatter | 5 | 5 | 3 | 5 | 2 | 4 | 86.0 |
-| Consolidate fully on Spotless | 4 | 3 | 5 | 5 | 4 | 5 | 84.0 |
-| Mycila 5.1.1 + Spotless format-only | 5 | 5 | 4.5 | 5 | 4 | 4 | **94.5** |
+| Consolidate fully on Spotless | 4 | 3 | 3 | 5 | 4 | 5 | 78.0 |
+| Mycila 5.1.1 + Spotless format-only | 5 | 5 | 3 | 5 | 4 | 4 | **90.0** |
 
 Apache RAT is not scored as a replacement because it is deliberately a heuristic release-audit tool: it neither formats Java nor writes headers. A naive repository-wide RAT configuration also reported 27 unapproved root documentation/configuration files, meaning ta4j would need a separate reviewed audit policy and exclusion set. Adding 49 runtime artifacts and a second licensing concept is not justified by this spike.
 
@@ -169,7 +171,7 @@ Eclipse users can continue importing `code-formatter.xml`; IntelliJ users can co
 
 The follow-up implementation should be deliberately bounded:
 
-1. Change Mycila to 5.1.1, replace formatter-maven-plugin with format-only Spotless, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
+1. Change Mycila to 5.1.1, remove formatter-maven-plugin from the parent and its override from `ta4j-examples/pom.xml`, add format-only Spotless, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
 2. Update the shell and PowerShell quiet-build goals, quality-scan contract fixtures, README, contributing guide, PR template, and any hosted validation references from `formatter:format` / `formatter:validate` to `spotless:apply` / `spotless:check`.
 3. Assert a zero-source-diff migration before committing, then run the canonical Java 25 gate and hosted CI.
 4. Add an `Unreleased` changelog entry because the contributor and maintainer command contract changes.
@@ -236,7 +238,27 @@ Add this plugin alongside the existing plugins:
 
 The scored migration removes the two superseded plugins; their presence in this goal-isolation copy does not affect `spotless:apply`, `spotless:check`, or `verify`, and the dependency/advisory table resolves each candidate plugin classpath independently.
 
-In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Do not configure Spotless's `licenseHeader` step.
+In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Also remove the formatter-maven-plugin override from `hybrid/ta4j-examples/pom.xml`; leaving that child declaration behind would retain a stale or versionless effective plugin. Do not configure Spotless's `licenseHeader` step. Generate effective POMs for the parent and `ta4j-examples`, require Spotless in both, require formatter-maven-plugin in neither, then repeat the isolated plugin-resolution inventory and require the intended 14 Mycila plus 28 Spotless runtime artifacts.
+
+```bash
+(
+  cd "$SPIKE_ROOT/hybrid" || exit 1
+  ./mvnw -q -N help:effective-pom -Doutput=target/effective-parent.xml
+  (
+    cd ta4j-examples || exit 1
+    ../mvnw -q -N help:effective-pom -Doutput=target/effective-examples.xml
+  )
+  for effective_pom in \
+    target/effective-parent.xml \
+    ta4j-examples/target/effective-examples.xml; do
+    rg -q '<artifactId>spotless-maven-plugin</artifactId>' "$effective_pom"
+    if rg -q '<artifactId>formatter-maven-plugin</artifactId>' "$effective_pom"; then
+      echo "Stale formatter-maven-plugin remains in $effective_pom" >&2
+      exit 1
+    fi
+  done
+)
+```
 
 In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputSource` file is an exclusive list of report inputs; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
 
@@ -301,15 +323,56 @@ Apply the same deterministic dirty corpus to each formatting candidate before it
 ```bash
 for candidate in baseline specialist spotless hybrid; do
   root="$SPIKE_ROOT/$candidate"
-  sed -i '' '1,3d' "$root/ta4j-core/src/main/java/org/ta4j/core/Bar.java"
-  perl -0pi -e \
-    's/public interface Bar extends Serializable \{/public   interface Bar extends Serializable\{/' \
-    "$root/ta4j-core/src/main/java/org/ta4j/core/Bar.java"
-  perl -0pi -e \
-    's/public class EMAIndicator extends AbstractEMAIndicator \{/public  class EMAIndicator extends AbstractEMAIndicator\{/' \
-    "$root/ta4j-core/src/main/java/org/ta4j/core/indicators/averages/EMAIndicator.java"
-  perl -pi -e 's/\n/\r\n/g' \
-    "$root/ta4j-core/src/test/java/org/ta4j/core/BarSeriesTest.java"
+  python3 - "$root" <<'PY'
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+bar_path = root / "ta4j-core/src/main/java/org/ta4j/core/Bar.java"
+ema_path = root / "ta4j-core/src/main/java/org/ta4j/core/indicators/averages/EMAIndicator.java"
+series_path = root / "ta4j-core/src/test/java/org/ta4j/core/BarSeriesTest.java"
+
+header = b"/*\n * SPDX-License-Identifier: MIT\n */\n"
+bar = bar_path.read_bytes()
+ema = ema_path.read_bytes()
+series = series_path.read_bytes()
+if not bar.startswith(header):
+    raise SystemExit(f"unexpected Bar.java header in {root}")
+
+def replace_once(data, old, new, label):
+    if data.count(old) != 1:
+        raise SystemExit(f"expected exactly one {label} preimage in {root}")
+    result = data.replace(old, new, 1)
+    if result.count(new) != 1 or old in result:
+        raise SystemExit(f"failed to establish {label} postimage in {root}")
+    return result
+
+dirty_bar = replace_once(
+    bar[len(header):],
+    b"public interface Bar extends Serializable {",
+    b"public   interface Bar extends Serializable{",
+    "Bar.java spacing",
+)
+dirty_ema = replace_once(
+    ema,
+    b"public class EMAIndicator extends AbstractEMAIndicator {",
+    b"public  class EMAIndicator extends AbstractEMAIndicator{",
+    "EMAIndicator.java spacing",
+)
+if b"\r" in series or b"\n" not in series:
+    raise SystemExit(f"BarSeriesTest.java is not the expected LF preimage in {root}")
+dirty_series = series.replace(b"\n", b"\r\n")
+if dirty_series.count(b"\r\n") != series.count(b"\n"):
+    raise SystemExit(f"failed to establish the CRLF postimage in {root}")
+
+bar_path.write_bytes(dirty_bar)
+ema_path.write_bytes(dirty_ema)
+series_path.write_bytes(dirty_series)
+if bar_path.read_bytes() != dirty_bar \
+        or ema_path.read_bytes() != dirty_ema \
+        or series_path.read_bytes() != dirty_series:
+    raise SystemExit(f"dirty-corpus write verification failed in {root}")
+PY
 done
 ```
 
@@ -443,7 +506,17 @@ resources = [node.attrib["name"] for node in ET.parse(sys.argv[1]).getroot().fin
 if len(resources) != 1463 or any(not name.endswith(".java") for name in resources):
     raise SystemExit("RAT report contains an unexpected or non-Java resource")
 PY
-  sed -i '' '1,3d' ta4j-core/src/main/java/org/ta4j/core/Bar.java
+  mv target/rat.txt "$SPIKE_ROOT/rat-clean-report.xml"
+  rat_bar=ta4j-core/src/main/java/org/ta4j/core/Bar.java
+  if [[ $(sed -n '1,3p' "$rat_bar") != $'/*\n * SPDX-License-Identifier: MIT\n */' ]]; then
+    echo "Unexpected RAT Bar.java header preimage" >&2
+    exit 1
+  fi
+  sed -i '' '1,3d' "$rat_bar"
+  if head -n 3 "$rat_bar" | rg -q 'SPDX-License-Identifier'; then
+    echo "RAT Bar.java header removal did not establish the expected postimage" >&2
+    exit 1
+  fi
   rat_log="$SPIKE_ROOT/rat-dirty.log"
   if measure rat dirty-validation 1 \
     ./mvnw -q -N -B org.apache.rat:apache-rat-plugin:0.18:check \
@@ -452,10 +525,11 @@ PY
     echo "Expected RAT to reject the missing Bar.java header" >&2
     exit 1
   fi
-  if ! rg -q 'ta4j-core/src/main/java/org/ta4j/core/Bar\.java|Bar\.java' \
-    "$rat_log" target/rat.txt; then
+  if [[ ! -s target/rat.txt ]] \
+    || ! rg -q 'ta4j-core/src/main/java/org/ta4j/core/Bar\.java|Bar\.java' \
+      target/rat.txt; then
     cat "$rat_log" >&2
-    echo "RAT failed without reporting the mutated Bar.java" >&2
+    echo "RAT did not produce a fresh report for the mutated Bar.java" >&2
     exit 1
   fi
 )
@@ -522,13 +596,34 @@ done
     exit 1
   fi
   diff -rq baseline/ta4j-examples/src spotless/ta4j-examples/src
+  legacy_diff="$SPIKE_ROOT/spotless-legacy-header.diff"
   if diff -u \
     baseline/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
-    spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java; then
+    spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
+    >"$legacy_diff"; then
     echo "Expected the detailed legacy-header diff" >&2
     exit 1
-  elif [[ $? -ne 1 ]]; then
+  else
+    legacy_diff_status=$?
+  fi
+  if [[ "$legacy_diff_status" -ne 1 ]]; then
     echo "Unable to compare the legacy-header outputs" >&2
+    exit 1
+  fi
+  deleted_lines=$(awk \
+    'substr($0, 1, 1) == "-" && substr($0, 1, 3) != "---" {count++} END {print count+0}' \
+    "$legacy_diff")
+  added_lines=$(awk \
+    'substr($0, 1, 1) == "+" && substr($0, 1, 3) != "+++" {count++} END {print count+0}' \
+    "$legacy_diff")
+  removed_hash=$(awk \
+    'substr($0, 1, 1) == "-" && substr($0, 1, 3) != "---" {print substr($0, 2)}' \
+    "$legacy_diff" | shasum -a 256 | awk '{print $1}')
+  if [[ "$deleted_lines" -ne 22 ]] \
+    || [[ "$added_lines" -ne 0 ]] \
+    || [[ "$removed_hash" != 5cb436fd41471c9326522d5e835a49a8dbef5f34e3e432bc2457c56e2fdccbb6 ]]; then
+    cat "$legacy_diff" >&2
+    echo "Consolidated candidate changed more than the exact legacy MIT block" >&2
     exit 1
   fi
 )
