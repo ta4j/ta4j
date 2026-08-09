@@ -441,15 +441,47 @@ for path in sys.argv[2:]:
         for node in plugin.iter()
         if local_name(node) == "header"
     }
+    license_sets = [
+        node
+        for plugin in by_artifact["license-maven-plugin"]
+        for node in plugin.iter()
+        if local_name(node) == "licenseSet"
+    ]
+    if len(license_sets) != 1:
+        raise SystemExit(f"unexpected Mycila licenseSet count in {path}")
+    include_values = [
+        (node.text or "").strip()
+        for node in license_sets[0].iter()
+        if local_name(node) == "include"
+    ]
+    exclude_nodes = [
+        node
+        for node in license_sets[0].iter()
+        if local_name(node) in {"exclude", "excludes"}
+    ]
+    if include_values != ["**/*.java"] or exclude_nodes:
+        raise SystemExit(
+            f"unexpected Mycila source scope in {path}: "
+            f"includes={include_values}, excludes={len(exclude_nodes)}"
+        )
     if path == sys.argv[2]:
         if len(license_headers) != 1 or not next(iter(license_headers)).endswith("/license-header.txt"):
             raise SystemExit(f"unexpected parent Mycila header path in {path}: {license_headers}")
     elif license_headers != {"${project.parent.basedir}/license-header.txt"}:
         raise SystemExit(f"unexpected child Mycila header path in {path}: {license_headers}")
     for plugin in by_artifact["spotless-maven-plugin"]:
-        if any(local_name(node) == "licenseHeader" for node in plugin.iter()):
-            raise SystemExit(f"Spotless owns a licenseHeader step in {path}")
-        eclipse_nodes = [node for node in plugin.iter() if local_name(node) == "eclipse"]
+        java_nodes = [node for node in plugin.iter() if local_name(node) == "java"]
+        if len(java_nodes) != 1:
+            raise SystemExit(f"unexpected Spotless Java configuration count in {path}")
+        java_steps = [local_name(node) for node in java_nodes[0]]
+        if java_steps != ["eclipse"]:
+            raise SystemExit(f"unexpected Spotless Java steps in {path}: {java_steps}")
+        eclipse_nodes = [
+            node for node in java_nodes[0] if local_name(node) == "eclipse"
+        ]
+        eclipse_fields = [local_name(node) for node in eclipse_nodes[0]]
+        if sorted(eclipse_fields) != ["file", "version"]:
+            raise SystemExit(f"unexpected Eclipse formatter fields in {path}: {eclipse_fields}")
         versions = {child_text(node, "version") for node in eclipse_nodes}
         files = {child_text(node, "file") for node in eclipse_nodes}
         if versions != {"4.37"}:
