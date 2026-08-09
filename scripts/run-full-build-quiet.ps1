@@ -304,7 +304,7 @@ function Write-FailureDigest {
     }
 }
 
-$goals = @("clean", "license:format", "formatter:format", "verify")
+$goals = @("clean", "license:format", "spotless:apply", "verify")
 $mavenArgs = @()
 $defaultGate = $true
 $preflightOnly = $false
@@ -355,7 +355,7 @@ if ($validateOnly -and -not $defaultGate) {
 }
 
 if ($validateOnly) {
-    $goals = @("clean", "license:check", "formatter:validate", "verify")
+    $goals = @("clean", "license:check", "spotless:check", "verify")
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

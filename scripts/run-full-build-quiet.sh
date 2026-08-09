@@ -313,7 +313,7 @@ run_repository_preflight() {
     return "$status"
 }
 
-GOALS=(clean license:format formatter:format verify)
+GOALS=(clean license:format spotless:apply verify)
 EXTRA_MAVEN_ARGS=()
 DEFAULT_GATE="true"
 PREFLIGHT_ONLY="false"
@@ -370,7 +370,7 @@ if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
 fi
 
 if [[ "$VALIDATE_ONLY" == "true" ]]; then
-    GOALS=(clean license:check formatter:validate verify)
+    GOALS=(clean license:check spotless:check verify)
 fi
 
 if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
