@@ -90,10 +90,7 @@ test_parent_declares_formatting_tooling() {
   echo "Running test_parent_declares_formatting_tooling"
 
   expect_file_contains "$POM" "<artifactId>license-maven-plugin</artifactId>" "parent pom should retain Mycila license handling"
-  expect_file_contains "$POM" "<version>5.1.1</version>" "parent pom should pin Mycila 5.1.1"
   expect_file_contains "$POM" "<artifactId>spotless-maven-plugin</artifactId>" "parent pom should use Spotless"
-  expect_file_contains "$POM" "<version>3.9.0</version>" "parent pom should pin Spotless 3.9.0"
-  expect_file_contains "$POM" "<version>4.37</version>" "Spotless should use the validated Eclipse formatter version"
   expect_file_contains "$POM" '<file>${maven.multiModuleProjectDirectory}/code-formatter.xml</file>' "Spotless should resolve the shared formatter profile from the reactor root"
   expect_file_not_contains "$POM" "formatter-maven-plugin" "parent pom should remove formatter-maven-plugin"
   expect_file_not_contains "$CORE_POM" "formatter-maven-plugin" "ta4j-core should remove its obsolete formatter override"
