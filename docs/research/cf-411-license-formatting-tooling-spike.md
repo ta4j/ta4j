@@ -228,10 +228,11 @@ Eclipse users can continue importing `code-formatter.xml`; IntelliJ users can co
 
 The follow-up implementation should be deliberately bounded:
 
-1. Change Mycila to 5.1.1, remove formatter-maven-plugin from the parent and its override from `ta4j-examples/pom.xml`, add format-only Spotless, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
-2. Update the shell and PowerShell quiet-build goals, quality-scan contract fixtures, README, contributing guide, PR template, and any hosted validation references from `formatter:format` / `formatter:validate` to `spotless:apply` / `spotless:check`.
-3. Assert a zero-source-diff migration before committing, then run the canonical Java 25 gate and hosted CI.
-4. Add an `Unreleased` changelog entry because the contributor and maintainer command contract changes.
+1. Run `bash scripts/agents_for_target.sh <target>` for every migration target, including `pom.xml` and `ta4j-examples/pom.xml`, and apply all scoped instructions before editing.
+2. Change Mycila to 5.1.1, remove formatter-maven-plugin from the parent and its override from `ta4j-examples/pom.xml`, add format-only Spotless, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
+3. Update the shell and PowerShell quiet-build goals, quality-scan contract fixtures, README, contributing guide, PR template, and any hosted validation references from `formatter:format` / `formatter:validate` to `spotless:apply` / `spotless:check`.
+4. Assert a zero-source-diff migration before committing, then run the canonical Java 25 gate and hosted CI.
+5. Add an `Unreleased` changelog entry because the contributor and maintainer command contract changes.
 
 Rollback is a single configuration/command-map revert: restore formatter-maven-plugin 2.29.0, Mycila 5.0.0 if necessary, and the former formatter goals. Because the proposed migration is byte-identical, rollback requires no source reformat or data migration.
 
@@ -374,6 +375,8 @@ sections = 0
 with open(sys.argv[1], encoding="utf-8") as source:
     for line in source:
         if line.startswith("   ") and not line.startswith("      "):
+            # The header labels a section; its first six-space row is the
+            # plugin JAR itself, followed by the remaining runtime artifacts.
             coordinate = line.strip()
             current = coordinate if coordinate in expected else None
             sections += 1
