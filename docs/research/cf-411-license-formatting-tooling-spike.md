@@ -250,6 +250,32 @@ In `rat/pom.xml`, add the following audit-only plugin configuration. The explici
 </plugin>
 ```
 
+Before mutating the corpus, reproduce the consolidated Spotless candidate's clean-tree incompatibility and require the failure to identify the legacy two-header fixture:
+
+```bash
+(
+  cd "$SPIKE_ROOT/spotless" || exit 1
+  clean_log="$SPIKE_ROOT/spotless-clean.log"
+  clean_timing="$SPIKE_ROOT/spotless-clean.time"
+  if /usr/bin/time -p -o "$clean_timing" ./mvnw -q -B spotless:check \
+    >"$clean_log" 2>&1; then
+    echo "Expected clean Spotless validation to report migration churn" >&2
+    exit 1
+  else
+    clean_status=$?
+  fi
+  if [[ "$clean_status" -ne 1 ]] \
+    || ! rg -q 'TrailingStopLossRuleTest\.java' "$clean_log"; then
+    cat "$clean_log" >&2
+    echo "Clean Spotless validation failed for an unexpected reason" >&2
+    exit 1
+  fi
+  clean_elapsed=$(awk '$1 == "real" {print $2}' "$clean_timing")
+  printf 'spotless\tclean-validation\t1\t%s\t%s\n' \
+    "$clean_elapsed" "$clean_status"
+)
+```
+
 Apply the same deterministic dirty corpus to each formatting candidate before its rejection and repair trials. Keep the `rat` copy clean for its audit-only sequence below.
 
 ```bash
@@ -408,14 +434,33 @@ done
 After the repair and repeated validation runs, calculate the aggregate Java-tree hashes and compare both reactor modules:
 
 ```bash
-for candidate in baseline specialist spotless hybrid; do
-  (
+reported_hash=902f8eae205ce91a7b1b4cfecf45a6e873dd62e49be3f61726e0b25c317ed506
+baseline_hash=
+for candidate in baseline specialist hybrid spotless; do
+  hash=$(
     cd "$SPIKE_ROOT/$candidate" || exit 1
     find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
       | LC_ALL=C sort \
       | xargs shasum -a 256 \
-      | shasum -a 256
+      | shasum -a 256 \
+      | awk '{print $1}'
   )
+  printf '%s\t%s\n' "$candidate" "$hash"
+  case "$candidate" in
+    baseline)
+      baseline_hash=$hash
+      if [[ "$baseline_hash" != "$reported_hash" ]]; then
+        echo "Baseline hash does not match the reported result" >&2
+        exit 1
+      fi
+      ;;
+    specialist|hybrid)
+      if [[ "$hash" != "$baseline_hash" ]]; then
+        echo "$candidate output differs from baseline" >&2
+        exit 1
+      fi
+      ;;
+  esac
 done
 
 (
