@@ -188,6 +188,7 @@ Run the following Bash blocks in the same shell session. Create five independent
 set -euo pipefail
 export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"
+SPIKE_SOURCE_ROOT=$(git rev-parse --show-toplevel)
 SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
 cleanup_spike() {
   if [[ "${SPIKE_ROOT:-}" == /tmp/cf411-formatting-spike.* ]]; then
@@ -237,17 +238,36 @@ The scored migration removes the two superseded plugins; their presence in this 
 
 In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Do not configure Spotless's `licenseHeader` step.
 
-In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputInclude` is what limits the passing result to the Java corpus; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
+In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputSource` file is an exclusive list of report inputs; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
 
 ```xml
 <plugin>
     <groupId>org.apache.rat</groupId>
     <artifactId>apache-rat-plugin</artifactId>
     <version>0.18</version>
+    <inherited>false</inherited>
     <configuration>
-        <inputInclude>**/*.java</inputInclude>
+        <basedir>${maven.multiModuleProjectDirectory}/target/rat-empty</basedir>
+        <inputSource>${maven.multiModuleProjectDirectory}/rat-java-sources.txt</inputSource>
+        <outputStyle>xml</outputStyle>
     </configuration>
 </plugin>
+```
+
+Generate the exclusive input list and reject any scope drift before invoking RAT:
+
+```bash
+(
+  cd "$SPIKE_ROOT/rat" || exit 1
+  find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
+    | LC_ALL=C sort >rat-java-sources.txt
+  mkdir -p target/rat-empty
+  if [[ $(wc -l <rat-java-sources.txt) -ne 1463 ]] \
+    || rg -n -v '\.java$' rat-java-sources.txt; then
+    echo "RAT input list is not the expected Java-only corpus" >&2
+    exit 1
+  fi
+)
 ```
 
 Before mutating the corpus, reproduce the consolidated Spotless candidate's clean-tree incompatibility and require the failure to identify the legacy two-header fixture:
@@ -413,10 +433,20 @@ done
 # RAT's audit-only Java corpus
 (
   cd "$SPIKE_ROOT/rat" || exit 1
-  measure rat clean-validation 1 ./mvnw -q -B apache-rat:check
+  measure rat clean-validation 1 \
+    ./mvnw -q -N -B org.apache.rat:apache-rat-plugin:0.18:check
+  python3 - target/rat.txt <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+resources = [node.attrib["name"] for node in ET.parse(sys.argv[1]).getroot().findall("resource")]
+if len(resources) != 1463 or any(not name.endswith(".java") for name in resources):
+    raise SystemExit("RAT report contains an unexpected or non-Java resource")
+PY
   sed -i '' '1,3d' ta4j-core/src/main/java/org/ta4j/core/Bar.java
   rat_log="$SPIKE_ROOT/rat-dirty.log"
-  if measure rat dirty-validation 1 ./mvnw -q -B apache-rat:check \
+  if measure rat dirty-validation 1 \
+    ./mvnw -q -N -B org.apache.rat:apache-rat-plugin:0.18:check \
     >"$rat_log" 2>&1; then
     cat "$rat_log" >&2
     echo "Expected RAT to reject the missing Bar.java header" >&2
@@ -435,6 +465,18 @@ After the repair and repeated validation runs, calculate the aggregate Java-tree
 
 ```bash
 reported_hash=902f8eae205ce91a7b1b4cfecf45a6e873dd62e49be3f61726e0b25c317ed506
+document_hashes=$(rg -o '^[0-9a-f]{64}$' \
+  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-tooling-spike.md" \
+  | LC_ALL=C sort -u)
+csv_hashes=$(awk -F, \
+  'NR > 1 && $1 != "spotless-3.9.0-consolidated" && $7 != "" {print $7}' \
+  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-results.csv" \
+  | LC_ALL=C sort -u)
+if [[ "$document_hashes" != "$reported_hash" ]] \
+  || [[ "$csv_hashes" != "$reported_hash" ]]; then
+  echo "The report and raw-results CSV disagree on the canonical Java hash" >&2
+  exit 1
+fi
 baseline_hash=
 for candidate in baseline specialist hybrid spotless; do
   hash=$(
