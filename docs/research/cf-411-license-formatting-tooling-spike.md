@@ -50,7 +50,7 @@ The deterministic dirty corpus changed representative production and test files:
 - converted `BarSeriesTest.java` to CRLF;
 - retained Javadocs, annotations, imports, multi-module inheritance, and the legacy two-header `TrailingStopLossRuleTest.java` edge case.
 
-For each formatting candidate the trial first proved that non-mutating validation rejected the dirty corpus, then repaired it, compared all Java outputs, ran two idempotent repair repetitions, ran three warm validation repetitions, and ran two clean full-reactor repetitions. The aggregate Java-tree hash for the current, upgraded-specialist, and recommended hybrid outputs was:
+For each formatting candidate the trial first ran pre-mutation clean validation, then mutated the corpus and proved that non-mutating validation rejected it, repaired it, compared all Java outputs, ran two idempotent repair repetitions, ran three warm validation repetitions, and ran two clean full-reactor repetitions. The aggregate Java-tree hash for the current, upgraded-specialist, and recommended hybrid outputs was:
 
 ```text
 902f8eae205ce91a7b1b4cfecf45a6e873dd62e49be3f61726e0b25c317ed506
@@ -494,7 +494,8 @@ def parse_inventory(name, inventory):
                 parts = line.strip().split(":")
                 if len(parts) < 4:
                     raise SystemExit(f"unexpected dependency coordinate: {line.strip()}")
-                actual_artifacts[current].add((f"{parts[0]}:{parts[1]}", parts[-1]))
+                version = parts[-2] if parts[-1] == "runtime" else parts[-1]
+                actual_artifacts[current].add((f"{parts[0]}:{parts[1]}", version))
                 counts[current] += 1
     if sections == 0:
         raise SystemExit(f"unsupported {name} dependency:resolve-plugins output format")
