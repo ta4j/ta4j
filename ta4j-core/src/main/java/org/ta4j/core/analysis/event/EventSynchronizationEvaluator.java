@@ -347,9 +347,11 @@ public final class EventSynchronizationEvaluator {
                 }
             }
             if (!found) {
-                // Defensive: the DP invariant guarantees an optimal-feasible first
-                // pair whenever the target has at least one pair.
-                break;
+                // The DP invariant guarantees an optimal-feasible first pair
+                // whenever the target has at least one pair; a violation would
+                // silently understate the match counts, so fail loudly.
+                throw new IllegalStateException("matcher invariant violated: no optimal-feasible pair at (" + i + ", "
+                        + j + ") with " + targetPairs + " pairs remaining");
             }
         }
         return matches;

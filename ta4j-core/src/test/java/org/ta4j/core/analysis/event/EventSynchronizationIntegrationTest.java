@@ -141,15 +141,14 @@ class EventSynchronizationIntegrationTest {
         EventSynchronizationResult validation = evaluator.evaluate(highPredictions(series, momentum),
                 EventSignals.fromIndicator(new ZigZagPivotHighIndicator(state)), boundary + 1, BARS - 1, config(5, 12));
 
-        for (EventMatch match : train.matches()) {
-            assertTrue(match.predictedIndex() <= boundary && match.referenceIndex() <= boundary,
-                    "train match must stay inside the training window, but " + match);
-        }
-        for (EventMatch match : validation.matches()) {
-            assertTrue(match.predictedIndex() > boundary && match.referenceIndex() > boundary,
-                    "validation match must stay inside the validation window, but " + match);
-        }
-        assertTrue(validation.matchedCount() >= 1,
-                "expected a validation-side match near the boundary, got " + validation.matches());
+        // The fixture's deterministic split: the training window holds the
+        // (20..80) x (9..69) pairs and the validation window the (120..180) x
+        // (109..169) pairs (offset -11; the crossing at 100 has no eligible
+        // confirmation inside its 5-bar lead window); nothing crosses the
+        // boundary at 98.
+        assertEquals(List.of(new EventMatch(20, 9, -11), new EventMatch(40, 29, -11), new EventMatch(60, 49, -11),
+                new EventMatch(80, 69, -11)), train.matches());
+        assertEquals(List.of(new EventMatch(120, 109, -11), new EventMatch(140, 129, -11),
+                new EventMatch(160, 149, -11), new EventMatch(180, 169, -11)), validation.matches());
     }
 }
