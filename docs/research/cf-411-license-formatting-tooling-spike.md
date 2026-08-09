@@ -182,11 +182,11 @@ Candidate copies were built from `git archive 6d8f05a2e63512bf1b84568594165b4100
 
 ### Exact candidate construction
 
-Create four independent copies from the pinned baseline:
+Create five independent copies from the pinned baseline:
 
 ```bash
 SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
-for candidate in baseline specialist spotless hybrid; do
+for candidate in baseline specialist spotless hybrid rat; do
   mkdir -p "$SPIKE_ROOT/$candidate"
   git archive --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
     | tar -xf - -C "$SPIKE_ROOT/$candidate"
@@ -228,7 +228,20 @@ The scored migration removes the two superseded plugins; their presence in this 
 
 In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Do not configure Spotless's `licenseHeader` step.
 
-Apply the same deterministic dirty corpus to each candidate before its rejection and repair trials:
+In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputInclude` is what limits the passing result to the Java corpus; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
+
+```xml
+<plugin>
+    <groupId>org.apache.rat</groupId>
+    <artifactId>apache-rat-plugin</artifactId>
+    <version>0.18</version>
+    <configuration>
+        <inputInclude>**/*.java</inputInclude>
+    </configuration>
+</plugin>
+```
+
+Apply the same deterministic dirty corpus to each formatting candidate before its rejection and repair trials. Keep the `rat` copy clean for its audit-only sequence below.
 
 ```bash
 for candidate in baseline specialist spotless hybrid; do
@@ -245,47 +258,75 @@ for candidate in baseline specialist spotless hybrid; do
 done
 ```
 
-After repair, calculate the reported aggregate Java-tree hash from each candidate root:
+After repair, calculate the reported aggregate Java-tree hash from each formatting candidate root:
 
 ```bash
-find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
-  | LC_ALL=C sort \
-  | xargs shasum -a 256 \
-  | shasum -a 256
+for candidate in baseline specialist spotless hybrid; do
+  (
+    cd "$SPIKE_ROOT/$candidate" || exit 1
+    find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
+      | LC_ALL=C sort \
+      | xargs shasum -a 256 \
+      | shasum -a 256
+  )
+done
 ```
 
 The consolidated candidate's differing aggregate hash is fully accounted for by:
 
 ```bash
-diff -rq baseline/ta4j-core/src spotless/ta4j-core/src
-diff -u \
-  baseline/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
-  spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java
+(
+  cd "$SPIKE_ROOT" || exit 1
+  diff -rq baseline/ta4j-core/src spotless/ta4j-core/src
+  diff -rq baseline/ta4j-examples/src spotless/ta4j-examples/src
+  diff -u \
+    baseline/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java \
+    spotless/ta4j-core/src/test/java/org/ta4j/core/rules/TrailingStopLossRuleTest.java
+)
 ```
 
 ### Candidate executions
 
 ```bash
 # Current and upgraded-specialist candidates
-./mvnw -q -B license:check formatter:validate
-./mvnw -q -B license:format formatter:format
-./mvnw -q -B clean license:check formatter:validate verify \
-  -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+for candidate in baseline specialist; do
+  (
+    cd "$SPIKE_ROOT/$candidate" || exit 1
+    ./mvnw -q -B license:check formatter:validate
+    ./mvnw -q -B license:format formatter:format
+    ./mvnw -q -B clean license:check formatter:validate verify \
+      -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+  )
+done
 
 # Consolidated Spotless candidate
-./mvnw -q -B spotless:check
-./mvnw -q -B spotless:apply
-./mvnw -q -B clean spotless:check verify \
-  -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+(
+  cd "$SPIKE_ROOT/spotless" || exit 1
+  ./mvnw -q -B spotless:check
+  ./mvnw -q -B spotless:apply
+  ./mvnw -q -B clean spotless:check verify \
+    -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+)
 
 # Recommended hybrid candidate
-./mvnw -q -B license:check spotless:check
-./mvnw -q -B license:format spotless:apply
-./mvnw -q -B clean license:check spotless:check verify \
-  -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+(
+  cd "$SPIKE_ROOT/hybrid" || exit 1
+  ./mvnw -q -B license:check spotless:check
+  ./mvnw -q -B license:format spotless:apply
+  ./mvnw -q -B clean license:check spotless:check verify \
+    -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+)
 
 # RAT's audit-only Java corpus
-./mvnw -q -B apache-rat:check
+(
+  cd "$SPIKE_ROOT/rat" || exit 1
+  ./mvnw -q -B apache-rat:check
+  sed -i '' '1,3d' ta4j-core/src/main/java/org/ta4j/core/Bar.java
+  if ./mvnw -q -B apache-rat:check; then
+    echo "Expected RAT to reject the missing Bar.java header" >&2
+    exit 1
+  fi
+)
 ```
 
 No candidate POM, candidate header, generated output, or repository-wide reformat from the temporary benchmark copies is present in this spike branch.
