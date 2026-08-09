@@ -85,7 +85,7 @@ The specialist full-gate variance is too large to attribute to Mycila itself; it
 
 ## Dependency and advisory surface
 
-`dependency:resolve-plugins` supplied each plugin's isolated runtime classpath. Each exact Maven coordinate/version was queried through the [OSV batch API](https://google.github.io/osv.dev/api/#tag/api/operation/OSV_QueryAffectedBatch) on 2026-08-08.
+`dependency:resolve-plugins` supplied each plugin's isolated runtime classpath. Each exact Maven coordinate/version was queried through the [OSV batch API](https://google.github.io/osv.dev/api/#tag/api/operation/OSV_QueryAffectedBatch) on 2026-08-09. The durable evidence is the indexed [query manifest](cf-411-osv-query-manifest.csv), exact [batch request](cf-411-osv-querybatch-request.json), exact [batch response](cf-411-osv-querybatch-response.json), and [SHA-256 checksum](cf-411-osv-querybatch-response.sha256). The response preserves every returned advisory ID and OSV modification timestamp.
 
 | Plugin | Runtime artifacts | OSV advisory IDs | Affected components |
 | --- | ---: | ---: | ---: |
@@ -94,6 +94,63 @@ The specialist full-gate variance is too large to attribute to Mycila itself; it
 | formatter-maven-plugin 2.29.0 | 52 | 9 | 4 |
 | Spotless Maven 3.9.0 | 28 | 0 | 0 |
 | Apache RAT 0.18 | 49 | 2 | 2 |
+
+Validate the stored response checksum, one-to-one query/result mapping, and the exact advisory/component counts used above:
+
+```bash
+(
+  evidence_root=$(git rev-parse --show-toplevel)
+  cd "$evidence_root/docs/research" || exit 1
+  shasum -a 256 -c cf-411-osv-querybatch-response.sha256
+  python3 - \
+    cf-411-osv-query-manifest.csv \
+    cf-411-osv-querybatch-request.json \
+    cf-411-osv-querybatch-response.json <<'PY'
+import csv
+import json
+import sys
+from collections import defaultdict
+
+with open(sys.argv[1], newline="", encoding="utf-8") as source:
+    manifest = list(csv.DictReader(source))
+with open(sys.argv[2], encoding="utf-8") as source:
+    queries = json.load(source)["queries"]
+with open(sys.argv[3], encoding="utf-8") as source:
+    results = json.load(source)["results"]
+if len(manifest) != len(queries) or len(queries) != len(results):
+    raise SystemExit("OSV manifest, request, and response lengths differ")
+
+observed = defaultdict(lambda: {"ids": set(), "components": 0})
+for index, (row, query, result) in enumerate(zip(manifest, queries, results)):
+    if int(row["query_index"]) != index:
+        raise SystemExit(f"non-contiguous OSV query index at {index}")
+    expected_package = {"ecosystem": "Maven", "name": row["package"]}
+    if query != {"package": expected_package, "version": row["version"]}:
+        raise SystemExit(f"OSV query does not match manifest row {index}")
+    vulns = result.get("vulns", [])
+    if vulns:
+        observed[row["plugin"]]["components"] += 1
+    for vuln in vulns:
+        if set(vuln) != {"id", "modified"}:
+            raise SystemExit(f"incomplete OSV metadata at query {index}")
+        observed[row["plugin"]]["ids"].add(vuln["id"])
+
+expected = {
+    "mycila-5.0.0": (2, 2),
+    "mycila-5.1.1": (0, 0),
+    "formatter-2.29.0": (9, 4),
+    "spotless-3.9.0": (0, 0),
+    "rat-0.18": (2, 2),
+}
+actual = {
+    plugin: (len(observed[plugin]["ids"]), observed[plugin]["components"])
+    for plugin in expected
+}
+if actual != expected:
+    raise SystemExit(f"OSV counts differ: expected={expected}, actual={actual}")
+PY
+)
+```
 
 The current two-plugin stack resolves 65 artifacts. The proposed Mycila/Spotless stack resolves 42, a 35% reduction. Matches in the current stack include `commons-io` 2.11.0 and `plexus-utils` 4.0.2 under Mycila 5.0.0, plus Jackson 2.20.0, `plexus-utils` 4.0.2, and jsoup 1.21.2 under formatter-maven-plugin. These are inventory matches, not an exploitability finding for ta4j's trusted build inputs.
 
@@ -301,7 +358,8 @@ for path in sys.argv[1:]:
         if any(local_name(node) == "licenseHeader" for node in plugin.iter()):
             raise SystemExit(f"Spotless owns a licenseHeader step in {path}")
 PY
-  ./mvnw -q -N dependency:resolve-plugins \
+  ./mvnw -q -N \
+    org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
     -DoutputFile=target/resolved-plugins.txt
   python3 - target/resolved-plugins.txt <<'PY'
 import sys
@@ -312,13 +370,17 @@ expected = {
 }
 counts = {coordinate: 0 for coordinate in expected}
 current = None
+sections = 0
 with open(sys.argv[1], encoding="utf-8") as source:
     for line in source:
         if line.startswith("   ") and not line.startswith("      "):
             coordinate = line.strip()
             current = coordinate if coordinate in expected else None
+            sections += 1
         elif line.startswith("      ") and current is not None:
             counts[current] += 1
+if sections == 0:
+    raise SystemExit("unsupported dependency:resolve-plugins output format")
 if counts != expected:
     raise SystemExit(f"unexpected hybrid plugin runtime inventory: {counts}")
 PY
