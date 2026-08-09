@@ -17,8 +17,9 @@ import org.ta4j.core.BarSeries;
  * <p>
  * {@link #getCountOfUnstableBars()} follows the ta4j indicator convention: it
  * is the first index at which events are trustworthy. Evaluators never read
- * events at or below that boundary, so implementations may return arbitrary
- * values there.
+ * events below that index (the event at {@code getCountOfUnstableBars()} is the
+ * first one evaluated and must be valid), so implementations may return
+ * arbitrary values for indexes strictly below it.
  *
  * @see EventSignals
  * @since 0.24.1

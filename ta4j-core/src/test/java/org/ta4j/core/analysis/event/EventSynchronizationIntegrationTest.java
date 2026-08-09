@@ -6,6 +6,8 @@ package org.ta4j.core.analysis.event;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -32,7 +34,8 @@ import org.ta4j.core.num.DoubleNumFactory;
  * assertions operate on confirmation indexes. On this fixture the momentum
  * battery lags swing-high confirmations by 11 bars and leads swing-low
  * confirmations by 9 bars, so the two workflows exercise the lag and lead sides
- * of the tolerance windows.
+ * of the tolerance windows, and the deterministic outcomes are asserted
+ * exactly.
  */
 @Tag("integration")
 class EventSynchronizationIntegrationTest {
@@ -79,33 +82,42 @@ class EventSynchronizationIntegrationTest {
         ZigZagStateIndicator state = new ZigZagStateIndicator(new ClosePriceIndicator(series), 60);
         EventSynchronizationEvaluator evaluator = new EventSynchronizationEvaluator();
 
-        // Swing highs: below-zero crossings lag the high confirmations by 11 bars.
+        // Swing highs: below-zero crossings at 20..180 lag the high confirmations
+        // at 9..189 by exactly 11 bars; the confirmation at 189 is unmatched.
         EventSynchronizationResult swingHighs = evaluator.evaluate(highPredictions(series, momentum),
                 EventSignals.fromIndicator(new ZigZagPivotHighIndicator(state)), 0, BARS - 1, config(5, 12));
-        assertTrue(swingHighs.matchedCount() >= 3,
-                "expected swing-high confirmations matched, got " + swingHighs.matches());
-        for (EventMatch match : swingHighs.matches()) {
-            assertTrue(match.offsetBars() >= -12 && match.offsetBars() <= 5,
-                    "swing-high offset outside the tolerance window: " + match);
-            assertTrue(match.offsetBars() < 0, "swing-high crossings must lag confirmations on this fixture: " + match);
-        }
-        assertTrue(swingHighs.precision().doubleValue() > 0.0);
-        assertTrue(swingHighs.recall().doubleValue() > 0.0);
-        assertEquals(swingHighs.predictedCount(),
-                swingHighs.matchedCount() + swingHighs.unmatchedPredictedIndexes().size());
+        assertEquals(9, swingHighs.predictedCount());
+        assertEquals(10, swingHighs.referenceCount());
+        assertEquals(9, swingHighs.matchedCount());
+        List<EventMatch> expectedHighs = List.of(new EventMatch(20, 9, -11), new EventMatch(40, 29, -11),
+                new EventMatch(60, 49, -11), new EventMatch(80, 69, -11), new EventMatch(100, 89, -11),
+                new EventMatch(120, 109, -11), new EventMatch(140, 129, -11), new EventMatch(160, 149, -11),
+                new EventMatch(180, 169, -11));
+        assertEquals(expectedHighs, swingHighs.matches());
+        assertEquals(List.of(189), swingHighs.unmatchedReferenceIndexes());
+        assertEquals(0, swingHighs.exactMatchCount());
+        assertEquals(1.0, swingHighs.precision().doubleValue(), 1e-12);
+        assertEquals(0.9, swingHighs.recall().doubleValue(), 1e-12);
+        assertEquals(18.0 / 19.0, swingHighs.f1Score().doubleValue(), 1e-12);
 
-        // Swing lows: above-zero crossings lead the low confirmations by 9 bars.
+        // Swing lows: above-zero crossings at 10..190 lead the low confirmations
+        // at 19..199 by exactly 9 bars; the confirmation at index 3 lies below
+        // the momentum unstable boundary and is excluded from extraction.
         EventSynchronizationResult swingLows = evaluator.evaluate(lowPredictions(series, momentum),
                 EventSignals.fromIndicator(new ZigZagPivotLowIndicator(state)), 0, BARS - 1, config(12, 5));
-        assertTrue(swingLows.matchedCount() >= 3,
-                "expected swing-low confirmations matched, got " + swingLows.matches());
-        for (EventMatch match : swingLows.matches()) {
-            assertTrue(match.offsetBars() >= -5 && match.offsetBars() <= 12,
-                    "swing-low offset outside the tolerance window: " + match);
-            assertTrue(match.offsetBars() > 0, "swing-low crossings must lead confirmations on this fixture: " + match);
-        }
-        assertTrue(swingLows.precision().doubleValue() > 0.0);
-        assertTrue(swingLows.recall().doubleValue() > 0.0);
+        assertEquals(10, swingLows.predictedCount());
+        assertEquals(10, swingLows.referenceCount());
+        assertEquals(10, swingLows.matchedCount());
+        List<EventMatch> expectedLows = List.of(new EventMatch(10, 19, 9), new EventMatch(30, 39, 9),
+                new EventMatch(50, 59, 9), new EventMatch(70, 79, 9), new EventMatch(90, 99, 9),
+                new EventMatch(110, 119, 9), new EventMatch(130, 139, 9), new EventMatch(150, 159, 9),
+                new EventMatch(170, 179, 9), new EventMatch(190, 199, 9));
+        assertEquals(expectedLows, swingLows.matches());
+        assertTrue(swingLows.unmatchedReferenceIndexes().isEmpty());
+        assertEquals(0, swingLows.exactMatchCount());
+        assertEquals(1.0, swingLows.precision().doubleValue(), 1e-12);
+        assertEquals(1.0, swingLows.recall().doubleValue(), 1e-12);
+        assertEquals(1.0, swingLows.f1Score().doubleValue(), 1e-12);
 
         // Repeated evaluation is structurally equal (deterministic matching).
         EventSynchronizationResult again = evaluator.evaluate(highPredictions(series, momentum),

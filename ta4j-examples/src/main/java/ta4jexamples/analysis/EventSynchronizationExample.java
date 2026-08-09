@@ -92,7 +92,7 @@ public final class EventSynchronizationExample {
      * @param swingHighs swing-high workflow result
      * @param swingLows  swing-low workflow result
      */
-    public record DemoResult(EventSynchronizationResult swingHighs, EventSynchronizationResult swingLows) {
+    record DemoResult(EventSynchronizationResult swingHighs, EventSynchronizationResult swingLows) {
     }
 
     /**
@@ -100,7 +100,7 @@ public final class EventSynchronizationExample {
      *
      * @return the swing-high and swing-low evaluation results
      */
-    public static DemoResult run() {
+    static DemoResult run() {
         BarSeries series = sineSeries();
 
         ClosePriceIndicator close = new ClosePriceIndicator(series);

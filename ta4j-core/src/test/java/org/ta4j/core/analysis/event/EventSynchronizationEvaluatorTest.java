@@ -449,7 +449,6 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void negativeTolerancesAreRejected() {
-        BarSeries series = series();
         assertThrows(IllegalArgumentException.class, () -> new EventSynchronizationConfig(-1, 0));
         assertThrows(IllegalArgumentException.class, () -> new EventSynchronizationConfig(0, -1));
         assertThrows(NullPointerException.class,

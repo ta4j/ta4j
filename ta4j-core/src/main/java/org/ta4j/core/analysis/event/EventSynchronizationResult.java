@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.event;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -68,9 +69,9 @@ public final class EventSynchronizationResult {
         this.precision = Objects.requireNonNull(precision, "precision");
         this.recall = Objects.requireNonNull(recall, "recall");
         this.f1Score = Objects.requireNonNull(f1Score, "f1Score");
-        this.matches = List.copyOf(matches);
-        this.unmatchedPredictedIndexes = List.copyOf(unmatchedPredictedIndexes);
-        this.unmatchedReferenceIndexes = List.copyOf(unmatchedReferenceIndexes);
+        this.matches = Collections.unmodifiableList(List.copyOf(matches));
+        this.unmatchedPredictedIndexes = Collections.unmodifiableList(List.copyOf(unmatchedPredictedIndexes));
+        this.unmatchedReferenceIndexes = Collections.unmodifiableList(List.copyOf(unmatchedReferenceIndexes));
         this.exactMatchCount = exactMatchCount;
         this.meanSignedOffset = Objects.requireNonNull(meanSignedOffset, "meanSignedOffset");
         this.meanAbsoluteOffset = Objects.requireNonNull(meanAbsoluteOffset, "meanAbsoluteOffset");
