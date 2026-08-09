@@ -184,14 +184,26 @@ Candidate copies were built from `git archive 6d8f05a2e63512bf1b84568594165b4100
 
 ### Exact candidate construction
 
-Run the following Bash blocks in the same shell session. Create five independent copies from the pinned baseline:
+Run the following Bash blocks in the same shell session. Before starting, set `CF411_RESULTS_FILE` to a new absolute CSV path outside `/tmp` so the raw rerun survives candidate cleanup. The script refuses to overwrite an existing capture. Then create five independent copies from the pinned baseline:
 
 ```bash
 set -euo pipefail
 export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"
 SPIKE_SOURCE_ROOT=$(git rev-parse --show-toplevel)
+: "${CF411_RESULTS_FILE:?Set CF411_RESULTS_FILE to a new absolute CSV path}"
+if [[ "$CF411_RESULTS_FILE" != /* ]] || [[ -e "$CF411_RESULTS_FILE" ]]; then
+  echo "CF411_RESULTS_FILE must be a new absolute path" >&2
+  exit 1
+fi
 SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
+if [[ "$CF411_RESULTS_FILE" == "$SPIKE_ROOT"/* ]]; then
+  echo "CF411_RESULTS_FILE must survive SPIKE_ROOT cleanup" >&2
+  exit 1
+fi
+mkdir -p "$(dirname "$CF411_RESULTS_FILE")"
+RESULTS_FILE=$CF411_RESULTS_FILE
+printf 'candidate,operation,repeat,wall_seconds,exit_code\n' >"$RESULTS_FILE"
 cleanup_spike() {
   if [[ "${SPIKE_ROOT:-}" == /tmp/cf411-formatting-spike.* ]]; then
     rm -rf -- "$SPIKE_ROOT"
@@ -283,9 +295,15 @@ Generate the exclusive input list and reject any scope drift before invoking RAT
   cd "$SPIKE_ROOT/rat" || exit 1
   find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
     | LC_ALL=C sort >rat-java-sources.txt
+  git -C "$SPIKE_SOURCE_ROOT" ls-tree -r --name-only \
+    6d8f05a2e63512bf1b84568594165b4100293bfc -- \
+    ta4j-core/src ta4j-examples/src \
+    | rg '\.java$' \
+    | LC_ALL=C sort >"$SPIKE_ROOT/pinned-java-manifest.txt"
   mkdir -p target/rat-empty
   if [[ $(wc -l <rat-java-sources.txt) -ne 1463 ]] \
-    || rg -n -v '\.java$' rat-java-sources.txt; then
+    || rg -n -v '\.java$' rat-java-sources.txt \
+    || ! diff -u "$SPIKE_ROOT/pinned-java-manifest.txt" rat-java-sources.txt; then
     echo "RAT input list is not the expected Java-only corpus" >&2
     exit 1
   fi
@@ -313,8 +331,8 @@ Before mutating the corpus, reproduce the consolidated Spotless candidate's clea
     exit 1
   fi
   clean_elapsed=$(awk '$1 == "real" {print $2}' "$clean_timing")
-  printf 'spotless\tclean-validation\t1\t%s\t%s\n' \
-    "$clean_elapsed" "$clean_status"
+  printf 'spotless,clean-validation,1,%s,%s\n' \
+    "$clean_elapsed" "$clean_status" | tee -a "$RESULTS_FILE"
 )
 ```
 
@@ -381,34 +399,58 @@ done
 The timing helper records wall seconds and exit status for every measured invocation. Expected dirty-corpus failures are accepted only when their logs identify `Bar.java`; unrelated failures stop the script.
 
 ```bash
-RESULTS_FILE="$SPIKE_ROOT/runtime-results.tsv"
-printf 'candidate\toperation\trepeat\twall_seconds\texit_code\n' >"$RESULTS_FILE"
-
 measure() {
-  candidate=$1
-  operation=$2
-  repeat=$3
+  local candidate=$1
+  local operation=$2
+  local repeat=$3
   shift 3
+  local timing_file
   timing_file=$(mktemp "$SPIKE_ROOT/timing.XXXXXX")
+  local status
   if /usr/bin/time -p -o "$timing_file" "$@"; then
     status=0
   else
     status=$?
   fi
+  local elapsed
   elapsed=$(awk '$1 == "real" {print $2}' "$timing_file")
   rm -f -- "$timing_file"
-  printf '%s\t%s\t%s\t%s\t%s\n' \
+  printf '%s,%s,%s,%s,%s\n' \
     "$candidate" "$operation" "$repeat" "$elapsed" "$status" \
     | tee -a "$RESULTS_FILE"
   return "$status"
 }
 
+java_tree_hash() {
+  find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
+    | LC_ALL=C sort \
+    | xargs shasum -a 256 \
+    | shasum -a 256 \
+    | awk '{print $1}'
+}
+
+assert_idempotent_repair() {
+  local candidate=$1
+  local repeat=$2
+  shift 2
+  local before_hash
+  before_hash=$(java_tree_hash)
+  measure "$candidate" idempotent-repair "$repeat" "$@"
+  local after_hash
+  after_hash=$(java_tree_hash)
+  if [[ "$after_hash" != "$before_hash" ]]; then
+    echo "$candidate repair repeat $repeat changed the Java tree" >&2
+    exit 1
+  fi
+}
+
 expect_dirty_failure() {
-  candidate=$1
-  operation=$2
-  repeat=$3
-  expected=$4
+  local candidate=$1
+  local operation=$2
+  local repeat=$3
+  local expected=$4
   shift 4
+  local log_file
   log_file=$(mktemp "$SPIKE_ROOT/expected-failure.XXXXXX")
   if measure "$candidate" "$operation" "$repeat" "$@" >"$log_file" 2>&1; then
     cat "$log_file" >&2
@@ -435,7 +477,7 @@ for candidate in baseline specialist; do
     measure "$candidate" dirty-repair 1 \
       ./mvnw -q -B license:format formatter:format
     for repeat in 1 2; do
-      measure "$candidate" idempotent-repair "$repeat" \
+      assert_idempotent_repair "$candidate" "$repeat" \
         ./mvnw -q -B license:format formatter:format
     done
     for repeat in 1 2 3; do
@@ -457,7 +499,7 @@ done
     ./mvnw -q -B spotless:check
   measure spotless dirty-repair 1 ./mvnw -q -B spotless:apply
   for repeat in 1 2; do
-    measure spotless idempotent-repair "$repeat" ./mvnw -q -B spotless:apply
+    assert_idempotent_repair spotless "$repeat" ./mvnw -q -B spotless:apply
   done
   for repeat in 1 2 3; do
     measure spotless warm-validation "$repeat" ./mvnw -q -B spotless:check
@@ -479,7 +521,7 @@ done
     ./mvnw -q -B spotless:check
   measure hybrid dirty-repair 1 ./mvnw -q -B license:format spotless:apply
   for repeat in 1 2; do
-    measure hybrid idempotent-repair "$repeat" \
+    assert_idempotent_repair hybrid "$repeat" \
       ./mvnw -q -B license:format spotless:apply
   done
   for repeat in 1 2 3; do
@@ -498,13 +540,22 @@ done
   cd "$SPIKE_ROOT/rat" || exit 1
   measure rat clean-validation 1 \
     ./mvnw -q -N -B org.apache.rat:apache-rat-plugin:0.18:check
-  python3 - target/rat.txt <<'PY'
+  python3 - rat-java-sources.txt target/rat.txt <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-resources = [node.attrib["name"] for node in ET.parse(sys.argv[1]).getroot().findall("resource")]
-if len(resources) != 1463 or any(not name.endswith(".java") for name in resources):
-    raise SystemExit("RAT report contains an unexpected or non-Java resource")
+with open(sys.argv[1], encoding="utf-8") as source:
+    expected = [line.rstrip("\n") for line in source]
+resources = [
+    node.attrib["name"].lstrip("/")
+    for node in ET.parse(sys.argv[2]).getroot().findall("resource")
+]
+if len(expected) != len(set(expected)) or len(resources) != len(set(resources)):
+    raise SystemExit("RAT input or report contains duplicate resources")
+if set(resources) != set(expected):
+    missing = sorted(set(expected) - set(resources))
+    extra = sorted(set(resources) - set(expected))
+    raise SystemExit(f"RAT report scope mismatch: missing={missing}, extra={extra}")
 PY
   mv target/rat.txt "$SPIKE_ROOT/rat-clean-report.xml"
   rat_bar=ta4j-core/src/main/java/org/ta4j/core/Bar.java
@@ -629,24 +680,63 @@ done
 )
 ```
 
-Finally, summarize the captured successful timings. The medians and full-reactor ranges printed here are the values transcribed into the runtime table and the checked-in raw-results CSV.
+Finally, validate the stable raw capture's exact candidate/operation/repetition matrix, summarize it, and compare every corresponding duration with the checked-in raw-results CSV at two-decimal precision. The block intentionally exits nonzero on timing drift so a rerun cannot silently replace the published observations; retain the caller-provided CSV and update the report and checked-in CSV together if new measurements are accepted.
 
 ```bash
-python3 - "$RESULTS_FILE" <<'PY'
+python3 - \
+  "$RESULTS_FILE" \
+  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-results.csv" <<'PY'
 import csv
 import statistics
 import sys
 from collections import defaultdict
 
+capture_path, published_path = sys.argv[1:]
+with open(capture_path, newline="", encoding="utf-8") as source:
+    rows = list(csv.DictReader(source))
+
+expected_repeats = {}
+for candidate in ("baseline", "specialist", "hybrid"):
+    expected_repeats.update({
+        (candidate, "dirty-license-check"): [1],
+        (candidate, "dirty-format-check"): [1],
+        (candidate, "dirty-repair"): [1],
+        (candidate, "idempotent-repair"): [1, 2],
+        (candidate, "warm-validation"): [1, 2, 3],
+        (candidate, "full-reactor"): [1, 2],
+    })
+expected_repeats.update({
+    ("spotless", "clean-validation"): [1],
+    ("spotless", "dirty-validation"): [1],
+    ("spotless", "dirty-repair"): [1],
+    ("spotless", "idempotent-repair"): [1, 2],
+    ("spotless", "warm-validation"): [1, 2, 3],
+    ("spotless", "full-reactor"): [1, 2],
+    ("rat", "clean-validation"): [1],
+    ("rat", "dirty-validation"): [1],
+})
+
+actual_repeats = defaultdict(list)
+for row in rows:
+    if not all(row.get(field) for field in (
+        "candidate", "operation", "repeat", "wall_seconds", "exit_code"
+    )):
+        raise SystemExit(f"incomplete raw timing row: {row}")
+    actual_repeats[(row["candidate"], row["operation"])].append(int(row["repeat"]))
+actual_repeats = {key: sorted(values) for key, values in actual_repeats.items()}
+if actual_repeats != expected_repeats:
+    raise SystemExit(
+        f"unexpected timing matrix: expected={expected_repeats}, actual={actual_repeats}"
+    )
+
 groups = defaultdict(list)
-with open(sys.argv[1], newline="", encoding="utf-8") as source:
-    for row in csv.DictReader(source, delimiter="\t"):
-        if row["exit_code"] == "0" and row["operation"] in {
-            "dirty-repair", "idempotent-repair", "warm-validation", "full-reactor"
-        }:
-            groups[(row["candidate"], row["operation"])].append(
-                float(row["wall_seconds"])
-            )
+for row in rows:
+    if row["exit_code"] == "0" and row["operation"] in {
+        "dirty-repair", "idempotent-repair", "warm-validation", "full-reactor"
+    }:
+        groups[(row["candidate"], row["operation"])].append(
+            float(row["wall_seconds"])
+        )
 
 for (candidate, operation), values in sorted(groups.items()):
     print(
@@ -656,6 +746,48 @@ for (candidate, operation), values in sorted(groups.items()):
         f"median={statistics.median(values):.2f}",
         f"range={min(values):.2f}-{max(values):.2f}",
         sep="\t",
+    )
+
+with open(published_path, newline="", encoding="utf-8") as source:
+    published_rows = list(csv.DictReader(source))
+published = {
+    (row["candidate"], row["operation"], row["state"], int(row["repeat"])): row
+    for row in published_rows
+}
+aliases = {
+    "baseline": "mycila-5.0.0_formatter-2.29.0",
+    "specialist": "mycila-5.1.1_formatter-2.29.0",
+    "spotless": "spotless-3.9.0-consolidated",
+    "hybrid": "mycila-5.1.1_spotless-3.9.0-format-only",
+}
+operation_map = {
+    "dirty-repair": ("repair", "dirty"),
+    "idempotent-repair": ("repair", "idempotent"),
+    "warm-validation": ("clean-check", "warm"),
+    "full-reactor": ("full-reactor", "clean"),
+}
+drift = []
+for row in rows:
+    candidate = row["candidate"]
+    operation = row["operation"]
+    if candidate == "rat" and operation == "clean-validation":
+        key = ("apache-rat-0.18", "java-corpus-check", "clean", 1)
+    elif operation == "clean-validation" and candidate == "spotless":
+        key = (aliases[candidate], "clean-check", "initial", 1)
+    elif candidate in aliases and operation in operation_map:
+        published_operation, state = operation_map[operation]
+        key = (aliases[candidate], published_operation, state, int(row["repeat"]))
+    else:
+        continue
+    expected = published.get(key)
+    if expected is None or not expected["wall_seconds"]:
+        raise SystemExit(f"missing published timing for {key}")
+    if f'{float(row["wall_seconds"]):.2f}' != f'{float(expected["wall_seconds"]):.2f}':
+        drift.append((key, expected["wall_seconds"], row["wall_seconds"]))
+
+if drift:
+    raise SystemExit(
+        f"runtime drift detected; preserve {capture_path} and review: {drift}"
     )
 PY
 ```
