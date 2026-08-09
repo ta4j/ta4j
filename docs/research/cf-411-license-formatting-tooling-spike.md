@@ -1,6 +1,6 @@
 # License-header and Java-formatting tooling spike
 
-Date: 2026-08-08
+Date: 2026-08-09
 
 Baseline: `ta4j/ta4j` `origin/master` at `6d8f05a2e63512bf1b84568594165b4100293bfc`
 
@@ -204,6 +204,8 @@ Keep the existing Mycila configuration, changing only its version, and replace f
 </plugin>
 ```
 
+Retain the existing `ta4j-core` and `ta4j-examples` Mycila overrides so their headers continue to resolve through `${project.parent.basedir}/license-header.txt`. The parent keeps `${project.basedir}/license-header.txt`; only the child formatter overrides are removed because Spotless uses the reactor-root-stable `${maven.multiModuleProjectDirectory}` path above.
+
 Keep validation explicit rather than also binding Spotless to `verify`, matching ta4j's current command contract without double execution:
 
 ```bash
@@ -228,8 +230,8 @@ Eclipse users can continue importing `code-formatter.xml`; IntelliJ users can co
 
 The follow-up implementation should be deliberately bounded:
 
-1. Run `bash scripts/agents_for_target.sh <target>` for every migration target, including `pom.xml` and `ta4j-examples/pom.xml`, and apply all scoped instructions before editing.
-2. Change Mycila to 5.1.1, remove formatter-maven-plugin from the parent and its override from `ta4j-examples/pom.xml`, add format-only Spotless, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
+1. Run `bash scripts/agents_for_target.sh <target>` for every migration target, including `pom.xml`, `ta4j-core/pom.xml`, and `ta4j-examples/pom.xml`, and apply all scoped instructions before editing.
+2. Change Mycila to 5.1.1, remove formatter-maven-plugin from the parent and its overrides from `ta4j-core/pom.xml` and `ta4j-examples/pom.xml`, add format-only Spotless, retain both child Mycila header-path overrides, and retain both `license-header.txt` and `code-formatter.xml` unchanged.
 3. Update the shell and PowerShell quiet-build goals, quality-scan contract fixtures, README, contributing guide, PR template, and any hosted validation references from `formatter:format` / `formatter:validate` to `spotless:apply` / `spotless:check`.
 4. Assert a zero-source-diff migration before committing, then run the canonical Java 25 gate and hosted CI.
 5. Add an `Unreleased` changelog entry because the contributor and maintainer command contract changes.
@@ -318,18 +320,23 @@ Add this plugin alongside the existing plugins:
 
 The scored migration removes the two superseded plugins; their presence in this goal-isolation copy does not affect `spotless:apply`, `spotless:check`, or `verify`, and the dependency/advisory table resolves each candidate plugin classpath independently.
 
-In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Also remove the formatter-maven-plugin override from `hybrid/ta4j-examples/pom.xml`; leaving that child declaration behind would retain a stale or versionless effective plugin. Do not configure Spotless's `licenseHeader` step. Generate effective POMs for the parent and `ta4j-examples`, require Spotless in both, require formatter-maven-plugin in neither, then repeat the isolated plugin-resolution inventory and require the intended 14 Mycila plus 28 Spotless runtime artifacts.
+In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Also remove the formatter-maven-plugin overrides from `hybrid/ta4j-core/pom.xml` and `hybrid/ta4j-examples/pom.xml`; leaving either child declaration behind would retain a stale or versionless effective plugin. Preserve both child Mycila overrides and their `${project.parent.basedir}/license-header.txt` paths. Do not configure Spotless's `licenseHeader` step. Generate effective POMs for the parent, `ta4j-core`, and `ta4j-examples`; require Spotless in all three and formatter-maven-plugin in none; then repeat the isolated plugin-resolution inventory and require the intended 14 Mycila plus 28 Spotless runtime artifacts.
 
 ```bash
 (
   cd "$SPIKE_ROOT/hybrid" || exit 1
   ./mvnw -q -N help:effective-pom -Doutput=target/effective-parent.xml
   (
+    cd ta4j-core || exit 1
+    ../mvnw -q -N help:effective-pom -Doutput=target/effective-core.xml
+  )
+  (
     cd ta4j-examples || exit 1
     ../mvnw -q -N help:effective-pom -Doutput=target/effective-examples.xml
   )
   python3 - \
     target/effective-parent.xml \
+    ta4j-core/target/effective-core.xml \
     ta4j-examples/target/effective-examples.xml <<'PY'
 import sys
 import xml.etree.ElementTree as ET
@@ -355,6 +362,17 @@ for path in sys.argv[1:]:
         versions = {child_text(plugin, "version") for plugin in by_artifact.get(artifact, [])}
         if versions != {version}:
             raise SystemExit(f"unexpected {artifact} versions in {path}: {versions}")
+    license_headers = {
+        (node.text or "").strip()
+        for plugin in by_artifact["license-maven-plugin"]
+        for node in plugin.iter()
+        if local_name(node) == "header"
+    }
+    if path == sys.argv[1]:
+        if len(license_headers) != 1 or not next(iter(license_headers)).endswith("/license-header.txt"):
+            raise SystemExit(f"unexpected parent Mycila header path in {path}: {license_headers}")
+    elif license_headers != {"${project.parent.basedir}/license-header.txt"}:
+        raise SystemExit(f"unexpected child Mycila header path in {path}: {license_headers}")
     for plugin in by_artifact["spotless-maven-plugin"]:
         if any(local_name(node) == "licenseHeader" for node in plugin.iter()):
             raise SystemExit(f"Spotless owns a licenseHeader step in {path}")
@@ -372,18 +390,25 @@ expected = {
 counts = {coordinate: 0 for coordinate in expected}
 current = None
 sections = 0
+headers = set()
 with open(sys.argv[1], encoding="utf-8") as source:
     for line in source:
         if line.startswith("   ") and not line.startswith("      "):
             # The header labels a section; its first six-space row is the
             # plugin JAR itself, followed by the remaining runtime artifacts.
             coordinate = line.strip()
+            headers.add(coordinate)
             current = coordinate if coordinate in expected else None
             sections += 1
         elif line.startswith("      ") and current is not None:
             counts[current] += 1
 if sections == 0:
     raise SystemExit("unsupported dependency:resolve-plugins output format")
+if any(
+    coordinate.startswith("net.revelc.code.formatter:formatter-maven-plugin:")
+    for coordinate in headers
+):
+    raise SystemExit("stale formatter-maven-plugin remains in runtime inventory")
 if counts != expected:
     raise SystemExit(f"unexpected hybrid plugin runtime inventory: {counts}")
 PY
