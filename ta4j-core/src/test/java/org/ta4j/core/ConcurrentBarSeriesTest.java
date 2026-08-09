@@ -37,6 +37,7 @@ import org.apache.logging.log4j.LogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -2041,6 +2042,27 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         startLatch.countDown();
         assertTrue("All setMaximumBarCount() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(writerCount, successCount.get());
+    }
+
+    @Test
+    public void testChangeSnapshotReportsDelegatedRevisionAndWindowState() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("changeSnapshot")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .withMaxBarCount(1000)
+                .build();
+        long initialRevision = series.getBarHistoryRevision();
+
+        series.replaceBar(2, testBars.get(2));
+        series.setMaximumBarCount(3);
+
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(2, snapshot.earliestChangedIndex());
+        assertEquals(1, snapshot.removedThroughIndex());
+        assertEquals(3, snapshot.maximumBarCount());
+        assertEquals(4, snapshot.endIndex());
     }
 
     // ==================== barBuilder() Concurrent Access ====================

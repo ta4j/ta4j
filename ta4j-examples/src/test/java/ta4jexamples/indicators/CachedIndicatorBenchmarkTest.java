@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -55,6 +56,35 @@ class CachedIndicatorBenchmarkTest {
     }
 
     @Test
+    void reverseReadScenarioProducesExpectedChecksum() {
+        int barCount = 64;
+        int maximumBarCountHint = 12;
+
+        CachedIndicatorBenchmark.ScenarioResult result = benchmark.runReverseReadScenario(barCount,
+                maximumBarCountHint);
+        int operations = barCount - maximumBarCountHint - 1;
+        long expectedChecksum = (long) (operations - 1) * operations / 2L;
+
+        assertEquals(operations, result.getOperations(), "Operations should cover values before the warm cache");
+        assertEquals(expectedChecksum, result.getChecksum(), "Checksum should cover descending uncached indices");
+        assertTrue(result.getThroughputOpsPerSecond() > 0d, "Reverse-read throughput should be positive");
+    }
+
+    @Test
+    void reverseReadScenarioHandlesWindowLargerThanSeries() {
+        int barCount = 8;
+        int maximumBarCountHint = 64;
+
+        CachedIndicatorBenchmark.ScenarioResult result = benchmark.runReverseReadScenario(barCount,
+                maximumBarCountHint);
+
+        // The whole series fits the warm cache window, so no reverse reads remain.
+        assertEquals(0, result.getOperations(), "No operations should remain when the hint covers the series");
+        assertEquals(0L, result.getChecksum(), "Checksum should be zero for an empty reverse window");
+        assertEquals(0.0d, result.getThroughputOpsPerSecond(), "Zero operations should report zero throughput");
+    }
+
+    @Test
     void lastBarHotReadsScenarioKeepsSmaStableAcrossHits() {
         int barCount = 48;
         int smaPeriod = 8;
@@ -63,9 +93,9 @@ class CachedIndicatorBenchmarkTest {
         CachedIndicatorBenchmark.ScenarioResult result = benchmark.runLastBarHotReadsScenario(barCount, smaPeriod,
                 reads);
 
-        var series = CachedIndicatorBenchmark.buildSeries(barCount);
-        var closePrice = new ClosePriceIndicator(series);
-        var sma = new SMAIndicator(closePrice, smaPeriod);
+        BarSeries series = CachedIndicatorBenchmark.buildSeries(barCount);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        SMAIndicator sma = new SMAIndicator(closePrice, smaPeriod);
         int endIndex = series.getEndIndex();
 
         long expectedChecksum = (long) reads * sma.getValue(endIndex).hashCode();

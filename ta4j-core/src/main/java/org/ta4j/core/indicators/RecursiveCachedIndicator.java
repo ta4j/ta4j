@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 
 import java.util.IdentityHashMap;
@@ -68,10 +69,11 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     public T getValue(int index) {
         BarSeries series = getBarSeries();
         if (series != null) {
-            final int seriesEndIndex = series.getEndIndex();
+            BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
+            final int seriesEndIndex = snapshot.endIndex();
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
-                final int removedBarsCount = series.getRemovedBarsCount();
+                final int removedBarsCount = snapshot.removedThroughIndex() + 1;
                 int startIndex = Math.max(removedBarsCount, highestResultIndex);
                 if (startIndex < 0) {
                     startIndex = Math.max(0, removedBarsCount);
