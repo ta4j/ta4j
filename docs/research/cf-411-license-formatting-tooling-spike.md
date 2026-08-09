@@ -386,6 +386,12 @@ In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and 
       -DoutputFile=target/resolved-plugins.txt
   )
   (
+    cd "$SPIKE_ROOT/specialist" || exit 1
+    ./mvnw -q -N \
+      org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
+      -DoutputFile=target/resolved-plugins.txt
+  )
+  (
     cd "$SPIKE_ROOT/rat" || exit 1
     ./mvnw -q -N \
       org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
@@ -498,6 +504,7 @@ PY
     -DoutputFile=target/resolved-plugins.txt
   python3 - \
     "$SPIKE_ROOT/baseline/target/resolved-plugins.txt" \
+    "$SPIKE_ROOT/specialist/target/resolved-plugins.txt" \
     target/resolved-plugins.txt \
     "$SPIKE_ROOT/rat/target/resolved-plugins.txt" \
     "$SPIKE_SOURCE_ROOT/docs/research/cf-411-osv-query-manifest.csv" <<'PY'
@@ -516,8 +523,19 @@ inventories = {
             "net.revelc.code.formatter:formatter-maven-plugin:maven-plugin:2.29.0:runtime": "formatter-2.29.0",
         },
     },
-    "hybrid": {
+    "specialist": {
         "path": sys.argv[2],
+        "expected": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": 14,
+            "net.revelc.code.formatter:formatter-maven-plugin:maven-plugin:2.29.0:runtime": 52,
+        },
+        "labels": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": "mycila-5.1.1",
+            "net.revelc.code.formatter:formatter-maven-plugin:maven-plugin:2.29.0:runtime": "formatter-2.29.0",
+        },
+    },
+    "hybrid": {
+        "path": sys.argv[3],
         "expected": {
             "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": 14,
             "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": 28,
@@ -528,7 +546,7 @@ inventories = {
         },
     },
     "rat": {
-        "path": sys.argv[3],
+        "path": sys.argv[4],
         "expected": {
             "org.apache.rat:apache-rat-plugin:maven-plugin:0.18:runtime": 49,
         },
@@ -579,7 +597,7 @@ def parse_inventory(name, inventory):
         raise SystemExit(f"unexpected {name} plugin runtime inventory: {counts}")
     return actual_artifacts
 
-with open(sys.argv[4], newline="", encoding="utf-8") as source:
+with open(sys.argv[5], newline="", encoding="utf-8") as source:
     manifest = list(csv.DictReader(source))
 for name, inventory in inventories.items():
     actual_artifacts = parse_inventory(name, inventory)
@@ -1144,7 +1162,9 @@ for row in rows:
         if row["exit_code"] == "0":
             raise SystemExit(f"successful capture row has no published timing: {key}")
         continue
-    if f'{float(row["wall_seconds"]):.2f}' != f'{float(expected["wall_seconds"]):.2f}':
+    if rounded(Decimal(row["wall_seconds"]), 2) != rounded(
+        Decimal(expected["wall_seconds"]), 2
+    ):
         drift.append((key, expected["wall_seconds"], row["wall_seconds"]))
 
 if drift:
