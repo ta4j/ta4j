@@ -1025,6 +1025,12 @@ for (candidate, operation), values in sorted(groups.items()):
 
 with open(published_path, newline="", encoding="utf-8") as source:
     published_rows = list(csv.DictReader(source))
+published_keys = [
+    (row["candidate"], row["operation"], row["state"], int(row["repeat"]))
+    for row in published_rows
+]
+if len(published_keys) != len(set(published_keys)):
+    raise SystemExit("duplicate published timing key")
 published = {
     (row["candidate"], row["operation"], row["state"], int(row["repeat"])): row
     for row in published_rows
@@ -1131,6 +1137,8 @@ for line in report_lines[table_start + 2:]:
     cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
     if len(cells) != 7:
         raise SystemExit(f"unexpected runtime results row: {line.rstrip()}")
+    if cells[0] in actual_report_rows:
+        raise SystemExit(f"duplicate runtime results row: {cells[0]}")
     actual_report_rows[cells[0]] = cells[1:]
 if actual_report_rows != expected_report_rows:
     raise SystemExit(
