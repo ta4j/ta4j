@@ -120,8 +120,20 @@ with open(sys.argv[3], encoding="utf-8") as source:
 if len(manifest) != len(queries) or len(queries) != len(results):
     raise SystemExit("OSV manifest, request, and response lengths differ")
 
+expected_query_counts = {
+    "mycila-5.0.0": 13,
+    "mycila-5.1.1": 14,
+    "formatter-2.29.0": 52,
+    "spotless-3.9.0": 28,
+    "rat-0.18": 49,
+}
+query_counts = defaultdict(int)
 observed = defaultdict(lambda: {"ids": set(), "components": 0})
 for index, (row, query, result) in enumerate(zip(manifest, queries, results)):
+    plugin = row["plugin"]
+    if plugin not in expected_query_counts:
+        raise SystemExit(f"unexpected OSV plugin label at query {index}: {plugin}")
+    query_counts[plugin] += 1
     if int(row["query_index"]) != index:
         raise SystemExit(f"non-contiguous OSV query index at {index}")
     expected_package = {"ecosystem": "Maven", "name": row["package"]}
@@ -134,6 +146,11 @@ for index, (row, query, result) in enumerate(zip(manifest, queries, results)):
         if set(vuln) != {"id", "modified"}:
             raise SystemExit(f"incomplete OSV metadata at query {index}")
         observed[row["plugin"]]["ids"].add(vuln["id"])
+
+if dict(query_counts) != expected_query_counts:
+    raise SystemExit(
+        f"OSV query counts differ: expected={expected_query_counts}, actual={dict(query_counts)}"
+    )
 
 expected = {
     "mycila-5.0.0": (2, 2),
@@ -236,7 +253,7 @@ The follow-up implementation should be deliberately bounded:
 4. Assert a zero-source-diff migration before committing, then run the canonical Java 25 gate and hosted CI.
 5. Add an `Unreleased` changelog entry because the contributor and maintainer command contract changes.
 
-Rollback is a single configuration/command-map revert: restore formatter-maven-plugin 2.29.0, Mycila 5.0.0 if necessary, and the former formatter goals. Because the proposed migration is byte-identical, rollback requires no source reformat or data migration.
+Rollback by reverting the complete implementation change set: POMs, shell and PowerShell commands, quality-scan fixtures, documentation, PR template, changelog, and hosted validation references. Then verify formatter-maven-plugin 2.29.0, Mycila 5.0.0, and the former formatter goals are restored and that no Spotless reference remains. Because the proposed migration is byte-identical, rollback requires no source reformat or data migration.
 
 ## Reproduction commands
 
