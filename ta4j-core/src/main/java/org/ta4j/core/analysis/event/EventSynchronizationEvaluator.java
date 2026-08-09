@@ -243,6 +243,14 @@ public final class EventSynchronizationEvaluator {
         for (int i = startIndex; i <= endIndex; i++) {
             if (signal.isEvent(i)) {
                 if (size == events.length) {
+                    if ((long) events.length * 2 > MAX_MATCHING_CELLS) {
+                        // A single signal with more events than the baseline
+                        // matcher's cell cap can never participate in an
+                        // evaluation below the cap, so fail with the documented
+                        // exception before allocating further.
+                        throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
+                                + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment arrays)");
+                    }
                     events = Arrays.copyOf(events, events.length * 2);
                 }
                 events[size++] = i;

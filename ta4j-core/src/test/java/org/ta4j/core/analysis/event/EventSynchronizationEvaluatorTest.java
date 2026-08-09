@@ -284,6 +284,30 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void extractionBoundsBeforeAllocatingOversizedArrays() {
+        BarSeries small = series(20);
+        BarSeries hugeEnd = (BarSeries) java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] { BarSeries.class }, (proxy, method, args) -> {
+                    switch (method.getName()) {
+                    case "getBeginIndex":
+                        return 0;
+                    case "getEndIndex":
+                        return 9_000_000;
+                    case "getBarCount":
+                        return 9_000_001;
+                    default:
+                        return method.invoke(small, args);
+                    }
+                });
+        // A signal firing on every bar of a 9M-bar range must fail with the
+        // documented exception during extraction, before allocating arrays that
+        // could exhaust memory.
+        EventSignal dense = EventSignals.fromPredicate(hugeEnd, 0, i -> true);
+        assertThrows(IllegalArgumentException.class, () -> evaluate(dense, dense, 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9_000_000));
+    }
+
+    @Test
     public void emptyEventPoliciesAreExplicitAndRecorded() {
         BarSeries series = series();
         EventSignal empty = events(series, 0);
