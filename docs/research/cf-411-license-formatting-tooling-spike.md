@@ -58,7 +58,7 @@ For each formatting candidate the trial first proved that non-mutating validatio
 
 ## Behavioral results
 
-| Candidate | Dirty rejection | Clean validation | Output versus current | Idempotent | Multi-module / Java 25 |
+| Candidate | Dirty rejection | Pre-mutation clean validation | Output versus current | Idempotent | Multi-module / Java 25 |
 | --- | --- | --- | --- | --- | --- |
 | Mycila 5.0.0 + formatter 2.29.0 | Pass | Pass | Baseline | Pass | Pass |
 | Mycila 5.1.1 + formatter 2.29.0 | Pass | Pass | Byte-identical, 1,463/1,463 | Pass | Pass |
@@ -191,6 +191,16 @@ set -euo pipefail
 export JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home
 export PATH="/opt/homebrew/opt/openjdk@25/bin:$PATH"
 SPIKE_SOURCE_ROOT=$(git rev-parse --show-toplevel)
+java_version=$(java --version | awk 'NR == 1 {print $2}')
+maven_version=$("$SPIKE_SOURCE_ROOT/mvnw" --version | awk 'NR == 1 {print $3}')
+architecture=$(uname -m)
+if [[ "$java_version" != 25.0.4 ]] \
+  || [[ "$maven_version" != 3.9.16 ]] \
+  || [[ "$architecture" != arm64 ]]; then
+  printf 'Expected OpenJDK 25.0.4, Maven 3.9.16, and arm64; got %s, %s, and %s\n' \
+    "$java_version" "$maven_version" "$architecture" >&2
+  exit 1
+fi
 : "${CF411_RESULTS_FILE:?Set CF411_RESULTS_FILE to a new absolute CSV path}"
 if [[ "$CF411_RESULTS_FILE" != /* ]] || [[ -e "$CF411_RESULTS_FILE" ]]; then
   echo "CF411_RESULTS_FILE must be a new absolute path" >&2
@@ -260,15 +270,58 @@ In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and 
     cd ta4j-examples || exit 1
     ../mvnw -q -N help:effective-pom -Doutput=target/effective-examples.xml
   )
-  for effective_pom in \
+  python3 - \
     target/effective-parent.xml \
-    ta4j-examples/target/effective-examples.xml; do
-    rg -q '<artifactId>spotless-maven-plugin</artifactId>' "$effective_pom"
-    if rg -q '<artifactId>formatter-maven-plugin</artifactId>' "$effective_pom"; then
-      echo "Stale formatter-maven-plugin remains in $effective_pom" >&2
-      exit 1
-    fi
-  done
+    ta4j-examples/target/effective-examples.xml <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+def local_name(node):
+    return node.tag.rsplit("}", 1)[-1]
+
+def child_text(node, name):
+    for child in node:
+        if local_name(child) == name:
+            return (child.text or "").strip()
+    return ""
+
+for path in sys.argv[1:]:
+    plugins = [node for node in ET.parse(path).getroot().iter() if local_name(node) == "plugin"]
+    by_artifact = {}
+    for plugin in plugins:
+        by_artifact.setdefault(child_text(plugin, "artifactId"), []).append(plugin)
+    if "formatter-maven-plugin" in by_artifact:
+        raise SystemExit(f"stale formatter-maven-plugin remains in {path}")
+    expected = {"license-maven-plugin": "5.1.1", "spotless-maven-plugin": "3.9.0"}
+    for artifact, version in expected.items():
+        versions = {child_text(plugin, "version") for plugin in by_artifact.get(artifact, [])}
+        if versions != {version}:
+            raise SystemExit(f"unexpected {artifact} versions in {path}: {versions}")
+    for plugin in by_artifact["spotless-maven-plugin"]:
+        if any(local_name(node) == "licenseHeader" for node in plugin.iter()):
+            raise SystemExit(f"Spotless owns a licenseHeader step in {path}")
+PY
+  ./mvnw -q -N dependency:resolve-plugins \
+    -DoutputFile=target/resolved-plugins.txt
+  python3 - target/resolved-plugins.txt <<'PY'
+import sys
+
+expected = {
+    "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": 14,
+    "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": 28,
+}
+counts = {coordinate: 0 for coordinate in expected}
+current = None
+with open(sys.argv[1], encoding="utf-8") as source:
+    for line in source:
+        if line.startswith("   ") and not line.startswith("      "):
+            coordinate = line.strip()
+            current = coordinate if coordinate in expected else None
+        elif line.startswith("      ") and current is not None:
+            counts[current] += 1
+if counts != expected:
+    raise SystemExit(f"unexpected hybrid plugin runtime inventory: {counts}")
+PY
 )
 ```
 
@@ -310,14 +363,51 @@ Generate the exclusive input list and reject any scope drift before invoking RAT
 )
 ```
 
-Before mutating the corpus, reproduce the consolidated Spotless candidate's clean-tree incompatibility and require the failure to identify the legacy two-header fixture:
+Define the shared timing helper, then reproduce pre-mutation clean validation for the three compatible formatting candidates:
+
+```bash
+measure() {
+  local candidate=$1
+  local operation=$2
+  local repeat=$3
+  shift 3
+  local timing_file
+  timing_file=$(mktemp "$SPIKE_ROOT/timing.XXXXXX")
+  local status
+  if /usr/bin/time -p -o "$timing_file" "$@"; then
+    status=0
+  else
+    status=$?
+  fi
+  local elapsed
+  elapsed=$(awk '$1 == "real" {print $2}' "$timing_file")
+  rm -f -- "$timing_file"
+  printf '%s,%s,%s,%s,%s\n' \
+    "$candidate" "$operation" "$repeat" "$elapsed" "$status" \
+    | tee -a "$RESULTS_FILE"
+  return "$status"
+}
+
+for candidate in baseline specialist; do
+  (
+    cd "$SPIKE_ROOT/$candidate" || exit 1
+    measure "$candidate" clean-validation 1 \
+      ./mvnw -q -B license:check formatter:validate
+  )
+done
+(
+  cd "$SPIKE_ROOT/hybrid" || exit 1
+  measure hybrid clean-validation 1 ./mvnw -q -B license:check spotless:check
+)
+```
+
+Also reproduce the consolidated Spotless candidate's pre-mutation clean-tree incompatibility and require the failure to identify the legacy two-header fixture:
 
 ```bash
 (
   cd "$SPIKE_ROOT/spotless" || exit 1
   clean_log="$SPIKE_ROOT/spotless-clean.log"
-  clean_timing="$SPIKE_ROOT/spotless-clean.time"
-  if /usr/bin/time -p -o "$clean_timing" ./mvnw -q -B spotless:check \
+  if measure spotless clean-validation 1 ./mvnw -q -B spotless:check \
     >"$clean_log" 2>&1; then
     echo "Expected clean Spotless validation to report migration churn" >&2
     exit 1
@@ -330,9 +420,6 @@ Before mutating the corpus, reproduce the consolidated Spotless candidate's clea
     echo "Clean Spotless validation failed for an unexpected reason" >&2
     exit 1
   fi
-  clean_elapsed=$(awk '$1 == "real" {print $2}' "$clean_timing")
-  printf 'spotless,clean-validation,1,%s,%s\n' \
-    "$clean_elapsed" "$clean_status" | tee -a "$RESULTS_FILE"
 )
 ```
 
@@ -399,28 +486,6 @@ done
 The timing helper records wall seconds and exit status for every measured invocation. Expected dirty-corpus failures are accepted only when their logs identify `Bar.java`; unrelated failures stop the script.
 
 ```bash
-measure() {
-  local candidate=$1
-  local operation=$2
-  local repeat=$3
-  shift 3
-  local timing_file
-  timing_file=$(mktemp "$SPIKE_ROOT/timing.XXXXXX")
-  local status
-  if /usr/bin/time -p -o "$timing_file" "$@"; then
-    status=0
-  else
-    status=$?
-  fi
-  local elapsed
-  elapsed=$(awk '$1 == "real" {print $2}' "$timing_file")
-  rm -f -- "$timing_file"
-  printf '%s,%s,%s,%s,%s\n' \
-    "$candidate" "$operation" "$repeat" "$elapsed" "$status" \
-    | tee -a "$RESULTS_FILE"
-  return "$status"
-}
-
 java_tree_hash() {
   find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
     | LC_ALL=C sort \
@@ -698,6 +763,7 @@ with open(capture_path, newline="", encoding="utf-8") as source:
 expected_repeats = {}
 for candidate in ("baseline", "specialist", "hybrid"):
     expected_repeats.update({
+        (candidate, "clean-validation"): [1],
         (candidate, "dirty-license-check"): [1],
         (candidate, "dirty-format-check"): [1],
         (candidate, "dirty-repair"): [1],
@@ -772,7 +838,7 @@ for row in rows:
     operation = row["operation"]
     if candidate == "rat" and operation == "clean-validation":
         key = ("apache-rat-0.18", "java-corpus-check", "clean", 1)
-    elif operation == "clean-validation" and candidate == "spotless":
+    elif operation == "clean-validation" and candidate in aliases:
         key = (aliases[candidate], "clean-check", "initial", 1)
     elif candidate in aliases and operation in operation_map:
         published_operation, state = operation_map[operation]
