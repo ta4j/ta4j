@@ -152,11 +152,12 @@ public final class EventSynchronizationEvaluator {
                 recall = numFactory.zero();
                 f1 = numFactory.zero();
             }
-            default -> {
+            case ONE_WHEN_BOTH_EMPTY -> {
                 precision = numFactory.one();
                 recall = numFactory.one();
                 f1 = numFactory.one();
             }
+            default -> throw new AssertionError("unknown EmptyEventPolicy: " + config.emptyEventPolicy());
             }
         } else if (predictedCount == 0) {
             precision = NaN.NaN;
