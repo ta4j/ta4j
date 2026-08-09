@@ -14,7 +14,7 @@ Adopt a hybrid in a separately reviewed implementation change:
 2. Replace `net.revelc.code.formatter:formatter-maven-plugin` 2.29.0 with `com.diffplug.spotless:spotless-maven-plugin` 3.9.0, configured only with Eclipse JDT 4.37 and the existing `code-formatter.xml`.
 3. Do not enable Spotless license-header handling and do not add Apache RAT.
 
-This is the best grounded path because it is byte-identical to the current stack across all 1,463 tracked Java files, preserves the one legacy full MIT notice, and reduces the statically resolved plugin runtime surface from 65 to 42 artifacts. Its observed Java 25 median was 63.45s versus the baseline's 71.45s, but the fixed candidate order shared Maven and operating-system caches, so the 11.2% difference is directional and is not used as causal evidence or as a decision-score advantage. The spike itself does not migrate production tooling.
+This is the best-grounded path because it is byte-identical to the current stack across all 1,463 tracked Java files, preserves the one legacy full MIT notice, and reduces the statically resolved plugin runtime surface from 65 to 42 artifacts. Its observed Java 25 median was 63.45s versus the baseline's 71.45s, but the fixed candidate order shared Maven and operating-system caches, so the 11.2% difference is directional and is not used as causal evidence or as a decision-score advantage. The spike itself does not migrate production tooling.
 
 ## Current state and current releases
 
