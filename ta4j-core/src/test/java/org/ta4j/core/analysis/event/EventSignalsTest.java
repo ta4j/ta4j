@@ -17,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -96,7 +97,8 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         EventSignal reference = EventSignals.fromPredicate(series, 0, i -> i == 7);
 
         EventSynchronizationResult result = new EventSynchronizationEvaluator().evaluate(predicted, reference, 0, 9,
-                new EventSynchronizationConfig(0, 0));
+                new EventSynchronizationConfig(0, 0, HistoryPolicy.CLAMP,
+                        EventSynchronizationConfig.EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY));
         assertEquals(6, result.effectiveStartIndex());
         assertEquals(1, result.predictedCount());
         assertEquals(1, result.matchedCount());

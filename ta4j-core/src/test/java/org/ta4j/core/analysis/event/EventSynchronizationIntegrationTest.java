@@ -65,7 +65,10 @@ class EventSynchronizationIntegrationTest {
     }
 
     private static EventSynchronizationConfig config(int maxLeadBars, int maxLagBars) {
-        return new EventSynchronizationConfig(maxLeadBars, maxLagBars, HistoryPolicy.STRICT,
+        // CLAMP: the momentum signal has a nonzero unstable-bar boundary, and the
+        // full-series requests intentionally start below it; silent intersection
+        // is CLAMP's documented behavior.
+        return new EventSynchronizationConfig(maxLeadBars, maxLagBars, HistoryPolicy.CLAMP,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
     }
 

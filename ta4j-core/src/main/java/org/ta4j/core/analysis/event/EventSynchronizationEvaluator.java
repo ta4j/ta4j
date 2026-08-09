@@ -53,10 +53,12 @@ public final class EventSynchronizationEvaluator {
 
     /**
      * Upper bound on the sequence-alignment matrix cells to keep the baseline
-     * matcher's memory bounded (16 bytes per cell); event counts above roughly
-     * 8,000 per stream are out of scope for the baseline implementation.
+     * matcher's memory bounded: 8 million cells at 16 bytes per cell is roughly 128
+     * MB of arrays (~2,800 events per stream). The documented
+     * {@link IllegalArgumentException} therefore always fires before an allocation
+     * that could become an {@link OutOfMemoryError}.
      */
-    private static final long MAX_MATCHING_CELLS = 64_000_000L;
+    private static final long MAX_MATCHING_CELLS = 8_000_000L;
 
     /** Sentinel for "no matched pair yet" in worst-offset tracking. */
     private static final int NO_WORST_OFFSET = -1;
@@ -104,17 +106,24 @@ public final class EventSynchronizationEvaluator {
         int effectiveStart;
         int effectiveEnd;
         if (config.historyPolicy() == HistoryPolicy.STRICT) {
-            if (startIndex < availableStart || endIndex > availableEnd) {
+            // Bars below the signals' unstable boundaries are unavailable history
+            // too: fail fast whenever the requested range includes them.
+            int unavailableStart = Math.max(availableStart,
+                    Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars()));
+            if (startIndex < unavailableStart || endIndex > availableEnd) {
                 throw new IllegalArgumentException("requested range [" + startIndex + ", " + endIndex
-                        + "] includes unavailable history [" + availableStart + ", " + availableEnd + "]");
+                        + "] includes unavailable history [" + unavailableStart + ", " + availableEnd + "]");
             }
-            effectiveStart = Math.max(startIndex, Math.max(availableStart,
-                    Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars())));
+            effectiveStart = Math.max(startIndex, unavailableStart);
             effectiveEnd = endIndex;
         } else {
             effectiveStart = Math.max(startIndex, Math.max(availableStart,
                     Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars())));
             effectiveEnd = Math.min(endIndex, availableEnd);
+            if (effectiveStart > effectiveEnd) {
+                // Canonical empty inclusive range: start == end + 1.
+                effectiveStart = effectiveEnd + 1;
+            }
         }
 
         int[] predictedEvents = extractEvents(predicted, effectiveStart, effectiveEnd);
@@ -249,8 +258,9 @@ public final class EventSynchronizationEvaluator {
         }
         long cells = (long) (n + 1) * (m + 1);
         if (cells > MAX_MATCHING_CELLS) {
-            throw new IllegalArgumentException("event counts " + n + " x " + m + " exceed the baseline matcher "
-                    + "capacity of " + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells");
+            throw new IllegalArgumentException(
+                    "event counts " + n + " x " + m + " exceed the baseline matcher " + "capacity of "
+                            + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment " + "arrays)");
         }
         int stride = m + 1;
         int[] bestPairs = new int[(int) cells];
@@ -302,6 +312,14 @@ public final class EventSynchronizationEvaluator {
         List<EventMatch> matches = new ArrayList<>();
         int i = 0;
         int j = 0;
+        // The lexicographic tie-break compares full sequences, so a continuation
+        // only needs to keep the *global* worst offset optimal: a candidate pair
+        // is admissible when its child can still complete the global optimum, not
+        // merely when it reproduces the target subproblem's minimal worst. An
+        // earlier chosen pair can already reach the global worst, in which case a
+        // lexicographically earlier continuation whose own suffix worst is not
+        // suffix-minimal is still the canonical choice.
+        int worstBudget = bestWorstAbs[0];
         while (i < n && j < m) {
             int targetCell = i * stride + j;
             int targetPairs = bestPairs[targetCell];
@@ -319,7 +337,7 @@ public final class EventSynchronizationEvaluator {
                     long absoluteOffset = offset < 0 ? -offset : offset;
                     if (bestPairs[childCell] + 1 == targetPairs
                             && bestTotalAbs[childCell] + absoluteOffset == bestTotalAbs[targetCell]
-                            && Math.max(bestWorstAbs[childCell], (int) absoluteOffset) == bestWorstAbs[targetCell]) {
+                            && Math.max(bestWorstAbs[childCell], (int) absoluteOffset) <= worstBudget) {
                         matches.add(new EventMatch(predicted[k], reference[l], (int) offset));
                         i = k + 1;
                         j = l + 1;

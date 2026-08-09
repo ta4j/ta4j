@@ -189,6 +189,101 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void lexicographicTieBreakSurvivesDominantPrefixOffsets() {
+        BarSeries series = series();
+        // Two 3-pair assignments tie on (pairs=3, totalAbs=4, worst=2):
+        // X=[(3,1,-2),(16,18,2),(19,19,0)] and Y=[(3,1,-2),(19,18,-1),(20,19,-1)].
+        // The second pair's predicted index must win lexicographically.
+        EventSynchronizationResult result = evaluate(events(series, 0, 3, 16, 19, 20), events(series, 0, 1, 18, 19, 25),
+                2, 3, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 25);
+        assertEquals(List.of(new EventMatch(3, 1, -2), new EventMatch(16, 18, 2), new EventMatch(19, 19, 0)),
+                result.matches());
+        assertEquals(1, result.exactMatchCount());
+        assertEquals(List.of(20), result.unmatchedPredictedIndexes());
+        assertNumEquals(0.0, result.meanSignedOffset());
+    }
+
+    @Test
+    public void lexicographicallyEarliestSequenceAmongTiedOptima() {
+        BarSeries series = series();
+        // A: (4,6),(8,10),(11,11),(17,16) and B: (4,6),(11,10),(12,11),(17,16)
+        // both achieve (pairs=4, totalAbs=5, worst=2); A is lexicographically
+        // earlier at the second pair.
+        EventSynchronizationResult result = evaluate(events(series, 0, 4, 8, 11, 12, 17),
+                events(series, 0, 6, 10, 11, 16), 2, 1, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
+        assertEquals(List.of(new EventMatch(4, 6, 2), new EventMatch(8, 10, 2), new EventMatch(11, 11, 0),
+                new EventMatch(17, 16, -1)), result.matches());
+        assertEquals(1, result.exactMatchCount());
+        assertEquals(List.of(12), result.unmatchedPredictedIndexes());
+    }
+
+    @Test
+    public void lexicographicTieBreakKeepsEarliestPredictedMatched() {
+        BarSeries series = series();
+        // Two 3-pair assignments tie on (pairs=3, totalAbs=8, worst=4):
+        // [(0,4),(14,17),(19,18)] is the canonical choice over
+        // [(0,4),(19,17),(20,18)].
+        EventSynchronizationResult result = evaluate(events(series, 0, 0, 14, 19, 20), events(series, 0, 4, 17, 18), 7,
+                7, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 20);
+        assertEquals(List.of(new EventMatch(0, 4, 4), new EventMatch(14, 17, 3), new EventMatch(19, 18, -1)),
+                result.matches());
+        assertEquals(List.of(20), result.unmatchedPredictedIndexes());
+    }
+
+    @Test
+    public void denseEventStreamsBeyondMemorySafeCapacityFailWithDocumentedException() {
+        BarSeries series = series(5000);
+        EventSignal dense = events(series, 0, allIndexes(5000));
+        assertThrows(IllegalArgumentException.class, () -> evaluate(dense, dense, 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 4999));
+    }
+
+    @Test
+    public void benchmarkEnvelopeRemainsComputable() {
+        BarSeries series = series(1000);
+        EventSynchronizationResult result = evaluate(events(series, 0, allIndexes(1000)),
+                events(series, 0, allIndexes(1000)), 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 999);
+        assertEquals(1000, result.matchedCount());
+    }
+
+    @Test
+    public void matchesBruteForceOracleOnLargerRandomCases() {
+        Random random = new Random(20260809L);
+        for (int trial = 0; trial < 2000; trial++) {
+            int predictedSize = random.nextInt(9);
+            int referenceSize = random.nextInt(9);
+            int[] predicted = sortedDistinct(random, predictedSize, 30);
+            int[] reference = sortedDistinct(random, referenceSize, 30);
+            int maxLead = random.nextInt(10);
+            int maxLag = random.nextInt(10);
+
+            BarSeries series = series(30);
+            EventSynchronizationResult actual = evaluate(events(series, 0, predicted), events(series, 0, reference),
+                    maxLead, maxLag, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 29);
+            BruteForceResult expected = bruteForce(predicted, reference, maxLead, maxLag);
+
+            assertEquals("trial " + trial + " p=" + Arrays.toString(predicted) + " r=" + Arrays.toString(reference)
+                    + " lead=" + maxLead + " lag=" + maxLag, expected.matches.size(), actual.matchedCount());
+            assertEquals(expected.totalAbsoluteOffset,
+                    actual.matches().stream().mapToLong(EventMatch::offsetBars).map(Math::abs).sum());
+            for (int i = 0; i < expected.matches.size(); i++) {
+                assertEquals(expected.matches.get(i).predictedIndex(), actual.matches().get(i).predictedIndex());
+                assertEquals(expected.matches.get(i).referenceIndex(), actual.matches().get(i).referenceIndex());
+            }
+        }
+    }
+
+    private static int[] allIndexes(int barCount) {
+        int[] indexes = new int[barCount];
+        for (int i = 0; i < barCount; i++) {
+            indexes[i] = i;
+        }
+        return indexes;
+    }
+
+    @Test
     public void emptyEventPoliciesAreExplicitAndRecorded() {
         BarSeries series = series();
         EventSignal empty = events(series, 0);
@@ -243,13 +338,57 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
             return i == 5 || i == 8;
         });
         EventSignal reference = events(series, 0, 5);
-        EventSynchronizationResult result = evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
+        // Silent exclusion below the unstable boundary is CLAMP's documented
+        // behavior; STRICT fails fast for such requests instead.
+        EventSynchronizationResult result = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(4, result.effectiveStartIndex());
         assertEquals(2, result.predictedCount());
         assertEquals(1, result.referenceCount());
         assertEquals(1, result.matchedCount());
         assertEquals(List.of(8), result.unmatchedPredictedIndexes());
+    }
+
+    @Test
+    public void strictPolicyFailsFastWhenRequestedRangeIncludesUnstableBars() {
+        BarSeries series = series();
+        EventSignal predicted = EventSignals.fromPredicate(series, 10, i -> i == 12);
+        EventSignal reference = events(series, 0, 12);
+        // STRICT treats the unstable-bar boundary as unavailable history: a
+        // request starting below it fails fast instead of silently truncating.
+        assertThrows(IllegalArgumentException.class, () -> evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19));
+        assertThrows(IllegalArgumentException.class, () -> evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9));
+        // A request starting at or after the boundary succeeds under STRICT.
+        EventSynchronizationResult valid = evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 10, 19);
+        assertEquals(10, valid.effectiveStartIndex());
+        assertEquals(1, valid.matchedCount());
+    }
+
+    @Test
+    public void clampPolicyNeverReportsGappedEffectiveRange() {
+        BarSeries series = series(40);
+        series.setMaximumBarCount(30);
+        EventSignal predicted = events(series, 0, 12);
+        EventSignal reference = events(series, 0, 12);
+        // A request fully before the available history clamps to the canonical
+        // empty inclusive range (start == end + 1), never an inverted one.
+        EventSynchronizationResult beforeHistory = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 8);
+        assertEquals(beforeHistory.effectiveEndIndex() + 1, beforeHistory.effectiveStartIndex());
+        assertEquals(0, beforeHistory.predictedCount());
+
+        EventSynchronizationResult afterEnd = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 45, 50);
+        assertEquals(afterEnd.effectiveEndIndex() + 1, afterEnd.effectiveStartIndex());
+        assertEquals(0, afterEnd.predictedCount());
+
+        EventSynchronizationResult unstableGap = evaluate(EventSignals.fromPredicate(series, 40, i -> false),
+                events(series, 0, 12), 0, 0, HistoryPolicy.CLAMP, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 30);
+        assertEquals(unstableGap.effectiveEndIndex() + 1, unstableGap.effectiveStartIndex());
+        assertEquals(0, unstableGap.predictedCount());
     }
 
     @Test
@@ -364,6 +503,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9);
         assertEquals(0, clamped.predictedCount());
         assertEquals(0, clamped.referenceCount());
+        assertEquals(clamped.effectiveEndIndex() + 1, clamped.effectiveStartIndex());
         assertNumEquals(Double.NaN, clamped.f1Score());
         assertThrows(IllegalArgumentException.class, () -> evaluate(signal, signal, 1, 1, HistoryPolicy.STRICT,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9));

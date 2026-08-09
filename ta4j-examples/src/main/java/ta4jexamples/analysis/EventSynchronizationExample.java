@@ -115,7 +115,7 @@ public final class EventSynchronizationExample {
         EventSignal aboveZeroCrosses = EventSignals.fromRule(series, NumericIndicator.of(momentum).crossedOver(0),
                 momentum.getCountOfUnstableBars());
 
-        EventSynchronizationConfig config = new EventSynchronizationConfig(12, 12, HistoryPolicy.STRICT,
+        EventSynchronizationConfig config = new EventSynchronizationConfig(12, 12, HistoryPolicy.CLAMP,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
         EventSynchronizationEvaluator evaluator = new EventSynchronizationEvaluator();
 
