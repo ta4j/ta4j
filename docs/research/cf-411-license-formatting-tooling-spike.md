@@ -72,7 +72,7 @@ Spotless and the current formatter both normalized the CRLF fixture to the repos
 
 ## Runtime results
 
-Wall-clock seconds; lower is better. Full-reactor rows are two independent `clean ... verify` runs. Idempotent repair and validation rows report the median of repeated post-repair runs; dirty repair is the first repair of the deliberately malformed corpus.
+Wall-clock seconds; lower is better. Full-reactor rows are two independent `clean ... verify` runs. Idempotent repair and validation rows report the median of repeated post-repair runs; dirty repair is the first repair of the deliberately malformed corpus. Displayed values use conventional half-up rounding.
 
 | Candidate | Dirty repair | Idempotent repair | Warm validation | Full-reactor range | Full-reactor median | Observed versus baseline |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -283,6 +283,12 @@ if [[ "$CF411_RESULTS_FILE" != /* ]] || [[ -e "$CF411_RESULTS_FILE" ]]; then
   echo "CF411_RESULTS_FILE must be a new absolute path" >&2
   exit 1
 fi
+case "$CF411_RESULTS_FILE" in
+  /tmp|/tmp/*|/private/tmp|/private/tmp/*)
+    echo "CF411_RESULTS_FILE must be outside /tmp" >&2
+    exit 1
+    ;;
+esac
 SPIKE_ROOT=$(mktemp -d /tmp/cf411-formatting-spike.XXXXXX)
 if [[ "$CF411_RESULTS_FILE" == "$SPIKE_ROOT"/* ]]; then
   echo "CF411_RESULTS_FILE must survive SPIKE_ROOT cleanup" >&2
@@ -302,6 +308,15 @@ for candidate in baseline specialist spotless hybrid rat; do
   git archive --format=tar 6d8f05a2e63512bf1b84568594165b4100293bfc \
     | tar -xf - -C "$SPIKE_ROOT/$candidate"
 done
+CF411_UNTOUCHED_JAVA_HASH=$(
+  cd "$SPIKE_ROOT/baseline" || exit 1
+  find ta4j-core/src ta4j-examples/src -type f -name '*.java' -print \
+    | LC_ALL=C sort \
+    | xargs shasum -a 256 \
+    | shasum -a 256 \
+    | awk '{print $1}'
+)
+readonly CF411_UNTOUCHED_JAVA_HASH
 ```
 
 Leave `baseline` unchanged. In `specialist/pom.xml`, change only Mycila's version from 5.0.0 to 5.1.1.
@@ -341,6 +356,12 @@ In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and 
 
 ```bash
 (
+  (
+    cd "$SPIKE_ROOT/baseline" || exit 1
+    ./mvnw -q -N \
+      org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
+      -DoutputFile=target/resolved-plugins.txt
+  )
   cd "$SPIKE_ROOT/hybrid" || exit 1
   ./mvnw -q -N help:effective-pom -Doutput=target/effective-parent.xml
   (
@@ -415,62 +436,92 @@ PY
     org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
     -DoutputFile=target/resolved-plugins.txt
   python3 - \
+    "$SPIKE_ROOT/baseline/target/resolved-plugins.txt" \
     target/resolved-plugins.txt \
     "$SPIKE_SOURCE_ROOT/docs/research/cf-411-osv-query-manifest.csv" <<'PY'
 import csv
 import sys
 
-expected = {
-    "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": 14,
-    "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": 28,
+inventories = {
+    "baseline": {
+        "path": sys.argv[1],
+        "expected": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.0.0:runtime": 13,
+            "net.revelc.code.formatter:formatter-maven-plugin:maven-plugin:2.29.0:runtime": 52,
+        },
+        "labels": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.0.0:runtime": "mycila-5.0.0",
+            "net.revelc.code.formatter:formatter-maven-plugin:maven-plugin:2.29.0:runtime": "formatter-2.29.0",
+        },
+    },
+    "hybrid": {
+        "path": sys.argv[2],
+        "expected": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": 14,
+            "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": 28,
+        },
+        "labels": {
+            "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": "mycila-5.1.1",
+            "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": "spotless-3.9.0",
+        },
+    },
 }
-counts = {coordinate: 0 for coordinate in expected}
-manifest_labels = {
-    "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": "mycila-5.1.1",
-    "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": "spotless-3.9.0",
+managed_plugins = {
+    "com.mycila:license-maven-plugin",
+    "net.revelc.code.formatter:formatter-maven-plugin",
+    "com.diffplug.spotless:spotless-maven-plugin",
 }
-actual_artifacts = {coordinate: set() for coordinate in expected}
-current = None
-sections = 0
-headers = set()
-with open(sys.argv[1], encoding="utf-8") as source:
-    for line in source:
-        if line.startswith("   ") and not line.startswith("      "):
-            # The header labels a section; its first six-space row is the
-            # plugin JAR itself, followed by the remaining runtime artifacts.
-            coordinate = line.strip()
-            headers.add(coordinate)
-            current = coordinate if coordinate in expected else None
-            sections += 1
-        elif line.startswith("      ") and current is not None:
-            parts = line.strip().split(":")
-            if len(parts) < 4:
-                raise SystemExit(f"unexpected dependency coordinate: {line.strip()}")
-            actual_artifacts[current].add((f"{parts[0]}:{parts[1]}", parts[-1]))
-            counts[current] += 1
-if sections == 0:
-    raise SystemExit("unsupported dependency:resolve-plugins output format")
-if any(
-    coordinate.startswith("net.revelc.code.formatter:formatter-maven-plugin:")
-    for coordinate in headers
-):
-    raise SystemExit("stale formatter-maven-plugin remains in runtime inventory")
-if counts != expected:
-    raise SystemExit(f"unexpected hybrid plugin runtime inventory: {counts}")
-with open(sys.argv[2], newline="", encoding="utf-8") as source:
-    manifest = list(csv.DictReader(source))
-for coordinate, label in manifest_labels.items():
-    manifest_artifacts = {
-        (row["package"], row["version"])
-        for row in manifest
-        if row["plugin"] == label
-    }
-    if actual_artifacts[coordinate] != manifest_artifacts:
+
+def parse_inventory(name, inventory):
+    expected = inventory["expected"]
+    counts = {coordinate: 0 for coordinate in expected}
+    actual_artifacts = {coordinate: set() for coordinate in expected}
+    current = None
+    sections = 0
+    managed_headers = set()
+    with open(inventory["path"], encoding="utf-8") as source:
+        for line in source:
+            if line.startswith("   ") and not line.startswith("      "):
+                # The header labels a section; its first six-space row is the
+                # plugin JAR itself, followed by the remaining runtime artifacts.
+                coordinate = line.strip()
+                current = coordinate if coordinate in expected else None
+                sections += 1
+                parts = coordinate.split(":")
+                if len(parts) >= 2 and f"{parts[0]}:{parts[1]}" in managed_plugins:
+                    managed_headers.add(coordinate)
+            elif line.startswith("      ") and current is not None:
+                parts = line.strip().split(":")
+                if len(parts) < 4:
+                    raise SystemExit(f"unexpected dependency coordinate: {line.strip()}")
+                actual_artifacts[current].add((f"{parts[0]}:{parts[1]}", parts[-1]))
+                counts[current] += 1
+    if sections == 0:
+        raise SystemExit(f"unsupported {name} dependency:resolve-plugins output format")
+    if managed_headers != set(expected):
         raise SystemExit(
-            f"hybrid inventory differs from OSV manifest for {label}: "
-            f"actual={sorted(actual_artifacts[coordinate])}, "
-            f"manifest={sorted(manifest_artifacts)}"
+            f"unexpected {name} formatting-plugin headers: {sorted(managed_headers)}"
         )
+    if counts != expected:
+        raise SystemExit(f"unexpected {name} plugin runtime inventory: {counts}")
+    return actual_artifacts
+
+with open(sys.argv[3], newline="", encoding="utf-8") as source:
+    manifest = list(csv.DictReader(source))
+for name, inventory in inventories.items():
+    actual_artifacts = parse_inventory(name, inventory)
+    for coordinate, label in inventory["labels"].items():
+        manifest_artifacts = {
+            (row["package"], row["version"])
+            for row in manifest
+            if row["plugin"] == label
+        }
+        if actual_artifacts[coordinate] != manifest_artifacts:
+            raise SystemExit(
+                f"{name} inventory differs from OSV manifest for {label}: "
+                f"actual={sorted(actual_artifacts[coordinate])}, "
+                f"manifest={sorted(manifest_artifacts)}"
+            )
 PY
 )
 ```
@@ -817,7 +868,7 @@ if [[ "$document_hashes" != "$reported_hash" ]] \
   echo "The report and raw-results CSV disagree on the canonical Java hash" >&2
   exit 1
 fi
-baseline_hash=
+: "${CF411_UNTOUCHED_JAVA_HASH:?Run exact candidate construction first}"
 for candidate in baseline specialist hybrid spotless; do
   hash=$(
     cd "$SPIKE_ROOT/$candidate" || exit 1
@@ -830,15 +881,15 @@ for candidate in baseline specialist hybrid spotless; do
   printf '%s\t%s\n' "$candidate" "$hash"
   case "$candidate" in
     baseline)
-      baseline_hash=$hash
-      if [[ "$baseline_hash" != "$reported_hash" ]]; then
-        echo "Baseline hash does not match the reported result" >&2
+      if [[ "$hash" != "$CF411_UNTOUCHED_JAVA_HASH" ]] \
+        || [[ "$CF411_UNTOUCHED_JAVA_HASH" != "$reported_hash" ]]; then
+        echo "Repaired baseline differs from the untouched pinned Java tree" >&2
         exit 1
       fi
       ;;
     specialist|hybrid)
-      if [[ "$hash" != "$baseline_hash" ]]; then
-        echo "$candidate output differs from baseline" >&2
+      if [[ "$hash" != "$CF411_UNTOUCHED_JAVA_HASH" ]]; then
+        echo "$candidate output differs from the untouched pinned Java tree" >&2
         exit 1
       fi
       ;;
@@ -900,13 +951,20 @@ Finally, validate the stable raw capture's exact candidate/operation/repetition 
 ```bash
 python3 - \
   "$RESULTS_FILE" \
-  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-results.csv" <<'PY'
+  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-results.csv" \
+  "$SPIKE_SOURCE_ROOT/docs/research/cf-411-license-formatting-tooling-spike.md" <<'PY'
 import csv
 import statistics
 import sys
 from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_UP
 
-capture_path, published_path = sys.argv[1:]
+capture_path, published_path, report_path = sys.argv[1:]
+
+def rounded(value, places):
+    quantum = Decimal(1).scaleb(-places)
+    return format(value.quantize(quantum, rounding=ROUND_HALF_UP), f".{places}f")
+
 with open(capture_path, newline="", encoding="utf-8") as source:
     rows = list(csv.DictReader(source))
 
@@ -951,7 +1009,7 @@ for row in rows:
         "dirty-repair", "idempotent-repair", "warm-validation", "full-reactor"
     }:
         groups[(row["candidate"], row["operation"])].append(
-            float(row["wall_seconds"])
+            Decimal(row["wall_seconds"])
         )
 
 for (candidate, operation), values in sorted(groups.items()):
@@ -959,8 +1017,8 @@ for (candidate, operation), values in sorted(groups.items()):
         candidate,
         operation,
         f"runs={len(values)}",
-        f"median={statistics.median(values):.2f}",
-        f"range={min(values):.2f}-{max(values):.2f}",
+        f"median={rounded(statistics.median(values), 2)}",
+        f"range={rounded(min(values), 2)}-{rounded(max(values), 2)}",
         sep="\t",
     )
 
@@ -1004,6 +1062,79 @@ for row in rows:
 if drift:
     raise SystemExit(
         f"runtime drift detected; preserve {capture_path} and review: {drift}"
+    )
+
+published_groups = defaultdict(list)
+for row in published_rows:
+    if row["wall_seconds"]:
+        published_groups[(row["candidate"], row["operation"], row["state"])].append(
+            Decimal(row["wall_seconds"])
+        )
+
+report_labels = {
+    aliases["baseline"]: "Mycila 5.0.0 + formatter 2.29.0",
+    aliases["specialist"]: "Mycila 5.1.1 + formatter 2.29.0",
+    aliases["spotless"]: "Spotless 3.9.0 consolidated",
+    aliases["hybrid"]: "Mycila 5.1.1 + Spotless format-only",
+}
+full_medians = {
+    candidate: statistics.median(
+        published_groups[(candidate, "full-reactor", "clean")]
+    )
+    for candidate in report_labels
+}
+baseline_median = full_medians[aliases["baseline"]]
+expected_report_rows = {}
+for candidate, label in report_labels.items():
+    dirty = published_groups[(candidate, "repair", "dirty")]
+    idempotent = published_groups[(candidate, "repair", "idempotent")]
+    warm = published_groups[(candidate, "clean-check", "warm")]
+    full = published_groups[(candidate, "full-reactor", "clean")]
+    if candidate == aliases["baseline"]:
+        observed = "Baseline"
+    else:
+        percent = (full_medians[candidate] / baseline_median - 1) * 100
+        observed = rounded(percent, 1)
+        if not observed.startswith("-"):
+            observed = f"+{observed}"
+        observed += "%"
+        if candidate == aliases["spotless"]:
+            observed += ", but with churn"
+        elif candidate == aliases["hybrid"]:
+            observed += ", byte-identical"
+    expected_report_rows[label] = [
+        rounded(statistics.median(dirty), 2),
+        rounded(statistics.median(idempotent), 2),
+        rounded(statistics.median(warm), 2),
+        f"{rounded(min(full), 2)}–{rounded(max(full), 2)}",
+        rounded(full_medians[candidate], 2),
+        observed,
+    ]
+
+with open(report_path, encoding="utf-8") as source:
+    report_lines = source.readlines()
+runtime_header = (
+    "| Candidate | Dirty repair | Idempotent repair | Warm validation | "
+    "Full-reactor range | Full-reactor median | Observed versus baseline |"
+)
+try:
+    table_start = next(
+        index for index, line in enumerate(report_lines) if line.strip() == runtime_header
+    )
+except StopIteration as error:
+    raise SystemExit("runtime results table header not found in report") from error
+actual_report_rows = {}
+for line in report_lines[table_start + 2:]:
+    if not line.startswith("|"):
+        break
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    if len(cells) != 7:
+        raise SystemExit(f"unexpected runtime results row: {line.rstrip()}")
+    actual_report_rows[cells[0]] = cells[1:]
+if actual_report_rows != expected_report_rows:
+    raise SystemExit(
+        "runtime results table differs from the checked-in CSV: "
+        f"expected={expected_report_rows}, actual={actual_report_rows}"
     )
 PY
 ```
