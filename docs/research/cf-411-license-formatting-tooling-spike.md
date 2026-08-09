@@ -87,7 +87,7 @@ The specialist full-gate variance is too large to attribute to Mycila itself; it
 
 `dependency:resolve-plugins` supplied each plugin's isolated runtime classpath. Each exact Maven coordinate/version was queried through the [OSV batch API](https://google.github.io/osv.dev/api/#tag/api/operation/OSV_QueryAffectedBatch) on 2026-08-09. The durable evidence is the indexed [query manifest](cf-411-osv-query-manifest.csv), exact [batch request](cf-411-osv-querybatch-request.json), exact [batch response](cf-411-osv-querybatch-response.json), and [SHA-256 checksum](cf-411-osv-querybatch-response.sha256). The response preserves every returned advisory ID and OSV modification timestamp.
 
-| Plugin | Runtime artifacts | OSV advisory IDs | Affected components |
+| Plugin | Runtime artifacts | OSV advisory IDs | Queried artifacts with advisories |
 | --- | ---: | ---: | ---: |
 | Mycila 5.0.0 | 13 | 2 | 2 |
 | Mycila 5.1.1 | 14 | 0 | 0 |
@@ -95,7 +95,7 @@ The specialist full-gate variance is too large to attribute to Mycila itself; it
 | Spotless Maven 3.9.0 | 28 | 0 | 0 |
 | Apache RAT 0.18 | 49 | 2 | 2 |
 
-Validate the stored response checksum, one-to-one query/result mapping, and the exact advisory/component counts used above:
+Validate the stored response checksum, one-to-one query/result mapping, and the exact advisory and queried-artifact counts used above:
 
 ```bash
 (
@@ -128,7 +128,7 @@ expected_query_counts = {
     "rat-0.18": 49,
 }
 query_counts = defaultdict(int)
-observed = defaultdict(lambda: {"ids": set(), "components": 0})
+observed = defaultdict(lambda: {"ids": set(), "queried_artifacts": 0})
 for index, (row, query, result) in enumerate(zip(manifest, queries, results)):
     plugin = row["plugin"]
     if plugin not in expected_query_counts:
@@ -141,7 +141,7 @@ for index, (row, query, result) in enumerate(zip(manifest, queries, results)):
         raise SystemExit(f"OSV query does not match manifest row {index}")
     vulns = result.get("vulns", [])
     if vulns:
-        observed[row["plugin"]]["components"] += 1
+        observed[row["plugin"]]["queried_artifacts"] += 1
     for vuln in vulns:
         if set(vuln) != {"id", "modified"}:
             raise SystemExit(f"incomplete OSV metadata at query {index}")
@@ -160,7 +160,7 @@ expected = {
     "rat-0.18": (2, 2),
 }
 actual = {
-    plugin: (len(observed[plugin]["ids"]), observed[plugin]["components"])
+    plugin: (len(observed[plugin]["ids"]), observed[plugin]["queried_artifacts"])
     for plugin in expected
 }
 if actual != expected:
@@ -352,9 +352,11 @@ In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and 
     ../mvnw -q -N help:effective-pom -Doutput=target/effective-examples.xml
   )
   python3 - \
+    "$PWD/code-formatter.xml" \
     target/effective-parent.xml \
     ta4j-core/target/effective-core.xml \
     ta4j-examples/target/effective-examples.xml <<'PY'
+import os
 import sys
 import xml.etree.ElementTree as ET
 
@@ -367,7 +369,11 @@ def child_text(node, name):
             return (child.text or "").strip()
     return ""
 
-for path in sys.argv[1:]:
+formatter_file = sys.argv[1]
+if not os.path.isfile(formatter_file):
+    raise SystemExit(f"missing Eclipse formatter file: {formatter_file}")
+
+for path in sys.argv[2:]:
     plugins = [node for node in ET.parse(path).getroot().iter() if local_name(node) == "plugin"]
     by_artifact = {}
     for plugin in plugins:
@@ -385,7 +391,7 @@ for path in sys.argv[1:]:
         for node in plugin.iter()
         if local_name(node) == "header"
     }
-    if path == sys.argv[1]:
+    if path == sys.argv[2]:
         if len(license_headers) != 1 or not next(iter(license_headers)).endswith("/license-header.txt"):
             raise SystemExit(f"unexpected parent Mycila header path in {path}: {license_headers}")
     elif license_headers != {"${project.parent.basedir}/license-header.txt"}:
@@ -393,11 +399,25 @@ for path in sys.argv[1:]:
     for plugin in by_artifact["spotless-maven-plugin"]:
         if any(local_name(node) == "licenseHeader" for node in plugin.iter()):
             raise SystemExit(f"Spotless owns a licenseHeader step in {path}")
+        eclipse_nodes = [node for node in plugin.iter() if local_name(node) == "eclipse"]
+        versions = {child_text(node, "version") for node in eclipse_nodes}
+        files = {child_text(node, "file") for node in eclipse_nodes}
+        if versions != {"4.37"}:
+            raise SystemExit(f"unexpected Eclipse formatter versions in {path}: {versions}")
+        allowed_files = {
+            formatter_file,
+            "${maven.multiModuleProjectDirectory}/code-formatter.xml",
+        }
+        if len(files) != 1 or not files.issubset(allowed_files):
+            raise SystemExit(f"unexpected Eclipse formatter paths in {path}: {files}")
 PY
   ./mvnw -q -N \
     org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
     -DoutputFile=target/resolved-plugins.txt
-  python3 - target/resolved-plugins.txt <<'PY'
+  python3 - \
+    target/resolved-plugins.txt \
+    "$SPIKE_SOURCE_ROOT/docs/research/cf-411-osv-query-manifest.csv" <<'PY'
+import csv
 import sys
 
 expected = {
@@ -405,6 +425,11 @@ expected = {
     "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": 28,
 }
 counts = {coordinate: 0 for coordinate in expected}
+manifest_labels = {
+    "com.mycila:license-maven-plugin:maven-plugin:5.1.1:runtime": "mycila-5.1.1",
+    "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": "spotless-3.9.0",
+}
+actual_artifacts = {coordinate: set() for coordinate in expected}
 current = None
 sections = 0
 headers = set()
@@ -418,6 +443,10 @@ with open(sys.argv[1], encoding="utf-8") as source:
             current = coordinate if coordinate in expected else None
             sections += 1
         elif line.startswith("      ") and current is not None:
+            parts = line.strip().split(":")
+            if len(parts) < 4:
+                raise SystemExit(f"unexpected dependency coordinate: {line.strip()}")
+            actual_artifacts[current].add((f"{parts[0]}:{parts[1]}", parts[-1]))
             counts[current] += 1
 if sections == 0:
     raise SystemExit("unsupported dependency:resolve-plugins output format")
@@ -428,6 +457,20 @@ if any(
     raise SystemExit("stale formatter-maven-plugin remains in runtime inventory")
 if counts != expected:
     raise SystemExit(f"unexpected hybrid plugin runtime inventory: {counts}")
+with open(sys.argv[2], newline="", encoding="utf-8") as source:
+    manifest = list(csv.DictReader(source))
+for coordinate, label in manifest_labels.items():
+    manifest_artifacts = {
+        (row["package"], row["version"])
+        for row in manifest
+        if row["plugin"] == label
+    }
+    if actual_artifacts[coordinate] != manifest_artifacts:
+        raise SystemExit(
+            f"hybrid inventory differs from OSV manifest for {label}: "
+            f"actual={sorted(actual_artifacts[coordinate])}, "
+            f"manifest={sorted(manifest_artifacts)}"
+        )
 PY
 )
 ```
