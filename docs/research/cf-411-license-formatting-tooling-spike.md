@@ -359,12 +359,34 @@ Add this plugin alongside the existing plugins:
 
 The scored migration removes the two superseded plugins; their presence in this goal-isolation copy does not affect `spotless:apply`, `spotless:check`, or `verify`, and the dependency/advisory table resolves each candidate plugin classpath independently.
 
+In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputSource` file is an exclusive list of report inputs; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
+
+```xml
+<plugin>
+    <groupId>org.apache.rat</groupId>
+    <artifactId>apache-rat-plugin</artifactId>
+    <version>0.18</version>
+    <inherited>false</inherited>
+    <configuration>
+        <basedir>${maven.multiModuleProjectDirectory}/target/rat-empty</basedir>
+        <inputSource>${maven.multiModuleProjectDirectory}/rat-java-sources.txt</inputSource>
+        <outputStyle>xml</outputStyle>
+    </configuration>
+</plugin>
+```
+
 In `hybrid/pom.xml`, change Mycila to 5.1.1, remove formatter-maven-plugin, and add the format-only Spotless block from [Proposed follow-up configuration](#proposed-follow-up-configuration). Also remove the formatter-maven-plugin overrides from `hybrid/ta4j-core/pom.xml` and `hybrid/ta4j-examples/pom.xml`; leaving either child declaration behind would retain a stale or versionless effective plugin. Preserve both child Mycila overrides and their `${project.parent.basedir}/license-header.txt` paths. Do not configure Spotless's `licenseHeader` step. Generate effective POMs for the parent, `ta4j-core`, and `ta4j-examples`; require Spotless in all three and formatter-maven-plugin in none; then repeat the isolated plugin-resolution inventory and require the intended 14 Mycila plus 28 Spotless runtime artifacts.
 
 ```bash
 (
   (
     cd "$SPIKE_ROOT/baseline" || exit 1
+    ./mvnw -q -N \
+      org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
+      -DoutputFile=target/resolved-plugins.txt
+  )
+  (
+    cd "$SPIKE_ROOT/rat" || exit 1
     ./mvnw -q -N \
       org.apache.maven.plugins:maven-dependency-plugin:3.7.0:resolve-plugins \
       -DoutputFile=target/resolved-plugins.txt
@@ -445,6 +467,7 @@ PY
   python3 - \
     "$SPIKE_ROOT/baseline/target/resolved-plugins.txt" \
     target/resolved-plugins.txt \
+    "$SPIKE_ROOT/rat/target/resolved-plugins.txt" \
     "$SPIKE_SOURCE_ROOT/docs/research/cf-411-osv-query-manifest.csv" <<'PY'
 import csv
 import sys
@@ -472,11 +495,21 @@ inventories = {
             "com.diffplug.spotless:spotless-maven-plugin:maven-plugin:3.9.0:runtime": "spotless-3.9.0",
         },
     },
+    "rat": {
+        "path": sys.argv[3],
+        "expected": {
+            "org.apache.rat:apache-rat-plugin:maven-plugin:0.18:runtime": 49,
+        },
+        "labels": {
+            "org.apache.rat:apache-rat-plugin:maven-plugin:0.18:runtime": "rat-0.18",
+        },
+    },
 }
 managed_plugins = {
     "com.mycila:license-maven-plugin",
     "net.revelc.code.formatter:formatter-maven-plugin",
     "com.diffplug.spotless:spotless-maven-plugin",
+    "org.apache.rat:apache-rat-plugin",
 }
 
 def parse_inventory(name, inventory):
@@ -508,13 +541,13 @@ def parse_inventory(name, inventory):
         raise SystemExit(f"unsupported {name} dependency:resolve-plugins output format")
     if managed_headers != set(expected):
         raise SystemExit(
-            f"unexpected {name} formatting-plugin headers: {sorted(managed_headers)}"
+            f"unexpected {name} candidate-plugin headers: {sorted(managed_headers)}"
         )
     if counts != expected:
         raise SystemExit(f"unexpected {name} plugin runtime inventory: {counts}")
     return actual_artifacts
 
-with open(sys.argv[3], newline="", encoding="utf-8") as source:
+with open(sys.argv[4], newline="", encoding="utf-8") as source:
     manifest = list(csv.DictReader(source))
 for name, inventory in inventories.items():
     actual_artifacts = parse_inventory(name, inventory)
@@ -532,22 +565,6 @@ for name, inventory in inventories.items():
             )
 PY
 )
-```
-
-In `rat/pom.xml`, add the following audit-only plugin configuration. The explicit `inputSource` file is an exclusive list of report inputs; an unscoped repository-wide run instead reports 27 unapproved documentation and configuration files.
-
-```xml
-<plugin>
-    <groupId>org.apache.rat</groupId>
-    <artifactId>apache-rat-plugin</artifactId>
-    <version>0.18</version>
-    <inherited>false</inherited>
-    <configuration>
-        <basedir>${maven.multiModuleProjectDirectory}/target/rat-empty</basedir>
-        <inputSource>${maven.multiModuleProjectDirectory}/rat-java-sources.txt</inputSource>
-        <outputStyle>xml</outputStyle>
-    </configuration>
-</plugin>
 ```
 
 Generate the exclusive input list and reject any scope drift before invoking RAT:
@@ -1054,22 +1071,47 @@ operation_map = {
     "warm-validation": ("clean-check", "warm"),
     "full-reactor": ("full-reactor", "clean"),
 }
-drift = []
-for row in rows:
+
+def published_key_for_capture(row):
     candidate = row["candidate"]
     operation = row["operation"]
-    if candidate == "rat" and operation == "clean-validation":
-        key = ("apache-rat-0.18", "java-corpus-check", "clean", 1)
-    elif operation == "clean-validation" and candidate in aliases:
-        key = (aliases[candidate], "clean-check", "initial", 1)
-    elif candidate in aliases and operation in operation_map:
+    repeat = int(row["repeat"])
+    if candidate == "rat" and operation in {"clean-validation", "dirty-validation"}:
+        state = "clean" if operation == "clean-validation" else "dirty"
+        return ("apache-rat-0.18", "java-corpus-check", state, repeat)
+    if operation == "clean-validation" and candidate in aliases:
+        return (aliases[candidate], "clean-check", "initial", repeat)
+    if candidate in aliases and operation in {"dirty-license-check", "dirty-format-check"}:
+        return (aliases[candidate], operation, "dirty", repeat)
+    if candidate in aliases and operation in operation_map:
         published_operation, state = operation_map[operation]
-        key = (aliases[candidate], published_operation, state, int(row["repeat"]))
-    else:
+        return (aliases[candidate], published_operation, state, repeat)
+    # The consolidated candidate's dirty-validation failure is asserted by the
+    # command sequence but intentionally has no row in the published CSV.
+    return None
+
+capture_published_keys = {
+    key for row in rows if (key := published_key_for_capture(row)) is not None
+}
+if set(published_keys) != capture_published_keys:
+    raise SystemExit(
+        "published timing keys differ from mapped capture rows: "
+        f"missing={sorted(capture_published_keys - set(published_keys))}, "
+        f"extra={sorted(set(published_keys) - capture_published_keys)}"
+    )
+
+drift = []
+for row in rows:
+    key = published_key_for_capture(row)
+    if key is None:
         continue
     expected = published.get(key)
-    if expected is None or not expected["wall_seconds"]:
+    if expected is None:
         raise SystemExit(f"missing published timing for {key}")
+    if not expected["wall_seconds"]:
+        if row["exit_code"] == "0":
+            raise SystemExit(f"successful capture row has no published timing: {key}")
+        continue
     if f'{float(row["wall_seconds"]):.2f}' != f'{float(expected["wall_seconds"]):.2f}':
         drift.append((key, expected["wall_seconds"], row["wall_seconds"]))
 
