@@ -255,8 +255,8 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
             }
         } catch (IOException ioe) {
             LOG.error("Unable to load bars from CSV", ioe);
-        } catch (NumberFormatException nfe) {
-            LOG.error("Error while parsing value", nfe);
+        } catch (NumberFormatException | java.time.format.DateTimeParseException | ArrayIndexOutOfBoundsException e) {
+            LOG.error("Error while parsing value", e);
             return null;
         }
         return series.isEmpty() ? null : series;
