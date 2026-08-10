@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -42,7 +43,17 @@ class EventMutualInformationBenchmarkTest {
             Indicator<Num> predictor = new ClosePriceIndicator(series);
             for (double prevalence : new double[] { 0.01, 0.05, 0.20 }) {
                 int stride = (int) Math.round(1.0 / prevalence);
-                EventSignal target = EventSignals.fromPredicate(series, 0, index -> index % stride == 0);
+                Indicator<Boolean> target = new CachedIndicator<Boolean>(series) {
+                    @Override
+                    protected Boolean calculate(int index) {
+                        return index % stride == 0;
+                    }
+
+                    @Override
+                    public int getCountOfUnstableBars() {
+                        return 0;
+                    }
+                };
                 for (int bins : new int[] { 8, 16, 32 }) {
                     for (BinningStrategy strategy : BinningStrategy.values()) {
                         long start = System.nanoTime();

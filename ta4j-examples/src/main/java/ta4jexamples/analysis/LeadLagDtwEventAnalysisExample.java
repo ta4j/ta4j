@@ -13,6 +13,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.event.BinningStrategy;
 import org.ta4j.core.analysis.event.EventMutualInformationConfig;
 import org.ta4j.core.analysis.event.EventMutualInformationEvaluator;
+import org.ta4j.core.analysis.event.EventMutualInformationConfig;
 import org.ta4j.core.analysis.event.EventMutualInformationResult;
 import org.ta4j.core.analysis.event.EventSignal;
 import org.ta4j.core.analysis.event.EventSignals;
@@ -151,8 +152,8 @@ public final class LeadLagDtwEventAnalysisExample {
                 swingHighMi.sampleCount(), swingHighMi.positiveTargetCount(), swingHighMi.positiveTargetRate(),
                 swingHighMi.mutualInformationNats(), swingHighMi.targetEntropyNats(),
                 swingHighMi.normalizedMutualInformation());
-        EventSignal swingLowEvents = EventSignals.fromIndicator(swingLowConfirmation);
-        EventMutualInformationResult swingLowMi = miEvaluator.evaluate(momentum, swingLowEvents, 0, BARS - 1, miConfig);
+        EventMutualInformationResult swingLowMi = miEvaluator.evaluate(momentum, swingLowConfirmation, 0, BARS - 1,
+                miConfig);
         LOG.info("Swing-low MI: samples={} positives={} rate={} MI={} nats, H(Y)={} nats, normalized={}",
                 swingLowMi.sampleCount(), swingLowMi.positiveTargetCount(), swingLowMi.positiveTargetRate(),
                 swingLowMi.mutualInformationNats(), swingLowMi.targetEntropyNats(),
