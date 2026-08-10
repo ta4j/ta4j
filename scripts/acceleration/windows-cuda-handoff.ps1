@@ -11,7 +11,7 @@ $library = Join-Path $root "ta4j-cli\target\native\cuda\package\META-INF\native\
 
 Write-Host "CF-336 Windows CUDA root: $root"
 Write-Host "Operation ABI: ta4j.forecast.monte-carlo-price.v1"
-Write-Host "Implementation record: $root\docs\indicator-acceleration-cuda-plan.md"
+Write-Host "Implementation record: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Plan"
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
     throw "The cuda-windows-x86_64 profile requires Windows"

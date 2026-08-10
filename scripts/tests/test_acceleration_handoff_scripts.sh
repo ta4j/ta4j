@@ -27,11 +27,13 @@ BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$ROO
 grep -q "nvidia-smi" "$TMP/linux-output"
 grep -q "./mvnw -B -pl ta4j-cli -am -Pcuda-linux-x86_64" "$TMP/linux-output"
 grep -q "libta4j-cuda-accelerator.so" "$TMP/linux-output"
+grep -q "ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Plan" "$TMP/linux-output"
+grep -q "ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Linux-Handoff" "$TMP/linux-output"
 
 if BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$TMP" >"$TMP/missing-output" 2>&1; then
-  echo "linux CUDA handoff should reject a root without the implementation plan" >&2
+  echo "linux CUDA handoff should reject a root without the ta4j-cli module" >&2
   exit 1
 fi
-grep -q "CUDA implementation plan not found" "$TMP/missing-output"
+grep -q "ta4j-cli module not found" "$TMP/missing-output"
 
 echo "acceleration handoff script fixtures passed"

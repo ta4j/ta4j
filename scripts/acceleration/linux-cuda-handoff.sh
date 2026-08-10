@@ -3,16 +3,15 @@ set -euo pipefail
 
 repo_root="${1:-.}"
 root="$(cd "$repo_root" && pwd)"
-plan="$root/docs/indicator-acceleration-cuda-plan.md"
 
-if [[ ! -f "$plan" ]]; then
-  echo "CUDA implementation plan not found: $plan" >&2
+if [[ ! -d "$root/ta4j-cli" ]]; then
+  echo "ta4j-cli module not found: $root" >&2
   exit 2
 fi
 
 echo "CF-336 Linux CUDA continuation root: $root"
-echo "Implementation plan: $plan"
-echo "Frozen Linux handoff: $root/docs/indicator-acceleration-cuda-linux-handoff.md"
+echo "Implementation plan: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Plan"
+echo "Frozen Linux handoff: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Linux-Handoff"
 echo
 echo "Required preflight and validation commands:"
 cat <<'COMMANDS'

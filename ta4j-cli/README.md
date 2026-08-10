@@ -38,7 +38,7 @@ Omitting the property or setting `-Dta4j.acceleration=off` performs no provider
 discovery or native loading. `auto` currently accelerates eligible `DoubleNum`
 Monte Carlo price forecasts and falls back to their scalar `getValue(int)` path
 for every unsupported, unavailable, slower, stale, or failed request. See
-[the acceleration guide](../docs/indicator-acceleration.md) for classifiers,
+[the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for classifiers,
 platform status, diagnostics, rollback, and benchmark evidence.
 
 ## Canonical Local Input
