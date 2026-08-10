@@ -126,8 +126,13 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             // explicitly declined (for example the unqualified CUDA lane on
             // Linux), defeating the device-capability and workload gates.
             // Report the skip so the caller falls back to scalar execution.
-            return new Result<>(Status.SKIPPED, Backend.OPENCL, List.of(), false, 0L, new Diagnostic(
-                    DiagnosticCode.CPU_FASTER, "opencl", "no provider member cleared the automatic speedup threshold"));
+            // The members were probed eagerly at construction, so the result
+            // must keep the probed native-initialization state instead of
+            // hardcoding false: the runtime aggregates this flag into its
+            // diagnostics, and capability() already reports it as true.
+            return new Result<>(Status.SKIPPED, Backend.OPENCL, List.of(), first.capability().nativeInitialized(), 0L,
+                    new Diagnostic(DiagnosticCode.CPU_FASTER, "opencl",
+                            "no provider member cleared the automatic speedup threshold"));
         }
         // All members are unavailable; keep the selection identity and surface
         // the composite's own reason (the last member's OpenCL detail) instead
