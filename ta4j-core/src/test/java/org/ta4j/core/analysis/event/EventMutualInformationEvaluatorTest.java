@@ -318,6 +318,23 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(raw).build();
     }
 
+    @Test
+    public void emptyRangeResultMustBeUndefined() {
+        BarSeries series = series(20);
+        NumFactory factory = series.numFactory();
+        // An empty sample range with defined metrics or formed bins is an
+        // inconsistent state and must be rejected.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.zero(),
+                factory.zero(), factory.zero(), 0, 0, NaN.NaN, 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN,
+                0, 0, NaN.NaN, 8, 2, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN,
+                0, 0, factory.one(), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // The undefined empty result is the canonical valid form.
+        new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, 0, 0, NaN.NaN, 8, 0, BinningStrategy.EQUAL_WIDTH, 0,
+                3);
+    }
+
     private Indicator<Num> indicator(BarSeries series, double... values) {
         List<Num> nums = new ArrayList<>(values.length);
         for (double value : values) {

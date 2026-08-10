@@ -56,8 +56,10 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      * Validates the result.
      *
      * @throws NullPointerException     if a numeric value or the strategy is null
-     * @throws IllegalArgumentException if a count is negative or the target window
-     *                                  offsets are inconsistent
+     * @throws IllegalArgumentException if a count is negative, the target window
+     *                                  offsets are inconsistent, or an empty sample
+     *                                  range carries defined metrics or nonzero
+     *                                  effective bins
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -73,6 +75,11 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
         }
         if (targetWindowStartBars < 0 || targetWindowEndBars < targetWindowStartBars) {
             throw new IllegalArgumentException("target window offsets are inconsistent");
+        }
+        if (sampleCount == 0 && (!mutualInformationNats.isNaN() || !targetEntropyNats.isNaN()
+                || !normalizedMutualInformation.isNaN() || !positiveTargetRate.isNaN() || effectiveBinCount != 0)) {
+            throw new IllegalArgumentException(
+                    "an empty sample range must produce an undefined result (NaN metrics, effectiveBinCount 0)");
         }
     }
 }

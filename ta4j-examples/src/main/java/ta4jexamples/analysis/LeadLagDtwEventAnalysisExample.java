@@ -53,8 +53,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * <strong>Confirmation-time semantics:</strong> the ZigZag Boolean indicators
  * are {@code true} at the bar where a prior pivot becomes confirmed. The MI
- * evaluation targets those confirmation indexes in a future bar window; it
- * never reads a target index outside the supplied analysis partition.
+ * evaluation targets those confirmation indexes in a current-or-future bar
+ * window (offset zero labels the sample's own bar); it never reads a target
+ * index outside the supplied analysis partition.
  * </p>
  *
  * <p>
@@ -100,10 +101,10 @@ public final class LeadLagDtwEventAnalysisExample {
      *
      * @param profile     TLCC profile of Net Momentum against close price
      * @param dtwDistance DTW distance between the Net Momentum and price waves
-     * @param swingHighMi event MI of Net Momentum against future swing-high
-     *                    confirmations
-     * @param swingLowMi  event MI of Net Momentum against future swing-low
-     *                    confirmations
+     * @param swingHighMi event MI of Net Momentum against current-or-future
+     *                    swing-high confirmations
+     * @param swingLowMi  event MI of Net Momentum against current-or-future
+     *                    swing-low confirmations
      */
     record DemoResult(LagCorrelationProfile profile, Num dtwDistance, EventMutualInformationResult swingHighMi,
             EventMutualInformationResult swingLowMi) {
@@ -141,7 +142,8 @@ public final class LeadLagDtwEventAnalysisExample {
         Num dtwDistance = dtw.getValue(BARS - 1);
         LOG.info("DTW: z-score shape distance (window 32, Sakoe-Chiba radius 5) = {}", dtwDistance);
 
-        // Capability C: event-aware MI of momentum state vs future confirmations.
+        // Capability C: event-aware MI of momentum state vs current-or-future
+        // confirmations.
         EventMutualInformationConfig miConfig = new EventMutualInformationConfig(0, 3, 8,
                 BinningStrategy.EQUAL_FREQUENCY, HistoryPolicy.CLAMP);
         EventMutualInformationEvaluator miEvaluator = new EventMutualInformationEvaluator();

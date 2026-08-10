@@ -61,6 +61,6 @@ public record WarpingWindow(int radius, boolean unrestricted) {
      * @return {@code true} when the cell lies inside the alignment band
      */
     public boolean inBand(int firstIndex, int secondIndex) {
-        return unrestricted || Math.abs(firstIndex - secondIndex) <= radius;
+        return unrestricted || Math.abs((long) firstIndex - secondIndex) <= radius;
     }
 }

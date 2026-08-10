@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * <p>
  * Callers provide every component; the settings shown in the
- * {@link LeadLagDtwEventAnalysisExample} are the recommended shape-oriented
+ * {@code LeadLagDtwEventAnalysisExample} are the recommended shape-oriented
  * choices: z-score normalization, squared local distance, a bounded Sakoe–Chiba
  * band, and path-length normalization.
  * </p>

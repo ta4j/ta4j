@@ -116,10 +116,12 @@ indicators leave open:
   an explicit opt-in. A zero radius reduces the distance to the pointwise
   local distance. Complexity is `O(W * min(W, 2r + 1))` time and `O(W)`
   memory for window `W` and radius `r`.
-- **Continuous predictor vs sparse future event** —
+- **Continuous predictor vs sparse current-or-future event** —
   `EventMutualInformationEvaluator` measures how much a continuous indicator
   state reduces uncertainty about whether a target event occurs in an
-  explicit `[start, end]` future bar window. It reports raw MI (nats), target
+  explicit `[start, end]` bar window ahead of the sample (offset zero
+  labels the sample's own bar; a positive start offset makes the window
+  future-only). It reports raw MI (nats), target
   entropy, normalized MI (`MI / H(Y)`), event prevalence, and bin
   diagnostics. Equal-frequency binning never splits tied predictor values;
   a non-finite sample makes the result undefined instead of silently
