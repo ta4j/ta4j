@@ -156,6 +156,31 @@ class CompositeForecastAccelerationProviderTest {
     }
 
     @Test
+    void belowThresholdSkipKeepsTheProbedMembersNativeInitializedFlag() {
+        // Members are probed eagerly at construction (capability().available()
+        // with nativeInitialized=true), so when every member declines below the
+        // automatic speedup threshold the composite's SKIPPED result must not
+        // claim native code was never initialized. The runtime aggregates
+        // Result.nativeInitialized() into its diagnostics, and the composite's
+        // own capability() reports nativeInitialized=true; a false flag here
+        // misreports the initialization state for the same decision.
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0d, request -> {
+            throw new AssertionError("below-threshold member must not execute");
+        });
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0d, request -> {
+            throw new AssertionError("below-threshold member must not execute");
+        });
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        Result<Forecast> result = composite.evaluate(request());
+
+        assertThat(result.status()).isEqualTo(Status.SKIPPED);
+        assertThat(composite.capability().nativeInitialized()).isTrue();
+        assertThat(result.nativeInitialized()).isTrue();
+    }
+
+    @Test
     void allUnavailableCompositeSurfacesTheSelectionIdentityAndOpenClDetail() {
         // The automatic Linux selection is "opencl" and the composite advertises
         // that identity. When no member is available, evaluate() must keep the
