@@ -192,9 +192,10 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // keeps the requested four bins but concentrates samples in the first.
         assertEquals(2, equalFrequency.effectiveBinCount());
         assertEquals(4, equalWidth.effectiveBinCount());
-        assertTrue(
-                equalFrequency.mutualInformationNats().isNaN() || !equalFrequency.mutualInformationNats().isNegative());
-        assertTrue(equalWidth.mutualInformationNats().isNaN() || !equalWidth.mutualInformationNats().isNegative());
+        assertFalse(equalFrequency.mutualInformationNats().isNaN());
+        assertFalse(equalFrequency.mutualInformationNats().isNegative());
+        assertFalse(equalWidth.mutualInformationNats().isNaN());
+        assertFalse(equalWidth.mutualInformationNats().isNegative());
     }
 
     @Test

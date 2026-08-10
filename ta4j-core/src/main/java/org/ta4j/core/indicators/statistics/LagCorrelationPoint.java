@@ -35,15 +35,22 @@ public record LagCorrelationPoint(int lag, Num correlation, int sampleCount) {
      * Validates the point.
      *
      * @throws NullPointerException     if {@code correlation} is null
-     * @throws IllegalArgumentException if {@code sampleCount} is negative
+     * @throws IllegalArgumentException if {@code sampleCount} is negative, or the
+     *                                  correlation is finite with fewer than two
+     *                                  samples
      */
     public LagCorrelationPoint {
         Objects.requireNonNull(correlation, "correlation");
         if (sampleCount < 0) {
             throw new IllegalArgumentException("sampleCount must be >= 0");
         }
-        if (!correlation.isNaN() && !CorrelationWindowSupport.isFinite(correlation)) {
-            throw new IllegalArgumentException("correlation must be finite or NaN");
+        if (!correlation.isNaN()) {
+            if (!CorrelationWindowSupport.isFinite(correlation)) {
+                throw new IllegalArgumentException("correlation must be finite or NaN");
+            }
+            if (sampleCount < 2) {
+                throw new IllegalArgumentException("a finite correlation requires at least 2 samples");
+            }
         }
     }
 

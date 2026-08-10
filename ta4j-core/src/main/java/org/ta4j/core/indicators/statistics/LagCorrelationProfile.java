@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,29 +94,65 @@ public record LagCorrelationProfile(int endIndex, int barCount, int minimumLag, 
             throw new IllegalArgumentException(
                     "selectedLag and selectedCorrelation must be defined together or both undefined");
         }
-        if (selectedDefined && !bestLags.contains(selectedLag.getAsInt())) {
-            throw new IllegalArgumentException("selectedLag must be one of bestLags");
+        // Derive the expected selection from the points themselves so a caller
+        // cannot supply a self-consistent but wrong best-lag list or tie-break.
+        Num bestScore = null;
+        for (LagCorrelationPoint point : points) {
+            if (!point.isDefined()) {
+                continue;
+            }
+            Num score = selectionScore(point.correlation(), selectionPolicy);
+            if (bestScore == null || score.compareTo(bestScore) > 0) {
+                bestScore = score;
+            }
         }
-        if (!bestLags.isEmpty() || selectedDefined) {
-            // One lookup pass keeps validation linear in the profile size; a
-            // tie-heavy profile can carry up to MAX_PROFILE_LAGS entries.
+        List<Integer> expectedBestLags = new ArrayList<>();
+        if (bestScore != null) {
+            for (LagCorrelationPoint point : points) {
+                if (!point.isDefined()) {
+                    continue;
+                }
+                if (selectionScore(point.correlation(), selectionPolicy).compareTo(bestScore) == 0) {
+                    expectedBestLags.add(point.lag());
+                }
+            }
+        }
+        if (!bestLags.equals(expectedBestLags)) {
+            throw new IllegalArgumentException("bestLags must contain exactly the maximal-scoring lags, ascending");
+        }
+        OptionalInt expectedSelectedLag = OptionalInt.empty();
+        if (!expectedBestLags.isEmpty()) {
+            int selected = expectedBestLags.get(0);
+            for (int i = 1; i < expectedBestLags.size(); i++) {
+                int candidate = expectedBestLags.get(i);
+                // Long arithmetic keeps the tie-break overflow-safe at the
+                // extremes of the int range.
+                long candidateDistance = Math.abs((long) candidate);
+                long selectedDistance = Math.abs((long) selected);
+                if (candidateDistance < selectedDistance
+                        || (candidateDistance == selectedDistance && candidate < selected)) {
+                    selected = candidate;
+                }
+            }
+            expectedSelectedLag = OptionalInt.of(selected);
+        }
+        if (!selectedLag.equals(expectedSelectedLag)) {
+            throw new IllegalArgumentException("selectedLag must be the deterministic pick from bestLags");
+        }
+        if (selectedDefined) {
             Map<Integer, LagCorrelationPoint> pointsByLag = new HashMap<>(points.size());
             for (LagCorrelationPoint point : points) {
                 pointsByLag.put(point.lag(), point);
             }
-            for (Integer lag : bestLags) {
-                LagCorrelationPoint point = pointsByLag.get(lag);
-                if (point == null || !point.isDefined()) {
-                    throw new IllegalArgumentException("every best lag must map to a defined point");
-                }
-            }
-            if (selectedDefined) {
-                LagCorrelationPoint selectedPoint = pointsByLag.get(selectedLag.getAsInt());
-                if (selectedPoint == null || selectedPoint.correlation().compareTo(selectedCorrelation) != 0) {
-                    throw new IllegalArgumentException(
-                            "selectedCorrelation must equal the correlation of the selected point");
-                }
+            LagCorrelationPoint selectedPoint = pointsByLag.get(selectedLag.getAsInt());
+            if (selectedPoint == null || selectedPoint.correlation().compareTo(selectedCorrelation) != 0) {
+                throw new IllegalArgumentException(
+                        "selectedCorrelation must equal the correlation of the selected point");
             }
         }
+    }
+
+    private static Num selectionScore(Num correlation, LagSelectionPolicy selectionPolicy) {
+        return selectionPolicy == LagSelectionPolicy.MAXIMUM_CORRELATION ? correlation : correlation.abs();
     }
 }
