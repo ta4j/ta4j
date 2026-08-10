@@ -47,6 +47,7 @@ Commands:
   model-preflight
   build-dossier
   build-ai-request
+  last-release-date
   extract-response-content
   sanitize-response
   ai-transport-diagnostics
@@ -344,9 +345,18 @@ build_ai_request_payload() {
   local semver_file="$2"
   local dossier_file="$3"
   local prompt_profile="$4"
+  local last_release_url="$5"
+  local last_release_tag="$6"
+  local last_release_date="$7"
   local artifact_note=""
   if [[ "$prompt_profile" == compact* ]]; then
     artifact_note=$'\nThe full unabridged release dossier is preserved as release-dossier.md in the workflow audit artifact. Base the decision on this compact, artifact-backed dossier summary and explicitly call out uncertainty in missing or risks when the compact prompt omits detail.'
+  fi
+  local release_context=""
+  if [[ -n "$last_release_tag" && "$last_release_tag" != "none" ]]; then
+    release_context="today (UTC): $(date -u +%F)
+last release: ${last_release_tag}, created ${last_release_date:-unknown} (${last_release_url})
+Release recency is a judgment call: weigh the gap since the last release against the value of the unreleased changes. Defer (should_release=false) when the pending changes do not justify another release this soon. Calibration: 0.24.1 shipped too soon after 0.24.0 (minimal user-visible delta); 0.24.0 two days after 0.23.0 would have been justified (large delta)."
   fi
   jq -S -n \
     --arg model "$model" \
@@ -354,6 +364,7 @@ build_ai_request_payload() {
     --rawfile semver "$semver_file" \
     --rawfile dossier "$dossier_file" \
     --arg artifact_note "$artifact_note" \
+    --arg release_context "$release_context" \
     '{
       model: $model,
       reasoning: {effort: $reasoning_effort},
@@ -362,12 +373,13 @@ build_ai_request_payload() {
       input: [
         {
           role: "system",
-          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier."}]
+          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier and any supplied release-cadence context."}]
         },
         {
           role: "user",
           content: [{type: "input_text", text: (
             "Decide whether ta4j should cut a release from this dossier. If yes, choose bump patch or minor. Major is disabled for this workflow.\n\n"
+            + (if $release_context != "" then "Release cadence:\n" + $release_context + "\n\n" else "" end)
             + "SemVer rules:\n" + $semver + "\n\n"
             + "Return JSON only with this shape:\n"
             + "{\"should_release\": true|false, \"bump\": \"patch|minor\", \"confidence\": 0.0-1.0, \"reason\": \"1-2 sentences\", \"evidence\": [\"specific dossier facts\"], \"risks\": [\"release risks or empty array\"], \"missing\": [\"missing changelog/javadoc/test evidence or empty array\"]}."
@@ -376,6 +388,33 @@ build_ai_request_payload() {
         }
       ]
     }'
+}
+
+command_last_release_date() {
+  local tag=""
+  while (($#)); do
+    case "$1" in
+      --tag) require_value "$1" "${2:-}"; tag="$2"; shift 2 ;;
+      *) die "Unknown last-release-date option: $1" ;;
+    esac
+  done
+  [[ -n "$tag" ]] || die "--tag is required"
+  if [[ "$tag" == "none" ]]; then
+    printf 'none\n'
+    return 0
+  fi
+  if ! git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null 2>&1; then
+    die "Tag ${tag} cannot be resolved in this repository; refusing to fabricate a release date"
+  fi
+  if [[ "$(git cat-file -t "refs/tags/${tag}")" != "tag" ]]; then
+    die "Tag ${tag} is a lightweight tag; a release date requires an annotated tag"
+  fi
+  local release_date
+  release_date="$(git for-each-ref "refs/tags/${tag}" --format='%(creatordate:short)')"
+  if [[ -z "$release_date" ]]; then
+    die "Tag ${tag} has no resolvable creation date"
+  fi
+  printf '%s\n' "$release_date"
 }
 
 command_model_preflight() {
@@ -709,12 +748,15 @@ command_build_dossier() {
 }
 
 command_build_ai_request() {
-  local model="" dossier="release-dossier.md" semver_rules=".github/workflows/semver-rules-override.txt" max_dossier_chars=900000 max_request_bytes="$DEFAULT_AI_REQUEST_MAX_BYTES" output="request.json" metadata_output="release-ai-request-metadata.json"
+  local model="" dossier="release-dossier.md" semver_rules=".github/workflows/semver-rules-override.txt" max_dossier_chars=900000 max_request_bytes="$DEFAULT_AI_REQUEST_MAX_BYTES" output="request.json" metadata_output="release-ai-request-metadata.json" last_release_url="https://github.com/ta4j/ta4j/releases" last_release_tag="none" last_release_date="none"
   while (($#)); do
     case "$1" in
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
       --dossier) require_value "$1" "${2:-}"; dossier="$2"; shift 2 ;;
       --semver-rules) require_value "$1" "${2:-}"; semver_rules="$2"; shift 2 ;;
+      --last-release-url) require_value "$1" "${2:-}"; last_release_url="$2"; shift 2 ;;
+      --last-release-tag) require_value "$1" "${2:-}"; last_release_tag="$2"; shift 2 ;;
+      --last-release-date) require_value "$1" "${2:-}"; last_release_date="$2"; shift 2 ;;
       --max-dossier-chars) require_value "$1" "${2:-}"; max_dossier_chars="$2"; shift 2 ;;
       --max-request-bytes) require_value "$1" "${2:-}"; max_request_bytes="$2"; shift 2 ;;
       --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
@@ -752,7 +794,7 @@ EOF
   fi
 
   request_tmp="$tmpdir/request.json"
-  build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" > "$request_tmp"
+  build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
   full_request_size="$(file_size_bytes "$request_tmp")"
   local selected_diff_file
   selected_diff_file="$tmpdir/selected-diff.txt"
@@ -791,7 +833,7 @@ EOF
       candidate_request="$tmpdir/request-${compaction_level}.json"
       candidate_profile="compact-artifact-backed-v${compaction_level}"
       build_compact_dossier "$full_dossier" "$candidate_dossier" "${limits[$i]}" "${changelog_limits[$i]}" "${signals_limits[$i]}" "${diff_limits[$i]}"
-      build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" > "$candidate_request"
+      build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$candidate_request"
       candidate_size="$(file_size_bytes "$candidate_request")"
       if (( candidate_size <= max_request_bytes )); then
         prompt_dossier="$candidate_dossier"
@@ -806,7 +848,7 @@ EOF
       prompt_dossier="$tmpdir/compact-minimal.md"
       request_tmp="$tmpdir/request-minimal.json"
       build_compact_dossier "$dossier" "$prompt_dossier" 1 400 400 0
-      build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" > "$request_tmp"
+      build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
       selected_diff_excerpt_chars=0
     fi
   fi
@@ -824,6 +866,9 @@ EOF
     --arg fullDossierPath "$dossier" \
     --arg compactedBecause "$([[ "$compacted" == true ]] && printf 'full request exceeded transport budget')" \
     --arg metadataOutput "$metadata_output" \
+    --arg lastReleaseTag "$last_release_tag" \
+    --arg lastReleaseDate "$last_release_date" \
+    --arg lastReleaseUrl "$last_release_url" \
     --argjson schemaVersion "$AI_REQUEST_METADATA_SCHEMA_VERSION" \
     --argjson artifactBackedContext "$compacted" \
     --argjson fullDossierChars "$(file_size_bytes "$dossier")" \
@@ -845,6 +890,9 @@ EOF
       reasoningEffort: $reasoningEffort,
       semverRulesSource: $semverRulesSource,
       promptProfile: $promptProfile,
+      lastReleaseTag: $lastReleaseTag,
+      lastReleaseDate: $lastReleaseDate,
+      lastReleaseUrl: $lastReleaseUrl,
       artifactBackedContext: $artifactBackedContext,
       fullDossierPath: $fullDossierPath,
       fullDossierChars: $fullDossierChars,
@@ -2000,6 +2048,7 @@ main() {
     model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
+    last-release-date) command_last_release_date "$@" ;;
     extract-response-content) command_extract_response_content "$@" ;;
     sanitize-response) command_sanitize_response_artifact "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;

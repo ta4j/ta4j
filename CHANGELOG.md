@@ -1,6 +1,6 @@
 ## Unreleased
 
-- _No changes yet._
+- **AI release scheduling now weighs release recency against pending changes**: `release-scheduler.yml` passes the last release's tag, creation date, and release link into the AI decision prompt. Recency is a judgment call instead of a fixed cooldown: the model defers (`should_release=false`) when the unreleased delta does not justify another release this soon, and the cadence input is omitted entirely when no prior release exists.
 
 ## 0.24.1 (2026-08-10)
 
