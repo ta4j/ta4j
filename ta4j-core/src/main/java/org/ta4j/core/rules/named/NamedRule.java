@@ -131,7 +131,9 @@ public abstract class NamedRule extends AbstractRule {
     }
 
     /**
-     * Resolves a previously registered named rule type.
+     * Resolves a registered named rule type, initializing the default registry
+     * first so rules registered through the default package scan are visible
+     * to a plain lookup.
      *
      * @param simpleName simple class name
      * @return optional containing the registered type
@@ -141,6 +143,7 @@ public abstract class NamedRule extends AbstractRule {
         if (simpleName == null || simpleName.isBlank()) {
             return Optional.empty();
         }
+        ensureDefaultRegistryInitialized();
         return Optional.ofNullable(REGISTRY.get(simpleName));
     }
 
