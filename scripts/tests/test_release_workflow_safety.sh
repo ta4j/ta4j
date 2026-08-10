@@ -253,6 +253,10 @@ test_release_scheduler_feeds_last_release_to_ai() {
     "release scheduler should reference the last release tag through a quoted environment expansion"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${LAST_RELEASE_DATE}"' \
     "release scheduler should reference the last release date through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'decision:last_release_url=${LAST_RELEASE_URL:-unknown}' \
+    "release scheduler should record the last release URL in the decision audit"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'lastReleaseUrl=${LAST_RELEASE_URL:-}' \
+    "release scheduler should record the last release URL in the mutation-plan artifact"
 
   local request_section
   request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"

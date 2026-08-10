@@ -950,6 +950,7 @@ jobs:
           POM_BASE: ${{ steps.pom_version.outputs.base }}
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
           LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
+          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
         run: |
           if [ "${SCHEDULER_DUE:-true}" != "true" ]; then
             mutation_plan="no release mutation; scheduled run is outside the biweekly release window"
@@ -977,6 +978,7 @@ jobs:
           requestMaxBytes=${REQUEST_MAX_BYTES:-}
           computedVersion=${VERSION:-}
           bump=${BUMP:-}
+          lastReleaseUrl=${LAST_RELEASE_URL:-}
           mutationPlan=${mutation_plan}
           rerunGuidance=${rerun_guidance}
           EOF
@@ -1007,6 +1009,7 @@ jobs:
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
           echo "decision:last_release_date=${LAST_RELEASE_DATE:-unknown}"
+          echo "decision:last_release_url=${LAST_RELEASE_URL:-unknown}"
           echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
           {
             echo "## Release Scheduler Decision"
@@ -1030,6 +1033,7 @@ jobs:
             echo "- computed version: ${VERSION:-none}"
             echo "- last reachable tag: ${LAST_TAG:-unknown}"
             echo "- last release date: ${LAST_RELEASE_DATE:-unknown}"
+            echo "- last release url: ${LAST_RELEASE_URL:-unknown}"
             echo "- reason: ${REASON:-none}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
