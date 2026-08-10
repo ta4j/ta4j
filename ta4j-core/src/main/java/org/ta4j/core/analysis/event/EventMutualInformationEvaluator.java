@@ -81,7 +81,10 @@ public final class EventMutualInformationEvaluator {
         NumFactory numFactory = series.numFactory();
 
         int availableStart = Math.max(series.getBeginIndex(), predictor.getCountOfUnstableBars());
-        availableStart = Math.max(availableStart, target.getCountOfUnstableBars());
+        // The earliest target index a sample reads is i + targetWindowStartBars,
+        // so samples may start below the target's own unstable boundary as long
+        // as their first target index is stable.
+        availableStart = Math.max(availableStart, target.getCountOfUnstableBars() - config.targetWindowStartBars());
         int availableEnd = series.getEndIndex();
         int maxSampleIndex = endIndex - config.targetWindowEndBars();
         int availableMaxSample = availableEnd - config.targetWindowEndBars();
@@ -98,18 +101,22 @@ public final class EventMutualInformationEvaluator {
             effectiveEnd = Math.min(effectiveEnd, availableMaxSample);
         }
 
+        int[] eventPrefix = effectiveStart <= effectiveEnd ? eventPrefix(target, effectiveStart, effectiveEnd, config)
+                : new int[0];
         List<Num> predictorValues = new ArrayList<>();
         List<Boolean> labels = new ArrayList<>();
         int positiveTargetCount = 0;
         boolean undefined = effectiveStart > effectiveEnd;
-        for (int i = effectiveStart; !undefined && i <= effectiveEnd; i++) {
+        for (int i = effectiveStart; i <= effectiveEnd; i++) {
             Num predictorValue = predictor.getValue(i);
             if (!isFinite(predictorValue)) {
+                // Undefined metrics, but the diagnostic counts keep covering
+                // every eligible sample so candidate sample counts cannot
+                // drift invisibly.
                 undefined = true;
-                break;
             }
             predictorValues.add(predictorValue);
-            boolean positive = targetWindowHasEvent(target, i, config);
+            boolean positive = targetWindowHasEvent(eventPrefix, i, effectiveStart, config);
             labels.add(positive);
             if (positive) {
                 positiveTargetCount++;
@@ -194,15 +201,24 @@ public final class EventMutualInformationEvaluator {
                 config.binningStrategy(), config.targetWindowStartBars(), config.targetWindowEndBars());
     }
 
-    private static boolean targetWindowHasEvent(EventSignal target, int sampleIndex,
+    private static int[] eventPrefix(EventSignal target, int effectiveStart, int effectiveEnd,
             EventMutualInformationConfig config) {
-        for (int index = sampleIndex + config.targetWindowStartBars(); index <= sampleIndex
-                + config.targetWindowEndBars(); index++) {
-            if (target.isEvent(index)) {
-                return true;
-            }
+        int targetStart = effectiveStart + config.targetWindowStartBars();
+        int targetEnd = effectiveEnd + config.targetWindowEndBars();
+        int[] prefix = new int[targetEnd - targetStart + 2];
+        for (int j = targetStart; j <= targetEnd; j++) {
+            prefix[j - targetStart + 1] = prefix[j - targetStart] + (target.isEvent(j) ? 1 : 0);
         }
-        return false;
+        return prefix;
+    }
+
+    private static boolean targetWindowHasEvent(int[] eventPrefix, int sampleIndex, int effectiveStart,
+            EventMutualInformationConfig config) {
+        int offset = sampleIndex - effectiveStart;
+        // prefix[k] counts events in [targetStart, targetStart + k), so the
+        // window [i + start, i + end] maps to (offset, offset + end - start].
+        return eventPrefix[offset + config.targetWindowEndBars() - config.targetWindowStartBars() + 1]
+                - eventPrefix[offset] > 0;
     }
 
     private static int[] equalFrequencyBins(List<Num> values, int requestedBinCount) {

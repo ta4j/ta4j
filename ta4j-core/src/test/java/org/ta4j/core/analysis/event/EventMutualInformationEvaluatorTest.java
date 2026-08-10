@@ -196,7 +196,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
-    public void nonFinitePredictorSampleUndefinesTheResult() {
+    public void nonFinitePredictorSampleUndefinesMetricsButKeepsFullDiagnostics() {
         BarSeries series = series(10);
         List<Num> values = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
@@ -212,9 +212,11 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         assertTrue(result.mutualInformationNats().isNaN());
         assertTrue(result.targetEntropyNats().isNaN());
         assertTrue(result.normalizedMutualInformation().isNaN());
-        // The scan stops at the first non-finite sample; counts stay factual.
-        assertEquals(5, result.sampleCount());
-        assertEquals(3, result.positiveTargetCount());
+        // Diagnostics keep covering every eligible sample, so candidate sample
+        // counts cannot drift invisibly.
+        assertEquals(10, result.sampleCount());
+        assertEquals(5, result.positiveTargetCount());
+        assertNumEquals(numFactory.numOf(0.5), result.positiveTargetRate(), 1.0e-9);
         assertEquals(0, result.effectiveBinCount());
     }
 
@@ -238,6 +240,27 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // startIndex beyond endIndex.
         assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, target, 5, 4,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
+    }
+
+    @Test
+    public void strictPolicyAllowsSamplesWhoseTargetWindowStartsAtStableTargetIndexes() {
+        BarSeries series = series(20);
+        Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                19);
+        // Target is unstable below index 5; with a window starting 3 bars
+        // ahead, samples from index 2 read only stable target indexes.
+        EventSignal unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, unstableTarget, 2, 19,
+                new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT));
+
+        assertEquals(15, result.sampleCount());
+        assertTrue(result.mutualInformationNats().isNaN() || !result.mutualInformationNats().isNegative());
+
+        // Samples below index 2 would read unstable target indexes: STRICT
+        // rejects them.
+        assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, unstableTarget, 1, 19,
+                new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT)));
     }
 
     @Test
