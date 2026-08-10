@@ -232,6 +232,58 @@ test_release_scheduler_uses_true_biweekly_cadence_guard() {
   pass "test_release_scheduler_uses_true_biweekly_cadence_guard"
 }
 
+test_release_scheduler_feeds_last_release_to_ai() {
+  echo "Running test_release_scheduler_feeds_last_release_to_ai"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve last release date" \
+    "release scheduler should resolve the last release date after the tag baselines"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release_helpers.sh last-release-date --tag' \
+    "release scheduler should derive the last release date from the annotated tag via the release helper"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${encoded_tag}' \
+    "release scheduler should build a tag-specific release URL from the percent-encoded tag"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'encode_tag()' \
+    "release scheduler should percent-encode the tag before building the release URL"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
+    "release scheduler should pass the last release URL to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
+    "release scheduler should pass the last reachable tag to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
+    "release scheduler should pass the last release date to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "${LAST_RELEASE_URL}"' \
+    "release scheduler should reference the last release URL through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${LAST_RELEASE_TAG}"' \
+    "release scheduler should reference the last release tag through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${LAST_RELEASE_DATE}"' \
+    "release scheduler should reference the last release date through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'decision:last_release_url=${LAST_RELEASE_URL:-unknown}' \
+    "release scheduler should record the last release URL in the decision audit"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'lastReleaseUrl=${LAST_RELEASE_URL:-}' \
+    "release scheduler should record the last release URL in the mutation-plan artifact"
+
+  local request_section
+  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
+  expect_section_contains "$request_section" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
+    "AI request build should receive the resolved last release URL via its environment"
+  expect_section_contains "$request_section" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
+    "AI request build should receive the last reachable tag via its environment"
+  expect_section_contains "$request_section" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
+    "AI request build should receive the last release date via its environment"
+  expect_section_contains "$request_section" '--last-release-url "${LAST_RELEASE_URL}"' \
+    "AI request build should pass the last release URL through a quoted environment expansion"
+  expect_section_contains "$request_section" '--last-release-tag "${LAST_RELEASE_TAG}"' \
+    "AI request build should pass the last reachable tag through a quoted environment expansion"
+  expect_section_contains "$request_section" '--last-release-date "${LAST_RELEASE_DATE}"' \
+    "AI request build should pass the last release date through a quoted environment expansion"
+  expect_section_contains "$request_section" 'lastReleaseTag: $lastReleaseTag' \
+    "probe metadata should record the last release tag for schema parity with full mode"
+  expect_section_contains "$request_section" 'lastReleaseDate: $lastReleaseDate' \
+    "probe metadata should record the last release date for schema parity with full mode"
+  expect_section_contains "$request_section" 'lastReleaseUrl: $lastReleaseUrl' \
+    "probe metadata should record the last release URL for schema parity with full mode"
+
+  pass "test_release_scheduler_feeds_last_release_to_ai"
+}
+
 test_downstream_dispatches_explicitly_pass_dry_run() {
   echo "Running test_downstream_dispatches_explicitly_pass_dry_run"
 
@@ -666,6 +718,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
 test_release_scheduler_uses_true_biweekly_cadence_guard
+test_release_scheduler_feeds_last_release_to_ai
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
