@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.event;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -144,7 +145,8 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
         assertEquals(4, result.requestedBinCount());
         assertEquals(3, result.effectiveBinCount());
-        assertTrue(result.mutualInformationNats().isNaN() || !result.mutualInformationNats().isNegative());
+        assertFalse(result.mutualInformationNats().isNaN());
+        assertTrue(!result.mutualInformationNats().isNegative());
     }
 
     @Test
@@ -255,7 +257,8 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
                 new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT));
 
         assertEquals(15, result.sampleCount());
-        assertTrue(result.mutualInformationNats().isNaN() || !result.mutualInformationNats().isNegative());
+        assertFalse(result.mutualInformationNats().isNaN());
+        assertTrue(!result.mutualInformationNats().isNegative());
 
         // Samples below index 2 would read unstable target indexes: STRICT
         // rejects them.
@@ -273,7 +276,8 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         EventMutualInformationResult clamped = evaluate(predictor, unstableTarget, 0, 19,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.CLAMP));
         assertEquals(15, clamped.sampleCount());
-        assertTrue(clamped.mutualInformationNats().isNaN() || !clamped.mutualInformationNats().isNegative());
+        assertFalse(clamped.mutualInformationNats().isNaN());
+        assertTrue(!clamped.mutualInformationNats().isNegative());
 
         // A range that clamps to empty yields an undefined result, not an error.
         EventMutualInformationResult empty = evaluate(predictor, unstableTarget, 0, 2,

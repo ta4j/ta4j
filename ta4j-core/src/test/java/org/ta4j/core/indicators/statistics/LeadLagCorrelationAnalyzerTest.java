@@ -139,8 +139,8 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     @Test
     public void insufficientHistoryLagsRemainUndefined() {
         BarSeries series = series(6);
-        Indicator<Num> first = indicator(series, values(series, 1, 2, 3, 4, 5, 6));
-        Indicator<Num> second = indicator(series, values(series, 1, 2, 3, 4, 5, 6));
+        Indicator<Num> first = indicator(series, 1, 2, 3, 4, 5, 6);
+        Indicator<Num> second = indicator(series, 1, 2, 3, 4, 5, 6);
 
         LagCorrelationProfile profile = analyze(first, second, 5, 5, -4, 4);
 
@@ -350,10 +350,6 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     private Indicator<Num> mockIndicator(BarSeries series, int unstableBars, Number... values) {
         List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
         return new MockIndicator(series, unstableBars, nums);
-    }
-
-    private static Number[] values(BarSeries series, Number... values) {
-        return values;
     }
 
     private static Number[] constantValues(int barCount) {

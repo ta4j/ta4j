@@ -237,6 +237,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
                 LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(1), null));
         assertThrows(IllegalArgumentException.class, () -> WarpingWindow.sakoeChiba(-1));
+        assertThrows(IllegalArgumentException.class, () -> new WarpingWindow(1, true));
         assertThrows(IllegalArgumentException.class,
                 () -> new DynamicTimeWarpingDistanceIndicator(first, first, 1, DEFAULT_CONFIG));
     }

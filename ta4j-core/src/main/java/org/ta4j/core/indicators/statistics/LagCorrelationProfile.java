@@ -70,10 +70,20 @@ public record LagCorrelationProfile(int endIndex, int barCount, int minimumLag, 
         bestLags = List.copyOf(bestLags);
         Objects.requireNonNull(selectedLag, "selectedLag");
         Objects.requireNonNull(selectedCorrelation, "selectedCorrelation");
+        long expectedPointCount = (long) maximumLag - minimumLag + 1L;
+        if (points.size() != expectedPointCount) {
+            throw new IllegalArgumentException("points must contain one point per requested lag");
+        }
+        for (int index = 0; index < points.size(); index++) {
+            long expectedLag = (long) minimumLag + index;
+            if (points.get(index).lag() != expectedLag) {
+                throw new IllegalArgumentException("points must be in ascending requested-lag order");
+            }
+        }
         Integer previousLag = null;
         for (Integer lag : bestLags) {
-            if (previousLag != null && lag < previousLag) {
-                throw new IllegalArgumentException("bestLags must be ascending");
+            if (previousLag != null && lag <= previousLag) {
+                throw new IllegalArgumentException("bestLags must be strictly ascending");
             }
             previousLag = lag;
         }
