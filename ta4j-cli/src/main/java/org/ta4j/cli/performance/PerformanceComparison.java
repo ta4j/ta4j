@@ -53,6 +53,9 @@ public final class PerformanceComparison {
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
             throws IOException {
+        if (Double.isNaN(maxRegressionPct) || maxRegressionPct < 0d) {
+            throw new IllegalArgumentException("maxRegressionPct must be non-negative");
+        }
         JsonObject base = readPerformanceJson(baseDir);
         JsonObject candidate = readPerformanceJson(candidateDir);
         Files.createDirectories(outputDir);
