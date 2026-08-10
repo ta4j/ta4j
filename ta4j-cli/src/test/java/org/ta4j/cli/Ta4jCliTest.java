@@ -256,6 +256,53 @@ class Ta4jCliTest {
     }
 
     @Test
+    void performanceCompareFailsTheProcessWhenTheRegressionGateFails() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base-regressed");
+        Path candidateDir = tempDir.resolve("performance-candidate-regressed");
+        Path comparisonDir = tempDir.resolve("performance-comparison-regressed");
+        Files.createDirectories(baseDir);
+        Files.createDirectories(candidateDir);
+        // Candidate median is 400% slower than the baseline with matching
+        // checksums: a clear regression beyond --max-regression-pct 5.
+        Files.writeString(baseDir.resolve("performance.json"), performanceArtifact(1_000_000L));
+        Files.writeString(candidateDir.resolve("performance.json"), performanceArtifact(5_000_000L));
+
+        CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
+                "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
+                "--max-regression-pct", "5");
+
+        // The compare command is a regression gate ("Allowed median runtime
+        // regression percentage"). A regressed candidate must fail the process
+        // so automation and CI cannot treat the run as green.
+        assertThat(result.exitCode()).isNotZero();
+        assertThat(result.stdout()).contains("\"status\": \"regression\"");
+        assertThat(comparisonDir.resolve("comparison.json")).exists();
+    }
+
+    @Test
+    void performanceCompareFailsTheProcessWhenChecksumsDiverge() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base-checksum");
+        Path candidateDir = tempDir.resolve("performance-candidate-checksum");
+        Path comparisonDir = tempDir.resolve("performance-comparison-checksum");
+        Files.createDirectories(baseDir);
+        Files.createDirectories(candidateDir);
+        Files.writeString(baseDir.resolve("performance.json"),
+                performanceArtifact(1_000_000L, "checksum", 42L));
+        Files.writeString(candidateDir.resolve("performance.json"),
+                performanceArtifact(1_000_000L, "checksum", 43L));
+
+        CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
+                "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
+                "--max-regression-pct", "5");
+
+        // A checksum mismatch means the candidate exercised different behavior;
+        // the comparison "fails" (PerformanceComparison.compare javadoc) and
+        // the gate must fail the process.
+        assertThat(result.exitCode()).isNotZero();
+        assertThat(comparisonDir.resolve("comparison.json")).exists();
+    }
+
+    @Test
     void backtestAcceptsNamedStrategyLabels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("named-strategy-backtest.json");
@@ -663,6 +710,24 @@ class Ta4jCliTest {
         StringWriter stderr = new StringWriter();
         int exitCode = Ta4jCli.run(args, input, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
         return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
+    }
+
+    private static String performanceArtifact(long medianNanos) {
+        return performanceArtifact(medianNanos, "checksum", 42L);
+    }
+
+    private static String performanceArtifact(long medianNanos, String field, long value) {
+        return "{\"schemaVersion\":1,\"experimentId\":\"kalman-filter\",\"description\":\"fixture\","
+                + "\"gitRef\":\"abc1234\",\"startedAt\":\"2026-08-09T00:00:00Z\","
+                + "\"completedAt\":\"2026-08-09T00:00:01Z\",\"repetitions\":1,\"warmups\":0,\"profile\":false,"
+                + "\"barCounts\":[16],\"scenarioIds\":[\"endOnly\"],\"host\":{\"hostId\":\"sha256:fixture\","
+                + "\"osName\":\"os\",\"osArch\":\"arch\",\"osVersion\":\"v\",\"javaVersion\":\"j\","
+                + "\"jvmName\":\"jvm\",\"availableProcessors\":1},\"results\":[{\"scenarioId\":\"endOnly\","
+                + "\"description\":\"fixture\",\"hypothesis\":\"h\",\"barCount\":16,\"" + field + "\":" + value
+                + ",\"checksumStable\":true,\"stats\":{\"minNanos\":" + medianNanos + ",\"maxNanos\":"
+                + medianNanos + ",\"averageNanos\":" + medianNanos + ",\"medianNanos\":" + medianNanos
+                + ",\"p90Nanos\":" + medianNanos + ",\"totalOperations\":1,\"totalDurationNanos\":" + medianNanos
+                + ",\"operationsPerSecond\":1000.0},\"measurements\":[]}]}";
     }
 
     private Path copyResource(String resourceName) throws IOException {
