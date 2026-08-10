@@ -3,7 +3,9 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 
@@ -84,29 +86,25 @@ public record LagCorrelationProfile(int endIndex, int barCount, int minimumLag, 
         if (selectedDefined && !bestLags.contains(selectedLag.getAsInt())) {
             throw new IllegalArgumentException("selectedLag must be one of bestLags");
         }
-        for (Integer lag : bestLags) {
-            boolean defined = false;
+        if (!bestLags.isEmpty() || selectedDefined) {
+            // One lookup pass keeps validation linear in the profile size; a
+            // tie-heavy profile can carry up to MAX_PROFILE_LAGS entries.
+            Map<Integer, LagCorrelationPoint> pointsByLag = new HashMap<>(points.size());
             for (LagCorrelationPoint point : points) {
-                if (point.lag() == lag) {
-                    defined = point.isDefined();
-                    break;
+                pointsByLag.put(point.lag(), point);
+            }
+            for (Integer lag : bestLags) {
+                LagCorrelationPoint point = pointsByLag.get(lag);
+                if (point == null || !point.isDefined()) {
+                    throw new IllegalArgumentException("every best lag must map to a defined point");
                 }
             }
-            if (!defined) {
-                throw new IllegalArgumentException("every best lag must map to a defined point");
-            }
-        }
-        if (selectedDefined) {
-            Num pointCorrelation = null;
-            for (LagCorrelationPoint point : points) {
-                if (point.lag() == selectedLag.getAsInt()) {
-                    pointCorrelation = point.correlation();
-                    break;
+            if (selectedDefined) {
+                LagCorrelationPoint selectedPoint = pointsByLag.get(selectedLag.getAsInt());
+                if (selectedPoint == null || selectedPoint.correlation().compareTo(selectedCorrelation) != 0) {
+                    throw new IllegalArgumentException(
+                            "selectedCorrelation must equal the correlation of the selected point");
                 }
-            }
-            if (pointCorrelation == null || pointCorrelation.compareTo(selectedCorrelation) != 0) {
-                throw new IllegalArgumentException(
-                        "selectedCorrelation must equal the correlation of the selected point");
             }
         }
     }

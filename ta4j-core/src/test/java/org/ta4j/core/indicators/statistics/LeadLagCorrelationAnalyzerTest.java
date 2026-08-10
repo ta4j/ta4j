@@ -253,6 +253,25 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
+    public void profileValidationStaysLinearForTieHeavyProfiles() {
+        // 50k all-defined points with 50k best lags: the compact constructor
+        // must validate in linear time instead of scanning points per lag.
+        List<LagCorrelationPoint> points = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            points.add(new LagCorrelationPoint(lag, numFactory.one(), 8));
+        }
+        List<Integer> bestLags = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            bestLags.add(lag);
+        }
+        LagCorrelationProfile profile = new LagCorrelationProfile(100_000, 8, 0, 49_999,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(0), numFactory.one());
+
+        assertEquals(50_000, profile.points().size());
+        assertEquals(50_000, profile.bestLags().size());
+    }
+
+    @Test
     public void profileRejectsSelectedLagOutsideBestLags() {
         BarSeries series = series(40);
         Indicator<Num> first = square(series);

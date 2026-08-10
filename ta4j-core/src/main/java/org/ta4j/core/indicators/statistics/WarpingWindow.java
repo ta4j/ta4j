@@ -14,8 +14,8 @@ package org.ta4j.core.indicators.statistics;
  * {@code O(W^2)} time instead of {@code O(W * min(W, 2r + 1))}.
  * </p>
  *
- * @param radius       the Sakoe–Chiba radius, {@code >= 0}; ignored when
- *                     {@code unrestricted} is {@code true}
+ * @param radius       the Sakoe–Chiba radius, {@code >= 0}; must be {@code 0}
+ *                     when {@code unrestricted} is {@code true}
  * @param unrestricted {@code true} when every monotonic alignment is allowed
  * @since 0.24.1
  */
