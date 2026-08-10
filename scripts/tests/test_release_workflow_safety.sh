@@ -239,8 +239,10 @@ test_release_scheduler_feeds_last_release_to_ai() {
     "release scheduler should resolve the last release date after the tag baselines"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release_helpers.sh last-release-date --tag' \
     "release scheduler should derive the last release date from the annotated tag via the release helper"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${LAST_TAG}' \
-    "release scheduler should build a tag-specific release URL"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${encoded_tag}' \
+    "release scheduler should build a tag-specific release URL from the percent-encoded tag"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'encode_tag()' \
+    "release scheduler should percent-encode the tag before building the release URL"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
     "release scheduler should pass the last release URL to the AI request step as an environment variable"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \

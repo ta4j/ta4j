@@ -118,12 +118,25 @@ jobs:
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
         run: |
           set -euo pipefail
+          encode_tag() {
+            local s="$1" out="" c hex
+            while [ -n "$s" ]; do
+              c="${s%"${s#?}"}"
+              case "$c" in
+                [-_.~A-Za-z0-9]) out="${out}${c}" ;;
+                *) printf -v hex '%%%02X' "'${c}"; out="${out}${hex}" ;;
+              esac
+              s="${s#?}"
+            done
+            printf '%s' "$out"
+          }
           if [ "${LAST_TAG:-none}" = "none" ]; then
             release_date="none"
             release_url="https://github.com/${GITHUB_REPOSITORY}/releases"
           else
             release_date="$(bash scripts/release/release_helpers.sh last-release-date --tag "${LAST_TAG}")"
-            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${LAST_TAG}"
+            encoded_tag="$(encode_tag "${LAST_TAG}")"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${encoded_tag}"
           fi
           echo "date=$release_date" >> "$GITHUB_OUTPUT"
           echo "url=$release_url" >> "$GITHUB_OUTPUT"
