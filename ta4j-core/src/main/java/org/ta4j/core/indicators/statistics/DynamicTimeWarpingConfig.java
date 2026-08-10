@@ -9,8 +9,10 @@ import java.util.Objects;
  * Immutable configuration for {@link DynamicTimeWarpingDistanceIndicator}.
  *
  * <p>
- * The defaults are shape-oriented: z-score normalization, squared local
- * distance, a bounded Sakoe–Chiba band, and path-length normalization.
+ * Callers provide every component; the settings shown in the
+ * {@link LeadLagDtwEventAnalysisExample} are the recommended shape-oriented
+ * choices: z-score normalization, squared local distance, a bounded Sakoe–Chiba
+ * band, and path-length normalization.
  * </p>
  *
  * @param normalization         sequence normalization before distance
