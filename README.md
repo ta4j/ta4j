@@ -39,7 +39,7 @@ ta4j requires **Java 25+**. Most applications need only `ta4j-core`:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.24.0</version>
+  <version>0.24.1</version>
 </dependency>
 ```
 
@@ -65,7 +65,7 @@ Snapshot builds are published through the Sonatype Central snapshot repository:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.24.1-SNAPSHOT</version>
+  <version>0.24.2-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -79,7 +79,7 @@ Stable examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.24.0</version>
+  <version>0.24.1</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ Snapshot examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.24.1-SNAPSHOT</version>
+  <version>0.24.2-SNAPSHOT</version>
 </dependency>
 ```
 
