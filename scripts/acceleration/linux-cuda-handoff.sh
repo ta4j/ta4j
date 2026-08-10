@@ -10,8 +10,8 @@ if [[ ! -d "$root/ta4j-cli" ]]; then
 fi
 
 echo "CF-336 Linux CUDA continuation root: $root"
-echo "Implementation plan: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Plan"
-echo "Frozen Linux handoff: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Linux-Handoff"
+echo "Implementation plan: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
+echo "Frozen Linux handoff: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
 echo
 echo "Required preflight and validation commands:"
 cat <<'COMMANDS'

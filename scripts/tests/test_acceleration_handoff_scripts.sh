@@ -27,8 +27,8 @@ BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$ROO
 grep -q "nvidia-smi" "$TMP/linux-output"
 grep -q "./mvnw -B -pl ta4j-cli -am -Pcuda-linux-x86_64" "$TMP/linux-output"
 grep -q "libta4j-cuda-accelerator.so" "$TMP/linux-output"
-grep -q "ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Plan" "$TMP/linux-output"
-grep -q "ta4j-wiki/wiki/Indicator-Acceleration-CUDA-Linux-Handoff" "$TMP/linux-output"
+grep -q "ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification" "$TMP/linux-output"
+grep -q "ta4j-wiki/wiki/Indicator-Acceleration" "$TMP/linux-output"
 
 if BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/linux-cuda-handoff.sh" "$TMP" >"$TMP/missing-output" 2>&1; then
   echo "linux CUDA handoff should reject a root without the ta4j-cli module" >&2
