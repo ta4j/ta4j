@@ -117,6 +117,8 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 Every workflow response uses a versioned envelope with `schemaVersion`, `status`, `command`, and `result`. Volatile timestamps, resolved paths, artifacts, and timings live under `run`. Add `--reproducible` to omit `run` and make identical executions byte-stable.
 
+`performance compare` reports `status: "regression"` in the envelope when the candidate exceeds `--max-regression-pct` or its checksums diverge, and exits non-zero so exit-code-based automation and CI can gate on the result while the comparison artifacts remain inspectable. All other commands exit non-zero only on failure.
+
 Use `--error-format JSON` for structured error envelopes with usage, I/O, or software categories. `catalog` reports aliases and supported models directly from the live registry, while `completion --shell bash` emits completion usable by Bash and by Zsh through `bashcompinit`.
 
 ```json
