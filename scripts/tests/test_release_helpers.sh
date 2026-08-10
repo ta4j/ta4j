@@ -604,6 +604,8 @@ test_build_ai_request_includes_release_cadence() {
 
   expect_file_contains request.json "Release cadence:" \
     "request should include the release cadence section when a last release tag is known"
+  expect_file_contains request.json "Base every conclusion on the release dossier and any supplied release-cadence context" \
+    "system contract should admit cadence facts supplied outside the dossier"
   expect_file_contains request.json "https://github.com/ta4j/ta4j/releases" \
     "request should include the last release URL"
   expect_file_contains request.json "last release: 1.0.0, published 2026-08-03" \
@@ -635,6 +637,40 @@ test_build_ai_request_includes_release_cadence() {
 
   finish_test
   pass "test_build_ai_request_includes_release_cadence"
+}
+
+test_last_release_date_uses_annotated_tag_date() {
+  echo "Running test_last_release_date_uses_annotated_tag_date"
+  run_test
+
+  git init -q -b master release-repo
+  (
+    cd release-repo
+    git config user.name "Release Test"
+    git config user.email "release-test@example.com"
+    GIT_AUTHOR_DATE=2026-07-01T00:00:00Z GIT_COMMITTER_DATE=2026-07-01T00:00:00Z git commit -q --allow-empty -m "base commit"
+    GIT_COMMITTER_DATE=2026-08-03T00:00:00Z git tag -a 1.0.0 -m "Release 1.0.0"
+  )
+
+  local date_out
+  date_out="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 1.0.0)"
+  if [[ "$date_out" != "2026-08-03" ]]; then
+    fail "last-release-date should report the annotated tag date, not the tagged commit date (got '${date_out}')"
+  fi
+
+  local none_out
+  none_out="$(cd release-repo && bash "$SCRIPT" last-release-date --tag none)"
+  if [[ "$none_out" != "none" ]]; then
+    fail "last-release-date should pass through 'none' when there is no prior release (got '${none_out}')"
+  fi
+
+  local unresolved_output
+  if unresolved_output="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 9.9.9 2>&1)"; then
+    fail "last-release-date should fail for a known-but-unresolvable tag (got: ${unresolved_output})"
+  fi
+
+  finish_test
+  pass "test_last_release_date_uses_annotated_tag_date"
 }
 
 test_ai_transport_diagnostics_records_curl_exit_18() {
@@ -777,6 +813,7 @@ test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
 test_build_ai_request_compacts_oversized_dossier
 test_build_ai_request_includes_release_cadence
+test_last_release_date_uses_annotated_tag_date
 test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings

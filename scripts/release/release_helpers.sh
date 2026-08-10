@@ -47,6 +47,7 @@ Commands:
   model-preflight
   build-dossier
   build-ai-request
+  last-release-date
   extract-response-content
   sanitize-response
   ai-transport-diagnostics
@@ -372,7 +373,7 @@ Release recency is a judgment call: weigh the gap since the last release against
       input: [
         {
           role: "system",
-          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier."}]
+          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier and any supplied release-cadence context."}]
         },
         {
           role: "user",
@@ -387,6 +388,30 @@ Release recency is a judgment call: weigh the gap since the last release against
         }
       ]
     }'
+}
+
+command_last_release_date() {
+  local tag=""
+  while (($#)); do
+    case "$1" in
+      --tag) require_value "$1" "${2:-}"; tag="$2"; shift 2 ;;
+      *) die "Unknown last-release-date option: $1" ;;
+    esac
+  done
+  [[ -n "$tag" ]] || die "--tag is required"
+  if [[ "$tag" == "none" ]]; then
+    printf 'none\n'
+    return 0
+  fi
+  if ! git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null 2>&1; then
+    die "Tag ${tag} cannot be resolved in this repository; refusing to fabricate a release date"
+  fi
+  local release_date
+  release_date="$(git for-each-ref "refs/tags/${tag}" --format='%(creatordate:short)')"
+  if [[ -z "$release_date" ]]; then
+    die "Tag ${tag} has no resolvable creation date"
+  fi
+  printf '%s\n' "$release_date"
 }
 
 command_model_preflight() {
@@ -2020,6 +2045,7 @@ main() {
     model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
+    last-release-date) command_last_release_date "$@" ;;
     extract-response-content) command_extract_response_content "$@" ;;
     sanitize-response) command_sanitize_response_artifact "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;

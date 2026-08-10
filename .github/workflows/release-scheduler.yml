@@ -120,11 +120,15 @@ jobs:
           set -euo pipefail
           if [ "${LAST_TAG:-none}" = "none" ]; then
             release_date="none"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases"
           else
-            release_date="$(git log -1 --format=%cs "${LAST_TAG}" 2>/dev/null || echo none)"
+            release_date="$(bash scripts/release/release_helpers.sh last-release-date --tag "${LAST_TAG}")"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${LAST_TAG}"
           fi
-          echo "date=$release_date" >> $GITHUB_OUTPUT
+          echo "date=$release_date" >> "$GITHUB_OUTPUT"
+          echo "url=$release_url" >> "$GITHUB_OUTPUT"
           echo "audit:last_release_date=$release_date tag=${LAST_TAG:-none}"
+          echo "audit:last_release_url=$release_url"
 
       - name: Capture event and normalize dry run flag
         id: run_meta
@@ -546,7 +550,7 @@ jobs:
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
-              --last-release-url "https://github.com/${{ github.repository }}/releases" \
+              --last-release-url "${{ steps.last_release.outputs.url }}" \
               --last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
               --last-release-date "${{ steps.last_release.outputs.date }}" \
               --max-request-bytes "$max_request_bytes" \

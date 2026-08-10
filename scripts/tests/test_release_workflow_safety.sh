@@ -237,10 +237,12 @@ test_release_scheduler_feeds_last_release_to_ai() {
 
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve last release date" \
     "release scheduler should resolve the last release date after the tag baselines"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'git log -1 --format=%cs' \
-    "release scheduler should derive the last release date from the tag commit"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "https://github.com/${{ github.repository }}/releases"' \
-    "release scheduler should pass a repo-derived last release URL to the AI request"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'release_helpers.sh last-release-date --tag' \
+    "release scheduler should derive the last release date from the annotated tag via the release helper"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${LAST_TAG}' \
+    "release scheduler should build a tag-specific release URL"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "${{ steps.last_release.outputs.url }}"' \
+    "release scheduler should pass the resolved last release URL to the AI request"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
     "release scheduler should pass the last reachable tag to the AI request"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
@@ -248,8 +250,8 @@ test_release_scheduler_feeds_last_release_to_ai() {
 
   local request_section
   request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
-  expect_section_contains "$request_section" '--last-release-url "https://github.com/${{ github.repository }}/releases"' \
-    "AI request build should receive the repo-derived last release URL"
+  expect_section_contains "$request_section" '--last-release-url "${{ steps.last_release.outputs.url }}"' \
+    "AI request build should receive the resolved last release URL"
   expect_section_contains "$request_section" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
     "AI request build should receive the last reachable tag"
   expect_section_contains "$request_section" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
