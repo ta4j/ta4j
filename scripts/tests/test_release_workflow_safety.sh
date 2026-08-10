@@ -241,21 +241,33 @@ test_release_scheduler_feeds_last_release_to_ai() {
     "release scheduler should derive the last release date from the annotated tag via the release helper"
   expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'releases/tag/${LAST_TAG}' \
     "release scheduler should build a tag-specific release URL"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "${{ steps.last_release.outputs.url }}"' \
-    "release scheduler should pass the resolved last release URL to the AI request"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
-    "release scheduler should pass the last reachable tag to the AI request"
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
-    "release scheduler should pass the last release date to the AI request"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
+    "release scheduler should pass the last release URL to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
+    "release scheduler should pass the last reachable tag to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
+    "release scheduler should pass the last release date to the AI request step as an environment variable"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "${LAST_RELEASE_URL}"' \
+    "release scheduler should reference the last release URL through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${LAST_RELEASE_TAG}"' \
+    "release scheduler should reference the last release tag through a quoted environment expansion"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${LAST_RELEASE_DATE}"' \
+    "release scheduler should reference the last release date through a quoted environment expansion"
 
   local request_section
   request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
-  expect_section_contains "$request_section" '--last-release-url "${{ steps.last_release.outputs.url }}"' \
-    "AI request build should receive the resolved last release URL"
-  expect_section_contains "$request_section" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
-    "AI request build should receive the last reachable tag"
-  expect_section_contains "$request_section" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
-    "AI request build should receive the last release date"
+  expect_section_contains "$request_section" 'LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}' \
+    "AI request build should receive the resolved last release URL via its environment"
+  expect_section_contains "$request_section" 'LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}' \
+    "AI request build should receive the last reachable tag via its environment"
+  expect_section_contains "$request_section" 'LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}' \
+    "AI request build should receive the last release date via its environment"
+  expect_section_contains "$request_section" '--last-release-url "${LAST_RELEASE_URL}"' \
+    "AI request build should pass the last release URL through a quoted environment expansion"
+  expect_section_contains "$request_section" '--last-release-tag "${LAST_RELEASE_TAG}"' \
+    "AI request build should pass the last reachable tag through a quoted environment expansion"
+  expect_section_contains "$request_section" '--last-release-date "${LAST_RELEASE_DATE}"' \
+    "AI request build should pass the last release date through a quoted environment expansion"
 
   pass "test_release_scheduler_feeds_last_release_to_ai"
 }

@@ -492,6 +492,9 @@ jobs:
         env:
           AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           RELEASE_AI_MAX_REQUEST_BYTES: ${{ vars.RELEASE_AI_MAX_REQUEST_BYTES }}
+          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
+          LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
         run: |
           set -euo pipefail
           echo "::group::Build AI request"
@@ -550,9 +553,9 @@ jobs:
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
-              --last-release-url "${{ steps.last_release.outputs.url }}" \
-              --last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
-              --last-release-date "${{ steps.last_release.outputs.date }}" \
+              --last-release-url "${LAST_RELEASE_URL}" \
+              --last-release-tag "${LAST_RELEASE_TAG}" \
+              --last-release-date "${LAST_RELEASE_DATE}" \
               --max-request-bytes "$max_request_bytes" \
               --metadata-output release-ai-request-metadata.json \
               --output request.json
