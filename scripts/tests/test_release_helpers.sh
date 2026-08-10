@@ -576,6 +576,67 @@ test_build_ai_request_compacts_oversized_dossier() {
   pass "test_build_ai_request_compacts_oversized_dossier"
 }
 
+test_build_ai_request_includes_release_cadence() {
+  echo "Running test_build_ai_request_includes_release_cadence"
+  run_test
+
+  {
+    echo "# ta4j Release Dossier"
+    echo
+    echo "## Metadata"
+    echo
+    echo "- generated_at: 2026-08-10T00:00:00+00:00"
+    echo "- last_reachable_tag: 1.0.0"
+    echo
+    echo "## Unreleased Changelog Context"
+    echo
+    echo "- change"
+  } > release-dossier.md
+
+  bash "$SCRIPT" build-ai-request \
+    --model gpt-5.6-luna \
+    --dossier release-dossier.md \
+    --last-release-url https://github.com/ta4j/ta4j/releases \
+    --last-release-tag 1.0.0 \
+    --last-release-date 2026-08-03 \
+    --output request.json \
+    --metadata-output release-ai-request-metadata.json
+
+  expect_file_contains request.json "Release cadence:" \
+    "request should include the release cadence section when a last release tag is known"
+  expect_file_contains request.json "https://github.com/ta4j/ta4j/releases" \
+    "request should include the last release URL"
+  expect_file_contains request.json "last release: 1.0.0, published 2026-08-03" \
+    "request should include the last release tag and publish date"
+  expect_file_contains request.json "judgment call" \
+    "request should frame release recency as a judgment call"
+  expect_file_contains request.json "0.24.1 shipped too soon after 0.24.0" \
+    "request should carry the too-soon calibration example"
+  expect_file_contains request.json "0.24.0 two days after 0.23.0" \
+    "request should carry the justified-gap calibration example"
+  expect_json_value release-ai-request-metadata.json lastReleaseTag 1.0.0
+  expect_json_value release-ai-request-metadata.json lastReleaseDate 2026-08-03
+  expect_json_value release-ai-request-metadata.json lastReleaseUrl https://github.com/ta4j/ta4j/releases
+  if grep -Fq "6 days" request.json || grep -Fq "5-7 day" request.json; then
+    fail "release cadence must stay a judgment call, not a day-based cooldown"
+  fi
+
+  bash "$SCRIPT" build-ai-request \
+    --model gpt-5.6-luna \
+    --dossier release-dossier.md \
+    --last-release-url https://github.com/ta4j/ta4j/releases \
+    --last-release-tag none \
+    --last-release-date none \
+    --output request-none.json \
+    --metadata-output release-ai-request-metadata-none.json
+  if grep -Fq "Release cadence:" request-none.json; then
+    fail "request should omit the release cadence section when there is no last release tag"
+  fi
+
+  finish_test
+  pass "test_build_ai_request_includes_release_cadence"
+}
+
 test_ai_transport_diagnostics_records_curl_exit_18() {
   echo "Running test_ai_transport_diagnostics_records_curl_exit_18"
   run_test
@@ -715,6 +776,7 @@ test_release_pr_review_plan_uses_non_author_fallback_reviewers
 test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
 test_build_ai_request_compacts_oversized_dossier
+test_build_ai_request_includes_release_cadence
 test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings

@@ -232,6 +232,32 @@ test_release_scheduler_uses_true_biweekly_cadence_guard() {
   pass "test_release_scheduler_uses_true_biweekly_cadence_guard"
 }
 
+test_release_scheduler_feeds_last_release_to_ai() {
+  echo "Running test_release_scheduler_feeds_last_release_to_ai"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve last release date" \
+    "release scheduler should resolve the last release date after the tag baselines"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'git log -1 --format=%cs' \
+    "release scheduler should derive the last release date from the tag commit"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-url "https://github.com/${{ github.repository }}/releases"' \
+    "release scheduler should pass a repo-derived last release URL to the AI request"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
+    "release scheduler should pass the last reachable tag to the AI request"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
+    "release scheduler should pass the last release date to the AI request"
+
+  local request_section
+  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
+  expect_section_contains "$request_section" '--last-release-url "https://github.com/${{ github.repository }}/releases"' \
+    "AI request build should receive the repo-derived last release URL"
+  expect_section_contains "$request_section" '--last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}"' \
+    "AI request build should receive the last reachable tag"
+  expect_section_contains "$request_section" '--last-release-date "${{ steps.last_release.outputs.date }}"' \
+    "AI request build should receive the last release date"
+
+  pass "test_release_scheduler_feeds_last_release_to_ai"
+}
+
 test_downstream_dispatches_explicitly_pass_dry_run() {
   echo "Running test_downstream_dispatches_explicitly_pass_dry_run"
 
@@ -666,6 +692,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
 test_release_scheduler_uses_true_biweekly_cadence_guard
+test_release_scheduler_feeds_last_release_to_ai
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance

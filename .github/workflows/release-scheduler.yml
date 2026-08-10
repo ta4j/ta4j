@@ -112,6 +112,20 @@ jobs:
           echo "audit:last_tag=$last_reachable_tag default_branch=$default_branch first_parent_tag=$last_first_parent_tag prefer_no_v_tags=true"
           echo "audit:latest_tag=$latest_tag latest_tag_reachable=$latest_tag_reachable"
 
+      - name: Resolve last release date
+        id: last_release
+        env:
+          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+        run: |
+          set -euo pipefail
+          if [ "${LAST_TAG:-none}" = "none" ]; then
+            release_date="none"
+          else
+            release_date="$(git log -1 --format=%cs "${LAST_TAG}" 2>/dev/null || echo none)"
+          fi
+          echo "date=$release_date" >> $GITHUB_OUTPUT
+          echo "audit:last_release_date=$release_date tag=${LAST_TAG:-none}"
+
       - name: Capture event and normalize dry run flag
         id: run_meta
         env:
@@ -532,6 +546,9 @@ jobs:
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
+              --last-release-url "https://github.com/${{ github.repository }}/releases" \
+              --last-release-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
+              --last-release-date "${{ steps.last_release.outputs.date }}" \
               --max-request-bytes "$max_request_bytes" \
               --metadata-output release-ai-request-metadata.json \
               --output request.json
@@ -919,6 +936,7 @@ jobs:
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
           POM_BASE: ${{ steps.pom_version.outputs.base }}
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
         run: |
           if [ "${SCHEDULER_DUE:-true}" != "true" ]; then
             mutation_plan="no release mutation; scheduled run is outside the biweekly release window"
@@ -975,6 +993,7 @@ jobs:
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
+          echo "decision:last_release_date=${LAST_RELEASE_DATE:-unknown}"
           echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
           {
             echo "## Release Scheduler Decision"
@@ -997,6 +1016,7 @@ jobs:
             echo "- confidence: ${CONFIDENCE:-unknown}"
             echo "- computed version: ${VERSION:-none}"
             echo "- last reachable tag: ${LAST_TAG:-unknown}"
+            echo "- last release date: ${LAST_RELEASE_DATE:-unknown}"
             echo "- reason: ${REASON:-none}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
