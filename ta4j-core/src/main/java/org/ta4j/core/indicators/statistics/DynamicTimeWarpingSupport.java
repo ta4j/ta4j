@@ -52,18 +52,17 @@ final class DynamicTimeWarpingSupport {
         Num[] currentCost = new Num[sampleCount];
         int[] currentLength = new int[sampleCount];
 
-        int previousColumnMin = 0;
-        int previousColumnMax = -1;
         for (int i = 0; i < sampleCount; i++) {
-            // Clear the slice written by the previous row so out-of-band cells
-            // cannot be misread as reachable predecessors. Each row clears
-            // exactly its own band, keeping total clearing work O(W * band).
-            for (int k = previousColumnMin; k <= previousColumnMax; k++) {
+            int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
+            int columnMax = columnMax(i, config.warpingWindow(), sampleCount);
+            // Clear the range this row can read (horizontal predecessor at
+            // columnMin - 1) or write, so stale cells from two rows back can
+            // never be misread as reachable predecessors. Each row clears a
+            // slice of its own band, keeping total clearing work O(W * band).
+            for (int k = Math.max(0, columnMin - 1); k <= columnMax; k++) {
                 currentCost[k] = null;
                 currentLength[k] = 0;
             }
-            int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
-            int columnMax = columnMax(i, config.warpingWindow(), sampleCount);
             for (int j = columnMin; j <= columnMax; j++) {
                 Num localCost = localCost(firstSequence[i], secondSequence[j], config.localDistance());
 
@@ -101,8 +100,6 @@ final class DynamicTimeWarpingSupport {
             int[] swapLength = previousLength;
             previousLength = currentLength;
             currentLength = swapLength;
-            previousColumnMin = columnMin;
-            previousColumnMax = columnMax;
         }
 
         Num total = previousCost[sampleCount - 1];

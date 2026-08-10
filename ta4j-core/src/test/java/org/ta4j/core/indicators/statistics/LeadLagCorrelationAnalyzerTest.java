@@ -196,6 +196,8 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = sine(series, 0);
 
         assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, Integer.MIN_VALUE, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> analyze(first, first, 31, 8, Integer.MAX_VALUE, Integer.MAX_VALUE));
     }
 
     @Test

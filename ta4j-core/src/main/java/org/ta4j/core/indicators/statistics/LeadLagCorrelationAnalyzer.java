@@ -97,8 +97,11 @@ public final class LeadLagCorrelationAnalyzer {
         NumFactory numFactory = series.numFactory();
         List<LagCorrelationPoint> points = new ArrayList<>(maximumLag - minimumLag + 1);
         Num bestScore = null;
-        for (int lag = minimumLag; lag <= maximumLag; lag++) {
-            LagCorrelationPoint point = lagPoint(first, second, endIndex, validatedBarCount, lag, numFactory);
+        // The long counter keeps the scan overflow-proof even at the extreme
+        // ends of the int range; per-lag validation still bounds every lag.
+        for (long lag = minimumLag; lag <= maximumLag; lag++) {
+            int lagIndex = (int) lag;
+            LagCorrelationPoint point = lagPoint(first, second, endIndex, validatedBarCount, lagIndex, numFactory);
             points.add(point);
             if (point.isDefined()) {
                 Num score = selectionPolicy == LagSelectionPolicy.MAXIMUM_CORRELATION ? point.correlation()

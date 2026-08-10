@@ -42,7 +42,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, first, 6,
                 DEFAULT_CONFIG);
 
-        assertNumEquals(numFactory.numOf(0), dtw.getValue(11), 1.0e-12);
+        assertNumEquals(numFactory.zero(), dtw.getValue(11), 1.0e-12);
     }
 
     @Test
@@ -63,7 +63,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                 LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(0), PathCostNormalization.BY_PATH_LENGTH);
         DynamicTimeWarpingDistanceIndicator normalizedDtw = new DynamicTimeWarpingDistanceIndicator(first, second, 6,
                 normalized);
-        assertNumEquals(numFactory.numOf(1), normalizedDtw.getValue(11), 1.0e-12);
+        assertNumEquals(numFactory.one(), normalizedDtw.getValue(11), 1.0e-12);
     }
 
     @Test
@@ -140,7 +140,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Num shapeDistance = new DynamicTimeWarpingDistanceIndicator(first, shifted, 6, shape).getValue(11);
         Num rawDistance = new DynamicTimeWarpingDistanceIndicator(first, shifted, 6, raw).getValue(11);
 
-        assertNumEquals(numFactory.numOf(0), shapeDistance, 1.0e-12);
+        assertNumEquals(numFactory.zero(), shapeDistance, 1.0e-12);
         assertTrue(rawDistance.isPositive());
     }
 
@@ -154,7 +154,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 6, shape).getValue(11);
 
-        assertNumEquals(numFactory.numOf(0), distance, 1.0e-12);
+        assertNumEquals(numFactory.zero(), distance, 1.0e-12);
     }
 
     @Test
@@ -278,10 +278,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
                 LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(2), PathCostNormalization.BY_PATH_LENGTH);
 
-        // At cell (1,1) the diagonal and vertical predecessors cost 1 each and
-        // the horizontal costs 2. The deterministic tie-break must take the
-        // diagonal path (length 2), so the normalized distance is 1/2 rather
-        // than 1/3.
+        // Local costs: c(0,0)=0, c(0,1)=0, c(1,0)=1, c(1,1)=1, so the
+        // accumulated D(0,0)=0, D(0,1)=0, D(1,0)=1. At cell (1,1) the diagonal
+        // and vertical predecessors both cost 1 (path lengths 2 and 3) and the
+        // horizontal costs 2; the deterministic tie-break must take the
+        // diagonal, so the normalized distance is 1/2 rather than 1/3.
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(3);
         assertNumEquals(numFactory.numOf(0.5), distance, 1.0e-12);
     }

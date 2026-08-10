@@ -93,11 +93,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
         this.normalization = Objects.requireNonNull(normalization, "normalization");
         this.localDistance = Objects.requireNonNull(localDistance, "localDistance");
         this.pathCostNormalization = Objects.requireNonNull(pathCostNormalization, "pathCostNormalization");
-        this.radius = radius;
-        this.unconstrained = unconstrained;
-        this.config = new DynamicTimeWarpingConfig(normalization, localDistance,
-                unconstrained ? WarpingWindow.unconstrained() : WarpingWindow.sakoeChiba(radius),
-                pathCostNormalization);
+        WarpingWindow warpingWindow = new WarpingWindow(radius, unconstrained);
+        this.radius = warpingWindow.radius();
+        this.unconstrained = warpingWindow.unrestricted();
+        this.config = new DynamicTimeWarpingConfig(normalization, localDistance, warpingWindow, pathCostNormalization);
     }
 
     @Override

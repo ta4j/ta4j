@@ -63,21 +63,4 @@ public record WarpingWindow(int radius, boolean unrestricted) {
     public boolean inBand(int firstIndex, int secondIndex) {
         return unrestricted || Math.abs(firstIndex - secondIndex) <= radius;
     }
-
-    /**
-     * @param windowSize the number of samples in each sequence
-     * @return the maximum number of cells a single dynamic-programming row can
-     *         contain: {@code min(windowSize, 2 * radius + 1)} for a bounded
-     *         window, {@code windowSize} when unconstrained
-     */
-    public int maxRowCells(int windowSize) {
-        if (windowSize < 1) {
-            return 0;
-        }
-        if (unrestricted) {
-            return windowSize;
-        }
-        long width = 2L * radius + 1L;
-        return (int) Math.min(windowSize, width);
-    }
 }

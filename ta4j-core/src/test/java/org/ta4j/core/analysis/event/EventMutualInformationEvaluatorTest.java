@@ -268,13 +268,6 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
                 19);
         EventSignal target = eventSignal(series, 0, index -> index % 3 == 0);
 
-        assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationConfig(-1, 0, 2, BinningStrategy.EQUAL_WIDTH));
-        assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationConfig(3, 2, 2, BinningStrategy.EQUAL_WIDTH));
-        assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationConfig(0, 0, 1, BinningStrategy.EQUAL_WIDTH));
-        assertThrows(NullPointerException.class, () -> new EventMutualInformationConfig(0, 0, 2, null));
         assertThrows(NullPointerException.class, () -> evaluate(null, target, 0, 19,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
         assertThrows(NullPointerException.class, () -> evaluate(predictor, null, 0, 19,

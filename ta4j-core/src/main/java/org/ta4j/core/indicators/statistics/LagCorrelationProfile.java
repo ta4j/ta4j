@@ -84,5 +84,30 @@ public record LagCorrelationProfile(int endIndex, int barCount, int minimumLag, 
         if (selectedDefined && !bestLags.contains(selectedLag.getAsInt())) {
             throw new IllegalArgumentException("selectedLag must be one of bestLags");
         }
+        for (Integer lag : bestLags) {
+            boolean defined = false;
+            for (LagCorrelationPoint point : points) {
+                if (point.lag() == lag) {
+                    defined = point.isDefined();
+                    break;
+                }
+            }
+            if (!defined) {
+                throw new IllegalArgumentException("every best lag must map to a defined point");
+            }
+        }
+        if (selectedDefined) {
+            Num pointCorrelation = null;
+            for (LagCorrelationPoint point : points) {
+                if (point.lag() == selectedLag.getAsInt()) {
+                    pointCorrelation = point.correlation();
+                    break;
+                }
+            }
+            if (pointCorrelation == null || pointCorrelation.compareTo(selectedCorrelation) != 0) {
+                throw new IllegalArgumentException(
+                        "selectedCorrelation must equal the correlation of the selected point");
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -136,8 +137,16 @@ public final class EventMutualInformationEvaluator {
             }
             effectiveBinCount = maxBin + 1;
         } else {
-            effectiveBinCount = equalWidthBinCount(predictorValues, config.predictorBinCount());
-            bins = equalWidthBins(predictorValues, effectiveBinCount);
+            Num minimum = predictorValues.get(0);
+            Num maximum = predictorValues.get(0);
+            for (Num value : predictorValues) {
+                minimum = minimum.min(value);
+                maximum = maximum.max(value);
+            }
+            // Bins beyond the sample count can never be populated, so the
+            // effective count is bounded by sampleCount before any allocation.
+            effectiveBinCount = minimum.compareTo(maximum) == 0 ? 1 : Math.min(config.predictorBinCount(), sampleCount);
+            bins = equalWidthBins(predictorValues, minimum, maximum, effectiveBinCount);
         }
         if (positiveTargetCount == 0 || positiveTargetCount == sampleCount) {
             // Constant target: no uncertainty to explain, so raw MI is zero and
@@ -196,16 +205,6 @@ public final class EventMutualInformationEvaluator {
         return false;
     }
 
-    private static int equalWidthBinCount(List<Num> values, int requestedBinCount) {
-        Num minimum = values.get(0);
-        Num maximum = values.get(0);
-        for (Num value : values) {
-            minimum = minimum.min(value);
-            maximum = maximum.max(value);
-        }
-        return minimum.compareTo(maximum) == 0 ? 1 : requestedBinCount;
-    }
-
     private static int[] equalFrequencyBins(List<Num> values, int requestedBinCount) {
         int sampleCount = values.size();
         Integer[] order = new Integer[sampleCount];
@@ -231,16 +230,10 @@ public final class EventMutualInformationEvaluator {
         return bins;
     }
 
-    private static int[] equalWidthBins(List<Num> values, int effectiveBinCount) {
+    private static int[] equalWidthBins(List<Num> values, Num minimum, Num maximum, int effectiveBinCount) {
         int sampleCount = values.size();
         if (effectiveBinCount == 1) {
             return new int[sampleCount];
-        }
-        Num minimum = values.get(0);
-        Num maximum = values.get(0);
-        for (Num value : values) {
-            minimum = minimum.min(value);
-            maximum = maximum.max(value);
         }
         Num width = maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(effectiveBinCount));
         int[] bins = new int[sampleCount];
@@ -258,7 +251,7 @@ public final class EventMutualInformationEvaluator {
     }
 
     private static void requireSameSeries(BarSeries first, BarSeries second) {
-        if (!(first.equals(second) || second.equals(first))) {
+        if (!IndicatorUtils.isSameSeries(first, second)) {
             throw new IllegalArgumentException("predictor and target must use the same bar series");
         }
     }
