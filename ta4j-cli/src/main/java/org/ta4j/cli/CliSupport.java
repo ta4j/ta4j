@@ -1401,7 +1401,12 @@ final class CliSupport {
         case "1d" -> Duration.ofDays(1);
         default -> {
             try {
-                yield Duration.parse(token);
+                Duration duration = Duration.parse(token);
+                if (duration.isZero() || duration.isNegative()) {
+                    throw new IllegalArgumentException("Unsupported timeframe '" + token
+                            + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or a positive ISO-8601 duration.");
+                }
+                yield duration;
             } catch (DateTimeParseException ex) {
                 throw new IllegalArgumentException(
                         "Unsupported timeframe '" + token + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or an ISO-8601 duration.",
