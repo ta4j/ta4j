@@ -34,6 +34,13 @@ public record EventMutualInformationConfig(int targetWindowStartBars, int target
         BinningStrategy binningStrategy, HistoryPolicy historyPolicy) {
 
     /**
+     * Maximum predictor bin count. Bounds the joint-count arrays to a fixed few
+     * megabytes per evaluation and keeps {@code effectiveBinCount * 2} free of
+     * integer overflow.
+     */
+    public static final int MAX_PREDICTOR_BIN_COUNT = 1_000_000;
+
+    /**
      * Creates a config with strict history handling.
      *
      * @param targetWindowStartBars inclusive lower bound of the target window
@@ -65,6 +72,9 @@ public record EventMutualInformationConfig(int targetWindowStartBars, int target
         }
         if (predictorBinCount < 2) {
             throw new IllegalArgumentException("predictorBinCount must be >= 2");
+        }
+        if (predictorBinCount > MAX_PREDICTOR_BIN_COUNT) {
+            throw new IllegalArgumentException("predictorBinCount must be <= " + MAX_PREDICTOR_BIN_COUNT);
         }
         Objects.requireNonNull(binningStrategy, "binningStrategy");
         Objects.requireNonNull(historyPolicy, "historyPolicy");

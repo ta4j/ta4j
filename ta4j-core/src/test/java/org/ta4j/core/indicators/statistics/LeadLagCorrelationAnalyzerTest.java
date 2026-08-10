@@ -208,6 +208,39 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
+    public void indicatorWarmUpMakesOverlappingLagsUndefined() {
+        BarSeries series = series(40);
+        // Finite values during warm-up: only the unstable-bar boundary exposes
+        // the divergence from LaggedCorrelationIndicator semantics.
+        Indicator<Num> warmingUp = mockIndicator(series, 5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+                18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40);
+        Indicator<Num> plain = indicator(series, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40);
+
+        // endIndex 10 with lag 2 needs first[1..8]: the first indicator is
+        // still unstable there (5 unstable bars), so LaggedCorrelationIndicator
+        // is NaN and the analyzer must report the lag as undefined.
+        LagCorrelationProfile overlapping = analyze(warmingUp, plain, 10, 8, 2, 2);
+        LagCorrelationPoint point = overlapping.points().get(0);
+        assertFalse(point.isDefined());
+        assertEquals(0, point.sampleCount());
+
+        // The same lag becomes defined once the window starts at the unstable
+        // boundary: laggedUnstableBars = max(5, 0) + 2 + 8 - 1 = 14.
+        LagCorrelationProfile boundary = analyze(warmingUp, plain, 14, 8, 2, 2);
+        assertTrue(boundary.points().get(0).isDefined());
+    }
+
+    @Test
+    public void rejectsLagRangeThatExceedsTheProfileCapacityGuard() {
+        BarSeries series = series(40);
+        Indicator<Num> first = square(series);
+
+        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, -600_000, 600_000));
+        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, -2_000_000_000, 2_000_000_000));
+    }
+
+    @Test
     public void rejectsIndicatorsOnDifferentSeries() {
         BarSeries firstSeries = series(40);
         BarSeries secondSeries = series(40);
@@ -215,6 +248,26 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> second = sine(secondSeries, 0);
 
         assertThrows(IllegalArgumentException.class, () -> analyze(first, second, 31, 8, -1, 1));
+    }
+
+    @Test
+    public void profileRejectsSelectedLagOutsideBestLags() {
+        BarSeries series = series(40);
+        Indicator<Num> first = square(series);
+        LagCorrelationProfile profile = analyze(first, first, 31, 8, -2, 2);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new LagCorrelationProfile(profile.endIndex(), profile.barCount(), profile.minimumLag(),
+                        profile.maximumLag(), profile.selectionPolicy(), profile.points(), profile.bestLags(),
+                        OptionalInt.of(1), profile.selectedCorrelation()));
+    }
+
+    @Test
+    public void pointRejectsNonFiniteCorrelation() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new LagCorrelationPoint(0, org.ta4j.core.num.DoubleNum.valueOf(Double.POSITIVE_INFINITY), 8));
+        assertThrows(IllegalArgumentException.class,
+                () -> new LagCorrelationPoint(0, org.ta4j.core.num.DoubleNum.valueOf(Double.NEGATIVE_INFINITY), 8));
     }
 
     @Test
@@ -271,6 +324,11 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     private Indicator<Num> indicator(BarSeries series, Number... values) {
         List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
         return new MockIndicator(series, nums);
+    }
+
+    private Indicator<Num> mockIndicator(BarSeries series, int unstableBars, Number... values) {
+        List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
+        return new MockIndicator(series, unstableBars, nums);
     }
 
     private static Number[] values(BarSeries series, Number... values) {

@@ -81,5 +81,8 @@ public record LagCorrelationProfile(int endIndex, int barCount, int minimumLag, 
             throw new IllegalArgumentException(
                     "selectedLag and selectedCorrelation must be defined together or both undefined");
         }
+        if (selectedDefined && !bestLags.contains(selectedLag.getAsInt())) {
+            throw new IllegalArgumentException("selectedLag must be one of bestLags");
+        }
     }
 }

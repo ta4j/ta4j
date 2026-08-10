@@ -45,6 +45,13 @@ import org.ta4j.core.num.NumFactory;
 public final class LeadLagCorrelationAnalyzer {
 
     /**
+     * Maximum number of lags a single profile may scan. Guards the profile
+     * allocation and the {@code O(L * barCount)} scan against integer overflow and
+     * memory exhaustion from hostile lag ranges.
+     */
+    static final long MAX_PROFILE_LAGS = 1_000_000L;
+
+    /**
      * Creates an analyzer.
      */
     public LeadLagCorrelationAnalyzer() {
@@ -83,6 +90,9 @@ public final class LeadLagCorrelationAnalyzer {
         }
         CorrelationWindowSupport.validateLag(minimumLag, validatedBarCount);
         CorrelationWindowSupport.validateLag(maximumLag, validatedBarCount);
+        if ((long) maximumLag - minimumLag + 1L > MAX_PROFILE_LAGS) {
+            throw new IllegalArgumentException("lag range is too large (at most " + MAX_PROFILE_LAGS + " lags)");
+        }
 
         NumFactory numFactory = series.numFactory();
         List<LagCorrelationPoint> points = new ArrayList<>(maximumLag - minimumLag + 1);
@@ -138,6 +148,12 @@ public final class LeadLagCorrelationAnalyzer {
 
     private static LagCorrelationPoint lagPoint(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount,
             int lag, NumFactory numFactory) {
+        // Mirror LaggedCorrelationIndicator exactly: indexes below the lagged
+        // unstable-bar boundary must stay undefined even when the underlying
+        // indicators emit finite values during their warm-up.
+        if (endIndex < CorrelationWindowSupport.laggedUnstableBars(barCount, lag, first, second)) {
+            return new LagCorrelationPoint(lag, NaN.NaN, 0);
+        }
         CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.laggedWindow(first, second, endIndex,
                 barCount, lag);
         if (window == null) {

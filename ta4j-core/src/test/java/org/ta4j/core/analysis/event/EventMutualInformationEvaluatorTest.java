@@ -148,6 +148,34 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void equalFrequencyMiMatchesTheReportedPartition() {
+        BarSeries series = series(10);
+        Indicator<Num> predictor = indicator(series, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3);
+        // Ties merge bins: requested 4 -> desired ceil(10/4) = 3, and the
+        // three 2s cannot be split, so the applied partition is exactly
+        // {0,0,0}, {1,1,2,2,2}, {3,3} (3 bins). The reported effectiveBinCount
+        // and the MI must both come from that partition.
+        EventSignal target = eventSignal(series, 0, index -> index % 3 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
+                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
+
+        assertEquals(3, result.effectiveBinCount());
+        assertNumEquals(
+                numFactory.numOf(expectedMiForPartition(new int[][] { { 0, 1, 2 }, { 3, 4, 5, 6, 7 }, { 8, 9 } },
+                        new boolean[] { true, false, false, true, false, false, true, false, false, true })),
+                result.mutualInformationNats(), 1.0e-9);
+    }
+
+    @Test
+    public void rejectsExcessivePredictorBinCount() {
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationConfig(0, 0,
+                EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT + 1, BinningStrategy.EQUAL_WIDTH));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationConfig(0, 0, Integer.MAX_VALUE, BinningStrategy.EQUAL_WIDTH));
+    }
+
+    @Test
     public void skewedPredictorUsesMoreEffectiveBinsWithEqualFrequency() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 0, 0, 0, 0, 0, 5, 100);
@@ -285,6 +313,37 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
     private static EventSignal eventSignal(BarSeries series, int unstableBars, boolean[] events) {
         return EventSignals.fromPredicate(series, unstableBars, index -> index < events.length && events[index]);
+    }
+
+    /**
+     * Computes mutual information over an explicitly given partition of sample
+     * indexes, independent of the evaluator's binning implementation.
+     */
+    private static double expectedMiForPartition(int[][] partition, boolean[] labels) {
+        int sampleCount = labels.length;
+        int positiveCount = 0;
+        for (boolean label : labels) {
+            if (label) {
+                positiveCount++;
+            }
+        }
+        double positiveRate = (double) positiveCount / sampleCount;
+        double negativeRate = 1.0 - positiveRate;
+        double mi = 0.0;
+        for (int[] bin : partition) {
+            int positives = 0;
+            for (int index : bin) {
+                if (labels[index]) {
+                    positives++;
+                }
+            }
+            double binRate = (double) bin.length / sampleCount;
+            double positiveInBin = (double) positives / bin.length;
+            double negativeInBin = 1.0 - positiveInBin;
+            mi += binRate * (positiveInBin * Math.log(positiveInBin / positiveRate)
+                    + negativeInBin * Math.log(negativeInBin / negativeRate));
+        }
+        return mi;
     }
 
     private static boolean[] alternatingEvents(int barCount, int stride) {

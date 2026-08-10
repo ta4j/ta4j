@@ -42,6 +42,9 @@ public record LagCorrelationPoint(int lag, Num correlation, int sampleCount) {
         if (sampleCount < 0) {
             throw new IllegalArgumentException("sampleCount must be >= 0");
         }
+        if (!correlation.isNaN() && !CorrelationWindowSupport.isFinite(correlation)) {
+            throw new IllegalArgumentException("correlation must be finite or NaN");
+        }
     }
 
     /**

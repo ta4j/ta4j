@@ -124,7 +124,21 @@ public final class EventMutualInformationEvaluator {
                     config.targetWindowStartBars(), config.targetWindowEndBars());
         }
 
-        int effectiveBinCount = binCount(predictorValues, config);
+        int[] bins;
+        int effectiveBinCount;
+        if (config.binningStrategy() == BinningStrategy.EQUAL_FREQUENCY) {
+            // One walk decides both the partition and its size, so the reported
+            // effectiveBinCount always describes the bins MI is computed over.
+            bins = equalFrequencyBins(predictorValues, config.predictorBinCount());
+            int maxBin = 0;
+            for (int assignedBin : bins) {
+                maxBin = Math.max(maxBin, assignedBin);
+            }
+            effectiveBinCount = maxBin + 1;
+        } else {
+            effectiveBinCount = equalWidthBinCount(predictorValues, config.predictorBinCount());
+            bins = equalWidthBins(predictorValues, effectiveBinCount);
+        }
         if (positiveTargetCount == 0 || positiveTargetCount == sampleCount) {
             // Constant target: no uncertainty to explain, so raw MI is zero and
             // normalized MI is undefined; a no-event target must never become a
@@ -134,7 +148,6 @@ public final class EventMutualInformationEvaluator {
                     config.binningStrategy(), config.targetWindowStartBars(), config.targetWindowEndBars());
         }
 
-        int[] bins = binSamples(predictorValues, config, effectiveBinCount);
         int[] jointCounts = new int[effectiveBinCount * 2];
         int[] predictorCounts = new int[effectiveBinCount];
         for (int k = 0; k < sampleCount; k++) {
@@ -183,52 +196,24 @@ public final class EventMutualInformationEvaluator {
         return false;
     }
 
-    private static int binCount(List<Num> values, EventMutualInformationConfig config) {
-        if (config.binningStrategy() == BinningStrategy.EQUAL_FREQUENCY) {
-            return equalFrequencyBinCount(values, config.predictorBinCount());
-        }
+    private static int equalWidthBinCount(List<Num> values, int requestedBinCount) {
         Num minimum = values.get(0);
         Num maximum = values.get(0);
         for (Num value : values) {
             minimum = minimum.min(value);
             maximum = maximum.max(value);
         }
-        return minimum.compareTo(maximum) == 0 ? 1 : config.predictorBinCount();
+        return minimum.compareTo(maximum) == 0 ? 1 : requestedBinCount;
     }
 
-    private static int[] binSamples(List<Num> values, EventMutualInformationConfig config, int effectiveBinCount) {
-        if (config.binningStrategy() == BinningStrategy.EQUAL_FREQUENCY) {
-            return equalFrequencyBins(values, effectiveBinCount);
-        }
-        return equalWidthBins(values, effectiveBinCount);
-    }
-
-    private static int equalFrequencyBinCount(List<Num> values, int requestedBinCount) {
-        int sampleCount = values.size();
-        Num[] sorted = values.toArray(new Num[0]);
-        Arrays.sort(sorted, Num::compareTo);
-        long desired = (sampleCount + (long) requestedBinCount - 1L) / requestedBinCount;
-        int bin = 0;
-        int index = 0;
-        while (index < sampleCount) {
-            int end = (int) Math.min(sampleCount, index + desired);
-            while (end < sampleCount && sorted[end].compareTo(sorted[end - 1]) == 0) {
-                end++;
-            }
-            bin++;
-            index = end;
-        }
-        return bin;
-    }
-
-    private static int[] equalFrequencyBins(List<Num> values, int effectiveBinCount) {
+    private static int[] equalFrequencyBins(List<Num> values, int requestedBinCount) {
         int sampleCount = values.size();
         Integer[] order = new Integer[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
             order[i] = i;
         }
         Arrays.sort(order, (left, right) -> values.get(left).compareTo(values.get(right)));
-        long desired = (sampleCount + (long) effectiveBinCount - 1L) / effectiveBinCount;
+        long desired = (sampleCount + (long) requestedBinCount - 1L) / requestedBinCount;
         int[] bins = new int[sampleCount];
         int bin = 0;
         int index = 0;
