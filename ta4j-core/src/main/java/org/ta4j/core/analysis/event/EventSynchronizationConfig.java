@@ -22,20 +22,28 @@ import java.util.Objects;
  * @param historyPolicy    how to treat requested history outside the series
  * @param emptyEventPolicy what precision/recall/F1 mean when both streams have
  *                         no events
- * @since 0.24.1
+ * @since 0.24.2
  */
 public record EventSynchronizationConfig(int maxLeadBars, int maxLagBars, HistoryPolicy historyPolicy,
         EmptyEventPolicy emptyEventPolicy) {
 
     /**
-     * Creates a config with strict history handling and the undefined-when-both-
-     * empty event policy.
+     * Creates a config with range clamping to the available history and the
+     * undefined-when-both-empty event policy.
+     *
+     * <p>
+     * {@link HistoryPolicy#CLAMP} is the default for this convenience constructor
+     * because it makes the common full-series workflow
+     * ({@code [getBeginIndex(), getEndIndex()]} over signals with nonzero
+     * unstable-bar counts) safe without computing the stable intersection manually.
+     * Use the full constructor when evaluation must fail fast on unavailable
+     * history.
      *
      * @param maxLeadBars maximum bars a prediction may lead its reference
      * @param maxLagBars  maximum bars a prediction may lag its reference
      */
     public EventSynchronizationConfig(int maxLeadBars, int maxLagBars) {
-        this(maxLeadBars, maxLagBars, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
+        this(maxLeadBars, maxLagBars, HistoryPolicy.CLAMP, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
     }
 
     /**

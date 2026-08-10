@@ -9,9 +9,12 @@
  * event streams over the same {@link org.ta4j.core.BarSeries}: events are
  * matched one-to-one within asymmetric lead/lag tolerance windows and scored
  * with precision, recall, and F1, including lag diagnostics and full match
- * provenance. It is intended for offline research such as scoring momentum
- * zero-cross events against causal swing-confirmation events; it is not a
- * trading-record performance criterion.
+ * provenance. Event streams are ordinary {@code Indicator<Boolean>} instances
+ * (only {@link Boolean#TRUE} counts as an event), with an explicit predicate
+ * overload for sources that do not fit an indicator. The package is intended
+ * for offline research such as scoring momentum zero-cross events against
+ * causal swing-confirmation events; it is not a trading-record performance
+ * criterion.
  *
  * <p>
  * Signed lag convention: for a matched predicted event {@code p} and reference
@@ -21,6 +24,6 @@
  * pair is eligible when {@code -maxLagBars <= offset <= maxLeadBars}.
  *
  * @see org.ta4j.core.analysis.event.EventSynchronizationEvaluator
- * @since 0.24.1
+ * @since 0.24.2
  */
 package org.ta4j.core.analysis.event;

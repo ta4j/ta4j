@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  * evaluated series' {@link org.ta4j.core.num.NumFactory}; counts and indexes
  * are primitive integers.
  *
- * @since 0.24.1
+ * @since 0.24.2
  */
 public final class EventSynchronizationResult {
 

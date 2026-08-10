@@ -5,7 +5,6 @@ package org.ta4j.core.analysis.event;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -15,8 +14,6 @@ import java.util.stream.DoubleStream;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -62,24 +59,6 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void ruleAdapterEvaluatesWithoutTradingRecord() {
-        BarSeries series = series(10);
-        Rule rule = new Rule() {
-            @Override
-            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-                assertNull("stateless rule adapter must evaluate without a trading record", tradingRecord);
-                return index == 5;
-            }
-        };
-
-        EventSignal signal = EventSignals.fromRule(series, rule, 3);
-        assertEquals(series, signal.getBarSeries());
-        assertEquals(3, signal.getCountOfUnstableBars());
-        assertFalse(signal.isEvent(4));
-        assertTrue(signal.isEvent(5));
-    }
-
-    @Test
     public void predicateAdapterEvaluatesExplicitly() {
         BarSeries series = series(10);
         EventSignal signal = EventSignals.fromPredicate(series, 2, i -> i % 3 == 0);
@@ -91,13 +70,10 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void ruleUnstableBoundaryIsRespectedByEvaluator() {
+    public void unstableBoundaryIsRespectedByEvaluator() {
         BarSeries series = series(10);
-        EventSignal predicted = EventSignals.fromPredicate(series, 6, i -> i == 5 || i == 7);
-        EventSignal reference = EventSignals.fromPredicate(series, 0, i -> i == 7);
-
-        EventSynchronizationResult result = new EventSynchronizationEvaluator().evaluate(predicted, reference, 0, 9,
-                new EventSynchronizationConfig(0, 0, HistoryPolicy.CLAMP,
+        EventSynchronizationResult result = new EventSynchronizationEvaluator().evaluate(i -> i == 5 || i == 7,
+                i -> i == 7, series, 6, 0, 0, 9, new EventSynchronizationConfig(0, 0, HistoryPolicy.CLAMP,
                         EventSynchronizationConfig.EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY));
         assertEquals(6, result.effectiveStartIndex());
         assertEquals(1, result.predictedCount());
@@ -108,14 +84,8 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void invalidAdapterArgumentsAreRejected() {
         BarSeries series = series(5);
         assertThrows(NullPointerException.class, () -> EventSignals.fromIndicator(null));
-        assertThrows(NullPointerException.class, () -> EventSignals.fromRule(null, new Rule() {
-            @Override
-            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-                return false;
-            }
-        }, 0));
-        assertThrows(NullPointerException.class, () -> EventSignals.fromRule(series, null, 0));
         assertThrows(NullPointerException.class, () -> EventSignals.fromPredicate(series, 0, null));
+        assertThrows(NullPointerException.class, () -> EventSignals.fromPredicate(null, 0, i -> false));
         assertThrows(IllegalArgumentException.class, () -> EventSignals.fromPredicate(series, -1, i -> false));
     }
 }

@@ -40,15 +40,12 @@ class EventSynchronizationBenchmarkTest {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(closes)
                 .build();
-        EventSignal predicted = EventSignals.fromPredicate(series, 0, i -> i % EVENT_STRIDE == 0);
-        EventSignal coincidentReference = EventSignals.fromPredicate(series, 0, i -> i % EVENT_STRIDE == 0);
-        EventSignal shiftedReference = EventSignals.fromPredicate(series, 0, i -> i % EVENT_STRIDE == 2);
         EventSynchronizationEvaluator evaluator = new EventSynchronizationEvaluator();
 
         for (int window : new int[] { 0, 3, 10 }) {
-            EventSignal reference = window == 0 ? coincidentReference : shiftedReference;
             long start = System.nanoTime();
-            EventSynchronizationResult result = evaluator.evaluate(predicted, reference, 0, BARS - 1,
+            EventSynchronizationResult result = evaluator.evaluate(i -> i % EVENT_STRIDE == 0,
+                    i -> i % EVENT_STRIDE == (window == 0 ? 0 : 2), series, 0, 0, 0, BARS - 1,
                     new EventSynchronizationConfig(window, window));
             long elapsedMs = (System.nanoTime() - start) / 1_000_000;
             assertEquals(BARS / EVENT_STRIDE, result.matchedCount());

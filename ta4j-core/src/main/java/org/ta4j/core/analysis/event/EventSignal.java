@@ -6,7 +6,13 @@ package org.ta4j.core.analysis.event;
 import org.ta4j.core.BarSeries;
 
 /**
- * Read-only view of a sparse Boolean event stream over one {@link BarSeries}.
+ * Internal read-only view of a sparse Boolean event stream over one
+ * {@link BarSeries}; not part of the public API.
+ *
+ * <p>
+ * The public evaluator inputs are {@link org.ta4j.core.Indicator} instances and
+ * an explicit predicate overload; this interface only normalizes those two
+ * shapes for the shared extraction pass.
  *
  * <p>
  * An event occurs at bar index {@code i} when {@link #isEvent(int)} returns
@@ -22,9 +28,8 @@ import org.ta4j.core.BarSeries;
  * arbitrary values for indexes strictly below it.
  *
  * @see EventSignals
- * @since 0.24.1
  */
-public interface EventSignal {
+interface EventSignal {
 
     /**
      * @return the bar series this signal is defined over

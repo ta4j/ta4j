@@ -12,16 +12,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.event.EventMatch;
-import org.ta4j.core.analysis.event.EventSignal;
-import org.ta4j.core.analysis.event.EventSignals;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.EmptyEventPolicy;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.analysis.event.EventSynchronizationEvaluator;
 import org.ta4j.core.analysis.event.EventSynchronizationResult;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagPivotHighIndicator;
@@ -110,19 +109,24 @@ public final class EventSynchronizationExample {
         ZigZagPivotHighIndicator swingHighConfirmation = new ZigZagPivotHighIndicator(zigZagState);
         ZigZagPivotLowIndicator swingLowConfirmation = new ZigZagPivotLowIndicator(zigZagState);
 
-        EventSignal belowZeroCrosses = EventSignals.fromRule(series, NumericIndicator.of(momentum).crossedUnder(0),
-                momentum.getCountOfUnstableBars());
-        EventSignal aboveZeroCrosses = EventSignals.fromRule(series, NumericIndicator.of(momentum).crossedOver(0),
-                momentum.getCountOfUnstableBars());
+        // CrossIndicator is a Boolean indicator whose getCountOfUnstableBars()
+        // is max(child unstable bars) + 1, so the crossing's own warm-up
+        // boundary is honored instead of borrowing the momentum battery's.
+        Indicator<Boolean> belowZeroCrosses = new CrossIndicator(momentum,
+                new ConstantIndicator<>(series, series.numFactory().zero()));
+        Indicator<Boolean> aboveZeroCrosses = new CrossIndicator(
+                new ConstantIndicator<>(series, series.numFactory().zero()), momentum);
 
-        EventSynchronizationConfig config = new EventSynchronizationConfig(12, 12, HistoryPolicy.CLAMP,
-                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
+        // CLAMP is the convenience-constructor default: the crossing indicators
+        // have a nonzero unstable-bar boundary, and the full-series request
+        // below intentionally starts before it.
+        EventSynchronizationConfig config = new EventSynchronizationConfig(12, 12);
         EventSynchronizationEvaluator evaluator = new EventSynchronizationEvaluator();
 
-        EventSynchronizationResult swingHighs = evaluator.evaluate(belowZeroCrosses,
-                EventSignals.fromIndicator(swingHighConfirmation), 0, BARS - 1, config);
-        EventSynchronizationResult swingLows = evaluator.evaluate(aboveZeroCrosses,
-                EventSignals.fromIndicator(swingLowConfirmation), 0, BARS - 1, config);
+        EventSynchronizationResult swingHighs = evaluator.evaluate(belowZeroCrosses, swingHighConfirmation, 0, BARS - 1,
+                config);
+        EventSynchronizationResult swingLows = evaluator.evaluate(aboveZeroCrosses, swingLowConfirmation, 0, BARS - 1,
+                config);
 
         LOG.info("Swing highs: predicted={} reference={} matched={} precision={} recall={} F1={} meanOffset={}",
                 swingHighs.predictedCount(), swingHighs.referenceCount(), swingHighs.matchedCount(),

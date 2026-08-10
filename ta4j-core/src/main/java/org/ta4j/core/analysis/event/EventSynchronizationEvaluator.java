@@ -7,8 +7,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.IntPredicate;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.EmptyEventPolicy;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.num.NaN;
@@ -18,6 +20,15 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Deterministic one-to-one evaluator for two sparse event streams over the same
  * {@link BarSeries}.
+ *
+ * <p>
+ * Public evaluation takes two {@link org.ta4j.core.Indicator} instances
+ * ({@code Indicator<Boolean>}; only {@link Boolean#TRUE} counts as an event,
+ * {@code null} and {@code false} are non-events), or an explicit predicate pair
+ * together with the series and unstable-bar boundaries the predicates are
+ * defined over. The indicator's own unstable-bar boundary is always honored, so
+ * a composite signal such as a crossing indicator keeps its own warm-up count
+ * rather than borrowing a child's.
  *
  * <p>
  * Given an inclusive {@code [startIndex, endIndex]} evaluation range, predicted
@@ -47,7 +58,7 @@ import org.ta4j.core.num.NumFactory;
  * the baseline matcher runs in {@code O(|P| * |R|)} time and memory for
  * {@code |P|} predicted and {@code |R|} reference events.
  *
- * @since 0.24.1
+ * @since 0.24.2
  */
 public final class EventSynchronizationEvaluator {
 
@@ -66,22 +77,70 @@ public final class EventSynchronizationEvaluator {
     private static final int[] EMPTY_EVENTS = new int[0];
 
     /**
-     * Evaluates two event streams over an inclusive bar-index range.
+     * Evaluates two Boolean indicator event streams over an inclusive bar-index
+     * range.
      *
-     * @param predicted  the predicted event stream
-     * @param reference  the reference event stream
+     * <p>
+     * Each indicator's own {@code getCountOfUnstableBars()} boundary is honored;
+     * only {@link Boolean#TRUE} values are events.
+     *
+     * @param predicted  the predicted event indicator
+     * @param reference  the reference event indicator
      * @param startIndex the requested inclusive start index
      * @param endIndex   the requested inclusive end index
      * @param config     the matching and policy configuration
      * @return the immutable evaluation result
      * @throws NullPointerException     if any argument is null
-     * @throws IllegalArgumentException if the signals use different series, the
+     * @throws IllegalArgumentException if the indicators use different series, the
      *                                  requested range is inverted, unavailable
      *                                  history is requested under
      *                                  {@link HistoryPolicy#STRICT}, or the event
      *                                  counts exceed the baseline matcher capacity
      */
-    public EventSynchronizationResult evaluate(EventSignal predicted, EventSignal reference, int startIndex,
+    public EventSynchronizationResult evaluate(Indicator<Boolean> predicted, Indicator<Boolean> reference,
+            int startIndex, int endIndex, EventSynchronizationConfig config) {
+        Objects.requireNonNull(predicted, "predicted");
+        Objects.requireNonNull(reference, "reference");
+        return evaluate(EventSignals.fromIndicator(predicted), EventSignals.fromIndicator(reference), startIndex,
+                endIndex, config);
+    }
+
+    /**
+     * Evaluates two explicit predicate event streams over an inclusive bar-index
+     * range.
+     *
+     * <p>
+     * This is the escape hatch for callers whose event source does not fit an
+     * {@code Indicator<Boolean>}; the predicates receive the bar index and must be
+     * deterministic.
+     *
+     * @param predicted             the predicted event predicate
+     * @param reference             the reference event predicate
+     * @param series                the series both predicates are defined over
+     * @param predictedUnstableBars the predicted predicate's unstable-bar boundary
+     * @param referenceUnstableBars the reference predicate's unstable-bar boundary
+     * @param startIndex            the requested inclusive start index
+     * @param endIndex              the requested inclusive end index
+     * @param config                the matching and policy configuration
+     * @return the immutable evaluation result
+     * @throws NullPointerException     if any argument is null
+     * @throws IllegalArgumentException if the requested range is inverted, an
+     *                                  unstable-bar count is negative, unavailable
+     *                                  history is requested under
+     *                                  {@link HistoryPolicy#STRICT}, or the event
+     *                                  counts exceed the baseline matcher capacity
+     */
+    public EventSynchronizationResult evaluate(IntPredicate predicted, IntPredicate reference, BarSeries series,
+            int predictedUnstableBars, int referenceUnstableBars, int startIndex, int endIndex,
+            EventSynchronizationConfig config) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(predicted, "predicted");
+        Objects.requireNonNull(reference, "reference");
+        return evaluate(EventSignals.fromPredicate(series, predictedUnstableBars, predicted),
+                EventSignals.fromPredicate(series, referenceUnstableBars, reference), startIndex, endIndex, config);
+    }
+
+    private EventSynchronizationResult evaluate(EventSignal predicted, EventSignal reference, int startIndex,
             int endIndex, EventSynchronizationConfig config) {
         Objects.requireNonNull(predicted, "predicted");
         Objects.requireNonNull(reference, "reference");
@@ -95,8 +154,8 @@ public final class EventSynchronizationEvaluator {
         BarSeries otherSeries = reference.getBarSeries();
         // ta4j indicators expose read-only views over the underlying series;
         // the view's equals() unwraps both sides, so this check must be
-        // symmetric to accept an indicator adapter paired with a rule or
-        // predicate adapter over the same series.
+        // symmetric to accept two indicator adapters over equal-but-distinct
+        // series instances.
         if (!series.equals(otherSeries) && !otherSeries.equals(series)) {
             throw new IllegalArgumentException("predicted and reference must be defined over the same BarSeries");
         }
@@ -238,9 +297,12 @@ public final class EventSynchronizationEvaluator {
         if (endIndex < startIndex) {
             return EMPTY_EVENTS;
         }
-        int[] events = new int[Math.min(16, endIndex - startIndex + 1)];
+        // Long arithmetic: a rolling series may legally reach
+        // Integer.MAX_VALUE, and the inclusive range length can overflow an int.
+        int initialCapacity = (int) Math.min(16, (long) endIndex - startIndex + 1);
+        int[] events = new int[initialCapacity];
         int size = 0;
-        for (int i = startIndex; i <= endIndex; i++) {
+        for (int i = startIndex;; i++) {
             if (signal.isEvent(i)) {
                 if (size == events.length) {
                     if ((long) events.length * 2 > MAX_MATCHING_CELLS) {
@@ -254,6 +316,9 @@ public final class EventSynchronizationEvaluator {
                     events = Arrays.copyOf(events, events.length * 2);
                 }
                 events[size++] = i;
+            }
+            if (i == endIndex) {
+                break;
             }
         }
         return size == events.length ? events : Arrays.copyOf(events, size);
@@ -347,7 +412,7 @@ public final class EventSynchronizationEvaluator {
                     if (bestPairs[childCell] + 1 == targetPairs
                             && bestTotalAbs[childCell] + absoluteOffset == bestTotalAbs[targetCell]
                             && Math.max(bestWorstAbs[childCell], (int) absoluteOffset) <= worstBudget) {
-                        matches.add(new EventMatch(predicted[k], reference[l], (int) offset));
+                        matches.add(new EventMatch(predicted[k], reference[l]));
                         i = k + 1;
                         j = l + 1;
                         found = true;

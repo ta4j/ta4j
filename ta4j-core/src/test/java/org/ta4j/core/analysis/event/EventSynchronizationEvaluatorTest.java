@@ -16,10 +16,19 @@ import java.util.stream.DoubleStream;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.EmptyEventPolicy;
 import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.CrossIndicator;
+import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -41,16 +50,27 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
     }
 
-    private EventSignal events(BarSeries series, int unstableBars, int... indexes) {
+    private Indicator<Boolean> events(BarSeries series, int unstableBars, int... indexes) {
         boolean[] mask = new boolean[series.getBarCount() == 0 ? 0 : series.getEndIndex() + 1];
         for (int index : indexes) {
             mask[index] = true;
         }
-        return EventSignals.fromPredicate(series, unstableBars, i -> mask[i]);
+        return new CachedIndicator<Boolean>(series) {
+            @Override
+            protected Boolean calculate(int index) {
+                return mask[index];
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return unstableBars;
+            }
+        };
     }
 
-    private EventSynchronizationResult evaluate(EventSignal predicted, EventSignal reference, int maxLeadBars,
-            int maxLagBars, HistoryPolicy historyPolicy, EmptyEventPolicy emptyEventPolicy, int start, int end) {
+    private EventSynchronizationResult evaluate(Indicator<Boolean> predicted, Indicator<Boolean> reference,
+            int maxLeadBars, int maxLagBars, HistoryPolicy historyPolicy, EmptyEventPolicy emptyEventPolicy, int start,
+            int end) {
         return new EventSynchronizationEvaluator().evaluate(predicted, reference, start, end,
                 new EventSynchronizationConfig(maxLeadBars, maxLagBars, historyPolicy, emptyEventPolicy));
     }
@@ -69,8 +89,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(1.0, result.precision());
         assertNumEquals(1.0, result.recall());
         assertNumEquals(1.0, result.f1Score());
-        assertEquals(List.of(new EventMatch(5, 5, 0), new EventMatch(10, 10, 0), new EventMatch(15, 15, 0)),
-                result.matches());
+        assertEquals(List.of(new EventMatch(5, 5), new EventMatch(10, 10), new EventMatch(15, 15)), result.matches());
         assertNumEquals(0.0, result.meanSignedOffset());
         assertNumEquals(0.0, result.meanAbsoluteOffset());
         assertNumEquals(0.0, result.medianSignedOffset());
@@ -84,8 +103,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 4, 9, 14), events(series, 0, 5, 10, 15), 1, 0,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(3, result.matchedCount());
-        assertEquals(List.of(new EventMatch(4, 5, 1), new EventMatch(9, 10, 1), new EventMatch(14, 15, 1)),
-                result.matches());
+        assertEquals(List.of(new EventMatch(4, 5), new EventMatch(9, 10), new EventMatch(14, 15)), result.matches());
         assertNumEquals(1.0, result.precision());
         assertNumEquals(1.0, result.recall());
         assertNumEquals(1.0, result.f1Score());
@@ -97,8 +115,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 6, 11, 16), events(series, 0, 5, 10, 15), 0, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(3, result.matchedCount());
-        assertEquals(List.of(new EventMatch(6, 5, -1), new EventMatch(11, 10, -1), new EventMatch(16, 15, -1)),
-                result.matches());
+        assertEquals(List.of(new EventMatch(6, 5), new EventMatch(11, 10), new EventMatch(16, 15)), result.matches());
         assertNumEquals(1.0, result.precision());
         assertNumEquals(1.0, result.recall());
         assertNumEquals(1.0, result.f1Score());
@@ -111,7 +128,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 3, 8), events(series, 0, 4, 7, 10), 2, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(2, result.matchedCount());
-        assertEquals(List.of(new EventMatch(3, 4, 1), new EventMatch(8, 7, -1)), result.matches());
+        assertEquals(List.of(new EventMatch(3, 4), new EventMatch(8, 7)), result.matches());
         assertNumEquals(1.0, result.meanAbsoluteOffset());
     }
 
@@ -136,7 +153,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 4, 6), events(series, 0, 5), 1, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(1, result.matchedCount());
-        assertEquals(List.of(new EventMatch(4, 5, 1)), result.matches());
+        assertEquals(List.of(new EventMatch(4, 5)), result.matches());
         assertEquals(1, result.falsePositives());
         assertEquals(0, result.falseNegatives());
     }
@@ -147,7 +164,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 5), events(series, 0, 4, 6), 1, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(1, result.matchedCount());
-        assertEquals(List.of(new EventMatch(5, 4, -1)), result.matches());
+        assertEquals(List.of(new EventMatch(5, 4)), result.matches());
         assertEquals(0, result.falsePositives());
         assertEquals(1, result.falseNegatives());
     }
@@ -160,7 +177,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 2, 5), events(series, 0, 3, 4), 1, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(2, result.matchedCount());
-        assertEquals(List.of(new EventMatch(2, 3, 1), new EventMatch(5, 4, -1)), result.matches());
+        assertEquals(List.of(new EventMatch(2, 3), new EventMatch(5, 4)), result.matches());
     }
 
     @Test
@@ -171,7 +188,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 0, 3), events(series, 0, 1, 2), 2, 2,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
         assertEquals(2, result.matchedCount());
-        assertEquals(List.of(new EventMatch(0, 1, 1), new EventMatch(3, 2, -1)), result.matches());
+        assertEquals(List.of(new EventMatch(0, 1), new EventMatch(3, 2)), result.matches());
         assertNumEquals(1.0, result.meanAbsoluteOffset());
     }
 
@@ -180,7 +197,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         BarSeries series = series();
         EventSynchronizationResult result = evaluate(events(series, 0, 4, 6), events(series, 0, 5), 1, 1,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
-        assertEquals(List.of(new EventMatch(4, 5, 1)), result.matches());
+        assertEquals(List.of(new EventMatch(4, 5)), result.matches());
 
         // Repeated evaluation returns structurally equal results.
         EventSynchronizationResult again = evaluate(events(series, 0, 4, 6), events(series, 0, 5), 1, 1,
@@ -196,8 +213,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         // The second pair's predicted index must win lexicographically.
         EventSynchronizationResult result = evaluate(events(series, 0, 3, 16, 19, 20), events(series, 0, 1, 18, 19, 25),
                 2, 3, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 25);
-        assertEquals(List.of(new EventMatch(3, 1, -2), new EventMatch(16, 18, 2), new EventMatch(19, 19, 0)),
-                result.matches());
+        assertEquals(List.of(new EventMatch(3, 1), new EventMatch(16, 18), new EventMatch(19, 19)), result.matches());
         assertEquals(1, result.exactMatchCount());
         assertEquals(List.of(20), result.unmatchedPredictedIndexes());
         assertNumEquals(0.0, result.meanSignedOffset());
@@ -212,8 +228,9 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         EventSynchronizationResult result = evaluate(events(series, 0, 4, 8, 11, 12, 17),
                 events(series, 0, 6, 10, 11, 16), 2, 1, HistoryPolicy.STRICT,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
-        assertEquals(List.of(new EventMatch(4, 6, 2), new EventMatch(8, 10, 2), new EventMatch(11, 11, 0),
-                new EventMatch(17, 16, -1)), result.matches());
+        assertEquals(
+                List.of(new EventMatch(4, 6), new EventMatch(8, 10), new EventMatch(11, 11), new EventMatch(17, 16)),
+                result.matches());
         assertEquals(1, result.exactMatchCount());
         assertEquals(List.of(12), result.unmatchedPredictedIndexes());
     }
@@ -226,15 +243,14 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         // [(0,4),(19,17),(20,18)].
         EventSynchronizationResult result = evaluate(events(series, 0, 0, 14, 19, 20), events(series, 0, 4, 17, 18), 7,
                 7, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 20);
-        assertEquals(List.of(new EventMatch(0, 4, 4), new EventMatch(14, 17, 3), new EventMatch(19, 18, -1)),
-                result.matches());
+        assertEquals(List.of(new EventMatch(0, 4), new EventMatch(14, 17), new EventMatch(19, 18)), result.matches());
         assertEquals(List.of(20), result.unmatchedPredictedIndexes());
     }
 
     @Test
     public void denseEventStreamsBeyondMemorySafeCapacityFailWithDocumentedException() {
         BarSeries series = series(5000);
-        EventSignal dense = events(series, 0, allIndexes(5000));
+        Indicator<Boolean> dense = events(series, 0, allIndexes(5000));
         assertThrows(IllegalArgumentException.class, () -> evaluate(dense, dense, 0, 0, HistoryPolicy.STRICT,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 4999));
     }
@@ -275,6 +291,83 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         }
     }
 
+    @Test
+    public void evaluationAtMaximumBarIndexTerminatesWithoutOverflow() {
+        // A rolling series may legally reach getEndIndex() == Integer.MAX_VALUE;
+        // the extraction loop must process the range and terminate instead of
+        // incrementing past the end.
+        BarSeries series = series(1);
+        BarSeries atMaxSeries = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        Indicator<Boolean> atMax = new AbstractIndicator<Boolean>(atMaxSeries) {
+            @Override
+            public Boolean getValue(int index) {
+                return index == Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationConfig config = new EventSynchronizationConfig(0, 0, HistoryPolicy.CLAMP,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
+        EventSynchronizationResult indicatorResult = new EventSynchronizationEvaluator().evaluate(atMax, atMax,
+                Integer.MAX_VALUE, Integer.MAX_VALUE, config);
+        assertEquals(1, indicatorResult.predictedCount());
+        assertEquals(1, indicatorResult.referenceCount());
+        assertEquals(1, indicatorResult.matchedCount());
+        assertEquals(List.of(new EventMatch(Integer.MAX_VALUE, Integer.MAX_VALUE)), indicatorResult.matches());
+        assertEquals(0, indicatorResult.matches().get(0).offsetBars());
+
+        // The explicit predicate overload is safe at the same boundary.
+        EventSynchronizationResult predicateResult = new EventSynchronizationEvaluator().evaluate(
+                i -> i == Integer.MAX_VALUE, i -> i == Integer.MAX_VALUE, atMaxSeries, 0, 0, Integer.MAX_VALUE,
+                Integer.MAX_VALUE, config);
+        assertEquals(1, predicateResult.matchedCount());
+        assertEquals(0, predicateResult.matches().get(0).offsetBars());
+    }
+
+    @Test
+    public void crossingIndicatorKeepsItsOwnUnstableBoundary() {
+        // CrossIndicator reports max(child unstable bars) + 1: a crossing over a
+        // momentum signal with 5 unstable bars is only trustworthy from index 6,
+        // and a reference event on the child's boundary bar (5) must never enter
+        // the denominator.
+        BarSeries series = series(40);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        NetMomentumIndicator momentum = new NetMomentumIndicator(
+                NumericIndicator.of(close).minus(new PreviousValueIndicator(close, 1)), 5, 0);
+        assertEquals(5, momentum.getCountOfUnstableBars());
+        Indicator<Boolean> crossing = new CrossIndicator(momentum,
+                new ConstantIndicator<>(series, series.numFactory().zero()));
+        assertEquals(6, crossing.getCountOfUnstableBars());
+
+        EventSynchronizationConfig config = new EventSynchronizationConfig(12, 12, HistoryPolicy.CLAMP,
+                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY);
+        EventSynchronizationEvaluator evaluator = new EventSynchronizationEvaluator();
+        // A reference event exactly on the child's boundary bar is below the
+        // crossing boundary and must be excluded entirely (no false negative).
+        EventSynchronizationResult excluded = evaluator.evaluate(crossing, events(series, 0, 5), 0, 39, config);
+        assertEquals(6, excluded.effectiveStartIndex());
+        assertEquals(0, excluded.referenceCount());
+        assertEquals(0, excluded.falseNegatives());
+        // A reference event at the crossing's own boundary is the first evaluated
+        // bar and is counted.
+        EventSynchronizationResult counted = evaluator.evaluate(crossing, events(series, 0, 6), 0, 39, config);
+        assertEquals(6, counted.effectiveStartIndex());
+        assertEquals(1, counted.referenceCount());
+    }
+
     private static int[] allIndexes(int barCount) {
         int[] indexes = new int[barCount];
         for (int i = 0; i < barCount; i++) {
@@ -302,16 +395,17 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         // A signal firing on every bar of a 9M-bar range must fail with the
         // documented exception during extraction, before allocating arrays that
         // could exhaust memory.
-        EventSignal dense = EventSignals.fromPredicate(hugeEnd, 0, i -> true);
-        assertThrows(IllegalArgumentException.class, () -> evaluate(dense, dense, 0, 0, HistoryPolicy.STRICT,
-                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9_000_000));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventSynchronizationEvaluator().evaluate(i -> true, i -> true, hugeEnd, 0, 0, 0, 9_000_000,
+                        new EventSynchronizationConfig(0, 0, HistoryPolicy.STRICT,
+                                EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY)));
     }
 
     @Test
     public void emptyEventPoliciesAreExplicitAndRecorded() {
         BarSeries series = series();
-        EventSignal empty = events(series, 0);
-        EventSignal nonEmpty = events(series, 0, 5);
+        Indicator<Boolean> empty = events(series, 0);
+        Indicator<Boolean> nonEmpty = events(series, 0, 5);
 
         EventSynchronizationResult undefinedBoth = evaluate(empty, empty, 1, 1, HistoryPolicy.STRICT,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
@@ -355,13 +449,21 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void unstableBarsAreExcludedFromEvaluation() {
         BarSeries series = series();
-        EventSignal predicted = EventSignals.fromPredicate(series, 4, i -> {
-            if (i < 4) {
-                throw new AssertionError("evaluator must not read below the unstable boundary");
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index < 4) {
+                    throw new AssertionError("evaluator must not read below the unstable boundary");
+                }
+                return index == 5 || index == 8;
             }
-            return i == 5 || i == 8;
-        });
-        EventSignal reference = events(series, 0, 5);
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 4;
+            }
+        };
+        Indicator<Boolean> reference = events(series, 0, 5);
         // Silent exclusion below the unstable boundary is CLAMP's documented
         // behavior; STRICT fails fast for such requests instead.
         EventSynchronizationResult result = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
@@ -376,8 +478,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void strictPolicyFailsFastWhenRequestedRangeIncludesUnstableBars() {
         BarSeries series = series();
-        EventSignal predicted = EventSignals.fromPredicate(series, 10, i -> i == 12);
-        EventSignal reference = events(series, 0, 12);
+        Indicator<Boolean> predicted = events(series, 10, 12);
+        Indicator<Boolean> reference = events(series, 0, 12);
         // STRICT treats the unstable-bar boundary as unavailable history: a
         // request starting below it fails fast instead of silently truncating.
         assertThrows(IllegalArgumentException.class, () -> evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
@@ -395,8 +497,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     public void clampPolicyNeverReportsGappedEffectiveRange() {
         BarSeries series = series(40);
         series.setMaximumBarCount(30);
-        EventSignal predicted = events(series, 0, 12);
-        EventSignal reference = events(series, 0, 12);
+        Indicator<Boolean> predicted = events(series, 0, 12);
+        Indicator<Boolean> reference = events(series, 0, 12);
         // A request fully before the available history clamps to the canonical
         // empty inclusive range (start == end + 1), never an inverted one.
         EventSynchronizationResult beforeHistory = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
@@ -409,8 +511,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         assertEquals(afterEnd.effectiveEndIndex() + 1, afterEnd.effectiveStartIndex());
         assertEquals(0, afterEnd.predictedCount());
 
-        EventSynchronizationResult unstableGap = evaluate(EventSignals.fromPredicate(series, 40, i -> false),
-                events(series, 0, 12), 0, 0, HistoryPolicy.CLAMP, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 30);
+        EventSynchronizationResult unstableGap = evaluate(events(series, 40), events(series, 0, 12), 0, 0,
+                HistoryPolicy.CLAMP, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 30);
         assertEquals(unstableGap.effectiveEndIndex() + 1, unstableGap.effectiveStartIndex());
         assertEquals(0, unstableGap.predictedCount());
     }
@@ -422,8 +524,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         assertEquals(10, series.getBeginIndex());
         assertEquals(39, series.getEndIndex());
 
-        EventSignal predicted = events(series, 0, 12);
-        EventSignal reference = events(series, 0, 12);
+        Indicator<Boolean> predicted = events(series, 0, 12);
+        Indicator<Boolean> reference = events(series, 0, 12);
         assertThrows(IllegalArgumentException.class, () -> evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19));
         assertThrows(IllegalArgumentException.class, () -> evaluate(predicted, reference, 0, 0, HistoryPolicy.STRICT,
@@ -438,8 +540,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     public void clampPolicyIntersectsWithAvailableHistory() {
         BarSeries series = series(40);
         series.setMaximumBarCount(30);
-        EventSignal predicted = events(series, 0, 12, 20);
-        EventSignal reference = events(series, 0, 12);
+        Indicator<Boolean> predicted = events(series, 0, 12, 20);
+        Indicator<Boolean> reference = events(series, 0, 12);
 
         EventSynchronizationResult result = evaluate(predicted, reference, 0, 0, HistoryPolicy.CLAMP,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 45);
@@ -488,7 +590,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
                 Integer.MAX_VALUE, Integer.MAX_VALUE, HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY,
                 0, 19);
         assertEquals(2, result.matchedCount());
-        assertEquals(List.of(new EventMatch(0, 5, 5), new EventMatch(19, 10, -9)), result.matches());
+        assertEquals(List.of(new EventMatch(0, 5), new EventMatch(19, 10)), result.matches());
     }
 
     @Test
@@ -496,7 +598,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
         BarSeries series = series();
         EventSynchronizationResult result = evaluate(events(series, 0, 5), events(series, 0, 5), 0, 0,
                 HistoryPolicy.STRICT, EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 19);
-        assertThrows(UnsupportedOperationException.class, () -> result.matches().add(new EventMatch(0, 0, 0)));
+        assertThrows(UnsupportedOperationException.class, () -> result.matches().add(new EventMatch(0, 0)));
         assertThrows(UnsupportedOperationException.class, () -> result.unmatchedPredictedIndexes().add(1));
         assertThrows(UnsupportedOperationException.class, () -> result.unmatchedReferenceIndexes().add(1));
     }
@@ -504,8 +606,8 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void doesNotMatchAcrossRequestedRangeBoundary() {
         BarSeries series = series();
-        EventSignal predicted = events(series, 0, 9);
-        EventSignal reference = events(series, 0, 11);
+        Indicator<Boolean> predicted = events(series, 0, 9);
+        Indicator<Boolean> reference = events(series, 0, 11);
         // The reference event at 11 sits outside [0, 10] and must never satisfy the
         // predicted event at 9, even though a 5-bar window would reach it.
         EventSynchronizationResult result = evaluate(predicted, reference, 5, 5, HistoryPolicy.STRICT,
@@ -521,7 +623,17 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
     @Test
     public void emptySeriesEvaluationIsSafe() {
         BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        EventSignal signal = EventSignals.fromPredicate(empty, 0, i -> false);
+        Indicator<Boolean> signal = new AbstractIndicator<Boolean>(empty) {
+            @Override
+            public Boolean getValue(int index) {
+                return Boolean.FALSE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
         EventSynchronizationResult clamped = evaluate(signal, signal, 1, 1, HistoryPolicy.CLAMP,
                 EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY, 0, 9);
         assertEquals(0, clamped.predictedCount());
@@ -640,7 +752,7 @@ public class EventSynchronizationEvaluatorTest extends AbstractIndicatorTest<Ind
             if (offset > maxLead) {
                 break;
             }
-            current.add(new EventMatch(predicted[predictedPosition], reference[l], (int) offset));
+            current.add(new EventMatch(predicted[predictedPosition], reference[l]));
             search(predicted, reference, predictedPosition + 1, l + 1, maxLead, maxLag, current, best);
             current.remove(current.size() - 1);
         }

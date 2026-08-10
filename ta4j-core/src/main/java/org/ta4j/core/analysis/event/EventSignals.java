@@ -8,18 +8,16 @@ import java.util.function.IntPredicate;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Rule;
 
 /**
- * Factory methods that adapt ta4j signal sources to {@link EventSignal}.
+ * Internal adapters that normalize public event sources to {@link EventSignal};
+ * not part of the public API.
  *
  * <p>
  * The {@link Indicator} adapter treats only {@link Boolean#TRUE} as an event;
  * {@code null} and {@code false} values are non-events.
- *
- * @since 0.24.1
  */
-public final class EventSignals {
+final class EventSignals {
 
     private EventSignals() {
     }
@@ -33,30 +31,9 @@ public final class EventSignals {
      * @param indicator the indicator to adapt
      * @return an event signal over the indicator's bar series
      */
-    public static EventSignal fromIndicator(Indicator<Boolean> indicator) {
+    static EventSignal fromIndicator(Indicator<Boolean> indicator) {
         Objects.requireNonNull(indicator, "indicator");
         return new IndicatorEventSignal(indicator);
-    }
-
-    /**
-     * Adapts a stateless rule as an event signal.
-     *
-     * <p>
-     * The rule is evaluated without any {@link org.ta4j.core.TradingRecord}; this
-     * is only correct for stateless rules whose result does not depend on trading
-     * history. Callers needing explicit evaluation context should use
-     * {@link #fromPredicate(BarSeries, int, IntPredicate)} instead.
-     *
-     * @param series       the series the rule is evaluated over
-     * @param rule         the stateless rule to adapt
-     * @param unstableBars the count of leading bars whose rule results are not
-     *                     trustworthy; must be {@code >= 0}
-     * @return an event signal over {@code series}
-     */
-    public static EventSignal fromRule(BarSeries series, Rule rule, int unstableBars) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(rule, "rule");
-        return fromPredicate(series, unstableBars, rule::isSatisfied);
     }
 
     /**
@@ -72,7 +49,7 @@ public final class EventSignals {
      * @param predicate    the event predicate
      * @return an event signal over {@code series}
      */
-    public static EventSignal fromPredicate(BarSeries series, int unstableBars, IntPredicate predicate) {
+    static EventSignal fromPredicate(BarSeries series, int unstableBars, IntPredicate predicate) {
         Objects.requireNonNull(series, "series");
         if (unstableBars < 0) {
             throw new IllegalArgumentException("unstableBars must be >= 0");
