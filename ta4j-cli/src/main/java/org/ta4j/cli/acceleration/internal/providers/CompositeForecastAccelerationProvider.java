@@ -92,10 +92,23 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             }
             try {
                 Result<Forecast> result = member.evaluate(request);
-                lastResult = result;
-                if (result.status() == Status.EXECUTED || result.status() == Status.FAILED) {
+                if (result.status() == Status.EXECUTED) {
                     return result;
                 }
+                if (result.status() == Status.FAILED) {
+                    // A returned FAILED status is a member failure just like a
+                    // thrown NativeProviderException: it must not block the
+                    // remaining fallback members (for example a broken CUDA
+                    // device on a host with a healthy OpenCL device), and when
+                    // every member fails the last failure propagates so the
+                    // service quarantines the composite under its own provider
+                    // id instead of surfacing a member-attributed result.
+                    lastResult = null;
+                    lastFailure = new NativeProviderException(member.capability().providerId(),
+                            new IllegalStateException(result.diagnostic().detail()));
+                    continue;
+                }
+                lastResult = result;
             } catch (NativeProviderException exception) {
                 // One member's native failure must not block the remaining
                 // fallback members (for example a broken CUDA device on a host
