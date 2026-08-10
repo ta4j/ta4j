@@ -78,6 +78,47 @@ class CompositeForecastAccelerationProviderTest {
     }
 
     @Test
+    void failedMemberStatusFallsThroughToTheNextAvailableMember() {
+        // The class javadoc documents that "a member's native failure falls
+        // through to the remaining members (for example a broken CUDA device
+        // on a host with a healthy OpenCL device)". A returned FAILED status is
+        // a member failure just like a thrown NativeProviderException and must
+        // not short-circuit the fallback chain.
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> new Result<>(
+                Status.FAILED, Backend.CUDA, List.of(), false, 0L,
+                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
+                CompositeForecastAccelerationProviderTest::executedResult);
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        Result<Forecast> result = composite.evaluate(request());
+
+        assertThat(result.status()).isEqualTo(Status.EXECUTED);
+        assertThat(result.backend()).isEqualTo(Backend.OPENCL);
+    }
+
+    @Test
+    void failedMemberStatusPropagatesSoTheServiceCanQuarantineWhenEveryMemberFails() {
+        // The class javadoc documents that "when every member fails, the last
+        // failure propagates so the service quarantines the composite under its
+        // own provider id". A returned FAILED status must propagate like a
+        // thrown native failure instead of short-circuiting with a
+        // member-attributed result the service never quarantines.
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> new Result<>(
+                Status.FAILED, Backend.CUDA, List.of(), false, 0L,
+                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d, request -> new Result<>(
+                Status.FAILED, Backend.OPENCL, List.of(), false, 0L,
+                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "opencl", "CL_OUT_OF_RESOURCES")));
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        assertThatThrownBy(() -> composite.evaluate(request())).isInstanceOf(NativeProviderException.class)
+                .hasMessageContaining("opencl");
+    }
+
+    @Test
     void allUnavailableMembersReportTheCompositeOwnIdentity() {
         // The composite is selected under its own provider id ("opencl") and
         // advertises that identity from capability(). When no member can
