@@ -211,7 +211,11 @@ final class CliCommands {
                     && comparison.get("checksumMatch").getAsBoolean();
             result.put("status", gatePassed ? "ok" : "regression");
             out().println(CliSupport.toJson(response));
-            return 0;
+            // The comparison artifacts are still written (the JSON reports the
+            // failing gate), but a regressed or checksum-divergent candidate
+            // must fail the process so automation and CI cannot treat the run
+            // as green.
+            return gatePassed ? 0 : CommandLine.ExitCode.SOFTWARE;
         }
     }
 
