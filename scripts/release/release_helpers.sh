@@ -355,7 +355,7 @@ build_ai_request_payload() {
   local release_context=""
   if [[ -n "$last_release_tag" && "$last_release_tag" != "none" ]]; then
     release_context="today (UTC): $(date -u +%F)
-last release: ${last_release_tag}, published ${last_release_date:-unknown} (${last_release_url})
+last release: ${last_release_tag}, created ${last_release_date:-unknown} (${last_release_url})
 Release recency is a judgment call: weigh the gap since the last release against the value of the unreleased changes. Defer (should_release=false) when the pending changes do not justify another release this soon. Calibration: 0.24.1 shipped too soon after 0.24.0 (minimal user-visible delta); 0.24.0 two days after 0.23.0 would have been justified (large delta)."
   fi
   jq -S -n \
@@ -405,6 +405,9 @@ command_last_release_date() {
   fi
   if ! git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null 2>&1; then
     die "Tag ${tag} cannot be resolved in this repository; refusing to fabricate a release date"
+  fi
+  if [[ "$(git cat-file -t "refs/tags/${tag}")" != "tag" ]]; then
+    die "Tag ${tag} is a lightweight tag; a release date requires an annotated tag"
   fi
   local release_date
   release_date="$(git for-each-ref "refs/tags/${tag}" --format='%(creatordate:short)')"

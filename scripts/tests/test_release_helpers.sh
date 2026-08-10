@@ -608,8 +608,8 @@ test_build_ai_request_includes_release_cadence() {
     "system contract should admit cadence facts supplied outside the dossier"
   expect_file_contains request.json "https://github.com/ta4j/ta4j/releases" \
     "request should include the last release URL"
-  expect_file_contains request.json "last release: 1.0.0, published 2026-08-03" \
-    "request should include the last release tag and publish date"
+  expect_file_contains request.json "last release: 1.0.0, created 2026-08-03" \
+    "request should include the last release tag and creation date"
   expect_file_contains request.json "judgment call" \
     "request should frame release recency as a judgment call"
   expect_file_contains request.json "0.24.1 shipped too soon after 0.24.0" \
@@ -667,6 +667,15 @@ test_last_release_date_uses_annotated_tag_date() {
   local unresolved_output
   if unresolved_output="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 9.9.9 2>&1)"; then
     fail "last-release-date should fail for a known-but-unresolvable tag (got: ${unresolved_output})"
+  fi
+
+  (
+    cd release-repo
+    git tag 2.0.0
+  )
+  local lightweight_output
+  if lightweight_output="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 2.0.0 2>&1)"; then
+    fail "last-release-date should reject a lightweight tag whose creatordate is the commit date (got: ${lightweight_output})"
   fi
 
   finish_test

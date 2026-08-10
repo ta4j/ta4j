@@ -268,6 +268,12 @@ test_release_scheduler_feeds_last_release_to_ai() {
     "AI request build should pass the last reachable tag through a quoted environment expansion"
   expect_section_contains "$request_section" '--last-release-date "${LAST_RELEASE_DATE}"' \
     "AI request build should pass the last release date through a quoted environment expansion"
+  expect_section_contains "$request_section" 'lastReleaseTag: $lastReleaseTag' \
+    "probe metadata should record the last release tag for schema parity with full mode"
+  expect_section_contains "$request_section" 'lastReleaseDate: $lastReleaseDate' \
+    "probe metadata should record the last release date for schema parity with full mode"
+  expect_section_contains "$request_section" 'lastReleaseUrl: $lastReleaseUrl' \
+    "probe metadata should record the last release URL for schema parity with full mode"
 
   pass "test_release_scheduler_feeds_last_release_to_ai"
 }

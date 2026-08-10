@@ -528,6 +528,9 @@ jobs:
               --arg reasoning_effort "${{ steps.model_config.outputs.reasoning_effort }}" \
               --arg request_size "$request_size" \
               --arg max_request_bytes "$max_request_bytes" \
+              --arg lastReleaseTag "$LAST_RELEASE_TAG" \
+              --arg lastReleaseDate "$LAST_RELEASE_DATE" \
+              --arg lastReleaseUrl "$LAST_RELEASE_URL" \
               '{
                 schemaVersion: 2,
                 provider: "openai",
@@ -535,6 +538,9 @@ jobs:
                 model: $model,
                 reasoningEffort: $reasoning_effort,
                 promptProfile: "probe",
+                lastReleaseTag: $lastReleaseTag,
+                lastReleaseDate: $lastReleaseDate,
+                lastReleaseUrl: $lastReleaseUrl,
                 artifactBackedContext: false,
                 fullDossierChars: 0,
                 promptDossierChars: 0,
