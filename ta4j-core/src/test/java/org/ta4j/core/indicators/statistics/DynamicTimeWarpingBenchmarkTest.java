@@ -48,8 +48,8 @@ class DynamicTimeWarpingBenchmarkTest {
                 int firstIndex = Math.min(BARS - 1, unstableBars);
                 int lastIndex = BARS - 1;
                 long start = System.nanoTime();
-                Num value = null;
-                for (int index = firstIndex; index <= lastIndex; index++) {
+                Num value = dtw.getValue(firstIndex);
+                for (int index = firstIndex + 1; index <= lastIndex; index++) {
                     value = dtw.getValue(index);
                 }
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000;
