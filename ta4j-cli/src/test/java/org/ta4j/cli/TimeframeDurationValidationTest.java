@@ -46,9 +46,10 @@ class TimeframeDurationValidationTest {
 
     private void assertRejected(String timeframe) throws IOException {
         Path csv = copyCsv();
-        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> assertThrows(IllegalArgumentException.class,
-                () -> CliSupport.loadSeries(csv.toString(), null, new ByteArrayInputStream(new byte[0]), timeframe,
-                        null, null)),
+        assertTimeoutPreemptively(Duration.ofSeconds(10),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> CliSupport.loadSeries(csv.toString(), null, new ByteArrayInputStream(new byte[0]),
+                                timeframe, null, null)),
                 "timeframe '" + timeframe + "' must be rejected as a usage error, not hang the aggregation loop");
     }
 

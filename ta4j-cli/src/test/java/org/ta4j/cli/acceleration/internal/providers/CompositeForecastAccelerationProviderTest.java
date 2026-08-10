@@ -84,9 +84,9 @@ class CompositeForecastAccelerationProviderTest {
         // on a host with a healthy OpenCL device)". A returned FAILED status is
         // a member failure just like a thrown NativeProviderException and must
         // not short-circuit the fallback chain.
-        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> new Result<>(
-                Status.FAILED, Backend.CUDA, List.of(), false, 0L,
-                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d,
+                request -> new Result<>(Status.FAILED, Backend.CUDA, List.of(), false, 0L,
+                        new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
         ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
                 CompositeForecastAccelerationProviderTest::executedResult);
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
@@ -105,12 +105,12 @@ class CompositeForecastAccelerationProviderTest {
         // own provider id". A returned FAILED status must propagate like a
         // thrown native failure instead of short-circuiting with a
         // member-attributed result the service never quarantines.
-        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> new Result<>(
-                Status.FAILED, Backend.CUDA, List.of(), false, 0L,
-                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
-        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d, request -> new Result<>(
-                Status.FAILED, Backend.OPENCL, List.of(), false, 0L,
-                new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "opencl", "CL_OUT_OF_RESOURCES")));
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d,
+                request -> new Result<>(Status.FAILED, Backend.CUDA, List.of(), false, 0L,
+                        new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "cuda", "kernel failed")));
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
+                request -> new Result<>(Status.FAILED, Backend.OPENCL, List.of(), false, 0L,
+                        new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "opencl", "CL_OUT_OF_RESOURCES")));
         CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
                 List.of(() -> cuda, () -> opencl));
 

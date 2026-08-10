@@ -41,8 +41,9 @@ public class FullBuildExcludedTagsTest {
         assertTrue(readme.contains(
                 "./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=" + EXCLUDED_TAGS),
                 "README must document the repair Maven command with the canonical tag list");
-        assertTrue(readme.contains(
-                "./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=" + EXCLUDED_TAGS),
+        assertTrue(
+                readme.contains(
+                        "./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=" + EXCLUDED_TAGS),
                 "README must document the CI-equivalent Maven command with the canonical tag list");
     }
 

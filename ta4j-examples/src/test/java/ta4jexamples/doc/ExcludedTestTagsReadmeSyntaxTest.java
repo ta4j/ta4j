@@ -15,11 +15,11 @@ import org.junit.Test;
 /**
  * Guards the excluded-test-tags README assertions against the dangling
  * {@code assertTrue(readme.contains(} artifact left behind when the
- * {@code requires-cuda/requires-metal/requires-opencl} tag list was merged
- * into {@link ReadmeContentManagerTest}. The dangling line breaks
+ * {@code requires-cuda/requires-metal/requires-opencl} tag list was merged into
+ * {@link ReadmeContentManagerTest}. The dangling line breaks
  * {@code testCompile} for the whole ta4j-examples module, which fails every
- * full {@code verify} run and every consumer module that reaches
- * ta4j-examples test sources.
+ * full {@code verify} run and every consumer module that reaches ta4j-examples
+ * test sources.
  */
 public class ExcludedTestTagsReadmeSyntaxTest {
 

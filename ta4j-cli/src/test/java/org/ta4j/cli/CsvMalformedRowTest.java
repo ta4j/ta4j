@@ -45,25 +45,22 @@ class CsvMalformedRowTest {
     @Test
     void malformedDateRowIsReportedAsDataLoadFailure() throws IOException {
         Path csv = writeCsv("not-a-date,100,101,99,100.5,1000");
-        assertThrows(IllegalArgumentException.class,
-                () -> CliSupport.loadSeries(csv.toString(), null, new ByteArrayInputStream(new byte[0]), null, null,
-                        null));
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.loadSeries(csv.toString(), null,
+                new ByteArrayInputStream(new byte[0]), null, null, null));
     }
 
     @Test
     void shortRowIsReportedAsDataLoadFailure() throws IOException {
         Path csv = writeCsv("2026-01-01,100,101,99");
-        assertThrows(IllegalArgumentException.class,
-                () -> CliSupport.loadSeries(csv.toString(), null, new ByteArrayInputStream(new byte[0]), null, null,
-                        null));
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.loadSeries(csv.toString(), null,
+                new ByteArrayInputStream(new byte[0]), null, null, null));
     }
 
     @Test
     void blankLineIsReportedAsDataLoadFailure() throws IOException {
         Path csv = writeCsv("2026-01-01,100,101,99,100.5,1000", "");
-        assertThrows(IllegalArgumentException.class,
-                () -> CliSupport.loadSeries(csv.toString(), null, new ByteArrayInputStream(new byte[0]), null, null,
-                        null));
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.loadSeries(csv.toString(), null,
+                new ByteArrayInputStream(new byte[0]), null, null, null));
     }
 
     @Test

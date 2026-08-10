@@ -18,8 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.cli.performance.PerformanceComparison;
 
 /**
- * Guards the performance comparison regression threshold against
- * {@code NaN}.
+ * Guards the performance comparison regression threshold against {@code NaN}.
  *
  * <p>
  * The CLI accepts {@code --max-regression-pct=NaN} (the check is

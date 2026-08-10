@@ -286,10 +286,8 @@ class Ta4jCliTest {
         Path comparisonDir = tempDir.resolve("performance-comparison-checksum");
         Files.createDirectories(baseDir);
         Files.createDirectories(candidateDir);
-        Files.writeString(baseDir.resolve("performance.json"),
-                performanceArtifact(1_000_000L, "checksum", 42L));
-        Files.writeString(candidateDir.resolve("performance.json"),
-                performanceArtifact(1_000_000L, "checksum", 43L));
+        Files.writeString(baseDir.resolve("performance.json"), performanceArtifact(1_000_000L, "checksum", 42L));
+        Files.writeString(candidateDir.resolve("performance.json"), performanceArtifact(1_000_000L, "checksum", 43L));
 
         CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
                 "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
@@ -724,9 +722,9 @@ class Ta4jCliTest {
                 + "\"osName\":\"os\",\"osArch\":\"arch\",\"osVersion\":\"v\",\"javaVersion\":\"j\","
                 + "\"jvmName\":\"jvm\",\"availableProcessors\":1},\"results\":[{\"scenarioId\":\"endOnly\","
                 + "\"description\":\"fixture\",\"hypothesis\":\"h\",\"barCount\":16,\"" + field + "\":" + value
-                + ",\"checksumStable\":true,\"stats\":{\"minNanos\":" + medianNanos + ",\"maxNanos\":"
-                + medianNanos + ",\"averageNanos\":" + medianNanos + ",\"medianNanos\":" + medianNanos
-                + ",\"p90Nanos\":" + medianNanos + ",\"totalOperations\":1,\"totalDurationNanos\":" + medianNanos
+                + ",\"checksumStable\":true,\"stats\":{\"minNanos\":" + medianNanos + ",\"maxNanos\":" + medianNanos
+                + ",\"averageNanos\":" + medianNanos + ",\"medianNanos\":" + medianNanos + ",\"p90Nanos\":"
+                + medianNanos + ",\"totalOperations\":1,\"totalDurationNanos\":" + medianNanos
                 + ",\"operationsPerSecond\":1000.0},\"measurements\":[]}]}";
     }
 

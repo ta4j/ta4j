@@ -132,8 +132,8 @@ public abstract class NamedRule extends AbstractRule {
 
     /**
      * Resolves a registered named rule type, initializing the default registry
-     * first so rules registered through the default package scan are visible
-     * to a plain lookup.
+     * first so rules registered through the default package scan are visible to a
+     * plain lookup.
      *
      * @param simpleName simple class name
      * @return optional containing the registered type

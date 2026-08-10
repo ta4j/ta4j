@@ -16,9 +16,9 @@ import org.junit.Test;
  * <p>
  * {@code ScanOnlyProbeRule} lives in the default scan package but is never
  * referenced by this test, so only the scan can register it. After a full
- * registry reset plus an explicit unregister, {@code lookup} is the first
- * API call and must still resolve the rule — exactly like
- * {@code requireRegistered} does.
+ * registry reset plus an explicit unregister, {@code lookup} is the first API
+ * call and must still resolve the rule — exactly like {@code requireRegistered}
+ * does.
  */
 public class NamedRuleLookupInitializationTest {
 
