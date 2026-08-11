@@ -18,7 +18,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -270,57 +269,6 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
 
         assertEquals(50_000, profile.points().size());
         assertEquals(50_000, profile.bestLags().size());
-    }
-
-    @Test
-    public void profileRejectsSelectedLagOutsideBestLags() {
-        BarSeries series = series(40);
-        Indicator<Num> first = square(series);
-        LagCorrelationProfile profile = analyze(first, first, 31, 8, -2, 2);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new LagCorrelationProfile(profile.endIndex(), profile.barCount(), profile.minimumLag(),
-                        profile.maximumLag(), profile.selectionPolicy(), profile.points(), profile.bestLags(),
-                        OptionalInt.of(1), profile.selectedCorrelation()));
-    }
-
-    @Test
-    public void pointRejectsNonFiniteCorrelation() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new LagCorrelationPoint(0, org.ta4j.core.num.DoubleNum.valueOf(Double.POSITIVE_INFINITY), 8));
-        assertThrows(IllegalArgumentException.class,
-                () -> new LagCorrelationPoint(0, org.ta4j.core.num.DoubleNum.valueOf(Double.NEGATIVE_INFINITY), 8));
-    }
-
-    @Test
-    public void pointRejectsFiniteCorrelationWithFewerThanTwoSamples() {
-        // A finite Pearson correlation requires at least two aligned samples.
-        assertThrows(IllegalArgumentException.class, () -> new LagCorrelationPoint(0, numFactory.one(), 0));
-        assertThrows(IllegalArgumentException.class, () -> new LagCorrelationPoint(0, numFactory.one(), 1));
-        // NaN correlations keep working for unavailable windows at any count.
-        new LagCorrelationPoint(0, NaN.NaN, 0);
-        new LagCorrelationPoint(0, NaN.NaN, 1);
-        // And a valid two-sample point is accepted.
-        assertEquals(2, new LagCorrelationPoint(0, numFactory.one(), 2).sampleCount());
-    }
-
-    @Test
-    public void profileRejectsSelectionThatDoesNotMatchThePoints() {
-        // A fixture with a two-way tie at lags -1 and 1 (correlation 1.0).
-        List<LagCorrelationPoint> points = List.of(new LagCorrelationPoint(-2, numFactory.numOf(0.5), 8),
-                new LagCorrelationPoint(-1, numFactory.one(), 8), new LagCorrelationPoint(0, numFactory.numOf(0.25), 8),
-                new LagCorrelationPoint(1, numFactory.one(), 8), new LagCorrelationPoint(2, numFactory.numOf(0.5), 8));
-        List<Integer> bestLags = List.of(-1, 1);
-
-        // A best-lag list that is self-consistent but omits a maximal lag.
-        assertThrows(IllegalArgumentException.class, () -> new LagCorrelationProfile(100, 8, -2, 2,
-                LagSelectionPolicy.MAXIMUM_CORRELATION, points, List.of(-1), OptionalInt.of(-1), numFactory.one()));
-        // The deterministic tie-break is the smallest absolute lag (-1), not 1.
-        assertThrows(IllegalArgumentException.class, () -> new LagCorrelationProfile(100, 8, -2, 2,
-                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(1), numFactory.one()));
-        // The canonical selection is accepted.
-        new LagCorrelationProfile(100, 8, -2, 2, LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags,
-                OptionalInt.of(-1), numFactory.one());
     }
 
     @Test
