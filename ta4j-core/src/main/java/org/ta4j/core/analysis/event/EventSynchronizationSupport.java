@@ -79,13 +79,7 @@ final class EventSynchronizationSupport {
 
         BarSeries series = predicted.getBarSeries();
         BarSeries otherSeries = reference.getBarSeries();
-        // ta4j indicators expose read-only views over the underlying series;
-        // the view's equals() unwraps both sides, so this check must be
-        // symmetric to accept two indicator adapters over equal-but-distinct
-        // series instances.
-        if (!series.equals(otherSeries) && !otherSeries.equals(series)) {
-            throw new IllegalArgumentException("predicted and reference must be defined over the same BarSeries");
-        }
+        requireSameSeries(series, otherSeries);
 
         int availableStart = series.getBeginIndex();
         int availableEnd = series.getEndIndex();
@@ -228,6 +222,26 @@ final class EventSynchronizationSupport {
         if (maxLagBars < 0) {
             throw new IllegalArgumentException("maxLagBars must be >= 0");
         }
+    }
+
+    /**
+     * Verifies that two series are the same bar series.
+     *
+     * <p>
+     * ta4j indicators expose read-only views over the underlying series; the view's
+     * equals() unwraps both sides, so this check must be symmetric to accept two
+     * indicator adapters over equal-but-distinct series instances.
+     *
+     * @param series      the first series
+     * @param otherSeries the second series
+     * @return {@code series}
+     * @throws IllegalArgumentException when the series differ
+     */
+    static BarSeries requireSameSeries(BarSeries series, BarSeries otherSeries) {
+        if (!series.equals(otherSeries) && !otherSeries.equals(series)) {
+            throw new IllegalArgumentException("predicted and reference must be defined over the same BarSeries");
+        }
+        return series;
     }
 
     /**

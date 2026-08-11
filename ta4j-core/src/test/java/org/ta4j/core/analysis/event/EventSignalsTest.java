@@ -69,17 +69,6 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void unstableBoundaryIsRespectedBySupport() {
-        BarSeries series = series(10);
-        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(
-                EventSignals.fromPredicate(series, 6, i -> i == 5 || i == 7),
-                EventSignals.fromPredicate(series, 0, i -> i == 7), 0, 9, 0, 0);
-        assertEquals(6, result.effectiveStartIndex());
-        assertEquals(1, result.predictedCount());
-        assertEquals(1, result.matchedCount());
-    }
-
-    @Test
     public void invalidAdapterArgumentsAreRejected() {
         BarSeries series = series(5);
         assertThrows(NullPointerException.class, () -> EventSignals.fromIndicator(null));

@@ -148,16 +148,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     private static BarSeries requireSameSeries(Indicator<Boolean> predicted, Indicator<Boolean> reference) {
         Objects.requireNonNull(predicted, "predicted");
         Objects.requireNonNull(reference, "reference");
-        BarSeries series = predicted.getBarSeries();
-        BarSeries otherSeries = reference.getBarSeries();
-        // ta4j indicators expose read-only views over the underlying series;
-        // the view's equals() unwraps both sides, so this check must be
-        // symmetric to accept two indicator adapters over equal-but-distinct
-        // series instances.
-        if (!series.equals(otherSeries) && !otherSeries.equals(series)) {
-            throw new IllegalArgumentException("predicted and reference must be defined over the same BarSeries");
-        }
-        return series;
+        return EventSynchronizationSupport.requireSameSeries(predicted.getBarSeries(), reference.getBarSeries());
     }
 
     /**

@@ -42,11 +42,11 @@ class EventSynchronizationBenchmarkTest {
         return new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(closes).build();
     }
 
-    private Indicator<Boolean> eventsAt(BarSeries series, int stride, int shift) {
+    private Indicator<Boolean> eventsAt(BarSeries series, int stride) {
         return new AbstractIndicator<Boolean>(series) {
             @Override
             public Boolean getValue(int index) {
-                return index % stride == shift % stride;
+                return index % stride == 0;
             }
 
             @Override
@@ -77,8 +77,8 @@ class EventSynchronizationBenchmarkTest {
     @Test
     void evaluatesEveryRollingWindowAcrossHundredThousandBars() {
         BarSeries series = sineSeries();
-        Indicator<Boolean> predicted = eventsAt(series, EVENT_STRIDE, 0);
-        Indicator<Boolean> reference = eventsAt(series, EVENT_STRIDE, 0);
+        Indicator<Boolean> predicted = eventsAt(series, EVENT_STRIDE);
+        Indicator<Boolean> reference = eventsAt(series, EVENT_STRIDE);
         EventSynchronizationIndicator indicator = new EventSynchronizationIndicator(predicted, reference, 200, 0, 0);
 
         // Every 200-bar window of two perfectly coincident stride-100 streams

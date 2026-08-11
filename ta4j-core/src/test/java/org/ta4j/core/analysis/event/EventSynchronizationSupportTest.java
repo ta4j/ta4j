@@ -277,6 +277,8 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
                     + " lead=" + maxLead + " lag=" + maxLag, expected.matches.size(), actual.matchedCount());
             assertEquals(expected.totalAbsoluteOffset,
                     actual.matches().stream().mapToLong(Match::offsetBars).map(Math::abs).sum());
+            assertEquals(expected.worstAbsoluteOffset,
+                    actual.matches().stream().mapToLong(Match::offsetBars).map(Math::abs).max().orElse(-1));
             for (int i = 0; i < expected.matches.size(); i++) {
                 assertEquals(expected.matches.get(i).predictedIndex(), actual.matches().get(i).predictedIndex());
                 assertEquals(expected.matches.get(i).referenceIndex(), actual.matches().get(i).referenceIndex());
@@ -310,6 +312,17 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
         assertEquals(1, result.matchedCount());
         assertEquals(List.of(match(Integer.MAX_VALUE, Integer.MAX_VALUE)), result.matches());
         assertEquals(0, result.matches().get(0).offsetBars());
+    }
+
+    @Test
+    public void unstableBoundaryIsRespectedBySupport() {
+        BarSeries series = series(10);
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(
+                EventSignals.fromPredicate(series, 6, i -> i == 5 || i == 7),
+                EventSignals.fromPredicate(series, 0, i -> i == 7), 0, 9, 0, 0);
+        assertEquals(6, result.effectiveStartIndex());
+        assertEquals(1, result.predictedCount());
+        assertEquals(1, result.matchedCount());
     }
 
     @Test
@@ -565,35 +578,6 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
         assertEquals(0, clamped.referenceCount());
         assertEquals(clamped.effectiveEndIndex() + 1, clamped.effectiveStartIndex());
         assertNumEquals(Double.NaN, clamped.f1Score());
-    }
-
-    @Test
-    public void matchesBruteForceOracleOnSmallRandomCases() {
-        Random random = new Random(453);
-        for (int trial = 0; trial < 250; trial++) {
-            int predictedSize = random.nextInt(6);
-            int referenceSize = random.nextInt(6);
-            int[] predicted = sortedDistinct(random, predictedSize, 16);
-            int[] reference = sortedDistinct(random, referenceSize, 16);
-            int maxLead = random.nextInt(4);
-            int maxLag = random.nextInt(4);
-
-            BarSeries series = series(20);
-            EventSynchronizationResult actual = evaluate(events(series, 0, predicted), events(series, 0, reference),
-                    maxLead, maxLag, 0, 19);
-            BruteForceResult expected = bruteForce(predicted, reference, maxLead, maxLag);
-
-            assertEquals("trial " + trial + " p=" + Arrays.toString(predicted) + " r=" + Arrays.toString(reference)
-                    + " lead=" + maxLead + " lag=" + maxLag, expected.matches.size(), actual.matchedCount());
-            assertEquals(expected.totalAbsoluteOffset,
-                    actual.matches().stream().mapToLong(Match::offsetBars).map(Math::abs).sum());
-            assertEquals(expected.worstAbsoluteOffset,
-                    actual.matches().stream().mapToLong(Match::offsetBars).map(Math::abs).max().orElse(-1));
-            for (int i = 0; i < expected.matches.size(); i++) {
-                assertEquals(expected.matches.get(i).predictedIndex(), actual.matches().get(i).predictedIndex());
-                assertEquals(expected.matches.get(i).referenceIndex(), actual.matches().get(i).referenceIndex());
-            }
-        }
     }
 
     @Test
