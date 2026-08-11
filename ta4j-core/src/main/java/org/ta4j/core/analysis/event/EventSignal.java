@@ -10,9 +10,10 @@ import org.ta4j.core.BarSeries;
  * {@link BarSeries}; not part of the public API.
  *
  * <p>
- * The public evaluator inputs are {@link org.ta4j.core.Indicator} instances and
- * an explicit predicate overload; this interface only normalizes those two
- * shapes for the shared extraction pass.
+ * The public API is {@link EventSynchronizationIndicator}, which takes two
+ * {@code Indicator<Boolean>} instances; this interface normalizes those
+ * indicators (and the internal predicate shape used by tests and benchmarks)
+ * for the shared extraction pass.
  *
  * <p>
  * An event occurs at bar index {@code i} when {@link #isEvent(int)} returns

@@ -7,60 +7,32 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.IntPredicate;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.EmptyEventPolicy;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Deterministic one-to-one evaluator for two sparse event streams over the same
- * {@link BarSeries}.
- *
- * <p>
- * Public evaluation takes two {@link org.ta4j.core.Indicator} instances
- * ({@code Indicator<Boolean>}; only {@link Boolean#TRUE} counts as an event,
- * {@code null} and {@code false} are non-events), or an explicit predicate pair
- * together with the series and unstable-bar boundaries the predicates are
- * defined over. The indicator's own unstable-bar boundary is always honored, so
- * a composite signal such as a crossing indicator keeps its own warm-up count
- * rather than borrowing a child's.
+ * Package-private matching and scoring engine behind
+ * {@link EventSynchronizationIndicator}; not part of the public API.
  *
  * <p>
  * Given an inclusive {@code [startIndex, endIndex]} evaluation range, predicted
  * and reference events are extracted in one pass and matched one-to-one with
- * the following lexicographic objective:
- * </p>
- * <ol>
- * <li>maximize the number of matched pairs</li>
- * <li>among maximum-cardinality assignments, minimize the total absolute
- * offset</li>
- * <li>then minimize the worst absolute offset</li>
- * <li>then prefer the lexicographically earliest sequence of
- * {@code (predictedIndex, referenceIndex)} pairs</li>
- * </ol>
- *
- * <p>
- * Events outside the effective evaluation range can never satisfy an in-range
- * event, so training and validation windows cannot match across their boundary.
- * The effective start is the maximum of the requested start, the series begin
- * index, and both signals' unstable-bar boundaries. Under
- * {@link HistoryPolicy#STRICT} a request that includes unavailable history
- * fails fast; under {@link HistoryPolicy#CLAMP} the range is intersected with
- * the available history.
+ * the lexicographic objective documented on
+ * {@link EventSynchronizationIndicator}. The effective range is the
+ * intersection of the requested range with the series' available history and
+ * both signals' unstable-bar boundaries; an empty intersection is reported as
+ * the canonical empty inclusive range ({@code start == end + 1}) with no events
+ * and undefined metrics.
  *
  * <p>
  * The matching cost depends on the number of events, not the number of bars:
  * the baseline matcher runs in {@code O(|P| * |R|)} time and memory for
  * {@code |P|} predicted and {@code |R|} reference events.
- *
- * @since 0.24.2
  */
-public final class EventSynchronizationEvaluator {
+final class EventSynchronizationSupport {
 
     /**
      * Upper bound on the sequence-alignment matrix cells to keep the baseline
@@ -69,86 +41,41 @@ public final class EventSynchronizationEvaluator {
      * {@link IllegalArgumentException} therefore always fires before an allocation
      * that could become an {@link OutOfMemoryError}.
      */
-    private static final long MAX_MATCHING_CELLS = 8_000_000L;
+    static final long MAX_MATCHING_CELLS = 8_000_000L;
 
     /** Sentinel for "no matched pair yet" in worst-offset tracking. */
     private static final int NO_WORST_OFFSET = -1;
 
     private static final int[] EMPTY_EVENTS = new int[0];
 
-    /**
-     * Evaluates two Boolean indicator event streams over an inclusive bar-index
-     * range.
-     *
-     * <p>
-     * Each indicator's own {@code getCountOfUnstableBars()} boundary is honored;
-     * only {@link Boolean#TRUE} values are events.
-     *
-     * @param predicted  the predicted event indicator
-     * @param reference  the reference event indicator
-     * @param startIndex the requested inclusive start index
-     * @param endIndex   the requested inclusive end index
-     * @param config     the matching and policy configuration
-     * @return the immutable evaluation result
-     * @throws NullPointerException     if any argument is null
-     * @throws IllegalArgumentException if the indicators use different series, the
-     *                                  requested range is inverted, unavailable
-     *                                  history is requested under
-     *                                  {@link HistoryPolicy#STRICT}, or the event
-     *                                  counts exceed the baseline matcher capacity
-     */
-    public EventSynchronizationResult evaluate(Indicator<Boolean> predicted, Indicator<Boolean> reference,
-            int startIndex, int endIndex, EventSynchronizationConfig config) {
-        Objects.requireNonNull(predicted, "predicted");
-        Objects.requireNonNull(reference, "reference");
-        return evaluate(EventSignals.fromIndicator(predicted), EventSignals.fromIndicator(reference), startIndex,
-                endIndex, config);
+    private EventSynchronizationSupport() {
     }
 
     /**
-     * Evaluates two explicit predicate event streams over an inclusive bar-index
-     * range.
+     * Synchronizes two event signals over an inclusive bar-index range.
      *
-     * <p>
-     * This is the escape hatch for callers whose event source does not fit an
-     * {@code Indicator<Boolean>}; the predicates receive the bar index and must be
-     * deterministic.
-     *
-     * @param predicted             the predicted event predicate
-     * @param reference             the reference event predicate
-     * @param series                the series both predicates are defined over
-     * @param predictedUnstableBars the predicted predicate's unstable-bar boundary
-     * @param referenceUnstableBars the reference predicate's unstable-bar boundary
-     * @param startIndex            the requested inclusive start index
-     * @param endIndex              the requested inclusive end index
-     * @param config                the matching and policy configuration
+     * @param predicted   the predicted event signal
+     * @param reference   the reference event signal
+     * @param startIndex  the requested inclusive start index
+     * @param endIndex    the requested inclusive end index
+     * @param maxLeadBars maximum bars a prediction may lead its reference
+     * @param maxLagBars  maximum bars a prediction may lag its reference
      * @return the immutable evaluation result
      * @throws NullPointerException     if any argument is null
-     * @throws IllegalArgumentException if the requested range is inverted, an
-     *                                  unstable-bar count is negative, unavailable
-     *                                  history is requested under
-     *                                  {@link HistoryPolicy#STRICT}, or the event
-     *                                  counts exceed the baseline matcher capacity
+     * @throws IllegalArgumentException if the signals use different series, the
+     *                                  requested range is inverted, a tolerance is
+     *                                  negative, or the event counts exceed the
+     *                                  baseline matcher capacity
      */
-    public EventSynchronizationResult evaluate(IntPredicate predicted, IntPredicate reference, BarSeries series,
-            int predictedUnstableBars, int referenceUnstableBars, int startIndex, int endIndex,
-            EventSynchronizationConfig config) {
-        Objects.requireNonNull(series, "series");
+    static EventSynchronizationResult synchronize(EventSignal predicted, EventSignal reference, int startIndex,
+            int endIndex, int maxLeadBars, int maxLagBars) {
         Objects.requireNonNull(predicted, "predicted");
         Objects.requireNonNull(reference, "reference");
-        return evaluate(EventSignals.fromPredicate(series, predictedUnstableBars, predicted),
-                EventSignals.fromPredicate(series, referenceUnstableBars, reference), startIndex, endIndex, config);
-    }
-
-    private EventSynchronizationResult evaluate(EventSignal predicted, EventSignal reference, int startIndex,
-            int endIndex, EventSynchronizationConfig config) {
-        Objects.requireNonNull(predicted, "predicted");
-        Objects.requireNonNull(reference, "reference");
-        Objects.requireNonNull(config, "config");
         if (startIndex > endIndex) {
             throw new IllegalArgumentException(
                     "startIndex (" + startIndex + ") must not exceed endIndex (" + endIndex + ")");
         }
+        validateTolerances(maxLeadBars, maxLagBars);
 
         BarSeries series = predicted.getBarSeries();
         BarSeries otherSeries = reference.getBarSeries();
@@ -162,34 +89,48 @@ public final class EventSynchronizationEvaluator {
 
         int availableStart = series.getBeginIndex();
         int availableEnd = series.getEndIndex();
-        int effectiveStart;
-        int effectiveEnd;
-        if (config.historyPolicy() == HistoryPolicy.STRICT) {
-            // Bars below the signals' unstable boundaries are unavailable history
-            // too: fail fast whenever the requested range includes them.
-            int unavailableStart = Math.max(availableStart,
-                    Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars()));
-            if (startIndex < unavailableStart || endIndex > availableEnd) {
-                throw new IllegalArgumentException("requested range [" + startIndex + ", " + endIndex
-                        + "] includes unavailable history [" + unavailableStart + ", " + availableEnd + "]");
-            }
-            effectiveStart = Math.max(startIndex, unavailableStart);
-            effectiveEnd = endIndex;
-        } else {
-            effectiveStart = Math.max(startIndex, Math.max(availableStart,
-                    Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars())));
-            effectiveEnd = Math.min(endIndex, availableEnd);
-            if (effectiveStart > effectiveEnd) {
-                // Canonical empty inclusive range: start == end + 1.
-                effectiveStart = effectiveEnd + 1;
-            }
+        int effectiveStart = Math.max(startIndex, Math.max(availableStart,
+                Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars())));
+        int effectiveEnd = Math.min(endIndex, availableEnd);
+        if (effectiveStart > effectiveEnd) {
+            // Canonical empty inclusive range: start == end + 1.
+            effectiveStart = effectiveEnd + 1;
         }
 
         int[] predictedEvents = extractEvents(predicted, effectiveStart, effectiveEnd);
         int[] referenceEvents = extractEvents(reference, effectiveStart, effectiveEnd);
-        List<EventMatch> matches = matchEvents(predictedEvents, referenceEvents, config);
+        return synchronize(predictedEvents, referenceEvents, startIndex, endIndex, effectiveStart, effectiveEnd,
+                maxLeadBars, maxLagBars, series.numFactory());
+    }
 
-        NumFactory numFactory = series.numFactory();
+    /**
+     * Scores pre-extracted event arrays over an inclusive bar-index range.
+     *
+     * @param predictedEvents the ascending predicted event indexes
+     * @param referenceEvents the ascending reference event indexes
+     * @param requestedStart  the requested inclusive start index
+     * @param requestedEnd    the requested inclusive end index
+     * @param effectiveStart  the resolved inclusive start index actually evaluated
+     * @param effectiveEnd    the resolved inclusive end index actually evaluated
+     * @param maxLeadBars     maximum bars a prediction may lead its reference
+     * @param maxLagBars      maximum bars a prediction may lag its reference
+     * @param numFactory      the numeric factory for metric outputs
+     * @return the immutable evaluation result
+     * @throws NullPointerException     if an argument is null
+     * @throws IllegalArgumentException if a tolerance is negative or the event
+     *                                  counts exceed the baseline matcher capacity
+     */
+    static EventSynchronizationResult synchronize(int[] predictedEvents, int[] referenceEvents, int requestedStart,
+            int requestedEnd, int effectiveStart, int effectiveEnd, int maxLeadBars, int maxLagBars,
+            NumFactory numFactory) {
+        Objects.requireNonNull(predictedEvents, "predictedEvents");
+        Objects.requireNonNull(referenceEvents, "referenceEvents");
+        Objects.requireNonNull(numFactory, "numFactory");
+        validateTolerances(maxLeadBars, maxLagBars);
+
+        List<EventSynchronizationIndicator.Result.Match> matches = matchEvents(predictedEvents, referenceEvents,
+                maxLeadBars, maxLagBars);
+
         int predictedCount = predictedEvents.length;
         int referenceCount = referenceEvents.length;
         int matchedCount = matches.size();
@@ -200,24 +141,11 @@ public final class EventSynchronizationEvaluator {
         Num recall;
         Num f1;
         if (predictedCount == 0 && referenceCount == 0) {
-            switch (config.emptyEventPolicy()) {
-            case UNDEFINED_WHEN_BOTH_EMPTY -> {
-                precision = NaN.NaN;
-                recall = NaN.NaN;
-                f1 = NaN.NaN;
-            }
-            case ZERO_WHEN_BOTH_EMPTY -> {
-                precision = numFactory.zero();
-                recall = numFactory.zero();
-                f1 = numFactory.zero();
-            }
-            case ONE_WHEN_BOTH_EMPTY -> {
-                precision = numFactory.one();
-                recall = numFactory.one();
-                f1 = numFactory.one();
-            }
-            default -> throw new AssertionError("unknown EmptyEventPolicy: " + config.emptyEventPolicy());
-            }
+            // Both streams empty: the score is undefined, never a perfect score for
+            // an optimizer that configures a signal that never fires.
+            precision = NaN.NaN;
+            recall = NaN.NaN;
+            f1 = NaN.NaN;
         } else if (predictedCount == 0) {
             precision = NaN.NaN;
             recall = numFactory.zero();
@@ -243,7 +171,7 @@ public final class EventSynchronizationEvaluator {
         int maxOffset = Integer.MIN_VALUE;
         long[] offsets = new long[matchedCount];
         for (int i = 0; i < matchedCount; i++) {
-            EventMatch match = matches.get(i);
+            EventSynchronizationIndicator.Result.Match match = matches.get(i);
             int offset = match.offsetBars();
             offsets[i] = offset;
             if (offset == 0) {
@@ -286,14 +214,33 @@ public final class EventSynchronizationEvaluator {
             maxSignedOffset = numFactory.numOf(maxOffset);
         }
 
-        return new EventSynchronizationResult(startIndex, endIndex, effectiveStart, effectiveEnd, predictedCount,
-                referenceCount, matchedCount, falsePositives, falseNegatives, precision, recall, f1, matches,
-                unmatchedIndexes(predictedEvents, matches, true), unmatchedIndexes(referenceEvents, matches, false),
-                exactMatchCount, meanSignedOffset, meanAbsoluteOffset, medianSignedOffset, minSignedOffset,
-                maxSignedOffset, config.emptyEventPolicy());
+        return new EventSynchronizationResult(requestedStart, requestedEnd, effectiveStart, effectiveEnd,
+                predictedCount, referenceCount, matchedCount, falsePositives, falseNegatives, precision, recall, f1,
+                matches, unmatchedIndexes(predictedEvents, matches, true),
+                unmatchedIndexes(referenceEvents, matches, false), exactMatchCount, meanSignedOffset,
+                meanAbsoluteOffset, medianSignedOffset, minSignedOffset, maxSignedOffset);
     }
 
-    private static int[] extractEvents(EventSignal signal, int startIndex, int endIndex) {
+    private static void validateTolerances(int maxLeadBars, int maxLagBars) {
+        if (maxLeadBars < 0) {
+            throw new IllegalArgumentException("maxLeadBars must be >= 0");
+        }
+        if (maxLagBars < 0) {
+            throw new IllegalArgumentException("maxLagBars must be >= 0");
+        }
+    }
+
+    /**
+     * Extracts the event indexes of a signal inside an inclusive range.
+     *
+     * @param signal     the event signal
+     * @param startIndex the inclusive start index
+     * @param endIndex   the inclusive end index
+     * @return the ascending event indexes; empty when {@code endIndex < startIndex}
+     * @throws IllegalArgumentException when the signal fires more often than the
+     *                                  baseline matcher's capacity allows
+     */
+    static int[] extractEvents(EventSignal signal, int startIndex, int endIndex) {
         if (endIndex < startIndex) {
             return EMPTY_EVENTS;
         }
@@ -324,7 +271,8 @@ public final class EventSynchronizationEvaluator {
         return size == events.length ? events : Arrays.copyOf(events, size);
     }
 
-    private static List<EventMatch> matchEvents(int[] predicted, int[] reference, EventSynchronizationConfig config) {
+    private static List<EventSynchronizationIndicator.Result.Match> matchEvents(int[] predicted, int[] reference,
+            int maxLeadBars, int maxLagBars) {
         int n = predicted.length;
         int m = reference.length;
         if (n == 0 || m == 0) {
@@ -347,8 +295,6 @@ public final class EventSynchronizationEvaluator {
             bestWorstAbs[n * stride + j] = NO_WORST_OFFSET;
         }
 
-        int maxLeadBars = config.maxLeadBars();
-        int maxLagBars = config.maxLagBars();
         for (int i = n - 1; i >= 0; i--) {
             long predictedIndex = predicted[i];
             int row = i * stride;
@@ -383,7 +329,7 @@ public final class EventSynchronizationEvaluator {
             }
         }
 
-        List<EventMatch> matches = new ArrayList<>();
+        List<EventSynchronizationIndicator.Result.Match> matches = new ArrayList<>();
         int i = 0;
         int j = 0;
         // The lexicographic tie-break compares full sequences, so a continuation
@@ -412,7 +358,7 @@ public final class EventSynchronizationEvaluator {
                     if (bestPairs[childCell] + 1 == targetPairs
                             && bestTotalAbs[childCell] + absoluteOffset == bestTotalAbs[targetCell]
                             && Math.max(bestWorstAbs[childCell], (int) absoluteOffset) <= worstBudget) {
-                        matches.add(new EventMatch(predicted[k], reference[l]));
+                        matches.add(new EventSynchronizationIndicator.Result.Match(predicted[k], reference[l]));
                         i = k + 1;
                         j = l + 1;
                         found = true;
@@ -441,7 +387,7 @@ public final class EventSynchronizationEvaluator {
                 || (candidateTotal == incumbentTotal && candidateWorst < incumbentWorst)));
     }
 
-    private static int lowerBound(int[] values, int from, int to, long target) {
+    static int lowerBound(int[] values, int from, int to, long target) {
         int low = from;
         int high = to;
         while (low < high) {
@@ -455,7 +401,7 @@ public final class EventSynchronizationEvaluator {
         return low;
     }
 
-    private static int upperBound(int[] values, int from, int to, long target) {
+    static int upperBound(int[] values, int from, int to, long target) {
         int low = from;
         int high = to;
         while (low < high) {
@@ -469,7 +415,8 @@ public final class EventSynchronizationEvaluator {
         return low;
     }
 
-    private static List<Integer> unmatchedIndexes(int[] events, List<EventMatch> matches, boolean predictedSide) {
+    private static List<Integer> unmatchedIndexes(int[] events,
+            List<EventSynchronizationIndicator.Result.Match> matches, boolean predictedSide) {
         List<Integer> unmatched = new ArrayList<>();
         int matchIndex = 0;
         for (int event : events) {

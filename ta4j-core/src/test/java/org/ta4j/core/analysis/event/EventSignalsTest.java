@@ -14,7 +14,6 @@ import java.util.stream.DoubleStream;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -70,11 +69,11 @@ public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void unstableBoundaryIsRespectedByEvaluator() {
+    public void unstableBoundaryIsRespectedBySupport() {
         BarSeries series = series(10);
-        EventSynchronizationResult result = new EventSynchronizationEvaluator().evaluate(i -> i == 5 || i == 7,
-                i -> i == 7, series, 6, 0, 0, 9, new EventSynchronizationConfig(0, 0, HistoryPolicy.CLAMP,
-                        EventSynchronizationConfig.EmptyEventPolicy.UNDEFINED_WHEN_BOTH_EMPTY));
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(
+                EventSignals.fromPredicate(series, 6, i -> i == 5 || i == 7),
+                EventSignals.fromPredicate(series, 0, i -> i == 7), 0, 9, 0, 0);
         assertEquals(6, result.effectiveStartIndex());
         assertEquals(1, result.predictedCount());
         assertEquals(1, result.matchedCount());

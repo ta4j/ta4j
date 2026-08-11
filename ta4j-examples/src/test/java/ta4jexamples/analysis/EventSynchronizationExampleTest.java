@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.analysis.event.EventSynchronizationResult;
+import org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result;
 
 /**
  * Companion regression check for {@link EventSynchronizationExample}.
@@ -27,18 +27,17 @@ class EventSynchronizationExampleTest {
 
         assertScored(demo.swingHighs());
         assertScored(demo.swingLows());
-        for (EventSynchronizationResult result : new EventSynchronizationResult[] { demo.swingHighs(),
-                demo.swingLows() }) {
+        for (Result result : new Result[] { demo.swingHighs(), demo.swingLows() }) {
             assertEquals(result.predictedCount(), result.matchedCount() + result.unmatchedPredictedIndexes().size());
             assertEquals(result.referenceCount(), result.matchedCount() + result.unmatchedReferenceIndexes().size());
-            for (org.ta4j.core.analysis.event.EventMatch match : result.matches()) {
+            for (org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result.Match match : result.matches()) {
                 assertTrue(match.offsetBars() >= -12 && match.offsetBars() <= 12,
                         "offset outside the demo tolerance window: " + match);
             }
         }
     }
 
-    private static void assertScored(EventSynchronizationResult result) {
+    private static void assertScored(Result result) {
         assertTrue(result.matchedCount() >= 3, "expected matches, got " + result.matches());
         assertTrue(result.precision().doubleValue() > 0.0 && result.precision().doubleValue() <= 1.0);
         assertTrue(result.recall().doubleValue() > 0.0 && result.recall().doubleValue() <= 1.0);

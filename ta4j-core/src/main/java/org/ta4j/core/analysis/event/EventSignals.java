@@ -10,12 +10,14 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 
 /**
- * Internal adapters that normalize public event sources to {@link EventSignal};
- * not part of the public API.
+ * Internal adapters that normalize event sources to {@link EventSignal}; not
+ * part of the public API.
  *
  * <p>
  * The {@link Indicator} adapter treats only {@link Boolean#TRUE} as an event;
- * {@code null} and {@code false} values are non-events.
+ * {@code null} and {@code false} values are non-events. The predicate adapter
+ * exists for the internal tests and benchmarks that exercise the matcher with
+ * explicit index predicates instead of full indicators.
  */
 final class EventSignals {
 
@@ -40,8 +42,8 @@ final class EventSignals {
      * Adapts an explicit predicate as an event signal.
      *
      * <p>
-     * This is the escape hatch for callers that need explicit evaluation context;
-     * the predicate receives the bar index and must be deterministic.
+     * Used by the internal tests and benchmarks that drive the matcher with index
+     * predicates; the predicate receives the bar index and must be deterministic.
      *
      * @param series       the series the predicate is evaluated over
      * @param unstableBars the count of leading bars whose predicate results are not
