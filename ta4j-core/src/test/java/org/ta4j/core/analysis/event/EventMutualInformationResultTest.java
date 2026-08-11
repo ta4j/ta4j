@@ -48,6 +48,12 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
                 NaN.NaN, 8, 2, factory.numOf(0.25), 8, 3, BinningStrategy.EQUAL_WIDTH, 0, 3));
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN,
                 factory.one(), 8, 2, factory.numOf(0.25), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // Either raw metric NaN is an undefined state: the other raw metric must
+        // be NaN too, even with zero formed bins.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, factory.one(),
+                NaN.NaN, 8, 2, factory.numOf(0.25), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(), NaN.NaN,
+                NaN.NaN, 8, 2, factory.numOf(0.25), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
         // The canonical nonempty undefined result keeps factual counts and rate.
         new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, 8, 2, factory.numOf(0.25), 8, 0,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);

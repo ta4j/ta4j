@@ -83,11 +83,12 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             throw new IllegalArgumentException(
                     "an empty sample range must produce an undefined result (NaN metrics, effectiveBinCount 0)");
         }
-        if ((mutualInformationNats.isNaN() || targetEntropyNats.isNaN())
-                && (!normalizedMutualInformation.isNaN() || effectiveBinCount != 0)) {
+        if ((mutualInformationNats.isNaN() || targetEntropyNats.isNaN()) && (!mutualInformationNats.isNaN()
+                || !targetEntropyNats.isNaN() || !normalizedMutualInformation.isNaN() || effectiveBinCount != 0)) {
             // A non-finite predictor sample makes the result undefined while the
-            // diagnostic counts stay factual; formed bins or a defined normalized
-            // value would contradict that state.
+            // diagnostic counts stay factual; a partially defined raw metric,
+            // formed bins, or a defined normalized value would contradict that
+            // state.
             throw new IllegalArgumentException("an undefined result must carry NaN metrics and effectiveBinCount 0");
         }
     }
