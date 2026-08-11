@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 import java.util.List;
@@ -18,6 +19,26 @@ public class LagCorrelationProfileTest extends AbstractIndicatorTest<Indicator<N
 
     public LagCorrelationProfileTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void acceptsLargeTieHeavyProfiles() {
+        // Validation must stay linear: a tie-heavy profile with tens of
+        // thousands of lags would be unusably slow under quadratic validation.
+        List<LagCorrelationPoint> points = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            points.add(new LagCorrelationPoint(lag, numFactory.one(), 8));
+        }
+        List<Integer> bestLags = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            bestLags.add(lag);
+        }
+        LagCorrelationProfile profile = new LagCorrelationProfile(100_000, 8, 0, 49_999,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(0), numFactory.one());
+
+        assertEquals(50_000, profile.points().size());
+        assertEquals(50_000, profile.bestLags().size());
+        assertEquals(OptionalInt.of(0), profile.selectedLag());
     }
 
     @Test

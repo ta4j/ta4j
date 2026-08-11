@@ -281,9 +281,10 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
         // Local costs: c(0,0)=0, c(0,1)=0, c(1,0)=1, c(1,1)=1, so the
         // accumulated D(0,0)=0, D(0,1)=0, D(1,0)=1. At cell (1,1) the diagonal
-        // and vertical predecessors both cost 1 (path lengths 2 and 3) and the
-        // horizontal costs 2; the deterministic tie-break must take the
-        // diagonal, so the normalized distance is 1/2 rather than 1/3.
+        // and vertical predecessors both cost 1 over a path length of 2, while
+        // the horizontal predecessor costs 2; the deterministic tie-break must
+        // take the diagonal, so the path-length-normalized distance is 1/2
+        // rather than the horizontal path's 1.
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(3);
         assertNumEquals(numFactory.numOf(0.5), distance, 1.0e-12);
     }

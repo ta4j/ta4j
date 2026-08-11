@@ -39,6 +39,7 @@ class LeadLagDtwEventAnalysisExampleTest {
     private static void assertScored(EventMutualInformationResult result) {
         assertTrue(result.sampleCount() > 0, "expected samples, got " + result.sampleCount());
         assertFalse(result.mutualInformationNats().isNaN(), "expected defined MI");
+        assertFalse(result.mutualInformationNats().isNegative(), "expected non-negative MI");
         assertFalse(result.targetEntropyNats().isNaN(), "expected defined target entropy");
         int positives = result.positiveTargetCount();
         if (positives > 0 && positives < result.sampleCount()) {

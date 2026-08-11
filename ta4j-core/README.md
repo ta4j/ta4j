@@ -114,7 +114,8 @@ indicators leave open:
   `LeadLagDtwEventAnalysisExample`) compares shapes (z-score normalization,
   squared local distance) inside a bounded Sakoe–Chiba band with path-length
   normalization; unconstrained warping is an explicit opt-in. A zero radius
-  reduces the distance to the pointwise local distance. Complexity is
+  forces diagonal pointwise alignment; the reported cost is the sum or mean
+  of the local costs, according to path-cost normalization. Complexity is
   `O(W * min(W, 2r + 1))` time and `O(W)` memory for window `W` and radius
   `r`.
 - **Continuous predictor vs sparse current-or-future event** —
