@@ -110,12 +110,13 @@ indicators leave open:
   correlation; the selected correlation always keeps its original sign.
 - **Shape similarity under time distortion** —
   `DynamicTimeWarpingDistanceIndicator` computes the minimum-cost monotonic
-  alignment between two rolling windows. The default configuration compares
-  shapes (z-score normalization, squared local distance) inside a bounded
-  Sakoe–Chiba band with path-length normalization; unconstrained warping is
-  an explicit opt-in. A zero radius reduces the distance to the pointwise
-  local distance. Complexity is `O(W * min(W, 2r + 1))` time and `O(W)`
-  memory for window `W` and radius `r`.
+  alignment between two rolling windows. The recommended configuration (see
+  `LeadLagDtwEventAnalysisExample`) compares shapes (z-score normalization,
+  squared local distance) inside a bounded Sakoe–Chiba band with path-length
+  normalization; unconstrained warping is an explicit opt-in. A zero radius
+  reduces the distance to the pointwise local distance. Complexity is
+  `O(W * min(W, 2r + 1))` time and `O(W)` memory for window `W` and radius
+  `r`.
 - **Continuous predictor vs sparse current-or-future event** —
   `EventMutualInformationEvaluator` measures how much a continuous indicator
   state reduces uncertainty about whether a target event occurs in an

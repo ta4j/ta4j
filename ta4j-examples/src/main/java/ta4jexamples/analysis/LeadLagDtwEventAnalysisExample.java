@@ -13,7 +13,6 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.event.BinningStrategy;
 import org.ta4j.core.analysis.event.EventMutualInformationConfig;
 import org.ta4j.core.analysis.event.EventMutualInformationEvaluator;
-import org.ta4j.core.analysis.event.EventMutualInformationConfig;
 import org.ta4j.core.analysis.event.EventMutualInformationResult;
 import org.ta4j.core.analysis.event.EventSignal;
 import org.ta4j.core.analysis.event.EventSignals;

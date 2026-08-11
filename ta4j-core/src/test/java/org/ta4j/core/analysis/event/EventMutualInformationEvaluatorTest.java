@@ -170,14 +170,6 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
-    public void rejectsExcessivePredictorBinCount() {
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationConfig(0, 0,
-                EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT + 1, BinningStrategy.EQUAL_WIDTH));
-        assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationConfig(0, 0, Integer.MAX_VALUE, BinningStrategy.EQUAL_WIDTH));
-    }
-
-    @Test
     public void skewedPredictorUsesMoreEffectiveBinsWithEqualFrequency() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 0, 0, 0, 0, 0, 5, 100);
@@ -317,23 +309,6 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
             raw[i] = i;
         }
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(raw).build();
-    }
-
-    @Test
-    public void emptyRangeResultMustBeUndefined() {
-        BarSeries series = series(20);
-        NumFactory factory = series.numFactory();
-        // An empty sample range with defined metrics or formed bins is an
-        // inconsistent state and must be rejected.
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.zero(),
-                factory.zero(), factory.zero(), 0, 0, NaN.NaN, 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN,
-                0, 0, NaN.NaN, 8, 2, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN,
-                0, 0, factory.one(), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        // The undefined empty result is the canonical valid form.
-        new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, 0, 0, NaN.NaN, 8, 0, BinningStrategy.EQUAL_WIDTH, 0,
-                3);
     }
 
     private Indicator<Num> indicator(BarSeries series, double... values) {

@@ -23,10 +23,11 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * The alignment is bounded by a Sakoe–Chiba band by default; unconstrained
- * warping is an explicit opt-in. Both windows end at the evaluated index, so no
- * future samples are ever read. A window that is unavailable or contains
- * non-finite values produces {@code NaN}.
+ * The alignment band is caller-configured through the
+ * {@link DynamicTimeWarpingConfig}: the Sakoe–Chiba radius bounds the warping
+ * window, and unconstrained warping is an explicit opt-in. Both windows end at
+ * the evaluated index, so no future samples are ever read. A window that is
+ * unavailable or contains non-finite values produces {@code NaN}.
  * </p>
  *
  * <p>
