@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -225,12 +226,12 @@ final class EventSynchronizationSupport {
     }
 
     /**
-     * Verifies that two series are the same bar series.
+     * Verifies that two series are the same underlying bar series.
      *
      * <p>
-     * ta4j indicators expose read-only views over the underlying series; the view's
-     * equals() unwraps both sides, so this check must be symmetric to accept two
-     * indicator adapters over equal-but-distinct series instances.
+     * ta4j indicators expose read-only views over the underlying series; the
+     * identity check unwraps both sides so equal-but-distinct custom series
+     * implementations cannot be mistaken for one series.
      *
      * @param series      the first series
      * @param otherSeries the second series
@@ -238,7 +239,7 @@ final class EventSynchronizationSupport {
      * @throws IllegalArgumentException when the series differ
      */
     static BarSeries requireSameSeries(BarSeries series, BarSeries otherSeries) {
-        if (!series.equals(otherSeries) && !otherSeries.equals(series)) {
+        if (!IndicatorUtils.isSameSeries(series, otherSeries)) {
             throw new IllegalArgumentException("predicted and reference must be defined over the same BarSeries");
         }
         return series;

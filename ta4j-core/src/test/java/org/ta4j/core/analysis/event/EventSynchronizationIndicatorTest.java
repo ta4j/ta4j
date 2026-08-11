@@ -298,6 +298,41 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void replacedEndBarIsRescanned() {
+        BarSeries series = series(20);
+        Indicator<Boolean> signal = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                return series.getBar(index).getClosePrice().isGreaterThan(series.numFactory().numOf(19.5));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(signal, signal, 20, 0, 0);
+        // Window [0, 19]: the last close (20) exceeds the threshold, so both
+        // streams fire at 19 and match exactly.
+        Result before = indicator.getResult(19);
+        assertEquals(1, before.matchedCount());
+        assertNumEquals(1.0, before.f1Score());
+
+        // A live forming bar is revised in place instead of appended: replacing
+        // the end bar must re-read its event state, not serve the stale scan.
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.EPOCH.plus(Duration.ofDays(19)))
+                .closePrice(10d)
+                .build(), true);
+        Result after = indicator.getResult(19);
+        assertEquals(0, after.predictedCount());
+        assertEquals(0, after.referenceCount());
+        assertEquals(0, after.matchedCount());
+        assertNumEquals(Double.NaN, after.f1Score());
+    }
+
+    @Test
     public void repeatedEvaluationIsDeterministicAndEqualsTheCachedValue() {
         BarSeries series = series();
         Indicator<Boolean> predicted = events(series, 0, 4, 9, 14);

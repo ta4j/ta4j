@@ -64,7 +64,7 @@ import org.ta4j.core.num.DoubleNumFactory;
  *
  * @see EventSynchronizationIndicator
  */
-public final class EventSynchronizationExample {
+final class EventSynchronizationExample {
 
     private static final Logger LOG = LogManager.getLogger(EventSynchronizationExample.class);
 

@@ -14,21 +14,15 @@ import java.util.stream.DoubleStream;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 
-public class EventSignalsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-
-    public EventSignalsTest(NumFactory numFactory) {
-        super(numFactory);
-    }
+public class EventSignalsTest {
 
     private BarSeries series(int barCount) {
         double[] prices = DoubleStream.iterate(1.0, d -> d + 1.0).limit(barCount).toArray();
-        return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        return new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices).build();
     }
 
     @Test

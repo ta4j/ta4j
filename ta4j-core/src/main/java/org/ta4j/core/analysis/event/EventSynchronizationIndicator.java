@@ -337,6 +337,12 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          * scanned yet and never reading below {@code beginIndex} or the signal's
          * unstable boundary.
          *
+         * <p>
+         * When the evaluated index is the last scanned bar, that bar is re-read instead
+         * of trusting the earlier scan: a live forming bar is revised in place
+         * (replaced bar, added price/trade) rather than appended, and the cached event
+         * state would otherwise stay stale after the revision.
+         *
          * @throws IllegalArgumentException when the signal fires more often than the
          *                                  baseline matcher's capacity allows
          */
@@ -348,26 +354,42 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 size = newSize;
             }
             if (endIndex <= scannedThrough) {
+                if (endIndex == scannedThrough) {
+                    // The evaluated bar is the last scanned one and may have been
+                    // revised in place; re-read it so a replaced forming bar never
+                    // serves stale events. Bars below it are historical and stay
+                    // cached.
+                    if (size > 0 && events[size - 1] == endIndex) {
+                        size--;
+                    }
+                    scannedThrough = endIndex - 1;
+                    appendEvent(endIndex, signal);
+                    scannedThrough = endIndex;
+                }
                 return;
             }
             int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
             for (int i = scanFrom;; i++) {
-                if (signal.isEvent(i)) {
-                    if (size == events.length) {
-                        if ((long) events.length * 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
-                            throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                                    + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
-                                    + " million cells (~128 MB of alignment arrays)");
-                        }
-                        events = Arrays.copyOf(events, events.length * 2);
-                    }
-                    events[size++] = i;
-                }
+                appendEvent(i, signal);
                 if (i == endIndex) {
                     break;
                 }
             }
             scannedThrough = endIndex;
+        }
+
+        private void appendEvent(int index, EventSignal signal) {
+            if (signal.isEvent(index)) {
+                if (size == events.length) {
+                    if ((long) events.length * 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
+                        throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
+                                + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
+                                + " million cells (~128 MB of alignment arrays)");
+                    }
+                    events = Arrays.copyOf(events, events.length * 2);
+                }
+                events[size++] = index;
+            }
         }
 
         /**
