@@ -57,9 +57,11 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *
      * @throws NullPointerException     if a numeric value or the strategy is null
      * @throws IllegalArgumentException if a count is negative, the target window
-     *                                  offsets are inconsistent, or an empty sample
+     *                                  offsets are inconsistent, an empty sample
      *                                  range carries defined metrics or nonzero
-     *                                  effective bins
+     *                                  effective bins, or an undefined result (NaN
+     *                                  raw MI or entropy) carries defined
+     *                                  normalized MI or formed bins
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -80,6 +82,13 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 || !normalizedMutualInformation.isNaN() || !positiveTargetRate.isNaN() || effectiveBinCount != 0)) {
             throw new IllegalArgumentException(
                     "an empty sample range must produce an undefined result (NaN metrics, effectiveBinCount 0)");
+        }
+        if ((mutualInformationNats.isNaN() || targetEntropyNats.isNaN())
+                && (!normalizedMutualInformation.isNaN() || effectiveBinCount != 0)) {
+            // A non-finite predictor sample makes the result undefined while the
+            // diagnostic counts stay factual; formed bins or a defined normalized
+            // value would contradict that state.
+            throw new IllegalArgumentException("an undefined result must carry NaN metrics and effectiveBinCount 0");
         }
     }
 }
