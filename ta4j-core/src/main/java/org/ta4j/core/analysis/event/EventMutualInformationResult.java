@@ -94,16 +94,19 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             // state.
             throw new IllegalArgumentException("an undefined result must carry NaN metrics and effectiveBinCount 0");
         }
-        if (sampleCount > 0 && (!Double.isFinite(positiveTargetRate.doubleValue())
-                || !positiveTargetRate.equals(positiveTargetRate.getNumFactory()
-                        .numOf(positiveTargetCount)
-                        .dividedBy(positiveTargetRate.getNumFactory().numOf(sampleCount))))) {
+        if (sampleCount > 0) {
             // The documented factual prevalence is positiveTargetCount /
-            // sampleCount; comparing the rate in Num arithmetic rejects any
-            // other value, including contradictory finite rates that a rounded
-            // decimal comparison would accept (for example 0.54 for 5 of 10).
-            throw new IllegalArgumentException(
-                    "a nonempty sample range must carry a finite positiveTargetRate consistent with the counts");
+            // sampleCount; comparing the rate with exact Num arithmetic
+            // rejects any other value, including contradictory finite rates
+            // that a rounded decimal comparison would accept (for example
+            // 0.500009 for 5 of 10).
+            Num expectedRate = positiveTargetRate.getNumFactory()
+                    .numOf(positiveTargetCount)
+                    .dividedBy(positiveTargetRate.getNumFactory().numOf(sampleCount));
+            if (!Double.isFinite(positiveTargetRate.doubleValue()) || positiveTargetRate.compareTo(expectedRate) != 0) {
+                throw new IllegalArgumentException(
+                        "a nonempty sample range must carry a finite positiveTargetRate consistent with the counts");
+            }
         }
         if (sampleCount > 0 && !mutualInformationNats.isNaN() && !targetEntropyNats.isNaN()) {
             // A constant target (0 or sampleCount positive samples) has zero

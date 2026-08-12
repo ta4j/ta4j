@@ -534,6 +534,23 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void pearsonSurvivesMixedMagnitudeSeries() {
+        // Rescaling both series by one shared maximum underflows the smaller
+        // series: 1 and 2 next to 1e308 and 1.1e308 scale to ~9e-309 and
+        // ~1.8e-308, whose centered deviations square to zero and turn the
+        // exactly correlated pair undefined. Each series must be rescaled by
+        // its own maximum instead.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 1, 2);
+        Indicator<Num> second = indicator(series, 1e308, 1.1e308);
+
+        Profile profile = profile(first, second, 1, 2, 0, 0);
+
+        assertEquals(OptionalInt.of(0), profile.selectedLag());
+        assertNumEquals(numFactory.numOf(1), profile.selectedCorrelation(), 1.0e-12);
+    }
+
+    @Test
     public void profileRejectsPartialSampleCounts() {
         // A point whose sampleCount is neither 0 (unavailable window) nor
         // barCount (full aligned window) would compare unequal window lengths

@@ -19,7 +19,7 @@
  * zero-cross events against causal swing-confirmation events; it is not a
  * trading-record performance criterion. Event-stream synchronization and F1
  * scoring live in
- * {@link org.ta4j.core.indicators.statistics.EventSynchronizationIndicator}.
+ * {@link org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator}.
  *
  * @see org.ta4j.core.analysis.event.EventMutualInformationEvaluator
  * @since 0.24.2

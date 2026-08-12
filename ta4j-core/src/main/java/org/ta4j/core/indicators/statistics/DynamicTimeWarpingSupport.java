@@ -65,6 +65,16 @@ final class DynamicTimeWarpingSupport {
         int[] previousLength = new int[sampleCount];
         Num[] currentCost = new Num[sampleCount];
         int[] currentLength = new int[sampleCount];
+        // Path-length-normalized distances are accumulated as a running mean
+        // over each cell's best path instead of a raw sum divided at the end:
+        // a path whose local costs are each finite but sum to infinity (for
+        // example two costs of 1e308) would otherwise overflow the accumulator
+        // even though the mean is finite. With non-negative costs every
+        // intermediate mean lies between the smallest and largest cost seen,
+        // so the incremental form stays finite whenever each cost is.
+        boolean byPathLength = config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH;
+        Num[] previousMeanCost = byPathLength ? new Num[sampleCount] : null;
+        Num[] currentMeanCost = byPathLength ? new Num[sampleCount] : null;
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -76,6 +86,9 @@ final class DynamicTimeWarpingSupport {
             for (int k = Math.max(0, columnMin - 1); k <= columnMax; k++) {
                 currentCost[k] = null;
                 currentLength[k] = 0;
+                if (byPathLength) {
+                    currentMeanCost[k] = null;
+                }
             }
             for (int j = columnMin; j <= columnMax; j++) {
                 Num localCost = localCost(firstSequence[i], secondSequence[j], config.localDistance());
@@ -83,20 +96,24 @@ final class DynamicTimeWarpingSupport {
                 // Predecessor tie-break order: shorter path length first, then
                 // diagonal, vertical, horizontal.
                 Num bestCost = null;
+                Num bestMeanCost = null;
                 int bestLength = 0;
                 if (i > 0 && j > 0) {
                     bestCost = previousCost[j - 1];
+                    bestMeanCost = byPathLength ? previousMeanCost[j - 1] : null;
                     bestLength = previousLength[j - 1];
                 }
                 Num vertical = previousCost[j];
                 if (vertical != null && better(vertical, previousLength[j], bestCost, bestLength)) {
                     bestCost = vertical;
+                    bestMeanCost = byPathLength ? previousMeanCost[j] : null;
                     bestLength = previousLength[j];
                 }
                 if (j > 0) {
                     Num horizontal = currentCost[j - 1];
                     if (horizontal != null && better(horizontal, currentLength[j - 1], bestCost, bestLength)) {
                         bestCost = horizontal;
+                        bestMeanCost = byPathLength ? currentMeanCost[j - 1] : null;
                         bestLength = currentLength[j - 1];
                     }
                 }
@@ -107,6 +124,11 @@ final class DynamicTimeWarpingSupport {
                 }
                 currentCost[j] = localCost.plus(bestCost);
                 currentLength[j] = bestLength + 1;
+                if (byPathLength) {
+                    currentMeanCost[j] = bestLength == 0 ? localCost
+                            : bestMeanCost
+                                    .plus(localCost.minus(bestMeanCost).dividedBy(numFactory.numOf(bestLength + 1)));
+                }
             }
 
             Num[] swapCost = previousCost;
@@ -115,12 +137,19 @@ final class DynamicTimeWarpingSupport {
             int[] swapLength = previousLength;
             previousLength = currentLength;
             currentLength = swapLength;
+            if (byPathLength) {
+                Num[] swapMeanCost = previousMeanCost;
+                previousMeanCost = currentMeanCost;
+                currentMeanCost = swapMeanCost;
+            }
         }
 
-        Num total = previousCost[sampleCount - 1];
-        if (config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH) {
-            total = total.dividedBy(numFactory.numOf(previousLength[sampleCount - 1]));
+        if (byPathLength) {
+            // The running mean is already normalized by path length.
+            Num mean = previousMeanCost[sampleCount - 1];
+            return CorrelationWindowSupport.isFinite(mean) ? mean : NaN.NaN;
         }
+        Num total = previousCost[sampleCount - 1];
         return CorrelationWindowSupport.isFinite(total) ? total : NaN.NaN;
     }
 

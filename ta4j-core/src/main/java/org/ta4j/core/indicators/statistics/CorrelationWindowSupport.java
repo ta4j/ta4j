@@ -177,26 +177,31 @@ final class CorrelationWindowSupport {
             return NaN.NaN;
         }
 
-        // Pearson correlation is invariant under a common rescaling of both
-        // series, so the window is rescaled by its largest absolute value
-        // before averaging: the plain sum of extreme-but-finite values (for
-        // example 1e308 and 1.1e308) would overflow to infinity and turn an
-        // exactly correlated window into an undefined one. Every scaled
-        // magnitude is <= 1, so the means and centered sums stay finite and
-        // the ratio equals the unscaled correlation.
-        Num scale = numFactory.zero();
+        // Pearson correlation is invariant under an independent rescaling of
+        // each series, so every value is divided by its own series' largest
+        // absolute value before averaging: the plain sum of extreme-but-finite
+        // values (for example 1e308 and 1.1e308) would overflow to infinity,
+        // while a single shared scale would underflow a much smaller series
+        // (for example 1 and 2 next to 1e308 and 1.1e308) and square its
+        // centered deviations to zero. Every scaled magnitude is <= 1, so the
+        // means and centered sums stay finite and the ratio equals the
+        // unscaled correlation.
+        Num firstScale = numFactory.zero();
+        Num secondScale = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            scale = scale.max(firstValues[i].abs()).max(secondValues[i].abs());
+            firstScale = firstScale.max(firstValues[i].abs());
+            secondScale = secondScale.max(secondValues[i].abs());
         }
-        if (scale.isZero()) {
-            // An all-zero window has zero variance on both sides.
+        if (firstScale.isZero() || secondScale.isZero()) {
+            // A constant side has zero variance, which leaves the
+            // correlation undefined.
             return NaN.NaN;
         }
         Num firstAverage = numFactory.zero();
         Num secondAverage = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            firstAverage = firstAverage.plus(firstValues[i].dividedBy(scale));
-            secondAverage = secondAverage.plus(secondValues[i].dividedBy(scale));
+            firstAverage = firstAverage.plus(firstValues[i].dividedBy(firstScale));
+            secondAverage = secondAverage.plus(secondValues[i].dividedBy(secondScale));
         }
         Num count = numFactory.numOf(sampleCount);
         firstAverage = firstAverage.dividedBy(count);
@@ -205,8 +210,8 @@ final class CorrelationWindowSupport {
         Num firstVariance = numFactory.zero();
         Num secondVariance = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            Num firstDelta = firstValues[i].dividedBy(scale).minus(firstAverage);
-            Num secondDelta = secondValues[i].dividedBy(scale).minus(secondAverage);
+            Num firstDelta = firstValues[i].dividedBy(firstScale).minus(firstAverage);
+            Num secondDelta = secondValues[i].dividedBy(secondScale).minus(secondAverage);
             covariance = covariance.plus(firstDelta.multipliedBy(secondDelta));
             firstVariance = firstVariance.plus(firstDelta.multipliedBy(firstDelta));
             secondVariance = secondVariance.plus(secondDelta.multipliedBy(secondDelta));

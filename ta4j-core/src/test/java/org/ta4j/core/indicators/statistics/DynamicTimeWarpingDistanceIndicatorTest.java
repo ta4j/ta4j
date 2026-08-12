@@ -155,6 +155,28 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void byPathLengthMeanSurvivesFiniteCostsWhoseSumOverflows() {
+        // Two finite squared costs of 1e308 (a 1e154 delta each) sum to
+        // infinity in double precision, so dividing the raw sum by the path
+        // length would turn the finite mean into an undefined distance. The
+        // path-length-normalized accumulation must stay finite.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 1e154, 1e154);
+        Indicator<Num> second = indicator(series, 0, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.unconstrained(),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        double expected = 1e154 * 1e154;
+        assertTrue(Double.isFinite(distance.doubleValue()));
+        assertEquals(1.0, distance.doubleValue() / expected, 1.0e-12);
+    }
+
+    @Test
     public void isNeverNegative() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 3, -1, 2, 0, -2, 1, 4, -3, 2, 0, 1, -1);
