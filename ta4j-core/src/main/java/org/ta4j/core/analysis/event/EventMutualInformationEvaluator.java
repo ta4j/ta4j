@@ -94,12 +94,14 @@ public final class EventMutualInformationEvaluator {
         // beginIndex + unstableBars, not unstableBars. The earliest target index
         // a sample reads is i + targetWindowStartBars, so samples may start
         // below the target's own stable boundary as long as their first target
-        // index is at or after it. Long arithmetic keeps the sums from wrapping;
-        // saturation caps the boundary at the int range.
+        // index is at or after it. Long arithmetic keeps the sums from wrapping
+        // and keeps an above-int-range boundary distinct from a saturated one:
+        // when no representable index is stable, the range stays unavailable
+        // instead of silently admitting Integer.MAX_VALUE.
         long predictorBoundary = (long) series.getBeginIndex() + predictor.getCountOfUnstableBars();
         long targetBoundary = (long) series.getBeginIndex() + target.getCountOfUnstableBars()
                 - (long) config.targetWindowStartBars();
-        int availableStart = (int) Math.min(Integer.MAX_VALUE, Math.max(predictorBoundary, targetBoundary));
+        long availableStartValue = Math.max(predictorBoundary, targetBoundary);
         int availableEnd = series.getEndIndex();
         // Long arithmetic keeps window-offset extremes of the int range from
         // wrapping: endIndex - targetWindowEndBars could otherwise wrap to a
@@ -107,20 +109,19 @@ public final class EventMutualInformationEvaluator {
         long maxSampleIndex = (long) endIndex - config.targetWindowEndBars();
         long availableMaxSample = (long) availableEnd - config.targetWindowEndBars();
 
-        int effectiveStart = startIndex;
-        long effectiveEndValue = maxSampleIndex;
         if (config.historyPolicy() == AnalysisContext.MissingHistoryPolicy.STRICT) {
-            if (startIndex < availableStart || endIndex > availableEnd || maxSampleIndex < startIndex) {
+            if ((long) startIndex < availableStartValue || endIndex > availableEnd || maxSampleIndex < startIndex) {
                 throw new IllegalArgumentException(
                         "requested evaluation range includes unavailable history or cannot hold a complete target window");
             }
-            // STRICT guarantees maxSampleIndex >= startIndex >= availableStart >= 0.
-            int effectiveEnd = (int) maxSampleIndex;
-            return evaluateInRange(predictor, target, numFactory, effectiveStart, effectiveEnd, config);
+            // STRICT guarantees maxSampleIndex >= startIndex >= availableStartValue,
+            // so the stable boundary is representable as an int.
+            return evaluateInRange(predictor, target, numFactory, startIndex, (int) maxSampleIndex, config);
         }
-        effectiveStart = Math.max(effectiveStart, availableStart);
-        effectiveEndValue = Math.min(effectiveEndValue, availableMaxSample);
-        int effectiveEnd = effectiveEndValue < effectiveStart ? -1
+        long effectiveStartValue = Math.max((long) startIndex, availableStartValue);
+        long effectiveEndValue = Math.min(maxSampleIndex, availableMaxSample);
+        int effectiveStart = effectiveStartValue > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) effectiveStartValue;
+        int effectiveEnd = effectiveEndValue < effectiveStartValue ? -1
                 : (int) Math.min(effectiveEndValue, Integer.MAX_VALUE);
         return evaluateInRange(predictor, target, numFactory, effectiveStart, effectiveEnd, config);
     }
@@ -361,9 +362,18 @@ public final class EventMutualInformationEvaluator {
         // finite: correctly-rounded subtraction of finite doubles within
         // [minimum, minimum + span] cannot overflow past the double range.
         Num width = span.dividedBy(minimum.getNumFactory().numOf(binCount));
+        // A positive subnormal span combined with a large bin count can
+        // underflow the width to zero; dividing by that width yields NaN,
+        // which intValue() rejects. The ratio form delta/span * binCount is
+        // underflow-safe: delta/span is in (0, 1] and binCount is an int, so
+        // the product can neither underflow nor overflow.
+        boolean underflowedWidth = width.isZero();
         int[] bins = new int[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
-            int bin = values.get(i).minus(minimum).dividedBy(width).intValue();
+            Num position = values.get(i).minus(minimum);
+            position = underflowedWidth ? position.dividedBy(span).multipliedBy(minimum.getNumFactory().numOf(binCount))
+                    : position.dividedBy(width);
+            int bin = position.intValue();
             if (bin < 0) {
                 bin = 0;
             }

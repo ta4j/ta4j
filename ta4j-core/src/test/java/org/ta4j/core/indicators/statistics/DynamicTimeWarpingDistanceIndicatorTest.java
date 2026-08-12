@@ -254,6 +254,31 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void squaredRawLocalCostUnderflowReportsNaNInsteadOfZero() {
+        // A nonzero delta of ~1e-200 squares to zero in double precision;
+        // scoring it as identical would break the zero-means-identical
+        // contract, so the cost is NaN and the distance undefined. Decimal
+        // arithmetic keeps the square representable and reports the real
+        // positive distance.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 0, 0);
+        Indicator<Num> second = indicator(series, 1e-200, 1e-200);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(distance.isNaN());
+        } else {
+            assertTrue(distance.isPositive());
+        }
+    }
+
+    @Test
     public void widerBandNeverScoresWorseThanNarrowerBand() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);

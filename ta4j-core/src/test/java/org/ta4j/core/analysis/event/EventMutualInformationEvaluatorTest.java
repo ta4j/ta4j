@@ -454,6 +454,52 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void equalWidthBinningSurvivesUnderflowedBinWidth() {
+        // A positive subnormal span (1e-320) combined with a million bins
+        // underflows the bin width to zero in double arithmetic; the bin
+        // positions must fall back to an underflow-safe ratio form instead of
+        // dividing by zero and throwing. Decimal arithmetic keeps the width
+        // representable and lands the same bins.
+        BarSeries series = series(3);
+        Indicator<Num> predictor = indicator(series, 0, 5e-321, 1e-320);
+        Indicator<Boolean> target = eventSignal(series, 0, new boolean[] { true, false, true });
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 2,
+                new EventMutualInformationConfig(0, 0, 1_000_000, BinningStrategy.EQUAL_WIDTH));
+
+        assertEquals(3, result.sampleCount());
+        assertEquals(1_000_000, result.effectiveBinCount());
+        assertFalse(result.mutualInformationNats().isNaN());
+        assertTrue(result.mutualInformationNats().isPositive());
+    }
+
+    @Test
+    public void unstableBoundaryAboveIntRangeStaysUnavailable() {
+        // beginIndex + Integer.MAX_VALUE pushes the first stable index past the
+        // int range, so no representable index is stable: STRICT must reject
+        // the range and CLAMP must report an empty, undefined evaluation
+        // instead of silently admitting Integer.MAX_VALUE.
+        BarSeries series = series(20);
+        // Dropping the head makes the retained begin index 10.
+        series.setMaximumBarCount(10);
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            values.add(numFactory.numOf(0));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, Integer.MAX_VALUE, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, 10, 19, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
+
+        EventMutualInformationResult clamped = evaluate(predictor, target, 10, 19, new EventMutualInformationConfig(0,
+                0, 2, BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.CLAMP));
+        assertEquals(0, clamped.sampleCount());
+        assertTrue(clamped.mutualInformationNats().isNaN());
+    }
+
+    @Test
     public void proxySeriesEndingAtIntegerMaxValueReturnsUndefinedResult() {
         // A series whose end index is Integer.MAX_VALUE makes the covered
         // target-window span exceed Integer.MAX_VALUE (unrepresentable in

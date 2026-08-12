@@ -155,7 +155,19 @@ final class DynamicTimeWarpingSupport {
 
     private static Num localCost(Num firstValue, Num secondValue, LocalDistance localDistance) {
         Num delta = firstValue.minus(secondValue);
-        return localDistance == LocalDistance.ABSOLUTE ? delta.abs() : delta.multipliedBy(delta);
+        if (localDistance == LocalDistance.ABSOLUTE) {
+            return delta.abs();
+        }
+        Num squared = delta.multipliedBy(delta);
+        // A nonzero delta whose square underflows to zero (raw subnormal
+        // deltas under NONE normalization) would otherwise be scored as
+        // identical, breaking the zero-means-identical contract. Such a cost
+        // is unrepresentable in the requested precision: report it as NaN so
+        // the distance stays undefined.
+        if (squared.isZero() && (delta.isPositive() || delta.isNegative())) {
+            return NaN.NaN;
+        }
+        return squared;
     }
 
     /**
