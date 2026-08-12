@@ -167,9 +167,19 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 NumFactory normalizedFactory = normalizedMutualInformation.getNumFactory();
                 Num expectedNormalized = normalizedFactory.numOf(mutualInformationNats.getDelegate())
                         .dividedBy(normalizedFactory.numOf(targetEntropyNats.getDelegate()));
+                if (!Num.isFinite(expectedNormalized)) {
+                    throw new IllegalArgumentException(
+                            "a non-constant target must carry normalized mutual information equal to MI / H(Y)");
+                }
+                // The recomputed ratio amplifies the rounding error of the raw
+                // metrics by 1 / H(Y), which a sparse event stream can make
+                // arbitrarily large, so scale the tolerance by the expected
+                // ratio's magnitude instead of comparing against an absolute
+                // epsilon.
                 Num normalizedDifference = normalizedMutualInformation.minus(expectedNormalized).abs();
-                if (!Num.isFinite(expectedNormalized)
-                        || normalizedDifference.compareTo(normalizedFactory.epsilon()) > 0) {
+                Num normalizedTolerance = normalizedFactory.epsilon()
+                        .multipliedBy(normalizedFactory.one().plus(expectedNormalized.abs()));
+                if (normalizedDifference.compareTo(normalizedTolerance) > 0) {
                     throw new IllegalArgumentException(
                             "a non-constant target must carry normalized mutual information equal to MI / H(Y)");
                 }

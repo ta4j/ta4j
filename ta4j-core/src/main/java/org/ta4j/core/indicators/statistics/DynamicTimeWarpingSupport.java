@@ -278,8 +278,18 @@ final class DynamicTimeWarpingSupport {
                 return NaN.NaN;
             }
             Num mean = totalValue.dividedBy(numFactory.numOf(previousLength[sampleCount - 1]));
-            if (previousMeanScale[sampleCount - 1] > 0) {
-                mean = mean.multipliedBy(pow2(previousMeanScale[sampleCount - 1], numFactory));
+            int meanScale = previousMeanScale[sampleCount - 1];
+            if (meanScale > 0) {
+                // 2^scale overflows for scale >= 1024 even when the scaled
+                // total's true value stays representable (for example a
+                // squared local cost carried as m^2 * 2^1024 with a two-cell
+                // mean of 9.8e307), so never materialize the full power:
+                // value * 2^1023 is finite whenever value * 2^scale is, and
+                // the remaining 2^(scale - 1023) restores the true value.
+                mean = mean.multipliedBy(pow2(Math.min(meanScale, 1023), numFactory));
+                if (meanScale > 1023) {
+                    mean = mean.multipliedBy(pow2(meanScale - 1023, numFactory));
+                }
             }
             if (mean.isZero() && totalValue.isPositive()) {
                 return NaN.NaN;

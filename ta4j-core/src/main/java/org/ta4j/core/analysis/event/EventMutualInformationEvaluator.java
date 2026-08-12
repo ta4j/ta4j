@@ -281,6 +281,15 @@ public final class EventMutualInformationEvaluator {
             }
         }
 
+        // An exactly independent contingency table can sum to a tiny negative
+        // value through rounding alone (for example -1.7e-16 with DoubleNum and
+        // bins of (1, 3) and (4, 12) counts); mutual information is
+        // non-negative by definition, so normalize roundoff-scale negatives to
+        // zero before the result constructor validates the metrics.
+        if (mutualInformation.isNegative() && mutualInformation.abs().compareTo(numFactory.epsilon()) <= 0) {
+            mutualInformation = numFactory.zero();
+        }
+
         Num positiveProbability = numFactory.numOf(positiveTargetCount).dividedBy(sampleCountNum);
         Num negativeProbability = numFactory.one().minus(positiveProbability);
         Num targetEntropy = positiveProbability.multipliedBy(positiveProbability.log())

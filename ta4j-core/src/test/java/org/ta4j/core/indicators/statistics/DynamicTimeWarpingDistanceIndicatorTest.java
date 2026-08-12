@@ -177,10 +177,30 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void byPathLengthMeanSurvivesAnOverflowingSquareWithRepresentableMean() {
+        // Review regression: the squared local cost 1.4e154^2 = 1.96e308
+        // overflows double, so the scaled representation carries it as
+        // m^2 * 2^1024. Reconstructing the mean by materializing 2^1024
+        // overflows again even though the two-cell path mean 9.8e307 is
+        // representable; the scale must be applied without materializing the
+        // overflowing power.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 1.4e154, 0);
+        Indicator<Num> second = indicator(series, 0, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        assertTrue(Double.isFinite(distance.doubleValue()));
+        assertEquals(1.0, distance.doubleValue() / 9.8e307, 1.0e-12);
+    }
+
+    @Test
     public void byPathLengthOrderingPrefersTheOptimalPathWhenTotalsSaturate() {
-        if (!(numFactory instanceof DoubleNumFactory)) {
-            return;
-        }
         // Review regression: predecessor ranking compared raw accumulated
         // totals, which saturate at infinity when finite costs sum beyond the
         // double range. Two saturated competitors looked like an equal-cost
@@ -199,12 +219,22 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 4, config).getValue(3);
 
         // Both paths' raw accumulated cost overflows, but the normalized
-        // comparison remains finite and selects the extra zero-cost step.
-        double expected = 4.4764e307;
-        assertTrue(Double.isFinite(distance.doubleValue()));
-        assertEquals(1.0, distance.doubleValue() / expected, 1.0e-12);
-        assertTrue("saturated-total tie-break must not select the suboptimal path",
-                distance.doubleValue() < 5.5955e307);
+        // comparison remains finite. The two candidates share the same exact
+        // total: DoubleNum rounding makes the five-cell mean one ulp smaller,
+        // so the reference accumulation selects the extra zero-cost step
+        // (4.4764e307); DecimalNum carries the totals exactly, so the
+        // deterministic shorter-path tie-break takes the four-cell diagonal
+        // alignment (5.5955e307) instead.
+        if (numFactory instanceof DoubleNumFactory) {
+            double expected = 4.4764e307;
+            assertTrue(Double.isFinite(distance.doubleValue()));
+            assertEquals(1.0, distance.doubleValue() / expected, 1.0e-12);
+            assertTrue("saturated-total tie-break must not select the suboptimal path",
+                    distance.doubleValue() < 5.5955e307);
+        } else {
+            assertTrue(Double.isFinite(distance.doubleValue()));
+            assertEquals(1.0, distance.doubleValue() / 5.5955e307, 1.0e-12);
+        }
     }
 
     @Test
@@ -356,11 +386,10 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
     @Test
     public void absolutePathLengthNormalizationUnderflowReportsNaNInsteadOfZero() {
-        if (!(numFactory instanceof DoubleNumFactory)) {
-            return;
-        }
         // Dividing the smallest positive double by a three-cell path underflows
         // to zero; a distinct sequence must not be reported as identical.
+        // DecimalNum carries the smallest positive double exactly, so the same
+        // fixture yields a positive distance instead of an undefined one.
         BarSeries series = series(3);
         Indicator<Num> first = indicator(series, 0, 0, 0);
         Indicator<Num> second = indicator(series, 0, 0, Double.MIN_VALUE);
@@ -372,7 +401,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 3, config).getValue(2);
 
-        assertTrue(distance.isNaN());
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(distance.isNaN());
+        } else {
+            assertTrue(distance.isPositive());
+        }
     }
 
     @Test
@@ -594,11 +627,12 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                 DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
         // Local costs: c(0,0)=0, c(0,1)=0, c(1,0)=1, c(1,1)=1, so the
-        // accumulated D(0,0)=0, D(0,1)=0, D(1,0)=1. At cell (1,1) the diagonal
-        // and vertical predecessors both cost 1 over a path length of 2, while
-        // the horizontal predecessor costs 2; the deterministic tie-break must
-        // take the diagonal, so the path-length-normalized distance is 1/2
-        // rather than the horizontal path's 1.
+        // accumulated D(0,0)=0 at length 1, D(0,1)=0 at length 2, and
+        // D(1,0)=1 at length 2. At cell (1,1) the diagonal and the vertical
+        // predecessor tie on a running mean of 0; the shorter diagonal path
+        // wins, giving length 2 and mean 1/2, against the vertical path's 1/3
+        // and the horizontal path's 2/3. The path-length-normalized distance
+        // is therefore 1/2 rather than the horizontal path's 1.
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(3);
         assertNumEquals(numFactory.numOf(0.5), distance, 1.0e-12);
     }

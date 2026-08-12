@@ -71,6 +71,26 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void independentContingencyRoundingDoesNotRejectZeroMutualInformation() {
+        // Review regression: with DoubleNum an exactly independent contingency
+        // table can sum to a tiny negative mutual information through rounding
+        // alone (for example -1.7e-16 for bins of (1, 3) and (4, 12) counts),
+        // which the result constructor rejected; roundoff-scale negatives must
+        // normalize to zero instead of throwing on valid independent data.
+        BarSeries series = series(20);
+        Indicator<Num> predictor = indicator(series, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index < 3 || (index >= 4 && index < 16));
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 19,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
+
+        assertEquals(20, result.sampleCount());
+        assertEquals(15, result.positiveTargetCount());
+        assertNumEquals(numFactory.numOf(0), result.mutualInformationNats(), 1.0e-9);
+        assertNumEquals(numFactory.numOf(0), result.normalizedMutualInformation(), 1.0e-9);
+    }
+
+    @Test
     public void futureWindowLabelsOnlySamplesWhoseWindowHoldsAnEvent() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
