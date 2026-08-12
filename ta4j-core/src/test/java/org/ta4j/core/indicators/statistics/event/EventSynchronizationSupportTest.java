@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -259,6 +260,12 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
 
     @Test
     public void matchesBruteForceOracleOnLargerRandomCases() {
+        // The sweep compares identical integer event counts under both Num
+        // factories; running the 2,000-trial structural oracle once keeps the
+        // coverage without repeating the same trials for DecimalNum.
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return;
+        }
         Random random = new Random(20260809L);
         for (int trial = 0; trial < 2000; trial++) {
             int predictedSize = random.nextInt(9);
