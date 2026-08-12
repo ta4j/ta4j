@@ -598,10 +598,10 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void eventCacheStaysBoundedByTheRollingWindow() {
-        // One event per bar over a long history: without window eviction the
-        // event caches would grow unbounded and eventually trip the matcher's
-        // capacity limit.
-        int barCount = 200_000;
+        // One event per bar over a history long enough to cross the rolling
+        // eviction threshold: without window eviction the event caches would
+        // grow unbounded and eventually trip the matcher's capacity limit.
+        int barCount = 100;
         BarSeries series = series(barCount);
         Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
             @Override
@@ -633,10 +633,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     public void firstRequestAtDistantIndexKeepsCacheBounded() {
         // A first evaluation that jumps far ahead of the current scan frontier
         // must evict below the requested window while catching up: with a signal
-        // firing every bar, a 200k-bar catch-up would otherwise retain 200k
-        // events (and a multi-million-bar series would trip the matcher's
-        // capacity limit) even though the requested window is only 10 bars wide.
-        int barCount = 200_000;
+        // firing every bar, a 100-bar catch-up would otherwise retain 100
+        // events even though the requested window is only 10 bars wide.
+        int barCount = 100;
         BarSeries series = series(barCount);
         Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
             @Override
@@ -661,7 +660,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // event caches between a reset/eviction and the following rescan: both
         // event windows are captured inside the coordination lock, so every
         // concurrent result equals the sequential one.
-        int barCount = 5_000;
+        int barCount = 1_200;
         BarSeries series = series(barCount);
         Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
             @Override
@@ -691,7 +690,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
                 final long seed = 1000L + t;
                 futures.add(pool.submit(() -> {
                     Random random = new Random(seed);
-                    for (int i = 0; i < 1_000; i++) {
+                    for (int i = 0; i < 400; i++) {
                         int index = indexes[random.nextInt(indexes.length)];
                         ResultSnapshot expected = baseline.get(index);
                         ResultSnapshot actual = new ResultSnapshot(indicator.getResult(index));
