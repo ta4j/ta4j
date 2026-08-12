@@ -35,6 +35,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.IndicatorSerialization;
@@ -656,6 +657,13 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
+        // The cache mechanics under test are factory-independent (int arrays
+        // and Boolean signals), so the heavy ~6.3M-index catch-up scan runs
+        // once instead of once per numeric factory; the small-scale eviction
+        // tests above already cover both factories.
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return;
+        }
         // A window wider than half the matcher capacity (8,000,000 cells) makes
         // the rolling eviction threshold exceed the events array's growth
         // ceiling: without capping the threshold, a catch-up over more than
@@ -692,10 +700,13 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // is event-free and far above the initial scan frontier: the catch-up
         // must evict instead of accumulating the 4,194,305 earlier events.
         indicator.getResult(lastEventIndex + windowSize);
-        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size,
-                indicator.predictedEvents.size <= 4_000_000);
-        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size,
-                indicator.referenceEvents.size <= 4_000_000);
+        // Every cached event predates the window, so the caches end up empty;
+        // the backing arrays must shrink back to the initial capacity instead
+        // of retaining ~32 MiB of dead storage until the end of the run.
+        assertEquals(0, indicator.predictedEvents.size);
+        assertEquals(16, indicator.predictedEvents.events.length);
+        assertEquals(0, indicator.referenceEvents.size);
+        assertEquals(16, indicator.referenceEvents.events.length);
     }
 
     @Test

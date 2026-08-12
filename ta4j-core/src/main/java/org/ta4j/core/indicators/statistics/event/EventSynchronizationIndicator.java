@@ -659,6 +659,20 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 int newSize = size - firstRetained;
                 System.arraycopy(events, firstRetained, events, 0, newSize);
                 size = newSize;
+                // A distant catch-up can grow the backing array toward the
+                // matcher's capacity ceiling before evicting nearly everything
+                // (for example a 4,194,304-cell array emptied by an event-free
+                // window ahead), which would otherwise retain tens of megabytes
+                // per source for the rest of the evaluation. An eviction that
+                // empties the cache always resets to the initial capacity (the
+                // array is not reused by rolling scans, so there is no churn),
+                // and a large array that retains only a small fraction is
+                // trimmed to the retained size.
+                if (newSize == 0) {
+                    events = new int[16];
+                } else if (events.length > 1_048_576 && newSize * 8 < events.length) {
+                    events = Arrays.copyOf(events, Math.max(newSize, 16));
+                }
             }
         }
 
