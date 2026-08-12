@@ -16,16 +16,19 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.LagSelectionPolicy;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.Point;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.Profile;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     private static final int SINE_PERIOD = 16;
 
-    public LeadLagCorrelationAnalyzerTest(NumFactory numFactory) {
+    public LeadLagCorrelationIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -35,12 +38,12 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = sine(series, 0);
         Indicator<Num> second = sine(series, -3);
 
-        LagCorrelationProfile profile = analyze(first, second, 31, 8, -5, 5);
+        Profile profile = profile(first, second, 31, 8, -5, 5);
 
         assertEquals(OptionalInt.of(3), profile.selectedLag());
         assertEquals(List.of(3), profile.bestLags());
         assertNumEquals(numFactory.numOf(1), profile.selectedCorrelation(), 1.0e-12);
-        assertTrue(profile.points().stream().allMatch(LagCorrelationPoint::isDefined));
+        assertTrue(profile.points().stream().allMatch(Point::isDefined));
     }
 
     @Test
@@ -49,7 +52,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = sine(series, -3);
         Indicator<Num> second = sine(series, 0);
 
-        LagCorrelationProfile profile = analyze(first, second, 31, 8, -5, 5);
+        Profile profile = profile(first, second, 31, 8, -5, 5);
 
         assertEquals(OptionalInt.of(-3), profile.selectedLag());
         assertEquals(List.of(-3), profile.bestLags());
@@ -61,7 +64,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
 
-        LagCorrelationProfile profile = analyze(first, first, 31, 8, -4, 4);
+        Profile profile = profile(first, first, 31, 8, -4, 4);
 
         assertEquals(OptionalInt.of(0), profile.selectedLag());
         assertEquals(List.of(0), profile.bestLags());
@@ -78,13 +81,12 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = square(series);
         Indicator<Num> second = square(series, 2);
 
-        LagCorrelationProfile signed = analyze(first, second, 31, 8, -5, 5, LagSelectionPolicy.MAXIMUM_CORRELATION);
+        Profile signed = profile(first, second, 31, 8, -5, 5, LagSelectionPolicy.MAXIMUM_CORRELATION);
         assertEquals(List.of(-2, 2), signed.bestLags());
         assertEquals(OptionalInt.of(-2), signed.selectedLag());
         assertNumEquals(numFactory.numOf(1), signed.selectedCorrelation(), 1.0e-12);
 
-        LagCorrelationProfile absolute = analyze(first, second, 31, 8, -5, 5,
-                LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
+        Profile absolute = profile(first, second, 31, 8, -5, 5, LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
         assertEquals(List.of(-4, -2, 0, 2, 4), absolute.bestLags());
         assertEquals(OptionalInt.of(0), absolute.selectedLag());
         // The original signed correlation is preserved under absolute selection.
@@ -99,7 +101,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = square(series);
         Indicator<Num> second = square(series, 2);
 
-        LagCorrelationProfile profile = analyze(first, second, 31, 8, -3, 3);
+        Profile profile = profile(first, second, 31, 8, -3, 3);
 
         assertEquals(List.of(-2, 2), profile.bestLags());
         assertEquals(OptionalInt.of(-2), profile.selectedLag());
@@ -111,7 +113,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         BarSeries series = series(40);
         Indicator<Num> first = square(series);
 
-        LagCorrelationProfile profile = analyze(first, first, 31, 8, -8, 8);
+        Profile profile = profile(first, first, 31, 8, -8, 8);
 
         assertEquals(List.of(-8, -4, 0, 4, 8), profile.bestLags());
         assertEquals(OptionalInt.of(0), profile.selectedLag());
@@ -123,10 +125,10 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> constant = indicator(series, constantValues(40));
         Indicator<Num> changing = sine(series, 0);
 
-        LagCorrelationProfile profile = analyze(constant, changing, 31, 8, -3, 3);
+        Profile profile = profile(constant, changing, 31, 8, -3, 3);
 
         assertEquals(7, profile.points().size());
-        for (LagCorrelationPoint point : profile.points()) {
+        for (Point point : profile.points()) {
             assertFalse(point.isDefined());
             assertTrue(point.correlation().isNaN());
             assertEquals(8, point.sampleCount());
@@ -142,9 +144,9 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = indicator(series, 1, 2, 3, 4, 5, 6);
         Indicator<Num> second = indicator(series, 1, 2, 3, 4, 5, 6);
 
-        LagCorrelationProfile profile = analyze(first, second, 5, 5, -4, 4);
+        Profile profile = profile(first, second, 5, 5, -4, 4);
 
-        for (LagCorrelationPoint point : profile.points()) {
+        for (Point point : profile.points()) {
             if (point.lag() < -1 || point.lag() > 1) {
                 assertFalse("lag " + point.lag() + " should be undefined", point.isDefined());
                 assertEquals(0, point.sampleCount());
@@ -161,7 +163,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = square(series);
         series.setMaximumBarCount(30);
 
-        LagCorrelationProfile profile = analyze(first, first, 39, 8, -30, 30);
+        Profile profile = profile(first, first, 39, 8, -30, 30);
 
         // Lags whose windows start below the constrained begin index (10) are
         // undefined with zero samples: second windows for lags <= -23 and first
@@ -169,7 +171,7 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         assertFalse(profile.points().get(0).isDefined());
         assertEquals(0, profile.points().get(0).sampleCount());
         assertFalse(profile.points().get(profile.points().size() - 1).isDefined());
-        for (LagCorrelationPoint point : profile.points()) {
+        for (Point point : profile.points()) {
             if (point.lag() <= -23 || point.lag() >= 23) {
                 assertFalse("lag " + point.lag() + " should be undefined", point.isDefined());
                 assertEquals(0, point.sampleCount());
@@ -183,34 +185,37 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
-    public void rejectsLagRangeWhereMinimumExceedsMaximum() {
+    public void getValueReturnsTheSelectedCorrelation() {
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
+        Indicator<Num> second = sine(series, -3);
 
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, 2, 1));
+        LeadLagCorrelationIndicator indicator = indicator(first, second, 8, -5, 5);
+
+        Profile profile = indicator.getProfile(31);
+        assertNumEquals(profile.selectedCorrelation(), indicator.getValue(31), 1.0e-12);
+        assertTrue(indicator.getValue(31).isGreaterThan(numFactory.numOf(0.99)));
     }
 
     @Test
-    public void rejectsLagThatCannotBeIndexedSafely() {
+    public void getValueIsNaNUntilEveryLagWindowIsAvailable() {
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
+        Indicator<Num> second = sine(series, -3);
 
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, Integer.MIN_VALUE, 0));
-        assertThrows(IllegalArgumentException.class,
-                () -> analyze(first, first, 31, 8, Integer.MAX_VALUE, Integer.MAX_VALUE));
+        LeadLagCorrelationIndicator indicator = indicator(first, second, 8, -5, 5);
+
+        // The worst lag bounds the indicator: max(5, 0) unstable bars plus
+        // barCount - 1, i.e. laggedUnstableBars(8, 5) = laggedUnstableBars(8, -5)
+        // = 12. The profile below the boundary is defined for inner lags only,
+        // so the indicator stays NaN until the full range is available.
+        assertEquals(12, indicator.getCountOfUnstableBars());
+        assertTrue(indicator.getValue(11).isNaN());
+        assertTrue(indicator.getValue(12).isNaN() == false);
     }
 
     @Test
-    public void rejectsEndIndexOutsideTheSeries() {
-        BarSeries series = series(40);
-        Indicator<Num> first = sine(series, 0);
-
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, -1, 8, -1, 1));
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 40, 8, -1, 1));
-    }
-
-    @Test
-    public void indicatorWarmUpMakesOverlappingLagsUndefined() {
+    public void warmUpBoundaryHonorsTheWorstLag() {
         BarSeries series = series(40);
         // Finite values during warm-up: only the unstable-bar boundary exposes
         // the divergence from LaggedCorrelationIndicator semantics.
@@ -221,16 +226,44 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
 
         // endIndex 10 with lag 2 needs first[1..8]: the first indicator is
         // still unstable there (5 unstable bars), so LaggedCorrelationIndicator
-        // is NaN and the analyzer must report the lag as undefined.
-        LagCorrelationProfile overlapping = analyze(warmingUp, plain, 10, 8, 2, 2);
-        LagCorrelationPoint point = overlapping.points().get(0);
+        // is NaN and the profile must report the lag as undefined.
+        Profile overlapping = profile(warmingUp, plain, 10, 8, 2, 2);
+        Point point = overlapping.points().get(0);
         assertFalse(point.isDefined());
         assertEquals(0, point.sampleCount());
 
         // The same lag becomes defined once the window starts at the unstable
         // boundary: laggedUnstableBars = max(5, 0) + 2 + 8 - 1 = 14.
-        LagCorrelationProfile boundary = analyze(warmingUp, plain, 14, 8, 2, 2);
+        Profile boundary = profile(warmingUp, plain, 14, 8, 2, 2);
         assertTrue(boundary.points().get(0).isDefined());
+    }
+
+    @Test
+    public void rejectsLagRangeWhereMinimumExceedsMaximum() {
+        BarSeries series = series(40);
+        Indicator<Num> first = sine(series, 0);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator(first, first, 8, 2, 1));
+    }
+
+    @Test
+    public void rejectsLagThatCannotBeIndexedSafely() {
+        BarSeries series = series(40);
+        Indicator<Num> first = sine(series, 0);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator(first, first, 8, Integer.MIN_VALUE, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> indicator(first, first, 8, Integer.MAX_VALUE, Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void rejectsEndIndexOutsideTheSeries() {
+        BarSeries series = series(40);
+        Indicator<Num> first = sine(series, 0);
+
+        LeadLagCorrelationIndicator indicator = indicator(first, first, 8, -1, 1);
+        assertThrows(IllegalArgumentException.class, () -> indicator.getProfile(-1));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getProfile(40));
     }
 
     @Test
@@ -238,8 +271,8 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         BarSeries series = series(40);
         Indicator<Num> first = square(series);
 
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, -600_000, 600_000));
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, first, 31, 8, -2_000_000_000, 2_000_000_000));
+        assertThrows(IllegalArgumentException.class, () -> indicator(first, first, 8, -600_000, 600_000));
+        assertThrows(IllegalArgumentException.class, () -> indicator(first, first, 8, -2_000_000_000, 2_000_000_000));
     }
 
     @Test
@@ -249,7 +282,35 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         Indicator<Num> first = sine(firstSeries, 0);
         Indicator<Num> second = sine(secondSeries, 0);
 
-        assertThrows(IllegalArgumentException.class, () -> analyze(first, second, 31, 8, -1, 1));
+        assertThrows(IllegalArgumentException.class, () -> indicator(first, second, 8, -1, 1));
+    }
+
+    @Test
+    public void symmetricConvenienceConstructorCoversTheFullSignedRange() {
+        BarSeries series = series(40);
+        Indicator<Num> first = sine(series, 0);
+        Indicator<Num> second = sine(series, -3);
+
+        LeadLagCorrelationIndicator symmetric = new LeadLagCorrelationIndicator(first, second, 8, 5,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+        Profile fromSymmetric = symmetric.getProfile(31);
+        Profile fromFull = profile(first, second, 31, 8, -5, 5);
+
+        assertEquals(fromFull, fromSymmetric);
+        assertEquals(OptionalInt.of(3), fromSymmetric.selectedLag());
+    }
+
+    @Test
+    public void unstableBoundarySaturatesAtMaxInt() {
+        BarSeries series = series(40);
+        Indicator<Num> saturated = mockIndicator(series, Integer.MAX_VALUE, constantValues(40));
+        Indicator<Num> plain = indicator(series, constantValues(40));
+
+        LeadLagCorrelationIndicator indicator = new LeadLagCorrelationIndicator(saturated, plain, 2, 0, 0,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        assertEquals(Integer.MAX_VALUE, indicator.getCountOfUnstableBars());
+        assertTrue(indicator.getValue(39).isNaN());
     }
 
     @Test
@@ -257,22 +318,31 @@ public class LeadLagCorrelationAnalyzerTest extends AbstractIndicatorTest<Indica
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
 
-        LagCorrelationProfile profile = analyze(first, first, 31, 8, -1, 1);
+        Profile profile = profile(first, first, 31, 8, -1, 1);
 
         assertThrows(UnsupportedOperationException.class, () -> profile.points().add(null));
         assertThrows(UnsupportedOperationException.class, () -> profile.bestLags().add(0));
     }
 
-    private LagCorrelationProfile analyze(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount,
-            int minimumLag, int maximumLag) {
-        return analyze(first, second, endIndex, barCount, minimumLag, maximumLag,
+    private Profile profile(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int minimumLag,
+            int maximumLag) {
+        return profile(first, second, endIndex, barCount, minimumLag, maximumLag,
                 LagSelectionPolicy.MAXIMUM_CORRELATION);
     }
 
-    private LagCorrelationProfile analyze(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount,
+    private Profile profile(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int minimumLag,
+            int maximumLag, LagSelectionPolicy policy) {
+        return indicator(first, second, barCount, minimumLag, maximumLag, policy).getProfile(endIndex);
+    }
+
+    private LeadLagCorrelationIndicator indicator(Indicator<Num> first, Indicator<Num> second, int barCount,
+            int minimumLag, int maximumLag) {
+        return indicator(first, second, barCount, minimumLag, maximumLag, LagSelectionPolicy.MAXIMUM_CORRELATION);
+    }
+
+    private LeadLagCorrelationIndicator indicator(Indicator<Num> first, Indicator<Num> second, int barCount,
             int minimumLag, int maximumLag, LagSelectionPolicy policy) {
-        return new LeadLagCorrelationAnalyzer().analyze(first, second, endIndex, barCount, minimumLag, maximumLag,
-                policy);
+        return new LeadLagCorrelationIndicator(first, second, barCount, minimumLag, maximumLag, policy);
     }
 
     private BarSeries series(int barCount) {

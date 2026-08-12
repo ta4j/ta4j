@@ -100,24 +100,28 @@ Three complementary analyzers under `org.ta4j.core.indicators.statistics` and
 `org.ta4j.core.analysis.event` answer relationship questions the rolling
 indicators leave open:
 
-- **Lead/lag structure over a lag range** — `LeadLagCorrelationAnalyzer`
-  scans an inclusive lag range and returns a full `LagCorrelationProfile`
-  (one `LagCorrelationPoint` per lag, undefined lags retained), every lag
-  tying for the best score, and one deterministic selected lag (smallest
-  absolute, then smallest signed). The lag sign convention matches
-  `LaggedCorrelationIndicator`: positive means the first indicator leads the
-  second. Selection policy picks the maximum signed or maximum absolute
-  correlation; the selected correlation always keeps its original sign.
+- **Lead/lag structure over a lag range** —
+  `LeadLagCorrelationIndicator` scans an inclusive lag range as a rolling
+  indicator: `getValue(index)` is the selected lag's signed correlation and
+  `getProfile(index)` returns the full `Profile` (one `Point` per lag,
+  undefined lags retained), every lag tying for the best score, and one
+  deterministic selected lag (smallest absolute, then smallest signed). The
+  lag sign convention matches `LaggedCorrelationIndicator`: positive means
+  the first indicator leads the second. The symmetric convenience
+  constructor searches the normal `[-maximumLag, maximumLag]` range;
+  selection policy picks the maximum signed or maximum absolute correlation,
+  and the selected correlation always keeps its original sign.
 - **Shape similarity under time distortion** —
   `DynamicTimeWarpingDistanceIndicator` computes the minimum-cost monotonic
-  alignment between two rolling windows. The recommended configuration (see
-  `LeadLagDtwEventAnalysisExample`) compares shapes (z-score normalization,
-  squared local distance) inside a bounded Sakoe–Chiba band with path-length
-  normalization; unconstrained warping is an explicit opt-in. A zero radius
-  forces diagonal pointwise alignment; the reported cost is the sum or mean
-  of the local costs, according to path-cost normalization. Complexity is
-  `O(W * min(W, 2r + 1))` time and `O(W)` memory for window `W` and radius
-  `r`.
+  alignment between two rolling windows. The recommended configuration
+  (`DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(radius)`;
+  see `LeadLagDtwEventAnalysisExample`) compares shapes (z-score
+  normalization, squared local distance) inside a bounded Sakoe–Chiba band
+  with path-length normalization; unconstrained warping is an explicit
+  opt-in. A zero radius forces diagonal pointwise alignment; the reported
+  cost is the sum or mean of the local costs, according to path-cost
+  normalization. Complexity is `O(W * min(W, 2r + 1))` time and `O(W)`
+  memory for window `W` and radius `r`.
 - **Continuous predictor vs sparse current-or-future event** —
   `EventMutualInformationEvaluator` measures how much a continuous indicator
   state reduces uncertainty about whether a target event occurs in an
@@ -133,7 +137,7 @@ indicators leave open:
 These tools describe association, not causation. The deterministic
 cross-capability demo `ta4jexamples.analysis.LeadLagDtwEventAnalysisExample`
 shows Net Momentum versus close price through all three lenses on a
-synthetic series.
+committed daily BTC dataset.
 
 ## Companion user guides
 

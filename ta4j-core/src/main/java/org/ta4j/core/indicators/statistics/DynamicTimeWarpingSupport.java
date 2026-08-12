@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator.Config;
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator.LocalDistance;
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator.PathCostNormalization;
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator.SequenceNormalization;
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator.WarpingWindow;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -17,9 +22,14 @@ import org.ta4j.core.num.NumFactory;
  * {@code D(i,j) = localCost(i,j) + min(D(i-1,j), D(i,j-1), D(i-1,j-1))} inside
  * the configured alignment band. Only the previous row of costs and path
  * lengths is retained, so memory stays {@code O(W)} for window size {@code W}.
- * Equal-cost predecessors are resolved deterministically in the order diagonal,
- * vertical, horizontal, and the path length is tracked alongside the cost so
- * path-length normalization is exact.
+ * </p>
+ *
+ * <p>
+ * Among equal-cost predecessors the shorter path length wins first, so the
+ * path-length-normalized distance does not depend on the scan direction; paths
+ * that tie on both cost and length are resolved deterministically in the order
+ * diagonal, vertical, horizontal. The path length is tracked alongside the cost
+ * so path-length normalization is exact.
  * </p>
  *
  * <p>
@@ -40,12 +50,16 @@ final class DynamicTimeWarpingSupport {
      * @param second     second sequence
      * @param config     normalization, local distance, band, and cost normalization
      * @return the warped distance, or {@code NaN} when the sequences contain
-     *         non-finite values or the result is not finite
+     *         non-finite values, z-score normalization is numerically undefined
+     *         (mean or variance overflow), or the result is not finite
      */
-    static Num distance(NumFactory numFactory, Num[] first, Num[] second, DynamicTimeWarpingConfig config) {
+    static Num distance(NumFactory numFactory, Num[] first, Num[] second, Config config) {
         int sampleCount = first.length;
         Num[] firstSequence = normalize(numFactory, first, config.normalization());
         Num[] secondSequence = normalize(numFactory, second, config.normalization());
+        if (firstSequence == null || secondSequence == null) {
+            return NaN.NaN;
+        }
 
         Num[] previousCost = new Num[sampleCount];
         int[] previousLength = new int[sampleCount];
@@ -66,7 +80,8 @@ final class DynamicTimeWarpingSupport {
             for (int j = columnMin; j <= columnMax; j++) {
                 Num localCost = localCost(firstSequence[i], secondSequence[j], config.localDistance());
 
-                // Predecessor tie-break order: diagonal, vertical, horizontal.
+                // Predecessor tie-break order: shorter path length first, then
+                // diagonal, vertical, horizontal.
                 Num bestCost = null;
                 int bestLength = 0;
                 if (i > 0 && j > 0) {
@@ -74,13 +89,13 @@ final class DynamicTimeWarpingSupport {
                     bestLength = previousLength[j - 1];
                 }
                 Num vertical = previousCost[j];
-                if (vertical != null && (bestCost == null || vertical.compareTo(bestCost) < 0)) {
+                if (vertical != null && better(vertical, previousLength[j], bestCost, bestLength)) {
                     bestCost = vertical;
                     bestLength = previousLength[j];
                 }
                 if (j > 0) {
                     Num horizontal = currentCost[j - 1];
-                    if (horizontal != null && (bestCost == null || horizontal.compareTo(bestCost) < 0)) {
+                    if (horizontal != null && better(horizontal, currentLength[j - 1], bestCost, bestLength)) {
                         bestCost = horizontal;
                         bestLength = currentLength[j - 1];
                     }
@@ -109,6 +124,19 @@ final class DynamicTimeWarpingSupport {
         return CorrelationWindowSupport.isFinite(total) ? total : NaN.NaN;
     }
 
+    /**
+     * @return {@code true} when the candidate predecessor strictly improves the
+     *         selection: strictly lower cost, or equal cost with a strictly shorter
+     *         path
+     */
+    private static boolean better(Num candidateCost, int candidateLength, Num bestCost, int bestLength) {
+        if (bestCost == null) {
+            return true;
+        }
+        int comparison = candidateCost.compareTo(bestCost);
+        return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
+    }
+
     private static int columnMin(int row, WarpingWindow warpingWindow, int sampleCount) {
         if (warpingWindow.unrestricted()) {
             return 0;
@@ -130,11 +158,22 @@ final class DynamicTimeWarpingSupport {
         return localDistance == LocalDistance.ABSOLUTE ? delta.abs() : delta.multipliedBy(delta);
     }
 
+    /**
+     * @return the normalized sequence, the input itself for {@code NONE}, or
+     *         {@code null} when z-score normalization is numerically undefined
+     *         (non-finite mean or variance)
+     */
     private static Num[] normalize(NumFactory numFactory, Num[] values, SequenceNormalization normalization) {
         if (normalization == SequenceNormalization.NONE) {
             return values;
         }
-        Num mean = average(numFactory, values);
+        // Incremental mean keeps the running sum finite even when the values
+        // themselves are extreme: plain summation of e.g. ten 1.0e308 values
+        // overflows to infinity before the division.
+        Num mean = numFactory.zero();
+        for (int i = 0; i < values.length; i++) {
+            mean = mean.plus(values[i].minus(mean).dividedBy(numFactory.numOf(i + 1)));
+        }
         Num sumOfSquares = numFactory.zero();
         for (Num value : values) {
             Num delta = value.minus(mean);
@@ -148,21 +187,15 @@ final class DynamicTimeWarpingSupport {
             return zeros;
         }
         if (!CorrelationWindowSupport.isFinite(standardDeviation)) {
-            // Non-finite input: propagate it instead of masking with zeros.
-            return values;
+            // Mean or variance overflow: z-scoring is numerically undefined.
+            // Report the distance as NaN instead of silently measuring the raw
+            // values, which would misrepresent the requested normalization.
+            return null;
         }
         Num[] normalized = new Num[values.length];
         for (int i = 0; i < values.length; i++) {
             normalized[i] = values[i].minus(mean).dividedBy(standardDeviation);
         }
         return normalized;
-    }
-
-    private static Num average(NumFactory numFactory, Num[] values) {
-        Num sum = numFactory.zero();
-        for (Num value : values) {
-            sum = sum.plus(value);
-        }
-        return sum.dividedBy(numFactory.numOf(values.length));
     }
 }

@@ -12,13 +12,17 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Assume;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -36,7 +40,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         BarSeries series = series(20);
         boolean[] events = alternatingEvents(20, 2);
         Indicator<Num> predictor = indicator(series, binaryValues(events));
-        EventSignal target = eventSignal(series, 0, events);
+        Indicator<Boolean> target = eventSignal(series, 0, events);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 19,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
@@ -56,7 +60,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // events: p(event | bin) == p(event) and the MI is exactly zero.
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                 19);
-        EventSignal target = eventSignal(series, 0, index -> (index / 2) % 2 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> (index / 2) % 2 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 19,
                 new EventMutualInformationConfig(0, 0, 5, BinningStrategy.EQUAL_WIDTH));
@@ -73,7 +77,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
         // Single event at index 5; window [i+1, i+3] contains it exactly for
         // samples i in {2, 3, 4}.
-        EventSignal target = eventSignal(series, 0, index -> index == 5);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index == 5);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(1, 3, 2, BinningStrategy.EQUAL_FREQUENCY));
@@ -88,7 +92,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         BarSeries series = series(20);
         boolean[] events = alternatingEvents(20, 3);
         Indicator<Num> predictor = indicator(series, binaryValues(events));
-        EventSignal target = eventSignal(series, 0, events);
+        Indicator<Boolean> target = eventSignal(series, 0, events);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 19,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
@@ -104,7 +108,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // Event at index 8; with window [i, i+2] the last admissible sample is
         // i = 6, so the event is consumed once and the last two samples are
         // excluded from training.
-        EventSignal target = eventSignal(series, 0, index -> index == 8);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index == 8);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 8,
                 new EventMutualInformationConfig(0, 2, 2, BinningStrategy.EQUAL_WIDTH));
@@ -138,7 +142,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3);
         // 10 samples, 4 requested bins => desired 3 per bin, but the tie run of
         // three 2s cannot be split, so the second bin absorbs it.
-        EventSignal target = eventSignal(series, 0, index -> index % 2 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
@@ -157,7 +161,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // three 2s cannot be split, so the applied partition is exactly
         // {0,0,0}, {1,1,2,2,2}, {3,3} (3 bins). The reported effectiveBinCount
         // and the MI must both come from that partition.
-        EventSignal target = eventSignal(series, 0, index -> index % 3 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 3 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
@@ -173,7 +177,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     public void skewedPredictorUsesMoreEffectiveBinsWithEqualFrequency() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 0, 0, 0, 0, 0, 5, 100);
-        EventSignal target = eventSignal(series, 0, index -> index % 2 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
 
         EventMutualInformationResult equalFrequency = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
@@ -199,7 +203,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         }
         values.set(5, NaN.NaN);
         Indicator<Num> predictor = new MockIndicator(series, values);
-        EventSignal target = eventSignal(series, 0, index -> index % 2 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
@@ -220,18 +224,21 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         BarSeries series = series(20);
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                 19);
-        EventSignal target = eventSignal(series, 0, index -> index % 3 == 0);
-        EventSignal unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 3 == 0);
+        Indicator<Boolean> unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
 
         // startIndex below the target's unstable boundary.
-        assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, unstableTarget, 0, 19,
-                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT)));
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, unstableTarget, 0, 19, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
         // endIndex beyond the series end.
-        assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, target, 0, 20,
-                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT)));
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, 0, 20, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
         // The partition cannot hold a single complete target window.
-        assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, target, 10, 10,
-                new EventMutualInformationConfig(0, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT)));
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, 10, 10, new EventMutualInformationConfig(0, 3, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
         // startIndex beyond endIndex.
         assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, target, 5, 4,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
@@ -244,10 +251,11 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
                 19);
         // Target is unstable below index 5; with a window starting 3 bars
         // ahead, samples from index 2 read only stable target indexes.
-        EventSignal unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
+        Indicator<Boolean> unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, unstableTarget, 2, 19,
-                new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT));
+                new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH,
+                        AnalysisContext.MissingHistoryPolicy.STRICT));
 
         assertEquals(15, result.sampleCount());
         assertFalse(result.mutualInformationNats().isNaN());
@@ -255,8 +263,9 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
         // Samples below index 2 would read unstable target indexes: STRICT
         // rejects them.
-        assertThrows(IllegalArgumentException.class, () -> evaluate(predictor, unstableTarget, 1, 19,
-                new EventMutualInformationConfig(3, 3, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.STRICT)));
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, unstableTarget, 1, 19, new EventMutualInformationConfig(3, 3, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
     }
 
     @Test
@@ -264,20 +273,99 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         BarSeries series = series(20);
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                 19);
-        EventSignal unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
+        Indicator<Boolean> unstableTarget = eventSignal(series, 5, index -> index % 3 == 0);
 
         EventMutualInformationResult clamped = evaluate(predictor, unstableTarget, 0, 19,
-                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.CLAMP));
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH,
+                        AnalysisContext.MissingHistoryPolicy.CLAMP));
         assertEquals(15, clamped.sampleCount());
         assertFalse(clamped.mutualInformationNats().isNaN());
         assertTrue(!clamped.mutualInformationNats().isNegative());
 
         // A range that clamps to empty yields an undefined result, not an error.
-        EventMutualInformationResult empty = evaluate(predictor, unstableTarget, 0, 2,
-                new EventMutualInformationConfig(0, 5, 2, BinningStrategy.EQUAL_WIDTH, HistoryPolicy.CLAMP));
+        EventMutualInformationResult empty = evaluate(predictor, unstableTarget, 0, 2, new EventMutualInformationConfig(
+                0, 5, 2, BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.CLAMP));
         assertEquals(0, empty.sampleCount());
         assertTrue(empty.mutualInformationNats().isNaN());
         assertTrue(empty.positiveTargetRate().isNaN());
+    }
+
+    @Test
+    public void equalWidthBinningWithNonFiniteSpanIsUndefined() {
+        Assume.assumeTrue(numFactory instanceof DoubleNumFactory);
+        BarSeries series = series(12);
+        // The span maximum - minimum overflows to infinity for samples at both
+        // ends of the double range, so equal-width bin positions would be
+        // numerically undefined; the evaluation is undefined, not a silent
+        // collapse into bin 0.
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            values.add(numFactory.numOf(i < 6 ? -Double.MAX_VALUE : Double.MAX_VALUE));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 11,
+                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_WIDTH));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertEquals(12, result.sampleCount());
+        assertEquals(6, result.positiveTargetCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
+    public void proxySeriesEndingAtIntegerMaxValueReturnsUndefinedResult() {
+        // A series whose end index is Integer.MAX_VALUE makes the covered
+        // target-window span exceed Integer.MAX_VALUE (unrepresentable in
+        // memory): the evaluation must be undefined and must terminate instead
+        // of wrapping the sample or prefix loops past the int range.
+        BaseBarSeries built = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 1, 2, 3 })
+                .build();
+        BaseBarSeries proxy = new BaseBarSeries(built.getName(), built.getBarData()) {
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        List<Num> predictorValues = new ArrayList<>();
+        predictorValues.add(numFactory.numOf(1));
+        Indicator<Num> predictor = new MockIndicator(proxy, predictorValues);
+        Indicator<Boolean> target = eventSignal(proxy, 0, index -> false);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, Integer.MAX_VALUE,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertEquals(0, result.sampleCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
+    public void clampPolicyReturnsEmptyUndefinedForDisjointNegativeExtremeRange() {
+        BarSeries series = series(20);
+        Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                19);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 3 == 0);
+
+        // A requested partition entirely before the series (negative int
+        // extreme) must never wrap the maxSampleIndex subtraction and score
+        // available history: the result is empty and undefined.
+        EventMutualInformationResult result = evaluate(predictor, target, Integer.MIN_VALUE, Integer.MIN_VALUE,
+                new EventMutualInformationConfig(0, 1, 2, BinningStrategy.EQUAL_WIDTH,
+                        AnalysisContext.MissingHistoryPolicy.CLAMP));
+
+        assertEquals(0, result.sampleCount());
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertTrue(result.positiveTargetRate().isNaN());
+        assertEquals(0, result.effectiveBinCount());
     }
 
     @Test
@@ -286,7 +374,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         BarSeries otherSeries = series(20);
         Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                 19);
-        EventSignal target = eventSignal(series, 0, index -> index % 3 == 0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 3 == 0);
 
         assertThrows(NullPointerException.class, () -> evaluate(null, target, 0, 19,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
@@ -298,7 +386,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
                         new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
     }
 
-    private EventMutualInformationResult evaluate(Indicator<Num> predictor, EventSignal target, int startIndex,
+    private EventMutualInformationResult evaluate(Indicator<Num> predictor, Indicator<Boolean> target, int startIndex,
             int endIndex, EventMutualInformationConfig config) {
         return new EventMutualInformationEvaluator().evaluate(predictor, target, startIndex, endIndex, config);
     }
@@ -319,13 +407,23 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         return new MockIndicator(series, nums);
     }
 
-    private static EventSignal eventSignal(BarSeries series, int unstableBars,
+    private static Indicator<Boolean> eventSignal(BarSeries series, int unstableBars,
             java.util.function.IntPredicate predicate) {
-        return EventSignals.fromPredicate(series, unstableBars, predicate);
+        return new CachedIndicator<Boolean>(series) {
+            @Override
+            protected Boolean calculate(int index) {
+                return predicate.test(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return unstableBars;
+            }
+        };
     }
 
-    private static EventSignal eventSignal(BarSeries series, int unstableBars, boolean[] events) {
-        return EventSignals.fromPredicate(series, unstableBars, index -> index < events.length && events[index]);
+    private static Indicator<Boolean> eventSignal(BarSeries series, int unstableBars, boolean[] events) {
+        return eventSignal(series, unstableBars, index -> index < events.length && events[index]);
     }
 
     /**

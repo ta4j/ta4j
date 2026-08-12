@@ -40,8 +40,11 @@ class DynamicTimeWarpingBenchmarkTest {
         Indicator<Num> second = sineIndicator(series, 3);
         for (int windowSize : new int[] { 64, 128, 512, 2_048 }) {
             for (int radius : new int[] { 0, 5, 20 }) {
-                DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(SequenceNormalization.Z_SCORE,
-                        LocalDistance.SQUARED, WarpingWindow.sakoeChiba(radius), PathCostNormalization.BY_PATH_LENGTH);
+                DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(radius),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
                 DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, second,
                         windowSize, config);
                 int unstableBars = dtw.getCountOfUnstableBars();

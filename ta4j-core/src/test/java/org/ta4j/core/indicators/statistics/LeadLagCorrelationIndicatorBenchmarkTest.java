@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.LagSelectionPolicy;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.Profile;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -28,9 +30,9 @@ import org.ta4j.core.num.Num;
  * </p>
  */
 @Tag("benchmark")
-class LeadLagCorrelationAnalyzerBenchmarkTest {
+class LeadLagCorrelationIndicatorBenchmarkTest {
 
-    private static final Logger LOG = LogManager.getLogger(LeadLagCorrelationAnalyzerBenchmarkTest.class);
+    private static final Logger LOG = LogManager.getLogger(LeadLagCorrelationIndicatorBenchmarkTest.class);
 
     private static final int BARS = 20_000;
 
@@ -39,12 +41,12 @@ class LeadLagCorrelationAnalyzerBenchmarkTest {
         BarSeries series = series();
         Indicator<Num> first = sineIndicator(series, 0);
         Indicator<Num> second = sineIndicator(series, 5);
-        LeadLagCorrelationAnalyzer analyzer = new LeadLagCorrelationAnalyzer();
         for (int barCount : new int[] { 128, 512, 2_048 }) {
             for (int[] lagRange : new int[][] { { -20, 20 }, { -100, 100 } }) {
+                LeadLagCorrelationIndicator indicator = new LeadLagCorrelationIndicator(first, second, barCount,
+                        lagRange[0], lagRange[1], LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
                 long start = System.nanoTime();
-                LagCorrelationProfile profile = analyzer.analyze(first, second, BARS - 1, barCount, lagRange[0],
-                        lagRange[1], LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
+                Profile profile = indicator.getProfile(BARS - 1);
                 long elapsedMs = (System.nanoTime() - start) / 1_000_000;
                 assertFalse(profile.bestLags().isEmpty(), "expected at least one defined lag");
                 LOG.info("tlcc benchmark: window {} lag range [{},{}] -> {} ms, {} points, best {}", barCount,

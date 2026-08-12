@@ -23,11 +23,11 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * The alignment band is caller-configured through the
- * {@link DynamicTimeWarpingConfig}: the Sakoe–Chiba radius bounds the warping
- * window, and unconstrained warping is an explicit opt-in. Both windows end at
- * the evaluated index, so no future samples are ever read. A window that is
- * unavailable or contains non-finite values produces {@code NaN}.
+ * The alignment band is caller-configured through the nested {@link Config}:
+ * the Sakoe–Chiba radius bounds the warping window, and unconstrained warping
+ * is an explicit opt-in. Both windows end at the evaluated index, so no future
+ * samples are ever read. A window that is unavailable or contains non-finite
+ * values produces {@code NaN}.
  * </p>
  *
  * <p>
@@ -49,7 +49,8 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
     private final boolean unconstrained;
     private final PathCostNormalization pathCostNormalization;
 
-    private final transient DynamicTimeWarpingConfig config;
+    /** Reconstructed by the flattened constructor; never serialized directly. */
+    private final transient Config config;
 
     /**
      * Constructor.
@@ -62,9 +63,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
      * @throws IllegalArgumentException if {@code barCount < 2} or the indicators
      *                                  use different series
      * @throws NullPointerException     if an indicator or the config is null
+     * @since 0.24.2
      */
     public DynamicTimeWarpingDistanceIndicator(Indicator<Num> first, Indicator<Num> second, int barCount,
-            DynamicTimeWarpingConfig config) {
+            Config config) {
         this(first, second, barCount, Objects.requireNonNull(config, "config").normalization(), config.localDistance(),
                 config.warpingWindow().radius(), config.warpingWindow().unrestricted(), config.pathCostNormalization());
     }
@@ -82,6 +84,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
      *                              {@code unconstrained} is {@code true}
      * @param unconstrained         whether the alignment band is unbounded
      * @param pathCostNormalization path cost normalization
+     * @throws IllegalArgumentException if {@code barCount < 2}, the indicators use
+     *                                  different series, or the radius is invalid
+     *                                  for the alignment band
+     * @throws NullPointerException     if an indicator or an enum parameter is null
      */
     DynamicTimeWarpingDistanceIndicator(Indicator<Num> first, Indicator<Num> second, int barCount,
             SequenceNormalization normalization, LocalDistance localDistance, int radius, boolean unconstrained,
@@ -97,7 +103,7 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
         WarpingWindow warpingWindow = new WarpingWindow(radius, unconstrained);
         this.radius = warpingWindow.radius();
         this.unconstrained = warpingWindow.unrestricted();
-        this.config = new DynamicTimeWarpingConfig(normalization, localDistance, warpingWindow, pathCostNormalization);
+        this.config = new Config(normalization, localDistance, warpingWindow, pathCostNormalization);
     }
 
     @Override
@@ -117,5 +123,179 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
     @Override
     public int getCountOfUnstableBars() {
         return CorrelationWindowSupport.unstableBars(barCount, first, second);
+    }
+
+    /**
+     * Immutable configuration of {@link DynamicTimeWarpingDistanceIndicator}:
+     * sequence normalization, pointwise local distance, alignment band, and path
+     * cost normalization.
+     *
+     * @param normalization         sequence normalization applied to both windows
+     * @param localDistance         pointwise distance between aligned samples
+     * @param warpingWindow         alignment band of the dynamic program
+     * @param pathCostNormalization how the accumulated path cost is reported
+     * @since 0.24.2
+     */
+    public record Config(SequenceNormalization normalization, LocalDistance localDistance, WarpingWindow warpingWindow,
+            PathCostNormalization pathCostNormalization) {
+
+        /**
+         * Validates the configuration.
+         *
+         * @throws NullPointerException if a component is null
+         */
+        public Config {
+            Objects.requireNonNull(normalization, "normalization");
+            Objects.requireNonNull(localDistance, "localDistance");
+            Objects.requireNonNull(warpingWindow, "warpingWindow");
+            Objects.requireNonNull(pathCostNormalization, "pathCostNormalization");
+        }
+
+        /**
+         * Creates the shape-comparison configuration: z-score normalization, squared
+         * local distance, a Sakoe–Chiba band of the given radius, and exact path-length
+         * normalization. This is the recommended baseline for comparing two series by
+         * shape alone.
+         *
+         * @param radius the Sakoe–Chiba radius, {@code >= 0}
+         * @return the shape-comparison configuration
+         * @throws IllegalArgumentException if {@code radius < 0}
+         * @since 0.24.2
+         */
+        public static Config shapeComparison(int radius) {
+            return new Config(SequenceNormalization.Z_SCORE, LocalDistance.SQUARED, WarpingWindow.sakoeChiba(radius),
+                    PathCostNormalization.BY_PATH_LENGTH);
+        }
+    }
+
+    /**
+     * Alignment band of {@link DynamicTimeWarpingDistanceIndicator}.
+     *
+     * <p>
+     * A Sakoe–Chiba band restricts the optimal path to cells whose row/column
+     * indexes differ by at most {@code radius}. A radius of zero restricts the path
+     * to the diagonal, so the warped distance reduces to the sum of pointwise local
+     * costs. Unconstrained warping is an explicit opt-in that costs {@code O(W^2)}
+     * time instead of {@code O(W * min(W, 2r + 1))}.
+     * </p>
+     *
+     * @param radius       the Sakoe–Chiba radius, {@code >= 0}; must be {@code 0}
+     *                     when {@code unrestricted} is {@code true}
+     * @param unrestricted {@code true} when every monotonic alignment is allowed
+     * @since 0.24.2
+     */
+    public record WarpingWindow(int radius, boolean unrestricted) {
+
+        /**
+         * Creates the bounded Sakoe–Chiba window.
+         *
+         * @param radius the band radius, {@code >= 0}
+         * @return the bounded window
+         * @throws IllegalArgumentException if {@code radius < 0}
+         * @since 0.24.2
+         */
+        public static WarpingWindow sakoeChiba(int radius) {
+            return new WarpingWindow(radius, false);
+        }
+
+        /**
+         * Creates the unconstrained window. Prefer a Sakoe–Chiba band unless the full
+         * {@code O(W^2)} alignment is required.
+         *
+         * @return the unconstrained window
+         * @since 0.24.2
+         */
+        public static WarpingWindow unconstrained() {
+            return new WarpingWindow(0, true);
+        }
+
+        /**
+         * Validates the window.
+         *
+         * @throws IllegalArgumentException if {@code radius < 0}, or if
+         *                                  {@code radius != 0} while
+         *                                  {@code unrestricted} is {@code true}
+         */
+        public WarpingWindow {
+            if (radius < 0 || (unrestricted && radius != 0)) {
+                throw new IllegalArgumentException(
+                        "radius must be >= 0 and must be 0 when the window is unconstrained");
+            }
+        }
+
+        /**
+         * @param firstIndex  row index
+         * @param secondIndex column index
+         * @return {@code true} when the cell lies inside the alignment band
+         * @since 0.24.2
+         */
+        public boolean inBand(int firstIndex, int secondIndex) {
+            return unrestricted || Math.abs((long) firstIndex - secondIndex) <= radius;
+        }
+    }
+
+    /**
+     * Sequence normalization for {@link DynamicTimeWarpingDistanceIndicator}.
+     *
+     * <p>
+     * {@link #Z_SCORE} removes level and scale so the warped distance measures
+     * shape only. Under z-score normalization a zero-standard-deviation sequence is
+     * mapped to zeros, so two constant sequences have zero shape distance
+     * regardless of level, and a constant sequence compared with a varying one
+     * measures the varying normalized shape against zeros. Callers who care about
+     * absolute level use {@link #NONE}.
+     * </p>
+     *
+     * @since 0.24.2
+     */
+    public enum SequenceNormalization {
+
+        /**
+         * No normalization; distances are computed on the raw values.
+         */
+        NONE,
+        /**
+         * Standardize each sequence to zero mean and unit standard deviation before
+         * computing distances.
+         */
+        Z_SCORE
+    }
+
+    /**
+     * Local distance between two aligned samples of
+     * {@link DynamicTimeWarpingDistanceIndicator}.
+     *
+     * @since 0.24.2
+     */
+    public enum LocalDistance {
+
+        /**
+         * Absolute difference between the two samples.
+         */
+        ABSOLUTE,
+        /**
+         * Squared difference between the two samples; penalizes large local deviations
+         * more strongly.
+         */
+        SQUARED
+    }
+
+    /**
+     * How the accumulated path cost of {@link DynamicTimeWarpingDistanceIndicator}
+     * is turned into the reported distance.
+     *
+     * @since 0.24.2
+     */
+    public enum PathCostNormalization {
+
+        /**
+         * Report the raw accumulated cost of the optimal warping path.
+         */
+        NONE,
+        /**
+         * Divide the accumulated cost by the number of cells on the optimal path so
+         * that paths of different lengths remain comparable.
+         */
+        BY_PATH_LENGTH
     }
 }

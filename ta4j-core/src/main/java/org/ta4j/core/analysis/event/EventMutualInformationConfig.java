@@ -5,7 +5,7 @@ package org.ta4j.core.analysis.event;
 
 import java.util.Objects;
 
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 
 /**
  * Immutable configuration for {@link EventMutualInformationEvaluator}.
@@ -27,11 +27,13 @@ import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
  * @param predictorBinCount     requested predictor bin count, at least 2
  * @param binningStrategy       predictor discretization
  * @param historyPolicy         how to treat requested history outside the
- *                              available range
- * @since 0.24.1
+ *                              available range;
+ *                              {@link AnalysisContext.MissingHistoryPolicy#CLAMP}
+ *                              is the default
+ * @since 0.24.2
  */
 public record EventMutualInformationConfig(int targetWindowStartBars, int targetWindowEndBars, int predictorBinCount,
-        BinningStrategy binningStrategy, HistoryPolicy historyPolicy) {
+        BinningStrategy binningStrategy, AnalysisContext.MissingHistoryPolicy historyPolicy) {
 
     /**
      * Maximum predictor bin count. Bounds the joint-count arrays to a fixed few
@@ -41,16 +43,19 @@ public record EventMutualInformationConfig(int targetWindowStartBars, int target
     public static final int MAX_PREDICTOR_BIN_COUNT = 1_000_000;
 
     /**
-     * Creates a config with strict history handling.
+     * Creates a config whose missing history is clamped to the available range
+     * ({@link AnalysisContext.MissingHistoryPolicy#CLAMP}).
      *
      * @param targetWindowStartBars inclusive lower bound of the target window
      * @param targetWindowEndBars   inclusive upper bound of the target window
      * @param predictorBinCount     requested predictor bin count
      * @param binningStrategy       predictor discretization
+     * @since 0.24.2
      */
     public EventMutualInformationConfig(int targetWindowStartBars, int targetWindowEndBars, int predictorBinCount,
             BinningStrategy binningStrategy) {
-        this(targetWindowStartBars, targetWindowEndBars, predictorBinCount, binningStrategy, HistoryPolicy.STRICT);
+        this(targetWindowStartBars, targetWindowEndBars, predictorBinCount, binningStrategy,
+                AnalysisContext.MissingHistoryPolicy.CLAMP);
     }
 
     /**

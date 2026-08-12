@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -57,8 +58,8 @@ class EventMutualInformationBenchmarkTest {
                     for (BinningStrategy strategy : BinningStrategy.values()) {
                         long start = System.nanoTime();
                         EventMutualInformationResult result = new EventMutualInformationEvaluator().evaluate(predictor,
-                                target, 0, bars - 1,
-                                new EventMutualInformationConfig(0, 3, bins, strategy, HistoryPolicy.CLAMP));
+                                target, 0, bars - 1, new EventMutualInformationConfig(0, 3, bins, strategy,
+                                        AnalysisContext.MissingHistoryPolicy.CLAMP));
                         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
                         assertFalse(result.mutualInformationNats().isNaN(),
                                 "expected a defined MI at " + bars + " bars");

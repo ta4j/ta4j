@@ -10,8 +10,8 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.indicators.IndicatorUtils;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -35,16 +35,19 @@ import org.ta4j.core.num.NumFactory;
  * entropy, normalized MI, event prevalence, and bin diagnostics.
  * Equal-frequency binning never splits identical predictor values, so the
  * effective bin count may be smaller than requested. A non-finite predictor
- * sample or an empty effective range makes the evaluation undefined (metrics
- * {@code NaN}) instead of silently dropping samples.
+ * sample, an empty effective range, or a target-window span too large to
+ * represent in memory makes the evaluation undefined (metrics {@code NaN})
+ * instead of silently dropping samples or truncating the window.
  * </p>
  *
- * @since 0.24.1
+ * @since 0.24.2
  */
 public final class EventMutualInformationEvaluator {
 
     /**
      * Creates an evaluator.
+     *
+     * @since 0.24.2
      */
     public EventMutualInformationEvaluator() {
     }
@@ -52,8 +55,13 @@ public final class EventMutualInformationEvaluator {
     /**
      * Evaluates the predictor against the future Boolean event target.
      *
+     * <p>
+     * The target is an ordinary {@code Indicator<Boolean>}: only
+     * {@link Boolean#TRUE} counts as an event, and the target's own unstable-bar
+     * boundary is honored.
+     *
      * @param predictor  continuous predictor indicator
-     * @param target     sparse Boolean event target
+     * @param target     sparse Boolean event target indicator
      * @param startIndex inclusive start of the analysis partition
      * @param endIndex   inclusive end of the analysis partition; target windows
      *                   never cross it
@@ -67,8 +75,9 @@ public final class EventMutualInformationEvaluator {
      *                                  target window under {@code STRICT}, or the
      *                                  predictor and target use different series
      * @throws NullPointerException     if an argument is null
+     * @since 0.24.2
      */
-    public EventMutualInformationResult evaluate(Indicator<Num> predictor, EventSignal target, int startIndex,
+    public EventMutualInformationResult evaluate(Indicator<Num> predictor, Indicator<Boolean> target, int startIndex,
             int endIndex, EventMutualInformationConfig config) {
         Objects.requireNonNull(predictor, "predictor");
         Objects.requireNonNull(target, "target");
@@ -83,43 +92,73 @@ public final class EventMutualInformationEvaluator {
         int availableStart = Math.max(series.getBeginIndex(), predictor.getCountOfUnstableBars());
         // The earliest target index a sample reads is i + targetWindowStartBars,
         // so samples may start below the target's own unstable boundary as long
-        // as their first target index is stable.
+        // as their first target index is stable. The begin-index term keeps the
+        // same guarantee for series whose begin index is beyond 0.
         availableStart = Math.max(availableStart, target.getCountOfUnstableBars() - config.targetWindowStartBars());
+        availableStart = Math.max(availableStart, series.getBeginIndex() - config.targetWindowStartBars());
         int availableEnd = series.getEndIndex();
-        int maxSampleIndex = endIndex - config.targetWindowEndBars();
-        int availableMaxSample = availableEnd - config.targetWindowEndBars();
+        // Long arithmetic keeps window-offset extremes of the int range from
+        // wrapping: endIndex - targetWindowEndBars could otherwise wrap to a
+        // huge positive value and admit samples whose target window is empty.
+        long maxSampleIndex = (long) endIndex - config.targetWindowEndBars();
+        long availableMaxSample = (long) availableEnd - config.targetWindowEndBars();
 
         int effectiveStart = startIndex;
-        int effectiveEnd = maxSampleIndex;
-        if (config.historyPolicy() == HistoryPolicy.STRICT) {
+        long effectiveEndValue = maxSampleIndex;
+        if (config.historyPolicy() == AnalysisContext.MissingHistoryPolicy.STRICT) {
             if (startIndex < availableStart || endIndex > availableEnd || maxSampleIndex < startIndex) {
                 throw new IllegalArgumentException(
                         "requested evaluation range includes unavailable history or cannot hold a complete target window");
             }
-        } else {
-            effectiveStart = Math.max(effectiveStart, availableStart);
-            effectiveEnd = Math.min(effectiveEnd, availableMaxSample);
+            // STRICT guarantees maxSampleIndex >= startIndex >= availableStart >= 0.
+            int effectiveEnd = (int) maxSampleIndex;
+            return evaluateInRange(predictor, target, series, numFactory, effectiveStart, effectiveEnd, config);
         }
+        effectiveStart = Math.max(effectiveStart, availableStart);
+        effectiveEndValue = Math.min(effectiveEndValue, availableMaxSample);
+        int effectiveEnd = effectiveEndValue < effectiveStart ? -1
+                : (int) Math.min(effectiveEndValue, Integer.MAX_VALUE);
+        return evaluateInRange(predictor, target, series, numFactory, effectiveStart, effectiveEnd, config);
+    }
 
+    private EventMutualInformationResult evaluateInRange(Indicator<Num> predictor, Indicator<Boolean> target,
+            BarSeries series, NumFactory numFactory, int effectiveStart, int effectiveEnd,
+            EventMutualInformationConfig config) {
+        // eventPrefix is null when the target window span cannot be represented
+        // in memory (more than Integer.MAX_VALUE distinct target indexes): such
+        // an evaluation is undefined, never silently truncated, and never walks
+        // the (astronomically large) effective range.
         int[] eventPrefix = effectiveStart <= effectiveEnd ? eventPrefix(target, effectiveStart, effectiveEnd, config)
                 : new int[0];
+        boolean infeasibleWindow = effectiveStart <= effectiveEnd && eventPrefix == null;
         List<Num> predictorValues = new ArrayList<>();
         List<Boolean> labels = new ArrayList<>();
         int positiveTargetCount = 0;
-        boolean undefined = effectiveStart > effectiveEnd;
-        for (int i = effectiveStart; i <= effectiveEnd; i++) {
-            Num predictorValue = predictor.getValue(i);
-            if (!isFinite(predictorValue)) {
-                // Undefined metrics, but the diagnostic counts keep covering
-                // every eligible sample so candidate sample counts cannot
-                // drift invisibly.
-                undefined = true;
-            }
-            predictorValues.add(predictorValue);
-            boolean positive = targetWindowHasEvent(eventPrefix, i, effectiveStart, config);
-            labels.add(positive);
-            if (positive) {
-                positiveTargetCount++;
+        boolean undefined = effectiveStart > effectiveEnd || infeasibleWindow;
+        if (effectiveStart <= effectiveEnd && !infeasibleWindow) {
+            // The while-true loop form keeps i from wrapping to MIN_VALUE when
+            // effectiveEnd is Integer.MAX_VALUE.
+            int i = effectiveStart;
+            while (true) {
+                Num predictorValue = predictor.getValue(i);
+                if (!isFinite(predictorValue)) {
+                    // Undefined metrics, but the diagnostic counts keep covering
+                    // every eligible sample so candidate sample counts cannot
+                    // drift invisibly.
+                    undefined = true;
+                }
+                predictorValues.add(predictorValue);
+                // The loop is only entered when the target-window span is
+                // representable, so the prefix array is always real here.
+                boolean positive = targetWindowHasEvent(eventPrefix, i, effectiveStart, config);
+                labels.add(positive);
+                if (positive) {
+                    positiveTargetCount++;
+                }
+                if (i == effectiveEnd) {
+                    break;
+                }
+                i++;
             }
         }
 
@@ -153,7 +192,17 @@ public final class EventMutualInformationEvaluator {
             // Bins beyond the sample count can never be populated, so the
             // effective count is bounded by sampleCount before any allocation.
             effectiveBinCount = minimum.compareTo(maximum) == 0 ? 1 : Math.min(config.predictorBinCount(), sampleCount);
-            bins = equalWidthBins(predictorValues, minimum, maximum, effectiveBinCount);
+            // maximum - minimum can overflow to infinity for extreme spans
+            // (e.g. samples at both ends of the double range); with a non-finite
+            // span the bin width would be NaN and every sample would land in
+            // bin 0. Such an evaluation is undefined, not silently degenerate.
+            Num span = maximum.minus(minimum);
+            if (!isFinite(span)) {
+                return new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, sampleCount, positiveTargetCount,
+                        positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
+                        config.targetWindowStartBars(), config.targetWindowEndBars());
+            }
+            bins = equalWidthBins(predictorValues, minimum, span, effectiveBinCount);
         }
         if (positiveTargetCount == 0 || positiveTargetCount == sampleCount) {
             // Constant target: no uncertainty to explain, so raw MI is zero and
@@ -201,13 +250,29 @@ public final class EventMutualInformationEvaluator {
                 config.binningStrategy(), config.targetWindowStartBars(), config.targetWindowEndBars());
     }
 
-    private static int[] eventPrefix(EventSignal target, int effectiveStart, int effectiveEnd,
+    /**
+     * @return the target event prefix array for the effective sample range, or
+     *         {@code null} when the covered target window span cannot be
+     *         represented in memory
+     */
+    private static int[] eventPrefix(Indicator<Boolean> target, int effectiveStart, int effectiveEnd,
             EventMutualInformationConfig config) {
-        int targetStart = effectiveStart + config.targetWindowStartBars();
-        int targetEnd = effectiveEnd + config.targetWindowEndBars();
-        int[] prefix = new int[targetEnd - targetStart + 2];
-        for (int j = targetStart; j <= targetEnd; j++) {
-            prefix[j - targetStart + 1] = prefix[j - targetStart] + (target.isEvent(j) ? 1 : 0);
+        long targetStart = (long) effectiveStart + config.targetWindowStartBars();
+        long targetEnd = (long) effectiveEnd + config.targetWindowEndBars();
+        long span = targetEnd - targetStart + 2L;
+        if (span > Integer.MAX_VALUE) {
+            return null;
+        }
+        int[] prefix = new int[(int) span];
+        long j = targetStart;
+        int k = 1;
+        while (true) {
+            prefix[k] = prefix[k - 1] + (Boolean.TRUE.equals(target.getValue((int) j)) ? 1 : 0);
+            if (j == targetEnd) {
+                break;
+            }
+            j++;
+            k++;
         }
         return prefix;
     }
@@ -217,6 +282,9 @@ public final class EventMutualInformationEvaluator {
         int offset = sampleIndex - effectiveStart;
         // prefix[k] counts events in [targetStart, targetStart + k), so the
         // window [i + start, i + end] maps to (offset, offset + end - start].
+        // The index arithmetic cannot overflow here: eventPrefix is only built
+        // when the whole target window span fits in an int array, and
+        // offset + windowLength + 1 <= span - 1.
         return eventPrefix[offset + config.targetWindowEndBars() - config.targetWindowStartBars() + 1]
                 - eventPrefix[offset] > 0;
     }
@@ -246,12 +314,15 @@ public final class EventMutualInformationEvaluator {
         return bins;
     }
 
-    private static int[] equalWidthBins(List<Num> values, Num minimum, Num maximum, int effectiveBinCount) {
+    private static int[] equalWidthBins(List<Num> values, Num minimum, Num span, int effectiveBinCount) {
         int sampleCount = values.size();
         if (effectiveBinCount == 1) {
             return new int[sampleCount];
         }
-        Num width = maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(effectiveBinCount));
+        // span is finite (validated by the caller), so every value delta is
+        // finite: correctly-rounded subtraction of finite doubles within
+        // [minimum, minimum + span] cannot overflow past the double range.
+        Num width = span.dividedBy(minimum.getNumFactory().numOf(effectiveBinCount));
         int[] bins = new int[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
             int bin = values.get(i).minus(minimum).dividedBy(width).intValue();

@@ -7,7 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
-import org.ta4j.core.analysis.event.EventSynchronizationConfig.HistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 
 public class EventMutualInformationConfigTest {
 
@@ -37,10 +37,10 @@ public class EventMutualInformationConfigTest {
     }
 
     @Test
-    public void convenienceConstructorDefaultsToStrictHistory() {
+    public void convenienceConstructorDefaultsToClampedHistory() {
         EventMutualInformationConfig config = new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH);
 
-        assertEquals(HistoryPolicy.STRICT, config.historyPolicy());
+        assertEquals(AnalysisContext.MissingHistoryPolicy.CLAMP, config.historyPolicy());
         assertEquals(BinningStrategy.EQUAL_WIDTH, config.binningStrategy());
     }
 }

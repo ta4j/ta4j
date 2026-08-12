@@ -23,6 +23,7 @@ import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
 public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -30,9 +31,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         super(numFactory);
     }
 
-    private static final DynamicTimeWarpingConfig DEFAULT_CONFIG = new DynamicTimeWarpingConfig(
-            SequenceNormalization.Z_SCORE, LocalDistance.SQUARED, WarpingWindow.sakoeChiba(5),
-            PathCostNormalization.BY_PATH_LENGTH);
+    private static final DynamicTimeWarpingDistanceIndicator.Config DEFAULT_CONFIG = new DynamicTimeWarpingDistanceIndicator.Config(
+            DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+            DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+            DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+            DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
     @Test
     public void identicalSequencesReturnZero() {
@@ -50,8 +53,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23);
         Indicator<Num> second = indicator(series, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24);
-        DynamicTimeWarpingConfig diagonal = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(0), PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config diagonal = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
         DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, second, 6, diagonal);
 
         // A zero-radius band restricts the path to the diagonal: the raw cost is
@@ -59,8 +65,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // the pointwise mean.
         assertNumEquals(numFactory.numOf(6), dtw.getValue(11), 1.0e-12);
 
-        DynamicTimeWarpingConfig normalized = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(0), PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator.Config normalized = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
         DynamicTimeWarpingDistanceIndicator normalizedDtw = new DynamicTimeWarpingDistanceIndicator(first, second, 6,
                 normalized);
         assertNumEquals(numFactory.one(), normalizedDtw.getValue(11), 1.0e-12);
@@ -71,10 +80,16 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
         Indicator<Num> stretched = indicator(series, 0, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        DynamicTimeWarpingConfig plain = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(0), PathCostNormalization.NONE);
-        DynamicTimeWarpingConfig warped = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(3), PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config plain = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config warped = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(3),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
 
         Num withoutWarping = new DynamicTimeWarpingDistanceIndicator(first, stretched, 8, plain).getValue(11);
         Num withWarping = new DynamicTimeWarpingDistanceIndicator(first, stretched, 8, warped).getValue(11);
@@ -89,8 +104,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
         Indicator<Num> similar = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
         Indicator<Num> reversed = indicator(series, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-        DynamicTimeWarpingConfig plain = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(5), PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config plain = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
 
         Num similarDistance = new DynamicTimeWarpingDistanceIndicator(first, similar, 6, plain).getValue(11);
         Num reversedDistance = new DynamicTimeWarpingDistanceIndicator(first, reversed, 6, plain).getValue(11);
@@ -116,10 +134,13 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Indicator<Num> first = indicator(series, 3, -1, 2, 0, -2, 1, 4, -3, 2, 0, 1, -1);
         Indicator<Num> second = indicator(series, 1, 2, -2, 3, 0, -1, 2, 1, -3, 4, 0, 2);
 
-        for (SequenceNormalization normalization : SequenceNormalization.values()) {
-            for (LocalDistance localDistance : LocalDistance.values()) {
-                DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(normalization, localDistance,
-                        WarpingWindow.sakoeChiba(3), PathCostNormalization.NONE);
+        for (DynamicTimeWarpingDistanceIndicator.SequenceNormalization normalization : DynamicTimeWarpingDistanceIndicator.SequenceNormalization
+                .values()) {
+            for (DynamicTimeWarpingDistanceIndicator.LocalDistance localDistance : DynamicTimeWarpingDistanceIndicator.LocalDistance
+                    .values()) {
+                DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                        normalization, localDistance, DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(3),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
                 Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 6, config).getValue(11);
                 assertTrue(distance.isPositive() || distance.isZero());
             }
@@ -132,10 +153,16 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Indicator<Num> first = indicator(series, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
         Indicator<Num> shifted = indicator(series, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011,
                 1012);
-        DynamicTimeWarpingConfig shape = new DynamicTimeWarpingConfig(SequenceNormalization.Z_SCORE,
-                LocalDistance.SQUARED, WarpingWindow.sakoeChiba(5), PathCostNormalization.BY_PATH_LENGTH);
-        DynamicTimeWarpingConfig raw = new DynamicTimeWarpingConfig(SequenceNormalization.NONE, LocalDistance.ABSOLUTE,
-                WarpingWindow.sakoeChiba(5), PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config shape = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator.Config raw = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
 
         Num shapeDistance = new DynamicTimeWarpingDistanceIndicator(first, shifted, 6, shape).getValue(11);
         Num rawDistance = new DynamicTimeWarpingDistanceIndicator(first, shifted, 6, raw).getValue(11);
@@ -149,8 +176,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5);
         Indicator<Num> second = indicator(series, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500);
-        DynamicTimeWarpingConfig shape = new DynamicTimeWarpingConfig(SequenceNormalization.Z_SCORE,
-                LocalDistance.SQUARED, WarpingWindow.sakoeChiba(5), PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator.Config shape = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 6, shape).getValue(11);
 
@@ -162,8 +192,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         BarSeries series = series(12);
         Indicator<Num> constant = indicator(series, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5);
         Indicator<Num> varying = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
-        DynamicTimeWarpingConfig shape = new DynamicTimeWarpingConfig(SequenceNormalization.Z_SCORE,
-                LocalDistance.SQUARED, WarpingWindow.sakoeChiba(5), PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator.Config shape = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(constant, varying, 6, shape).getValue(11);
 
@@ -175,10 +208,16 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
         Indicator<Num> second = indicator(series, 0, 2, 1, 3, 5, 4, 6, 8, 7, 9, 11, 10);
-        DynamicTimeWarpingConfig narrow = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(0), PathCostNormalization.NONE);
-        DynamicTimeWarpingConfig wide = new DynamicTimeWarpingConfig(SequenceNormalization.NONE, LocalDistance.ABSOLUTE,
-                WarpingWindow.sakoeChiba(5), PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config narrow = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config wide = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
 
         Num narrowDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 6, narrow).getValue(11);
         Num wideDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 6, wide).getValue(11);
@@ -197,6 +236,9 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // Index below the unstable-bar boundary (barCount - 1 = 5).
         assertTrue(dtw.getValue(4).isNaN());
         assertTrue(dtw.getValue(0).isNaN());
+        // Exactly at the boundary the stable path is taken: the first window
+        // [0..5] holds identical values, so the z-score distance is zero.
+        assertNumEquals(numFactory.zero(), dtw.getValue(5), 1.0e-12);
 
         // Non-finite window values poison the result.
         List<Num> nonFinite = new ArrayList<>();
@@ -220,6 +262,13 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                 DEFAULT_CONFIG);
 
         assertEquals(3 + 6 - 1, dtw.getCountOfUnstableBars());
+
+        // One bar before the boundary the first indicator's window [2..7] still
+        // reaches into its unstable region, so the distance is undefined...
+        assertTrue(dtw.getValue(7).isNaN());
+        // ...and exactly at the boundary the composed window [3..8] is fully
+        // stable for both indicators: the identical values score zero.
+        assertNumEquals(numFactory.zero(), dtw.getValue(8), 1.0e-12);
     }
 
     @Test
@@ -228,16 +277,30 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 
         assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingDistanceIndicator(first, first, 6, null));
-        assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingConfig(null, LocalDistance.ABSOLUTE,
-                WarpingWindow.sakoeChiba(1), PathCostNormalization.NONE));
-        assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingConfig(SequenceNormalization.NONE, null,
-                WarpingWindow.sakoeChiba(1), PathCostNormalization.NONE));
-        assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, null, PathCostNormalization.NONE));
-        assertThrows(NullPointerException.class, () -> new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(1), null));
-        assertThrows(IllegalArgumentException.class, () -> WarpingWindow.sakoeChiba(-1));
-        assertThrows(IllegalArgumentException.class, () -> new WarpingWindow(1, true));
+        assertThrows(NullPointerException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator.Config(null,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE));
+        assertThrows(NullPointerException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE, null,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE));
+        assertThrows(NullPointerException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE, null,
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE));
+        assertThrows(NullPointerException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(-1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator.WarpingWindow(1, true));
         assertThrows(IllegalArgumentException.class,
                 () -> new DynamicTimeWarpingDistanceIndicator(first, first, 1, DEFAULT_CONFIG));
     }
@@ -260,8 +323,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator average = new SMAIndicator(close, 2);
         DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(close, average, 4,
-                new DynamicTimeWarpingConfig(SequenceNormalization.Z_SCORE, LocalDistance.SQUARED,
-                        WarpingWindow.sakoeChiba(2), PathCostNormalization.BY_PATH_LENGTH));
+                new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(2),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH));
 
         Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, dtw.toJson());
 
@@ -271,13 +337,60 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void restoresFromDescriptorWithCanonicalEquality() {
+        BarSeries series = series(12);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator average = new SMAIndicator(close, 2);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(close, average, 4,
+                new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(2),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH));
+
+        Indicator<Num> restored = (Indicator<Num>) IndicatorSerialization.fromDescriptor(series, dtw.toDescriptor());
+
+        // The flattened reconstruction constructor and transient config must
+        // still yield the canonical descriptor of the original indicator.
+        assertTrue(restored instanceof DynamicTimeWarpingDistanceIndicator);
+        assertEquals(dtw.toDescriptor(), restored.toDescriptor());
+        assertNumEquals(dtw.getValue(6), restored.getValue(6), 1.0e-12);
+        assertEquals(dtw.getCountOfUnstableBars(), restored.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void zScoreVarianceOverflowYieldsNaNInsteadOfRawFallback() {
+        org.junit.Assume.assumeTrue(numFactory instanceof DoubleNumFactory);
+        BarSeries series = series(12);
+        // The squared deviation of values at +/-1e308 overflows to infinity, so
+        // z-score normalization is numerically undefined; the indicator must
+        // report NaN rather than silently scoring the raw values.
+        Indicator<Num> extreme = indicator(series, 1e308, -1e308, 1e308, -1e308, 1e308, -1e308, 1e308, -1e308, 1e308,
+                -1e308, 1e308, -1e308);
+        Indicator<Num> plain = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(extreme, plain, 6,
+                new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH));
+
+        assertTrue(dtw.getValue(11).isNaN());
+    }
+
+    @Test
     public void diagonalTieBreakPrefersTheDiagonalPredecessor() {
         BarSeries series = series(4);
         // Window [2..3] carries the discriminating pair; leading bars are filler.
         Indicator<Num> first = indicator(series, 5, 5, 0, 1);
         Indicator<Num> second = indicator(series, 5, 5, 0, 0);
-        DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(SequenceNormalization.NONE,
-                LocalDistance.ABSOLUTE, WarpingWindow.sakoeChiba(2), PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(2),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
         // Local costs: c(0,0)=0, c(0,1)=0, c(1,0)=1, c(1,1)=1, so the
         // accumulated D(0,0)=0, D(0,1)=0, D(1,0)=1. At cell (1,1) the diagonal
@@ -308,10 +421,13 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
             // path cost; path-length-normalized costs are checked against the
             // full-matrix reference instead, because minimizing total cost and
             // minimizing the cost/length ratio are different objectives.
-            DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(
-                    trial % 2 == 0 ? SequenceNormalization.NONE : SequenceNormalization.Z_SCORE,
-                    trial % 2 == 0 ? LocalDistance.ABSOLUTE : LocalDistance.SQUARED, WarpingWindow.sakoeChiba(radius),
-                    PathCostNormalization.NONE);
+            DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                    trial % 2 == 0 ? DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE
+                            : DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                    trial % 2 == 0 ? DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE
+                            : DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                    DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(radius),
+                    DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
 
             Num production = new DynamicTimeWarpingDistanceIndicator(first, second, windowSize, config)
                     .getValue(windowSize - 1);
@@ -335,11 +451,16 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
             Indicator<Num> first = indicator(series, firstValues);
             Indicator<Num> second = indicator(series, secondValues);
             boolean unconstrained = trial % 3 == 2;
-            WarpingWindow window = unconstrained ? WarpingWindow.unconstrained() : WarpingWindow.sakoeChiba(trial % 3);
-            DynamicTimeWarpingConfig config = new DynamicTimeWarpingConfig(
-                    trial % 2 == 0 ? SequenceNormalization.NONE : SequenceNormalization.Z_SCORE,
-                    trial % 2 == 0 ? LocalDistance.ABSOLUTE : LocalDistance.SQUARED, window,
-                    trial % 2 == 0 ? PathCostNormalization.NONE : PathCostNormalization.BY_PATH_LENGTH);
+            DynamicTimeWarpingDistanceIndicator.WarpingWindow window = unconstrained
+                    ? DynamicTimeWarpingDistanceIndicator.WarpingWindow.unconstrained()
+                    : DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(trial % 3);
+            DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                    trial % 2 == 0 ? DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE
+                            : DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                    trial % 2 == 0 ? DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE
+                            : DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                    window, trial % 2 == 0 ? DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE
+                            : DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
             Num production = new DynamicTimeWarpingDistanceIndicator(first, second, windowSize, config)
                     .getValue(windowSize - 1);
@@ -363,7 +484,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
      * minimum cost. Independent of any tie-break order.
      */
     private BruteForceResult bruteForceMinimum(double[] first, double[] second, int radius,
-            DynamicTimeWarpingConfig config) {
+            DynamicTimeWarpingDistanceIndicator.Config config) {
         double[] firstSequence = normalizeForOracle(first, config.normalization());
         double[] secondSequence = normalizeForOracle(second, config.normalization());
         List<int[]> path = new ArrayList<>();
@@ -371,8 +492,8 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         return new BruteForceResult(best);
     }
 
-    private Num enumerate(double[] first, double[] second, int radius, DynamicTimeWarpingConfig config, int i, int j,
-            List<int[]> path, Num best) {
+    private Num enumerate(double[] first, double[] second, int radius,
+            DynamicTimeWarpingDistanceIndicator.Config config, int i, int j, List<int[]> path, Num best) {
         path.add(new int[] { i, j });
         if (i == first.length - 1 && j == second.length - 1) {
             Num cost = pathCost(first, second, config, path);
@@ -393,7 +514,8 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         return best;
     }
 
-    private Num pathCost(double[] first, double[] second, DynamicTimeWarpingConfig config, List<int[]> path) {
+    private Num pathCost(double[] first, double[] second, DynamicTimeWarpingDistanceIndicator.Config config,
+            List<int[]> path) {
         NumFactory factory = DoubleNumFactory.getInstance();
         Num cost = factory.zero();
         int pathLength = path.size();
@@ -401,22 +523,27 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
             Num firstValue = factory.numOf(first[cell[0]]);
             Num secondValue = factory.numOf(second[cell[1]]);
             Num delta = firstValue.minus(secondValue);
-            Num local = config.localDistance() == LocalDistance.ABSOLUTE ? delta.abs() : delta.multipliedBy(delta);
+            Num local = config.localDistance() == DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE
+                    ? delta.abs()
+                    : delta.multipliedBy(delta);
             cost = cost.plus(local);
         }
-        if (config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH) {
+        if (config
+                .pathCostNormalization() == DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH) {
             cost = cost.dividedBy(factory.numOf(pathLength));
         }
         return cost;
     }
 
     /**
-     * Full-matrix dynamic programming with the documented deterministic tie-break
-     * order (diagonal, vertical, horizontal). Independent of the two-row
-     * implementation.
+     * Full-matrix dynamic programming with the documented deterministic tie-break:
+     * strictly lower cost wins, then equal cost with a strictly shorter path
+     * length, and survivor ties resolve in the order diagonal, vertical,
+     * horizontal. Independent of the two-row implementation.
      */
-    private BruteForceResult fullMatrixDp(double[] first, double[] second, WarpingWindow warpingWindow,
-            DynamicTimeWarpingConfig config) {
+    private BruteForceResult fullMatrixDp(double[] first, double[] second,
+            DynamicTimeWarpingDistanceIndicator.WarpingWindow warpingWindow,
+            DynamicTimeWarpingDistanceIndicator.Config config) {
         double[] firstSequence = normalizeForOracle(first, config.normalization());
         double[] secondSequence = normalizeForOracle(second, config.normalization());
         int sampleCount = first.length;
@@ -435,11 +562,13 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                     bestCost = costs[i - 1][j - 1];
                     bestLength = lengths[i - 1][j - 1];
                 }
-                if (i > 0 && costs[i - 1][j] != null && (bestCost == null || costs[i - 1][j].isLessThan(bestCost))) {
+                if (i > 0 && costs[i - 1][j] != null
+                        && better(costs[i - 1][j], lengths[i - 1][j], bestCost, bestLength)) {
                     bestCost = costs[i - 1][j];
                     bestLength = lengths[i - 1][j];
                 }
-                if (j > 0 && costs[i][j - 1] != null && (bestCost == null || costs[i][j - 1].isLessThan(bestCost))) {
+                if (j > 0 && costs[i][j - 1] != null
+                        && better(costs[i][j - 1], lengths[i][j - 1], bestCost, bestLength)) {
                     bestCost = costs[i][j - 1];
                     bestLength = lengths[i][j - 1];
                 }
@@ -452,19 +581,31 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
             }
         }
         Num total = costs[sampleCount - 1][sampleCount - 1];
-        if (config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH) {
+        if (config
+                .pathCostNormalization() == DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH) {
             total = total.dividedBy(factory.numOf(lengths[sampleCount - 1][sampleCount - 1]));
         }
         return new BruteForceResult(total);
     }
 
-    private static Num localCost(NumFactory factory, double first, double second, LocalDistance localDistance) {
-        Num delta = factory.numOf(first).minus(factory.numOf(second));
-        return localDistance == LocalDistance.ABSOLUTE ? delta.abs() : delta.multipliedBy(delta);
+    private static boolean better(Num candidateCost, int candidateLength, Num bestCost, int bestLength) {
+        if (bestCost == null) {
+            return true;
+        }
+        int comparison = candidateCost.compareTo(bestCost);
+        return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
     }
 
-    private static double[] normalizeForOracle(double[] values, SequenceNormalization normalization) {
-        if (normalization == SequenceNormalization.NONE) {
+    private static Num localCost(NumFactory factory, double first, double second,
+            DynamicTimeWarpingDistanceIndicator.LocalDistance localDistance) {
+        Num delta = factory.numOf(first).minus(factory.numOf(second));
+        return localDistance == DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE ? delta.abs()
+                : delta.multipliedBy(delta);
+    }
+
+    private static double[] normalizeForOracle(double[] values,
+            DynamicTimeWarpingDistanceIndicator.SequenceNormalization normalization) {
+        if (normalization == DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE) {
             return values;
         }
         double mean = 0.0;
