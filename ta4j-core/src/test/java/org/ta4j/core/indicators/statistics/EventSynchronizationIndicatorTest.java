@@ -11,7 +11,14 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.DoubleStream;
 
 import org.junit.Test;
@@ -575,14 +582,104 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             indicator.getValue(i);
         }
         // Rolling evaluation evicts everything below the last window.
-        assertTrue(indicator.predictedEvents.size <= 10);
-        assertTrue(indicator.referenceEvents.size <= 10);
+        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
+        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
         assertNumEquals(1.0, indicator.getValue(barCount - 1));
         // A backward evaluation below the eviction frontier resets the caches
         // and rescans from scratch; results stay correct and the bound holds.
         assertNumEquals(1.0, indicator.getResult(barCount - 21).f1Score());
-        assertTrue(indicator.predictedEvents.size <= 10);
-        assertTrue(indicator.referenceEvents.size <= 10);
+        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
+        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
+    }
+
+    @Test
+    public void firstRequestAtDistantIndexKeepsCacheBounded() {
+        // A first evaluation that jumps far ahead of the current scan frontier
+        // must evict below the requested window while catching up: with a signal
+        // firing every bar, a 200k-bar catch-up would otherwise retain 200k
+        // events (and a multi-million-bar series would trip the matcher's
+        // capacity limit) even though the requested window is only 10 bars wide.
+        int barCount = 200_000;
+        BarSeries series = series(barCount);
+        Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                return Boolean.TRUE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(everyBar, everyBar, 10, 0, 0);
+        assertNumEquals(1.0, indicator.getResult(barCount - 1).f1Score());
+        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size, indicator.predictedEvents.size <= 10);
+        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size, indicator.referenceEvents.size <= 10);
+    }
+
+    @Test
+    public void concurrentRandomAccessEvaluationMatchesSequentialResults() throws Exception {
+        // Concurrent evaluations for different indexes must never observe the
+        // event caches between a reset/eviction and the following rescan: both
+        // event windows are captured inside the coordination lock, so every
+        // concurrent result equals the sequential one.
+        int barCount = 5_000;
+        BarSeries series = series(barCount);
+        Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                return Boolean.TRUE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(everyBar, everyBar, 10, 0, 0);
+        int[] indexes = new int[500];
+        Random rnd = new Random(42L);
+        for (int i = 0; i < indexes.length; i++) {
+            indexes[i] = 9 + rnd.nextInt(barCount - 18);
+        }
+        Map<Integer, ResultSnapshot> baseline = new HashMap<>();
+        for (int index : indexes) {
+            baseline.put(index, new ResultSnapshot(indicator.getResult(index)));
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int t = 0; t < 4; t++) {
+                final long seed = 1000L + t;
+                futures.add(pool.submit(() -> {
+                    Random random = new Random(seed);
+                    for (int i = 0; i < 1_000; i++) {
+                        int index = indexes[random.nextInt(indexes.length)];
+                        ResultSnapshot expected = baseline.get(index);
+                        ResultSnapshot actual = new ResultSnapshot(indicator.getResult(index));
+                        if (!expected.equals(actual)) {
+                            throw new AssertionError(
+                                    "index " + index + ": expected " + expected + " but was " + actual);
+                        }
+                    }
+                }));
+            }
+            for (Future<?> future : futures) {
+                future.get();
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private record ResultSnapshot(int windowStartIndex, int predictedCount, int referenceCount, int matchedCount,
+            double f1Score) {
+
+        ResultSnapshot(Result result) {
+            this(result.windowStartIndex(), result.predictedCount(), result.referenceCount(), result.matchedCount(),
+                    result.f1Score().doubleValue());
+        }
     }
 
     @Test

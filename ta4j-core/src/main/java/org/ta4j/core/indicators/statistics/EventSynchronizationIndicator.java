@@ -223,6 +223,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         }
         BarSeries series = getBarSeries();
         int beginIndex = series.getBeginIndex();
+        int[] predictedWindowEvents;
+        int[] referenceWindowEvents;
         synchronized (cacheLock) {
             predictedEvents.retainWindowStart(windowStart);
             referenceEvents.retainWindowStart(windowStart);
@@ -240,9 +242,13 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     break;
                 }
             }
+            // Capture both event windows before leaving the coordinated critical
+            // section: a concurrent evaluation for another index may otherwise
+            // reset or evict the caches between the two slices, yielding predicted
+            // and reference windows taken from different cache states.
+            predictedWindowEvents = predictedEvents.slice(windowStart, index);
+            referenceWindowEvents = referenceEvents.slice(windowStart, index);
         }
-        int[] predictedWindowEvents = predictedEvents.slice(windowStart, index);
-        int[] referenceWindowEvents = referenceEvents.slice(windowStart, index);
         return EventSynchronizationSupport.synchronize(predictedWindowEvents, referenceWindowEvents, windowStart, index,
                 windowStart, index, maxLeadBars, maxLagBars, series.numFactory());
     }
@@ -293,99 +299,118 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
 
         /**
          * @return the inclusive first bar of the evaluated window
+         * @since 0.24.2
          */
         int windowStartIndex();
 
         /**
          * @return the inclusive last bar of the evaluated window
+         * @since 0.24.2
          */
         int windowEndIndex();
 
         /**
          * @return the number of predicted events inside the window
+         * @since 0.24.2
          */
         int predictedCount();
 
         /**
          * @return the number of reference events inside the window
+         * @since 0.24.2
          */
         int referenceCount();
 
         /**
          * @return the number of matched pairs (true positives)
+         * @since 0.24.2
          */
         int matchedCount();
 
         /**
          * @return {@code predictedCount - matchedCount}
+         * @since 0.24.2
          */
         int falsePositives();
 
         /**
          * @return {@code referenceCount - matchedCount}
+         * @since 0.24.2
          */
         int falseNegatives();
 
         /**
          * @return {@code NaN} when there are no predicted events or the window is
          *         unavailable
+         * @since 0.24.2
          */
         Num precision();
 
         /**
          * @return {@code NaN} when there are no reference events or the window is
          *         unavailable
+         * @since 0.24.2
          */
         Num recall();
 
         /**
          * @return the F1 score, {@code 0} when either side is empty or nothing matched,
          *         {@code NaN} when both streams are empty or the window is unavailable
+         * @since 0.24.2
          */
         Num f1Score();
 
         /**
          * @return the matched pairs in chronological order
+         * @since 0.24.2
          */
         List<Match> matches();
 
         /**
          * @return the unmatched predicted event indexes in ascending order
+         * @since 0.24.2
          */
         List<Integer> unmatchedPredictedIndexes();
 
         /**
          * @return the unmatched reference event indexes in ascending order
+         * @since 0.24.2
          */
         List<Integer> unmatchedReferenceIndexes();
 
         /**
          * @return the number of matches with {@code offsetBars == 0}
+         * @since 0.24.2
          */
         int exactMatchCount();
 
         /**
          * @return the mean signed offset, {@code NaN} when nothing matched
+         * @since 0.24.2
          */
         Num meanSignedOffset();
 
         /**
          * @return the mean absolute offset, {@code NaN} when nothing matched
+         * @since 0.24.2
          */
         Num meanAbsoluteOffset();
 
         /**
          * @return the median signed offset, {@code NaN} when nothing matched
+         * @since 0.24.2
          */
         Num medianSignedOffset();
 
         /**
          * @return the minimum signed offset, {@code NaN} when nothing matched
+         * @since 0.24.2
          */
         Num minSignedOffset();
 
         /**
          * @return the maximum signed offset, {@code NaN} when nothing matched
+         * @since 0.24.2
          */
         Num maxSignedOffset();
 
@@ -395,6 +420,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          *         {@link EventSynchronizationIndicator#getCountOfUnstableBars()} or
          *         reaching outside the series' current domain) and the metrics are
          *         undefined
+         * @since 0.24.2
          */
         boolean windowAvailable();
 
@@ -403,11 +429,14 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          *
          * @param predictedIndex the predicted event index
          * @param referenceIndex the reference event index
+         * @since 0.24.2
          */
         record Match(int predictedIndex, int referenceIndex) {
 
             /**
              * Validates both indexes.
+             * 
+             * @since 0.24.2
              */
             public Match {
                 if (predictedIndex < 0) {
@@ -422,6 +451,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
              * @return the signed lag {@code referenceIndex - predictedIndex}; positive
              *         means the prediction leads the reference, zero exact coincidence,
              *         negative means the prediction lags the reference
+             * @since 0.24.2
              */
             public int offsetBars() {
                 return referenceIndex - predictedIndex;
@@ -503,14 +533,22 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 return;
             }
             int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
+            int frontier = endIndex - windowSize + 1;
             for (int i = scanFrom;; i++) {
                 appendEvent(i, signal);
                 if (i == endIndex) {
                     break;
                 }
+                // Evict below the requested window's first bar while catching up to
+                // a distant index rather than after the whole catch-up: a signal
+                // that fires every bar over a long gap would otherwise accumulate
+                // the entire history and trip the matcher's capacity limit.
+                if (size > 0 && events[0] < frontier && size >= Math.max(windowSize * 2, 16)) {
+                    evictBelowPrefix(frontier);
+                }
             }
             scannedThrough = endIndex;
-            evictBelow(endIndex - windowSize + 1);
+            evictBelow(frontier);
         }
 
         /**
@@ -542,12 +580,24 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         private void evictBelow(int frontier) {
             if (frontier > evictionFrontier) {
                 evictionFrontier = frontier;
-                if (size > 0 && events[0] < frontier) {
-                    int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, frontier);
-                    int newSize = size - firstRetained;
-                    System.arraycopy(events, firstRetained, events, 0, newSize);
-                    size = newSize;
-                }
+                evictBelowPrefix(frontier);
+            }
+        }
+
+        /**
+         * Drops every cached event below {@code frontier}, regardless of the recorded
+         * eviction frontier. Unlike {@link #evictBelow(int)}, this may run repeatedly
+         * for the same frontier while a long catch-up scan appends more below-frontier
+         * events after the first drop.
+         *
+         * @param frontier the inclusive lowest index that must stay cached
+         */
+        private void evictBelowPrefix(int frontier) {
+            if (size > 0 && events[0] < frontier) {
+                int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, frontier);
+                int newSize = size - firstRetained;
+                System.arraycopy(events, firstRetained, events, 0, newSize);
+                size = newSize;
             }
         }
 
