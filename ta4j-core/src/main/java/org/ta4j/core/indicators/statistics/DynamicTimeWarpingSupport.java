@@ -151,9 +151,16 @@ final class DynamicTimeWarpingSupport {
                 currentCost[j] = localCost.plus(bestCost);
                 currentLength[j] = bestLength + 1;
                 if (byPathLength) {
-                    currentMeanCost[j] = bestLength == 0 ? localCost
-                            : bestMeanCost
-                                    .plus(localCost.minus(bestMeanCost).dividedBy(numFactory.numOf(bestLength + 1)));
+                    if (bestLength == 0) {
+                        currentMeanCost[j] = localCost;
+                    } else if (bestMeanCost == null) {
+                        // A nonzero path must carry a running mean. Preserve an
+                        // undefined result rather than dereferencing an absent one.
+                        currentMeanCost[j] = NaN.NaN;
+                    } else {
+                        currentMeanCost[j] = bestMeanCost
+                                .plus(localCost.minus(bestMeanCost).dividedBy(numFactory.numOf(bestLength + 1)));
+                    }
                 }
             }
 
