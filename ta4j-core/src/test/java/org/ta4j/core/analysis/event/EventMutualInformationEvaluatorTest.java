@@ -253,6 +253,23 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void constantPredictorWithEqualWidthFormsOneBin() {
+        BarSeries series = series(10);
+        Indicator<Num> predictor = indicator(series, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        // A zero-span predictor would previously divide 0/0 into a NaN bin
+        // width and throw inside intValue(); it must instead produce one
+        // effective bin and zero mutual information.
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
+                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_WIDTH));
+
+        assertEquals(4, result.requestedBinCount());
+        assertEquals(1, result.effectiveBinCount());
+        assertNumEquals(numFactory.numOf(0), result.mutualInformationNats(), 1.0e-9);
+    }
+
+    @Test
     public void nonFinitePredictorSampleUndefinesMetricsButKeepsFullDiagnostics() {
         BarSeries series = series(10);
         List<Num> values = new ArrayList<>();

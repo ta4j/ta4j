@@ -16,13 +16,18 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.LagSelectionPolicy;
 import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.Point;
 import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator.Profile;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
 public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -314,6 +319,44 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void serializesAndRestoresFromJson() {
+        BarSeries series = series(40);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator average = new SMAIndicator(close, 2);
+        LeadLagCorrelationIndicator indicator = indicator(close, average, 8, -5, 5,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, indicator.toJson());
+
+        assertTrue(restored instanceof LeadLagCorrelationIndicator);
+        assertNumEquals(indicator.getValue(31), restored.getValue(31), 1.0e-12);
+        assertEquals(indicator.getProfile(31), ((LeadLagCorrelationIndicator) restored).getProfile(31));
+        assertEquals(indicator.getCountOfUnstableBars(), restored.getCountOfUnstableBars());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void restoresFromDescriptorWithCanonicalEquality() {
+        BarSeries series = series(40);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator average = new SMAIndicator(close, 2);
+        LeadLagCorrelationIndicator indicator = indicator(close, average, 8, -5, 5,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        Indicator<Num> restored = (Indicator<Num>) IndicatorSerialization.fromDescriptor(series,
+                indicator.toDescriptor());
+
+        // The flattened reconstruction constructor and lag range must still
+        // yield the canonical descriptor of the original indicator.
+        assertTrue(restored instanceof LeadLagCorrelationIndicator);
+        assertEquals(indicator.toDescriptor(), restored.toDescriptor());
+        assertNumEquals(indicator.getValue(31), restored.getValue(31), 1.0e-12);
+        assertEquals(indicator.getProfile(31), ((LeadLagCorrelationIndicator) restored).getProfile(31));
+        assertEquals(indicator.getCountOfUnstableBars(), restored.getCountOfUnstableBars());
+    }
+
+    @Test
     public void returnsUnmodifiableLists() {
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
@@ -322,6 +365,87 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
         assertThrows(UnsupportedOperationException.class, () -> profile.points().add(null));
         assertThrows(UnsupportedOperationException.class, () -> profile.bestLags().add(0));
+    }
+
+    @Test
+    public void acceptsLargeTieHeavyProfiles() {
+        // Validation must stay linear: a tie-heavy profile with tens of
+        // thousands of lags would be unusably slow under quadratic validation.
+        List<Point> points = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            points.add(new Point(lag, numFactory.one(), 8));
+        }
+        List<Integer> bestLags = new java.util.ArrayList<>();
+        for (int lag = 0; lag < 50_000; lag++) {
+            bestLags.add(lag);
+        }
+        Profile profile = new Profile(100_000, 8, 0, 49_999, LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags,
+                OptionalInt.of(0), numFactory.one());
+
+        assertEquals(50_000, profile.points().size());
+        assertEquals(50_000, profile.bestLags().size());
+        assertEquals(OptionalInt.of(0), profile.selectedLag());
+    }
+
+    @Test
+    public void profileRejectsSelectedLagOutsideBestLags() {
+        // Period-4 square wave autocorrelation over an 8-bar window: exactly
+        // -1 at lags -2 and 2, 0 at lags -1 and 1, and 1 at lag 0.
+        List<Point> points = List.of(new Point(-2, numFactory.numOf(-1), 8), new Point(-1, numFactory.zero(), 8),
+                new Point(0, numFactory.one(), 8), new Point(1, numFactory.zero(), 8),
+                new Point(2, numFactory.numOf(-1), 8));
+        List<Integer> bestLags = List.of(0);
+
+        assertThrows(IllegalArgumentException.class, () -> new Profile(31, 8, -2, 2,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(1), numFactory.one()));
+    }
+
+    @Test
+    public void profileRejectsSelectionThatDoesNotMatchThePoints() {
+        // A fixture with a two-way tie at lags -1 and 1 (correlation 1.0).
+        List<Point> points = List.of(new Point(-2, numFactory.numOf(0.5), 8), new Point(-1, numFactory.one(), 8),
+                new Point(0, numFactory.numOf(0.25), 8), new Point(1, numFactory.one(), 8),
+                new Point(2, numFactory.numOf(0.5), 8));
+        List<Integer> bestLags = List.of(-1, 1);
+
+        // A best-lag list that is self-consistent but omits a maximal lag.
+        assertThrows(IllegalArgumentException.class, () -> new Profile(100, 8, -2, 2,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, List.of(-1), OptionalInt.of(-1), numFactory.one()));
+        // The deterministic tie-break is the smallest absolute lag (-1), not 1.
+        assertThrows(IllegalArgumentException.class, () -> new Profile(100, 8, -2, 2,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(1), numFactory.one()));
+        // The canonical selection is accepted.
+        new Profile(100, 8, -2, 2, LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(-1),
+                numFactory.one());
+    }
+
+    @Test
+    public void pointRejectsNonFiniteCorrelation() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new Point(0, DoubleNum.valueOf(Double.POSITIVE_INFINITY), 8));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Point(0, DoubleNum.valueOf(Double.NEGATIVE_INFINITY), 8));
+    }
+
+    @Test
+    public void pointRejectsFiniteCorrelationWithFewerThanTwoSamples() {
+        // A finite Pearson correlation requires at least two aligned samples.
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.one(), 0));
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.one(), 1));
+        // NaN correlations keep working for unavailable windows at any count.
+        new Point(0, NaN.NaN, 0);
+        new Point(0, NaN.NaN, 1);
+        // And a valid two-sample point is accepted.
+        assertEquals(2, new Point(0, numFactory.one(), 2).sampleCount());
+    }
+
+    @Test
+    public void isDefinedReflectsTheCorrelation() {
+        Point undefined = new Point(0, NaN.NaN, 0);
+        Point defined = new Point(0, numFactory.one(), 2);
+
+        assertFalse(undefined.isDefined());
+        assertTrue(defined.isDefined());
     }
 
     private Profile profile(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int minimumLag,

@@ -203,13 +203,20 @@ public final class EventMutualInformationEvaluator {
             // (e.g. samples at both ends of the double range); with a non-finite
             // span the bin width would be NaN and every sample would land in
             // bin 0. Such an evaluation is undefined, not silently degenerate.
+            // A zero span (constant predictor) is the opposite extreme: all
+            // samples belong to bin 0, giving one effective bin and zero mutual
+            // information; computing bin positions directly would divide 0/0
+            // and throw inside {@code intValue()} on the resulting NaN.
             Num span = maximum.minus(minimum);
-            if (!isFinite(span)) {
+            if (span.isZero()) {
+                bins = new int[sampleCount];
+            } else if (!isFinite(span)) {
                 return new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, sampleCount, positiveTargetCount,
                         positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
                         config.targetWindowStartBars(), config.targetWindowEndBars());
+            } else {
+                bins = equalWidthBins(predictorValues, minimum, span, config.predictorBinCount());
             }
-            bins = equalWidthBins(predictorValues, minimum, span, config.predictorBinCount());
             int maxBin = 0;
             for (int assignedBin : bins) {
                 maxBin = Math.max(maxBin, assignedBin);
