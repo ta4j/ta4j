@@ -342,7 +342,7 @@ public interface Num extends Comparable<Num>, Serializable {
      *         infinity; false otherwise
      * @since 0.22.9
      */
-    static boolean isFinite(Num value) {
+    public static boolean isFinite(Num value) {
         if (!isValid(value)) {
             return false;
         }

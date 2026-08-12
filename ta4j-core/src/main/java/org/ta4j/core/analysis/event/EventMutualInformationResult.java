@@ -86,6 +86,15 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
         if (requestedBinCount < 2 || effectiveBinCount < 0 || effectiveBinCount > requestedBinCount) {
             throw new IllegalArgumentException("bin counts are inconsistent");
         }
+        if (binningStrategy == BinningStrategy.EQUAL_FREQUENCY && effectiveBinCount > sampleCount) {
+            // Equal-frequency binning creates at most one bin per nonempty
+            // sample group, so the evaluator can never report more effective
+            // bins than samples; a direct construction or deserialized value
+            // with such a count describes an impossible diagnostic. Equal-width
+            // binning divides the value range instead, so requested bins beyond
+            // the sample count stay representable there.
+            throw new IllegalArgumentException("bin counts are inconsistent");
+        }
         if (targetWindowStartBars < 0 || targetWindowEndBars < targetWindowStartBars) {
             throw new IllegalArgumentException("target window offsets are inconsistent");
         }

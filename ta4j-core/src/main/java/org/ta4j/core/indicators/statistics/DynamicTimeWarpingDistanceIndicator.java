@@ -236,7 +236,7 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
          * @return {@code true} when the cell lies inside the alignment band
          * @since 0.24.2
          */
-        public boolean inBand(int firstIndex, int secondIndex) {
+        boolean inBand(int firstIndex, int secondIndex) {
             return unrestricted || Math.abs((long) firstIndex - secondIndex) <= radius;
         }
     }

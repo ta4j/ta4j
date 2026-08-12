@@ -231,4 +231,33 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(factory.zero(), factory.zero(), NaN.NaN, 2, 2, factory.one(), 8, 1,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
+
+    @Test
+    public void effectiveBinCountCannotExceedTheSampleCount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // Review regression: equal-frequency binning creates at most one bin
+        // per nonempty sample group, so a direct construction or deserialized
+        // value with more effective bins than samples (for example two samples
+        // with ten requested and ten effective bins) reports an impossible
+        // diagnostic and must be rejected.
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.numOf(0.5), factory.numOf(Math.log(2)),
+                        factory.numOf(0.5 / Math.log(2)), 2, 1, factory.numOf(0.5), 10, 10,
+                        BinningStrategy.EQUAL_FREQUENCY, 0, 3));
+        // The same bound holds for undefined results: NaN metrics with more
+        // formed bins than samples stay inconsistent.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN,
+                2, 1, factory.numOf(0.5), 10, 3, BinningStrategy.EQUAL_FREQUENCY, 0, 3));
+        // Equal-width binning divides the value range instead, so requested
+        // bins beyond the sample count remain representable and the
+        // evaluator's reported diagnostic is accepted as-is.
+        new EventMutualInformationResult(factory.numOf(0.5), factory.numOf(Math.log(2)),
+                factory.numOf(0.5 / Math.log(2)), 2, 1, factory.numOf(0.5), 10, 10, BinningStrategy.EQUAL_WIDTH, 0, 3);
+        // A defined equal-frequency result never needs more effective bins
+        // than samples: the canonical two-sample form with a single effective
+        // bin stays valid.
+        new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
+                factory.numOf(0.5), 10, 1, BinningStrategy.EQUAL_FREQUENCY, 0, 3);
+    }
 }

@@ -167,7 +167,7 @@ public final class EventMutualInformationEvaluator {
             int i = effectiveStart;
             while (true) {
                 Num predictorValue = predictor.getValue(i);
-                if (!isFinite(predictorValue)) {
+                if (!Num.isFinite(predictorValue)) {
                     // Undefined metrics, but the diagnostic counts keep covering
                     // every eligible sample so candidate sample counts cannot
                     // drift invisibly.
@@ -233,7 +233,7 @@ public final class EventMutualInformationEvaluator {
             Num span = maximum.minus(minimum);
             if (span.isZero()) {
                 bins = new int[sampleCount];
-            } else if (!isFinite(span)) {
+            } else if (!Num.isFinite(span)) {
                 return new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, sampleCount, positiveTargetCount,
                         positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
                         config.targetWindowStartBars(), config.targetWindowEndBars());
@@ -420,17 +420,4 @@ public final class EventMutualInformationEvaluator {
         return bins;
     }
 
-    private static boolean isFinite(Num value) {
-        if (value == null || value.isNaN()) {
-            return false;
-        }
-        Number delegate = value.getDelegate();
-        if (delegate instanceof Double primitive) {
-            return Double.isFinite(primitive);
-        }
-        if (delegate instanceof Float primitive) {
-            return Float.isFinite(primitive);
-        }
-        return true;
-    }
 }
