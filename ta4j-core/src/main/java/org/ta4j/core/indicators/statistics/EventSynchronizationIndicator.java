@@ -198,6 +198,26 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * @param index the bar index
+     * @return the cached F1 score of the closed trailing window
+     *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
+     *         lies outside the series' current {@code [getBeginIndex(),
+     *         getEndIndex()]} domain
+     */
+    @Override
+    public Num getValue(int index) {
+        BarSeries series = getBarSeries();
+        if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+            // The inherited CachedIndicator contract maps pruned indexes below the
+            // retained begin index to the first retained bar; this indicator's
+            // window semantics instead make them undefined (NaN), matching
+            // getResult's availability gate.
+            return NaN.NaN;
+        }
+        return super.getValue(index);
+    }
+
+    /**
      * Evaluates the closed trailing window {@code [index - barCount + 1, index]}
      * and returns its full diagnostics.
      *
@@ -222,7 +242,6 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             return undefinedResult(windowStart, index);
         }
         BarSeries series = getBarSeries();
-        int beginIndex = series.getBeginIndex();
         int[] predictedWindowEvents;
         int[] referenceWindowEvents;
         synchronized (cacheLock) {
@@ -233,6 +252,17 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 if (snapshot.revision() != observedRevision
                         || snapshot.removedThroughIndex() != observedRemovedThroughIndex) {
                     reconcileEventCaches(snapshot);
+                }
+                // Availability and scanning bounds come from the same coherent
+                // snapshot as the cache reconciliation: a rolling series that
+                // drops its head between the outer availability check and this
+                // snapshot must not scan (or report as available) a window that
+                // now reaches below the retained begin index. The max with the
+                // series' virtual begin index covers series that publish a
+                // different begin domain than their retained-bar snapshots.
+                int beginIndex = Math.max(snapshot.removedThroughIndex() + 1, series.getBeginIndex());
+                if (windowStart < beginIndex) {
+                    return undefinedResult(windowStart, index);
                 }
                 predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
                 referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);

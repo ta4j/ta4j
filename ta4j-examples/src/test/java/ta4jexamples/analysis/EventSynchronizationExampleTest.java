@@ -46,8 +46,10 @@ class EventSynchronizationExampleTest {
         assertEquals(predictedCount, result.predictedCount());
         assertEquals(referenceCount, result.referenceCount());
         assertEquals(matchedCount, result.matchedCount());
-        assertTrue(result.precision().doubleValue() > 0.0 && result.precision().doubleValue() <= 1.0);
-        assertTrue(result.recall().doubleValue() > 0.0 && result.recall().doubleValue() <= 1.0);
+        // Every prediction matches, so precision is exactly 1.0 and recall is
+        // the matched share of the reference events.
+        assertEquals(1.0, result.precision().doubleValue(), 1e-12);
+        assertEquals((double) matchedCount / referenceCount, result.recall().doubleValue(), 1e-12);
         assertEquals(f1Score, result.f1Score().doubleValue(), 1e-12);
     }
 }

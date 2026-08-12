@@ -19,6 +19,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.DoubleStream;
 
 import org.junit.Test;
@@ -269,6 +270,23 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(Double.NaN, indicator(signal, signal, 25, 0, 0).getValue(39));
         // Window [20, 39] is fully available.
         assertNumEquals(1.0, indicator(signal, signal, 20, 0, 0).getValue(39));
+    }
+
+    @Test
+    public void prunedScalarIndexesStayUndefinedAfterHeadDrop() {
+        // The inherited CachedIndicator contract remaps indexes below the
+        // retained begin index to the first retained bar; this indicator's
+        // window semantics keep them undefined instead, matching getResult's
+        // availability gate.
+        BarSeries series = series(40);
+        Indicator<Boolean> signal = events(series, 0, 12, 25);
+        EventSynchronizationIndicator indicator = indicator(signal, signal, 1, 0, 0);
+        assertNumEquals(1.0, indicator.getValue(12));
+        series.setMaximumBarCount(15); // begin index advances to 25, pruning 12
+        assertEquals(25, series.getBeginIndex());
+        assertNumEquals(Double.NaN, indicator.getValue(12));
+        assertNumEquals(1.0, indicator.getValue(25));
+        assertFalse(indicator.getResult(12).windowAvailable());
     }
 
     @Test
@@ -666,7 +684,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
                 }));
             }
             for (Future<?> future : futures) {
-                future.get();
+                future.get(60, TimeUnit.SECONDS);
             }
         } finally {
             pool.shutdownNow();
