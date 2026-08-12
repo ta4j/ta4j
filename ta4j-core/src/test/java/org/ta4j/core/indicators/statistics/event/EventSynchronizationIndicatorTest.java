@@ -655,6 +655,50 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
+        // A window wider than half the matcher capacity (8,000,000 cells) makes
+        // the rolling eviction threshold exceed the events array's growth
+        // ceiling: without capping the threshold, a catch-up over more than
+        // 4,194,304 events that all predate the window would fill the array and
+        // throw before the first eviction. The capped threshold keeps the cache
+        // bounded and the event-free window evaluable.
+        int windowSize = 2_097_153;
+        int lastEventIndex = 4_194_304;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return lastEventIndex + windowSize;
+            }
+        };
+        Indicator<Boolean> earlyOnly = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return index <= lastEventIndex;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(earlyOnly, earlyOnly, windowSize, 0, 0);
+        // The requested window [lastEventIndex + 1, lastEventIndex + windowSize]
+        // is event-free and far above the initial scan frontier: the catch-up
+        // must evict instead of accumulating the 4,194,305 earlier events.
+        indicator.getResult(lastEventIndex + windowSize);
+        assertTrue("predictedEvents.size=" + indicator.predictedEvents.size,
+                indicator.predictedEvents.size <= 4_000_000);
+        assertTrue("referenceEvents.size=" + indicator.referenceEvents.size,
+                indicator.referenceEvents.size <= 4_000_000);
+    }
+
+    @Test
     public void concurrentRandomAccessEvaluationMatchesSequentialResults() throws Exception {
         // Concurrent evaluations for different indexes must never observe the
         // event caches between a reset/eviction and the following rescan: both
