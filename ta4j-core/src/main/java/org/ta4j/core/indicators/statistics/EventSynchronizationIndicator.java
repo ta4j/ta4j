@@ -1,13 +1,14 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.analysis.event;
+package org.ta4j.core.indicators.statistics;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -60,10 +61,13 @@ import org.ta4j.core.num.Num;
  * must lie within the series' current {@code [getBeginIndex(), getEndIndex()]}
  * domain. A window that reaches below the begin index of a rolling series, or
  * past the series end, is therefore undefined rather than silently truncated.
- * The one conventional edge case follows the "undefined statistic means
- * {@code NaN}" design language: when both streams contain no events in the
- * window, precision, recall, and F1 are all {@code NaN}; when exactly one
- * stream is empty, the empty side's metric is {@code NaN} and F1 is {@code 0}.
+ * {@link Result#windowAvailable()} reports whether the window was evaluated; an
+ * available window whose streams contain no events keeps its zero counts and
+ * {@code NaN} metrics (see {@link Result}). The one conventional edge case
+ * follows the "undefined statistic means {@code NaN}" design language: when
+ * both streams contain no events in the window, precision, recall, and F1 are
+ * all {@code NaN}; when exactly one stream is empty, the empty side's metric is
+ * {@code NaN} and F1 is {@code 0}.
  *
  * <h2>Performance</h2>
  * <p>
@@ -76,6 +80,12 @@ import org.ta4j.core.num.Num;
  * {@code O(N)} scanning plus the per-window matching cost, which is small for
  * sparse streams. Repeated {@code getResult(index)} calls for the same index
  * recompute the matching (use {@link #getValue(int)} for the cached scalar).
+ *
+ * <p>
+ * Both event caches are invalidated from the series'
+ * {@link BarSeriesChangeSnapshot} when retained history is replaced, cleared,
+ * or removed, and the two sources are rescanned under one observed revision so
+ * a concurrent series mutation cannot combine events from different revisions.
  *
  * @since 0.24.2
  */
@@ -90,6 +100,11 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     private final int maxLagBars;
     private final EventIndexCache predictedEvents = new EventIndexCache();
     private final EventIndexCache referenceEvents = new EventIndexCache();
+    private final Object cacheLock = new Object();
+    // Runtime cache-coordination state, rebuilt from scratch after
+    // deserialization; never part of the serialized descriptor.
+    private transient long observedRevision = -1L;
+    private transient int observedRemovedThroughIndex = -1;
 
     /**
      * Creates a synchronization indicator with a symmetric tolerance window.
@@ -181,7 +196,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * for the cached F1 scalar. When the window is unavailable (before
      * {@link #getCountOfUnstableBars()} or outside the series' current domain), the
      * returned result reports the requested window with undefined ({@code NaN})
-     * metrics and no events.
+     * metrics, no events, and {@link Result#windowAvailable()}{@code == false}.
      *
      * @param index the bar index
      * @return the immutable window evaluation result
@@ -194,106 +209,189 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         }
         BarSeries series = getBarSeries();
         int beginIndex = series.getBeginIndex();
-        predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
-        referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
+        synchronized (cacheLock) {
+            while (true) {
+                BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(observedRevision);
+                if (snapshot.revision() != observedRevision
+                        || snapshot.removedThroughIndex() != observedRemovedThroughIndex) {
+                    reconcileEventCaches(snapshot);
+                }
+                predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
+                referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
+                BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(observedRevision);
+                if (after.revision() == snapshot.revision()
+                        && after.removedThroughIndex() == snapshot.removedThroughIndex()) {
+                    break;
+                }
+            }
+        }
         int[] predictedWindowEvents = predictedEvents.slice(windowStart, index);
         int[] referenceWindowEvents = referenceEvents.slice(windowStart, index);
-        return EventSynchronizationSupport
-                .synchronize(predictedWindowEvents, referenceWindowEvents, windowStart, index, windowStart, index,
-                        maxLeadBars, maxLagBars, series.numFactory())
-                .toPublicResult();
-    }
-
-    private static Result undefinedResult(int windowStartIndex, int windowEndIndex) {
-        return new Result(windowStartIndex, windowEndIndex, 0, 0, 0, 0, 0, NaN.NaN, NaN.NaN, NaN.NaN, List.of(),
-                List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN);
+        return EventSynchronizationSupport.synchronize(predictedWindowEvents, referenceWindowEvents, windowStart, index,
+                windowStart, index, maxLeadBars, maxLagBars, series.numFactory());
     }
 
     /**
-     * Immutable outcome of one window evaluation.
+     * Drops every cached event at or after the series' earliest changed index and
+     * lowers the scan frontier so the next read rescans the revised region. The
+     * prefix-removal case (dropped bars) is handled separately by
+     * {@link #discardThrough(int)}.
+     *
+     * @param snapshot the series change snapshot since the last observed revision
+     */
+    private void reconcileEventCaches(BarSeriesChangeSnapshot snapshot) {
+        predictedEvents.discardThrough(snapshot.removedThroughIndex());
+        referenceEvents.discardThrough(snapshot.removedThroughIndex());
+        predictedEvents.discardFrom(snapshot.earliestChangedIndex());
+        referenceEvents.discardFrom(snapshot.earliestChangedIndex());
+        observedRevision = snapshot.revision();
+        observedRemovedThroughIndex = snapshot.removedThroughIndex();
+    }
+
+    private static Result undefinedResult(int windowStartIndex, int windowEndIndex) {
+        return new EventSynchronizationResult(windowStartIndex, windowEndIndex, windowStartIndex, windowEndIndex, 0, 0,
+                0, 0, 0, NaN.NaN, NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN,
+                NaN.NaN, NaN.NaN, false);
+    }
+
+    /**
+     * Read-only outcome of one window evaluation.
      *
      * <p>
-     * All lists are unmodifiable and ordered: {@link #matches()} follows the
-     * chronological match order (predicted and reference indexes both ascending),
-     * and the unmatched lists are ascending. Numeric outputs are produced by the
-     * evaluated series' {@link org.ta4j.core.num.NumFactory}.
+     * Instances are produced by
+     * {@link EventSynchronizationIndicator#getResult(int)} and cannot be
+     * manufactured by callers. All lists are unmodifiable and ordered:
+     * {@link #matches()} follows the chronological match order (predicted and
+     * reference indexes both ascending), and the unmatched lists are ascending.
+     * Numeric outputs are produced by the evaluated series'
+     * {@link org.ta4j.core.num.NumFactory}.
      *
-     * @param windowStartIndex          the inclusive first bar of the evaluated
-     *                                  window
-     * @param windowEndIndex            the inclusive last bar of the evaluated
-     *                                  window
-     * @param predictedCount            the number of predicted events inside the
-     *                                  window
-     * @param referenceCount            the number of reference events inside the
-     *                                  window
-     * @param matchedCount              the number of matched pairs (true positives)
-     * @param falsePositives            {@code predictedCount - matchedCount}
-     * @param falseNegatives            {@code referenceCount - matchedCount}
-     * @param precision                 {@code NaN} when there are no predicted
-     *                                  events or the window is unavailable
-     * @param recall                    {@code NaN} when there are no reference
-     *                                  events or the window is unavailable
-     * @param f1Score                   the F1 score, {@code 0} when either side is
-     *                                  empty or nothing matched, {@code NaN} when
-     *                                  both streams are empty or the window is
-     *                                  unavailable
-     * @param matches                   the matched pairs in chronological order
-     * @param unmatchedPredictedIndexes the unmatched predicted event indexes in
-     *                                  ascending order
-     * @param unmatchedReferenceIndexes the unmatched reference event indexes in
-     *                                  ascending order
-     * @param exactMatchCount           the number of matches with
-     *                                  {@code offsetBars == 0}
-     * @param meanSignedOffset          the mean signed offset, {@code NaN} when
-     *                                  nothing matched
-     * @param meanAbsoluteOffset        the mean absolute offset, {@code NaN} when
-     *                                  nothing matched
-     * @param medianSignedOffset        the median signed offset, {@code NaN} when
-     *                                  nothing matched
-     * @param minSignedOffset           the minimum signed offset, {@code NaN} when
-     *                                  nothing matched
-     * @param maxSignedOffset           the maximum signed offset, {@code NaN} when
-     *                                  nothing matched
+     * <p>
+     * {@link #windowAvailable()} distinguishes an unavailable window (false) from
+     * an available window whose streams contain no events (true, zero counts and
+     * {@code NaN} metrics).
+     *
      * @since 0.24.2
      */
-    public record Result(int windowStartIndex, int windowEndIndex, int predictedCount, int referenceCount,
-            int matchedCount, int falsePositives, int falseNegatives, Num precision, Num recall, Num f1Score,
-            List<Match> matches, List<Integer> unmatchedPredictedIndexes, List<Integer> unmatchedReferenceIndexes,
-            int exactMatchCount, Num meanSignedOffset, Num meanAbsoluteOffset, Num medianSignedOffset,
-            Num minSignedOffset, Num maxSignedOffset) {
+    public interface Result {
 
         /**
-         * Defensively copies the lists and validates the metric references.
+         * @return the inclusive first bar of the evaluated window
          */
-        public Result {
-            Objects.requireNonNull(precision, "precision");
-            Objects.requireNonNull(recall, "recall");
-            Objects.requireNonNull(f1Score, "f1Score");
-            Objects.requireNonNull(meanSignedOffset, "meanSignedOffset");
-            Objects.requireNonNull(meanAbsoluteOffset, "meanAbsoluteOffset");
-            Objects.requireNonNull(medianSignedOffset, "medianSignedOffset");
-            Objects.requireNonNull(minSignedOffset, "minSignedOffset");
-            Objects.requireNonNull(maxSignedOffset, "maxSignedOffset");
-            matches = List.copyOf(matches);
-            unmatchedPredictedIndexes = List.copyOf(unmatchedPredictedIndexes);
-            unmatchedReferenceIndexes = List.copyOf(unmatchedReferenceIndexes);
-        }
+        int windowStartIndex();
 
         /**
-         * One matched predicted-reference event pair.
-         *
-         * <p>
-         * The signed lag is derived, never stored: {@link #offsetBars()} returns
-         * {@code referenceIndex - predictedIndex}, so no redundant invalid state can be
-         * constructed.
-         *
-         * @param predictedIndex the bar index of the predicted event, {@code >= 0}
-         * @param referenceIndex the bar index of the reference event, {@code >= 0}
+         * @return the inclusive last bar of the evaluated window
          */
-        public record Match(int predictedIndex, int referenceIndex) {
+        int windowEndIndex();
+
+        /**
+         * @return the number of predicted events inside the window
+         */
+        int predictedCount();
+
+        /**
+         * @return the number of reference events inside the window
+         */
+        int referenceCount();
+
+        /**
+         * @return the number of matched pairs (true positives)
+         */
+        int matchedCount();
+
+        /**
+         * @return {@code predictedCount - matchedCount}
+         */
+        int falsePositives();
+
+        /**
+         * @return {@code referenceCount - matchedCount}
+         */
+        int falseNegatives();
+
+        /**
+         * @return {@code NaN} when there are no predicted events or the window is
+         *         unavailable
+         */
+        Num precision();
+
+        /**
+         * @return {@code NaN} when there are no reference events or the window is
+         *         unavailable
+         */
+        Num recall();
+
+        /**
+         * @return the F1 score, {@code 0} when either side is empty or nothing matched,
+         *         {@code NaN} when both streams are empty or the window is unavailable
+         */
+        Num f1Score();
+
+        /**
+         * @return the matched pairs in chronological order
+         */
+        List<Match> matches();
+
+        /**
+         * @return the unmatched predicted event indexes in ascending order
+         */
+        List<Integer> unmatchedPredictedIndexes();
+
+        /**
+         * @return the unmatched reference event indexes in ascending order
+         */
+        List<Integer> unmatchedReferenceIndexes();
+
+        /**
+         * @return the number of matches with {@code offsetBars == 0}
+         */
+        int exactMatchCount();
+
+        /**
+         * @return the mean signed offset, {@code NaN} when nothing matched
+         */
+        Num meanSignedOffset();
+
+        /**
+         * @return the mean absolute offset, {@code NaN} when nothing matched
+         */
+        Num meanAbsoluteOffset();
+
+        /**
+         * @return the median signed offset, {@code NaN} when nothing matched
+         */
+        Num medianSignedOffset();
+
+        /**
+         * @return the minimum signed offset, {@code NaN} when nothing matched
+         */
+        Num minSignedOffset();
+
+        /**
+         * @return the maximum signed offset, {@code NaN} when nothing matched
+         */
+        Num maxSignedOffset();
+
+        /**
+         * @return {@code true} when the window was evaluated; {@code false} when the
+         *         window was unavailable (before
+         *         {@link EventSynchronizationIndicator#getCountOfUnstableBars()} or
+         *         reaching outside the series' current domain) and the metrics are
+         *         undefined
+         */
+        boolean windowAvailable();
+
+        /**
+         * One matched pair.
+         *
+         * @param predictedIndex the predicted event index
+         * @param referenceIndex the reference event index
+         */
+        record Match(int predictedIndex, int referenceIndex) {
 
             /**
-             * Validates that both event indexes are nonnegative.
+             * Validates both indexes.
              */
             public Match {
                 if (predictedIndex < 0) {
@@ -325,6 +423,13 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * boundary, and window searches always start at or after the series begin index
      * (guaranteed by the availability gate), so dropped head entries are never
      * observable.
+     *
+     * <p>
+     * The enclosing indicator invalidates the cache from the series'
+     * {@link BarSeriesChangeSnapshot}: {@link #discardFrom(int)} drops events at or
+     * after the earliest changed index and {@link #discardThrough(int)} drops
+     * events below the first retained index. Both run before the next scan, so a
+     * replaced, cleared, or prefix-removed history never serves stale events.
      */
     private static final class EventIndexCache {
 
@@ -341,7 +446,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          * When the evaluated index is the last scanned bar, that bar is re-read instead
          * of trusting the earlier scan: a live forming bar is revised in place
          * (replaced bar, added price/trade) rather than appended, and the cached event
-         * state would otherwise stay stale after the revision.
+         * state would otherwise stay stale after the revision. Series that publish
+         * change snapshots already invalidate this case through
+         * {@link #discardFrom(int)}; the re-read additionally covers series
+         * implementations that mutate without publishing a revision.
          *
          * @throws IllegalArgumentException when the signal fires more often than the
          *                                  baseline matcher's capacity allows
@@ -376,6 +484,48 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 }
             }
             scannedThrough = endIndex;
+        }
+
+        /**
+         * Drops every cached event at or after {@code earliestChangedIndex} and lowers
+         * the scan frontier to the preceding index so the next
+         * {@link #ensureScannedThrough(int, EventSignal, int)} rescans the revised
+         * region. {@code -1} means "no change" and is a no-op.
+         *
+         * @param earliestChangedIndex the inclusive earliest index whose bar content
+         *                             changed, or {@code -1}
+         */
+        synchronized void discardFrom(int earliestChangedIndex) {
+            if (earliestChangedIndex >= 0) {
+                if (size > 0) {
+                    int dropFrom = EventSynchronizationSupport.lowerBound(events, 0, size, earliestChangedIndex);
+                    if (dropFrom < size) {
+                        size = dropFrom;
+                    }
+                }
+                if (earliestChangedIndex - 1 < scannedThrough) {
+                    scannedThrough = earliestChangedIndex - 1;
+                }
+            }
+        }
+
+        /**
+         * Drops every cached event at or below {@code removedThroughIndex}, the last
+         * bar removed from the series head. {@code -1} means "nothing removed" and is a
+         * no-op.
+         *
+         * @param removedThroughIndex the inclusive index of the last removed bar, or
+         *                            {@code -1}
+         */
+        synchronized void discardThrough(int removedThroughIndex) {
+            if (removedThroughIndex >= 0 && size > 0) {
+                int keepFrom = EventSynchronizationSupport.upperBound(events, 0, size, removedThroughIndex);
+                if (keepFrom > 0) {
+                    int newSize = size - keepFrom;
+                    System.arraycopy(events, keepFrom, events, 0, newSize);
+                    size = newSize;
+                }
+            }
         }
 
         private void appendEvent(int index, EventSignal signal) {

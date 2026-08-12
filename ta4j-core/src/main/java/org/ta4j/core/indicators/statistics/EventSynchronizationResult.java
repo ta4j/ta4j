@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.analysis.event;
+package org.ta4j.core.indicators.statistics;
 
 import java.util.List;
 import java.util.Objects;
@@ -11,6 +11,12 @@ import org.ta4j.core.num.Num;
 /**
  * Package-private outcome of one {@link EventSynchronizationSupport}
  * synchronization; not part of the public API.
+ *
+ * <p>
+ * The record implements the public {@link EventSynchronizationIndicator.Result}
+ * view: callers of {@link EventSynchronizationIndicator#getResult(int)} receive
+ * this instance through the read-only interface and cannot manufacture or
+ * mutate results.
  *
  * <p>
  * All lists are unmodifiable and ordered: {@link #matches()} follows the
@@ -61,13 +67,16 @@ import org.ta4j.core.num.Num;
  *                                  nothing matched
  * @param maxSignedOffset           the maximum signed offset, {@code NaN} when
  *                                  nothing matched
+ * @param windowAvailable           {@code true} when the effective range was
+ *                                  non-empty and actually evaluated
  */
 record EventSynchronizationResult(int requestedStartIndex, int requestedEndIndex, int effectiveStartIndex,
         int effectiveEndIndex, int predictedCount, int referenceCount, int matchedCount, int falsePositives,
         int falseNegatives, Num precision, Num recall, Num f1Score,
         List<EventSynchronizationIndicator.Result.Match> matches, List<Integer> unmatchedPredictedIndexes,
         List<Integer> unmatchedReferenceIndexes, int exactMatchCount, Num meanSignedOffset, Num meanAbsoluteOffset,
-        Num medianSignedOffset, Num minSignedOffset, Num maxSignedOffset) {
+        Num medianSignedOffset, Num minSignedOffset, Num maxSignedOffset,
+        boolean windowAvailable) implements EventSynchronizationIndicator.Result {
 
     /**
      * Validates the metric references and defensively copies the lists.
@@ -86,15 +95,13 @@ record EventSynchronizationResult(int requestedStartIndex, int requestedEndIndex
         unmatchedReferenceIndexes = List.copyOf(unmatchedReferenceIndexes);
     }
 
-    /**
-     * Maps this internal result to the public indicator result view.
-     *
-     * @return the public {@link EventSynchronizationIndicator.Result}
-     */
-    EventSynchronizationIndicator.Result toPublicResult() {
-        return new EventSynchronizationIndicator.Result(requestedStartIndex, requestedEndIndex, predictedCount,
-                referenceCount, matchedCount, falsePositives, falseNegatives, precision, recall, f1Score, matches,
-                unmatchedPredictedIndexes, unmatchedReferenceIndexes, exactMatchCount, meanSignedOffset,
-                meanAbsoluteOffset, medianSignedOffset, minSignedOffset, maxSignedOffset);
+    @Override
+    public int windowStartIndex() {
+        return requestedStartIndex;
+    }
+
+    @Override
+    public int windowEndIndex() {
+        return requestedEndIndex;
     }
 }

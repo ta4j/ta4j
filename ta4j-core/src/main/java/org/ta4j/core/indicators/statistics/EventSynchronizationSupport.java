@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.analysis.event;
+package org.ta4j.core.indicators.statistics;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -213,7 +213,8 @@ final class EventSynchronizationSupport {
                 predictedCount, referenceCount, matchedCount, falsePositives, falseNegatives, precision, recall, f1,
                 matches, unmatchedIndexes(predictedEvents, matches, true),
                 unmatchedIndexes(referenceEvents, matches, false), exactMatchCount, meanSignedOffset,
-                meanAbsoluteOffset, medianSignedOffset, minSignedOffset, maxSignedOffset);
+                meanAbsoluteOffset, medianSignedOffset, minSignedOffset, maxSignedOffset,
+                effectiveStart <= effectiveEnd);
     }
 
     private static void validateTolerances(int maxLeadBars, int maxLagBars) {

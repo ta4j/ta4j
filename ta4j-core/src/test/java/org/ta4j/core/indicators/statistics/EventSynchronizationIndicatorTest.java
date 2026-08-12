@@ -1,9 +1,10 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.analysis.event;
+package org.ta4j.core.indicators.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -17,14 +18,18 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result;
-import org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result.Match;
+import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result;
+import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result.Match;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.IndicatorSerialization;
 
 /**
  * Rolling-window semantics of {@link EventSynchronizationIndicator}: closed
@@ -62,6 +67,20 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             @Override
             public int getCountOfUnstableBars() {
                 return unstableBars;
+            }
+        };
+    }
+
+    private Indicator<Boolean> thresholdSignal(BarSeries series, double threshold) {
+        return new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                return series.getBar(index).getClosePrice().isGreaterThan(series.numFactory().numOf(threshold));
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
             }
         };
     }
@@ -108,12 +127,14 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(Double.NaN, unstable.f1Score());
         assertEquals(0, unstable.predictedCount());
         assertEquals(-1, unstable.windowStartIndex());
+        assertFalse(unstable.windowAvailable());
         // At the boundary the complete window [0, 4] is evaluated: both events at 3
         // coincide exactly.
         assertNumEquals(1.0, indicator.getValue(4));
         Result stable = indicator.getResult(4);
         assertEquals(0, stable.windowStartIndex());
         assertEquals(4, stable.windowEndIndex());
+        assertTrue(stable.windowAvailable());
         assertEquals(List.of(new Match(3, 3)), stable.matches());
     }
 
@@ -356,6 +377,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertNumEquals(Double.NaN, result.precision());
         assertNumEquals(Double.NaN, result.recall());
         assertNumEquals(Double.NaN, result.f1Score());
+        assertTrue(result.windowAvailable());
     }
 
     @Test
@@ -377,6 +399,114 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertThrows(UnsupportedOperationException.class, () -> result.matches().add(new Match(0, 0)));
         assertThrows(UnsupportedOperationException.class, () -> result.unmatchedPredictedIndexes().add(1));
         assertThrows(UnsupportedOperationException.class, () -> result.unmatchedReferenceIndexes().add(1));
+    }
+
+    @Test
+    public void historicalReplaceInvalidatesTheEventIndexCache() {
+        BarSeries series = series(); // closes 1..40
+        Indicator<Boolean> predicted = thresholdSignal(series, 15.5); // events at 15..39
+        Indicator<Boolean> reference = events(series, 0, 15, 16, 17, 18, 19);
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 20, 0, 0);
+        // Window [0, 19]: predicted and reference both carry events 15..19.
+        Result before = indicator.getResult(19);
+        assertEquals(5, before.predictedCount());
+        assertEquals(5, before.matchedCount());
+        assertNumEquals(1.0, before.f1Score());
+        assertNumEquals(1.0, indicator.getValue(19));
+
+        // Replace a retained bar inside the scanned range, flipping its predicted
+        // event membership. The event-index caches must observe the published
+        // revision change and rescan instead of serving the stale event at 16.
+        ((BaseBarSeries) series).replaceBar(16,
+                series.barBuilder()
+                        .timePeriod(Duration.ofDays(1))
+                        .endTime(Instant.EPOCH.plus(Duration.ofDays(17)))
+                        .closePrice(10d)
+                        .build());
+
+        Result after = indicator.getResult(19);
+        assertEquals(4, after.predictedCount());
+        assertEquals(4, after.matchedCount());
+        assertEquals(1, after.falseNegatives());
+        assertEquals(List.of(16), after.unmatchedReferenceIndexes());
+        assertEquals(List.of(15, 17, 18, 19), after.matches().stream().map(Match::referenceIndex).toList());
+        assertNumEquals(8d / 9d, after.f1Score());
+        assertNumEquals(8d / 9d, indicator.getValue(19));
+    }
+
+    @Test
+    public void clearAndRebuildInvalidatesTheEventIndexCache() {
+        BarSeries series = series(); // closes 1..40
+        Indicator<Boolean> signal = thresholdSignal(series, 15.5);
+        EventSynchronizationIndicator indicator = indicator(signal, signal, 20, 0, 0);
+        // Window [0, 19] with events 15..19.
+        Result before = indicator.getResult(19);
+        assertEquals(5, before.predictedCount());
+        assertNumEquals(1.0, before.f1Score());
+
+        // Clear and rebuild from index zero with a different event pattern. The
+        // new bars reuse absolute indexes 0..24, so only revision-based
+        // invalidation can prevent the old cached events from leaking.
+        series.clear();
+        Instant endTime = Instant.EPOCH;
+        for (int i = 0; i < 25; i++) {
+            endTime = endTime.plus(Duration.ofDays(1));
+            double close = i < 10 ? 5d : 22d;
+            series.addBar(
+                    series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(endTime).closePrice(close).build());
+        }
+
+        // Window [5, 24] contains events at 10..24 (15 events).
+        Result after = indicator.getResult(24);
+        assertEquals(15, after.predictedCount());
+        assertEquals(15, after.matchedCount());
+        assertEquals(5, after.windowStartIndex());
+        assertEquals(24, after.windowEndIndex());
+        assertNumEquals(1.0, after.f1Score());
+        assertNumEquals(1.0, indicator.getValue(24));
+    }
+
+    @Test
+    public void windowAvailableDistinguishesUnavailableFromEmptyWindows() {
+        BarSeries series = series();
+        Indicator<Boolean> signal = events(series, 0, 5);
+        EventSynchronizationIndicator indicator = indicator(signal, signal, 5, 0, 0);
+        // Before the unstable boundary the window [ -1, 3] is unavailable.
+        assertFalse(indicator.getResult(3).windowAvailable());
+        // Evaluated windows with events are available.
+        assertTrue(indicator.getResult(9).windowAvailable());
+        // An available window whose streams contain no events keeps zero counts
+        // and NaN metrics but is still available.
+        Result empty = indicator(events(series, 0), events(series, 0), 5, 0, 0).getResult(9);
+        assertTrue(empty.windowAvailable());
+        assertEquals(0, empty.predictedCount());
+        assertEquals(0, empty.referenceCount());
+        assertNumEquals(Double.NaN, empty.f1Score());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void jsonRoundTripRestoresAnEquivalentIndicator() {
+        BarSeries series = series();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Boolean> predicted = new CrossIndicator(
+                new ConstantIndicator<>(series, series.numFactory().numOf(10)), close);
+        Indicator<Boolean> reference = new CrossIndicator(
+                new ConstantIndicator<>(series, series.numFactory().numOf(12)), close);
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 20, 5, 5);
+
+        Indicator<?> descriptorCopy = IndicatorSerialization.fromDescriptor(series, indicator.toDescriptor());
+        Indicator<?> jsonCopy = Indicator.fromJson(series, indicator.toJson());
+
+        assertEquals(indicator.toDescriptor(), descriptorCopy.toDescriptor());
+        assertEquals(indicator.toDescriptor(), jsonCopy.toDescriptor());
+        assertTrue(jsonCopy instanceof EventSynchronizationIndicator);
+        EventSynchronizationIndicator restored = (EventSynchronizationIndicator) jsonCopy;
+        // Crossings at 10 (predicted) and 12 (reference) match within the
+        // tolerance window [6, 25].
+        assertNumEquals(1.0, indicator.getValue(25));
+        assertNumEquals(1.0, restored.getValue(25));
+        assertEquals(indicator.getResult(25), restored.getResult(25));
     }
 
     @Test

@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result;
+import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result;
 
 /**
  * Companion regression check for {@link EventSynchronizationExample}.
@@ -32,7 +32,8 @@ class EventSynchronizationExampleTest {
         for (Result result : new Result[] { demo.swingHighs(), demo.swingLows() }) {
             assertEquals(result.predictedCount(), result.matchedCount() + result.unmatchedPredictedIndexes().size());
             assertEquals(result.referenceCount(), result.matchedCount() + result.unmatchedReferenceIndexes().size());
-            for (org.ta4j.core.analysis.event.EventSynchronizationIndicator.Result.Match match : result.matches()) {
+            for (org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result.Match match : result
+                    .matches()) {
                 assertTrue(match.offsetBars() >= -12 && match.offsetBars() <= 12,
                         "offset outside the demo tolerance window: " + match);
             }
