@@ -174,6 +174,28 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void signedZeroPredictorValuesStayInOneEqualFrequencyBin() {
+        BarSeries series = series(8);
+        List<Num> values = new ArrayList<>();
+        // DoubleNum.compareTo ranks -0.0 below +0.0, but they are numerically
+        // equal: a constant predictor alternating the two signs must not be
+        // split into two perfectly label-correlated bins.
+        for (int i = 0; i < 8; i++) {
+            values.add(numFactory.numOf(i % 2 == 0 ? 0.0 : -0.0));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 7,
+                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
+
+        // A single bin holds every sample: no predictor uncertainty, so raw MI
+        // is zero despite the labels alternating with the sign.
+        assertEquals(1, result.effectiveBinCount());
+        assertNumEquals(numFactory.numOf(0), result.mutualInformationNats(), 1.0e-9);
+    }
+
+    @Test
     public void skewedPredictorUsesMoreEffectiveBinsWithEqualFrequency() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 0, 0, 0, 0, 0, 5, 100);
@@ -192,6 +214,23 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         assertFalse(equalFrequency.mutualInformationNats().isNegative());
         assertFalse(equalWidth.mutualInformationNats().isNaN());
         assertFalse(equalWidth.mutualInformationNats().isNegative());
+    }
+
+    @Test
+    public void equalWidthBinsHonorRequestedCountBeyondSampleCount() {
+        BarSeries series = series(3);
+        Indicator<Num> predictor = indicator(series, 0.0, 0.1, 1.0);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 2,
+                new EventMutualInformationConfig(0, 0, 10, BinningStrategy.EQUAL_WIDTH));
+
+        // Boundaries come from the requested 10 bins (width span / 10), so the
+        // samples land in bins 0, 1 and 9; the populated extent spans all ten,
+        // even though only three samples exist.
+        assertEquals(10, result.requestedBinCount());
+        assertEquals(10, result.effectiveBinCount());
+        assertFalse(result.mutualInformationNats().isNaN());
     }
 
     @Test
@@ -288,6 +327,60 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         assertEquals(0, empty.sampleCount());
         assertTrue(empty.mutualInformationNats().isNaN());
         assertTrue(empty.positiveTargetRate().isNaN());
+    }
+
+    @Test
+    public void clampPolicyTreatsPredictorWarmUpAsRelativeToTheSeriesBeginIndex() {
+        BarSeries series = series(20);
+        // Dropping the head makes the retained begin index 10.
+        series.setMaximumBarCount(10);
+        // NaN until the 5-bar window completes: stable only from
+        // beginIndex + 5 = 15 onward, like a DTW-style indicator.
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            values.add(NaN.NaN);
+        }
+        for (int i = 15; i < 20; i++) {
+            values.add(numFactory.numOf(i));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, 5, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        EventMutualInformationResult clamped = evaluate(predictor, target, 10, 19, new EventMutualInformationConfig(0,
+                0, 2, BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.CLAMP));
+
+        // Samples 10..14 would read NaN; only 15..19 are usable, so the
+        // evaluation starts at the begin-index-relative warm-up boundary.
+        assertEquals(5, clamped.sampleCount());
+        assertFalse(clamped.mutualInformationNats().isNaN());
+        assertTrue(!clamped.mutualInformationNats().isNegative());
+
+        // STRICT shares the same boundary: a partition starting below it is
+        // rejected.
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, 12, 19, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
+    }
+
+    @Test
+    public void clampPolicyTreatsTargetWarmUpAsRelativeToTheSeriesBeginIndex() {
+        BarSeries series = series(20);
+        // Dropping the head makes the retained begin index 10.
+        series.setMaximumBarCount(10);
+        Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                19);
+        // The target is unstable below beginIndex + 2 = 12.
+        Indicator<Boolean> unstableTarget = eventSignal(series, 2, index -> index % 2 == 0);
+
+        EventMutualInformationResult clamped = evaluate(predictor, unstableTarget, 10, 19,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH,
+                        AnalysisContext.MissingHistoryPolicy.CLAMP));
+
+        // Samples 10 and 11 read target indexes below its stable boundary and
+        // must be clamped away; the evaluation covers 12..19.
+        assertEquals(8, clamped.sampleCount());
+        assertFalse(clamped.mutualInformationNats().isNaN());
+        assertTrue(!clamped.mutualInformationNats().isNegative());
     }
 
     @Test

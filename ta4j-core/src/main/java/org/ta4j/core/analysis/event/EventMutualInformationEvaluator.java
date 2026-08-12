@@ -89,13 +89,17 @@ public final class EventMutualInformationEvaluator {
         BarSeries series = predictor.getBarSeries();
         NumFactory numFactory = series.numFactory();
 
-        int availableStart = Math.max(series.getBeginIndex(), predictor.getCountOfUnstableBars());
-        // The earliest target index a sample reads is i + targetWindowStartBars,
-        // so samples may start below the target's own unstable boundary as long
-        // as their first target index is stable. The begin-index term keeps the
-        // same guarantee for series whose begin index is beyond 0.
-        availableStart = Math.max(availableStart, target.getCountOfUnstableBars() - config.targetWindowStartBars());
-        availableStart = Math.max(availableStart, series.getBeginIndex() - config.targetWindowStartBars());
+        // Unstable-bar counts are relative to the series' retained head, so with
+        // a discarded history (beginIndex > 0) the first stable index is
+        // beginIndex + unstableBars, not unstableBars. The earliest target index
+        // a sample reads is i + targetWindowStartBars, so samples may start
+        // below the target's own stable boundary as long as their first target
+        // index is at or after it. Long arithmetic keeps the sums from wrapping;
+        // saturation caps the boundary at the int range.
+        long predictorBoundary = (long) series.getBeginIndex() + predictor.getCountOfUnstableBars();
+        long targetBoundary = (long) series.getBeginIndex() + target.getCountOfUnstableBars()
+                - (long) config.targetWindowStartBars();
+        int availableStart = (int) Math.min(Integer.MAX_VALUE, Math.max(predictorBoundary, targetBoundary));
         int availableEnd = series.getEndIndex();
         // Long arithmetic keeps window-offset extremes of the int range from
         // wrapping: endIndex - targetWindowEndBars could otherwise wrap to a
@@ -188,9 +192,13 @@ public final class EventMutualInformationEvaluator {
                 minimum = minimum.min(value);
                 maximum = maximum.max(value);
             }
-            // Bins beyond the sample count can never be populated, so the
-            // effective count is bounded by sampleCount before any allocation.
-            effectiveBinCount = minimum.compareTo(maximum) == 0 ? 1 : Math.min(config.predictorBinCount(), sampleCount);
+            // Equal-width boundaries must honor the requested bin count even
+            // when it exceeds the sample count: capping the count before the
+            // width is computed would silently coarsen the requested
+            // discretization (three samples at 0, 0.1, 1 with 10 bins must land
+            // in bins 0, 1, 9, not 0, 0, 2). Storage follows the populated
+            // extent (max assigned bin + 1), so trailing empty bins are not
+            // allocated.
             // maximum - minimum can overflow to infinity for extreme spans
             // (e.g. samples at both ends of the double range); with a non-finite
             // span the bin width would be NaN and every sample would land in
@@ -201,7 +209,12 @@ public final class EventMutualInformationEvaluator {
                         positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
                         config.targetWindowStartBars(), config.targetWindowEndBars());
             }
-            bins = equalWidthBins(predictorValues, minimum, span, effectiveBinCount);
+            bins = equalWidthBins(predictorValues, minimum, span, config.predictorBinCount());
+            int maxBin = 0;
+            for (int assignedBin : bins) {
+                maxBin = Math.max(maxBin, assignedBin);
+            }
+            effectiveBinCount = maxBin + 1;
         }
         if (positiveTargetCount == 0 || positiveTargetCount == sampleCount) {
             // Constant target: no uncertainty to explain, so raw MI is zero and
@@ -294,14 +307,14 @@ public final class EventMutualInformationEvaluator {
         for (int i = 0; i < sampleCount; i++) {
             order[i] = i;
         }
-        Arrays.sort(order, (left, right) -> values.get(left).compareTo(values.get(right)));
+        Arrays.sort(order, (left, right) -> compareCanonical(values.get(left), values.get(right)));
         long desired = (sampleCount + (long) requestedBinCount - 1L) / requestedBinCount;
         int[] bins = new int[sampleCount];
         int bin = 0;
         int index = 0;
         while (index < sampleCount) {
             int end = (int) Math.min(sampleCount, index + desired);
-            while (end < sampleCount && values.get(order[end]).compareTo(values.get(order[end - 1])) == 0) {
+            while (end < sampleCount && compareCanonical(values.get(order[end]), values.get(order[end - 1])) == 0) {
                 end++;
             }
             for (int k = index; k < end; k++) {
@@ -313,23 +326,37 @@ public final class EventMutualInformationEvaluator {
         return bins;
     }
 
-    private static int[] equalWidthBins(List<Num> values, Num minimum, Num span, int effectiveBinCount) {
+    /**
+     * Compares two predictor values for equal-frequency binning.
+     * {@link Num#compareTo} may treat numerically equal values as distinct
+     * (DoubleNum's {@code Double.compare} ranks {@code -0.0} below {@code +0.0}),
+     * which would split a run of identical zeros across bins; canonicalizing zeros
+     * keeps such ties in one bin.
+     */
+    private static int compareCanonical(Num left, Num right) {
+        if (left.isZero() && right.isZero()) {
+            return 0;
+        }
+        return left.compareTo(right);
+    }
+
+    private static int[] equalWidthBins(List<Num> values, Num minimum, Num span, int binCount) {
         int sampleCount = values.size();
-        if (effectiveBinCount == 1) {
+        if (binCount == 1) {
             return new int[sampleCount];
         }
         // span is finite (validated by the caller), so every value delta is
         // finite: correctly-rounded subtraction of finite doubles within
         // [minimum, minimum + span] cannot overflow past the double range.
-        Num width = span.dividedBy(minimum.getNumFactory().numOf(effectiveBinCount));
+        Num width = span.dividedBy(minimum.getNumFactory().numOf(binCount));
         int[] bins = new int[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
             int bin = values.get(i).minus(minimum).dividedBy(width).intValue();
             if (bin < 0) {
                 bin = 0;
             }
-            if (bin >= effectiveBinCount) {
-                bin = effectiveBinCount - 1;
+            if (bin >= binCount) {
+                bin = binCount - 1;
             }
             bins[i] = bin;
         }

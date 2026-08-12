@@ -41,7 +41,8 @@ import org.ta4j.core.num.Num;
  * @param requestedBinCount           configured predictor bin count
  * @param effectiveBinCount           bins actually formed; smaller than the
  *                                    requested count when equal-frequency ties
- *                                    merge, or {@code 0} when undefined
+ *                                    merge or trailing equal-width bins stay
+ *                                    empty, or {@code 0} when undefined
  * @param binningStrategy             discretization used
  * @param targetWindowStartBars       inclusive lower bound of the target window
  * @param targetWindowEndBars         inclusive upper bound of the target window
