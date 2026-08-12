@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.statistics;
+package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -26,8 +26,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result;
-import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result.Match;
+import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.Result;
+import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.Result.Match;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;

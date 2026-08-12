@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.statistics;
+package org.ta4j.core.indicators.statistics.event;
 
 import java.util.List;
 import java.util.Objects;

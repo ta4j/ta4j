@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.statistics;
+package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result;
-import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result.Match;
+import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.Result;
+import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator.Result.Match;
 import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.statistics;
+package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
