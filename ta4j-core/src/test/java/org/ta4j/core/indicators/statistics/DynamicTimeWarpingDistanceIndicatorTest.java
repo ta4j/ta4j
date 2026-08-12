@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -204,6 +205,32 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void tinyMagnitudeWindowsZScoreLikeTheirScaledCounterparts() {
+        // Squared deviations of values around 1e-200 underflow to zero in
+        // double precision; without rescaling, both windows below would be
+        // misclassified as constant and score a zero shape distance.
+        BarSeries series = series(12);
+        Indicator<Num> tinyLinear = indicator(series, 1e-200, 2e-200, 3e-200, 4e-200, 5e-200, 6e-200, 7e-200, 8e-200,
+                9e-200, 1e-199, 1.1e-199, 1.2e-199);
+        Indicator<Num> tinyFlat = indicator(series, 1e-200, 1e-200, 1e-200, 1e-200, 1e-200, 1e-200, 1e-200, 1e-200,
+                1e-200, 1e-200, 1e-200, 1.2e-199);
+        Indicator<Num> plainLinear = indicator(series, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+        Indicator<Num> plainFlat = indicator(series, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 12);
+        DynamicTimeWarpingDistanceIndicator.Config shape = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num tinyDistance = new DynamicTimeWarpingDistanceIndicator(tinyLinear, tinyFlat, 6, shape).getValue(11);
+        Num plainDistance = new DynamicTimeWarpingDistanceIndicator(plainLinear, plainFlat, 6, shape).getValue(11);
+
+        // Z-scores are scale invariant: both pairs share the same shapes.
+        assertNumEquals(plainDistance, tinyDistance, 1.0e-9);
+        assertTrue(tinyDistance.isPositive());
+    }
+
+    @Test
     public void widerBandNeverScoresWorseThanNarrowerBand() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
@@ -360,24 +387,27 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
-    public void zScoreVarianceOverflowYieldsNaNInsteadOfRawFallback() {
-        org.junit.Assume.assumeTrue(numFactory instanceof DoubleNumFactory);
+    public void extremeFiniteValuesZScoreWithoutOverflow() {
         BarSeries series = series(12);
-        // The squared deviation of values at +/-1e308 overflows to infinity, so
-        // z-score normalization is numerically undefined; the indicator must
-        // report NaN rather than silently scoring the raw values.
+        // Squared deviations of values at +/-1e308 would overflow the double
+        // range; rescaling before the moments keeps the z-score finite under
+        // both Num factories, so the distance is a number, not NaN.
         Indicator<Num> extreme = indicator(series, 1e308, -1e308, 1e308, -1e308, 1e308, -1e308, 1e308, -1e308, 1e308,
                 -1e308, 1e308, -1e308);
         Indicator<Num> plain = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 
-        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(extreme, plain, 6,
-                new DynamicTimeWarpingDistanceIndicator.Config(
-                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
-                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
-                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
-                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH));
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(5),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
-        assertTrue(dtw.getValue(11).isNaN());
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(extreme, plain, 6, config);
+        assertFalse(dtw.getValue(11).isNaN());
+        assertTrue(dtw.getValue(11).isGreaterThanOrEqual(numFactory.zero()));
+        // Identical extreme windows score zero shape distance.
+        DynamicTimeWarpingDistanceIndicator same = new DynamicTimeWarpingDistanceIndicator(extreme, extreme, 6, config);
+        assertNumEquals(numFactory.zero(), same.getValue(11), 1.0e-12);
     }
 
     @Test

@@ -19,9 +19,9 @@
  * {@link org.ta4j.core.indicators.statistics.LaggedCorrelationIndicator},
  * {@link org.ta4j.core.indicators.statistics.DistanceCorrelationIndicator},
  * {@link org.ta4j.core.indicators.statistics.MutualInformationIndicator},
- * {@link org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator},
+ * {@link org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator}.
  * {@link org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator} scans
- * a lag range into a full correlation profile, and
+ * a lag range into a full correlation profile, while
  * {@link org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator}
  * measures shape similarity under time-axis distortion. Sparse near-coincident
  * Boolean event streams are scored with

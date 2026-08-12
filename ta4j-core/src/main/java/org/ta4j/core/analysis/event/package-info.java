@@ -10,7 +10,7 @@
  * an event occurs in an explicit future bar window, reporting raw and
  * normalized mutual information with prevalence and bin diagnostics.
  * {@link org.ta4j.core.analysis.event.EventMutualInformationConfig} controls
- * binning, history policy, and the predictor lag horizon; the history policy is
+ * binning, history policy, and the forward target window; the history policy is
  * the shared
  * {@link org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy}.
  *

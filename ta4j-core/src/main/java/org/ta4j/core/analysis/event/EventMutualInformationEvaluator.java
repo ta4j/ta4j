@@ -308,12 +308,17 @@ public final class EventMutualInformationEvaluator {
             order[i] = i;
         }
         Arrays.sort(order, (left, right) -> compareCanonical(values.get(left), values.get(right)));
-        long desired = (sampleCount + (long) requestedBinCount - 1L) / requestedBinCount;
         int[] bins = new int[sampleCount];
         int bin = 0;
         int index = 0;
         while (index < sampleCount) {
-            int end = (int) Math.min(sampleCount, index + desired);
+            // Size each bin from the remaining samples and remaining requested
+            // bins, so a non-divisible sample count still forms every requested
+            // bin (5 distinct samples with 4 bins -> sizes 2,1,1,1) instead of
+            // collapsing the tail into fewer bins.
+            int remaining = sampleCount - index;
+            int remainingBins = requestedBinCount - bin;
+            int end = index + (int) ((remaining + (long) remainingBins - 1L) / remainingBins);
             while (end < sampleCount && compareCanonical(values.get(order[end]), values.get(order[end - 1])) == 0) {
                 end++;
             }

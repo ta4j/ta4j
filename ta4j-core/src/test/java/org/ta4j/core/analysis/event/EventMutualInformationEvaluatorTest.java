@@ -12,7 +12,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Assume;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
@@ -140,8 +139,9 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     public void equalFrequencyBinningNeverSplitsTiedValues() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3);
-        // 10 samples, 4 requested bins => desired 3 per bin, but the tie run of
-        // three 2s cannot be split, so the second bin absorbs it.
+        // 10 samples, 4 requested bins: bins are sized from the remaining
+        // samples and remaining bins (3, 3, 2, 2), and tie runs cannot be
+        // split, so the applied partition stays {0,0,0}, {1,1,2,2,2}, {3,3}.
         Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
@@ -154,13 +154,30 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void equalFrequencyBinningHonorsRequestedCountWhenSamplesAreNotDivisible() {
+        // 5 samples with 4 requested bins: with a fixed desired size of
+        // ceil(5/4) = 2 the tail would collapse into 3 bins; sizing each bin
+        // from the remaining samples and remaining bins yields sizes 2,1,1,1.
+        BarSeries series = series(5);
+        Indicator<Num> predictor = indicator(series, 0, 1, 2, 3, 4);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 4,
+                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_FREQUENCY));
+
+        assertEquals(4, result.requestedBinCount());
+        assertEquals(4, result.effectiveBinCount());
+        assertFalse(result.mutualInformationNats().isNaN());
+        assertTrue(!result.mutualInformationNats().isNegative());
+    }
+
+    @Test
     public void equalFrequencyMiMatchesTheReportedPartition() {
         BarSeries series = series(10);
         Indicator<Num> predictor = indicator(series, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3);
-        // Ties merge bins: requested 4 -> desired ceil(10/4) = 3, and the
-        // three 2s cannot be split, so the applied partition is exactly
-        // {0,0,0}, {1,1,2,2,2}, {3,3} (3 bins). The reported effectiveBinCount
-        // and the MI must both come from that partition.
+        // Ties merge bins and cannot be split, so the applied partition is
+        // exactly {0,0,0}, {1,1,2,2,2}, {3,3} (3 bins). The reported
+        // effectiveBinCount and the MI must both come from that partition.
         Indicator<Boolean> target = eventSignal(series, 0, index -> index % 3 == 0);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 9,
@@ -206,9 +223,11 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         EventMutualInformationResult equalWidth = evaluate(predictor, target, 0, 9,
                 new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_WIDTH));
 
-        // Eight tied zeros collapse into one equal-frequency bin; equal-width
-        // keeps the requested four bins but concentrates samples in the first.
-        assertEquals(2, equalFrequency.effectiveBinCount());
+        // Eight tied zeros collapse into one equal-frequency bin; the two
+        // remaining samples are then sized one per remaining bin (1, 1), so
+        // each distinct value gets its own bin; equal-width keeps the
+        // requested four bins but concentrates samples in the first.
+        assertEquals(3, equalFrequency.effectiveBinCount());
         assertEquals(4, equalWidth.effectiveBinCount());
         assertFalse(equalFrequency.mutualInformationNats().isNaN());
         assertFalse(equalFrequency.mutualInformationNats().isNegative());
@@ -385,15 +404,23 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
     @Test
     public void equalWidthBinningWithNonFiniteSpanIsUndefined() {
-        Assume.assumeTrue(numFactory instanceof DoubleNumFactory);
-        BarSeries series = series(12);
+        // The span overflows to infinity only in double arithmetic (BigDecimal
+        // keeps it finite), so pin the DoubleNum factory for this case: both
+        // parameterized runs exercise the same overflow path instead of one
+        // being skipped.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
+                .withData(new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE,
+                        -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE,
+                        Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE })
+                .build();
         // The span maximum - minimum overflows to infinity for samples at both
         // ends of the double range, so equal-width bin positions would be
         // numerically undefined; the evaluation is undefined, not a silent
         // collapse into bin 0.
         List<Num> values = new ArrayList<>();
         for (int i = 0; i < 12; i++) {
-            values.add(numFactory.numOf(i < 6 ? -Double.MAX_VALUE : Double.MAX_VALUE));
+            values.add(doubleFactory.numOf(i < 6 ? -Double.MAX_VALUE : Double.MAX_VALUE));
         }
         Indicator<Num> predictor = new MockIndicator(series, values);
         Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);

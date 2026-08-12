@@ -4,9 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 
@@ -382,11 +380,17 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                 throw new IllegalArgumentException("selectedLag must be the deterministic pick from bestLags");
             }
             if (selectedDefined) {
-                Map<Integer, Point> pointsByLag = new HashMap<>(points.size());
+                // A single lookup: scan for the lag instead of materializing a
+                // map of every point, which for a wide lag range would allocate
+                // a new entry per evaluated lag.
+                int selectedLagValue = selectedLag.getAsInt();
+                Point selectedPoint = null;
                 for (Point point : points) {
-                    pointsByLag.put(point.lag(), point);
+                    if (point.lag() == selectedLagValue) {
+                        selectedPoint = point;
+                        break;
+                    }
                 }
-                Point selectedPoint = pointsByLag.get(selectedLag.getAsInt());
                 if (selectedPoint == null || selectedPoint.correlation().compareTo(selectedCorrelation) != 0) {
                     throw new IllegalArgumentException(
                             "selectedCorrelation must equal the correlation of the selected point");

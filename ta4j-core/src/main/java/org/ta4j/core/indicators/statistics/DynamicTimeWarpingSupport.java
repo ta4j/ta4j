@@ -161,21 +161,48 @@ final class DynamicTimeWarpingSupport {
     /**
      * @return the normalized sequence, the input itself for {@code NONE}, or
      *         {@code null} when z-score normalization is numerically undefined
-     *         (non-finite mean or variance)
+     *         (non-finite input, mean, or variance)
      */
     private static Num[] normalize(NumFactory numFactory, Num[] values, SequenceNormalization normalization) {
         if (normalization == SequenceNormalization.NONE) {
             return values;
         }
-        // Incremental mean keeps the running sum finite even when the values
-        // themselves are extreme: plain summation of e.g. ten 1.0e308 values
-        // overflows to infinity before the division.
+        // Rescale by the largest absolute value before computing the moments:
+        // raw squared deviations of a tiny-magnitude varying window (for
+        // example around 1e-200) underflow to zero in double precision, which
+        // would misclassify it as a constant sequence. Z-scores are scale
+        // invariant, so normalizing the rescaled sequence yields the same
+        // result while keeping every intermediate in [-1, 1].
+        Num scale = numFactory.zero();
+        for (Num value : values) {
+            if (!CorrelationWindowSupport.isFinite(value)) {
+                // Non-finite input makes the mean and variance undefined.
+                return null;
+            }
+            Num magnitude = value.abs();
+            if (magnitude.isGreaterThan(scale)) {
+                scale = magnitude;
+            }
+        }
+        if (scale.isZero()) {
+            // All-zero sequence: constant, so shape distance ignores level.
+            Num[] zeros = new Num[values.length];
+            java.util.Arrays.fill(zeros, numFactory.zero());
+            return zeros;
+        }
+        Num[] rescaled = new Num[values.length];
+        for (int i = 0; i < values.length; i++) {
+            rescaled[i] = values[i].dividedBy(scale);
+        }
+        // Incremental mean keeps the running sum finite even when the rescaled
+        // values are near the extremes: plain summation of e.g. ten values of
+        // magnitude one could overflow to infinity before the division.
         Num mean = numFactory.zero();
         for (int i = 0; i < values.length; i++) {
-            mean = mean.plus(values[i].minus(mean).dividedBy(numFactory.numOf(i + 1)));
+            mean = mean.plus(rescaled[i].minus(mean).dividedBy(numFactory.numOf(i + 1)));
         }
         Num sumOfSquares = numFactory.zero();
-        for (Num value : values) {
+        for (Num value : rescaled) {
             Num delta = value.minus(mean);
             sumOfSquares = sumOfSquares.plus(delta.multipliedBy(delta));
         }
@@ -194,7 +221,7 @@ final class DynamicTimeWarpingSupport {
         }
         Num[] normalized = new Num[values.length];
         for (int i = 0; i < values.length; i++) {
-            normalized[i] = values[i].minus(mean).dividedBy(standardDeviation);
+            normalized[i] = rescaled[i].minus(mean).dividedBy(standardDeviation);
         }
         return normalized;
     }
