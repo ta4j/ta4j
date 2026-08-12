@@ -93,8 +93,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Boolean> predicted;
     private final Indicator<Boolean> reference;
-    private final EventSignal predictedSignal;
-    private final EventSignal referenceSignal;
+    // Runtime-derived views of the durable indicator fields, rebuilt by the
+    // constructor after deserialization; never part of the serialized form.
+    private transient final EventSignal predictedSignal;
+    private transient final EventSignal referenceSignal;
     private final int barCount;
     private final int maxLeadBars;
     private final int maxLagBars;
