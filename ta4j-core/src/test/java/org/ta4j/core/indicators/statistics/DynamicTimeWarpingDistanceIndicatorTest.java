@@ -130,6 +130,29 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void normalizedTieBreakIsSymmetricUnderReversal() {
+        // Review regression: unrestricted absolute-distance DTW on (0,1,2,0)
+        // versus (1,0,0,2) used to report 4/5 forward but 4/6 backward,
+        // because equal-cost predecessors were resolved by the orientation-
+        // dependent diagonal/vertical/horizontal order. The shorter-path
+        // tie-break must make both directions agree on 4/5.
+        BarSeries series = series(8);
+        Indicator<Num> first = indicator(series, 0, 1, 2, 0, 0, 0, 0, 0);
+        Indicator<Num> second = indicator(series, 1, 0, 0, 2, 0, 0, 0, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.unconstrained(),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num forward = new DynamicTimeWarpingDistanceIndicator(first, second, 4, config).getValue(3);
+        Num backward = new DynamicTimeWarpingDistanceIndicator(second, first, 4, config).getValue(3);
+
+        assertNumEquals(numFactory.numOf(0.8), forward, 1.0e-12);
+        assertNumEquals(forward, backward, 1.0e-12);
+    }
+
+    @Test
     public void isNeverNegative() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 3, -1, 2, 0, -2, 1, 4, -3, 2, 0, 1, -1);
