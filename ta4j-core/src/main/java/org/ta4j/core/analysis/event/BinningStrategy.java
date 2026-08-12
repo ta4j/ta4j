@@ -7,7 +7,7 @@ package org.ta4j.core.analysis.event;
  * Predictor discretization strategy for
  * {@link EventMutualInformationEvaluator}.
  *
- * @since 0.24.1
+ * @since 0.24.2
  */
 public enum BinningStrategy {
 

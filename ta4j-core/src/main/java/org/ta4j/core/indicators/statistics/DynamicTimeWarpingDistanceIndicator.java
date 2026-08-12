@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  * mode is {@code O(W^2)} time.
  * </p>
  *
- * @since 0.24.1
+ * @since 0.24.2
  */
 public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<Num> {
 

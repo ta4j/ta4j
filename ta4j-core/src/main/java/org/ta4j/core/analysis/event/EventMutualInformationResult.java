@@ -46,7 +46,7 @@ import org.ta4j.core.num.Num;
  * @param binningStrategy             discretization used
  * @param targetWindowStartBars       inclusive lower bound of the target window
  * @param targetWindowEndBars         inclusive upper bound of the target window
- * @since 0.24.1
+ * @since 0.24.2
  */
 public record EventMutualInformationResult(Num mutualInformationNats, Num targetEntropyNats,
         Num normalizedMutualInformation, int sampleCount, int positiveTargetCount, Num positiveTargetRate,
