@@ -133,8 +133,8 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
                         5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
 
         assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationResult(factory.numOf(-1), factory.numOf(-2), factory.numOf(0.5),
-                        10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+                () -> new EventMutualInformationResult(factory.numOf(-1), factory.numOf(-2), factory.numOf(0.5), 10, 5,
+                        factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.5), factory.numOf(0.2), 10, 5,
                 factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
     }

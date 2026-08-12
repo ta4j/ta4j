@@ -764,7 +764,6 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(clean.getResult(15), afterRetry);
     }
 
-
     @Test
     public void concurrentRandomAccessEvaluationMatchesSequentialResults() throws Exception {
         // Concurrent evaluations for different indexes must never observe the

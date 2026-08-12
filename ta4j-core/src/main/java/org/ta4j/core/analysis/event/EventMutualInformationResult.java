@@ -67,12 +67,12 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *                                  carries a non-finite or count-inconsistent
      *                                  {@code positiveTargetRate}, a defined result
      *                                  carries non-finite or negative raw metrics,
-     *                                  a constant target carries nonzero raw metrics
-     *                                  or defined normalized MI, or a non-constant
-     *                                  target carries non-positive entropy, a
-     *                                  negative MI, a normalized value outside
-     *                                  {@code [0, 1]}, or one inconsistent with
-     *                                  {@code MI / H(Y)}
+     *                                  a constant target carries nonzero raw
+     *                                  metrics or defined normalized MI, or a
+     *                                  non-constant target carries non-positive
+     *                                  entropy, a negative MI, a normalized value
+     *                                  outside {@code [0, 1]}, or one inconsistent
+     *                                  with {@code MI / H(Y)}
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
