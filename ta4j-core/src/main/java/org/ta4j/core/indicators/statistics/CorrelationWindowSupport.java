@@ -177,14 +177,36 @@ final class CorrelationWindowSupport {
             return NaN.NaN;
         }
 
-        Num firstAverage = average(numFactory, firstValues, sampleCount);
-        Num secondAverage = average(numFactory, secondValues, sampleCount);
+        // Pearson correlation is invariant under a common rescaling of both
+        // series, so the window is rescaled by its largest absolute value
+        // before averaging: the plain sum of extreme-but-finite values (for
+        // example 1e308 and 1.1e308) would overflow to infinity and turn an
+        // exactly correlated window into an undefined one. Every scaled
+        // magnitude is <= 1, so the means and centered sums stay finite and
+        // the ratio equals the unscaled correlation.
+        Num scale = numFactory.zero();
+        for (int i = 0; i < sampleCount; i++) {
+            scale = scale.max(firstValues[i].abs()).max(secondValues[i].abs());
+        }
+        if (scale.isZero()) {
+            // An all-zero window has zero variance on both sides.
+            return NaN.NaN;
+        }
+        Num firstAverage = numFactory.zero();
+        Num secondAverage = numFactory.zero();
+        for (int i = 0; i < sampleCount; i++) {
+            firstAverage = firstAverage.plus(firstValues[i].dividedBy(scale));
+            secondAverage = secondAverage.plus(secondValues[i].dividedBy(scale));
+        }
+        Num count = numFactory.numOf(sampleCount);
+        firstAverage = firstAverage.dividedBy(count);
+        secondAverage = secondAverage.dividedBy(count);
         Num covariance = numFactory.zero();
         Num firstVariance = numFactory.zero();
         Num secondVariance = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            Num firstDelta = firstValues[i].minus(firstAverage);
-            Num secondDelta = secondValues[i].minus(secondAverage);
+            Num firstDelta = firstValues[i].dividedBy(scale).minus(firstAverage);
+            Num secondDelta = secondValues[i].dividedBy(scale).minus(secondAverage);
             covariance = covariance.plus(firstDelta.multipliedBy(secondDelta));
             firstVariance = firstVariance.plus(firstDelta.multipliedBy(firstDelta));
             secondVariance = secondVariance.plus(secondDelta.multipliedBy(secondDelta));
@@ -261,13 +283,5 @@ final class CorrelationWindowSupport {
             values[i] = value;
         }
         return values;
-    }
-
-    private static Num average(NumFactory numFactory, Num[] values, int sampleCount) {
-        Num sum = numFactory.zero();
-        for (int i = 0; i < sampleCount; i++) {
-            sum = sum.plus(values[i]);
-        }
-        return sum.dividedBy(numFactory.numOf(sampleCount));
     }
 }

@@ -318,9 +318,10 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
          *                                  {@code selectedCorrelation} is null
          * @throws IllegalArgumentException if {@code barCount < 2},
          *                                  {@code minimumLag > maximumLag},
-         *                                  {@code bestLags} is not ascending, or the
-         *                                  selected lag/correlation combination is
-         *                                  inconsistent
+         *                                  {@code bestLags} is not ascending, a point's
+         *                                  sampleCount is neither 0 nor
+         *                                  {@code barCount}, or the selected
+         *                                  lag/correlation combination is inconsistent
          */
         public Profile {
             if (barCount < 2) {
@@ -342,6 +343,15 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                 long expectedLag = (long) minimumLag + index;
                 if (points.get(index).lag() != expectedLag) {
                     throw new IllegalArgumentException("points must be in ascending requested-lag order");
+                }
+            }
+            for (Point point : points) {
+                // A window either supplies the full aligned barCount samples or
+                // is unavailable (0 samples); a partial count would compare
+                // unequal window lengths across lags and cannot be produced by
+                // this indicator.
+                if (point.sampleCount() != 0 && point.sampleCount() != barCount) {
+                    throw new IllegalArgumentException("each point's sampleCount must be 0 or the profile's barCount");
                 }
             }
             Integer previousLag = null;

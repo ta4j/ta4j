@@ -569,6 +569,74 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
                         new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH)));
     }
 
+    @Test
+    public void proxySeriesWithSpanExactlyIntegerMaxValueReturnsUndefinedResult() {
+        // A covered target-window span of exactly Integer.MAX_VALUE passes an
+        // `> Integer.MAX_VALUE` check and then fails with "Requested array size
+        // exceeds VM limit" (the JVM's usable int[] ceiling is a few words
+        // below MAX_VALUE): the evaluation must be undefined instead of
+        // attempting the allocation.
+        BaseBarSeries built = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 1, 2, 3 })
+                .build();
+        BaseBarSeries proxy = new BaseBarSeries(built.getName(), built.getBarData()) {
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE - 2;
+            }
+        };
+        List<Num> predictorValues = new ArrayList<>();
+        predictorValues.add(numFactory.numOf(1));
+        Indicator<Num> predictor = new MockIndicator(proxy, predictorValues);
+        Indicator<Boolean> target = eventSignal(proxy, 0, index -> false);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, Integer.MAX_VALUE - 2,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertEquals(0, result.sampleCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
+    public void emptySeriesNaturalBoundsYieldUndefinedResultUnderClamp() {
+        // An empty series has natural bounds (-1, -1), which pass the
+        // availability checks and previously crashed reading getValue(-1);
+        // the default CLAMP policy must yield the documented undefined result.
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[0]).build();
+        Indicator<Num> predictor = new MockIndicator(empty, new ArrayList<>());
+        Indicator<Boolean> target = eventSignal(empty, 0, index -> false);
+
+        EventMutualInformationResult result = evaluate(predictor, target, -1, -1,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertTrue(result.positiveTargetRate().isNaN());
+        assertEquals(0, result.sampleCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
+    public void emptySeriesStillRejectsEveryRangeUnderStrict() {
+        // STRICT keeps rejecting any requested range on an empty series: it
+        // cannot hold a complete target window, so the natural bounds throw
+        // like an explicit range instead of reading getValue(-1).
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[0]).build();
+        Indicator<Num> predictor = new MockIndicator(empty, new ArrayList<>());
+        Indicator<Boolean> target = eventSignal(empty, 0, index -> false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, -1, -1, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
+        assertThrows(IllegalArgumentException.class,
+                () -> evaluate(predictor, target, 0, 0, new EventMutualInformationConfig(0, 0, 2,
+                        BinningStrategy.EQUAL_WIDTH, AnalysisContext.MissingHistoryPolicy.STRICT)));
+    }
+
     private EventMutualInformationResult evaluate(Indicator<Num> predictor, Indicator<Boolean> target, int startIndex,
             int endIndex, EventMutualInformationConfig config) {
         return new EventMutualInformationEvaluator().evaluate(predictor, target, startIndex, endIndex, config);

@@ -518,6 +518,40 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
                 LagSelectionPolicy.MAXIMUM_CORRELATION);
     }
 
+    @Test
+    public void pearsonSurvivesExtremeFiniteValues() {
+        // The reused Pearson implementation averaged the raw window: summing
+        // 1e308 and 1.1e308 overflows to infinity, turning an exactly
+        // correlated window into an undefined one.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 1e308, 1.1e308);
+        Indicator<Num> second = indicator(series, 1e308, 1.1e308);
+
+        Profile profile = profile(first, second, 1, 2, 0, 0);
+
+        assertEquals(OptionalInt.of(0), profile.selectedLag());
+        assertNumEquals(numFactory.numOf(1), profile.selectedCorrelation(), 1.0e-12);
+    }
+
+    @Test
+    public void profileRejectsPartialSampleCounts() {
+        // A point whose sampleCount is neither 0 (unavailable window) nor
+        // barCount (full aligned window) would compare unequal window lengths
+        // across lags; this indicator never produces such a profile.
+        List<Point> points = List.of(new Point(-1, NaN.NaN, 0), new Point(0, numFactory.one(), 5),
+                new Point(1, NaN.NaN, 0));
+        List<Integer> bestLags = List.of(0);
+
+        assertThrows(IllegalArgumentException.class, () -> new Profile(31, 8, -1, 1,
+                LagSelectionPolicy.MAXIMUM_CORRELATION, points, bestLags, OptionalInt.of(0), numFactory.one()));
+        // 0 and barCount both remain valid: an unavailable window and a full
+        // aligned window, including NaN correlations with a full count.
+        List<Point> valid = List.of(new Point(-1, NaN.NaN, 0), new Point(0, numFactory.one(), 8),
+                new Point(1, NaN.NaN, 8));
+        new Profile(31, 8, -1, 1, LagSelectionPolicy.MAXIMUM_CORRELATION, valid, List.of(0), OptionalInt.of(0),
+                numFactory.one());
+    }
+
     private Profile profile(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int minimumLag,
             int maximumLag, LagSelectionPolicy policy) {
         return indicator(first, second, barCount, minimumLag, maximumLag, policy).getProfile(endIndex);

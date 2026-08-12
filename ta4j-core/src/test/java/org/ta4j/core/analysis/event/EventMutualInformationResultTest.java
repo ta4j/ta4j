@@ -77,8 +77,35 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         // rejected.
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
                 factory.one(), NaN.NaN, 10, 5, factory.numOf(0.54), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        // The canonical valid form: a rate consistent with the counts.
-        new EventMutualInformationResult(factory.one(), factory.one(), NaN.NaN, 10, 5, factory.numOf(0.5), 8, 4,
+        // The canonical valid form: a rate consistent with the counts and, for a
+        // non-constant target (5 of 10 positives), a defined normalized MI.
+        new EventMutualInformationResult(factory.one(), factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 4,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
+
+    @Test
+    public void normalizedMutualInformationStateMustMatchTargetConstancy() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // A constant target (0 or sampleCount positive samples) has zero target
+        // entropy, so the evaluator pairs it with NaN normalized MI; a
+        // non-constant target carries a defined normalized value. Any other
+        // pairing is contradictory: either a defined rate silently dropped or
+        // normalized against nothing.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), NaN.NaN, 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), factory.one(), 10, 10, factory.one(), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), factory.one(), 10, 0, factory.zero(), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // The constant-target canonical forms: NaN normalized MI with a factual
+        // rate.
+        new EventMutualInformationResult(factory.one(), factory.one(), NaN.NaN, 10, 0, factory.zero(), 8, 4,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.one(), factory.one(), NaN.NaN, 10, 10, factory.one(), 8, 4,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+        // And the non-constant canonical form with a defined normalized value.
+        new EventMutualInformationResult(factory.one(), factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 4,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 }

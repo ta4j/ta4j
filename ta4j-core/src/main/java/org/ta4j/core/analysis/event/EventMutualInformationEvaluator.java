@@ -45,6 +45,15 @@ import org.ta4j.core.num.NumFactory;
 public final class EventMutualInformationEvaluator {
 
     /**
+     * HotSpot's maximum usable {@code int[]} length is a few words below
+     * {@link Integer#MAX_VALUE} (observed here: {@code MAX_VALUE - 2}); a span at
+     * or above that boundary cannot be represented in memory on any supported JVM
+     * and must be reported undefined instead of throwing {@link OutOfMemoryError}.
+     * {@code MAX_VALUE - 8} conservatively covers every HotSpot header layout.
+     */
+    private static final int MAX_PREFIX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
+
+    /**
      * Creates an evaluator.
      *
      * @since 0.24.2
@@ -88,6 +97,19 @@ public final class EventMutualInformationEvaluator {
         requireSameSeries(predictor.getBarSeries(), target.getBarSeries());
         BarSeries series = predictor.getBarSeries();
         NumFactory numFactory = series.numFactory();
+
+        if (series.isEmpty()) {
+            // An empty series has natural bounds (-1, -1), which pass the
+            // availability checks below and would make evaluateInRange read
+            // getValue(-1). STRICT keeps rejecting the range (it cannot hold a
+            // complete target window); the default CLAMP policy yields the
+            // documented undefined result for the empty effective range.
+            if (config.historyPolicy() == AnalysisContext.MissingHistoryPolicy.STRICT) {
+                throw new IllegalArgumentException(
+                        "requested evaluation range includes unavailable history or cannot hold a complete target window");
+            }
+            return evaluateInRange(predictor, target, numFactory, 0, -1, config);
+        }
 
         // Unstable-bar counts are relative to the series' retained head, so with
         // a discarded history (beginIndex > 0) the first stable index is
@@ -280,7 +302,11 @@ public final class EventMutualInformationEvaluator {
         long targetStart = (long) effectiveStart + config.targetWindowStartBars();
         long targetEnd = (long) effectiveEnd + config.targetWindowEndBars();
         long span = targetEnd - targetStart + 2L;
-        if (span > Integer.MAX_VALUE) {
+        if (span > MAX_PREFIX_ARRAY_LENGTH) {
+            // A span of exactly Integer.MAX_VALUE would pass an
+            // `> Integer.MAX_VALUE` check and then fail with "Requested array
+            // size exceeds VM limit"; treat every span at or above the JVM's
+            // usable int[] ceiling as unrepresentable.
             return null;
         }
         int[] prefix = new int[(int) span];

@@ -105,5 +105,18 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             throw new IllegalArgumentException(
                     "a nonempty sample range must carry a finite positiveTargetRate consistent with the counts");
         }
+        if (sampleCount > 0 && !mutualInformationNats.isNaN() && !targetEntropyNats.isNaN()) {
+            // A constant target (0 or sampleCount positive samples) has zero
+            // target entropy, so the evaluator always pairs it with NaN
+            // normalized MI; a non-constant target has positive entropy and a
+            // defined normalized value. Any other pairing is contradictory:
+            // either a zero-variance target normalized against nothing, or a
+            // defined rate that is silently dropped.
+            boolean constantTarget = positiveTargetCount == 0 || positiveTargetCount == sampleCount;
+            if (constantTarget != normalizedMutualInformation.isNaN()) {
+                throw new IllegalArgumentException(
+                        "a constant target must carry NaN normalized mutual information and a non-constant target a defined value");
+            }
+        }
     }
 }

@@ -597,8 +597,14 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 // Evict below the requested window's first bar while catching up to
                 // a distant index rather than after the whole catch-up: a signal
                 // that fires every bar over a long gap would otherwise accumulate
-                // the entire history and trip the matcher's capacity limit.
-                if (size > 0 && events[0] < frontier && size >= Math.max(windowSize * 2, 16)) {
+                // the entire history and trip the matcher's capacity limit. The
+                // threshold is capped at half the matcher capacity so a window
+                // wider than that still evicts before the events array's growth
+                // ceiling throws (the array doubles up to MAX_MATCHING_CELLS);
+                // long arithmetic keeps the doubled window size from wrapping.
+                long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
+                        EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);
+                if (size > 0 && events[0] < frontier && size >= evictionThreshold) {
                     evictBelowPrefix(frontier);
                 }
             }
