@@ -177,6 +177,37 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void byPathLengthOrderingPrefersTheOptimalPathWhenTotalsSaturate() {
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return;
+        }
+        // Review regression: predecessor ranking compared raw accumulated
+        // totals, which saturate at infinity when finite costs sum beyond the
+        // double range. Two saturated competitors looked like an equal-cost
+        // tie, so the shorter-path tie-break picked the suboptimal diagonal
+        // alignment (mean 5.5955e307) over the longer path with the same
+        // total cost and the better mean (4.4764e307).
+        BarSeries series = series(4);
+        Indicator<Num> first = indicator(series, 1.01e154, 1.1e154, 1.1e154, 1.1e154);
+        Indicator<Num> second = indicator(series, 0, 1.1e154, 1.01e154, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.unconstrained(),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 4, config).getValue(3);
+
+        // Both paths' raw accumulated cost overflows, but the normalized
+        // comparison remains finite and selects the extra zero-cost step.
+        double expected = 4.4764e307;
+        assertTrue(Double.isFinite(distance.doubleValue()));
+        assertEquals(1.0, distance.doubleValue() / expected, 1.0e-12);
+        assertTrue("saturated-total tie-break must not select the suboptimal path",
+                distance.doubleValue() < 5.5955e307);
+    }
+
+    @Test
     public void isNeverNegative() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 3, -1, 2, 0, -2, 1, 4, -3, 2, 0, 1, -1);

@@ -103,18 +103,44 @@ final class DynamicTimeWarpingSupport {
                     bestMeanCost = byPathLength ? previousMeanCost[j - 1] : null;
                     bestLength = previousLength[j - 1];
                 }
-                Num vertical = previousCost[j];
-                if (vertical != null && better(vertical, previousLength[j], bestCost, bestLength)) {
-                    bestCost = vertical;
-                    bestMeanCost = byPathLength ? previousMeanCost[j] : null;
-                    bestLength = previousLength[j];
-                }
-                if (j > 0) {
-                    Num horizontal = currentCost[j - 1];
-                    if (horizontal != null && better(horizontal, currentLength[j - 1], bestCost, bestLength)) {
-                        bestCost = horizontal;
-                        bestMeanCost = byPathLength ? currentMeanCost[j - 1] : null;
-                        bestLength = currentLength[j - 1];
+                if (byPathLength) {
+                    // Order predecessors by their total cost mean * length,
+                    // compared overflow-safely: the raw accumulated totals
+                    // saturate at infinity (for example sums of 1e308-scale
+                    // squared costs), which would turn every overflowing
+                    // competitor into an equal-cost tie and let the length
+                    // tie-break select a suboptimal path. bestCost still
+                    // tracks the chosen predecessor's raw total so the
+                    // accumulator stays consistent, but it is never consulted
+                    // for ordering or the result in this mode.
+                    Num vertical = previousMeanCost[j];
+                    if (vertical != null
+                            && betterNormalized(vertical, previousLength[j], bestMeanCost, bestLength, numFactory)) {
+                        bestCost = previousCost[j];
+                        bestMeanCost = vertical;
+                        bestLength = previousLength[j];
+                    }
+                    if (j > 0) {
+                        Num horizontal = currentMeanCost[j - 1];
+                        if (horizontal != null && betterNormalized(horizontal, currentLength[j - 1], bestMeanCost,
+                                bestLength, numFactory)) {
+                            bestCost = currentCost[j - 1];
+                            bestMeanCost = horizontal;
+                            bestLength = currentLength[j - 1];
+                        }
+                    }
+                } else {
+                    Num vertical = previousCost[j];
+                    if (vertical != null && better(vertical, previousLength[j], bestCost, bestLength)) {
+                        bestCost = vertical;
+                        bestLength = previousLength[j];
+                    }
+                    if (j > 0) {
+                        Num horizontal = currentCost[j - 1];
+                        if (horizontal != null && better(horizontal, currentLength[j - 1], bestCost, bestLength)) {
+                            bestCost = horizontal;
+                            bestLength = currentLength[j - 1];
+                        }
                     }
                 }
                 if (bestCost == null) {
@@ -163,6 +189,26 @@ final class DynamicTimeWarpingSupport {
             return true;
         }
         int comparison = candidateCost.compareTo(bestCost);
+        return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
+    }
+
+    /**
+     * @return {@code true} when the candidate predecessor strictly improves the
+     *         selection under path-length normalization: strictly lower total cost
+     *         {@code mean * length}, or equal total cost with a strictly shorter
+     *         path
+     */
+    private static boolean betterNormalized(Num candidateMean, int candidateLength, Num bestMean, int bestLength,
+            NumFactory numFactory) {
+        if (bestMean == null) {
+            return true;
+        }
+        // Comparing the total costs mean * length as materialized products can
+        // overflow even when every local cost is finite; dividing each mean by
+        // the other predecessor's length preserves the product ordering for
+        // positive lengths without an overflowing multiplication.
+        int comparison = candidateMean.dividedBy(numFactory.numOf(bestLength))
+                .compareTo(bestMean.dividedBy(numFactory.numOf(candidateLength)));
         return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
     }
 

@@ -492,6 +492,20 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void pointRejectsCorrelationsOutsideTheUnitInterval() {
+        // A Pearson correlation is mathematically bounded to [-1, 1]; computed
+        // values may exceed the bound only by rounding noise, so anything
+        // beyond a small tolerance is invalid and must be rejected.
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.numOf(2.0), 8));
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.numOf(-2.0), 8));
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.numOf(1.00000000001), 8));
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.numOf(-1.00000000001), 8));
+        // Rounding-scale deviations from the bounds stay accepted.
+        new Point(0, numFactory.numOf(1.0 + 1.0e-13), 8);
+        new Point(0, numFactory.numOf(-1.0 - 1.0e-13), 8);
+    }
+
+    @Test
     public void pointRejectsFiniteCorrelationWithFewerThanTwoSamples() {
         // A finite Pearson correlation requires at least two aligned samples.
         assertThrows(IllegalArgumentException.class, () -> new Point(0, numFactory.one(), 0));

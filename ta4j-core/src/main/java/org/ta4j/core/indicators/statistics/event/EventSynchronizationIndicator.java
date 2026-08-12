@@ -562,54 +562,74 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          * {@link #discardFrom(int)}; the re-read additionally covers series
          * implementations that mutate without publishing a revision.
          *
+         * <p>
+         * A scan is transactional: when the signal throws, the cache rolls back to its
+         * pre-scan state, so a retry never appends the same events twice.
+         *
          * @throws IllegalArgumentException when the signal fires more often than the
          *                                  baseline matcher's capacity allows
          */
         synchronized void ensureScannedThrough(int endIndex, EventSignal signal, int beginIndex) {
-            if (size > 0 && events[0] < beginIndex) {
-                int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, beginIndex);
-                int newSize = size - firstRetained;
-                System.arraycopy(events, firstRetained, events, 0, newSize);
-                size = newSize;
-            }
-            if (endIndex <= scannedThrough) {
-                if (endIndex == scannedThrough) {
-                    // The evaluated bar is the last scanned one and may have been
-                    // revised in place; re-read it so a replaced forming bar never
-                    // serves stale events. Bars below it are historical and stay
-                    // cached.
-                    if (size > 0 && events[size - 1] == endIndex) {
-                        size--;
+            // A scan is transactional: when the signal throws mid-catch-up, the
+            // partially appended and evicted state must roll back, or a retry
+            // would scan the same range again and append every pre-failure event
+            // twice. The snapshot copies the backing array because in-place
+            // evictions shift its entries; in the rolling steady state the cache
+            // is trimmed to 16 cells, so the clone costs a single cache line.
+            int[] savedEvents = events.clone();
+            int savedSize = size;
+            int savedScannedThrough = scannedThrough;
+            try {
+                if (size > 0 && events[0] < beginIndex) {
+                    int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, beginIndex);
+                    int newSize = size - firstRetained;
+                    System.arraycopy(events, firstRetained, events, 0, newSize);
+                    size = newSize;
+                }
+                if (endIndex <= scannedThrough) {
+                    if (endIndex == scannedThrough) {
+                        // The evaluated bar is the last scanned one and may have been
+                        // revised in place; re-read it so a replaced forming bar never
+                        // serves stale events. Bars below it are historical and stay
+                        // cached.
+                        if (size > 0 && events[size - 1] == endIndex) {
+                            size--;
+                        }
+                        scannedThrough = endIndex - 1;
+                        appendEvent(endIndex, signal);
+                        scannedThrough = endIndex;
                     }
-                    scannedThrough = endIndex - 1;
-                    appendEvent(endIndex, signal);
-                    scannedThrough = endIndex;
+                    return;
                 }
-                return;
+                int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
+                int frontier = endIndex - windowSize + 1;
+                for (int i = scanFrom;; i++) {
+                    appendEvent(i, signal);
+                    if (i == endIndex) {
+                        break;
+                    }
+                    // Evict below the requested window's first bar while catching up to
+                    // a distant index rather than after the whole catch-up: a signal
+                    // that fires every bar over a long gap would otherwise accumulate
+                    // the entire history and trip the matcher's capacity limit. The
+                    // threshold is capped at half the matcher capacity so a window
+                    // wider than that still evicts before the events array's growth
+                    // ceiling throws (the array doubles up to MAX_MATCHING_CELLS);
+                    // long arithmetic keeps the doubled window size from wrapping.
+                    long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
+                            EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);
+                    if (size > 0 && events[0] < frontier && size >= evictionThreshold) {
+                        evictBelowPrefix(frontier);
+                    }
+                }
+                scannedThrough = endIndex;
+                evictBelow(frontier);
+            } catch (RuntimeException e) {
+                events = savedEvents;
+                size = savedSize;
+                scannedThrough = savedScannedThrough;
+                throw e;
             }
-            int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
-            int frontier = endIndex - windowSize + 1;
-            for (int i = scanFrom;; i++) {
-                appendEvent(i, signal);
-                if (i == endIndex) {
-                    break;
-                }
-                // Evict below the requested window's first bar while catching up to
-                // a distant index rather than after the whole catch-up: a signal
-                // that fires every bar over a long gap would otherwise accumulate
-                // the entire history and trip the matcher's capacity limit. The
-                // threshold is capped at half the matcher capacity so a window
-                // wider than that still evicts before the events array's growth
-                // ceiling throws (the array doubles up to MAX_MATCHING_CELLS);
-                // long arithmetic keeps the doubled window size from wrapping.
-                long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
-                        EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);
-                if (size > 0 && events[0] < frontier && size >= evictionThreshold) {
-                    evictBelowPrefix(frontier);
-                }
-            }
-            scannedThrough = endIndex;
-            evictBelow(frontier);
         }
 
         /**
@@ -664,12 +684,15 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 // (for example a 4,194,304-cell array emptied by an event-free
                 // window ahead), which would otherwise retain tens of megabytes
                 // per source for the rest of the evaluation. An eviction that
-                // empties the cache always resets to the initial capacity (the
-                // array is not reused by rolling scans, so there is no churn),
-                // and a large array that retains only a small fraction is
-                // trimmed to the retained size.
+                // empties the cache resets to the initial capacity when the
+                // array grew (an already-minimal array is reused, so the
+                // rolling one-bar case never churns allocations), and a large
+                // array that retains only a small fraction is trimmed to the
+                // retained size.
                 if (newSize == 0) {
-                    events = new int[16];
+                    if (events.length > 16) {
+                        events = new int[16];
+                    }
                 } else if (events.length > 1_048_576 && newSize * 8 < events.length) {
                     events = Arrays.copyOf(events, Math.max(newSize, 16));
                 }

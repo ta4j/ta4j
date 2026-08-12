@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -696,6 +697,60 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
                 indicator.predictedEvents.size <= 4_000_000);
         assertTrue("referenceEvents.size=" + indicator.referenceEvents.size,
                 indicator.referenceEvents.size <= 4_000_000);
+    }
+
+    @Test
+    public void minimalEventCacheIsReusedAcrossRollingEvictions() {
+        // A one-bar window whose latest bar is event-free evicts to empty on
+        // every evaluation; the cache previously allocated a fresh 16-cell
+        // backing array per bar (allocation churn on the hot rolling path).
+        // An already-minimal array must be reused instead.
+        BarSeries series = series();
+        Indicator<Boolean> signal = events(series, 0, 0, 1, 2);
+        EventSynchronizationIndicator indicator = indicator(signal, signal, 1, 0, 0);
+        indicator.getValue(2);
+        int[] backing = indicator.predictedEvents.events;
+        assertEquals(16, backing.length);
+        for (int i = 3; i < 40; i++) {
+            indicator.getValue(i);
+            assertSame("minimal cache must not be reallocated on rolling evictions", backing,
+                    indicator.predictedEvents.events);
+            assertEquals(0, indicator.predictedEvents.size);
+        }
+    }
+
+    @Test
+    public void failedScanRollsBackSoARetryNeverAppendsEventsTwice() {
+        // A signal that throws mid-catch-up leaves the cache partially
+        // appended; without a rollback the retry scans the same range again
+        // and appends every pre-failure event twice, doubling the matches.
+        // The result after a failed attempt must equal a clean first pass.
+        BarSeries series = series();
+        Indicator<Boolean> predicted = events(series, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        Indicator<Boolean> reference = new AbstractIndicator<Boolean>(series) {
+            private boolean threw;
+
+            @Override
+            public Boolean getValue(int index) {
+                if (index == 13 && !threw) {
+                    threw = true;
+                    throw new IllegalStateException("boom");
+                }
+                return index <= 15;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator failing = indicator(predicted, reference, 5, 0, 0);
+        assertThrows(IllegalStateException.class, () -> failing.getValue(15));
+        Result afterRetry = failing.getResult(15);
+
+        EventSynchronizationIndicator clean = indicator(predicted,
+                events(series, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15), 5, 0, 0);
+        assertEquals(clean.getResult(15), afterRetry);
     }
 
     @Test

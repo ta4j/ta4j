@@ -62,9 +62,14 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *                                  range carries defined metrics or nonzero
      *                                  effective bins, an undefined result (NaN raw
      *                                  MI or entropy) carries defined normalized MI
-     *                                  or formed bins, or a nonempty sample range
+     *                                  or formed bins, a nonempty sample range
      *                                  carries a non-finite or count-inconsistent
-     *                                  {@code positiveTargetRate}
+     *                                  {@code positiveTargetRate}, a defined result
+     *                                  carries non-finite raw metrics, a constant
+     *                                  target carries nonzero raw metrics or
+     *                                  defined normalized MI, or a non-constant
+     *                                  target carries a normalized value outside
+     *                                  {@code [0, 1]}
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -109,16 +114,41 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             }
         }
         if (sampleCount > 0 && !mutualInformationNats.isNaN() && !targetEntropyNats.isNaN()) {
-            // A constant target (0 or sampleCount positive samples) has zero
-            // target entropy, so the evaluator always pairs it with NaN
-            // normalized MI; a non-constant target has positive entropy and a
-            // defined normalized value. Any other pairing is contradictory:
-            // either a zero-variance target normalized against nothing, or a
-            // defined rate that is silently dropped.
-            boolean constantTarget = positiveTargetCount == 0 || positiveTargetCount == sampleCount;
-            if (constantTarget != normalizedMutualInformation.isNaN()) {
+            if (!Double.isFinite(mutualInformationNats.doubleValue())
+                    || !Double.isFinite(targetEntropyNats.doubleValue())) {
+                // The raw metrics are documented as finite mutual information
+                // and entropy; an overflowing histogram sum must not pass as a
+                // defined result.
                 throw new IllegalArgumentException(
-                        "a constant target must carry NaN normalized mutual information and a non-constant target a defined value");
+                        "a defined result must carry finite raw mutual information and target entropy");
+            }
+            // A constant target (0 or sampleCount positive samples) has zero
+            // target entropy and zero raw mutual information, so the evaluator
+            // always pairs it with NaN normalized MI; a non-constant target
+            // has positive entropy and a defined normalized value in [0, 1].
+            // Any other pairing is contradictory: either a zero-variance
+            // target normalized against nothing, a defined rate that is
+            // silently dropped, or a normalized value that can never arise
+            // from the documented definition.
+            boolean constantTarget = positiveTargetCount == 0 || positiveTargetCount == sampleCount;
+            if (constantTarget) {
+                if (!mutualInformationNats.isZero() || !targetEntropyNats.isZero()) {
+                    throw new IllegalArgumentException(
+                            "a constant target must carry zero raw mutual information and target entropy");
+                }
+                if (!normalizedMutualInformation.isNaN()) {
+                    throw new IllegalArgumentException(
+                            "a constant target must carry NaN normalized mutual information");
+                }
+            } else {
+                double normalized = normalizedMutualInformation.doubleValue();
+                // Computed ratios can exceed the mathematical bounds by
+                // rounding noise only (for example 1 + 2e-16); anything beyond
+                // a small tolerance is not a valid normalized value.
+                if (!Double.isFinite(normalized) || normalized < -1.0e-12 || normalized > 1.0 + 1.0e-12) {
+                    throw new IllegalArgumentException(
+                            "a non-constant target must carry a finite normalized mutual information in [0, 1]");
+                }
             }
         }
     }

@@ -447,12 +447,19 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
     public record Point(int lag, Num correlation, int sampleCount) {
 
         /**
+         * How far a finite correlation may deviate from {@code [-1, 1]}: computed
+         * Pearson values can exceed the mathematical bound by rounding noise only.
+         */
+        private static final double MAX_CORRELATION_ROUNDING = 1.0e-12;
+
+        /**
          * Validates the point.
          *
          * @throws NullPointerException     if {@code correlation} is null
-         * @throws IllegalArgumentException if {@code sampleCount} is negative, or the
+         * @throws IllegalArgumentException if {@code sampleCount} is negative, the
          *                                  correlation is finite with fewer than two
-         *                                  samples
+         *                                  samples, or the correlation lies outside
+         *                                  {@code [-1, 1]} beyond rounding tolerance
          */
         public Point {
             Objects.requireNonNull(correlation, "correlation");
@@ -462,6 +469,10 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
             if (!correlation.isNaN()) {
                 if (!CorrelationWindowSupport.isFinite(correlation)) {
                     throw new IllegalArgumentException("correlation must be finite or NaN");
+                }
+                double value = correlation.doubleValue();
+                if (value < -1.0 - MAX_CORRELATION_ROUNDING || value > 1.0 + MAX_CORRELATION_ROUNDING) {
+                    throw new IllegalArgumentException("a finite correlation must lie in [-1, 1]");
                 }
                 if (sampleCount < 2) {
                     throw new IllegalArgumentException("a finite correlation requires at least 2 samples");
