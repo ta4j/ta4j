@@ -112,9 +112,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     private final int maxLeadBars;
     private final int maxLagBars;
     // Package-private for the white-box cache-bound regression test.
-    final EventIndexCache predictedEvents;
-    final EventIndexCache referenceEvents;
-    private final Object cacheLock = new Object();
+    final transient EventIndexCache predictedEvents;
+    final transient EventIndexCache referenceEvents;
+    private transient final Object cacheLock = new Object();
     // Runtime cache-coordination state, rebuilt from scratch after
     // deserialization; never part of the serialized descriptor.
     private transient long observedRevision = -1L;
@@ -570,17 +570,14 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
          *                                  baseline matcher's capacity allows
          */
         synchronized void ensureScannedThrough(int endIndex, EventSignal signal, int beginIndex) {
-            // A scan is transactional: when the signal throws mid-catch-up, the
-            // partially appended and evicted state must roll back, or a retry
-            // would scan the same range again and append every pre-failure event
-            // twice. The snapshot copies the backing array because in-place
-            // evictions shift its entries; in the rolling steady state the cache
-            // is trimmed to 16 cells, so the clone costs a single cache line.
-            int[] savedEvents = events.clone();
+            int[] savedBacking = events;
+            int[] savedEventPrefix = null;
             int savedSize = size;
             int savedScannedThrough = scannedThrough;
+            int savedEvictionFrontier = evictionFrontier;
             try {
                 if (size > 0 && events[0] < beginIndex) {
+                    savedEventPrefix = snapshotEventPrefix();
                     int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, beginIndex);
                     int newSize = size - firstRetained;
                     System.arraycopy(events, firstRetained, events, 0, newSize);
@@ -603,33 +600,46 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 }
                 int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
                 int frontier = endIndex - windowSize + 1;
+                long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
+                        EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);
                 for (int i = scanFrom;; i++) {
                     appendEvent(i, signal);
                     if (i == endIndex) {
                         break;
                     }
                     // Evict below the requested window's first bar while catching up to
-                    // a distant index rather than after the whole catch-up: a signal
-                    // that fires every bar over a long gap would otherwise accumulate
-                    // the entire history and trip the matcher's capacity limit. The
-                    // threshold is capped at half the matcher capacity so a window
-                    // wider than that still evicts before the events array's growth
-                    // ceiling throws (the array doubles up to MAX_MATCHING_CELLS);
-                    // long arithmetic keeps the doubled window size from wrapping.
-                    long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
-                            EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);
+                    // a distant index rather than after the whole catch-up: a signal that
+                    // fires every bar over a long gap would otherwise accumulate the
+                    // entire history and trip the matcher's capacity limit. The threshold
+                    // is capped at half the matcher capacity so a window wider than that
+                    // still evicts before the events array's growth ceiling throws.
                     if (size > 0 && events[0] < frontier && size >= evictionThreshold) {
+                        // Append-only scans can roll back from their saved size. Copy only
+                        // the used prefix before an in-place eviction can shift it.
+                        if (savedEventPrefix == null) {
+                            savedEventPrefix = snapshotEventPrefix();
+                        }
                         evictBelowPrefix(frontier);
                     }
                 }
                 scannedThrough = endIndex;
+                // This final eviction cannot throw, so append-only scans avoid a snapshot
+                // on the normal rolling path.
                 evictBelow(frontier);
             } catch (RuntimeException e) {
-                events = savedEvents;
+                events = savedBacking;
+                if (savedEventPrefix != null) {
+                    System.arraycopy(savedEventPrefix, 0, events, 0, savedSize);
+                }
                 size = savedSize;
                 scannedThrough = savedScannedThrough;
+                evictionFrontier = savedEvictionFrontier;
                 throw e;
             }
+        }
+
+        private int[] snapshotEventPrefix() {
+            return Arrays.copyOf(events, size);
         }
 
         /**
