@@ -86,8 +86,10 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
         assertEquals(20, result.sampleCount());
         assertEquals(15, result.positiveTargetCount());
-        assertNumEquals(numFactory.numOf(0), result.mutualInformationNats(), 1.0e-9);
-        assertNumEquals(numFactory.numOf(0), result.normalizedMutualInformation(), 1.0e-9);
+        // The clamp normalizes roundoff-scale negatives to the factory zero,
+        // so the result must be exactly zero, not merely within tolerance.
+        assertTrue(result.mutualInformationNats().isZero());
+        assertTrue(result.normalizedMutualInformation().isZero());
     }
 
     @Test
