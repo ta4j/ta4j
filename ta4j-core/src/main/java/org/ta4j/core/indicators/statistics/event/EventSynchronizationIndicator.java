@@ -82,6 +82,17 @@ import org.ta4j.core.num.Num;
  * recompute the matching (use {@link #getValue(int)} for the cached scalar).
  *
  * <p>
+ * The matcher is bounded by a hard capacity: a window whose alignment problem
+ * needs more than {@value EventSynchronizationSupport#MAX_MATCHING_CELLS} cells
+ * — that is, {@code (predicted events + 1) * (reference events + 1) > 8
+ * million} — throws {@link IllegalArgumentException} from
+ * {@link #getResult(int)} (and therefore from {@link #getValue(int)}), as does
+ * a source whose cached event history would exceed the same limit. Sparse event
+ * streams stay far below this bound; a dense stream that fires on most bars
+ * inside a large window can exceed it, so callers must be prepared for the
+ * exception or keep windows sparse enough.
+ *
+ * <p>
  * Both event caches are invalidated from the series'
  * {@link BarSeriesChangeSnapshot} when retained history is replaced, cleared,
  * or removed, and the two sources are rescanned under one observed revision so
@@ -204,7 +215,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * @return the cached F1 score of the closed trailing window
      *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
      *         lies outside the series' current {@code [getBeginIndex(),
-     *         getEndIndex()]} domain
+     *         getEndIndex()]} domain or the window reaches below the retained begin
+     *         index
      */
     @Override
     public Num getValue(int index) {
@@ -214,6 +226,14 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             // retained begin index to the first retained bar; this indicator's
             // window semantics instead make them undefined (NaN), matching
             // getResult's availability gate.
+            return NaN.NaN;
+        }
+        if ((long) index - barCount + 1L < series.getBeginIndex()) {
+            // A cached F1 can outlive the window it was computed from: when the
+            // rolling series advances its head past the window start, the cached
+            // score is stale even though the index itself stays in-domain.
+            // getResult already reports this window as unavailable, so the cached
+            // scalar must not contradict it.
             return NaN.NaN;
         }
         return super.getValue(index);
@@ -232,6 +252,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *
      * @param index the bar index
      * @return the immutable window evaluation result
+     * @throws IllegalArgumentException when a dense window's alignment problem
+     *                                  exceeds the baseline matcher capacity (see
+     *                                  the class documentation)
      * @since 0.24.2
      */
     public Result getResult(int index) {

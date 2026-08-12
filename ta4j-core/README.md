@@ -63,7 +63,7 @@ window is not ready or the statistic is undefined.
 
 When events are sparse and near-coincident rather than timestamp-identical,
 Pearson-style correlation is a poor measure. The event-analysis API under
-`org.ta4j.core.indicators.statistics` scores two Boolean event streams over the
+`org.ta4j.core.indicators.statistics.event` scores two Boolean event streams over the
 same series with deterministic one-to-one matching:
 
 - `EventSynchronizationIndicator` is a rolling `Indicator<Num>` over two

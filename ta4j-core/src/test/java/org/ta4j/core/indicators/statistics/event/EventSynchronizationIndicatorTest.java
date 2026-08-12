@@ -147,6 +147,25 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void cachedValueDoesNotOutliveWindowAfterHeadRemoval() {
+        BarSeries series = series(20);
+        Indicator<Boolean> predicted = events(series, 0, 15);
+        Indicator<Boolean> reference = events(series, 0, 15);
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 10, 0, 0);
+
+        // Index 19 is evaluated while the window [10, 19] is fully available.
+        assertNumEquals(1.0, indicator.getValue(19));
+
+        series.setMaximumBarCount(5); // begin index advances to 15
+
+        // Index 19 stays in-domain, but its window now reaches below the
+        // retained head: the cached F1 must not outlive the window it was
+        // computed from, and getResult must agree.
+        assertTrue(indicator.getValue(19).isNaN());
+        assertFalse(indicator.getResult(19).windowAvailable());
+    }
+
+    @Test
     public void unstableWindowNeverReadsTheSourceBelowItsBoundary() {
         BarSeries series = series();
         Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(series) {
