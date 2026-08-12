@@ -200,13 +200,15 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
-    public void byPathLengthOrderingPrefersTheOptimalPathWhenTotalsSaturate() {
+    public void byPathLengthSaturatedTotalsResolveByTheDocumentedTieBreak() {
         // Review regression: predecessor ranking compared raw accumulated
         // totals, which saturate at infinity when finite costs sum beyond the
-        // double range. Two saturated competitors looked like an equal-cost
-        // tie, so the shorter-path tie-break picked the suboptimal diagonal
-        // alignment (mean 5.5955e307) over the longer path with the same
-        // total cost and the better mean (4.4764e307).
+        // double range. The scaled accumulation carries both candidates'
+        // totals exactly (2.2382e308), so the comparison never saturates and
+        // the documented tie-break (equal total cost with a strictly shorter
+        // path) deterministically selects the four-cell diagonal alignment
+        // (5.5955e307) for every Num factory, instead of letting running-mean
+        // rounding pick the five-cell path (4.4764e307) for DoubleNum only.
         BarSeries series = series(4);
         Indicator<Num> first = indicator(series, 1.01e154, 1.1e154, 1.1e154, 1.1e154);
         Indicator<Num> second = indicator(series, 0, 1.1e154, 1.01e154, 0);
@@ -218,23 +220,33 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 4, config).getValue(3);
 
-        // Both paths' raw accumulated cost overflows, but the normalized
-        // comparison remains finite. The two candidates share the same exact
-        // total: DoubleNum rounding makes the five-cell mean one ulp smaller,
-        // so the reference accumulation selects the extra zero-cost step
-        // (4.4764e307); DecimalNum carries the totals exactly, so the
-        // deterministic shorter-path tie-break takes the four-cell diagonal
-        // alignment (5.5955e307) instead.
-        if (numFactory instanceof DoubleNumFactory) {
-            double expected = 4.4764e307;
-            assertTrue(Double.isFinite(distance.doubleValue()));
-            assertEquals(1.0, distance.doubleValue() / expected, 1.0e-12);
-            assertTrue("saturated-total tie-break must not select the suboptimal path",
-                    distance.doubleValue() < 5.5955e307);
-        } else {
-            assertTrue(Double.isFinite(distance.doubleValue()));
-            assertEquals(1.0, distance.doubleValue() / 5.5955e307, 1.0e-12);
-        }
+        assertTrue(Double.isFinite(distance.doubleValue()));
+        assertEquals(1.0, distance.doubleValue() / 5.5955e307, 1.0e-12);
+    }
+
+    @Test
+    public void byPathLengthSubnormalTotalsKeepTheDocumentedTieBreak() {
+        // Review regression: with NONE / ABSOLUTE / BY_PATH_LENGTH the
+        // two-cell path (0,0) -> (1,1) and the three-cell path
+        // (0,0) -> (0,1) -> (1,1) carry the same exact total of 3 * MIN_VALUE,
+        // but the running-mean accumulation rounds the three-cell mean down to
+        // MIN_VALUE while the diagonal's stays at 3 * MIN_VALUE, so the longer
+        // path looked strictly cheaper. Comparing the exact scaled totals
+        // exposes the tie and the documented shorter-path tie-break keeps the
+        // diagonal, whose mean 1.5 * MIN_VALUE rounds to 2 * MIN_VALUE.
+        double min = Double.MIN_VALUE;
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 0, 0);
+        Indicator<Num> second = indicator(series, 3.0 * min, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.unconstrained(),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        assertEquals(2.0 * min, distance.doubleValue(), 0.0);
     }
 
     @Test
@@ -534,6 +546,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                 () -> new DynamicTimeWarpingDistanceIndicator.WarpingWindow(1, true));
         assertThrows(IllegalArgumentException.class,
                 () -> new DynamicTimeWarpingDistanceIndicator(first, first, 1, DEFAULT_CONFIG));
+        // A window at the JVM's array ceiling would fail with an
+        // OutOfMemoryError ("Requested array size exceeds VM limit") when the
+        // paired samples are backed; the constructor must reject it up front.
+        assertThrows(IllegalArgumentException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator(first, first, Integer.MAX_VALUE, DEFAULT_CONFIG));
     }
 
     @Test

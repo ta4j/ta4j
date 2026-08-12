@@ -71,25 +71,20 @@ final class DynamicTimeWarpingSupport {
         int[] previousLength = new int[sampleCount];
         Num[] currentCost = new Num[sampleCount];
         int[] currentLength = new int[sampleCount];
-        // Path-length-normalized distances keep two views of each cell's best
-        // path. The scaled total (value * 2^scale) drives the result: a local
-        // cost or sum can exceed the representable range (for example
-        // |1e308 - (-1e308)|, or two squared costs of 1e308) while the path's
-        // mean stays finite, and scaling by powers of two is exact, so the
-        // derived mean differs from a direct accumulation only by final
-        // rounding. Predecessor selection, however, ranks the running mean
-        // m + (c - m) / (l + 1), exactly the accumulation and comparison of
-        // the reference form: comparing candidateMean / bestLength against
-        // bestMean / candidateLength reproduces the totals bit for bit, so
-        // the selected paths never diverge from a direct accumulation even at
-        // the last representable ulp.
+        // Path-length-normalized distances carry each cell's best path as a
+        // scaled total (value * 2^scale): a local cost or sum can exceed the
+        // representable range (for example |1e308 - (-1e308)|, or two squared
+        // costs of 1e308) while the path's mean stays finite, and scaling by
+        // powers of two is exact, so the derived mean differs from a direct
+        // accumulation only by final rounding. The same scaled total also
+        // drives predecessor selection: comparing totals directly (instead of
+        // rounded running means) honors the documented tie-break exactly and
+        // never lets subnormal rounding reorder equal totals.
         boolean byPathLength = config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH;
         Num[] previousMeanValue = byPathLength ? new Num[sampleCount] : null;
         int[] previousMeanScale = byPathLength ? new int[sampleCount] : null;
         Num[] currentMeanValue = byPathLength ? new Num[sampleCount] : null;
         int[] currentMeanScale = byPathLength ? new int[sampleCount] : null;
-        Num[] previousMeanCost = byPathLength ? new Num[sampleCount] : null;
-        Num[] currentMeanCost = byPathLength ? new Num[sampleCount] : null;
         Num maxValue = byPathLength ? numFactory.numOf(Double.MAX_VALUE) : null;
 
         for (int i = 0; i < sampleCount; i++) {
@@ -105,20 +100,17 @@ final class DynamicTimeWarpingSupport {
                 if (byPathLength) {
                     currentMeanValue[k] = null;
                     currentMeanScale[k] = 0;
-                    currentMeanCost[k] = null;
                 }
             }
             for (int j = columnMin; j <= columnMax; j++) {
                 Num localCost;
                 ScaledCost pathCost;
                 if (byPathLength) {
-                    // The scaled cost is the single source of truth: deriving
-                    // the raw view from it keeps both views of the same local
-                    // cost consistent. The raw view may saturate at infinity
-                    // (overflowing absolute difference), exactly as the
-                    // reference accumulation did, so running-mean selection
-                    // stays at parity with it while the result still comes
-                    // from the overflow-safe scaled total.
+                    // The scaled cost is the single source of truth for
+                    // selection and result; the raw view saturates at
+                    // infinity (overflowing absolute difference or squared
+                    // cost) and only mirrors the scaled total so the
+                    // non-normalized accumulator stays coherent.
                     pathCost = scaledLocalCost(firstSequence[i], secondSequence[j], config.localDistance(), numFactory);
                     localCost = pathCost.scale() == 0 ? pathCost.value()
                             : pathCost.value().multipliedBy(pow2(pathCost.scale(), numFactory));
@@ -132,43 +124,37 @@ final class DynamicTimeWarpingSupport {
                 Num bestCost = null;
                 Num bestMeanValue = null;
                 int bestMeanScale = 0;
-                Num bestMeanCost = null;
                 int bestLength = 0;
                 if (i > 0 && j > 0) {
                     bestCost = previousCost[j - 1];
                     bestMeanValue = byPathLength ? previousMeanValue[j - 1] : null;
                     bestMeanScale = byPathLength ? previousMeanScale[j - 1] : 0;
-                    bestMeanCost = byPathLength ? previousMeanCost[j - 1] : null;
                     bestLength = previousLength[j - 1];
                 }
                 if (byPathLength) {
-                    // Order predecessors by their running means, exactly like
-                    // the reference accumulation: candidateMean / bestLength
-                    // versus bestMean / candidateLength compares the totals
-                    // without materializing an overflowing product, and the
-                    // stored means carry the same rounding as a direct
-                    // accumulation, so selection never diverges from it. The
-                    // scaled total is consulted only for the result, never for
-                    // ordering; bestCost still tracks the chosen
-                    // predecessor's raw total so the accumulator stays
-                    // consistent.
-                    Num vertical = previousMeanCost[j];
-                    if (vertical != null
-                            && betterNormalized(vertical, previousLength[j], bestMeanCost, bestLength, numFactory)) {
+                    // Order predecessors by their exact scaled totals
+                    // value * 2^scale: comparing the totals directly honors
+                    // the documented tie-break (equal total cost with a
+                    // strictly shorter path) instead of letting running-mean
+                    // rounding reorder equal totals, which subnormal path
+                    // costs in particular turn into a wrong selection. The
+                    // totals are carried in scaled form, so the comparison
+                    // never materializes an overflowing product.
+                    Num vertical = previousMeanValue[j];
+                    if (vertical != null && betterNormalized(vertical, previousMeanScale[j], previousLength[j],
+                            bestMeanValue, bestMeanScale, bestLength, numFactory)) {
                         bestCost = previousCost[j];
-                        bestMeanValue = previousMeanValue[j];
+                        bestMeanValue = vertical;
                         bestMeanScale = previousMeanScale[j];
-                        bestMeanCost = vertical;
                         bestLength = previousLength[j];
                     }
                     if (j > 0) {
-                        Num horizontal = currentMeanCost[j - 1];
-                        if (horizontal != null && betterNormalized(horizontal, currentLength[j - 1], bestMeanCost,
-                                bestLength, numFactory)) {
+                        Num horizontal = currentMeanValue[j - 1];
+                        if (horizontal != null && betterNormalized(horizontal, currentMeanScale[j - 1],
+                                currentLength[j - 1], bestMeanValue, bestMeanScale, bestLength, numFactory)) {
                             bestCost = currentCost[j - 1];
-                            bestMeanValue = currentMeanValue[j - 1];
+                            bestMeanValue = horizontal;
                             bestMeanScale = currentMeanScale[j - 1];
-                            bestMeanCost = horizontal;
                             bestLength = currentLength[j - 1];
                         }
                     }
@@ -222,31 +208,6 @@ final class DynamicTimeWarpingSupport {
                         currentMeanValue[j] = bestTotal.plus(costTotal);
                         currentMeanScale[j] = scale;
                     }
-                    // Selection parity: accumulate the running mean exactly as
-                    // the reference form does, m + (c - m) / (l + 1). With
-                    // non-negative costs every intermediate mean lies between
-                    // the smallest and largest local cost, so it stays finite
-                    // whenever each cost is; an overflowing raw cost still
-                    // yields an infinite mean, mirroring the reference
-                    // accumulation so that saturated competitors select
-                    // exactly the same paths.
-                    if (bestLength == 0) {
-                        currentMeanCost[j] = localCost;
-                    } else if (bestMeanCost == null) {
-                        // A nonzero path must carry a running mean. Preserve an
-                        // undefined result rather than dereferencing an absent one.
-                        currentMeanCost[j] = NaN.NaN;
-                    } else {
-                        Num runningMean = bestMeanCost
-                                .plus(localCost.minus(bestMeanCost).dividedBy(numFactory.numOf(bestLength + 1)));
-                        if (runningMean.isZero() && (localCost.isPositive() || bestMeanCost.isPositive())) {
-                            // A positive path cost whose mean underflows to zero
-                            // would violate the zero-means-identical contract.
-                            currentMeanCost[j] = NaN.NaN;
-                        } else {
-                            currentMeanCost[j] = runningMean;
-                        }
-                    }
                 }
             }
 
@@ -263,9 +224,6 @@ final class DynamicTimeWarpingSupport {
                 int[] swapMeanScale = previousMeanScale;
                 previousMeanScale = currentMeanScale;
                 currentMeanScale = swapMeanScale;
-                Num[] swapMeanCost = previousMeanCost;
-                previousMeanCost = currentMeanCost;
-                currentMeanCost = swapMeanCost;
             }
         }
 
@@ -316,22 +274,45 @@ final class DynamicTimeWarpingSupport {
     /**
      * @return {@code true} when the candidate predecessor strictly improves the
      *         selection under path-length normalization: strictly lower total cost
-     *         {@code mean * length}, or equal total cost with a strictly shorter
+     *         {@code value * 2^scale}, or equal total cost with a strictly shorter
      *         path
      */
-    private static boolean betterNormalized(Num candidateMean, int candidateLength, Num bestMean, int bestLength,
-            NumFactory numFactory) {
-        if (bestMean == null) {
+    private static boolean betterNormalized(Num candidateValue, int candidateScale, int candidateLength, Num bestValue,
+            int bestScale, int bestLength, NumFactory numFactory) {
+        if (bestValue == null) {
             return true;
         }
-        // candidateMean / bestLength versus bestMean / candidateLength
-        // compares the totals without materializing the overflowing product
-        // mean * length. The means come from the reference running-mean
-        // accumulation, so this comparison reproduces the reference selection
-        // bit for bit.
-        int comparison = candidateMean.dividedBy(numFactory.numOf(bestLength))
-                .compareTo(bestMean.dividedBy(numFactory.numOf(candidateLength)));
+        // Compare the exact scaled totals instead of dividing rounded running
+        // means: a rounded mean can reorder equal totals (subnormal path
+        // costs in particular round their intermediate means so aggressively
+        // that the longer path can look cheaper), while the scaled totals
+        // carry every accumulated cost exactly and reach the documented
+        // shorter-path tie-break whenever the totals really match.
+        int comparison = compareScaledTotals(candidateValue, candidateScale, bestValue, bestScale, numFactory);
         return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
+    }
+
+    /**
+     * Compares two scaled totals {@code value * 2^scale} without materializing the
+     * product. Equal scales compare the values directly; otherwise the
+     * smaller-scale side is divided by the power of two, which keeps the alignment
+     * factor finite (the multiplication direction can overflow) and preserves the
+     * ordering even when the division underflows to zero.
+     */
+    private static int compareScaledTotals(Num valueA, int scaleA, Num valueB, int scaleB, NumFactory numFactory) {
+        boolean zeroA = valueA.isZero();
+        boolean zeroB = valueB.isZero();
+        if (zeroA || zeroB) {
+            // A zero total is strictly smaller than any positive total.
+            return zeroA && zeroB ? 0 : zeroA ? -1 : 1;
+        }
+        if (scaleA == scaleB) {
+            return valueA.compareTo(valueB);
+        }
+        if (scaleA > scaleB) {
+            return valueA.compareTo(valueB.dividedBy(pow2(scaleA - scaleB, numFactory)));
+        }
+        return valueA.dividedBy(pow2(scaleB - scaleA, numFactory)).compareTo(valueB);
     }
 
     private static int columnMin(int row, WarpingWindow warpingWindow, int sampleCount) {

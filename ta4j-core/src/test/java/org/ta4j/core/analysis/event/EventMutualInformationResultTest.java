@@ -83,10 +83,11 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         // consistent with the factual counts.
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
                 factory.one(), NaN.NaN, 10, 5, factory.numOf(0.500009), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        // The canonical valid form: a rate consistent with the counts and, for a
-        // non-constant target (5 of 10 positives), a defined normalized MI.
-        new EventMutualInformationResult(factory.one(), factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 4,
-                BinningStrategy.EQUAL_WIDTH, 0, 3);
+        // The canonical valid form: a rate consistent with the counts, the
+        // binary entropy ln 2 of the 5-of-10 positive rate, and, for a
+        // non-constant target, a defined normalized MI equal to MI / H(Y).
+        new EventMutualInformationResult(factory.numOf(0.5), factory.numOf(Math.log(2)),
+                factory.numOf(0.5 / Math.log(2)), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 
     @Test
@@ -98,8 +99,9 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         // non-constant target carries a defined normalized value. Any other
         // pairing is contradictory: either a defined rate silently dropped or
         // normalized against nothing.
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
-                factory.one(), NaN.NaN, 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.one(), factory.numOf(Math.log(2)), NaN.NaN, 10, 5,
+                        factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
                 factory.one(), factory.one(), 10, 10, factory.one(), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
@@ -119,8 +121,8 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(factory.zero(), factory.zero(), NaN.NaN, 10, 10, factory.one(), 8, 4,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);
         // And the non-constant canonical form with a defined normalized value.
-        new EventMutualInformationResult(factory.one(), factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 4,
-                BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.numOf(0.5), factory.numOf(Math.log(2)),
+                factory.numOf(0.5 / Math.log(2)), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 
     @Test
@@ -129,14 +131,14 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         NumFactory factory = series.numFactory();
 
         assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.5), factory.numOf(0.9), 10,
-                        5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(Math.log(2)),
+                        factory.numOf(0.9), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
 
         assertThrows(IllegalArgumentException.class,
                 () -> new EventMutualInformationResult(factory.numOf(-1), factory.numOf(-2), factory.numOf(0.5), 10, 5,
                         factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.5), factory.numOf(0.2), 10, 5,
-                factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(Math.log(2)),
+                factory.numOf(0.1 / Math.log(2)), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 
     @Test
@@ -156,16 +158,19 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
                 positiveInfinity, factory.one(), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         // The normalized value of a non-constant target must be finite and in
         // [0, 1]: only rounding-scale deviations from the bounds are possible.
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
-                factory.one(), positiveInfinity, 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
-        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
-                factory.one(), factory.numOf(1.5), 10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         assertThrows(IllegalArgumentException.class,
-                () -> new EventMutualInformationResult(factory.one(), factory.one(), factory.numOf(-0.5), 10, 5,
-                        factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+                () -> new EventMutualInformationResult(factory.one(), factory.numOf(Math.log(2)), positiveInfinity, 10,
+                        5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.one(), factory.numOf(Math.log(2)), factory.numOf(1.5),
+                        10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.one(), factory.numOf(Math.log(2)), factory.numOf(-0.5),
+                        10, 5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
         // Rounding-scale deviations from the bounds stay accepted.
-        new EventMutualInformationResult(factory.one(), factory.one(), factory.numOf(1.0 + 1.0e-13), 10, 5,
-                factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.numOf(0.5), factory.numOf(Math.log(2)),
+                factory.numOf(0.5 / Math.log(2) + 1.0e-13), 10, 5, factory.numOf(0.5), 8, 4,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 
     @Test
@@ -181,5 +186,49 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
                 factory.zero(), NaN.NaN, 10, 0, factory.zero(), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
         assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
                 factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+    }
+
+    @Test
+    public void targetEntropyMustMatchTheBinaryEntropyOfTheCounts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // Review regression: the documented binary entropy of a 1-of-2
+        // positive rate is ln 2; an entropy of 0.1 nats contradicts the
+        // factual counts and must be rejected instead of silently distorting
+        // the normalized MI.
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.1), factory.numOf(0.2), 2, 1,
+                        factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.7), factory.numOf(0.2), 2, 1,
+                        factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // The entropy is recomputed with this factory from the same counts,
+        // so the exact binary entropy and rounding-scale deviations from it
+        // stay accepted.
+        Num entropy = factory.numOf(Math.log(2));
+        new EventMutualInformationResult(factory.numOf(0.2).multipliedBy(entropy), entropy, factory.numOf(0.2), 2, 1,
+                factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
+
+    @Test
+    public void singleEffectiveBinMustCarryZeroMutualInformation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // Review regression: a single effective bin means every predictor
+        // sample falls in the same bin, so the predictor is constant and the
+        // raw mutual information must be exactly zero. Positive MI alongside
+        // one formed bin is an impossible score and must be rejected, for
+        // constant and non-constant targets alike.
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(Math.log(2)),
+                        factory.numOf(0.2), 2, 1, factory.numOf(0.5), 8, 1, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // Zero MI alongside the single bin is the canonical form for both
+        // the non-constant and the constant target.
+        new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
+                factory.numOf(0.5), 8, 1, BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.zero(), factory.zero(), NaN.NaN, 2, 0, factory.zero(), 8, 1,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+        new EventMutualInformationResult(factory.zero(), factory.zero(), NaN.NaN, 2, 2, factory.one(), 8, 1,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
 }

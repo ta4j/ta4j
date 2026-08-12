@@ -16,9 +16,22 @@ final class CorrelationWindowSupport {
     private CorrelationWindowSupport() {
     }
 
+    /**
+     * Rolling windows back the paired samples in {@code Num} arrays of the window
+     * length. HotSpot refuses object arrays within a few words of
+     * {@link Integer#MAX_VALUE} with {@code OutOfMemoryError} ("Requested array
+     * size exceeds VM limit"), so a bar count at or above the ceiling (the same
+     * bound {@link java.util.ArrayList} uses) is unconstructible and is rejected up
+     * front.
+     */
+    private static final int MAX_BAR_COUNT = Integer.MAX_VALUE - 8;
+
     static int validateBarCount(int barCount) {
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be >= 2");
+        }
+        if (barCount > MAX_BAR_COUNT) {
+            throw new IllegalArgumentException("barCount exceeds the maximum window length");
         }
         return barCount;
     }

@@ -123,6 +123,13 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 // bins is a contradictory state.
                 throw new IllegalArgumentException("a defined result must carry at least one effective bin");
             }
+            if (effectiveBinCount == 1 && !mutualInformationNats.isZero()) {
+                // A single effective bin holds every predictor sample, so the
+                // predictor is constant: it cannot carry information about the
+                // target, and the raw mutual information must be exactly zero.
+                throw new IllegalArgumentException(
+                        "a single effective bin is a constant predictor and must carry zero mutual information");
+            }
             if (!Double.isFinite(mutualInformationNats.doubleValue())
                     || !Double.isFinite(targetEntropyNats.doubleValue())) {
                 // The raw metrics are documented as finite mutual information
@@ -155,6 +162,25 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             } else {
                 if (!targetEntropyNats.isPositive()) {
                     throw new IllegalArgumentException("a non-constant target must carry positive target entropy");
+                }
+                // A binary target's entropy is fully determined by its positive
+                // rate: H(Y) = -p ln p - (1 - p) ln(1 - p) with
+                // p = positiveTargetCount / sampleCount. Recomputed with the
+                // metric's own Num arithmetic the expression matches the
+                // evaluator bit for bit; anything beyond rounding-scale noise
+                // is an impossible entropy for the documented counts.
+                NumFactory metricFactory = targetEntropyNats.getNumFactory();
+                Num positiveProbability = metricFactory.numOf(positiveTargetCount)
+                        .dividedBy(metricFactory.numOf(sampleCount));
+                Num negativeProbability = metricFactory.one().minus(positiveProbability);
+                Num expectedEntropy = positiveProbability.multipliedBy(positiveProbability.log())
+                        .plus(negativeProbability.multipliedBy(negativeProbability.log()))
+                        .negate();
+                Num entropyTolerance = metricFactory.epsilon()
+                        .multipliedBy(metricFactory.one().plus(expectedEntropy.abs()));
+                if (expectedEntropy.minus(targetEntropyNats).abs().isGreaterThan(entropyTolerance)) {
+                    throw new IllegalArgumentException(
+                            "target entropy must match the binary entropy of positiveTargetCount / sampleCount");
                 }
                 double normalized = normalizedMutualInformation.doubleValue();
                 // Computed ratios can exceed the mathematical bounds by
