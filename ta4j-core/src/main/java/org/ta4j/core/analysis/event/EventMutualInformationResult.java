@@ -60,9 +60,11 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      * @throws IllegalArgumentException if a count is negative, the target window
      *                                  offsets are inconsistent, an empty sample
      *                                  range carries defined metrics or nonzero
-     *                                  effective bins, or an undefined result (NaN
-     *                                  raw MI or entropy) carries defined
-     *                                  normalized MI or formed bins
+     *                                  effective bins, an undefined result (NaN raw
+     *                                  MI or entropy) carries defined normalized MI
+     *                                  or formed bins, or a nonempty sample range
+     *                                  carries a non-finite or count-inconsistent
+     *                                  {@code positiveTargetRate}
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -91,6 +93,17 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             // formed bins, or a defined normalized value would contradict that
             // state.
             throw new IllegalArgumentException("an undefined result must carry NaN metrics and effectiveBinCount 0");
+        }
+        if (sampleCount > 0 && (!Double.isFinite(positiveTargetRate.doubleValue())
+                || Math.round(positiveTargetRate.doubleValue() * sampleCount) != positiveTargetCount)) {
+            // The documented factual prevalence is positiveTargetCount /
+            // sampleCount; accepting any other finite or NaN rate would let
+            // callers expose contradictory diagnostics to reports and
+            // optimizers. The rounded comparison tolerates binary and decimal
+            // division rounding while rejecting rates that are off by more
+            // than half a sample.
+            throw new IllegalArgumentException(
+                    "a nonempty sample range must carry a finite positiveTargetRate consistent with the counts");
         }
     }
 }

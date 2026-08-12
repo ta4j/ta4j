@@ -128,7 +128,10 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
+        // The unstable-bar count is relative to the retained series head, so
+        // absolute indexes need the begin-index offset; long arithmetic keeps
+        // the comparison overflow-proof at the extremes of the int range.
+        if ((long) index < (long) getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return NaN.NaN;
         }
         return scanProfile(index).selectedCorrelation();
@@ -184,7 +187,8 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
         // ends of the int range; per-lag validation still bounds every lag.
         for (long lag = minimumLag; lag <= maximumLag; lag++) {
             int lagIndex = (int) lag;
-            Point point = lagPoint(first, second, index, barCount, lagIndex, numFactory);
+            Point point = lagPoint(first, second, index, barCount, lagIndex, numFactory,
+                    getBarSeries().getBeginIndex());
             points.add(point);
             if (point.isDefined()) {
                 Num score = selectionScore(point.correlation(), selectionPolicy);
@@ -233,11 +237,15 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
     }
 
     private static Point lagPoint(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int lag,
-            NumFactory numFactory) {
-        // Mirror LaggedCorrelationIndicator exactly: indexes below the lagged
-        // unstable-bar boundary must stay undefined even when the underlying
-        // indicators emit finite values during their warm-up.
-        if (endIndex < CorrelationWindowSupport.laggedUnstableBars(barCount, lag, first, second)) {
+            NumFactory numFactory, int seriesBeginIndex) {
+        // Mirror LaggedCorrelationIndicator's unstable-bar boundary exactly:
+        // indexes below the lagged unstable-bar count must stay undefined even
+        // when the underlying indicators emit finite values during their
+        // warm-up. The count is relative to the retained series head, so the
+        // absolute end index needs the begin-index offset; long arithmetic
+        // keeps the comparison overflow-proof at the extremes of the int range.
+        if ((long) endIndex < (long) seriesBeginIndex
+                + CorrelationWindowSupport.laggedUnstableBars(barCount, lag, first, second)) {
             return new Point(lag, NaN.NaN, 0);
         }
         CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.laggedWindow(first, second, endIndex,

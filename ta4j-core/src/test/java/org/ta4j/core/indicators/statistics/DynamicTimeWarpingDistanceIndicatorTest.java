@@ -279,6 +279,32 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void warmUpIsOffsetFromRetainedSeriesHead() {
+        // With a dropped head the unstable-bar count is relative to the
+        // retained begin index: absolute indexes 10..12 must stay undefined
+        // even though the underlying values themselves are finite, and the
+        // first stable window ends at index 13.
+        BarSeries series = series(20);
+        series.setMaximumBarCount(10);
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            values.add(numFactory.numOf(i));
+        }
+        Indicator<Num> unstable = new MockIndicator(series, 2, values);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(unstable, unstable, 2,
+                new DynamicTimeWarpingDistanceIndicator.Config(
+                        DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                        DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                        DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                        DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE));
+
+        assertTrue(dtw.getValue(10).isNaN());
+        assertTrue(dtw.getValue(11).isNaN());
+        assertTrue(dtw.getValue(12).isNaN());
+        assertNumEquals(numFactory.zero(), dtw.getValue(13), 1.0e-12);
+    }
+
+    @Test
     public void widerBandNeverScoresWorseThanNarrowerBand() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);

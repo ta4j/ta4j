@@ -58,4 +58,22 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, 8, 2, factory.numOf(0.25), 8, 0,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
+
+    @Test
+    public void nonemptyResultMustCarryCountConsistentFiniteRate() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // The documented factual prevalence is positiveTargetCount /
+        // sampleCount; NaN, out-of-range, or contradictory rates expose
+        // misleading diagnostics and must be rejected.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), NaN.NaN, 10, 5, NaN.NaN, 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), NaN.NaN, 10, 5, factory.numOf(0.9), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), NaN.NaN, 10, 5, factory.numOf(1.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        // The canonical valid form: a rate consistent with the counts.
+        new EventMutualInformationResult(factory.one(), factory.one(), NaN.NaN, 10, 5, factory.numOf(0.5), 8, 4,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
 }

@@ -108,7 +108,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
 
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
+        // The unstable-bar count is relative to the retained series head, so
+        // absolute indexes need the begin-index offset; long arithmetic keeps
+        // the comparison overflow-proof at the extremes of the int range.
+        if ((long) index < (long) getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return NaN.NaN;
         }
         CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.pairedWindow(first, second, index,

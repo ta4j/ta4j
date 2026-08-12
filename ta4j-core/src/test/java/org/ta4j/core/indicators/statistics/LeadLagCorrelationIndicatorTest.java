@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 
@@ -35,6 +36,28 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
     public LeadLagCorrelationIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void warmUpIsOffsetFromRetainedSeriesHead() {
+        // With a dropped head the unstable-bar count is relative to the
+        // retained begin index: absolute indexes 10..12 must stay undefined
+        // even though the underlying values themselves are finite, and the
+        // first stable window ends at index 13.
+        BarSeries series = series(20);
+        series.setMaximumBarCount(10);
+        List<Num> values = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            values.add(numFactory.numOf(i));
+        }
+        Indicator<Num> unstable = new MockIndicator(series, 2, values);
+        LeadLagCorrelationIndicator leadLag = new LeadLagCorrelationIndicator(unstable, unstable, 2, 0, 0,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        assertTrue(leadLag.getValue(10).isNaN());
+        assertTrue(leadLag.getValue(11).isNaN());
+        assertTrue(leadLag.getValue(12).isNaN());
+        assertNumEquals(numFactory.one(), leadLag.getValue(13), 1.0e-12);
     }
 
     @Test
