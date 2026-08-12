@@ -158,8 +158,15 @@ final class DynamicTimeWarpingSupport {
                         // undefined result rather than dereferencing an absent one.
                         currentMeanCost[j] = NaN.NaN;
                     } else {
-                        currentMeanCost[j] = bestMeanCost
+                        Num runningMean = bestMeanCost
                                 .plus(localCost.minus(bestMeanCost).dividedBy(numFactory.numOf(bestLength + 1)));
+                        if (runningMean.isZero() && (localCost.isPositive() || bestMeanCost.isPositive())) {
+                            // A positive path cost whose mean underflows to zero
+                            // would violate the zero-means-identical contract.
+                            currentMeanCost[j] = NaN.NaN;
+                        } else {
+                            currentMeanCost[j] = runningMean;
+                        }
                     }
                 }
             }

@@ -124,6 +124,18 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void nonconstantNormalizedMutualInformationMustMatchRawRatio() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.5), factory.numOf(0.9), 10,
+                        5, factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        new EventMutualInformationResult(factory.numOf(0.1), factory.numOf(0.5), factory.numOf(0.2), 10, 5,
+                factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
+
+    @Test
     public void definedResultRejectsInfiniteRawMetrics() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
         NumFactory factory = series.numFactory();

@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.event;
 import java.util.Objects;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Immutable outcome of one {@link EventMutualInformationEvaluator} evaluation.
@@ -69,7 +70,8 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *                                  target carries nonzero raw metrics or
      *                                  defined normalized MI, or a non-constant
      *                                  target carries a normalized value outside
-     *                                  {@code [0, 1]}
+     *                                  {@code [0, 1]} or inconsistent with
+     *                                  {@code MI / H(Y)}
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -148,6 +150,15 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 if (!Double.isFinite(normalized) || normalized < -1.0e-12 || normalized > 1.0 + 1.0e-12) {
                     throw new IllegalArgumentException(
                             "a non-constant target must carry a finite normalized mutual information in [0, 1]");
+                }
+                NumFactory normalizedFactory = normalizedMutualInformation.getNumFactory();
+                Num expectedNormalized = normalizedFactory.numOf(mutualInformationNats.getDelegate())
+                        .dividedBy(normalizedFactory.numOf(targetEntropyNats.getDelegate()));
+                Num normalizedDifference = normalizedMutualInformation.minus(expectedNormalized).abs();
+                if (!Num.isFinite(expectedNormalized)
+                        || normalizedDifference.compareTo(normalizedFactory.epsilon()) > 0) {
+                    throw new IllegalArgumentException(
+                            "a non-constant target must carry normalized mutual information equal to MI / H(Y)");
                 }
             }
         }

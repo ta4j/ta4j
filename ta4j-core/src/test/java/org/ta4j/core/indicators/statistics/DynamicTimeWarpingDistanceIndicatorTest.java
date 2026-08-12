@@ -334,6 +334,27 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void absolutePathLengthNormalizationUnderflowReportsNaNInsteadOfZero() {
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return;
+        }
+        // Dividing the smallest positive double by a three-cell path underflows
+        // to zero; a distinct sequence must not be reported as identical.
+        BarSeries series = series(3);
+        Indicator<Num> first = indicator(series, 0, 0, 0);
+        Indicator<Num> second = indicator(series, 0, 0, Double.MIN_VALUE);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 3, config).getValue(2);
+
+        assertTrue(distance.isNaN());
+    }
+
+    @Test
     public void warmUpIsOffsetFromRetainedSeriesHead() {
         // With a dropped head the unstable-bar count is relative to the
         // retained begin index: absolute indexes 10..12 must stay undefined

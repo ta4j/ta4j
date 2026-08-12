@@ -33,9 +33,11 @@ import org.ta4j.core.num.NumFactory;
  * The sign convention matches {@link LaggedCorrelationIndicator}: positive lag
  * means the first indicator leads the second, negative lag means it trails.
  * Calculations never read beyond the evaluated index. {@code getValue(index)}
- * is the correlation at the selected lag, or {@code NaN} while no lag in the
- * range is defined (warm-up, or constant windows); {@code getProfile(index)}
- * re-scans the full profile at that index.
+ * remains {@code NaN} until the full configured lag range reaches its worst-lag
+ * warm-up boundary (even if inner lags are already defined), and is also
+ * {@code NaN} when no lag in the range is defined; otherwise it is the
+ * correlation at the selected lag. {@code getProfile(index)} re-scans the full
+ * profile at that index.
  * </p>
  *
  * <p>
