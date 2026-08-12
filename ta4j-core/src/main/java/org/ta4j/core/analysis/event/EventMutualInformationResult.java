@@ -66,13 +66,13 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *                                  or formed bins, a nonempty sample range
      *                                  carries a non-finite or count-inconsistent
      *                                  {@code positiveTargetRate}, a defined result
-     *                                  carries non-finite or negative raw metrics,
-     *                                  a constant target carries nonzero raw
-     *                                  metrics or defined normalized MI, or a
-     *                                  non-constant target carries non-positive
-     *                                  entropy, a negative MI, a normalized value
-     *                                  outside {@code [0, 1]}, or one inconsistent
-     *                                  with {@code MI / H(Y)}
+     *                                  carries non-finite or negative raw metrics
+     *                                  or zero effective bins, a constant target
+     *                                  carries nonzero raw metrics or defined
+     *                                  normalized MI, or a non-constant target
+     *                                  carries non-positive entropy, a negative MI,
+     *                                  a normalized value outside {@code [0, 1]},
+     *                                  or one inconsistent with {@code MI / H(Y)}
      */
     public EventMutualInformationResult {
         Objects.requireNonNull(mutualInformationNats, "mutualInformationNats");
@@ -117,6 +117,12 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             }
         }
         if (sampleCount > 0 && !mutualInformationNats.isNaN() && !targetEntropyNats.isNaN()) {
+            if (effectiveBinCount == 0) {
+                // The evaluator always forms at least one bin from a nonempty
+                // finite sample range; defined metrics alongside zero formed
+                // bins is a contradictory state.
+                throw new IllegalArgumentException("a defined result must carry at least one effective bin");
+            }
             if (!Double.isFinite(mutualInformationNats.doubleValue())
                     || !Double.isFinite(targetEntropyNats.doubleValue())) {
                 // The raw metrics are documented as finite mutual information

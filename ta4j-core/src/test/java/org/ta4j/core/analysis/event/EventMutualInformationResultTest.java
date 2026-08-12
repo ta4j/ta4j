@@ -167,4 +167,19 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(factory.one(), factory.one(), factory.numOf(1.0 + 1.0e-13), 10, 5,
                 factory.numOf(0.5), 8, 4, BinningStrategy.EQUAL_WIDTH, 0, 3);
     }
+
+    @Test
+    public void definedResultMustCarryAtLeastOneEffectiveBin() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // The evaluator always forms at least one bin from a nonempty finite
+        // sample range, so defined metrics alongside zero effective bins is a
+        // contradictory state: both the constant-target form (zero raw
+        // metrics, NaN normalized MI) and the non-constant form must be
+        // rejected.
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.zero(),
+                factory.zero(), NaN.NaN, 10, 0, factory.zero(), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> new EventMutualInformationResult(factory.one(),
+                factory.one(), factory.one(), 10, 5, factory.numOf(0.5), 8, 0, BinningStrategy.EQUAL_WIDTH, 0, 3));
+    }
 }
