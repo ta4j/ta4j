@@ -208,6 +208,27 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void absolutePathLengthNormalizationSurvivesLocalCostOverflow() {
+        // Review regression: the absolute delta between -1e308 and 1e308 is
+        // 2e308, which overflows to infinity in double precision even though
+        // the two-cell path mean (1e308) is representable. The normalized
+        // accumulation must not materialize the overflowing local cost.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, -1e308, 0);
+        Indicator<Num> second = indicator(series, 1e308, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        assertTrue(Double.isFinite(distance.doubleValue()));
+        assertEquals(1.0, distance.doubleValue() / 1e308, 1.0e-12);
+    }
+
+    @Test
     public void isNeverNegative() {
         BarSeries series = series(12);
         Indicator<Num> first = indicator(series, 3, -1, 2, 0, -2, 1, 4, -3, 2, 0, 1, -1);

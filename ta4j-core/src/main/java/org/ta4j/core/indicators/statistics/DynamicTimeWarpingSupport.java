@@ -29,7 +29,13 @@ import org.ta4j.core.num.NumFactory;
  * path-length-normalized distance does not depend on the scan direction; paths
  * that tie on both cost and length are resolved deterministically in the order
  * diagonal, vertical, horizontal. The path length is tracked alongside the cost
- * so path-length normalization is exact.
+ * so path-length normalization is exact. Under path-length normalization the
+ * best-path total is carried in a scaled form ({@code value * 2^scale}) so
+ * totals that overflow the representable range (for example a single absolute
+ * difference of {@code 2e308}, or two squared costs of {@code 1e308}) still
+ * yield their exact mean, while predecessor selection ranks the same running
+ * means as a direct accumulation ({@code m + (c - m) / (l + 1)}) so the chosen
+ * paths never diverge from the reference form.
  * </p>
  *
  * <p>
@@ -65,16 +71,26 @@ final class DynamicTimeWarpingSupport {
         int[] previousLength = new int[sampleCount];
         Num[] currentCost = new Num[sampleCount];
         int[] currentLength = new int[sampleCount];
-        // Path-length-normalized distances are accumulated as a running mean
-        // over each cell's best path instead of a raw sum divided at the end:
-        // a path whose local costs are each finite but sum to infinity (for
-        // example two costs of 1e308) would otherwise overflow the accumulator
-        // even though the mean is finite. With non-negative costs every
-        // intermediate mean lies between the smallest and largest cost seen,
-        // so the incremental form stays finite whenever each cost is.
+        // Path-length-normalized distances keep two views of each cell's best
+        // path. The scaled total (value * 2^scale) drives the result: a local
+        // cost or sum can exceed the representable range (for example
+        // |1e308 - (-1e308)|, or two squared costs of 1e308) while the path's
+        // mean stays finite, and scaling by powers of two is exact, so the
+        // derived mean differs from a direct accumulation only by final
+        // rounding. Predecessor selection, however, ranks the running mean
+        // m + (c - m) / (l + 1), exactly the accumulation and comparison of
+        // the reference form: comparing candidateMean / bestLength against
+        // bestMean / candidateLength reproduces the totals bit for bit, so
+        // the selected paths never diverge from a direct accumulation even at
+        // the last representable ulp.
         boolean byPathLength = config.pathCostNormalization() == PathCostNormalization.BY_PATH_LENGTH;
+        Num[] previousMeanValue = byPathLength ? new Num[sampleCount] : null;
+        int[] previousMeanScale = byPathLength ? new int[sampleCount] : null;
+        Num[] currentMeanValue = byPathLength ? new Num[sampleCount] : null;
+        int[] currentMeanScale = byPathLength ? new int[sampleCount] : null;
         Num[] previousMeanCost = byPathLength ? new Num[sampleCount] : null;
         Num[] currentMeanCost = byPathLength ? new Num[sampleCount] : null;
+        Num maxValue = byPathLength ? numFactory.numOf(Double.MAX_VALUE) : null;
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -87,36 +103,61 @@ final class DynamicTimeWarpingSupport {
                 currentCost[k] = null;
                 currentLength[k] = 0;
                 if (byPathLength) {
+                    currentMeanValue[k] = null;
+                    currentMeanScale[k] = 0;
                     currentMeanCost[k] = null;
                 }
             }
             for (int j = columnMin; j <= columnMax; j++) {
-                Num localCost = localCost(firstSequence[i], secondSequence[j], config.localDistance());
+                Num localCost;
+                ScaledCost pathCost;
+                if (byPathLength) {
+                    // The scaled cost is the single source of truth: deriving
+                    // the raw view from it keeps both views of the same local
+                    // cost consistent. The raw view may saturate at infinity
+                    // (overflowing absolute difference), exactly as the
+                    // reference accumulation did, so running-mean selection
+                    // stays at parity with it while the result still comes
+                    // from the overflow-safe scaled total.
+                    pathCost = scaledLocalCost(firstSequence[i], secondSequence[j], config.localDistance(), numFactory);
+                    localCost = pathCost.scale() == 0 ? pathCost.value()
+                            : pathCost.value().multipliedBy(pow2(pathCost.scale(), numFactory));
+                } else {
+                    localCost = localCost(firstSequence[i], secondSequence[j], config.localDistance());
+                    pathCost = null;
+                }
 
                 // Predecessor tie-break order: shorter path length first, then
                 // diagonal, vertical, horizontal.
                 Num bestCost = null;
+                Num bestMeanValue = null;
+                int bestMeanScale = 0;
                 Num bestMeanCost = null;
                 int bestLength = 0;
                 if (i > 0 && j > 0) {
                     bestCost = previousCost[j - 1];
+                    bestMeanValue = byPathLength ? previousMeanValue[j - 1] : null;
+                    bestMeanScale = byPathLength ? previousMeanScale[j - 1] : 0;
                     bestMeanCost = byPathLength ? previousMeanCost[j - 1] : null;
                     bestLength = previousLength[j - 1];
                 }
                 if (byPathLength) {
-                    // Order predecessors by their total cost mean * length,
-                    // compared overflow-safely: the raw accumulated totals
-                    // saturate at infinity (for example sums of 1e308-scale
-                    // squared costs), which would turn every overflowing
-                    // competitor into an equal-cost tie and let the length
-                    // tie-break select a suboptimal path. bestCost still
-                    // tracks the chosen predecessor's raw total so the
-                    // accumulator stays consistent, but it is never consulted
-                    // for ordering or the result in this mode.
+                    // Order predecessors by their running means, exactly like
+                    // the reference accumulation: candidateMean / bestLength
+                    // versus bestMean / candidateLength compares the totals
+                    // without materializing an overflowing product, and the
+                    // stored means carry the same rounding as a direct
+                    // accumulation, so selection never diverges from it. The
+                    // scaled total is consulted only for the result, never for
+                    // ordering; bestCost still tracks the chosen
+                    // predecessor's raw total so the accumulator stays
+                    // consistent.
                     Num vertical = previousMeanCost[j];
                     if (vertical != null
                             && betterNormalized(vertical, previousLength[j], bestMeanCost, bestLength, numFactory)) {
                         bestCost = previousCost[j];
+                        bestMeanValue = previousMeanValue[j];
+                        bestMeanScale = previousMeanScale[j];
                         bestMeanCost = vertical;
                         bestLength = previousLength[j];
                     }
@@ -125,6 +166,8 @@ final class DynamicTimeWarpingSupport {
                         if (horizontal != null && betterNormalized(horizontal, currentLength[j - 1], bestMeanCost,
                                 bestLength, numFactory)) {
                             bestCost = currentCost[j - 1];
+                            bestMeanValue = currentMeanValue[j - 1];
+                            bestMeanScale = currentMeanScale[j - 1];
                             bestMeanCost = horizontal;
                             bestLength = currentLength[j - 1];
                         }
@@ -152,6 +195,42 @@ final class DynamicTimeWarpingSupport {
                 currentLength[j] = bestLength + 1;
                 if (byPathLength) {
                     if (bestLength == 0) {
+                        // Start cell: the path total is the local cost itself.
+                        currentMeanValue[j] = pathCost.value();
+                        currentMeanScale[j] = pathCost.scale();
+                    } else if (bestMeanValue == null) {
+                        // A nonzero path must carry a total. Preserve an
+                        // undefined result rather than dereferencing an absent one.
+                        currentMeanValue[j] = NaN.NaN;
+                        currentMeanScale[j] = 0;
+                    } else {
+                        // total = bestTotal + cost, carried as value * 2^scale
+                        // without materializing an overflowing sum: align both
+                        // operands to the larger scale, and halve both with a
+                        // compensating exponent whenever the sum would exceed
+                        // the representable range.
+                        int scale = Math.max(bestMeanScale, pathCost.scale());
+                        Num bestTotal = bestMeanScale == scale ? bestMeanValue
+                                : bestMeanValue.dividedBy(pow2(scale - bestMeanScale, numFactory));
+                        Num costTotal = pathCost.scale() == scale ? pathCost.value()
+                                : pathCost.value().dividedBy(pow2(scale - pathCost.scale(), numFactory));
+                        if (bestTotal.isGreaterThan(maxValue.minus(costTotal))) {
+                            bestTotal = bestTotal.dividedBy(numFactory.two());
+                            costTotal = costTotal.dividedBy(numFactory.two());
+                            scale++;
+                        }
+                        currentMeanValue[j] = bestTotal.plus(costTotal);
+                        currentMeanScale[j] = scale;
+                    }
+                    // Selection parity: accumulate the running mean exactly as
+                    // the reference form does, m + (c - m) / (l + 1). With
+                    // non-negative costs every intermediate mean lies between
+                    // the smallest and largest local cost, so it stays finite
+                    // whenever each cost is; an overflowing raw cost still
+                    // yields an infinite mean, mirroring the reference
+                    // accumulation so that saturated competitors select
+                    // exactly the same paths.
+                    if (bestLength == 0) {
                         currentMeanCost[j] = localCost;
                     } else if (bestMeanCost == null) {
                         // A nonzero path must carry a running mean. Preserve an
@@ -178,6 +257,12 @@ final class DynamicTimeWarpingSupport {
             previousLength = currentLength;
             currentLength = swapLength;
             if (byPathLength) {
+                Num[] swapMeanValue = previousMeanValue;
+                previousMeanValue = currentMeanValue;
+                currentMeanValue = swapMeanValue;
+                int[] swapMeanScale = previousMeanScale;
+                previousMeanScale = currentMeanScale;
+                currentMeanScale = swapMeanScale;
                 Num[] swapMeanCost = previousMeanCost;
                 previousMeanCost = currentMeanCost;
                 currentMeanCost = swapMeanCost;
@@ -185,8 +270,20 @@ final class DynamicTimeWarpingSupport {
         }
 
         if (byPathLength) {
-            // The running mean is already normalized by path length.
-            Num mean = previousMeanCost[sampleCount - 1];
+            // Derive the mean from the scaled total: value * 2^scale / length.
+            // A positive total whose mean underflows to zero would violate the
+            // zero-means-identical contract, so it is undefined.
+            Num totalValue = previousMeanValue[sampleCount - 1];
+            if (totalValue == null) {
+                return NaN.NaN;
+            }
+            Num mean = totalValue.dividedBy(numFactory.numOf(previousLength[sampleCount - 1]));
+            if (previousMeanScale[sampleCount - 1] > 0) {
+                mean = mean.multipliedBy(pow2(previousMeanScale[sampleCount - 1], numFactory));
+            }
+            if (mean.isZero() && totalValue.isPositive()) {
+                return NaN.NaN;
+            }
             return CorrelationWindowSupport.isFinite(mean) ? mean : NaN.NaN;
         }
         Num total = previousCost[sampleCount - 1];
@@ -217,10 +314,11 @@ final class DynamicTimeWarpingSupport {
         if (bestMean == null) {
             return true;
         }
-        // Comparing the total costs mean * length as materialized products can
-        // overflow even when every local cost is finite; dividing each mean by
-        // the other predecessor's length preserves the product ordering for
-        // positive lengths without an overflowing multiplication.
+        // candidateMean / bestLength versus bestMean / candidateLength
+        // compares the totals without materializing the overflowing product
+        // mean * length. The means come from the reference running-mean
+        // accumulation, so this comparison reproduces the reference selection
+        // bit for bit.
         int comparison = candidateMean.dividedBy(numFactory.numOf(bestLength))
                 .compareTo(bestMean.dividedBy(numFactory.numOf(candidateLength)));
         return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
@@ -257,6 +355,80 @@ final class DynamicTimeWarpingSupport {
             return NaN.NaN;
         }
         return squared;
+    }
+
+    /**
+     * A non-negative cost carried as {@code value * 2^scale} without materializing
+     * an overflowing product; a NaN value marks an undefined cost, and a scale of
+     * zero is the plain value.
+     */
+    private record ScaledCost(Num value, int scale) {
+        static ScaledCost undefined() {
+            return new ScaledCost(NaN.NaN, 0);
+        }
+    }
+
+    /**
+     * Computes the local cost in scaled form, safe against overflow of the raw
+     * difference (for example {@code |-1e308 - 1e308|}) or of its square.
+     *
+     * <p>
+     * An absolute difference that overflows is carried exactly as
+     * {@code (|first| / 2 + |second| / 2) * 2} because both halves fit the
+     * representable range. A squared difference is carried as
+     * {@code (m * 2^e)^2 = m^2 * 2^(2e)} from the double decomposition of the
+     * magnitude. A non-finite operand, an overflowing raw delta, or a nonzero delta
+     * whose square underflows to zero stays undefined.
+     * </p>
+     */
+    private static ScaledCost scaledLocalCost(Num firstValue, Num secondValue, LocalDistance localDistance,
+            NumFactory numFactory) {
+        if (!CorrelationWindowSupport.isFinite(firstValue) || !CorrelationWindowSupport.isFinite(secondValue)) {
+            return ScaledCost.undefined();
+        }
+        Num delta = firstValue.minus(secondValue);
+        if (localDistance == LocalDistance.ABSOLUTE) {
+            Num magnitude = delta.abs();
+            if (CorrelationWindowSupport.isFinite(magnitude)) {
+                return new ScaledCost(magnitude, 0);
+            }
+            // |first - second| = |first| + |second| overflows, but the halved
+            // sum is exact and preserves the true value in scaled form.
+            return new ScaledCost(
+                    firstValue.abs().dividedBy(numFactory.two()).plus(secondValue.abs().dividedBy(numFactory.two())),
+                    1);
+        }
+        if (delta.isZero()) {
+            return new ScaledCost(numFactory.zero(), 0);
+        }
+        if (!CorrelationWindowSupport.isFinite(delta)) {
+            // An overflowing raw delta squares beyond any realizable path
+            // mean: the cost is unrepresentable.
+            return ScaledCost.undefined();
+        }
+        Num squared = delta.multipliedBy(delta);
+        if (CorrelationWindowSupport.isFinite(squared)) {
+            // A nonzero delta whose square underflows to zero (raw subnormal
+            // deltas under NONE normalization) would otherwise be scored as
+            // identical, breaking the zero-means-identical contract. Such a
+            // cost is unrepresentable in the requested precision: keep it
+            // undefined so the distance stays undefined.
+            if (squared.isZero()) {
+                return ScaledCost.undefined();
+            }
+            return new ScaledCost(squared, 0);
+        }
+        // delta^2 overflows: carry m^2 * 2^(2e) where delta = m * 2^e with
+        // m in [1, 2). The decomposition is exact, so the scaled value
+        // reproduces the double rounding of delta^2.
+        double magnitude = delta.abs().doubleValue();
+        int exponent = Math.getExponent(magnitude);
+        double mantissa = Math.scalb(magnitude, -exponent);
+        return new ScaledCost(numFactory.numOf(mantissa * mantissa), 2 * exponent);
+    }
+
+    private static Num pow2(int exponent, NumFactory numFactory) {
+        return numFactory.numOf(2).pow(exponent);
     }
 
     /**
