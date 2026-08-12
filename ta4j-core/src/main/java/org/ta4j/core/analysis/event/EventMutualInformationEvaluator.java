@@ -112,18 +112,17 @@ public final class EventMutualInformationEvaluator {
             }
             // STRICT guarantees maxSampleIndex >= startIndex >= availableStart >= 0.
             int effectiveEnd = (int) maxSampleIndex;
-            return evaluateInRange(predictor, target, series, numFactory, effectiveStart, effectiveEnd, config);
+            return evaluateInRange(predictor, target, numFactory, effectiveStart, effectiveEnd, config);
         }
         effectiveStart = Math.max(effectiveStart, availableStart);
         effectiveEndValue = Math.min(effectiveEndValue, availableMaxSample);
         int effectiveEnd = effectiveEndValue < effectiveStart ? -1
                 : (int) Math.min(effectiveEndValue, Integer.MAX_VALUE);
-        return evaluateInRange(predictor, target, series, numFactory, effectiveStart, effectiveEnd, config);
+        return evaluateInRange(predictor, target, numFactory, effectiveStart, effectiveEnd, config);
     }
 
     private EventMutualInformationResult evaluateInRange(Indicator<Num> predictor, Indicator<Boolean> target,
-            BarSeries series, NumFactory numFactory, int effectiveStart, int effectiveEnd,
-            EventMutualInformationConfig config) {
+            NumFactory numFactory, int effectiveStart, int effectiveEnd, EventMutualInformationConfig config) {
         // eventPrefix is null when the target window span cannot be represented
         // in memory (more than Integer.MAX_VALUE distinct target indexes): such
         // an evaluation is undefined, never silently truncated, and never walks
