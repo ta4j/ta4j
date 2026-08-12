@@ -510,6 +510,82 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void unstableBoundarySaturationDoesNotLeakPastIntOverflow() {
+        // Sources unstable through Integer.MAX_VALUE - 1 saturate the published
+        // boundary at Integer.MAX_VALUE; with barCount = 2 the true boundary is
+        // MAX_VALUE + 1, which no int index can reach. The availability check
+        // must not let the saturated count make the window at MAX_VALUE look
+        // complete.
+        BarSeries series = series(1);
+        BarSeries atMaxSeries = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        Indicator<Boolean> unstable = new AbstractIndicator<Boolean>(atMaxSeries) {
+            @Override
+            public Boolean getValue(int index) {
+                return index == Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(unstable, unstable, 2, 0, 0);
+        // The combined boundary overflows int and saturates...
+        assertEquals(Integer.MAX_VALUE, indicator.getCountOfUnstableBars());
+        // ...but the window [MAX_VALUE - 1, MAX_VALUE] still contains the
+        // unstable bar MAX_VALUE - 1 and must not be evaluated.
+        Result result = indicator.getResult(Integer.MAX_VALUE);
+        assertEquals(Integer.MAX_VALUE - 1, result.windowStartIndex());
+        assertNumEquals(Double.NaN, result.f1Score());
+        assertEquals(0, result.predictedCount());
+        assertFalse(result.windowAvailable());
+        assertNumEquals(Double.NaN, indicator.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void eventCacheStaysBoundedByTheRollingWindow() {
+        // One event per bar over a long history: without window eviction the
+        // event caches would grow unbounded and eventually trip the matcher's
+        // capacity limit.
+        int barCount = 200_000;
+        BarSeries series = series(barCount);
+        Indicator<Boolean> everyBar = new AbstractIndicator<Boolean>(series) {
+            @Override
+            public Boolean getValue(int index) {
+                return Boolean.TRUE;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = indicator(everyBar, everyBar, 10, 0, 0);
+        for (int i = 0; i < barCount; i++) {
+            indicator.getValue(i);
+        }
+        // Rolling evaluation evicts everything below the last window.
+        assertTrue(indicator.predictedEvents.size <= 10);
+        assertTrue(indicator.referenceEvents.size <= 10);
+        assertNumEquals(1.0, indicator.getValue(barCount - 1));
+        // A backward evaluation below the eviction frontier resets the caches
+        // and rescans from scratch; results stay correct and the bound holds.
+        assertNumEquals(1.0, indicator.getResult(barCount - 21).f1Score());
+        assertTrue(indicator.predictedEvents.size <= 10);
+        assertTrue(indicator.referenceEvents.size <= 10);
+    }
+
+    @Test
     public void evaluationAtMaximumBarIndexTerminatesWithoutOverflow() {
         // A rolling series may legally reach getEndIndex() == Integer.MAX_VALUE;
         // the indicator must evaluate the single-bar window there and terminate.

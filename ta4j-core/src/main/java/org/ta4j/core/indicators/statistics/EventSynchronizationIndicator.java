@@ -98,8 +98,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final int maxLeadBars;
     private final int maxLagBars;
-    private final EventIndexCache predictedEvents = new EventIndexCache();
-    private final EventIndexCache referenceEvents = new EventIndexCache();
+    // Package-private for the white-box cache-bound regression test.
+    final EventIndexCache predictedEvents;
+    final EventIndexCache referenceEvents;
     private final Object cacheLock = new Object();
     // Runtime cache-coordination state, rebuilt from scratch after
     // deserialization; never part of the serialized descriptor.
@@ -158,6 +159,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         this.maxLagBars = maxLagBars;
         this.predictedSignal = EventSignals.fromIndicator(this.predicted);
         this.referenceSignal = EventSignals.fromIndicator(this.reference);
+        this.predictedEvents = new EventIndexCache(barCount);
+        this.referenceEvents = new EventIndexCache(barCount);
     }
 
     private static BarSeries requireSameSeries(Indicator<Boolean> predicted, Indicator<Boolean> reference) {
@@ -174,6 +177,13 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         int maxUnstable = Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
         return (int) Math.min(Integer.MAX_VALUE, (long) maxUnstable + barCount - 1);
+    }
+
+    /**
+     * @return the first index at which both sources are stable
+     */
+    private long firstStableIndex() {
+        return Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
     }
 
     /**
@@ -200,16 +210,22 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *
      * @param index the bar index
      * @return the immutable window evaluation result
+     * @since 0.24.2
      */
     public Result getResult(int index) {
         int windowStart = index - barCount + 1;
-        if (index < getCountOfUnstableBars() || windowStart < getBarSeries().getBeginIndex()
+        // Availability is decided on the window's first bar against the sources'
+        // unstable boundary computed in long: when that boundary overflows the
+        // int domain, no representable index has a complete stable window.
+        if (windowStart < firstStableIndex() || windowStart < getBarSeries().getBeginIndex()
                 || index > getBarSeries().getEndIndex()) {
             return undefinedResult(windowStart, index);
         }
         BarSeries series = getBarSeries();
         int beginIndex = series.getBeginIndex();
         synchronized (cacheLock) {
+            predictedEvents.retainWindowStart(windowStart);
+            referenceEvents.retainWindowStart(windowStart);
             while (true) {
                 BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(observedRevision);
                 if (snapshot.revision() != observedRevision
@@ -431,11 +447,21 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * events below the first retained index. Both run before the next scan, so a
      * replaced, cleared, or prefix-removed history never serves stale events.
      */
-    private static final class EventIndexCache {
+    static final class EventIndexCache {
 
-        private int[] events = new int[16];
-        private int size;
-        private int scannedThrough = -1;
+        private final int windowSize;
+        int[] events = new int[16];
+        int size;
+        int scannedThrough = -1;
+        /**
+         * Absolute index below which cached events may have been evicted; {@code -1}
+         * when nothing was evicted yet.
+         */
+        private int evictionFrontier = -1;
+
+        EventIndexCache(int windowSize) {
+            this.windowSize = windowSize;
+        }
 
         /**
          * Extends the cache through {@code endIndex}, scanning only the bars not
@@ -484,6 +510,45 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 }
             }
             scannedThrough = endIndex;
+            evictBelow(endIndex - windowSize + 1);
+        }
+
+        /**
+         * Ensures the cache still serves windows starting at {@code windowStart}. When
+         * the cache evicted events at or above that start (a backward evaluation after
+         * a forward one), the cache is reset so the next
+         * {@link #ensureScannedThrough(int, EventSignal, int)} rescans from scratch.
+         *
+         * @param windowStart the inclusive first bar of the requested window
+         */
+        synchronized void retainWindowStart(int windowStart) {
+            if (windowStart < evictionFrontier) {
+                size = 0;
+                scannedThrough = -1;
+                evictionFrontier = -1;
+            }
+        }
+
+        /**
+         * Drops every cached event below {@code frontier} — the first bar of the window
+         * that was just scanned — and records that eviction. Windows only move forward
+         * under rolling evaluation, so an event outside the last scanned window can
+         * never participate in a later one; bounding the cache by the window keeps a
+         * frequent source (for example one event per bar with a one-bar window) from
+         * accumulating the whole history and hitting the matcher's capacity limit.
+         *
+         * @param frontier the inclusive lowest index that must stay cached
+         */
+        private void evictBelow(int frontier) {
+            if (frontier > evictionFrontier) {
+                evictionFrontier = frontier;
+                if (size > 0 && events[0] < frontier) {
+                    int firstRetained = EventSynchronizationSupport.lowerBound(events, 0, size, frontier);
+                    int newSize = size - firstRetained;
+                    System.arraycopy(events, firstRetained, events, 0, newSize);
+                    size = newSize;
+                }
+            }
         }
 
         /**

@@ -3,15 +3,12 @@
  */
 package ta4jexamples.analysis;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator;
 import org.ta4j.core.indicators.statistics.EventSynchronizationIndicator.Result;
@@ -25,15 +22,17 @@ import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagPivotHighIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagPivotLowIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
-import org.ta4j.core.num.DoubleNumFactory;
+
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
  * Demonstrates scoring Net Momentum zero crossings against causal ZigZag
  * swing-confirmation events with {@link EventSynchronizationIndicator}.
  *
  * <p>
- * The fixture is a deterministic synthetic sine series so the demo is fully
- * reproducible and needs no network access. Two workflows are scored:
+ * The fixture is a committed, ossified Coinbase BTC daily dataset loaded from
+ * the examples classpath, so the demo is fully reproducible and needs no
+ * network access. Two workflows are scored:
  * </p>
  * <ul>
  * <li>swing highs: the momentum battery crossing <em>below</em> zero is the
@@ -50,8 +49,8 @@ import org.ta4j.core.num.DoubleNumFactory;
  * the demo evaluates the terminal window covering the whole stable history and
  * prints the full match diagnostics through {@code getResult(index)}. Because
  * the crossing indicators report 6 unstable bars, the terminal window starts at
- * index 6 instead of 0; windows that include unavailable history resolve to
- * {@code NaN} rather than silently shrinking.
+ * the crossing boundary instead of 0; windows that include unavailable history
+ * resolve to {@code NaN} rather than silently shrinking.
  *
  * <p>
  * <strong>Confirmation-time semantics:</strong> the ZigZag Boolean indicators
@@ -68,27 +67,16 @@ final class EventSynchronizationExample {
 
     private static final Logger LOG = LogManager.getLogger(EventSynchronizationExample.class);
 
-    private static final int BARS = 200;
+    /** Committed daily BTC dataset from the examples classpath. */
+    private static final String DATASET_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
 
     private EventSynchronizationExample() {
     }
 
-    private static BarSeries sineSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
-        Duration timePeriod = Duration.ofDays(1);
-        Instant endTime = Instant.EPOCH;
-        for (int i = 0; i < BARS; i++) {
-            endTime = endTime.plus(timePeriod);
-            double close = 1000.0 + 100.0 * Math.sin(2.0 * Math.PI * i / 20.0);
-            series.barBuilder()
-                    .timePeriod(timePeriod)
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .closePrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .volume(1d)
-                    .add();
+    private static BarSeries loadDataset() {
+        BarSeries series = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(DATASET_RESOURCE);
+        if (series == null || series.isEmpty()) {
+            throw new IllegalStateException("Required dataset '" + DATASET_RESOURCE + "' is missing or empty");
         }
         return series;
     }
@@ -108,7 +96,8 @@ final class EventSynchronizationExample {
      * @return the swing-high and swing-low terminal-window results
      */
     static DemoResult run() {
-        BarSeries series = sineSeries();
+        BarSeries series = loadDataset();
+        int lastIndex = series.getEndIndex();
 
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         NetMomentumIndicator momentum = new NetMomentumIndicator(
@@ -130,14 +119,14 @@ final class EventSynchronizationExample {
         // unstable prefix would be NaN, never silently truncated.
         int stableStart = Math.max(series.getBeginIndex(),
                 Math.max(belowZeroCrosses.getCountOfUnstableBars(), swingHighConfirmation.getCountOfUnstableBars()));
-        int barCount = BARS - stableStart;
+        int barCount = lastIndex - stableStart + 1;
 
         EventSynchronizationIndicator swingHighs = new EventSynchronizationIndicator(belowZeroCrosses,
                 swingHighConfirmation, barCount, 12, 12);
         EventSynchronizationIndicator swingLows = new EventSynchronizationIndicator(aboveZeroCrosses,
                 swingLowConfirmation, barCount, 12, 12);
-        Result highResult = swingHighs.getResult(BARS - 1);
-        Result lowResult = swingLows.getResult(BARS - 1);
+        Result highResult = swingHighs.getResult(lastIndex);
+        Result lowResult = swingLows.getResult(lastIndex);
 
         LOG.info("Swing highs: predicted={} reference={} matched={} precision={} recall={} F1={} meanOffset={}",
                 highResult.predictedCount(), highResult.referenceCount(), highResult.matchedCount(),
