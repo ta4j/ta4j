@@ -94,7 +94,7 @@ public final class EventMutualInformationEvaluator {
         if (startIndex > endIndex) {
             throw new IllegalArgumentException("startIndex must be <= endIndex");
         }
-        requireSameSeries(predictor.getBarSeries(), target.getBarSeries());
+        IndicatorUtils.requireSameSeries(predictor, target);
         BarSeries series = predictor.getBarSeries();
         NumFactory numFactory = series.numFactory();
 
@@ -409,12 +409,6 @@ public final class EventMutualInformationEvaluator {
             bins[i] = bin;
         }
         return bins;
-    }
-
-    private static void requireSameSeries(BarSeries first, BarSeries second) {
-        if (!IndicatorUtils.isSameSeries(first, second)) {
-            throw new IllegalArgumentException("predictor and target must use the same bar series");
-        }
     }
 
     private static boolean isFinite(Num value) {

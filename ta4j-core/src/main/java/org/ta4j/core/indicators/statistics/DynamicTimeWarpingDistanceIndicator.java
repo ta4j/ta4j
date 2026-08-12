@@ -18,8 +18,9 @@ import org.ta4j.core.num.Num;
  * DTW measures the minimum-cost monotonic alignment between two same-length
  * rolling windows, so it captures shape similarity even when one sequence
  * develops faster or slower than the other. The result is a distance, not a
- * correlation: lower means more similar, zero means identical under the
- * selected normalization and local cost, and the value is always non-negative.
+ * correlation: lower means more similar, and zero means a zero-cost warped
+ * alignment under the selected normalization and local cost; it does not by
+ * itself establish sequence identity. The value is always non-negative.
  * </p>
  *
  * <p>

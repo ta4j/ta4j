@@ -66,11 +66,12 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      *                                  or formed bins, a nonempty sample range
      *                                  carries a non-finite or count-inconsistent
      *                                  {@code positiveTargetRate}, a defined result
-     *                                  carries non-finite raw metrics, a constant
-     *                                  target carries nonzero raw metrics or
-     *                                  defined normalized MI, or a non-constant
-     *                                  target carries a normalized value outside
-     *                                  {@code [0, 1]} or inconsistent with
+     *                                  carries non-finite or negative raw metrics,
+     *                                  a constant target carries nonzero raw metrics
+     *                                  or defined normalized MI, or a non-constant
+     *                                  target carries non-positive entropy, a
+     *                                  negative MI, a normalized value outside
+     *                                  {@code [0, 1]}, or one inconsistent with
      *                                  {@code MI / H(Y)}
      */
     public EventMutualInformationResult {
@@ -124,6 +125,9 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 throw new IllegalArgumentException(
                         "a defined result must carry finite raw mutual information and target entropy");
             }
+            if (mutualInformationNats.isNegative() || targetEntropyNats.isNegative()) {
+                throw new IllegalArgumentException("raw mutual information and target entropy cannot be negative");
+            }
             // A constant target (0 or sampleCount positive samples) has zero
             // target entropy and zero raw mutual information, so the evaluator
             // always pairs it with NaN normalized MI; a non-constant target
@@ -143,6 +147,9 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                             "a constant target must carry NaN normalized mutual information");
                 }
             } else {
+                if (!targetEntropyNats.isPositive()) {
+                    throw new IllegalArgumentException("a non-constant target must carry positive target entropy");
+                }
                 double normalized = normalizedMutualInformation.doubleValue();
                 // Computed ratios can exceed the mathematical bounds by
                 // rounding noise only (for example 1 + 2e-16); anything beyond

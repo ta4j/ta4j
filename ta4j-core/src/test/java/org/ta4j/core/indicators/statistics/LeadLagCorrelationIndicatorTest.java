@@ -297,6 +297,15 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void rejectsProfileOnEmptySeries() {
+        BarSeries empty = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Indicator<Num> signal = indicator(empty);
+        LeadLagCorrelationIndicator leadLag = indicator(signal, signal, 2, 0, 0);
+
+        assertThrows(IllegalArgumentException.class, () -> leadLag.getProfile(-1));
+    }
+
+    @Test
     public void rejectsLagRangeThatExceedsTheProfileCapacityGuard() {
         BarSeries series = series(40);
         Indicator<Num> first = square(series);

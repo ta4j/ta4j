@@ -188,7 +188,8 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
      * @since 0.24.2
      */
     public Profile getProfile(int index) {
-        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
+        if (getBarSeries().isEmpty() || index < getBarSeries().getBeginIndex()
+                || index > getBarSeries().getEndIndex()) {
             throw new IllegalArgumentException("index must be within the series");
         }
         return scanProfile(index);
