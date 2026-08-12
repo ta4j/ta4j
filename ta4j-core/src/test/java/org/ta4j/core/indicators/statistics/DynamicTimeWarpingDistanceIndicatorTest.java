@@ -15,7 +15,9 @@ import java.util.Random;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -572,6 +574,43 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
             assertNumEquals(oracle.cost, production, 1.0e-9);
         }
+    }
+
+    @Test
+    public void unstableBoundaryAboveIntRangeStaysUnavailable() {
+        // Sources unstable through Integer.MAX_VALUE saturate the published
+        // boundary; with barCount = 2 the exact boundary is MAX_VALUE + 1,
+        // which no int index can reach. Availability must use the exact long
+        // boundary so the saturated count does not make the window at
+        // MAX_VALUE look complete.
+        BarSeries series = series(2);
+        BarSeries atMaxSeries = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        Indicator<Num> unstable = new AbstractIndicator<Num>(atMaxSeries) {
+            @Override
+            public Num getValue(int index) {
+                return numFactory.numOf((index & 1) == 0 ? 1 : 2);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(unstable, unstable, 2,
+                DEFAULT_CONFIG);
+
+        assertEquals(Integer.MAX_VALUE, dtw.getCountOfUnstableBars());
+        assertTrue(dtw.getValue(Integer.MAX_VALUE).isNaN());
     }
 
     private static final class BruteForceResult {

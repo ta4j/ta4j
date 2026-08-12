@@ -95,13 +95,13 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
             throw new IllegalArgumentException("an undefined result must carry NaN metrics and effectiveBinCount 0");
         }
         if (sampleCount > 0 && (!Double.isFinite(positiveTargetRate.doubleValue())
-                || Math.round(positiveTargetRate.doubleValue() * sampleCount) != positiveTargetCount)) {
+                || !positiveTargetRate.equals(positiveTargetRate.getNumFactory()
+                        .numOf(positiveTargetCount)
+                        .dividedBy(positiveTargetRate.getNumFactory().numOf(sampleCount))))) {
             // The documented factual prevalence is positiveTargetCount /
-            // sampleCount; accepting any other finite or NaN rate would let
-            // callers expose contradictory diagnostics to reports and
-            // optimizers. The rounded comparison tolerates binary and decimal
-            // division rounding while rejecting rates that are off by more
-            // than half a sample.
+            // sampleCount; comparing the rate in Num arithmetic rejects any
+            // other value, including contradictory finite rates that a rounded
+            // decimal comparison would accept (for example 0.54 for 5 of 10).
             throw new IllegalArgumentException(
                     "a nonempty sample range must carry a finite positiveTargetRate consistent with the counts");
         }

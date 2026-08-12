@@ -128,10 +128,12 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        // The unstable-bar count is relative to the retained series head, so
+        // The unstable-bar boundary is relative to the retained series head, so
         // absolute indexes need the begin-index offset; long arithmetic keeps
-        // the comparison overflow-proof at the extremes of the int range.
-        if ((long) index < (long) getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+        // the comparison overflow-proof at the extremes of the int range and
+        // uses the exact (un-clamped) boundary so a saturated published count
+        // can never make an unreachable warm-up boundary look complete.
+        if ((long) index < (long) getBarSeries().getBeginIndex() + exactUnstableBars()) {
             return NaN.NaN;
         }
         return scanProfile(index).selectedCorrelation();
@@ -142,20 +144,31 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
      * worst lagged unstable-bar boundary over the whole range. The profile itself
      * retains per-lag undefined points below this boundary.
      *
+     * <p>
+     * When the exact boundary exceeds {@code Integer.MAX_VALUE}, the published
+     * count saturates at {@code Integer.MAX_VALUE}; availability guards use the
+     * exact long boundary internally so the saturation never makes an unreachable
+     * warm-up boundary look reachable.
+     * </p>
+     *
      * @return the number of unstable bars
      */
     @Override
     public int getCountOfUnstableBars() {
+        return CorrelationWindowSupport.clampUnstableBars(exactUnstableBars());
+    }
+
+    /**
+     * The exact (un-clamped) worst-lag unstable-bar boundary over the whole
+     * configured lag range, relative to the retained series head.
+     */
+    private long exactUnstableBars() {
         // The worst lag is maximumLag for the first-indicator offset and
         // minimumLag for the second-indicator offset; long arithmetic keeps the
         // extremes of the int range overflow-proof.
         long firstUnstable = (long) first.getCountOfUnstableBars() + Math.max((long) maximumLag, 0L);
         long secondUnstable = (long) second.getCountOfUnstableBars() + Math.max(-(long) minimumLag, 0L);
-        long unstableBars = Math.max(firstUnstable, secondUnstable) + (long) barCount - 1L;
-        if (unstableBars > Integer.MAX_VALUE) {
-            return Integer.MAX_VALUE;
-        }
-        return unstableBars < 0L ? 0 : (int) unstableBars;
+        return Math.max(firstUnstable, secondUnstable) + (long) barCount - 1L;
     }
 
     /**
@@ -243,9 +256,11 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
         // when the underlying indicators emit finite values during their
         // warm-up. The count is relative to the retained series head, so the
         // absolute end index needs the begin-index offset; long arithmetic
-        // keeps the comparison overflow-proof at the extremes of the int range.
+        // keeps the comparison overflow-proof at the extremes of the int range
+        // and uses the exact (un-clamped) boundary so a saturated published
+        // count can never make an unreachable warm-up boundary look complete.
         if ((long) endIndex < (long) seriesBeginIndex
-                + CorrelationWindowSupport.laggedUnstableBars(barCount, lag, first, second)) {
+                + CorrelationWindowSupport.laggedUnstableBarsAsLong(barCount, lag, first, second)) {
             return new Point(lag, NaN.NaN, 0);
         }
         CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.laggedWindow(first, second, endIndex,

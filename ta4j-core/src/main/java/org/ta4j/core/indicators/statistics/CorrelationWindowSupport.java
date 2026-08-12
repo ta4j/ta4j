@@ -39,9 +39,19 @@ final class CorrelationWindowSupport {
     }
 
     static int unstableBars(int barCount, Indicator<?> first, Indicator<?> second) {
-        int baseUnstableBars = Math.max(first.getCountOfUnstableBars(), second.getCountOfUnstableBars());
-        long unstableBars = (long) baseUnstableBars + (long) barCount - 1L;
-        return clampUnstableBars(unstableBars);
+        return clampUnstableBars(unstableBarsAsLong(barCount, first, second));
+    }
+
+    /**
+     * The exact (un-clamped) unstable-bar boundary for a paired window: one bar
+     * more than the largest unstable-bar count of either indicator. Long arithmetic
+     * keeps the boundary exact beyond the int range so availability guards cannot
+     * mistake a saturated published count for a reachable boundary at the extremes
+     * of the index range.
+     */
+    static long unstableBarsAsLong(int barCount, Indicator<?> first, Indicator<?> second) {
+        long baseUnstableBars = Math.max((long) first.getCountOfUnstableBars(), (long) second.getCountOfUnstableBars());
+        return baseUnstableBars + (long) barCount - 1L;
     }
 
     static int unstableBars(int barCount, Indicator<?> first, Indicator<?> second, Indicator<?> third) {
@@ -52,15 +62,27 @@ final class CorrelationWindowSupport {
     }
 
     static int laggedUnstableBars(int barCount, int lag, Indicator<?> first, Indicator<?> second) {
+        return clampUnstableBars(laggedUnstableBarsAsLong(barCount, lag, first, second));
+    }
+
+    /**
+     * The exact (un-clamped) unstable-bar boundary for a window shifted by
+     * {@code lag}: the worst of the two indicators' unstable-bar counts plus the
+     * lag offset that pushes that indicator's window start latest, plus
+     * {@code barCount - 1}. Long arithmetic keeps the boundary exact beyond the int
+     * range so availability guards cannot mistake a saturated published count for a
+     * reachable boundary at the extremes of the index range.
+     */
+    static long laggedUnstableBarsAsLong(int barCount, int lag, Indicator<?> first, Indicator<?> second) {
         long firstOffset = Math.max((long) lag, 0L);
         long secondOffset = Math.max(-(long) lag, 0L);
         long firstUnstable = (long) first.getCountOfUnstableBars() + firstOffset;
         long secondUnstable = (long) second.getCountOfUnstableBars() + secondOffset;
         long unstableBars = Math.max(firstUnstable, secondUnstable) + (long) barCount - 1L;
-        return clampUnstableBars(unstableBars);
+        return unstableBars;
     }
 
-    private static int clampUnstableBars(long unstableBars) {
+    static int clampUnstableBars(long unstableBars) {
         if (unstableBars > Integer.MAX_VALUE) {
             return Integer.MAX_VALUE;
         }

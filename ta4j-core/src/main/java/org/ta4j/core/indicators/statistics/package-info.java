@@ -25,8 +25,8 @@
  * {@link org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator}
  * measures shape similarity under time-axis distortion. Sparse near-coincident
  * Boolean event streams are scored with
- * {@link org.ta4j.core.indicators.statistics.EventSynchronizationIndicator}, a
- * rolling F1 scorer over deterministic one-to-one event matching; the
+ * {@link org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator},
+ * a rolling F1 scorer over deterministic one-to-one event matching; the
  * event-dependence machinery lives in the
  * {@link org.ta4j.core.indicators.statistics.event} subpackage.
  * </p>

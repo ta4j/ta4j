@@ -15,7 +15,9 @@ import java.util.OptionalInt;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -339,6 +341,45 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
         assertEquals(Integer.MAX_VALUE, indicator.getCountOfUnstableBars());
         assertTrue(indicator.getValue(39).isNaN());
+    }
+
+    @Test
+    public void unstableBoundaryAboveIntRangeStaysUnavailable() {
+        // Sources unstable through Integer.MAX_VALUE saturate the published
+        // boundary; with barCount = 2 the exact worst-lag boundary is
+        // MAX_VALUE + 1, which no int index can reach. Availability must use
+        // the exact long boundary so the saturated count does not make the
+        // window at MAX_VALUE look complete.
+        BarSeries series = series(2);
+        BarSeries atMaxSeries = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        Indicator<Num> unstable = new AbstractIndicator<Num>(atMaxSeries) {
+            @Override
+            public Num getValue(int index) {
+                return numFactory.numOf((index & 1) == 0 ? 1 : 2);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        LeadLagCorrelationIndicator indicator = indicator(unstable, unstable, 2, 0, 2,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        assertEquals(Integer.MAX_VALUE, indicator.getCountOfUnstableBars());
+        Profile profile = indicator.getProfile(Integer.MAX_VALUE);
+        assertTrue(profile.points().stream().noneMatch(Point::isDefined));
+        assertTrue(indicator.getValue(Integer.MAX_VALUE).isNaN());
     }
 
     @Test
