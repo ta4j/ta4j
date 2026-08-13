@@ -33,13 +33,13 @@ final class ExecutionModelSupport {
             }
             return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }
-        if (signalIndex > barSeries.getEndIndex()) {
+        // Executing on the next open requires a subsequent bar; using >= keeps the
+        // check exact even when signalIndex is Integer.MAX_VALUE, where signalIndex + 1
+        // would overflow and wrap around to a negative index.
+        if (signalIndex >= barSeries.getEndIndex()) {
             return null;
         }
         int executionIndex = signalIndex + 1;
-        if (executionIndex > barSeries.getEndIndex()) {
-            return null;
-        }
         return new ExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
     }
 

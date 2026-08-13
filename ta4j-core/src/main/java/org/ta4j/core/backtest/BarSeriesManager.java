@@ -328,16 +328,21 @@ public class BarSeriesManager {
         }
 
         int lastProcessedIndex = runEndIndex;
-        for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            lastProcessedIndex = i;
-            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-            // For each bar between both indexes...
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+        if (runBeginIndex <= runEndIndex) {
+            for (int i = runBeginIndex;; i++) {
+                lastProcessedIndex = i;
+                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                // For each bar between both indexes...
+                if (strategy.shouldOperate(i, tradingRecord)) {
+                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                }
+                if (i == runEndIndex) {
+                    break;
+                }
             }
         }
 
-        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
