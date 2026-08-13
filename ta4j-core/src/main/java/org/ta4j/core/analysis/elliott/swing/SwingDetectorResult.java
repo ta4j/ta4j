@@ -17,8 +17,17 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
  * {@link SwingDetector}. It is especially handy when downstream consumers need
  * pivot diagnostics or to reconstitute swings.
  *
+ * <p>
+ * Pivots and swings are mutually consistent views of the same zigzag: when both
+ * are non-empty, the supplied pivots must equal the pivot chain derivable from
+ * the supplied swings (the derivation used by {@link #fromSwings} and the
+ * inverse of {@link #fromPivots}). A mismatched pair is rejected with an
+ * {@link IllegalArgumentException}.
+ *
  * @param pivots ordered list of detected pivots
  * @param swings ordered list of swings derived from pivots
+ * @throws IllegalArgumentException when both pivots and swings are non-empty
+ *                                  and mutually inconsistent
  * @since 0.22.2
  */
 public record SwingDetectorResult(List<SwingPivot> pivots, List<ElliottSwing> swings) {
@@ -26,6 +35,13 @@ public record SwingDetectorResult(List<SwingPivot> pivots, List<ElliottSwing> sw
     public SwingDetectorResult {
         pivots = pivots == null ? List.of() : List.copyOf(pivots);
         swings = swings == null ? List.of() : List.copyOf(swings);
+        if (!pivots.isEmpty() && !swings.isEmpty()) {
+            final List<SwingPivot> derivedPivots = SwingDetectorSupport.pivotsFromSwings(swings);
+            if (!derivedPivots.equals(pivots)) {
+                throw new IllegalArgumentException("pivots and swings are inconsistent: pivots derived from the "
+                        + "supplied swings " + derivedPivots + " do not match the supplied pivots " + pivots);
+            }
+        }
     }
 
     /**
