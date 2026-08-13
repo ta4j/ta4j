@@ -27,8 +27,7 @@ class ElliottWaveDemoSelfContainmentTest {
     void demoClassesDoNotReferenceElliottWaveIndicatorSuiteDemo() throws IOException {
         Path demoSourceDir = findDemoSourceDir();
         try (var stream = Files.walk(demoSourceDir)) {
-            List<Path> offending = stream
-                    .filter(Files::isRegularFile)
+            List<Path> offending = stream.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> {
                         try {
@@ -51,8 +50,7 @@ class ElliottWaveDemoSelfContainmentTest {
             candidate = current.resolve("src/main/java/ta4jexamples/analysis/elliottwave/demo");
         }
         if (!Files.isDirectory(candidate)) {
-            throw new IllegalStateException(
-                    "Cannot locate demo source directory from " + Path.of("").toAbsolutePath());
+            throw new IllegalStateException("Cannot locate demo source directory from " + Path.of("").toAbsolutePath());
         }
         return candidate;
     }

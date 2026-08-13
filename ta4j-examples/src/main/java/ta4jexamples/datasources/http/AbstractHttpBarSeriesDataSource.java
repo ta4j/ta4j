@@ -286,19 +286,18 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
         // Use Duration.toString() for standardized format (e.g., "PT24H" for 1 day,
         // "PT1H" for 1 hour)
         String durationString = interval.toString();
-        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix,
-                encodeTickerForCacheFilename(symbol), durationString, truncatedStart.getEpochSecond(),
-                truncatedEnd.getEpochSecond(), notesSuffix);
+        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix, encodeTickerForCacheFilename(symbol),
+                durationString, truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond(), notesSuffix);
 
         return Paths.get(responseCacheDir, filename);
     }
 
     /**
-     * Encodes a symbol (ticker, product ID) for safe use as a single cache
-     * filename field. Dashes, which separate the filename fields, are
-     * percent-encoded as {@code %2D} so dashed symbols such as {@code BTC-USD}
-     * round-trip exactly through the cache filename; any other character outside
-     * {@code [A-Z0-9]} is replaced with {@code _}.
+     * Encodes a symbol (ticker, product ID) for safe use as a single cache filename
+     * field. Dashes, which separate the filename fields, are percent-encoded as
+     * {@code %2D} so dashed symbols such as {@code BTC-USD} round-trip exactly
+     * through the cache filename; any other character outside {@code [A-Z0-9]} is
+     * replaced with {@code _}.
      *
      * @param symbol the symbol to encode (never null)
      * @return the symbol safe to embed as a single dash-free filename field

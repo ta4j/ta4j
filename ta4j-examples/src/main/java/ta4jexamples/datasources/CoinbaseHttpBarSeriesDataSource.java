@@ -539,11 +539,11 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
      * Parses the interval token of a cache filename into a
      * {@link CoinbaseInterval}.
      * <p>
-     * The token written by {@link #getCacheFilePath(String, Instant, Instant,
-     * Duration, String)} is the ISO-8601 {@link Duration} string (e.g.
-     * {@code PT1H}); API values (e.g. {@code ONE_HOUR}) are accepted as a
-     * fallback for legacy or hand-authored filenames. Unparseable tokens fall
-     * back to {@link CoinbaseInterval#ONE_DAY}.
+     * The token written by
+     * {@link #getCacheFilePath(String, Instant, Instant, Duration, String)} is the
+     * ISO-8601 {@link Duration} string (e.g. {@code PT1H}); API values (e.g.
+     * {@code ONE_HOUR}) are accepted as a fallback for legacy or hand-authored
+     * filenames. Unparseable tokens fall back to {@link CoinbaseInterval#ONE_DAY}.
      *
      * @param token the interval token from the cache filename
      * @return the matching interval, or {@link CoinbaseInterval#ONE_DAY} when the

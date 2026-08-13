@@ -880,7 +880,8 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         List<Path> cacheFiles;
         try (var stream = Files.list(cacheDir)) {
             cacheFiles = stream
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-")).toList();
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
+                    .toList();
         }
         assertEquals(1, cacheFiles.size(), "Exactly one cache file should be written for BTC-USD");
         Path cacheFile = cacheFiles.getFirst();
@@ -890,8 +891,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         BarSeries reloaded = dataSource.loadSeries(cacheFile.toString());
         assertNotNull(reloaded, "Reload from cache file should return data");
         assertEquals("BTC-USD", reloaded.getName(), "Dashed ticker must round-trip exactly");
-        assertEquals(Duration.ofHours(1), reloaded.getFirstBar().getTimePeriod(),
-                "Interval must round-trip exactly");
+        assertEquals(Duration.ofHours(1), reloaded.getFirstBar().getTimePeriod(), "Interval must round-trip exactly");
 
         // Clean up
         cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");

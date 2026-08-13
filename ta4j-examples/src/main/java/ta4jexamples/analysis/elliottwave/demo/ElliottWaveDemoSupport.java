@@ -30,8 +30,7 @@ public final class ElliottWaveDemoSupport {
     }
 
     /**
-     * Auto-selects an Elliott degree from the bar series duration and history
-     * size.
+     * Auto-selects an Elliott degree from the bar series duration and history size.
      *
      * @param series bar series used for recommendation
      * @return recommended degree, or {@link #DEFAULT_DEGREE} when recommendation
