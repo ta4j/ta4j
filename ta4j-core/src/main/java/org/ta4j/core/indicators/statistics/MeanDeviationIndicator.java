@@ -39,7 +39,7 @@ public class MeanDeviationIndicator extends CachedIndicator<Num> {
         Num absoluteDeviations = getBarSeries().numFactory().zero();
 
         final Num average = sma.getValue(index);
-        final int startIndex = Math.max(0, index - barCount + 1);
+        final int startIndex = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1);
         final int nbValues = index - startIndex + 1;
 
         for (int i = startIndex; i <= index; i++) {

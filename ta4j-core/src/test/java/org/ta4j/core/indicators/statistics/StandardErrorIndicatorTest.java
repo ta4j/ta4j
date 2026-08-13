@@ -90,6 +90,24 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
         }
     }
 
+    @Test
+    public void anchorsWindowAtBeginIndexAfterRemoval() {
+        // Evict the first four closes (1..4) so beginIndex = 4; the retained closes
+        // [5,6,7,8,9,10] live at absolute indices 4..9.
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .withMaxBarCount(6)
+                .build();
+        var se = new StandardErrorIndicator(new ClosePriceIndicator(pruned), 6);
+
+        // Window [4..7] = {5,6,7,8}: sdev = sqrt(5/4), n = 4 -> sqrt(1.25) / 2
+        assertNumEquals(0.5590, se.getValue(7));
+        // Window [4..8] = {5,6,7,8,9}: sdev = sqrt(2), n = 5 -> sqrt(2) / sqrt(5)
+        assertNumEquals(0.6325, se.getValue(8));
+        // Window [4..9] = {5,6,7,8,9,10}: sdev = sqrt(17.5/6), n = 6
+        assertNumEquals(0.6972, se.getValue(9));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
