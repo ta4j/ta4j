@@ -90,8 +90,8 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
 
         return switch (mode) {
         case PRIMARY -> calculatePrimaryInvalidation(scenarioSet);
-        case CONSERVATIVE -> calculateConservativeInvalidation(scenarioSet);
-        case AGGRESSIVE -> calculateAggressiveInvalidation(scenarioSet);
+        case CONSERVATIVE -> calculateConservativeInvalidation(scenarioSet, index);
+        case AGGRESSIVE -> calculateAggressiveInvalidation(scenarioSet, index);
         };
     }
 
@@ -104,86 +104,138 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
         return scenarioSet.base().map(ElliottScenario::invalidationPrice).orElse(NaN);
     }
 
-    private Num calculateConservativeInvalidation(final ElliottScenarioSet scenarioSet) {
-        // Use the most conservative (tightest) invalidation across all high-confidence
-        // scenarios
+    /**
+     * Computes the conservative (tightest) invalidation level across all
+     * high-confidence scenarios.
+     *
+     * <p>
+     * Bullish and bearish scenarios are folded independently (bullish: highest
+     * invalidation; bearish: lowest), then the aggregate closest to the close price
+     * at {@code index} is selected. When only one direction is present, its
+     * aggregate is returned directly.
+     *
+     * @param scenarioSet scenarios to fold
+     * @param index       bar index providing the close-price reference
+     * @return the tightest invalidation level, or NaN when no scenario has a usable
+     *         invalidation
+     * @since 0.24.2
+     */
+    Num calculateConservativeInvalidation(final ElliottScenarioSet scenarioSet, final int index) {
         final List<ElliottScenario> scenarios = scenarioSet.all();
         if (scenarios.isEmpty()) {
             return NaN;
         }
 
-        Num conservative = null;
-        Boolean bullish = null;
-
-        for (final ElliottScenario scenario : scenarios) {
-            if (!scenario.isHighConfidence()) {
-                continue;
-            }
-
-            final Num invalidation = scenario.invalidationPrice();
-            if (Num.isNaNOrNull(invalidation)) {
-                continue;
-            }
-
-            // Skip scenarios without a known direction
-            if (!scenario.hasKnownDirection()) {
-                continue;
-            }
-
-            if (conservative == null) {
-                conservative = invalidation;
-                bullish = scenario.isBullish();
-            } else {
-                // For bullish, conservative = highest invalidation (tightest stop)
-                // For bearish, conservative = lowest invalidation (tightest stop)
-                if (bullish != null && bullish) {
-                    conservative = conservative.max(invalidation);
-                } else {
-                    conservative = conservative.min(invalidation);
-                }
-            }
-        }
-
-        return conservative != null ? conservative : NaN;
+        final Num reference = getBarSeries().getBar(index).getClosePrice();
+        return selectAcrossDirections(foldDirectionalInvalidations(scenarios, true, true),
+                foldDirectionalInvalidations(scenarios, false, true), reference, false);
     }
 
-    private Num calculateAggressiveInvalidation(final ElliottScenarioSet scenarioSet) {
-        // Use the most aggressive (widest) invalidation - only invalidate if ALL
-        // scenarios would be invalid
+    /**
+     * Computes the aggressive (widest) invalidation level across all scenarios.
+     *
+     * <p>
+     * Bullish and bearish scenarios are folded independently (bullish: lowest
+     * invalidation; bearish: highest), then the aggregate farthest from the close
+     * price at {@code index} is selected. When only one direction is present, its
+     * aggregate is returned directly.
+     *
+     * @param scenarioSet scenarios to fold
+     * @param index       bar index providing the close-price reference
+     * @return the widest invalidation level, or NaN when no scenario has a usable
+     *         invalidation
+     * @since 0.24.2
+     */
+    Num calculateAggressiveInvalidation(final ElliottScenarioSet scenarioSet, final int index) {
         final List<ElliottScenario> scenarios = scenarioSet.all();
         if (scenarios.isEmpty()) {
             return NaN;
         }
 
-        Num aggressive = null;
-        Boolean bullish = null;
+        final Num reference = getBarSeries().getBar(index).getClosePrice();
+        return selectAcrossDirections(foldDirectionalInvalidations(scenarios, true, false),
+                foldDirectionalInvalidations(scenarios, false, false), reference, true);
+    }
 
+    /**
+     * Folds the invalidation levels of scenarios in one direction.
+     *
+     * <p>
+     * For a conservative fold the returned level is the tightest stop for that
+     * direction (bullish: highest invalidation, bearish: lowest); for an aggressive
+     * fold it is the widest (bullish: lowest, bearish: highest). Conservative folds
+     * additionally require high-confidence scenarios. Scenarios without a known
+     * direction or with a NaN invalidation are skipped.
+     *
+     * @param scenarios        scenarios to fold
+     * @param bullishDirection {@code true} to fold bullish scenarios, {@code false}
+     *                         for bearish
+     * @param conservative     {@code true} for a conservative (tightest) fold,
+     *                         {@code false} for an aggressive (widest) fold
+     * @return the folded invalidation level, or {@code null} when no scenario
+     *         matched
+     * @since 0.24.2
+     */
+    static Num foldDirectionalInvalidations(final List<ElliottScenario> scenarios, final boolean bullishDirection,
+            final boolean conservative) {
+        Num folded = null;
         for (final ElliottScenario scenario : scenarios) {
+            if (conservative && !scenario.isHighConfidence()) {
+                continue;
+            }
+            if (!scenario.hasKnownDirection() || scenario.isBullish() != bullishDirection) {
+                continue;
+            }
             final Num invalidation = scenario.invalidationPrice();
             if (Num.isNaNOrNull(invalidation)) {
                 continue;
             }
 
-            // Skip scenarios without a known direction
-            if (!scenario.hasKnownDirection()) {
-                continue;
-            }
+            final boolean takeMax = bullishDirection == conservative;
+            folded = folded == null ? invalidation : takeMax ? folded.max(invalidation) : folded.min(invalidation);
+        }
+        return folded;
+    }
 
-            if (aggressive == null) {
-                aggressive = invalidation;
-                bullish = scenario.isBullish();
-            } else {
-                // For bullish, aggressive = lowest invalidation (widest stop)
-                // For bearish, aggressive = highest invalidation (widest stop)
-                if (bullish != null && bullish) {
-                    aggressive = aggressive.min(invalidation);
-                } else {
-                    aggressive = aggressive.max(invalidation);
-                }
-            }
+    /**
+     * Selects one of two directional invalidation levels using the distance to a
+     * price reference.
+     *
+     * <p>
+     * When both levels are present, the level closest to the reference is returned
+     * for tightest selection and the farthest for widest selection. Equal
+     * distances, or an unusable (NaN/null) reference, resolve to the bullish level
+     * for deterministic behavior.
+     *
+     * @param bullish      bullish invalidation level, may be {@code null}
+     * @param bearish      bearish invalidation level, may be {@code null}
+     * @param reference    price used to rank distances
+     * @param preferWidest {@code true} to prefer the farthest level, {@code false}
+     *                     for the closest
+     * @return the selected level, or NaN when both levels are {@code null}
+     * @since 0.24.2
+     */
+    static Num selectAcrossDirections(final Num bullish, final Num bearish, final Num reference,
+            final boolean preferWidest) {
+        if (bullish == null && bearish == null) {
+            return NaN;
+        }
+        if (bullish == null) {
+            return bearish;
+        }
+        if (bearish == null) {
+            return bullish;
+        }
+        if (Num.isNaNOrNull(reference)) {
+            return bullish;
         }
 
-        return aggressive != null ? aggressive : NaN;
+        final Num bullishDistance = bullish.minus(reference).abs();
+        final Num bearishDistance = bearish.minus(reference).abs();
+        if (preferWidest) {
+            return bearishDistance.isGreaterThan(bullishDistance) ? bearish : bullish;
+        }
+        return bullishDistance.isGreaterThan(bearishDistance) ? bearish : bullish;
     }
 
     /**
