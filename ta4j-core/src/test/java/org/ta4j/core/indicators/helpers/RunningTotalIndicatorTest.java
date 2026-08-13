@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -37,6 +38,47 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
         for (int i = 0; i < expected.length; i++) {
             assertNumEquals(expected[i], runningTotal.getValue(i));
         }
+    }
+
+    @Test
+    public void recomputesAfterMidSeriesReplace() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5)
+                .build();
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals(12, runningTotal.getValue(4));
+
+        series.replaceBar(2, series.barBuilder().openPrice(2).highPrice(2).lowPrice(2).closePrice(10).build());
+        series.addBar(series.barBuilder().openPrice(6).highPrice(6).lowPrice(6).closePrice(6).build());
+
+        // window [3..5] = closes 4 + 5 + 6, not a stale partial sum
+        assertNumEquals(15, runningTotal.getValue(5));
+    }
+
+    @Test
+    public void fastPathSurvivesAppendOnlyGrowth() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals(9, runningTotal.getValue(3));
+
+        series.addBar(series.barBuilder().openPrice(6).highPrice(6).lowPrice(6).closePrice(6).build());
+        assertNumEquals(12, runningTotal.getValue(4));
+
+        series.addBar(series.barBuilder().openPrice(7).highPrice(7).lowPrice(7).closePrice(7).build());
+        assertNumEquals(15, runningTotal.getValue(5));
+    }
+
+    @Test
+    public void anchorsAtBeginIndexAfterRemoval() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4)
+                .withMaxBarCount(3).build();
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 2);
+
+        // remaining closes are [2, 3, 4] at indices 1..3
+        assertNumEquals(2, runningTotal.getValue(1));
+        assertNumEquals(5, runningTotal.getValue(2));
+        assertNumEquals(7, runningTotal.getValue(3));
     }
 
     @Test

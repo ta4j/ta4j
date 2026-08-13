@@ -96,8 +96,19 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         new AverageIndicator(Collections.emptyList());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void indicatorShouldFailOnListContainsNull() {
         new AverageIndicator(Arrays.asList(one, null));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void indicatorShouldFailOnNullVarargsArray() {
+        new AverageIndicator((Indicator<Num>[]) null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void indicatorShouldFailOnDifferentSeries() {
+        BarSeries other = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        new AverageIndicator(one, new ClosePriceIndicator(other));
     }
 }

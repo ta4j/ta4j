@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.helpers;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -34,7 +35,7 @@ public class CloseLocationValueIndicator extends CachedIndicator<Num> {
 
         final Num diffHighLow = high.minus(low);
 
-        return diffHighLow.isNaN() ? getBarSeries().numFactory().zero()
+        return diffHighLow.isNaN() ? NaN.NaN
                 : ((close.minus(low)).minus(high.minus(close))).dividedBy(diffHighLow);
     }
 
