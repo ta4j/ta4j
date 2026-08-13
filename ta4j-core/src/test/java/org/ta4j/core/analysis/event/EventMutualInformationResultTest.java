@@ -260,4 +260,27 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
                 factory.numOf(0.5), 10, 1, BinningStrategy.EQUAL_FREQUENCY, 0, 3);
     }
+
+    @Test
+    public void requestedBinCountCannotExceedTheEvaluatorCeiling() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[20]).build();
+        NumFactory factory = series.numFactory();
+        // Review regression: no evaluator configuration can request more than
+        // MAX_PREDICTOR_BIN_COUNT bins, so a direct construction or
+        // deserialized value above the ceiling (for example 1,000,001)
+        // describes a diagnostic the evaluator rejects and must be refused
+        // here too, for defined and undefined results alike.
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
+                        factory.numOf(0.5), EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT + 1, 1,
+                        BinningStrategy.EQUAL_WIDTH, 0, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, 2, 1, factory.numOf(0.5),
+                        EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT + 1, 0, BinningStrategy.EQUAL_WIDTH, 0,
+                        3));
+        // The ceiling value itself stays accepted.
+        new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
+                factory.numOf(0.5), EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT, 1,
+                BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
 }

@@ -58,13 +58,16 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
      * Validates the result.
      *
      * @throws NullPointerException     if a numeric value or the strategy is null
-     * @throws IllegalArgumentException if a count is negative, the target window
-     *                                  offsets are inconsistent, an empty sample
-     *                                  range carries defined metrics or nonzero
-     *                                  effective bins, an undefined result (NaN raw
-     *                                  MI or entropy) carries defined normalized MI
-     *                                  or formed bins, a nonempty sample range
-     *                                  carries a non-finite or count-inconsistent
+     * @throws IllegalArgumentException if a count is negative, a requested bin
+     *                                  count is below 2 or above
+     *                                  {@link EventMutualInformationConfig#MAX_PREDICTOR_BIN_COUNT},
+     *                                  the target window offsets are inconsistent,
+     *                                  an empty sample range carries defined
+     *                                  metrics or nonzero effective bins, an
+     *                                  undefined result (NaN raw MI or entropy)
+     *                                  carries defined normalized MI or formed
+     *                                  bins, a nonempty sample range carries a
+     *                                  non-finite or count-inconsistent
      *                                  {@code positiveTargetRate}, a defined result
      *                                  carries non-finite or negative raw metrics
      *                                  or zero effective bins, a constant target
@@ -83,7 +86,11 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
         if (sampleCount < 0 || positiveTargetCount < 0 || positiveTargetCount > sampleCount) {
             throw new IllegalArgumentException("sample counts are inconsistent");
         }
-        if (requestedBinCount < 2 || effectiveBinCount < 0 || effectiveBinCount > requestedBinCount) {
+        if (requestedBinCount < 2 || requestedBinCount > EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT
+                || effectiveBinCount < 0 || effectiveBinCount > requestedBinCount) {
+            // The evaluator never requests more than MAX_PREDICTOR_BIN_COUNT
+            // bins, so a direct construction or deserialized value above the
+            // ceiling describes a configuration the evaluator rejects.
             throw new IllegalArgumentException("bin counts are inconsistent");
         }
         if (binningStrategy == BinningStrategy.EQUAL_FREQUENCY && effectiveBinCount > sampleCount) {

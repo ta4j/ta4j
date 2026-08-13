@@ -73,10 +73,11 @@ final class DynamicTimeWarpingSupport {
         int[] currentLength = new int[sampleCount];
         // Path-length-normalized distances carry each cell's best path as a
         // scaled total (value * 2^scale): a local cost or sum can exceed the
-        // representable range (for example |1e308 - (-1e308)|, or two squared
-        // costs of 1e308) while the path's mean stays finite, and scaling by
-        // powers of two is exact, so the derived mean differs from a direct
-        // accumulation only by final rounding. The same scaled total also
+        // representable range of the backing primitive (for example
+        // |1e308 - (-1e308)|, or two squared costs of 1e308) while the path's
+        // mean stays finite, and scaling by powers of two is exact, so the
+        // derived mean differs from a direct accumulation only by final
+        // rounding. The same scaled total also
         // drives predecessor selection: comparing totals directly (instead of
         // rounded running means) honors the documented tie-break exactly and
         // never lets subnormal rounding reorder equal totals.
@@ -86,6 +87,13 @@ final class DynamicTimeWarpingSupport {
         Num[] currentMeanValue = byPathLength ? new Num[sampleCount] : null;
         int[] currentMeanScale = byPathLength ? new int[sampleCount] : null;
         Num maxValue = byPathLength ? numFactory.numOf(Double.MAX_VALUE) : null;
+        // The overflow ceiling only constrains primitive-backed accumulators:
+        // Double and Float totals live in a fixed binary range, while
+        // DecimalNum (and other exact Num implementations) can represent
+        // arbitrarily large totals natively, so halving there would only add
+        // avoidable rounding to every path cell.
+        boolean overflowCapable = byPathLength && (numFactory.numOf(1).getDelegate() instanceof Double
+                || numFactory.numOf(1).getDelegate() instanceof Float);
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -193,14 +201,14 @@ final class DynamicTimeWarpingSupport {
                         // total = bestTotal + cost, carried as value * 2^scale
                         // without materializing an overflowing sum: align both
                         // operands to the larger scale, and halve both with a
-                        // compensating exponent whenever the sum would exceed
-                        // the representable range.
+                        // compensating exponent whenever a primitive-backed sum
+                        // would exceed the representable range.
                         int scale = Math.max(bestMeanScale, pathCost.scale());
                         Num bestTotal = bestMeanScale == scale ? bestMeanValue
                                 : bestMeanValue.dividedBy(pow2(scale - bestMeanScale, numFactory));
                         Num costTotal = pathCost.scale() == scale ? pathCost.value()
                                 : pathCost.value().dividedBy(pow2(scale - pathCost.scale(), numFactory));
-                        if (bestTotal.isGreaterThan(maxValue.minus(costTotal))) {
+                        if (overflowCapable && bestTotal.isGreaterThan(maxValue.minus(costTotal))) {
                             bestTotal = bestTotal.dividedBy(numFactory.two());
                             costTotal = costTotal.dividedBy(numFactory.two());
                             scale++;

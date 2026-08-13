@@ -177,6 +177,45 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void decimalPathLengthMeanAboveTheDoubleRangeSkipsTheOverflowCeiling() {
+        // Review regression: the overflow ceiling on the scaled accumulator
+        // was a Double.MAX_VALUE bound applied to every Num implementation,
+        // so DecimalNum totals above the double range (for example repeated
+        // 2e1000/3 absolute costs) were halved at every path cell, adding
+        // avoidable rounding to a mean Decimal arithmetic can represent
+        // directly. The ceiling must only constrain primitive-backed totals.
+        if (numFactory instanceof DoubleNumFactory) {
+            // The double range cannot hold the fixture values at all; the
+            // contract is specific to exact implementations.
+            return;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[3]).build();
+        List<Num> firstValues = new ArrayList<>();
+        Num cost = numFactory.numOf("2e1000").dividedBy(numFactory.numOf(3));
+        for (int i = 0; i < 3; i++) {
+            firstValues.add(cost);
+        }
+        Indicator<Num> first = new MockIndicator(series, firstValues);
+        List<Num> secondValues = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            secondValues.add(numFactory.zero());
+        }
+        Indicator<Num> second = new MockIndicator(series, secondValues);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 3, config).getValue(2);
+
+        // The radius-zero band fixes the diagonal path, so the distance is
+        // exactly the direct mean of the three local costs.
+        Num expected = cost.plus(cost).plus(cost).dividedBy(numFactory.numOf(3));
+        assertNumEquals(expected, distance);
+    }
+
+    @Test
     public void byPathLengthMeanSurvivesAnOverflowingSquareWithRepresentableMean() {
         // Review regression: the squared local cost 1.4e154^2 = 1.96e308
         // overflows double, so the scaled representation carries it as
