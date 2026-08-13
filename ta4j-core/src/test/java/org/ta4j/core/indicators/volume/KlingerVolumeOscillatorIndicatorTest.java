@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -218,4 +223,17 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
         }
         assertThat(actual).isEqualByComparingTo(expected);
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        HighPriceIndicator high = new HighPriceIndicator(series);
+        LowPriceIndicator low = new LowPriceIndicator(series);
+        VolumeIndicator volume = new VolumeIndicator(series);
+
+        return List.of(serializationFixture(series,
+                new KlingerVolumeOscillatorIndicator(high, low, close, volume, 5, 9, 1), stableIndexes(series)));
+    }
+
 }

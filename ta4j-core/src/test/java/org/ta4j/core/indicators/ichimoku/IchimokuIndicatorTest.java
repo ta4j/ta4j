@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
+import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -117,5 +118,23 @@ public class IchimokuIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(NaN.NaN, chikouSpan.getValue(17));
         assertNumEquals(NaN.NaN, chikouSpan.getValue(18));
         assertNumEquals(NaN.NaN, chikouSpan.getValue(19));
+    }
+
+    @Test
+    public void lineCopiesPreserveSenkouSpanValues() {
+        IchimokuTenkanSenIndicator tenkanSen = new IchimokuTenkanSenIndicator(data, 3);
+        IchimokuKijunSenIndicator kijunSen = new IchimokuKijunSenIndicator(data, 5);
+        IchimokuTenkanSenIndicator tenkanCopy = tenkanSen.copy();
+        IchimokuKijunSenIndicator kijunCopy = kijunSen.copy();
+
+        assertNotSame(tenkanSen, tenkanCopy);
+        assertNotSame(kijunSen, kijunCopy);
+        assertNumEquals(tenkanSen.getValue(16), tenkanCopy.getValue(16));
+        assertNumEquals(kijunSen.getValue(16), kijunCopy.getValue(16));
+
+        IchimokuSenkouSpanAIndicator original = new IchimokuSenkouSpanAIndicator(data, tenkanSen, kijunSen, 5);
+        IchimokuSenkouSpanAIndicator copied = new IchimokuSenkouSpanAIndicator(data, tenkanCopy, kijunCopy, 5);
+
+        assertNumEquals(original.getValue(16), copied.getValue(16));
     }
 }

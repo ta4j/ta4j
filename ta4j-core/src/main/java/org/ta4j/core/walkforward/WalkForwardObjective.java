@@ -111,6 +111,18 @@ public interface WalkForwardObjective {
      */
     record Score(Num totalScore, Num weightedScore, Num foldVariance, boolean guardrailPassed, List<String> violations,
             Map<String, Num> metricValues) {
+        public Score {
+            violations = List.copyOf(Objects.requireNonNull(violations, "violations must not be null"));
+            metricValues = Map.copyOf(Objects.requireNonNull(metricValues, "metricValues must not be null"));
+        }
+
+        public List<String> violations() {
+            return List.copyOf(violations);
+        }
+
+        public Map<String, Num> metricValues() {
+            return Map.copyOf(metricValues);
+        }
     }
 
     private static Num weightedSum(List<WeightedValue<String>> metricWeights, Map<String, Num> values,

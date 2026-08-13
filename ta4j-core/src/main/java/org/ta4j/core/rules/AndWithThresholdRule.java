@@ -40,15 +40,23 @@ public class AndWithThresholdRule extends AbstractRule {
      *                  current index is included.
      */
     public AndWithThresholdRule(Rule rule1, Rule rule2, int threshold) {
+        this(validatedConfig(rule1, rule2, threshold));
+    }
+
+    private AndWithThresholdRule(Config config) {
+        this.rule1 = config.rule1();
+        this.rule2 = config.rule2();
+        this.threshold = config.threshold();
+        setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
+    }
+
+    private static Config validatedConfig(Rule rule1, Rule rule2, int threshold) {
         if (threshold < 1) {
             throw new IllegalArgumentException("Threshold must be at least 1");
 
         }
-        this.rule1 = Objects.requireNonNull(rule1, "rule1 cannot be null");
-        this.rule2 = Objects.requireNonNull(rule2, "rule2 cannot be null");
-        this.threshold = threshold;
-
-        setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
+        return new Config(Objects.requireNonNull(rule1, "rule1 cannot be null"),
+                Objects.requireNonNull(rule2, "rule2 cannot be null"), threshold);
     }
 
     @Override
@@ -87,11 +95,14 @@ public class AndWithThresholdRule extends AbstractRule {
 
     /** @return the first rule */
     public Rule getRule1() {
-        return rule1;
+        return RuleCopies.copy(rule1);
     }
 
     /** @return the second rule */
     public Rule getRule2() {
-        return rule2;
+        return RuleCopies.copy(rule2);
+    }
+
+    private record Config(Rule rule1, Rule rule2, int threshold) {
     }
 }

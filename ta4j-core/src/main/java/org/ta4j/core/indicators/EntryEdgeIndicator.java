@@ -54,7 +54,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
      */
     public EntryEdgeIndicator(Indicator<Boolean> signalIndicator, BarSeries series, int horizonBars,
             int lookbackSignals) {
-        this(signalIndicator, new ClosePriceIndicator(series), TradeType.BUY, horizonBars, lookbackSignals);
+        this(validatedConfig(signalIndicator, series, horizonBars, lookbackSignals));
     }
 
     /**
@@ -69,19 +69,39 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
      */
     public EntryEdgeIndicator(Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator, TradeType tradeType,
             int horizonBars, int lookbackSignals) {
-        super(IndicatorUtils.requireSameSeries(signalIndicator, priceIndicator));
+        this(validatedConfig(signalIndicator, priceIndicator, tradeType, horizonBars, lookbackSignals));
+    }
+
+    private EntryEdgeIndicator(Config config) {
+        super(config.series());
+        this.signalIndicator = config.signalIndicator();
+        this.priceIndicator = config.priceIndicator();
+        this.tradeType = config.tradeType();
+        this.horizonBars = config.horizonBars();
+        this.lookbackSignals = config.lookbackSignals();
+        this.latestMaturedSignalIndexIndicator = createLatestMaturedSignalIndexIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator,
+            TradeType tradeType, int horizonBars, int lookbackSignals) {
+        BarSeries series = IndicatorUtils.requireSameSeries(signalIndicator, priceIndicator);
         if (horizonBars < 1) {
             throw new IllegalArgumentException("horizonBars must be greater than zero");
         }
         if (lookbackSignals < 1) {
             throw new IllegalArgumentException("lookbackSignals must be greater than zero");
         }
-        this.signalIndicator = Objects.requireNonNull(signalIndicator, "signalIndicator");
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.tradeType = Objects.requireNonNull(tradeType, "tradeType");
-        this.horizonBars = horizonBars;
-        this.lookbackSignals = lookbackSignals;
-        this.latestMaturedSignalIndexIndicator = createLatestMaturedSignalIndexIndicator();
+        Indicator<Boolean> validatedSignalIndicator = Objects.requireNonNull(signalIndicator, "signalIndicator");
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        TradeType validatedTradeType = Objects.requireNonNull(tradeType, "tradeType");
+        return new Config(series, validatedSignalIndicator, validatedPriceIndicator, validatedTradeType, horizonBars,
+                lookbackSignals);
+    }
+
+    private static Config validatedConfig(Indicator<Boolean> signalIndicator, BarSeries series, int horizonBars,
+            int lookbackSignals) {
+        return validatedConfig(signalIndicator, new ClosePriceIndicator(series), TradeType.BUY, horizonBars,
+                lookbackSignals);
     }
 
     /**
@@ -227,4 +247,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
                 getBarSeries().getBeginIndex() + signalIndicator.getCountOfUnstableBars());
     }
 
+    private record Config(BarSeries series, Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator,
+            TradeType tradeType, int horizonBars, int lookbackSignals) {
+    }
 }

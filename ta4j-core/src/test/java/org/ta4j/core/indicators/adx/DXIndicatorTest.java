@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.adx;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -32,4 +37,11 @@ public class DXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         Indicator<Num> thirteenBars = getIndicator(series, 13);
         assertEquals(14, thirteenBars.getCountOfUnstableBars());
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new DXIndicator(series, 7), stableIndexes(series)));
+    }
+
 }

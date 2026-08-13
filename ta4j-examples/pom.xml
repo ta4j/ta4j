@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.22.8-SNAPSHOT</version>
+        <version>0.24.2-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-examples</artifactId>
 
@@ -85,7 +85,7 @@
 
     <build>
         <plugins>
-            <!-- Override parent: header/config live in parent dir (avoids CWD dependency when building from workspace root) -->
+            <!-- Override parent: header lives in parent dir (avoids CWD dependency when building from workspace root) -->
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -98,13 +98,6 @@
                             </includes>
                         </licenseSet>
                     </licenseSets>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>net.revelc.code.formatter</groupId>
-                <artifactId>formatter-maven-plugin</artifactId>
-                <configuration>
-                    <configFile>${project.parent.basedir}/code-formatter.xml</configFile>
                 </configuration>
             </plugin>
             <plugin>

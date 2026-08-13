@@ -24,13 +24,19 @@ import org.ta4j.core.num.Num;
 public class DojiIndicator extends CachedIndicator<Boolean> {
 
     /** Body height. */
-    private final Indicator<Num> bodyHeightInd;
+    private final transient Indicator<Num> bodyHeightInd;
 
     /** Average body height. */
-    private final SMAIndicator averageBodyHeightInd;
+    private final transient SMAIndicator averageBodyHeightInd;
+
+    /** The number of bars used to calculate the average body height. */
+    private final int barCount;
+
+    /** The raw factor used when checking if a candle is Doji. */
+    private final double bodyFactor;
 
     /** The factor used when checking if a candle is Doji. */
-    private final Num factor;
+    private final transient Num factor;
 
     /**
      * Constructor.
@@ -42,6 +48,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     public DojiIndicator(BarSeries series, int barCount, double bodyFactor) {
         super(series);
+        this.barCount = barCount;
+        this.bodyFactor = bodyFactor;
         this.bodyHeightInd = UnaryOperationIndicator.abs(new RealBodyIndicator(series));
         this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
         this.factor = getBarSeries().numFactory().numOf(bodyFactor);

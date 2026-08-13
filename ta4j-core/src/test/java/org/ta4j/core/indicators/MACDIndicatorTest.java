@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -60,5 +61,22 @@ public class MACDIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         // 10+ are valid
         assertThat(Double.isNaN(macdIndicator.getLongTermEma().getValue(9).doubleValue())).isTrue();
         assertThat(Double.isNaN(macdIndicator.getLongTermEma().getValue(10).doubleValue())).isFalse();
+    }
+
+    @Test
+    public void emaGettersReturnIndependentHelpers() {
+        MACDIndicator macdIndicator = new MACDIndicator(new ClosePriceIndicator(data), 5, 10);
+
+        EMAIndicator firstShort = macdIndicator.getShortTermEma();
+        EMAIndicator secondShort = macdIndicator.getShortTermEma();
+        EMAIndicator firstLong = macdIndicator.getLongTermEma();
+        EMAIndicator secondLong = macdIndicator.getLongTermEma();
+
+        assertThat(firstShort).isNotSameAs(secondShort);
+        assertThat(firstLong).isNotSameAs(secondLong);
+        assertThat(firstShort.getBarCount()).isEqualTo(5);
+        assertThat(firstLong.getBarCount()).isEqualTo(10);
+        assertThat(firstShort.getValue(10)).isEqualByComparingTo(secondShort.getValue(10));
+        assertThat(firstLong.getValue(10)).isEqualByComparingTo(secondLong.getValue(10));
     }
 }

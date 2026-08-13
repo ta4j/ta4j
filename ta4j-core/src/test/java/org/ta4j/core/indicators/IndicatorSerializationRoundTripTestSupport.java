@@ -12,15 +12,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.IndicatorSerialization;
 
-final class IndicatorSerializationRoundTripTestSupport {
+public final class IndicatorSerializationRoundTripTestSupport {
 
     private IndicatorSerializationRoundTripTestSupport() {
+    }
+
+    public static BarSeries serializationSeries(NumFactory numFactory) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 160; i++) {
+            double base = 100 + i * 0.5 + Math.sin(i / 3.0) * 2.0;
+            double open = base + Math.cos(i / 5.0);
+            double close = base + Math.sin(i / 7.0);
+            double high = Math.max(open, close) + 1.5 + (i % 4) * 0.1;
+            double low = Math.min(open, close) - 1.5 - (i % 3) * 0.1;
+            double volume = 1_000 + i * 17 + (i % 5) * 23;
+            series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).volume(volume).add();
+        }
+        return series;
+    }
+
+    public static int[] stableIndexes(BarSeries series) {
+        int endIndex = series.getEndIndex();
+        return new int[] { endIndex - 3, endIndex - 1, endIndex };
+    }
+
+    public static <T> void assertIndicatorRoundTrips(BarSeries series, Indicator<T> indicator, int... indexes) {
+        assertIndicatorRoundTrips(
+                new AbstractIndicatorTest.IndicatorSerializationFixture<>(series, indicator, indexes));
     }
 
     static void assertIndicatorRoundTrips(AbstractIndicatorTest.IndicatorSerializationFixture<?> fixture) {

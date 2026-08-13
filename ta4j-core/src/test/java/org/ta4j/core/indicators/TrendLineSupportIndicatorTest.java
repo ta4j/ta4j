@@ -111,7 +111,7 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(descriptor.getComponents()).hasSize(1);
         final ComponentDescriptor swingDescriptor = descriptor.getComponents().getFirst();
         assertThat(swingDescriptor.getType()).isEqualTo("RecentFractalSwingLowIndicator");
-        assertThat(swingDescriptor.getParameters()).containsKey("unstableBars");
+        assertThat(swingDescriptor.getParameters()).doesNotContainKey("unstableBars");
         assertThat(swingDescriptor.getComponents())
                 .anySatisfy(component -> assertThat(component.getType()).isEqualTo("LowPriceIndicator"));
 

@@ -32,4 +32,8 @@ public class IchimokuTenkanSenIndicator extends IchimokuLineIndicator {
     public IchimokuTenkanSenIndicator(BarSeries series, int barCount) {
         super(series, barCount);
     }
+
+    IchimokuTenkanSenIndicator copy() {
+        return new IchimokuTenkanSenIndicator(getBarSeries(), getBarCount());
+    }
 }

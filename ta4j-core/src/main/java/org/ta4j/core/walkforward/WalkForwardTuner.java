@@ -312,9 +312,9 @@ public final class WalkForwardTuner<C, P, O> {
             logLoss = logLoss.dividedBy(factory.numOf(predicted.size()));
 
             List<Num> foldEces = new ArrayList<>();
-            for (String foldId : foldPred.keySet()) {
-                List<Num> foldPredictions = foldPred.get(foldId);
-                List<Num> foldObserved = foldObs.getOrDefault(foldId, List.of());
+            for (Map.Entry<String, List<Num>> foldEntry : foldPred.entrySet()) {
+                List<Num> foldPredictions = foldEntry.getValue();
+                List<Num> foldObserved = foldObs.getOrDefault(foldEntry.getKey(), List.of());
                 if (foldPredictions == null || foldObserved == null || foldPredictions.isEmpty()
                         || foldPredictions.size() != foldObserved.size()) {
                     continue;

@@ -18,11 +18,13 @@ import org.ta4j.core.num.Num;
  */
 public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator1;
+    private final Indicator<Num> indicator2;
     private final int barCount;
     private final SampleType sampleType;
-    private final VarianceIndicator variance1;
-    private final VarianceIndicator variance2;
-    private final CovarianceIndicator covariance;
+    private final transient VarianceIndicator variance1;
+    private final transient VarianceIndicator variance2;
+    private final transient CovarianceIndicator covariance;
 
     /**
      * Constructor using {@link SampleType#POPULATION} for backward compatibility.
@@ -47,6 +49,8 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount,
             SampleType sampleType) {
         super(indicator1);
+        this.indicator1 = indicator1;
+        this.indicator2 = indicator2;
         this.barCount = Math.max(barCount, 1);
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
         this.variance1 = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator1, this.barCount)

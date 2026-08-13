@@ -24,7 +24,7 @@ on:
 
 concurrency:
   group: snapshot-${{ github.repository }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   snapshot:
@@ -182,7 +182,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Build and test snapshot candidate"
-          mvn -B clean test
+          ./mvnw -B clean test
           echo "::endgroup::"
 
       - name: Deploy Snapshot
@@ -193,8 +193,26 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Deploy snapshot to Maven Central"
-          mvn -B deploy -Psign-snapshots 2>&1 | tee snapshot-deploy.log
+          ./mvnw -B deploy -Psign-snapshots 2>&1 | tee snapshot-deploy.log
           echo "::endgroup::"
+
+      - name: Verify exact snapshot consumption
+        id: consumption
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          SNAPSHOT_VERSION: ${{ steps.version.outputs.snapshotVersion }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/release_helpers.sh snapshot-consumption \
+            --version "$SNAPSHOT_VERSION" \
+            --maven-command "$GITHUB_WORKSPACE/mvnw" \
+            --publisher-root "$GITHUB_WORKSPACE" \
+            --repository-url "https://central.sonatype.com/repository/maven-snapshots/" \
+            --max-attempts 20 \
+            --retry-seconds 15 \
+            --output snapshot-consumption.json \
+            --github-output "$GITHUB_OUTPUT" \
+            --log snapshot-consumption.log
 
       - name: Snapshot publication summary
         if: always()
@@ -203,13 +221,28 @@ jobs:
           SNAPSHOT_VERSION: ${{ steps.version.outputs.snapshotVersion }}
           SOURCE_RELEASE_VERSION: ${{ github.event.inputs.sourceReleaseVersion }}
           SOURCE_RELEASE_COMMIT: ${{ github.event.inputs.sourceReleaseCommit }}
+          MAVEN_CONSUMABLE: ${{ steps.consumption.outputs.maven_consumable }}
+          RESOLVED_PARENT_VERSION: ${{ steps.consumption.outputs.resolved_parent_version }}
+          RESOLVED_CORE_VERSION: ${{ steps.consumption.outputs.resolved_core_version }}
+          RESOLVED_EXAMPLES_VERSION: ${{ steps.consumption.outputs.resolved_examples_version }}
+          CONSUMPTION_ATTEMPTS: ${{ steps.consumption.outputs.snapshot_consumption_attempts }}
+          CONSUMPTION_ELAPSED_SECONDS: ${{ steps.consumption.outputs.snapshot_consumption_elapsed_seconds }}
+          PUBLISHER_CORE_SHA256: ${{ steps.consumption.outputs.publisher_core_sha256 }}
+          RESOLVED_CORE_SHA256: ${{ steps.consumption.outputs.resolved_core_sha256 }}
+          PUBLISHER_EXAMPLES_SHA256: ${{ steps.consumption.outputs.publisher_examples_sha256 }}
+          RESOLVED_EXAMPLES_SHA256: ${{ steps.consumption.outputs.resolved_examples_sha256 }}
         run: |
           if [ "${DRY_RUN:-false}" = "true" ]; then
-            mutation_plan="would configure publishing secrets and deploy the snapshot to Maven Central"
+            mutation_plan="would configure publishing secrets, deploy the snapshot, and verify exact external Maven consumption"
             rerun_guidance="rerun snapshot.yml with dryRun=false, or let the master push/publish handoff path run"
           else
-            mutation_plan="completed snapshot deployment"
-            rerun_guidance="not needed for this non-dry-run snapshot run"
+            if [ "${MAVEN_CONSUMABLE:-false}" = "true" ]; then
+              mutation_plan="completed snapshot deployment and exact external Maven consumption verification"
+              rerun_guidance="not needed for this non-dry-run snapshot run"
+            else
+              mutation_plan="attempted snapshot deployment; exact external Maven consumption did not pass"
+              rerun_guidance="inspect snapshot-deploy.log and snapshot-consumption artifacts before rerunning"
+            fi
           fi
           cat > snapshot-audit.json <<EOF
           {
@@ -218,6 +251,16 @@ jobs:
             "snapshotVersion": "${SNAPSHOT_VERSION:-}",
             "sourceReleaseVersion": "${SOURCE_RELEASE_VERSION:-}",
             "sourceReleaseCommit": "${SOURCE_RELEASE_COMMIT:-}",
+            "mavenConsumable": "${MAVEN_CONSUMABLE:-not-run}",
+            "resolvedParentVersion": "${RESOLVED_PARENT_VERSION:-}",
+            "resolvedCoreVersion": "${RESOLVED_CORE_VERSION:-}",
+            "resolvedExamplesVersion": "${RESOLVED_EXAMPLES_VERSION:-}",
+            "consumptionAttempts": "${CONSUMPTION_ATTEMPTS:-0}",
+            "consumptionElapsedSeconds": "${CONSUMPTION_ELAPSED_SECONDS:-0}",
+            "publisherCoreSha256": "${PUBLISHER_CORE_SHA256:-}",
+            "resolvedCoreSha256": "${RESOLVED_CORE_SHA256:-}",
+            "publisherExamplesSha256": "${PUBLISHER_EXAMPLES_SHA256:-}",
+            "resolvedExamplesSha256": "${RESOLVED_EXAMPLES_SHA256:-}",
             "mutationPlan": "${mutation_plan}",
             "rerunGuidance": "${rerun_guidance}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -231,6 +274,11 @@ jobs:
             echo "- snapshot version: ${SNAPSHOT_VERSION:-unknown}"
             echo "- source release version: ${SOURCE_RELEASE_VERSION:-none}"
             echo "- source release commit: ${SOURCE_RELEASE_COMMIT:-none}"
+            echo "- Maven consumable: ${MAVEN_CONSUMABLE:-not-run}"
+            echo "- resolved parent: ${RESOLVED_PARENT_VERSION:-none}"
+            echo "- resolved core: ${RESOLVED_CORE_VERSION:-none}"
+            echo "- resolved examples: ${RESOLVED_EXAMPLES_VERSION:-none}"
+            echo "- propagation: ${CONSUMPTION_ATTEMPTS:-0} attempt(s), ${CONSUMPTION_ELAPSED_SECONDS:-0}s"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -243,5 +291,7 @@ jobs:
           path: |
             snapshot-audit.json
             snapshot-deploy.log
+            snapshot-consumption.json
+            snapshot-consumption.log
           if-no-files-found: ignore
           retention-days: 14

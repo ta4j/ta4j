@@ -88,6 +88,7 @@ public final class TradingChartFactory {
     private static final Font TRADE_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
     private static final Font POSITION_LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
     private static final Font OVERLAY_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+    private static final int FIRST_POSITION_NUMBER = 1;
     private static final int LABEL_EDGE_BARS = 5;
     private static final int MAX_AXIS_LABEL_LENGTH = 30;
     private static final String DATE_AXIS_LABEL = "Date";
@@ -245,33 +246,98 @@ public final class TradingChartFactory {
         return Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
     }
 
+    private int requireSourcePositionStart(int sourcePositionStart, TradingRecord tradingRecord) {
+        if (sourcePositionStart < FIRST_POSITION_NUMBER) {
+            throw new IllegalArgumentException("Source position start must be at least 1");
+        }
+        if (tradingRecord != null) {
+            long renderedPositionCount = tradingRecord.getPositions().size();
+            Position currentPosition = tradingRecord.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened()) {
+                renderedPositionCount++;
+            }
+            if (renderedPositionCount > 0
+                    && (long) sourcePositionStart + renderedPositionCount - FIRST_POSITION_NUMBER > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("Source position start cannot represent every rendered position");
+            }
+        }
+        return sourcePositionStart;
+    }
+
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
-        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME);
+        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME,
+                FIRST_POSITION_NUMBER);
     }
 
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
+        return createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+    }
+
+    /**
+     * Creates a trading-record chart using labels that begin at the supplied source
+     * position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @return a chart with position bands and trade labels using source position
+     *         numbers
+     * @since 0.22.9
+     */
+    public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
+        int resolvedSourcePositionStart = requireSourcePositionStart(sourcePositionStart, tradingRecord);
         DefaultOHLCDataset data = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
         String chartTitle = buildChartTitle(series.getName(), strategyName);
         JFreeChart chart = buildChart(chartTitle, series, series.getFirstBar().getTimePeriod(), data,
                 resolvedTimeAxisMode);
-        addTradingRecordToChart((XYPlot) chart.getPlot(), series, tradingRecord, resolvedTimeAxisMode);
+        addTradingRecordToChart((XYPlot) chart.getPlot(), series, tradingRecord, resolvedTimeAxisMode,
+                resolvedSourcePositionStart);
         return chart;
     }
 
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             Indicator<Num>... indicators) {
-        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME, indicators);
+        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME,
+                FIRST_POSITION_NUMBER, indicators);
     }
 
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
+        return createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER,
+                indicators);
+    }
+
+    /**
+     * Creates a trading-record chart with indicator subplots using labels that
+     * begin at the supplied source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @param indicators          optional indicators rendered in subplots
+     * @return a chart with position bands and trade labels using source position
+     *         numbers
+     * @since 0.22.9
+     */
+    @SafeVarargs
+    public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart, Indicator<Num>... indicators) {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
+        int resolvedSourcePositionStart = requireSourcePositionStart(sourcePositionStart, tradingRecord);
         if (indicators == null || indicators.length == 0) {
-            return createTradingRecordChart(series, strategyName, tradingRecord, resolvedTimeAxisMode);
+            return createTradingRecordChart(series, strategyName, tradingRecord, resolvedTimeAxisMode,
+                    resolvedSourcePositionStart);
         }
 
         JFreeChart chart = createIndicatorChart(series, resolvedTimeAxisMode, indicators);
@@ -288,10 +354,11 @@ public final class TradingChartFactory {
         if (chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot) {
             List<XYPlot> subplots = combinedPlot.getSubplots();
             if (subplots != null && !subplots.isEmpty()) {
-                addTradingRecordToChart(subplots.get(0), series, tradingRecord, resolvedTimeAxisMode);
+                addTradingRecordToChart(subplots.get(0), series, tradingRecord, resolvedTimeAxisMode,
+                        resolvedSourcePositionStart);
             }
         } else if (chart.getPlot() instanceof XYPlot plot) {
-            addTradingRecordToChart(plot, series, tradingRecord, resolvedTimeAxisMode);
+            addTradingRecordToChart(plot, series, tradingRecord, resolvedTimeAxisMode, resolvedSourcePositionStart);
         }
 
         return chart;
@@ -848,25 +915,36 @@ public final class TradingChartFactory {
 
     private void addTradingRecordToChart(XYPlot plot, BarSeries series, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
+        addTradingRecordToChart(plot, series, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+    }
+
+    private void addTradingRecordToChart(XYPlot plot, BarSeries series, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
         try {
             XYSeries buyMarkers = createTradeSeries("Buy trades");
             XYSeries sellMarkers = createTradeSeries("Sell trades");
-            int positionIndex = 1;
+            int localPositionIndex = FIRST_POSITION_NUMBER;
 
             for (Position position : tradingRecord.getPositions()) {
-                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getEntry(), positionIndex, timeAxisMode);
-                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getExit(), positionIndex, timeAxisMode);
-                addPositionBand(plot, series, positionIndex, position.getEntry(), position.getExit(), timeAxisMode);
-                positionIndex++;
+                int displayPositionNumber = sourcePositionStart + localPositionIndex - FIRST_POSITION_NUMBER;
+                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getEntry(), displayPositionNumber,
+                        timeAxisMode);
+                addTradeMarker(buyMarkers, sellMarkers, plot, series, position.getExit(), displayPositionNumber,
+                        timeAxisMode);
+                addPositionBand(plot, series, localPositionIndex, displayPositionNumber, position.getEntry(),
+                        position.getExit(), timeAxisMode);
+                localPositionIndex++;
             }
 
             if (tradingRecord.getCurrentPosition().isOpened()) {
+                int displayPositionNumber = sourcePositionStart + localPositionIndex - FIRST_POSITION_NUMBER;
                 Trade lastTrade = tradingRecord.getLastTrade();
                 if (lastTrade != null) {
-                    addTradeMarker(buyMarkers, sellMarkers, plot, series, lastTrade, positionIndex, timeAxisMode);
+                    addTradeMarker(buyMarkers, sellMarkers, plot, series, lastTrade, displayPositionNumber,
+                            timeAxisMode);
                 }
-                addPositionBand(plot, series, positionIndex, tradingRecord.getCurrentPosition().getEntry(), null,
-                        timeAxisMode);
+                addPositionBand(plot, series, localPositionIndex, displayPositionNumber,
+                        tradingRecord.getCurrentPosition().getEntry(), null, timeAxisMode);
             }
 
             attachTradeDataset(plot, buyMarkers, sellMarkers);
@@ -876,7 +954,7 @@ public final class TradingChartFactory {
     }
 
     private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, BarSeries series, Trade trade,
-            int positionIndex, TimeAxisMode timeAxisMode) {
+            int displayPositionNumber, TimeAxisMode timeAxisMode) {
         if (trade == null) {
             return;
         }
@@ -900,13 +978,13 @@ public final class TradingChartFactory {
             sellMarkers.add(orderDateTime, price);
         }
 
-        annotateTrade(plot, series, trade, positionIndex, orderDateTime, price);
+        annotateTrade(plot, series, trade, displayPositionNumber, orderDateTime, price);
     }
 
-    private void annotateTrade(XYPlot plot, BarSeries series, Trade trade, int positionIndex, double orderDateTime,
-            double price) {
+    private void annotateTrade(XYPlot plot, BarSeries series, Trade trade, int displayPositionNumber,
+            double orderDateTime, double price) {
         String labelPrefix = trade.isBuy() ? "B" : "S";
-        String label = labelPrefix + positionIndex + " @" + PRICE_FORMAT.get().format(price);
+        String label = labelPrefix + displayPositionNumber + " @" + PRICE_FORMAT.get().format(price);
 
         XYTextAnnotation annotation = new XYTextAnnotation(label, orderDateTime, price);
         annotation.setFont(TRADE_LABEL_FONT);
@@ -968,8 +1046,8 @@ public final class TradingChartFactory {
         return new XYSeries(key, false, true);
     }
 
-    private void addPositionBand(XYPlot plot, BarSeries series, int positionIndex, Trade entry, Trade exit,
-            TimeAxisMode timeAxisMode) {
+    private void addPositionBand(XYPlot plot, BarSeries series, int localPositionIndex, int displayPositionNumber,
+            Trade entry, Trade exit, TimeAxisMode timeAxisMode) {
         if (entry == null) {
             return;
         }
@@ -986,9 +1064,10 @@ public final class TradingChartFactory {
         }
 
         IntervalMarker marker = new IntervalMarker(start, end);
-        Color baseColor = POSITION_BAND_COLORS[(positionIndex - 1) % POSITION_BAND_COLORS.length];
+        Color baseColor = POSITION_BAND_COLORS[(localPositionIndex - FIRST_POSITION_NUMBER)
+                % POSITION_BAND_COLORS.length];
         marker.setPaint(withAlpha(baseColor, POSITION_BAND_ALPHA));
-        marker.setLabel("Position " + positionIndex);
+        marker.setLabel("Position " + displayPositionNumber);
         marker.setLabelFont(POSITION_LABEL_FONT);
         marker.setLabelPaint(Color.LIGHT_GRAY);
         setPositionLabelAnchors(marker, entry.getIndex(), series);
@@ -1137,7 +1216,7 @@ public final class TradingChartFactory {
 
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
                 Bar bar = series.getBar(i);
-                Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? new Date((long) i)
+                Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? Date.from(Instant.EPOCH.plusMillis(i))
                         : Date.from(bar.getEndTime());
                 OHLCDataItem item = new OHLCDataItem(barDate, bar.getOpenPrice().doubleValue(),
                         bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),

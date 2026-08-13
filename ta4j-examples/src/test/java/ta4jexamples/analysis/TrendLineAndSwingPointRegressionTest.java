@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import org.jfree.chart.JFreeChart;
@@ -18,6 +20,8 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.RecentSwingIndicators.Method;
+import org.ta4j.core.indicators.RecentSwingIndicators.Pair;
 import org.ta4j.core.indicators.SwingPointMarkerIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator;
 import org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator.TrendLineSegment;
@@ -31,6 +35,14 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  * Analysis coverage for trendline + swing point indicators on realistic data.
  */
 class TrendLineAndSwingPointAnalysisTest {
+
+    private static final int RECENT_ETH_REGRESSION_BARS = 256;
+
+    private static final List<TrendLineAndSwingPointAnalysis.RecentEthSeries> RECENT_ETH_FIXTURES = List
+            .copyOf(new TrendLineAndSwingPointAnalysis().loadRecentEthSeries());
+
+    private static final List<TrendLineAndSwingPointAnalysis.RecentEthSeries> RECENT_ETH_REGRESSION_FIXTURES = List
+            .copyOf(RECENT_ETH_FIXTURES.stream().map(TrendLineAndSwingPointAnalysisTest::latestBars).toList());
 
     @Test
     void analysisHarnessVerifiesHeadroomAndRendersOverlays() {
@@ -70,6 +82,76 @@ class TrendLineAndSwingPointAnalysisTest {
         assertTrue(png.length > 0, "Rendered chart should produce non-empty PNG bytes");
 
         assertRenderedOverlaysHaveData(chart, plan);
+    }
+
+    @Test
+    void recentEthFixturesExerciseEverySwingMethodAcrossDurations() {
+        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis() {
+            @Override
+            List<TrendLineAndSwingPointAnalysis.RecentEthSeries> loadRecentEthSeries() {
+                return RECENT_ETH_REGRESSION_FIXTURES;
+            }
+        };
+        List<TrendLineAndSwingPointAnalysis.RecentEthSeries> seriesByDuration = RECENT_ETH_REGRESSION_FIXTURES;
+
+        assertEquals(
+                List.of(Duration.ofMinutes(5), Duration.ofMinutes(15), Duration.ofHours(1), Duration.ofHours(4),
+                        Duration.ofDays(1)),
+                seriesByDuration.stream().map(TrendLineAndSwingPointAnalysis.RecentEthSeries::duration).toList());
+
+        List<TrendLineAndSwingPointAnalysis.SwingObservation> observations = analysis.analyzeRecentEthSwings();
+        long concreteMethodCount = List.of(Method.values()).stream().filter(method -> method != Method.CUSTOM).count();
+        assertEquals(seriesByDuration.size() * concreteMethodCount, observations.size());
+        List<TrendLineAndSwingPointAnalysis.SwingObservation> missingHighs = observations.stream()
+                .filter(observation -> observation.highCount() == 0)
+                .toList();
+        List<TrendLineAndSwingPointAnalysis.SwingObservation> missingLows = observations.stream()
+                .filter(observation -> observation.lowCount() == 0)
+                .toList();
+        assertTrue(missingHighs.isEmpty(), "Missing swing highs: " + missingHighs);
+        assertTrue(missingLows.isEmpty(), "Missing swing lows: " + missingLows);
+        assertTrue(observations.stream()
+                .map(TrendLineAndSwingPointAnalysis.SwingObservation::highCount)
+                .distinct()
+                .count() > 2, "Method sensitivity should produce characteristic count differences");
+    }
+
+    @Test
+    void recentEthHourlyMethodsRecognizeJulyTwentySecondNoonHigh() {
+        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
+        BarSeries hourly = RECENT_ETH_FIXTURES.stream()
+                .filter(data -> data.duration().equals(Duration.ofHours(1)))
+                .findFirst()
+                .orElseThrow()
+                .series();
+        int anchorIndex = findBarByBeginTime(hourly, Instant.parse("2026-07-22T16:00:00Z"));
+        int evaluationIndex = hourly.getEndIndex();
+
+        assertEquals(1949.30, hourly.getBar(anchorIndex).getClosePrice().doubleValue(), 0.000_001);
+        assertEquals(1955.87, hourly.getBar(anchorIndex).getHighPrice().doubleValue(), 0.000_001);
+        for (Pair pair : analysis.buildSwingMethods(hourly)) {
+            assertTrue(pair.highs().getSwingPointIndexesUpTo(evaluationIndex).contains(anchorIndex),
+                    () -> pair.method() + " should include the 2026-07-22 12 PM EDT high");
+            assertEquals(anchorIndex, pair.highs().getLatestSwingIndex(evaluationIndex),
+                    () -> pair.method() + " should report the anchor as the latest confirmed high");
+        }
+    }
+
+    private static TrendLineAndSwingPointAnalysis.RecentEthSeries latestBars(
+            TrendLineAndSwingPointAnalysis.RecentEthSeries data) {
+        BarSeries series = data.series();
+        int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - RECENT_ETH_REGRESSION_BARS + 1);
+        return new TrendLineAndSwingPointAnalysis.RecentEthSeries(data.duration(),
+                series.getSubSeries(startIndex, series.getEndIndex() + 1));
+    }
+
+    private int findBarByBeginTime(BarSeries series, Instant beginTime) {
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            if (series.getBar(index).getBeginTime().equals(beginTime)) {
+                return index;
+            }
+        }
+        throw new AssertionError("Missing bar beginning at " + beginTime);
     }
 
     private void assertTrendLinePopulates(AbstractTrendLineIndicator trendLine, int endIndex) {

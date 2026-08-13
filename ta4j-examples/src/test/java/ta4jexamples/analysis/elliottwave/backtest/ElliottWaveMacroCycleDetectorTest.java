@@ -4,229 +4,156 @@
 package ta4jexamples.analysis.elliottwave.backtest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.Timeout;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-
-import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Locks down anchor-free macro-cycle detection against the committed BTC truth
- * set.
- *
- * <p>
- * The detector is allowed to infer its own anchor ids and provenance, but the
- * recovered macro turns must stay aligned with the committed BTC anchor
- * windows. The runtime historical report itself is now series-native and no
- * longer uses the detector as a front-end.
+ * Unit coverage for the pure macro-cycle detector conversion heuristics.
  *
  * @since 0.22.4
  */
-@Tag("elliott-macro-cycle-replay")
+@Timeout(value = 1, unit = TimeUnit.SECONDS)
 class ElliottWaveMacroCycleDetectorTest {
 
-    private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDetectorTest.class);
-
-    @TempDir
-    Path chartDirectory;
+    private static final Instant START = Instant.parse("2024-01-01T00:00:00Z");
+    private static final NumFactory NUM_FACTORY = DoubleNumFactory.getInstance();
 
     @Test
-    void inferredBitcoinAnchorsRecoverCommittedMacroTurns() {
-        final BarSeries series = loadBitcoinSeries();
-        final ElliottWaveAnchorCalibrationHarness.AnchorRegistry expected = ElliottWaveAnchorCalibrationHarness
-                .defaultBitcoinAnchors(series);
-        final ElliottWaveAnchorCalibrationHarness.AnchorRegistry inferred = ElliottWaveMacroCycleDetector
-                .inferAnchorRegistry(series);
+    void toPivotsPreservesSwingEndpointsAndDirectionFlags() {
+        final BarSeries series = seriesWithCloses("detector-pivots", 100.0, 150.0, 80.0, 180.0);
+        final List<ElliottSwing> swings = List.of(swing(0, 1, 100.0, 150.0), swing(1, 2, 150.0, 80.0),
+                swing(2, 3, 80.0, 180.0));
 
-        assertEquals(expected.anchors().size(), inferred.anchors().size());
+        final List<ElliottWaveMacroCycleDetector.Pivot> pivots = ElliottWaveMacroCycleDetector.toPivots(series, swings);
 
-        for (int index = 0; index < expected.anchors().size(); index++) {
-            final ElliottWaveAnchorCalibrationHarness.Anchor expectedAnchor = expected.anchors().get(index);
-            final ElliottWaveAnchorCalibrationHarness.Anchor inferredAnchor = inferred.anchors().get(index);
-            assertEquals(expectedAnchor.type(), inferredAnchor.type());
-            assertEquals(expectedAnchor.partition(), inferredAnchor.partition());
-            assertEquals(expectedAnchor.expectedPhases(), inferredAnchor.expectedPhases());
-            assertWithinDays(expectedAnchor.at(), inferredAnchor.at(), 21);
+        assertEquals(4, pivots.size());
+        assertPivot(pivots.get(0), 0, 0, 100.0, false);
+        assertPivot(pivots.get(1), 1, 1, 150.0, true);
+        assertPivot(pivots.get(2), 2, 2, 80.0, false);
+        assertPivot(pivots.get(3), 3, 3, 180.0, true);
+    }
+
+    @Test
+    void toPivotsReturnsEmptyListWhenNoSwingsAreAvailable() {
+        final BarSeries series = seriesWithCloses("empty-pivots", 100.0, 101.0);
+
+        assertTrue(ElliottWaveMacroCycleDetector.toPivots(series, List.of()).isEmpty());
+    }
+
+    @Test
+    void detectMacroDrawdownsKeepsOnlyMaterialMatureDrawdowns() {
+        final List<ElliottWaveMacroCycleDetector.Pivot> pivots = List.of(pivot(0, 0, 90.0, false),
+                pivot(1, 10, 200.0, true), pivot(2, 160, 130.0, false), pivot(3, 220, 250.0, true),
+                pivot(4, 370, 80.0, false), pivot(5, 560, 300.0, true), pivot(6, 620, 120.0, false));
+
+        final List<ElliottWaveMacroCycleDetector.MacroDrawdown> drawdowns = ElliottWaveMacroCycleDetector
+                .detectMacroDrawdowns(pivots);
+
+        assertEquals(1, drawdowns.size());
+        assertEquals(pivots.get(3), drawdowns.getFirst().top());
+        assertEquals(pivots.get(4), drawdowns.getFirst().trough());
+        assertEquals(0.68, drawdowns.getFirst().drawdownFraction(), 1.0e-10);
+    }
+
+    @Test
+    void detectMacroDrawdownsDoesNotSearchPastTheNextHigherHigh() {
+        final List<ElliottWaveMacroCycleDetector.Pivot> pivots = List.of(pivot(0, 0, 100.0, false),
+                pivot(1, 10, 200.0, true), pivot(2, 20, 250.0, true), pivot(3, 200, 50.0, false));
+
+        final List<ElliottWaveMacroCycleDetector.MacroDrawdown> drawdowns = ElliottWaveMacroCycleDetector
+                .detectMacroDrawdowns(pivots);
+
+        assertEquals(1, drawdowns.size());
+        assertEquals(pivots.get(2), drawdowns.getFirst().top());
+        assertEquals(pivots.get(3), drawdowns.getFirst().trough());
+    }
+
+    @Test
+    void toAnchorsMarksLastMacroPairAsHoldoutAndAssignsExpectedPhases() {
+        final List<ElliottWaveMacroCycleDetector.MacroDrawdown> drawdowns = List
+                .of(macroDrawdown(0, 10, 200.0, 160, 80.0), macroDrawdown(2, 220, 300.0, 370, 90.0));
+
+        final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = ElliottWaveMacroCycleDetector
+                .toAnchors(drawdowns);
+
+        assertEquals(4, anchors.size());
+        assertAnchor(anchors.get(0), "inferred-top-1", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, Set.of(ElliottPhase.WAVE5));
+        assertAnchor(anchors.get(1), "inferred-bottom-1", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, Set.of(ElliottPhase.CORRECTIVE_C));
+        assertAnchor(anchors.get(2), "inferred-top-2", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, Set.of(ElliottPhase.WAVE5));
+        assertAnchor(anchors.get(3), "inferred-bottom-2", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, Set.of(ElliottPhase.CORRECTIVE_C));
+    }
+
+    private static BarSeries seriesWithCloses(final String name, final double... closes) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(NUM_FACTORY).build();
+        for (int index = 0; index < closes.length; index++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(START.plus(Duration.ofDays(index)))
+                    .openPrice(closes[index])
+                    .highPrice(closes[index])
+                    .lowPrice(closes[index])
+                    .closePrice(closes[index])
+                    .volume(1.0)
+                    .amount(closes[index])
+                    .trades(1)
+                    .add();
         }
-    }
-
-    @Test
-    void seriesNativeHistoricalMacroDemoProducesCanonicalChronologicalCycles() throws Exception {
-        final BarSeries series = loadBitcoinSeries();
-        final ElliottWaveMacroCycleDemo.DemoReport seriesNative = ElliottWaveMacroCycleDemo
-                .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
-
-        assertEquals("canonical-structure", seriesNative.structureSource());
-        assertChronologicalCycles(seriesNative.cycles(), "historical demo");
-        assertTrue(Files.exists(Path.of(seriesNative.chartPath())));
-        assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
-    }
-
-    @Test
-    void seriesNativeHistoricalAndLiveReportsShareCanonicalProfileSelection() throws Exception {
-        final BarSeries series = loadBitcoinSeries();
-
-        final ElliottWaveMacroCycleDemo.DemoReport historical = ElliottWaveMacroCycleDemo
-                .generateHistoricalReport(series, chartDirectory.resolve("historical"));
-        final ElliottWaveMacroCycleDemo.LivePresetReport live = ElliottWaveMacroCycleDemo
-                .generateLivePresetReport(series, chartDirectory.resolve("live"));
-
-        assertEquals("canonical-structure", historical.structureSource());
-        assertEquals("canonical-structure", live.structureSource());
-        assertEquals(historical.selectedProfileId(), live.selectedProfileId());
-        assertEquals(historical.selectedHypothesisId(), live.selectedHypothesisId());
-        assertTrue(Files.exists(Path.of(live.chartPath())));
-        assertTrue(Files.exists(Path.of(live.summaryPath())));
-    }
-
-    @Test
-    void canonicalReplayAtMajorMacroTurnsPreservesHistoricalCurrentProfileCoherence() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-
-        assertReplay(fullSeries, "2013-11-30T00:00:00Z");
-        assertReplay(fullSeries, "2015-08-19T00:00:00Z");
-        assertReplay(fullSeries, "2017-12-18T00:00:00Z");
-        assertReplay(fullSeries, "2018-12-16T00:00:00Z");
-        assertReplay(fullSeries, "2021-11-11T00:00:00Z");
-        assertReplay(fullSeries, "2022-11-22T00:00:00Z");
-    }
-
-    @Test
-    void canonicalReplayAt2018BottomRecoversTwoCompletedCycles() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2018-12-16T00:00:00Z"));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
-        assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
-                21);
-        assertWithinDays(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse(study.cycles().get(0).peakTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(0).lowTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(1).startTimeUtc()),
-                21);
-        assertWithinDays(Instant.parse("2017-12-18T00:00:00Z"), Instant.parse(study.cycles().get(1).peakTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2018-12-16T00:00:00Z"), Instant.parse(study.cycles().get(1).lowTimeUtc()), 21);
-    }
-
-    @Test
-    void canonicalReplayAt2021TopUsesContinuationAdjustedSecondCycleLow() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2021-11-11T00:00:00Z"));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
-        assertCycleWithinDays(study, 0, "2011-11-18T00:00:00Z", "2013-11-30T00:00:00Z", "2015-08-19T00:00:00Z");
-        assertCycleWithinDays(study, 1, "2015-08-19T00:00:00Z", "2017-12-18T00:00:00Z", "2020-05-26T00:00:00Z");
-    }
-
-    @Test
-    void canonicalReplayAt2022BottomRecoversChronologicalContinuationCandidates() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2022-11-22T00:00:00Z"));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertEquals(4, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
-        assertCycleWithinDays(study, 0, "2011-11-18T00:00:00Z", "2013-11-30T00:00:00Z", "2015-08-19T00:00:00Z");
-        assertCycleWithinDays(study, 1, "2015-08-19T00:00:00Z", "2016-06-19T00:00:00Z", "2016-08-03T00:00:00Z");
-        assertCycleWithinDays(study, 2, "2016-08-03T00:00:00Z", "2017-12-18T00:00:00Z", "2020-03-14T00:00:00Z");
-        assertCycleWithinDays(study, 3, "2020-03-14T00:00:00Z", "2021-11-11T00:00:00Z", "2022-11-22T00:00:00Z");
-    }
-
-    @Test
-    void sliceThroughPreservesSourceNumFactory() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2022-11-22T00:00:00Z"));
-
-        assertEquals(fullSeries.numFactory(), slicedSeries.numFactory());
-    }
-
-    private static BarSeries loadBitcoinSeries() {
-        final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveMacroCycleDetectorTest.class,
-                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
-                LOG);
-        assertNotNull(series);
         return series;
     }
 
-    private static void assertWithinDays(final Instant expected, final Instant actual, final long maxDays) {
-        final Duration delta = Duration.between(expected, actual).abs();
-        assertTrue(delta.compareTo(Duration.ofDays(maxDays)) <= 0,
-                () -> "expected " + actual + " to stay within " + maxDays + " days of " + expected);
+    private static ElliottSwing swing(final int fromIndex, final int toIndex, final double fromPrice,
+            final double toPrice) {
+        return new ElliottSwing(fromIndex, toIndex, NUM_FACTORY.numOf(fromPrice), NUM_FACTORY.numOf(toPrice),
+                ElliottDegree.MINOR);
     }
 
-    private static void assertCycleWithinDays(final ElliottWaveMacroCycleDemo.MacroStudy study, final int cycleIndex,
-            final String expectedStartIso, final String expectedPeakIso, final String expectedLowIso) {
-        final ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle = study.cycles().get(cycleIndex);
-        assertWithinDays(Instant.parse(expectedStartIso), Instant.parse(cycle.startTimeUtc()), 21);
-        assertWithinDays(Instant.parse(expectedPeakIso), Instant.parse(cycle.peakTimeUtc()), 21);
-        assertWithinDays(Instant.parse(expectedLowIso), Instant.parse(cycle.lowTimeUtc()), 21);
+    private static ElliottWaveMacroCycleDetector.Pivot pivot(final int index, final long dayOffset, final double price,
+            final boolean high) {
+        return new ElliottWaveMacroCycleDetector.Pivot(index, START.plus(Duration.ofDays(dayOffset)), price, high);
     }
 
-    private static void assertReplay(final BarSeries fullSeries, final String cutoffIso) {
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse(cutoffIso));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertChronologicalCycles(study.cycles(), cutoffIso);
-        for (ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle : study.cycles()) {
-            assertTrue(!Instant.parse(cycle.lowTimeUtc()).isAfter(Instant.parse(cutoffIso)));
-        }
-        assertEquals(study.selectedProfile().profile().id(), structure.currentCycle().summary().winningProfileId());
+    private static ElliottWaveMacroCycleDetector.MacroDrawdown macroDrawdown(final int sequence,
+            final long topDayOffset, final double topPrice, final long troughDayOffset, final double troughPrice) {
+        final ElliottWaveMacroCycleDetector.Pivot top = pivot(sequence * 2, topDayOffset, topPrice, true);
+        final ElliottWaveMacroCycleDetector.Pivot trough = pivot(sequence * 2 + 1, troughDayOffset, troughPrice, false);
+        return new ElliottWaveMacroCycleDetector.MacroDrawdown(top, trough, (topPrice - troughPrice) / topPrice);
     }
 
-    private static BarSeries sliceThrough(final BarSeries fullSeries, final Instant cutoff) {
-        final BarSeries slicedSeries = new BaseBarSeriesBuilder().withName(fullSeries.getName() + "@" + cutoff)
-                .withNumFactory(fullSeries.numFactory())
-                .build();
-        for (int index = fullSeries.getBeginIndex(); index <= fullSeries.getEndIndex(); index++) {
-            if (fullSeries.getBar(index).getEndTime().isAfter(cutoff)) {
-                break;
-            }
-            slicedSeries.addBar(fullSeries.getBar(index));
-        }
-        assertTrue(slicedSeries.getBarCount() > 0, () -> "No bars found through cutoff " + cutoff);
-        return slicedSeries;
+    private static void assertPivot(final ElliottWaveMacroCycleDetector.Pivot pivot, final int expectedIndex,
+            final long expectedDayOffset, final double expectedPrice, final boolean expectedHigh) {
+        assertEquals(expectedIndex, pivot.index());
+        assertEquals(START.plus(Duration.ofDays(expectedDayOffset)), pivot.at());
+        assertEquals(expectedPrice, pivot.price(), 1.0e-10);
+        assertEquals(expectedHigh, pivot.high());
     }
 
-    private static void assertChronologicalCycles(final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles,
-            final String contextLabel) {
-        assertTrue(!cycles.isEmpty(), () -> "Expected at least one completed cycle for " + contextLabel);
-        for (ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle : cycles) {
-            final Instant cycleStart = Instant.parse(cycle.startTimeUtc());
-            final Instant cyclePeak = Instant.parse(cycle.peakTimeUtc());
-            final Instant cycleLow = Instant.parse(cycle.lowTimeUtc());
-            assertTrue(cycleStart.compareTo(cyclePeak) < 0, () -> "Non-chronological peak in " + cycleLabel(cycle));
-            assertTrue(cyclePeak.compareTo(cycleLow) < 0, () -> "Non-chronological low in " + cycleLabel(cycle));
-        }
-    }
-
-    private static List<String> cycleDateSignatures(
-            final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles) {
-        return cycles.stream().map(ElliottWaveMacroCycleDetectorTest::cycleLabel).toList();
-    }
-
-    private static String cycleLabel(final ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle) {
-        return String.join("|", cycle.startTimeUtc(), cycle.peakTimeUtc(), cycle.lowTimeUtc());
+    private static void assertAnchor(final ElliottWaveAnchorCalibrationHarness.Anchor anchor, final String expectedId,
+            final ElliottWaveAnchorCalibrationHarness.AnchorType expectedType,
+            final ElliottWaveAnchorRegistry.AnchorPartition expectedPartition, final Set<ElliottPhase> expectedPhases) {
+        assertEquals(expectedId, anchor.id());
+        assertEquals(expectedType, anchor.type());
+        assertEquals(expectedPartition, anchor.partition());
+        assertEquals(expectedPhases, anchor.expectedPhases());
+        assertFalse(anchor.provenance().isBlank());
     }
 }

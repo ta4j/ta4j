@@ -88,6 +88,14 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
         reportingTopKs = normalizePositiveIntegers(reportingTopKs, "reportingTopKs");
     }
 
+    public List<Integer> reportingHorizons() {
+        return List.copyOf(reportingHorizons);
+    }
+
+    public List<Integer> reportingTopKs() {
+        return List.copyOf(reportingTopKs);
+    }
+
     /**
      * Creates a walk-forward configuration auto-derived from the supplied series.
      *

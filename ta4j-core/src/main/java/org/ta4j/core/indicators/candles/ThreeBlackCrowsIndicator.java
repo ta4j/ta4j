@@ -18,13 +18,22 @@ import org.ta4j.core.num.Num;
 public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
 
     /** Lower shadow. */
-    private final LowerShadowIndicator lowerShadowInd;
+    private final transient LowerShadowIndicator lowerShadowInd;
 
     /** Average lower shadow. */
-    private final SMAIndicator averageLowerShadowInd;
+    private final transient SMAIndicator averageLowerShadowInd;
 
-    /** Factor used when checking if a candle has a very short lower shadow. */
-    private final Num factor;
+    /** Number of bars used to calculate the average lower shadow. */
+    private final int barCount;
+
+    /** Raw factor used to reconstruct the indicator. */
+    private final double factor;
+
+    /**
+     * Factor threshold used when checking if a candle has a very short lower
+     * shadow.
+     */
+    private final transient Num factorThreshold;
 
     /**
      * Constructor.
@@ -36,9 +45,11 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeBlackCrowsIndicator(BarSeries series, int barCount, double factor) {
         super(series);
+        this.barCount = barCount;
+        this.factor = factor;
         this.lowerShadowInd = new LowerShadowIndicator(series);
         this.averageLowerShadowInd = new SMAIndicator(lowerShadowInd, barCount);
-        this.factor = getBarSeries().numFactory().numOf(factor);
+        this.factorThreshold = getBarSeries().numFactory().numOf(factor);
     }
 
     @Override
@@ -66,7 +77,7 @@ public class ThreeBlackCrowsIndicator extends CachedIndicator<Boolean> {
         // We use the white candle index to remove to bias of the previous crows
         Num averageLowerShadow = averageLowerShadowInd.getValue(whiteCandleIndex);
 
-        return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factor));
+        return currentLowerShadow.isLessThan(averageLowerShadow.multipliedBy(factorThreshold));
     }
 
     /**

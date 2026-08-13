@@ -11,6 +11,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -73,7 +74,8 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VolatilityNormalizedMACDIndicator(BarSeries series) {
-        this(new ClosePriceIndicator(series));
+        this(validateSeriesConfig(series, DEFAULT_FAST_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT,
+                DEFAULT_SIGNAL_BAR_COUNT, DEFAULT_SCALE_FACTOR));
     }
 
     /**
@@ -91,8 +93,8 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator) {
-        this(priceIndicator, DEFAULT_FAST_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT,
-                DEFAULT_SIGNAL_BAR_COUNT, DEFAULT_SCALE_FACTOR);
+        this(validateConfig(priceIndicator, DEFAULT_FAST_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT,
+                DEFAULT_SIGNAL_BAR_COUNT, DEFAULT_SCALE_FACTOR));
     }
 
     /**
@@ -105,8 +107,8 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VolatilityNormalizedMACDIndicator(BarSeries series, int fastBarCount, int slowBarCount, int signalBarCount) {
-        this(new ClosePriceIndicator(series), fastBarCount, slowBarCount, slowBarCount, signalBarCount,
-                DEFAULT_SCALE_FACTOR);
+        this(validateSeriesConfig(series, fastBarCount, slowBarCount, slowBarCount, signalBarCount,
+                DEFAULT_SCALE_FACTOR));
     }
 
     /**
@@ -120,7 +122,8 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      */
     public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount,
             int signalBarCount) {
-        this(priceIndicator, fastBarCount, slowBarCount, slowBarCount, signalBarCount, DEFAULT_SCALE_FACTOR);
+        this(validateConfig(priceIndicator, fastBarCount, slowBarCount, slowBarCount, signalBarCount,
+                DEFAULT_SCALE_FACTOR));
     }
 
     /**
@@ -136,7 +139,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      */
     public VolatilityNormalizedMACDIndicator(BarSeries series, int fastBarCount, int slowBarCount, int atrBarCount,
             int signalBarCount, Number scaleFactor) {
-        this(new ClosePriceIndicator(series), fastBarCount, slowBarCount, atrBarCount, signalBarCount, scaleFactor);
+        this(validateSeriesConfig(series, fastBarCount, slowBarCount, atrBarCount, signalBarCount, scaleFactor));
     }
 
     /**
@@ -152,23 +155,17 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      */
     public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount,
             int atrBarCount, int signalBarCount, Number scaleFactor) {
-        super(priceIndicator);
-        validatePeriods(fastBarCount, slowBarCount, atrBarCount, signalBarCount);
-        if (scaleFactor == null) {
-            throw new IllegalArgumentException("Scale factor must not be null");
-        }
+        this(validateConfig(priceIndicator, fastBarCount, slowBarCount, atrBarCount, signalBarCount, scaleFactor));
+    }
 
-        Num resolvedScaleFactor = priceIndicator.getBarSeries().numFactory().numOf(scaleFactor);
-        if (Num.isNaNOrNull(resolvedScaleFactor) || resolvedScaleFactor.isNegativeOrZero()) {
-            throw new IllegalArgumentException("Scale factor must be greater than 0");
-        }
-
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.fastBarCount = fastBarCount;
-        this.slowBarCount = slowBarCount;
-        this.atrBarCount = atrBarCount;
-        this.defaultSignalBarCount = signalBarCount;
-        this.scaleFactor = resolvedScaleFactor;
+    private VolatilityNormalizedMACDIndicator(ValidatedConfig config) {
+        super(config.priceIndicator());
+        this.priceIndicator = config.priceIndicator();
+        this.fastBarCount = config.fastBarCount();
+        this.slowBarCount = config.slowBarCount();
+        this.atrBarCount = config.atrBarCount();
+        this.defaultSignalBarCount = config.signalBarCount();
+        this.scaleFactor = config.scaleFactor();
         ensureSubIndicatorsInitialized();
     }
 
@@ -257,15 +254,39 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         return scaleFactor;
     }
 
+    private static ValidatedConfig validateConfig(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount,
+            int atrBarCount, int signalBarCount, Number scaleFactor) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        validatePeriods(fastBarCount, slowBarCount, atrBarCount, signalBarCount);
+        if (scaleFactor == null) {
+            throw new IllegalArgumentException("Scale factor must not be null");
+        }
+
+        Num resolvedScaleFactor = validatedPriceIndicator.getBarSeries().numFactory().numOf(scaleFactor);
+        if (Num.isNaNOrNull(resolvedScaleFactor) || resolvedScaleFactor.isNegativeOrZero()) {
+            throw new IllegalArgumentException("Scale factor must be greater than 0");
+        }
+
+        return new ValidatedConfig(validatedPriceIndicator, fastBarCount, slowBarCount, atrBarCount, signalBarCount,
+                resolvedScaleFactor);
+    }
+
+    private static ValidatedConfig validateSeriesConfig(BarSeries series, int fastBarCount, int slowBarCount,
+            int atrBarCount, int signalBarCount, Number scaleFactor) {
+        return validateConfig(new ClosePriceIndicator(series), fastBarCount, slowBarCount, atrBarCount, signalBarCount,
+                scaleFactor);
+    }
+
+    private record ValidatedConfig(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount, int atrBarCount,
+            int signalBarCount, Num scaleFactor) {
+    }
+
     /**
      * @return fast EMA indicator
      * @since 0.22.3
      */
     public EMAIndicator getFastEma() {
-        if (fastEma == null) {
-            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
-        }
-        return fastEma;
+        return new EMAIndicator(priceIndicator, fastBarCount);
     }
 
     /**
@@ -273,10 +294,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public EMAIndicator getSlowEma() {
-        if (slowEma == null) {
-            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
-        }
-        return slowEma;
+        return new EMAIndicator(priceIndicator, slowBarCount);
     }
 
     /**
@@ -284,6 +302,24 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public ATRIndicator getAtrIndicator() {
+        return new ATRIndicator(getBarSeries(), atrBarCount);
+    }
+
+    private EMAIndicator getCachedFastEma() {
+        if (fastEma == null) {
+            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
+        }
+        return fastEma;
+    }
+
+    private EMAIndicator getCachedSlowEma() {
+        if (slowEma == null) {
+            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
+        }
+        return slowEma;
+    }
+
+    private ATRIndicator getCachedAtrIndicator() {
         if (averageTrueRange == null) {
             averageTrueRange = new ATRIndicator(getBarSeries(), atrBarCount);
         }
@@ -332,7 +368,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         if (signalLine == null) {
             throw new IllegalArgumentException("Signal line factory must not return null");
         }
-        if (signalLine.getBarSeries() != getBarSeries()) {
+        if (!IndicatorUtils.isSameSeries(getBarSeries(), signalLine.getBarSeries())) {
             throw new IllegalArgumentException("Signal line must share the same bar series");
         }
         return signalLine;
@@ -614,9 +650,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        Num fastValue = getFastEma().getValue(index);
-        Num slowValue = getSlowEma().getValue(index);
-        Num atrValue = getAtrIndicator().getValue(index);
+        Num fastValue = getCachedFastEma().getValue(index);
+        Num slowValue = getCachedSlowEma().getValue(index);
+        Num atrValue = getCachedAtrIndicator().getValue(index);
         if (Num.isNaNOrNull(fastValue) || Num.isNaNOrNull(slowValue) || Num.isNaNOrNull(atrValue)) {
             return NaN.NaN;
         }
@@ -635,14 +671,15 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        int emaUnstableBars = Math.max(getFastEma().getCountOfUnstableBars(), getSlowEma().getCountOfUnstableBars());
+        int emaUnstableBars = Math.max(getCachedFastEma().getCountOfUnstableBars(),
+                getCachedSlowEma().getCountOfUnstableBars());
         int spreadUnstableBars = priceIndicator.getCountOfUnstableBars() + emaUnstableBars;
-        return Math.max(spreadUnstableBars, getAtrIndicator().getCountOfUnstableBars());
+        return Math.max(spreadUnstableBars, getCachedAtrIndicator().getCountOfUnstableBars());
     }
 
     private void ensureSubIndicatorsInitialized() {
-        getFastEma();
-        getSlowEma();
-        getAtrIndicator();
+        getCachedFastEma();
+        getCachedSlowEma();
+        getCachedAtrIndicator();
     }
 }

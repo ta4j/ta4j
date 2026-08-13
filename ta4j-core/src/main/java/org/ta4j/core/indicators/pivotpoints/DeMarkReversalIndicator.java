@@ -38,8 +38,8 @@ public class DeMarkReversalIndicator extends RecursiveCachedIndicator<Num> {
      *                            (RESISTANT, SUPPORT)
      */
     public DeMarkReversalIndicator(DeMarkPivotPointIndicator pivotPointIndicator, DeMarkPivotLevel level) {
-        super(pivotPointIndicator);
-        this.pivotPointIndicator = pivotPointIndicator;
+        super(pivotPointIndicator.copy());
+        this.pivotPointIndicator = pivotPointIndicator.copy();
         this.level = level;
     }
 

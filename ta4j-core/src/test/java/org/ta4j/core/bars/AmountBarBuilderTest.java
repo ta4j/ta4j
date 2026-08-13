@@ -11,6 +11,7 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -979,6 +980,24 @@ class AmountBarBuilderTest {
         assertNumEquals(1, second.getSellVolume());
         assertNumEquals(0, second.getBuyAmount());
         assertNumEquals(2, second.getSellAmount());
+    }
+
+    @Test
+    void sharedFactoryKeepsIndependentBuilderStatePerSeries() {
+        final AmountBarBuilderFactory factory = new AmountBarBuilderFactory(4, true);
+        final BarSeries firstSeries = new BaseBarSeriesBuilder().withBarBuilderFactory(factory).build();
+        final BarSeries secondSeries = new BaseBarSeriesBuilder().withBarBuilderFactory(factory).build();
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+
+        firstSeries.barBuilder().timePeriod(period).endTime(start).closePrice(1).volume(4).add();
+        secondSeries.barBuilder().timePeriod(period).endTime(start).closePrice(2).volume(1).add();
+        secondSeries.barBuilder().timePeriod(period).endTime(start.plus(period)).closePrice(2).volume(1).add();
+
+        assertEquals(1, firstSeries.getBarCount());
+        assertEquals(1, secondSeries.getBarCount());
+        assertNumEquals(4, firstSeries.getBar(0).getAmount());
+        assertNumEquals(4, secondSeries.getBar(0).getAmount());
     }
 
 }

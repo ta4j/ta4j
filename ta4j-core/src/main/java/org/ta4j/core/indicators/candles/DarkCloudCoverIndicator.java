@@ -40,8 +40,8 @@ import org.ta4j.core.num.Num;
  */
 public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
 
-    private final UpTrendIndicator trendIndicator;
-    private final RealBodyIndicator realBodyIndicator;
+    private final transient UpTrendIndicator trendIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
     private final Num bigBodyThresholdPercentage;
     private final Num gapThresholdPercentage;
     private final Num penetrationThresholdPercentage;

@@ -107,12 +107,15 @@ public class IndicatorUtilsTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     public void isInvalidHandlesNullAndNaN() {
         Num nan = DoubleNumFactory.getInstance().numOf(Double.NaN);
         Num valid = DoubleNumFactory.getInstance().one();
+        Num infinite = DoubleNumFactory.getInstance().numOf(Double.POSITIVE_INFINITY);
 
         assertTrue(IndicatorUtils.isInvalid(null));
         assertTrue(IndicatorUtils.isInvalid(nan));
+        assertTrue(IndicatorUtils.isInvalid(infinite));
         assertFalse(IndicatorUtils.isInvalid(valid));
     }
 

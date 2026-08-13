@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -146,6 +149,12 @@ public class BearishKickerIndicatorTest extends AbstractIndicatorTest<Indicator<
 
         var bearishKicker = new BearishKickerIndicator(series);
         assertTrue(bearishKicker.getValue(18));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new BearishKickerIndicator(series), stableIndexes(series)));
     }
 
 }

@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -109,6 +110,22 @@ public class RecentZigZagSwingLowIndicatorTest extends AbstractIndicatorTest<Ind
 
         assertThat(indicator.getValue(4)).isEqualByComparingTo(numOf(90));
         assertThat(indicator.getLatestSwingLowIndex(4)).isEqualTo(2);
+    }
+
+    @Test
+    public void shouldDeriveLowPriceFromState() {
+        series.barBuilder().highPrice(101).lowPrice(100).closePrice(100.5).add();
+        series.barBuilder().highPrice(95).lowPrice(90).closePrice(91).add();
+        series.barBuilder().highPrice(98).lowPrice(92).closePrice(97).add();
+
+        final Indicator<Num> high = new HighPriceIndicator(series);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(high, low, 5);
+        final RecentZigZagSwingLowIndicator derived = new RecentZigZagSwingLowIndicator(state);
+        final RecentZigZagSwingLowIndicator explicit = new RecentZigZagSwingLowIndicator(state, low);
+
+        assertThat(derived.getValue(2)).isEqualByComparingTo(explicit.getValue(2));
+        assertThat(derived.getPriceIndicator()).isSameAs(low);
     }
 
     @Test

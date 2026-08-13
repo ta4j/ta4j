@@ -45,8 +45,19 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
      * @since 0.22.0
      */
     public ElliottProjectionIndicator(final ElliottScenarioIndicator scenarioIndicator) {
-        super(requireSeries(scenarioIndicator));
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        this(validatedConfig(scenarioIndicator));
+    }
+
+    private ElliottProjectionIndicator(final Config config) {
+        super(config.series());
+        this.scenarioIndicator = config.scenarioIndicator();
+    }
+
+    private static Config validatedConfig(final ElliottScenarioIndicator scenarioIndicator) {
+        final ElliottScenarioIndicator ownedScenarioIndicator = Objects
+                .requireNonNull(scenarioIndicator, "scenarioIndicator")
+                .copy();
+        return new Config(requireSeries(ownedScenarioIndicator), ownedScenarioIndicator);
     }
 
     private static BarSeries requireSeries(final ElliottScenarioIndicator scenarioIndicator) {
@@ -175,5 +186,12 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
     private Num projectFromBase(final Num base, final Num amplitude, final Num multiplier, final boolean additive) {
         final Num projection = amplitude.multipliedBy(multiplier);
         return additive ? base.plus(projection) : base.minus(projection);
+    }
+
+    ElliottProjectionIndicator copy() {
+        return new ElliottProjectionIndicator(new Config(getBarSeries(), scenarioIndicator.copy()));
+    }
+
+    private record Config(BarSeries series, ElliottScenarioIndicator scenarioIndicator) {
     }
 }

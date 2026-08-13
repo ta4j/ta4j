@@ -143,6 +143,10 @@ public class VolatilityTrailingStopGainRuleTest extends AbstractIndicatorTest<Ob
         var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
         assertThrows(IllegalArgumentException.class,
                 () -> new VolatilityTrailingStopGainRule(closePrice, volatility, 2, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityTrailingStopGainRule(closePrice, volatility, 0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityTrailingStopGainRule(closePrice, volatility, -1, 2));
         assertThrows(IllegalArgumentException.class, () -> new VolatilityTrailingStopGainRule(null, volatility, 2, 2));
     }
 }

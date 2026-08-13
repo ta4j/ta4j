@@ -4,11 +4,14 @@
 package org.ta4j.core.indicators;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -54,6 +57,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
     private final long lastBarWaitTimeoutMs;
+    private final AtomicReference<BarSeriesChangeSnapshot> observedSeriesSnapshot;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -96,17 +100,30 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        this(series, LAST_BAR_WAIT_TIMEOUT_MS);
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
     }
 
     CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
-        super(series);
+        this(validatedConfig(series, lastBarWaitTimeoutMs));
+    }
+
+    private CachedIndicator(Config config) {
+        super(config.series());
+        BarSeriesChangeSnapshot snapshot = config.snapshot();
+        this.cache = CachedBuffer.of(snapshot.maximumBarCount());
+        this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
+        this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
+    }
+
+    private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
         if (lastBarWaitTimeoutMs <= 0) {
             throw new IllegalArgumentException("Last-bar wait timeout must be positive");
         }
-        int limit = series.getMaximumBarCount();
-        this.cache = new CachedBuffer<>(limit);
-        this.lastBarWaitTimeoutMs = lastBarWaitTimeoutMs;
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
+        if (snapshot.maximumBarCount() <= 0) {
+            throw new IllegalArgumentException("Maximum bar count must be strictly positive");
+        }
+        return new Config(series, snapshot, lastBarWaitTimeoutMs);
     }
 
     /**
@@ -115,7 +132,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param indicator a related indicator (with a bar series)
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
+        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+    }
+
+    private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {
+    }
+
+    private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
+        return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
     }
 
     /**
@@ -127,19 +151,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();
-        if (series == null) {
-            // Series is null; the indicator doesn't need cache.
-            // (e.g. simple computation of the value)
-            // --> Calculating the value
-            T result = calculate(index);
-            if (log.isTraceEnabled()) {
-                log.trace("{}({}): {}", this, index, result);
-            }
-            return result;
-        }
-
-        final int removedBarsCount = series.getRemovedBarsCount();
-        final int endIndex = series.getEndIndex();
+        BarSeriesChangeSnapshot snapshot = synchronizeCacheWithSeries(series);
+        final int removedBarsCount = snapshot.removedThroughIndex() + 1;
+        final int endIndex = snapshot.endIndex();
 
         T result;
         if (index < removedBarsCount) {
@@ -164,6 +178,79 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             log.trace("{}({}): {}", this, index, result);
         }
         return result;
+    }
+
+    /**
+     * Reconciles cached state with the latest series revision, retained window, and
+     * capacity before a read or recursive prefill.
+     *
+     * @param series indicator bar series
+     * @return the synchronized series snapshot
+     * @since 0.24.1
+     */
+    protected final BarSeriesChangeSnapshot synchronizeCacheWithSeries(BarSeries series) {
+        boolean reconciliationRequired = false;
+        while (true) {
+            BarSeriesChangeSnapshot sinceSnapshot = observedSeriesSnapshot.get();
+            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceSnapshot.revision());
+            if (!reconciliationRequired && sameSeriesState(snapshot, sinceSnapshot)) {
+                return snapshot;
+            }
+
+            if (cache.isWriteLockedByCurrentThread()) {
+                // Called recursively from calculate()/prefill on this thread while the
+                // ring's write lock is held. Applying a destructive range trim here would
+                // punch a hole in the cache that an in-flight iterative prefill cannot
+                // refill (the prefill depth guard skips nested prefills), forcing the
+                // recursive fallback to walk the gap index by index until the stack
+                // overflows. Defer the trim and the observation advance to the next
+                // top-level read, which reconciles against the full change journal.
+                return snapshot;
+            }
+
+            int invalidateFrom = snapshot.earliestChangedIndex();
+            int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
+            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
+
+            // The first-bar cache holds the indicator value for the first available
+            // bar, i.e. series index firstRetainedIndex. Any published change at or
+            // below that index alters the data the cached value was computed from, so
+            // the cache must be cleared whenever such a change is observed - not only
+            // when index 0 changes (a replaced first available bar at index
+            // removedBarsCount > 0 would otherwise keep serving the stale value).
+            if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex()
+                    || (invalidateFrom >= 0 && invalidateFrom <= firstRetainedIndex)) {
+                clearFirstBarCache();
+            }
+
+            int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
+            highestResultIndex = Math.max(cacheHighest, lastBarIndex);
+
+            if (observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
+                return snapshot;
+            }
+            reconciliationRequired = true;
+        }
+    }
+
+    private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
+        return left.revision() == right.revision() && left.removedThroughIndex() == right.removedThroughIndex()
+                && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
+    }
+
+    private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
+        synchronized (lastBarLock) {
+            boolean cachedIndexChangedRole = lastBarCachedIndex >= 0 && lastBarCachedIndex != snapshot.endIndex();
+            boolean cachedIndexInvalid = lastBarCachedIndex >= 0 && (lastBarCachedIndex < firstRetainedIndex
+                    || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
+            boolean computationInvalid = lastBarComputationInProgress
+                    && (lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
+                            || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
+            if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
+                clearLastBarCacheLocked();
+            }
+            return lastBarCachedIndex;
+        }
     }
 
     /**

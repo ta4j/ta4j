@@ -113,8 +113,14 @@ run_ref() {
   done
   (
     cd "$worktree"
-    mvn -q -pl ta4j-examples -am compile
-    mvn -q -pl ta4j-examples exec:java \
+    local -a maven_cmd=(mvn)
+    if [[ -x "./mvnw" ]]; then
+      maven_cmd=("./mvnw")
+    elif [[ -f "./mvnw" ]]; then
+      maven_cmd=(sh "./mvnw")
+    fi
+    "${maven_cmd[@]}" -q -pl ta4j-examples -am compile
+    "${maven_cmd[@]}" -q -pl ta4j-examples exec:java \
       -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
       -Dexec.args="$exec_args"
   )
@@ -156,12 +162,14 @@ required_meta = (
     "executionMode",
     "topK",
     "progress",
-    "gcBetweenRuns",
 )
 
 for key in (*required_metrics, *required_meta):
     if key not in base or key not in candidate:
         raise SystemExit(f"Missing required key '{key}' in matrix_performance.json")
+for label, document in (("base", base), ("candidate", candidate)):
+    if "pauseBetweenRuns" not in document and "gcBetweenRuns" not in document:
+        raise SystemExit(f"Missing required pauseBetweenRuns metadata in {label} matrix_performance.json")
 if "host" not in base or "host" not in candidate:
     raise SystemExit("Missing required key 'host' in matrix_performance.json")
 if "hostId" not in base["host"] or "hostId" not in candidate["host"]:

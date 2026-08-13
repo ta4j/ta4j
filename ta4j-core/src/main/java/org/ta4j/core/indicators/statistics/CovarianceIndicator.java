@@ -16,8 +16,8 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator1;
     private final Indicator<Num> indicator2;
     private final int barCount;
-    private final SMAIndicator sma1;
-    private final SMAIndicator sma2;
+    private final transient SMAIndicator sma1;
+    private final transient SMAIndicator sma2;
 
     /**
      * Constructor.

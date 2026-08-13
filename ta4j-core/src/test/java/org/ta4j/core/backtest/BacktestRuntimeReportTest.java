@@ -143,7 +143,15 @@ public class BacktestRuntimeReportTest {
         BacktestRuntimeReport.StrategyRuntime strategyRuntime = new BacktestRuntimeReport.StrategyRuntime(strategy,
                 runtime);
 
-        assertSame(strategy, strategyRuntime.strategy());
+        Strategy firstStrategy = strategyRuntime.strategy();
+        Strategy secondStrategy = strategyRuntime.strategy();
+
+        assertNotSame(strategy, firstStrategy);
+        assertNotSame(firstStrategy, secondStrategy);
+        assertEquals(strategy.getName(), firstStrategy.getName());
+        assertEquals(strategy.getUnstableBars(), firstStrategy.getUnstableBars());
+        assertTrue(firstStrategy.shouldEnter(0));
+        assertTrue(firstStrategy.shouldExit(1));
         assertEquals(runtime, strategyRuntime.runtime());
     }
 }

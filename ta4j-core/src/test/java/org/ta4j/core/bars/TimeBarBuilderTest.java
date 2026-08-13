@@ -337,6 +337,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         Configuration config = loggerContext.getConfiguration();
         LoggerConfig loggerConfig = config.getLoggerConfig(TimeBarBuilder.class.getName());
         Level originalLevel = loggerConfig.getLevel();
+        boolean originalAdditivity = loggerConfig.isAdditive();
 
         StringWriter logOutput = new StringWriter();
         PatternLayout layout = PatternLayout.newBuilder().withPattern("%msg%n").build();
@@ -349,6 +350,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         loggerConfig.addAppender(appender, Level.WARN, null);
         loggerConfig.setLevel(Level.WARN);
+        loggerConfig.setAdditive(false);
         loggerContext.updateLoggers();
 
         try {
@@ -358,6 +360,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
             loggerConfig.removeAppender(appender.getName());
             appender.stop();
             loggerConfig.setLevel(originalLevel);
+            loggerConfig.setAdditive(originalAdditivity);
             loggerContext.updateLoggers();
         }
 

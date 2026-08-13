@@ -18,8 +18,8 @@ import org.ta4j.core.num.Num;
  */
 public class BullishKickerIndicator extends CachedIndicator<Boolean> {
 
-    private final DownTrendIndicator trendIndicator;
-    private final RealBodyIndicator realBodyIndicator;
+    private final transient DownTrendIndicator trendIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
     private final Num bigBodyThresholdPercentage;
 
     /**

@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -109,6 +110,34 @@ public class RecentZigZagSwingHighIndicatorTest extends AbstractIndicatorTest<In
 
         assertThat(indicator.getValue(4)).isEqualByComparingTo(numOf(110));
         assertThat(indicator.getLatestSwingHighIndex(4)).isEqualTo(2);
+    }
+
+    @Test
+    public void shouldDeriveHighPriceFromState() {
+        series.barBuilder().highPrice(100).lowPrice(99).closePrice(99.5).add();
+        series.barBuilder().highPrice(110).lowPrice(105).closePrice(109).add();
+        series.barBuilder().highPrice(108).lowPrice(102).closePrice(103).add();
+
+        final Indicator<Num> high = new HighPriceIndicator(series);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(high, low, 5);
+        final RecentZigZagSwingHighIndicator derived = new RecentZigZagSwingHighIndicator(state);
+        final RecentZigZagSwingHighIndicator explicit = new RecentZigZagSwingHighIndicator(state, high);
+
+        assertThat(derived.getValue(2)).isEqualByComparingTo(explicit.getValue(2));
+        assertThat(derived.getPriceIndicator()).isSameAs(high);
+    }
+
+    @Test
+    public void shouldRejectExplicitPriceFromDifferentSeries() {
+        series.barBuilder().closePrice(100).add();
+        final Indicator<Num> price = new ClosePriceIndicator(series);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(price, 5);
+        final BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        otherSeries.barBuilder().closePrice(100).add();
+
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new RecentZigZagSwingHighIndicator(state, new ClosePriceIndicator(otherSeries)));
     }
 
     @Test

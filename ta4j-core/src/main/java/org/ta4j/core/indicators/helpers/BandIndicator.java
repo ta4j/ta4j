@@ -55,15 +55,32 @@ public class BandIndicator extends CachedIndicator<Num> {
      */
     public BandIndicator(Indicator<Num> middleIndicator, Indicator<Num> widthIndicator, Number multiplier,
             BandType bandType) {
-        super(requireSameSeries(middleIndicator, widthIndicator));
-        this.middleIndicator = Objects.requireNonNull(middleIndicator, "middleIndicator must not be null");
-        this.widthIndicator = Objects.requireNonNull(widthIndicator, "widthIndicator must not be null");
-        this.bandType = Objects.requireNonNull(bandType, "bandType must not be null");
-        this.multiplier = getBarSeries().numFactory()
+        this(validatedConfig(middleIndicator, widthIndicator, multiplier, bandType));
+    }
+
+    private BandIndicator(Config config) {
+        super(config.series());
+        this.middleIndicator = config.middleIndicator();
+        this.widthIndicator = config.widthIndicator();
+        this.bandType = config.bandType();
+        this.multiplier = config.multiplier();
+    }
+
+    private static Config validatedConfig(Indicator<Num> middleIndicator, Indicator<Num> widthIndicator,
+            Number multiplier, BandType bandType) {
+        BarSeries series = requireSameSeries(middleIndicator, widthIndicator);
+        Indicator<Num> validatedMiddleIndicator = Objects.requireNonNull(middleIndicator,
+                "middleIndicator must not be null");
+        Indicator<Num> validatedWidthIndicator = Objects.requireNonNull(widthIndicator,
+                "widthIndicator must not be null");
+        BandType validatedBandType = Objects.requireNonNull(bandType, "bandType must not be null");
+        Num validatedMultiplier = series.numFactory()
                 .numOf(Objects.requireNonNull(multiplier, "multiplier must not be null"));
-        if (Num.isNaNOrNull(this.multiplier)) {
+        if (Num.isNaNOrNull(validatedMultiplier)) {
             throw new IllegalArgumentException("multiplier must be a valid number");
         }
+        return new Config(series, validatedMiddleIndicator, validatedWidthIndicator, validatedMultiplier,
+                validatedBandType);
     }
 
     /**
@@ -111,5 +128,9 @@ public class BandIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Indicators must share the same bar series");
         }
         return series;
+    }
+
+    private record Config(BarSeries series, Indicator<Num> middleIndicator, Indicator<Num> widthIndicator,
+            Num multiplier, BandType bandType) {
     }
 }

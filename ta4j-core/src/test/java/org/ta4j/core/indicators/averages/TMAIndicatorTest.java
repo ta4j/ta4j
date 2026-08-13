@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.*;
 
@@ -70,4 +75,13 @@ public class TMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertEquals("TMA at index 8", 70, tma.getValue(8).doubleValue(), 0.001);
         assertEquals("TMA at index 9", 80, tma.getValue(9).doubleValue(), 0.001);
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new TMAIndicator(close, 6), stableIndexes(series)));
+    }
+
 }

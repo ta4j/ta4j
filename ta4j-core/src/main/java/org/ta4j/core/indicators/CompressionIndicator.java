@@ -30,10 +30,13 @@ public class CompressionIndicator extends CachedIndicator<Num> {
 
     private static final Number DEFAULT_BOLLINGER_K = 2;
 
-    private final Indicator<Num> atrCompressionIndicator;
-    private final Indicator<Num> bollingerCompressionIndicator;
-    private final Indicator<Num> donchianCompressionIndicator;
-    private final Indicator<Num> compositeIndicator;
+    private final Indicator<Num> atrPercentIndicator;
+    private final Indicator<Num> bollingerWidthIndicator;
+    private final Indicator<Num> donchianWidthIndicator;
+    private final transient Indicator<Num> atrCompressionIndicator;
+    private final transient Indicator<Num> bollingerCompressionIndicator;
+    private final transient Indicator<Num> donchianCompressionIndicator;
+    private final transient Indicator<Num> compositeIndicator;
     private final int barCount;
     private final int percentileBarCount;
 
@@ -46,7 +49,7 @@ public class CompressionIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public CompressionIndicator(BarSeries series, int barCount) {
-        this(series, barCount, barCount);
+        this(validatedConfig(series, barCount, barCount));
     }
 
     /**
@@ -58,8 +61,7 @@ public class CompressionIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public CompressionIndicator(BarSeries series, int barCount, int percentileBarCount) {
-        this(buildAtrPercent(series, barCount), buildBollingerWidth(series, barCount),
-                buildDonchianWidth(series, barCount), barCount, percentileBarCount);
+        this(validatedConfig(series, barCount, percentileBarCount));
     }
 
     /**
@@ -75,20 +77,48 @@ public class CompressionIndicator extends CachedIndicator<Num> {
      */
     public CompressionIndicator(Indicator<Num> atrPercentIndicator, Indicator<Num> bollingerWidthIndicator,
             Indicator<Num> donchianWidthIndicator, int barCount, int percentileBarCount) {
-        super(IndicatorUtils.requireSameSeries(atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator));
+        this(validatedConfig(atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator, barCount,
+                percentileBarCount));
+    }
+
+    private CompressionIndicator(Config config) {
+        super(config.series());
+        this.barCount = config.barCount();
+        this.percentileBarCount = config.percentileBarCount();
+        this.atrPercentIndicator = config.atrPercentIndicator();
+        this.bollingerWidthIndicator = config.bollingerWidthIndicator();
+        this.donchianWidthIndicator = config.donchianWidthIndicator();
+        this.atrCompressionIndicator = config.atrCompressionIndicator();
+        this.bollingerCompressionIndicator = config.bollingerCompressionIndicator();
+        this.donchianCompressionIndicator = config.donchianCompressionIndicator();
+        this.compositeIndicator = config.compositeIndicator();
+    }
+
+    private static Config validatedConfig(BarSeries series, int barCount, int percentileBarCount) {
+        return validatedConfig(buildAtrPercent(series, barCount), buildBollingerWidth(series, barCount),
+                buildDonchianWidth(series, barCount), barCount, percentileBarCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> atrPercentIndicator, Indicator<Num> bollingerWidthIndicator,
+            Indicator<Num> donchianWidthIndicator, int barCount, int percentileBarCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(atrPercentIndicator, bollingerWidthIndicator,
+                donchianWidthIndicator);
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than zero");
         }
         if (percentileBarCount < 1) {
             throw new IllegalArgumentException("percentileBarCount must be greater than zero");
         }
-        this.barCount = barCount;
-        this.percentileBarCount = percentileBarCount;
-        this.atrCompressionIndicator = invertedPercentRank(atrPercentIndicator, percentileBarCount);
-        this.bollingerCompressionIndicator = invertedPercentRank(bollingerWidthIndicator, percentileBarCount);
-        this.donchianCompressionIndicator = invertedPercentRank(donchianWidthIndicator, percentileBarCount);
-        this.compositeIndicator = NumericIndicator.of(new SumIndicator(this.atrCompressionIndicator,
-                this.bollingerCompressionIndicator, this.donchianCompressionIndicator)).dividedBy(3);
+        Indicator<Num> atrCompressionIndicator = invertedPercentRank(atrPercentIndicator, percentileBarCount);
+        Indicator<Num> bollingerCompressionIndicator = invertedPercentRank(bollingerWidthIndicator, percentileBarCount);
+        Indicator<Num> donchianCompressionIndicator = invertedPercentRank(donchianWidthIndicator, percentileBarCount);
+        Indicator<Num> compositeIndicator = NumericIndicator
+                .of(new SumIndicator(atrCompressionIndicator, bollingerCompressionIndicator,
+                        donchianCompressionIndicator))
+                .dividedBy(3);
+        return new Config(series, atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator,
+                atrCompressionIndicator, bollingerCompressionIndicator, donchianCompressionIndicator,
+                compositeIndicator, barCount, percentileBarCount);
     }
 
     /**
@@ -167,5 +197,11 @@ public class CompressionIndicator extends CachedIndicator<Num> {
 
     private static Indicator<Num> invertedPercentRank(Indicator<Num> indicator, int percentileBarCount) {
         return NumericIndicator.of(new PercentRankIndicator(indicator, percentileBarCount)).multipliedBy(-1).plus(100);
+    }
+
+    private record Config(BarSeries series, Indicator<Num> atrPercentIndicator, Indicator<Num> bollingerWidthIndicator,
+            Indicator<Num> donchianWidthIndicator, Indicator<Num> atrCompressionIndicator,
+            Indicator<Num> bollingerCompressionIndicator, Indicator<Num> donchianCompressionIndicator,
+            Indicator<Num> compositeIndicator, int barCount, int percentileBarCount) {
     }
 }

@@ -31,10 +31,18 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
      * @param barCount the {@link #barCount}
      */
     public OpenedPositionMinimumBarCountRule(int barCount) {
+        this(validatedConfig(barCount));
+    }
+
+    private OpenedPositionMinimumBarCountRule(Config config) {
+        this.barCount = config.barCount();
+    }
+
+    private static Config validatedConfig(int barCount) {
         if (barCount < 1) {
             throw new IllegalArgumentException("Bar count must be positive");
         }
-        this.barCount = barCount;
+        return new Config(barCount);
     }
 
     /**
@@ -62,5 +70,8 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
     /** @return the {@link #barCount} */
     public int getBarCount() {
         return barCount;
+    }
+
+    private record Config(int barCount) {
     }
 }

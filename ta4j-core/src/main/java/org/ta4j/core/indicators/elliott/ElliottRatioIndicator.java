@@ -47,8 +47,18 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
      * @since 0.22.0
      */
     public ElliottRatioIndicator(final ElliottSwingIndicator swingIndicator) {
-        super(requireSeries(swingIndicator));
-        this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
+        this(validatedConfig(swingIndicator));
+    }
+
+    private ElliottRatioIndicator(final Config config) {
+        super(config.series());
+        this.swingIndicator = config.swingIndicator();
+    }
+
+    private static Config validatedConfig(final ElliottSwingIndicator swingIndicator) {
+        final ElliottSwingIndicator ownedSwingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator")
+                .copy();
+        return new Config(requireSeries(ownedSwingIndicator), ownedSwingIndicator);
     }
 
     private static BarSeries requireSeries(final ElliottSwingIndicator swingIndicator) {
@@ -143,7 +153,11 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
      * @since 0.22.0
      */
     public ElliottSwingIndicator getSwingIndicator() {
-        return swingIndicator;
+        return swingIndicator.copy();
+    }
+
+    ElliottRatioIndicator copy() {
+        return new ElliottRatioIndicator(new Config(getBarSeries(), swingIndicator.copy()));
     }
 
     /**
@@ -172,4 +186,6 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
         return !delta.isGreaterThan(tolerance);
     }
 
+    private record Config(BarSeries series, ElliottSwingIndicator swingIndicator) {
+    }
 }

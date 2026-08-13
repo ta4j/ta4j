@@ -45,7 +45,21 @@ public final class IndicatorUtils {
             ensureSameSeries(sharedSeries, validatedAdditional[i], "additionalIndicators[" + i + "]");
         }
 
-        return sharedSeries;
+        return AbstractIndicator.unwrapBarSeries(sharedSeries);
+    }
+
+    /**
+     * Returns whether two bar-series references expose the same underlying series.
+     * Indicator accessors may return read-only views, so callers should use this
+     * helper instead of raw reference equality when validating composed indicators.
+     *
+     * @param firstSeries  first series reference
+     * @param secondSeries second series reference
+     * @return {@code true} when both references share the same backing series
+     * @since 0.22.9
+     */
+    public static boolean isSameSeries(BarSeries firstSeries, BarSeries secondSeries) {
+        return AbstractIndicator.unwrapBarSeries(firstSeries) == AbstractIndicator.unwrapBarSeries(secondSeries);
     }
 
     /**
@@ -66,16 +80,19 @@ public final class IndicatorUtils {
     }
 
     /**
-     * Returns whether the provided number is null or NaN.
+     * Returns whether the provided number is null, NaN, or backed by a raw infinite
+     * {@link Double} / {@link Float} delegate.
      * <p>
-     * This guards both logical-NaN and raw {@link Double#NaN} delegate cases.
+     * This compatibility helper delegates to {@link Num#isFinite(Num)}.
      *
      * @param value numeric value to validate
      * @return {@code true} when invalid, otherwise {@code false}
+     * @deprecated use {@link Num#isFinite(Num)} directly
      * @since 0.22.3
      */
+    @Deprecated(since = "0.22.9", forRemoval = true)
     public static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+        return !Num.isFinite(value);
     }
 
     private static BarSeries requireSeries(Indicator<?> indicator, String argumentName) {
@@ -85,7 +102,7 @@ public final class IndicatorUtils {
     private static void ensureSameSeries(BarSeries expectedSeries, Indicator<?> indicator, String argumentName) {
         Indicator<?> validatedIndicator = Objects.requireNonNull(indicator, argumentName + " must not be null");
         BarSeries actualSeries = requireSeries(validatedIndicator, argumentName);
-        if (actualSeries != expectedSeries) {
+        if (!isSameSeries(expectedSeries, actualSeries)) {
             throw new IllegalArgumentException("Indicators must share the same bar series instance");
         }
     }

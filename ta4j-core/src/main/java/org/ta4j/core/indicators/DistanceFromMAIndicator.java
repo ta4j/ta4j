@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import org.ta4j.core.Bar;
@@ -67,12 +68,21 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
      * @param movingAverage the moving average
      */
     public DistanceFromMAIndicator(BarSeries series, Indicator<Num> movingAverage) {
-        super(series);
-        if (!(supportedMovingAverages.contains(movingAverage.getClass()))) {
+        this(validatedConfig(series, movingAverage));
+    }
+
+    private DistanceFromMAIndicator(Config config) {
+        super(config.series());
+        this.movingAverage = config.movingAverage();
+    }
+
+    private static Config validatedConfig(BarSeries series, Indicator<Num> movingAverage) {
+        Indicator<Num> validatedMovingAverage = Objects.requireNonNull(movingAverage, "movingAverage");
+        if (!(supportedMovingAverages.contains(validatedMovingAverage.getClass()))) {
             throw new IllegalArgumentException(
-                    "Passed indicator must be a moving average based indicator. " + movingAverage.toString());
+                    "Passed indicator must be a moving average based indicator. " + validatedMovingAverage);
         }
-        this.movingAverage = movingAverage;
+        return new Config(series, validatedMovingAverage);
     }
 
     @Override
@@ -86,5 +96,8 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return movingAverage.getCountOfUnstableBars();
+    }
+
+    private record Config(BarSeries series, Indicator<Num> movingAverage) {
     }
 }

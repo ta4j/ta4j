@@ -41,7 +41,7 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
      * @param lossAmount     the absolute loss amount
      */
     public FixedAmountStopLossRule(Indicator<Num> priceIndicator, Number lossAmount) {
-        this(priceIndicator, toNumLossAmount(priceIndicator, lossAmount));
+        this(validatedConfig(priceIndicator, toNumLossAmount(priceIndicator, lossAmount)));
     }
 
     /**
@@ -51,14 +51,22 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
      * @param lossAmount     the absolute loss amount
      */
     public FixedAmountStopLossRule(Indicator<Num> priceIndicator, Num lossAmount) {
+        this(validatedConfig(priceIndicator, lossAmount));
+    }
+
+    private FixedAmountStopLossRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.lossAmount = config.lossAmount();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Num lossAmount) {
         if (priceIndicator == null) {
             throw new IllegalArgumentException("priceIndicator must not be null");
         }
         if (Num.isNaNOrNull(lossAmount) || lossAmount.isZero() || lossAmount.isNegative()) {
             throw new IllegalArgumentException("lossAmount must be positive");
         }
-        this.priceIndicator = priceIndicator;
-        this.lossAmount = lossAmount;
+        return new Config(priceIndicator, lossAmount);
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -115,5 +123,8 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
             throw new IllegalArgumentException("lossAmount must be positive");
         }
         return priceIndicator.getBarSeries().numFactory().numOf(lossAmount);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num lossAmount) {
     }
 }

@@ -10,6 +10,9 @@ import com.google.gson.JsonParseException;
 import java.util.Map;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.num.Num;
 
 public class ComponentSerializationTest {
 
@@ -18,6 +21,15 @@ public class ComponentSerializationTest {
         ComponentDescriptor descriptor = ComponentSerialization.parse("Entry");
 
         assertThat(descriptor.getLabel()).isEqualTo("Entry");
+        assertThat(descriptor.getType()).isNull();
+        assertThat(descriptor.getComponents()).isEmpty();
+    }
+
+    @Test
+    public void parseKeywordPrefixedPlainTextAsLabel() {
+        ComponentDescriptor descriptor = ComponentSerialization.parse("trueStrength");
+
+        assertThat(descriptor.getLabel()).isEqualTo("trueStrength");
         assertThat(descriptor.getType()).isNull();
         assertThat(descriptor.getComponents()).isEmpty();
     }
@@ -73,37 +85,24 @@ public class ComponentSerializationTest {
     }
 
     @Test
-    public void parseMalformedJsonSyntaxReturnsLabelOnly() {
+    public void parseMalformedJsonSyntaxThrows() {
         String malformedJson = "{invalid json syntax}";
 
-        ComponentDescriptor descriptor = ComponentSerialization.parse(malformedJson);
-
-        assertThat(descriptor).isNotNull();
-        assertThat(descriptor.getLabel()).isEqualTo(malformedJson);
-        assertThat(descriptor.getType()).isNull();
-        assertThat(descriptor.getComponents()).isEmpty();
+        assertThrows(JsonParseException.class, () -> ComponentSerialization.parse(malformedJson));
     }
 
     @Test
-    public void parseUnclosedBraceReturnsLabelOnly() {
+    public void parseUnclosedBraceThrows() {
         String unclosedJson = "{\"type\":\"Test\"";
 
-        ComponentDescriptor descriptor = ComponentSerialization.parse(unclosedJson);
-
-        assertThat(descriptor).isNotNull();
-        assertThat(descriptor.getLabel()).isEqualTo(unclosedJson);
-        assertThat(descriptor.getType()).isNull();
+        assertThrows(JsonParseException.class, () -> ComponentSerialization.parse(unclosedJson));
     }
 
     @Test
-    public void parseInvalidJsonArraySyntaxReturnsLabelOnly() {
+    public void parseInvalidJsonArraySyntaxThrows() {
         String invalidArray = "{\"rules\":[{\"type\":\"Test\"}";
 
-        ComponentDescriptor descriptor = ComponentSerialization.parse(invalidArray);
-
-        assertThat(descriptor).isNotNull();
-        assertThat(descriptor.getLabel()).isEqualTo(invalidArray);
-        assertThat(descriptor.getType()).isNull();
+        assertThrows(JsonParseException.class, () -> ComponentSerialization.parse(invalidArray));
     }
 
     @Test
@@ -118,6 +117,20 @@ public class ComponentSerializationTest {
         assertThrows(JsonParseException.class, () -> {
             ComponentSerialization.parse("true");
         });
+    }
+
+    @Test
+    public void descriptorSerializationDoesNotInitializeResolvedClass() {
+        InitializerProbe.initialized = false;
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(InitializingIndicator.class.getName())
+                .withLabel("suppressed")
+                .build();
+
+        String json = ComponentSerialization.toJson(descriptor);
+
+        assertThat(json).doesNotContain("suppressed");
+        assertThat(InitializerProbe.initialized).isFalse();
     }
 
     @Test
@@ -223,6 +236,32 @@ public class ComponentSerializationTest {
 
         assertThat(parsed.getLabel()).isEqualTo(original.getLabel());
         assertThat(parsed).isEqualTo(original);
+    }
+
+    private static final class InitializerProbe {
+
+        private static boolean initialized;
+    }
+
+    public static final class InitializingIndicator extends AbstractIndicator<Num> {
+
+        static {
+            InitializerProbe.initialized = true;
+        }
+
+        public InitializingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return getBarSeries().numFactory().zero();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     @Test

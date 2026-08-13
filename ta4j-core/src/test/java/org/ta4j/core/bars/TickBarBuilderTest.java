@@ -12,9 +12,11 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NumFactory;
 
 public class TickBarBuilderTest {
 
@@ -197,5 +199,24 @@ public class TickBarBuilderTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addTrade(start.minusSeconds(1), numFactory.numOf(1), numFactory.numOf(90)));
+    }
+
+    @Test
+    public void sharedFactoryKeepsIndependentBuilderStatePerSeries() {
+        final TickBarBuilderFactory factory = new TickBarBuilderFactory(2);
+        final BarSeries firstSeries = new BaseBarSeriesBuilder().withBarBuilderFactory(factory).build();
+        final BarSeries secondSeries = new BaseBarSeriesBuilder().withBarBuilderFactory(factory).build();
+        final NumFactory numFactory = DecimalNumFactory.getInstance();
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+
+        firstSeries.barBuilder().addTrade(start, numFactory.one(), numFactory.numOf(100));
+        firstSeries.barBuilder().addTrade(start.plusSeconds(1), numFactory.one(), numFactory.numOf(101));
+        secondSeries.barBuilder().addTrade(start, numFactory.one(), numFactory.numOf(200));
+        secondSeries.barBuilder().addTrade(start.plusSeconds(1), numFactory.one(), numFactory.numOf(201));
+
+        assertEquals(1, firstSeries.getBarCount());
+        assertEquals(1, secondSeries.getBarCount());
+        assertNumEquals(101, firstSeries.getBar(0).getClosePrice());
+        assertNumEquals(201, secondSeries.getBar(0).getClosePrice());
     }
 }

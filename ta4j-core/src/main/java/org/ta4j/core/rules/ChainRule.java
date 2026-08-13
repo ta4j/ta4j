@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Objects;
 
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
@@ -19,7 +19,7 @@ import org.ta4j.core.rules.helper.ChainLink;
 public class ChainRule extends AbstractRule {
 
     private final Rule initialRule;
-    private LinkedList<ChainLink> rulesInChain = new LinkedList<>();
+    private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
     /**
      * @param initialRule the first rule that has to be satisfied before
@@ -28,8 +28,11 @@ public class ChainRule extends AbstractRule {
      *                    initial rule within their thresholds
      */
     public ChainRule(Rule initialRule, ChainLink... chainLinks) {
-        this.initialRule = initialRule;
-        this.rulesInChain.addAll(Arrays.asList(chainLinks));
+        this.initialRule = Objects.requireNonNull(initialRule, "initialRule cannot be null");
+        Objects.requireNonNull(chainLinks, "chainLinks cannot be null");
+        for (ChainLink chainLink : chainLinks) {
+            this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
+        }
     }
 
     @Override

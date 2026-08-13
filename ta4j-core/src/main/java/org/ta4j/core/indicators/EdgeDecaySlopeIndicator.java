@@ -34,14 +34,24 @@ public class EdgeDecaySlopeIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public EdgeDecaySlopeIndicator(Indicator<Num> edgeIndicator, int barCount) {
-        super(Objects.requireNonNull(edgeIndicator, "edgeIndicator"));
+        this(validatedConfig(edgeIndicator, barCount));
+    }
+
+    private EdgeDecaySlopeIndicator(Config config) {
+        super(config.edgeIndicator());
+        this.edgeIndicator = config.edgeIndicator();
+        this.barCount = config.barCount();
+        this.slopeIndicator = config.slopeIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> edgeIndicator, int barCount) {
+        Indicator<Num> validatedEdgeIndicator = Objects.requireNonNull(edgeIndicator, "edgeIndicator");
         if (barCount < 2) {
             throw new IllegalArgumentException("barCount must be at least two");
         }
-        this.edgeIndicator = edgeIndicator;
-        this.barCount = barCount;
-        this.slopeIndicator = new SimpleLinearRegressionIndicator(edgeIndicator, barCount,
-                SimpleLinearRegressionType.SLOPE);
+        SimpleLinearRegressionIndicator slopeIndicator = new SimpleLinearRegressionIndicator(validatedEdgeIndicator,
+                barCount, SimpleLinearRegressionType.SLOPE);
+        return new Config(validatedEdgeIndicator, slopeIndicator, barCount);
     }
 
     /**
@@ -78,5 +88,8 @@ public class EdgeDecaySlopeIndicator extends CachedIndicator<Num> {
      */
     public int getBarCount() {
         return barCount;
+    }
+
+    private record Config(Indicator<Num> edgeIndicator, SimpleLinearRegressionIndicator slopeIndicator, int barCount) {
     }
 }

@@ -22,10 +22,11 @@ import static org.ta4j.core.num.NaN.NaN;
 public class ATMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final int slow;
-    private final int fast;
-    private final SMAIndicator sma;
-    private final SMAIndicator smaSma;
+    private final Indicator<Num> indicator;
+    private final transient int slow;
+    private final transient int fast;
+    private final transient SMAIndicator sma;
+    private final transient SMAIndicator smaSma;
 
     /**
      * Constructor.
@@ -37,6 +38,7 @@ public class ATMAIndicator extends CachedIndicator<Num> {
     public ATMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator.getBarSeries());
         this.barCount = barCount;
+        this.indicator = indicator;
         this.fast = Math.ceilDiv(barCount, 2);
         this.slow = (barCount / 2) + 1;
         this.sma = new SMAIndicator(indicator, slow);

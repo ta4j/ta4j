@@ -23,10 +23,12 @@ import org.ta4j.core.num.Num;
  */
 public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
-    private final EMAIndicator stcSmoothed;
+    private final Indicator<Num> indicator;
+    private final int fastPeriod;
     private final int slowPeriod;
     private final int cycleLength;
     private final int smoothingPeriod;
+    private final transient EMAIndicator stcSmoothed;
 
     /**
      * Constructor with common parameterization ({@code fast}=23, {@code slow}=50,
@@ -36,7 +38,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator) {
-        this(indicator, 23, 50, 10, 3);
+        this(validatedConfig(indicator, 23, 50, 10, 3));
     }
 
     /**
@@ -52,22 +54,34 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
             int smoothingPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, fastPeriod, slowPeriod, cycleLength, smoothingPeriod));
+    }
+
+    private SchaffTrendCycleIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.fastPeriod = config.fastPeriod();
+        this.slowPeriod = config.slowPeriod();
+        this.cycleLength = config.cycleLength();
+        this.smoothingPeriod = config.smoothingPeriod();
+        this.stcSmoothed = config.stcSmoothed();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
+            int smoothingPeriod) {
         if (fastPeriod < 1 || slowPeriod < 1 || cycleLength < 1 || smoothingPeriod < 1) {
             throw new IllegalArgumentException("All Schaff Trend Cycle periods must be positive integers");
         }
         if (fastPeriod >= slowPeriod) {
             throw new IllegalArgumentException("Slow period must be greater than fast period for MACD calculation");
         }
-        this.slowPeriod = slowPeriod;
-        this.cycleLength = cycleLength;
-        this.smoothingPeriod = smoothingPeriod;
 
         MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
         StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
         EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
         StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        this.stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        EMAIndicator stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        return new Config(indicator, fastPeriod, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
     @Override
@@ -85,5 +99,9 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         // Stochastic (cycleLength) -> EMA (smoothingPeriod)
         // Unstable periods are additive through the chain
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
+    }
+
+    private record Config(Indicator<Num> indicator, int fastPeriod, EMAIndicator stcSmoothed, int slowPeriod,
+            int cycleLength, int smoothingPeriod) {
     }
 }

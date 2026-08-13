@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
 public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     /** The close price. */
-    private final ClosePriceIndicator closePriceIndicator;
+    private final transient ClosePriceIndicator closePriceIndicator;
 
     /** The time delay. */
     private final int timeDelay;

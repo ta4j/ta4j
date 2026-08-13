@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import java.io.Serializable;
+import java.io.Serial;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -30,6 +31,27 @@ import org.ta4j.core.num.NumFactory;
  * </p>
  */
 public interface BarSeries extends Serializable {
+
+    /**
+     * Immutable cache-relevant view of changes to a bar series.
+     *
+     * @param revision             current published-data revision, or {@code -1}
+     *                             when revision tracking is unsupported
+     * @param earliestChangedIndex earliest index whose published value changed
+     *                             after the requested revision, or {@code -1} when
+     *                             no published value changed
+     * @param removedThroughIndex  greatest removed series index, or {@code -1} when
+     *                             no index has been removed
+     * @param maximumBarCount      current maximum number of retained bars
+     * @param endIndex             current series end index
+     * @since 0.24.1
+     */
+    record BarSeriesChangeSnapshot(long revision, int earliestChangedIndex, int removedThroughIndex,
+            int maximumBarCount, int endIndex) implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+    }
 
     /**
      * @return factory that generates numbers usable in this BarSeries
@@ -103,6 +125,73 @@ public interface BarSeries extends Serializable {
      * @return the raw bar data
      */
     List<Bar> getBarData();
+
+    /**
+     * Returns a monotonically increasing revision for changes to already published
+     * bar data.
+     *
+     * <p>
+     * Implementations increment the revision when an operation replaces an existing
+     * bar, mutates the current bar through this series, or resets the retained
+     * history. Appending a new bar and removing expired bars do not change the
+     * revision. Implementations that do not track bar-data changes return
+     * {@code -1}.
+     *
+     * <p>
+     * Mutations made directly through a retained {@link Bar} reference cannot be
+     * observed by the series and therefore do not change this revision.
+     *
+     * @return the bar-data revision, or {@code -1} when change tracking is
+     *         unsupported
+     * @since 0.23.1
+     */
+    default long getBarHistoryRevision() {
+        return -1L;
+    }
+
+    /**
+     * Returns a cache-relevant snapshot of series changes after the supplied
+     * published-data revision.
+     *
+     * <p>
+     * Implementations that track exact changed indices should override this method.
+     * The default remains source-compatible with third-party series and
+     * conservatively reports index {@code 0} when a tracked revision changed.
+     * Implementations that return {@code -1} from {@link #getBarHistoryRevision()}
+     * retain the legacy best-effort cache behavior.
+     *
+     * <p>
+     * The returned components must describe one coherent point in time. The default
+     * implementation reads the series state through several separate calls, so
+     * implementations whose state can change concurrently must override this method
+     * and build the snapshot while holding their own lock.
+     *
+     * @param sinceRevision last revision observed by the caller
+     * @return current change snapshot
+     * @since 0.24.1
+     */
+    default BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+        long currentRevision = getBarHistoryRevision();
+        int earliestChangedIndex = currentRevision >= 0L && currentRevision != sinceRevision ? 0 : -1;
+        return new BarSeriesChangeSnapshot(currentRevision, earliestChangedIndex, getRemovedBarsCount() - 1,
+                getMaximumBarCount(), getEndIndex());
+    }
+
+    /**
+     * Removes every retained bar and resets the series to its initial empty index
+     * state.
+     *
+     * <p>
+     * The configured name, number factory, bar builder, and maximum bar count are
+     * preserved. The next appended bar receives index {@code 0}. Implementations
+     * that cannot safely clear their storage may retain the default behavior, which
+     * throws {@link UnsupportedOperationException}.
+     *
+     * @since 0.22.9
+     */
+    default void clear() {
+        throw new UnsupportedOperationException("This bar series does not support clearing");
+    }
 
     /**
      * @return the begin index of the series

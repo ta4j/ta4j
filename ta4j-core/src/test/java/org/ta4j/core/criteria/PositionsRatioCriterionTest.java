@@ -24,6 +24,15 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void factoriesCreateWinningAndLosingCriteria() {
+        AnalysisCriterion winning = PositionsRatioCriterion.winningPositionsRatioCriterion();
+        AnalysisCriterion losing = PositionsRatioCriterion.losingPositionsRatioCriterion();
+
+        assertTrue(winning.betterThan(numOf(2), numOf(1)));
+        assertTrue(losing.betterThan(numOf(1), numOf(2)));
+    }
+
+    @Test
     public void calculate() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 95d, 102d, 105d, 97d, 113d)

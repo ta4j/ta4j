@@ -55,7 +55,7 @@ public class RenkoBarAggregator implements BarAggregator {
      * @since 0.22.4
      */
     public RenkoBarAggregator(Number boxSize) {
-        this(boxSize, 2);
+        this(validatedConfig(boxSize, 2));
     }
 
     /**
@@ -70,11 +70,20 @@ public class RenkoBarAggregator implements BarAggregator {
      * @since 0.22.4
      */
     public RenkoBarAggregator(Number boxSize, int reversalAmount) {
-        this.boxSize = BarAggregator.requirePositiveFiniteNumber(boxSize, "boxSize");
+        this(validatedConfig(boxSize, reversalAmount));
+    }
+
+    private RenkoBarAggregator(Config config) {
+        this.boxSize = config.boxSize();
+        this.reversalAmount = config.reversalAmount();
+    }
+
+    private static Config validatedConfig(Number boxSize, int reversalAmount) {
+        Number validatedBoxSize = BarAggregator.requirePositiveFiniteNumber(boxSize, "boxSize");
         if (reversalAmount <= 0) {
             throw new IllegalArgumentException("reversalAmount must be greater than zero.");
         }
-        this.reversalAmount = reversalAmount;
+        return new Config(validatedBoxSize, reversalAmount);
     }
 
     /**
@@ -259,5 +268,8 @@ public class RenkoBarAggregator implements BarAggregator {
 
     private static Instant resolveBrickEndTime(Instant sourceBarEndTime, Instant nextBrickEndTime) {
         return sourceBarEndTime.isAfter(nextBrickEndTime) ? sourceBarEndTime : nextBrickEndTime;
+    }
+
+    private record Config(Number boxSize, int reversalAmount) {
     }
 }

@@ -108,6 +108,82 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
     }
 
     @Test
+    public void testWithBeginIndexPreservesAbsoluteIndexesThroughAppendAndPruning() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(createTestBars(3))
+                .withNumFactory(numFactory)
+                .withBeginIndex(100)
+                .withMaxBarCount(3)
+                .build();
+
+        assertEquals(100, series.getBeginIndex());
+        assertEquals(102, series.getEndIndex());
+        assertEquals(100, series.getRemovedBarsCount());
+        assertEquals(createTestBars(3).get(0), series.getBar(100));
+
+        series.addBar(createTestBar(3));
+
+        assertEquals(101, series.getBeginIndex());
+        assertEquals(103, series.getEndIndex());
+        assertEquals(101, series.getRemovedBarsCount());
+        assertEquals(createTestBar(3), series.getBar(103));
+    }
+
+    @Test
+    public void testWithBeginIndexClampsSubSeriesToRetainedWindow() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(createTestBars(3))
+                .withNumFactory(numFactory)
+                .withBeginIndex(50)
+                .build();
+
+        ConcurrentBarSeries subSeries = series.getSubSeries(0, 52);
+
+        assertEquals(50, subSeries.getBeginIndex());
+        assertEquals(51, subSeries.getEndIndex());
+        assertEquals(series.getBar(50), subSeries.getBar(50));
+    }
+
+    @Test
+    public void testWithBeginIndexSupportsIntegerMaximumWithoutWrapping() {
+        Bar first = createTestBar(0);
+        Bar second = createTestBar(1);
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(List.of(first))
+                .withNumFactory(numFactory)
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertEquals(Integer.MAX_VALUE, series.getBeginIndex());
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        assertThrows(ArithmeticException.class, () -> series.addBar(second));
+        assertEquals(1, series.getBarCount());
+        assertThrows(ArithmeticException.class,
+                () -> new ConcurrentBarSeriesBuilder().withBars(List.of(first, second))
+                        .withNumFactory(numFactory)
+                        .withBeginIndex(Integer.MAX_VALUE)
+                        .build());
+    }
+
+    @Test
+    public void testWithBeginIndexRejectsNegativeValues() {
+        assertThrows(IllegalArgumentException.class, () -> new ConcurrentBarSeriesBuilder().withBeginIndex(-1));
+    }
+
+    @Test
+    public void testClearRestoredSeriesResetsInitialIndex() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withBars(createTestBars(1))
+                .withNumFactory(numFactory)
+                .withBeginIndex(40)
+                .withMaxBarCount(10)
+                .build();
+
+        series.clear();
+        series.addBar(createTestBar(1));
+
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(0, series.getEndIndex());
+        assertEquals(10, series.getMaximumBarCount());
+    }
+
+    @Test
     public void testWithBarsEmptyList() {
         ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testWithBarsEmptyListSeries")
                 .withBars(Collections.emptyList())

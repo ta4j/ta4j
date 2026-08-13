@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -110,4 +115,15 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
             assertNumEquals(sampleWithOne.getValue(i), sampleWithNegative.getValue(i), 1.0e-12);
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolumeIndicator volume = new VolumeIndicator(series);
+
+        return List.of(serializationFixture(series,
+                new CorrelationCoefficientIndicator(close, volume, 8, SampleType.SAMPLE), stableIndexes(series)));
+    }
+
 }

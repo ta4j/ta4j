@@ -42,18 +42,27 @@ public class HourOfDayRule extends AbstractRule {
      * @throws IllegalArgumentException if any hour is not in the range 0-23
      */
     public HourOfDayRule(DateTimeIndicator timeIndicator, int... hoursOfDay) {
-        this.timeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
+        this(validatedConfig(timeIndicator, hoursOfDay));
+    }
+
+    private HourOfDayRule(Config config) {
+        this.timeIndicator = config.timeIndicator();
+        this.hoursOfDay = config.hoursOfDay();
+        this.hoursOfDaySet = config.hoursOfDaySet();
+    }
+
+    private static Config validatedConfig(DateTimeIndicator timeIndicator, int... hoursOfDay) {
+        DateTimeIndicator validatedTimeIndicator = Objects.requireNonNull(timeIndicator, "timeIndicator");
         Objects.requireNonNull(hoursOfDay, "hoursOfDay");
-        this.hoursOfDay = Arrays.copyOf(hoursOfDay, hoursOfDay.length);
-        this.hoursOfDaySet = new HashSet<>(this.hoursOfDay.length);
-        for (int hour : this.hoursOfDay) {
+        int[] copiedHours = Arrays.copyOf(hoursOfDay, hoursOfDay.length);
+        Set<Integer> copiedHourSet = new HashSet<>(copiedHours.length);
+        for (int hour : copiedHours) {
             if (hour < 0 || hour > 23) {
                 throw new IllegalArgumentException("Hour of day must be in range 0-23, but got: " + hour);
             }
+            copiedHourSet.add(hour);
         }
-        for (int hour : this.hoursOfDay) {
-            this.hoursOfDaySet.add(hour);
-        }
+        return new Config(validatedTimeIndicator, copiedHours, copiedHourSet);
     }
 
     /** This rule does not use the {@code tradingRecord}. */
@@ -63,5 +72,8 @@ public class HourOfDayRule extends AbstractRule {
         final boolean satisfied = hoursOfDaySet.contains(dateTime.atZone(ZoneOffset.UTC).getHour());
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(DateTimeIndicator timeIndicator, int[] hoursOfDay, Set<Integer> hoursOfDaySet) {
     }
 }

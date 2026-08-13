@@ -40,10 +40,10 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
-import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
-import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
-import org.ta4j.core.indicators.elliott.swing.SwingDetector;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.analysis.elliott.swing.CompositeSwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcomeLabeler;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWavePredictionProvider;
@@ -90,6 +90,12 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  * and portability sanity checks on any ossified non-BTC resources that are
  * already large enough for the fixed walk-forward geometry.
  *
+ * <p>
+ * <strong>Warning:</strong> complete calibration runs can run for 8+ hours.
+ * This class is a dedicated CLI/job entrypoint rather than a unit-test helper;
+ * only run it when you really, really want the long-form BTC anchor calibration
+ * artifacts and are prepared to wait for them.
+ *
  * @since 0.22.4
  */
 public final class ElliottWaveAnchorCalibrationHarness {
@@ -97,7 +103,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
     static final String RESULT_PREFIX = "EW_ANCHOR_REPORT: ";
     static final String BTC_RESOURCE = "TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json";
     static final String ETH_RESOURCE = "Coinbase-ETH-USD-PT1D-20160517_20260310.json";
-    static final String SP500_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260310.json";
+    static final String SP500_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260730.json";
     static final String BTC_SERIES_NAME = "INDEX_BTCUSD_PT1D@TradingView (anchor calibration)";
     static final String ETH_SERIES_NAME = "ETH-USD_PT1D@Coinbase (portability)";
     static final String SP500_SERIES_NAME = "SP500_PT7D@YahooFinance (portability)";
@@ -130,9 +136,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     /**
-     * Runs the default BTC anchor-calibration report.
+     * Runs the BTC anchor-calibration job.
      *
-     * @param args unused
+     * <p>
+     * <strong>Warning:</strong> this CLI can run for 8+ hours, especially with
+     * {@code --exhaustive}. Use it only when intentionally producing the offline
+     * anchor-calibration artifact bundle.
+     *
+     * @param args optional calibration depth, one of no args, {@code --routine},
+     *             {@code --targeted}, or {@code --exhaustive}
      */
     public static void main(String[] args) {
         Instant startedAt = Instant.now();

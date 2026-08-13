@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.num.NaN.NaN;
@@ -552,4 +555,12 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         return new LoadedSeries(series, indexByDate);
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new SqueezeProIndicator(series, 8, 2.0, 1.0, 1.5, 2.0),
+                stableIndexes(series)));
+    }
+
 }

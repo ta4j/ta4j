@@ -12,6 +12,7 @@ import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
@@ -209,7 +210,7 @@ public class BitStampCsvTradesFileBarSeriesDataSource extends AbstractFileBarSer
             LOG.debug("CSV file not found in classpath: {}", bitstampCsvFile);
             return null;
         }
-        try (final var csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream))) {
+        try (final var csvReader = new com.opencsv.CSVReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             lines = csvReader.readAll();
             lines.remove(0); // Removing header line
         } catch (Exception ioe) {

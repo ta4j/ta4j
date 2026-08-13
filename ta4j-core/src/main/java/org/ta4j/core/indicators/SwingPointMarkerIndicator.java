@@ -59,19 +59,27 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public SwingPointMarkerIndicator(BarSeries series, RecentSwingIndicator swingIndicator) {
-        super(Objects.requireNonNull(swingIndicator.getPriceIndicator(),
-                "Swing indicator must provide a price indicator"));
-        Objects.requireNonNull(series, "Series cannot be null");
-        Objects.requireNonNull(swingIndicator, "Swing indicator cannot be null");
+        this(validatedConfig(series, swingIndicator));
+    }
 
-        BarSeries swingSeries = swingIndicator.getBarSeries();
-        if (swingSeries == null || !swingSeries.equals(series)) {
+    private SwingPointMarkerIndicator(Config config) {
+        super(config.priceIndicator());
+        this.swingIndicator = config.swingIndicator();
+        this.priceIndicator = config.priceIndicator();
+        this.unstableBars = config.unstableBars();
+    }
+
+    private static Config validatedConfig(BarSeries series, RecentSwingIndicator swingIndicator) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "Series cannot be null");
+        RecentSwingIndicator validatedSwingIndicator = Objects.requireNonNull(swingIndicator,
+                "Swing indicator cannot be null");
+        Indicator<Num> priceIndicator = Objects.requireNonNull(validatedSwingIndicator.getPriceIndicator(),
+                "Swing indicator must provide a price indicator");
+        BarSeries swingSeries = validatedSwingIndicator.getBarSeries();
+        if (swingSeries == null || !swingSeries.equals(validatedSeries)) {
             throw new IllegalArgumentException("The swing indicator's series must match the provided series");
         }
-
-        this.swingIndicator = swingIndicator;
-        this.priceIndicator = swingIndicator.getPriceIndicator();
-        this.unstableBars = swingIndicator.getCountOfUnstableBars();
+        return new Config(validatedSwingIndicator, priceIndicator, validatedSwingIndicator.getCountOfUnstableBars());
     }
 
     @Override
@@ -123,5 +131,8 @@ public class SwingPointMarkerIndicator extends CachedIndicator<Num> {
      */
     public Indicator<Num> getPriceIndicator() {
         return priceIndicator;
+    }
+
+    private record Config(RecentSwingIndicator swingIndicator, Indicator<Num> priceIndicator, int unstableBars) {
     }
 }

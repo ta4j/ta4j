@@ -232,6 +232,11 @@ public final class ElliottScenarioGenerator {
         return lastDiagnostics;
     }
 
+    ElliottScenarioGenerator copy() {
+        return new ElliottScenarioGenerator(numFactory, minConfidence, maxScenarios, confidenceModel, patternSet,
+                fibValidator);
+    }
+
     private GenerationBranchCounts generateImpulseScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
             final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
             final Set<String> seenSignatures) {

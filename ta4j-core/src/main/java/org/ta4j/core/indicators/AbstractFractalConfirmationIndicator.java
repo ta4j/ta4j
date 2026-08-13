@@ -24,7 +24,7 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
     private final Indicator<Num> indicator;
     private final int precedingBars;
     private final int followingBars;
-    private final int unstableBars;
+    private final transient int unstableBars;
 
     /**
      * Constructor.
@@ -37,17 +37,27 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
      *                                  {@code followingBars < 1}
      */
     protected AbstractFractalConfirmationIndicator(Indicator<Num> indicator, int precedingBars, int followingBars) {
-        super(IndicatorUtils.requireIndicator(indicator, "indicator"));
+        this(validatedConfig(indicator, precedingBars, followingBars));
+    }
+
+    private AbstractFractalConfirmationIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.precedingBars = config.precedingBars();
+        this.followingBars = config.followingBars();
+        this.unstableBars = config.unstableBars();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int precedingBars, int followingBars) {
+        Indicator<Num> validatedIndicator = IndicatorUtils.requireIndicator(indicator, "indicator");
         if (precedingBars < 1) {
             throw new IllegalArgumentException("precedingBars must be greater than 0");
         }
         if (followingBars < 1) {
             throw new IllegalArgumentException("followingBars must be greater than 0");
         }
-        this.indicator = indicator;
-        this.precedingBars = precedingBars;
-        this.followingBars = followingBars;
-        this.unstableBars = indicator.getCountOfUnstableBars() + precedingBars + followingBars;
+        int unstableBars = validatedIndicator.getCountOfUnstableBars() + precedingBars + followingBars;
+        return new Config(validatedIndicator, precedingBars, followingBars, unstableBars);
     }
 
     @Override
@@ -89,4 +99,7 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
      * @return fractal direction
      */
     protected abstract FractalDetectionHelper.Direction direction();
+
+    private record Config(Indicator<Num> indicator, int precedingBars, int followingBars, int unstableBars) {
+    }
 }

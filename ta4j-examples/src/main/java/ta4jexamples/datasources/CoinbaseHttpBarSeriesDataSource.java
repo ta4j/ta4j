@@ -478,7 +478,11 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
                 String cachedResponse = readFromCache(cacheFile);
                 if (cachedResponse != null) {
                     // Try to extract product ID from filename
-                    String filename = cacheFile.getFileName().toString();
+                    Path fileNamePath = cacheFile.getFileName();
+                    if (fileNamePath == null) {
+                        return null;
+                    }
+                    String filename = fileNamePath.toString();
                     // Format: {sourceName}-PRODUCTID-INTERVAL-START-END[_NOTES].json
                     // Remove extension
                     String baseName = filename.replace(".json", "");

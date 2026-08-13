@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -134,6 +135,30 @@ class ElliottScenarioTest {
                 .build();
 
         assertThat(scenario.waveCount()).isEqualTo(3);
+    }
+
+    @Test
+    void builderCopiesMutableListInputs() {
+        ElliottSwing swing = new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR);
+        List<ElliottSwing> swings = new ArrayList<>(List.of(swing));
+        List<Num> targets = new ArrayList<>(List.of(numFactory.numOf(150)));
+
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("copy-test")
+                .currentPhase(ElliottPhase.WAVE3)
+                .swings(swings)
+                .confidence(createConfidence(0.7))
+                .type(ScenarioType.IMPULSE)
+                .fibonacciTargets(targets)
+                .build();
+
+        swings.clear();
+        targets.clear();
+
+        assertThat(scenario.swings()).containsExactly(swing);
+        assertThat(scenario.fibonacciTargets()).containsExactly(numFactory.numOf(150));
+        assertThrows(UnsupportedOperationException.class, () -> scenario.swings().add(swing));
+        assertThrows(UnsupportedOperationException.class, () -> scenario.fibonacciTargets().add(numFactory.numOf(160)));
     }
 
     @Test

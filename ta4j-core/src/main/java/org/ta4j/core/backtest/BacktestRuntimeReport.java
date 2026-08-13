@@ -99,5 +99,20 @@ public record BacktestRuntimeReport(Duration overallRuntime, Duration minStrateg
      * @since 0.19
      */
     public record StrategyRuntime(Strategy strategy, Duration runtime) {
+
+        /**
+         * Creates a strategy runtime snapshot.
+         *
+         * @since 0.19
+         */
+        public StrategyRuntime {
+            strategy = StrategySnapshots.copy(strategy);
+            runtime = Objects.requireNonNull(runtime, "runtime");
+        }
+
+        @Override
+        public Strategy strategy() {
+            return StrategySnapshots.copy(strategy);
+        }
     }
 }

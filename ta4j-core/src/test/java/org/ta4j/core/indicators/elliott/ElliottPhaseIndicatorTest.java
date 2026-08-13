@@ -33,6 +33,19 @@ class ElliottPhaseIndicatorTest {
     }
 
     @Test
+    void accessorReturnsOwnedSwingCopy() {
+        var series = new MockBarSeriesBuilder().build();
+        var swings = impulseAndCorrectionSwings(series.numFactory());
+        var swingIndicator = new StubSwingIndicator(series, swings);
+        var indicator = new ElliottPhaseIndicator(swingIndicator);
+
+        ElliottSwingIndicator exposedSwing = indicator.getSwingIndicator();
+
+        assertThat(exposedSwing).isNotSameAs(swingIndicator);
+        assertThat(exposedSwing.getValue(5)).isEqualTo(swingIndicator.getValue(5));
+    }
+
+    @Test
     void shouldIdentifyCorrectiveStructure() {
         var series = new MockBarSeriesBuilder().build();
         var swings = impulseAndCorrectionSwings(series.numFactory());

@@ -32,8 +32,12 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
      * @since 0.22.0
      */
     public ElliottInvalidationIndicator(final ElliottPhaseIndicator phaseIndicator) {
-        super(Objects.requireNonNull(phaseIndicator, "phaseIndicator"));
-        this.phaseIndicator = phaseIndicator;
+        this(new Config(Objects.requireNonNull(phaseIndicator, "phaseIndicator").copy()));
+    }
+
+    private ElliottInvalidationIndicator(final Config config) {
+        super(config.phaseIndicator());
+        this.phaseIndicator = config.phaseIndicator();
     }
 
     @Override
@@ -68,5 +72,12 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
     @Override
     public int getCountOfUnstableBars() {
         return phaseIndicator.getCountOfUnstableBars();
+    }
+
+    ElliottInvalidationIndicator copy() {
+        return new ElliottInvalidationIndicator(new Config(phaseIndicator.copy()));
+    }
+
+    private record Config(ElliottPhaseIndicator phaseIndicator) {
     }
 }

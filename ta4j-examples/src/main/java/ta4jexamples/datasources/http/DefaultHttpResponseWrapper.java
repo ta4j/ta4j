@@ -21,10 +21,21 @@ public class DefaultHttpResponseWrapper<T> implements HttpResponseWrapper<T> {
      * @param httpResponse the HttpResponse to wrap
      */
     public DefaultHttpResponseWrapper(HttpResponse<T> httpResponse) {
+        this(new ResponseConfig<>(validatedHttpResponse(httpResponse)));
+    }
+
+    private DefaultHttpResponseWrapper(ResponseConfig<T> config) {
+        this.httpResponse = config.httpResponse();
+    }
+
+    private static <T> HttpResponse<T> validatedHttpResponse(HttpResponse<T> httpResponse) {
         if (httpResponse == null) {
             throw new IllegalArgumentException("HttpResponse cannot be null");
         }
-        this.httpResponse = httpResponse;
+        return httpResponse;
+    }
+
+    private record ResponseConfig<T>(HttpResponse<T> httpResponse) {
     }
 
     @Override

@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.EnumSet;
 import java.util.Map;
@@ -50,7 +49,7 @@ public final class WyckoffEventDetector {
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
         this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
-        if (isInvalid(this.retestTolerance)) {
+        if (!Num.isFinite(this.retestTolerance)) {
             throw new IllegalArgumentException("retestTolerance must be a valid number");
         }
         this.lowestLowCache = new ConcurrentHashMap<>();
@@ -74,10 +73,10 @@ public final class WyckoffEventDetector {
             return events;
         }
         final Num closePrice = closePriceIndicator.getValue(index);
-        if (isInvalid(closePrice)) {
+        if (!Num.isFinite(closePrice)) {
             return events;
         }
-        final boolean hasRange = !isInvalid(structure.rangeHigh()) && !isInvalid(structure.rangeLow());
+        final boolean hasRange = Num.isFinite(structure.rangeHigh()) && Num.isFinite(structure.rangeLow());
         final WyckoffCycleType priorCycle = previousPhase != null ? previousPhase.cycleType()
                 : WyckoffCycleType.UNKNOWN;
         if (!hasRange && volume.climax()) {
@@ -149,7 +148,7 @@ public final class WyckoffEventDetector {
      * Returns whether near.
      */
     private boolean isNear(Num anchor, Num value) {
-        if (isInvalid(anchor) || isInvalid(value)) {
+        if (!Num.isFinite(anchor) || !Num.isFinite(value)) {
             return false;
         }
         final Num distance = anchor.minus(value).abs();
@@ -162,7 +161,7 @@ public final class WyckoffEventDetector {
      */
     private boolean isNewExtremeLow(int index) {
         final Num currentLow = lowPriceIndicator.getValue(index);
-        if (isInvalid(currentLow)) {
+        if (!Num.isFinite(currentLow)) {
             return false;
         }
         if (index <= series.getBeginIndex()) {
@@ -170,7 +169,7 @@ public final class WyckoffEventDetector {
             return true;
         }
         final Num priorLowest = lowestLowUpTo(index - 1);
-        final boolean isNewLow = isInvalid(priorLowest) || currentLow.isLessThan(priorLowest);
+        final boolean isNewLow = !Num.isFinite(priorLowest) || currentLow.isLessThan(priorLowest);
         lowestLowCache.put(index, isNewLow ? currentLow : priorLowest);
         return isNewLow;
     }
@@ -180,7 +179,7 @@ public final class WyckoffEventDetector {
      */
     private boolean isNewExtremeHigh(int index) {
         final Num currentHigh = highPriceIndicator.getValue(index);
-        if (isInvalid(currentHigh)) {
+        if (!Num.isFinite(currentHigh)) {
             return false;
         }
         if (index <= series.getBeginIndex()) {
@@ -188,7 +187,7 @@ public final class WyckoffEventDetector {
             return true;
         }
         final Num priorHighest = highestHighUpTo(index - 1);
-        final boolean isNewHigh = isInvalid(priorHighest) || currentHigh.isGreaterThan(priorHighest);
+        final boolean isNewHigh = !Num.isFinite(priorHighest) || currentHigh.isGreaterThan(priorHighest);
         highestHighCache.put(index, isNewHigh ? currentHigh : priorHighest);
         return isNewHigh;
     }
@@ -213,9 +212,9 @@ public final class WyckoffEventDetector {
         int start = Math.max(begin, anchor + 1);
         for (int i = start; i <= index; i++) {
             Num candidate = lowPriceIndicator.getValue(i);
-            if (isInvalid(running)) {
-                running = isInvalid(candidate) ? NaN : candidate;
-            } else if (!isInvalid(candidate) && candidate.isLessThan(running)) {
+            if (!Num.isFinite(running)) {
+                running = !Num.isFinite(candidate) ? NaN : candidate;
+            } else if (Num.isFinite(candidate) && candidate.isLessThan(running)) {
                 running = candidate;
             }
             lowestLowCache.put(i, running);
@@ -243,9 +242,9 @@ public final class WyckoffEventDetector {
         int start = Math.max(begin, anchor + 1);
         for (int i = start; i <= index; i++) {
             Num candidate = highPriceIndicator.getValue(i);
-            if (isInvalid(running)) {
-                running = isInvalid(candidate) ? NaN : candidate;
-            } else if (!isInvalid(candidate) && candidate.isGreaterThan(running)) {
+            if (!Num.isFinite(running)) {
+                running = !Num.isFinite(candidate) ? NaN : candidate;
+            } else if (Num.isFinite(candidate) && candidate.isGreaterThan(running)) {
                 running = candidate;
             }
             highestHighCache.put(i, running);

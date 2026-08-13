@@ -18,8 +18,9 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class HMAIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final WMAIndicator sqrtWma;
+    private final transient WMAIndicator sqrtWma;
 
     /**
      * Constructor.
@@ -29,6 +30,7 @@ public class HMAIndicator extends CachedIndicator<Num> {
      */
     public HMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.indicator = indicator;
         this.barCount = barCount;
 
         final var halfWma = new WMAIndicator(indicator, barCount / 2);

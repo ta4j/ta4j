@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -34,7 +35,7 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
      * @since 0.19
      */
     public VWAPIndicator(BarSeries series, int barCount) {
-        this(new TypicalPriceIndicator(series), new VolumeIndicator(series), barCount);
+        this(validatedConfig(series, barCount));
     }
 
     /**
@@ -47,11 +48,29 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
      * @since 0.19
      */
     public VWAPIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount) {
-        super(priceIndicator, volumeIndicator);
+        this(validatedConfig(priceIndicator, volumeIndicator, barCount));
+    }
+
+    private VWAPIndicator(Config config) {
+        super(config.priceIndicator(), config.volumeIndicator());
+        this.barCount = config.barCount();
+    }
+
+    private static Config validatedConfig(BarSeries series, int barCount) {
+        return validatedConfig(new TypicalPriceIndicator(series), new VolumeIndicator(series), barCount);
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount) {
+        IndicatorUtils.requireSameSeries(priceIndicator, volumeIndicator);
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be greater than zero");
         }
-        this.barCount = barCount;
+        return new Config(priceIndicator, volumeIndicator, barCount);
+    }
+
+    @Override
+    AbstractVWAPIndicator copy() {
+        return new VWAPIndicator(priceIndicator, volumeIndicator, barCount);
     }
 
     /**
@@ -78,5 +97,8 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount) {
     }
 }

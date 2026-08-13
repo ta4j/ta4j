@@ -35,5 +35,10 @@ public record ElliottConfidenceContext(List<ElliottSwing> swings, ElliottPhase p
         Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(validator, "validator");
         Objects.requireNonNull(numFactory, "numFactory");
+        swings = List.copyOf(swings);
+    }
+
+    public List<ElliottSwing> swings() {
+        return List.copyOf(swings);
     }
 }

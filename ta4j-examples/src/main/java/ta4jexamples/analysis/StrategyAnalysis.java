@@ -72,7 +72,7 @@ public class StrategyAnalysis {
         var linearTransactionCost = new LinearTransactionCostCriterion(1000, 0.005).calculate(series, tradingRecord);
         LOG.debug("Total transaction cost (from $1000): {}", linearTransactionCost);
 
-        var enterAndHold = EnterAndHoldCriterion.EnterAndHoldReturnCriterion().calculate(series, tradingRecord);
+        var enterAndHold = EnterAndHoldCriterion.enterAndHoldReturnCriterion().calculate(series, tradingRecord);
         LOG.debug("Buy-and-hold return: {}", enterAndHold);
 
         var versusEnterAndHold = new VersusEnterAndHoldCriterion(netReturnCriterion).calculate(series, tradingRecord);

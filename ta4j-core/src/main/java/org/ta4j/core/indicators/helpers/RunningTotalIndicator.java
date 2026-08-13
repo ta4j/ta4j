@@ -33,6 +33,9 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         // serial access can benefit from previous partial sums
         // which saves a lot of CPU work for very long barCounts
         if (previousIndex != -1 && previousIndex == index - 1) {
+            if (!Num.isFinite(previousSum)) {
+                return slowPath(index);
+            }
             return fastPath(index);
         }
 

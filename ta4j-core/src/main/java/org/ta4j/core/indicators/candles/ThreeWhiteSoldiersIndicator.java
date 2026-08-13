@@ -18,10 +18,13 @@ import org.ta4j.core.num.Num;
 public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
     /** Upper shadow. */
-    private final UpperShadowIndicator upperShadowInd;
+    private final transient UpperShadowIndicator upperShadowInd;
 
     /** Average upper shadow. */
-    private final SMAIndicator averageUpperShadowInd;
+    private final transient SMAIndicator averageUpperShadowInd;
+
+    /** Number of bars used to calculate the average upper shadow. */
+    private final int barCount;
 
     /** Factor used when checking if a candle has a very short upper shadow. */
     private final Num factor;
@@ -36,6 +39,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeWhiteSoldiersIndicator(BarSeries series, int barCount, Num factor) {
         super(series);
+        this.barCount = barCount;
         this.upperShadowInd = new UpperShadowIndicator(series);
         this.averageUpperShadowInd = new SMAIndicator(upperShadowInd, barCount);
         this.factor = factor;

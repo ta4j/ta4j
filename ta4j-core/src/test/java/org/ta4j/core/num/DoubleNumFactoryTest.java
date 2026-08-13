@@ -4,8 +4,14 @@
 package org.ta4j.core.num;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,4 +44,18 @@ class DoubleNumFactoryTest {
         assertFalse(doubleFactory.produces(decimalFactory.one()));
     }
 
+    @Test
+    final void serializationPreservesSingletonInstance() throws Exception {
+        byte[] serialized;
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+                ObjectOutputStream objectOutput = new ObjectOutputStream(output)) {
+            objectOutput.writeObject(DoubleNumFactory.getInstance());
+            serialized = output.toByteArray();
+        }
+
+        try (ByteArrayInputStream input = new ByteArrayInputStream(serialized);
+                ObjectInputStream objectInput = new ObjectInputStream(input)) {
+            assertSame(DoubleNumFactory.getInstance(), objectInput.readObject());
+        }
+    }
 }

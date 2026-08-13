@@ -120,6 +120,11 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         return resolveAnchorIndex(index);
     }
 
+    @Override
+    AbstractVWAPIndicator copy() {
+        return new AnchoredVWAPIndicator(priceIndicator, volumeIndicator, anchorSignal, defaultAnchorIndex);
+    }
+
     /**
      * Resolves anchor index.
      */

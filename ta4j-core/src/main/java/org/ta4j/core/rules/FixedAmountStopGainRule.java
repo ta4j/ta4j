@@ -36,7 +36,7 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
      * @param gainAmount     the absolute gain amount
      */
     public FixedAmountStopGainRule(Indicator<Num> priceIndicator, Number gainAmount) {
-        this(priceIndicator, toNumGainAmount(priceIndicator, gainAmount));
+        this(validatedConfig(priceIndicator, toNumGainAmount(priceIndicator, gainAmount)));
     }
 
     /**
@@ -46,14 +46,22 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
      * @param gainAmount     the absolute gain amount
      */
     public FixedAmountStopGainRule(Indicator<Num> priceIndicator, Num gainAmount) {
+        this(validatedConfig(priceIndicator, gainAmount));
+    }
+
+    private FixedAmountStopGainRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.gainAmount = config.gainAmount();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Num gainAmount) {
         if (priceIndicator == null) {
             throw new IllegalArgumentException("priceIndicator must not be null");
         }
         if (Num.isNaNOrNull(gainAmount) || gainAmount.isZero() || gainAmount.isNegative()) {
             throw new IllegalArgumentException("gainAmount must be positive");
         }
-        this.priceIndicator = priceIndicator;
-        this.gainAmount = gainAmount;
+        return new Config(priceIndicator, gainAmount);
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -110,5 +118,8 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
             throw new IllegalArgumentException("gainAmount must be positive");
         }
         return priceIndicator.getBarSeries().numFactory().numOf(gainAmount);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num gainAmount) {
     }
 }

@@ -63,7 +63,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public ForceIndexIndicator(final BarSeries series) {
-        this(series, DEFAULT_BAR_COUNT);
+        this(validatedConfig(series, DEFAULT_BAR_COUNT));
     }
 
     /**
@@ -74,7 +74,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public ForceIndexIndicator(final BarSeries series, final int barCount) {
-        this(new ClosePriceIndicator(series), new VolumeIndicator(series), barCount);
+        this(validatedConfig(series, barCount));
     }
 
     /**
@@ -85,7 +85,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public ForceIndexIndicator(final Indicator<Num> closePriceIndicator, final Indicator<Num> volumeIndicator) {
-        this(closePriceIndicator, volumeIndicator, DEFAULT_BAR_COUNT);
+        this(validatedConfig(closePriceIndicator, volumeIndicator, DEFAULT_BAR_COUNT));
     }
 
     /**
@@ -98,17 +98,33 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      */
     public ForceIndexIndicator(final Indicator<Num> closePriceIndicator, final Indicator<Num> volumeIndicator,
             final int barCount) {
-        super(IndicatorUtils.requireSameSeries(closePriceIndicator, volumeIndicator));
+        this(validatedConfig(closePriceIndicator, volumeIndicator, barCount));
+    }
+
+    private ForceIndexIndicator(Config config) {
+        super(config.series());
+        this.barCount = config.barCount();
+        this.closePriceIndicator = config.closePriceIndicator();
+        this.volumeIndicator = config.volumeIndicator();
+        this.closePriceDifferenceIndicator = config.closePriceDifferenceIndicator();
+        this.rawForceIndexIndicator = config.rawForceIndexIndicator();
+        this.smoothedForceIndexIndicator = config.smoothedForceIndexIndicator();
+    }
+
+    private static Config validatedConfig(final BarSeries series, final int barCount) {
+        return validatedConfig(new ClosePriceIndicator(series), new VolumeIndicator(series), barCount);
+    }
+
+    private static Config validatedConfig(final Indicator<Num> closePriceIndicator,
+            final Indicator<Num> volumeIndicator, final int barCount) {
+        BarSeries series = IndicatorUtils.requireSameSeries(closePriceIndicator, volumeIndicator);
         validateBarCount(barCount);
-
-        this.barCount = barCount;
-        this.closePriceIndicator = closePriceIndicator;
-        this.volumeIndicator = volumeIndicator;
-
-        this.closePriceDifferenceIndicator = new DifferenceIndicator(this.closePriceIndicator);
-        this.rawForceIndexIndicator = BinaryOperationIndicator.product(this.closePriceDifferenceIndicator,
-                this.volumeIndicator);
-        this.smoothedForceIndexIndicator = new EMAIndicator(this.rawForceIndexIndicator, barCount);
+        DifferenceIndicator closePriceDifferenceIndicator = new DifferenceIndicator(closePriceIndicator);
+        Indicator<Num> rawForceIndexIndicator = BinaryOperationIndicator.product(closePriceDifferenceIndicator,
+                volumeIndicator);
+        EMAIndicator smoothedForceIndexIndicator = new EMAIndicator(rawForceIndexIndicator, barCount);
+        return new Config(series, closePriceIndicator, volumeIndicator, barCount, closePriceDifferenceIndicator,
+                rawForceIndexIndicator, smoothedForceIndexIndicator);
     }
 
     @Override
@@ -151,5 +167,10 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
         if (barCount <= 0) {
             throw new IllegalArgumentException("Force Index barCount must be greater than 0");
         }
+    }
+
+    private record Config(BarSeries series, Indicator<Num> closePriceIndicator, Indicator<Num> volumeIndicator,
+            int barCount, DifferenceIndicator closePriceDifferenceIndicator, Indicator<Num> rawForceIndexIndicator,
+            EMAIndicator smoothedForceIndexIndicator) {
     }
 }

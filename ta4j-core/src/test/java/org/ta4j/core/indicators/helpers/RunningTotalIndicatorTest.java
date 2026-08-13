@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -12,6 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -35,6 +37,17 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
         for (int i = 0; i < expected.length; i++) {
             assertNumEquals(expected[i], runningTotal.getValue(i));
         }
+    }
+
+    @Test
+    public void recoversWhenInvalidValueLeavesWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        FixedIndicator<Num> base = new FixedIndicator<>(series, numOf(1), NaN.NaN, numOf(3), numOf(4));
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(base, 2);
+
+        assertTrue(runningTotal.getValue(1).isNaN());
+        assertTrue(runningTotal.getValue(2).isNaN());
+        assertNumEquals(7, runningTotal.getValue(3));
     }
 
     @Test

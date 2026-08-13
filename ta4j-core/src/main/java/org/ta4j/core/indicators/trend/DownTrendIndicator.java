@@ -15,10 +15,11 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
     private static final int DEFAULT_UNSTABLE_BARS = 5;
     private static final double DEFAULT_STRENGTH_THRESHOLD = 25;
 
-    private final ADXIndicator directionStrengthIndicator;
-    private final MinusDIIndicator minusDIIndicator;
-    private final PlusDIIndicator plusDIIndicator;
+    private final int unstableBars;
     private final Num strengthThreshold;
+    private final transient ADXIndicator directionStrengthIndicator;
+    private final transient MinusDIIndicator minusDIIndicator;
+    private final transient PlusDIIndicator plusDIIndicator;
 
     public DownTrendIndicator(final BarSeries series) {
         this(series, DEFAULT_UNSTABLE_BARS);
@@ -30,6 +31,7 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
 
     public DownTrendIndicator(final BarSeries series, int unstableBars, double strengthThreshold) {
         super(series);
+        this.unstableBars = unstableBars;
         this.strengthThreshold = getBarSeries().numFactory().numOf(strengthThreshold);
         this.directionStrengthIndicator = new ADXIndicator(series, unstableBars);
         this.minusDIIndicator = new MinusDIIndicator(series, unstableBars);

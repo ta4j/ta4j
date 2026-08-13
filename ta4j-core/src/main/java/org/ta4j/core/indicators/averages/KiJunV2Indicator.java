@@ -28,9 +28,11 @@ import static org.ta4j.core.num.NaN.NaN;
 public class KiJunV2Indicator extends CachedIndicator<Num> {
 
     private final int barCount; // Lookback period
-    private final NumFactory numFactory;
-    private final HighestValueIndicator highestValue;
-    private final LowestValueIndicator lowestValue;
+    private final Indicator<Num> highPrice;
+    private final Indicator<Num> lowPrice;
+    private final transient NumFactory numFactory;
+    private final transient HighestValueIndicator highestValue;
+    private final transient LowestValueIndicator lowestValue;
 
     /**
      * Constructor.
@@ -42,9 +44,11 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
     public KiJunV2Indicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, int barCount) {
         super(highPrice.getBarSeries());
         this.barCount = barCount;
+        this.highPrice = highPrice;
+        this.lowPrice = lowPrice;
         this.numFactory = highPrice.getBarSeries().numFactory();
-        this.highestValue = new HighestValueIndicator(new HighPriceIndicator(highPrice.getBarSeries()), barCount);
-        this.lowestValue = new LowestValueIndicator(new LowPriceIndicator(lowPrice.getBarSeries()), barCount);
+        this.highestValue = new HighestValueIndicator(highPrice, barCount);
+        this.lowestValue = new LowestValueIndicator(lowPrice, barCount);
     }
 
     @Override

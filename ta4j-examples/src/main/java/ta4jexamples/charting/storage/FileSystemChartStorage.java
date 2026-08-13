@@ -54,7 +54,10 @@ public final class FileSystemChartStorage implements ChartStorage {
         Path targetPath = (chartTitle != null && !chartTitle.trim().isEmpty()) ? buildSavePath(series, chartTitle)
                 : buildSavePath(series);
         try {
-            Files.createDirectories(targetPath.getParent());
+            Path parent = targetPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             ChartUtils.saveChartAsJPEG(targetPath.toFile(), chart, width, height);
             LOG.debug("Saved chart to {}", targetPath.toAbsolutePath());
             return Optional.of(targetPath.toAbsolutePath());

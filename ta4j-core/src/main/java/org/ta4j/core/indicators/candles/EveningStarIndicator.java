@@ -18,8 +18,8 @@ import org.ta4j.core.num.Num;
  */
 public class EveningStarIndicator extends CachedIndicator<Boolean> {
 
-    private final UpTrendIndicator trendIndicator;
-    private final RealBodyIndicator realBodyIndicator;
+    private final transient UpTrendIndicator trendIndicator;
+    private final transient RealBodyIndicator realBodyIndicator;
     private final Num smallBodyThresholdPercentage;
     private final Num bigBodyThresholdPercentage;
 

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -59,12 +61,21 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public PercentRankIndicator(Indicator<Num> indicator, int period) {
-        super(indicator);
+        this(validatedConfig(indicator, period));
+    }
+
+    private PercentRankIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.period = config.period();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int period) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
         if (period < 1) {
             throw new IllegalArgumentException("Period must be at least 1");
         }
-        this.indicator = indicator;
-        this.period = period;
+        return new Config(validatedIndicator, period);
     }
 
     @Override
@@ -123,5 +134,8 @@ public class PercentRankIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + period - 1;
+    }
+
+    private record Config(Indicator<Num> indicator, int period) {
     }
 }

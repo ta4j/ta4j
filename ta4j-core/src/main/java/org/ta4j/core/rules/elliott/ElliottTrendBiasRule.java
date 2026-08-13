@@ -33,12 +33,23 @@ public class ElliottTrendBiasRule extends AbstractRule {
      */
     public ElliottTrendBiasRule(final Indicator<ElliottScenarioSet> scenarioIndicator, final boolean bullish,
             final double minStrength) {
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        this(validatedConfig(scenarioIndicator, bullish, minStrength));
+    }
+
+    private ElliottTrendBiasRule(final Config config) {
+        this.scenarioIndicator = config.scenarioIndicator();
+        this.bullish = config.bullish();
+        this.minStrength = config.minStrength();
+    }
+
+    private static Config validatedConfig(final Indicator<ElliottScenarioSet> scenarioIndicator, final boolean bullish,
+            final double minStrength) {
+        Indicator<ElliottScenarioSet> validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
         if (minStrength < 0.0 || minStrength > 1.0) {
             throw new IllegalArgumentException("minStrength must be in [0.0, 1.0]");
         }
-        this.bullish = bullish;
-        this.minStrength = minStrength;
+        return new Config(validatedScenarioIndicator, bullish, minStrength);
     }
 
     @Override
@@ -52,5 +63,8 @@ public class ElliottTrendBiasRule extends AbstractRule {
         boolean satisfied = !bias.isUnknown() && !bias.isNeutral() && (bullish ? bias.isBullish() : bias.isBearish());
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(Indicator<ElliottScenarioSet> scenarioIndicator, boolean bullish, double minStrength) {
     }
 }

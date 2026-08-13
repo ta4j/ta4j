@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
@@ -94,4 +100,14 @@ public class SchaffTrendCycleIndicatorTest extends AbstractIndicatorTest<Indicat
             assertThat(Num.isNaNOrNull(indicator.getValue(i))).isTrue();
         }
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(
+                serializationFixture(series, new SchaffTrendCycleIndicator(close, 3, 6, 4, 2), stableIndexes(series)));
+    }
+
 }

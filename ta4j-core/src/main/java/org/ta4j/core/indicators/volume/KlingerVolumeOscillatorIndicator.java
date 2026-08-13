@@ -84,7 +84,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series) {
-        this(series, DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD);
+        this(validatedConfig(series, DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD, DEFAULT_SCALE_MULTIPLIER));
     }
 
     /**
@@ -96,7 +96,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final int shortPeriod, final int longPeriod) {
-        this(series, shortPeriod, longPeriod, DEFAULT_SCALE_MULTIPLIER);
+        this(validatedConfig(series, shortPeriod, longPeriod, DEFAULT_SCALE_MULTIPLIER));
     }
 
     /**
@@ -108,7 +108,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final Number scaleMultiplier) {
-        this(series, DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD, scaleMultiplier);
+        this(validatedConfig(series, DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD, scaleMultiplier));
     }
 
     /**
@@ -123,8 +123,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final int shortPeriod, final int longPeriod,
             final Number scaleMultiplier) {
-        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
-                new VolumeIndicator(series), shortPeriod, longPeriod, scaleMultiplier);
+        this(validatedConfig(series, shortPeriod, longPeriod, scaleMultiplier));
     }
 
     /**
@@ -139,8 +138,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     public KlingerVolumeOscillatorIndicator(final Indicator<Num> highPriceIndicator,
             final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,
             final Indicator<Num> volumeIndicator) {
-        this(highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator, DEFAULT_SHORT_PERIOD,
-                DEFAULT_LONG_PERIOD);
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator,
+                DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD, DEFAULT_SCALE_MULTIPLIER));
     }
 
     /**
@@ -157,8 +156,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     public KlingerVolumeOscillatorIndicator(final Indicator<Num> highPriceIndicator,
             final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,
             final Indicator<Num> volumeIndicator, final int shortPeriod, final int longPeriod) {
-        this(highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator, shortPeriod, longPeriod,
-                DEFAULT_SCALE_MULTIPLIER);
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator, shortPeriod,
+                longPeriod, DEFAULT_SCALE_MULTIPLIER));
     }
 
     /**
@@ -178,29 +177,57 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,
             final Indicator<Num> volumeIndicator, final int shortPeriod, final int longPeriod,
             final Number scaleMultiplier) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator,
-                volumeIndicator));
+        this(validatedConfig(highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator, shortPeriod,
+                longPeriod, scaleMultiplier));
+    }
+
+    private KlingerVolumeOscillatorIndicator(Config config) {
+        super(config.series());
+        this.shortPeriod = config.shortPeriod();
+        this.longPeriod = config.longPeriod();
+        this.scaleMultiplier = config.scaleMultiplier();
+        this.highPriceIndicator = config.highPriceIndicator();
+        this.lowPriceIndicator = config.lowPriceIndicator();
+        this.closePriceIndicator = config.closePriceIndicator();
+        this.volumeIndicator = config.volumeIndicator();
+        this.dailyMeasurementIndicator = config.dailyMeasurementIndicator();
+        this.trendDirectionIndicator = config.trendDirectionIndicator();
+        this.cumulativeMeasurementIndicator = config.cumulativeMeasurementIndicator();
+        this.volumeForceIndicator = config.volumeForceIndicator();
+        this.shortEmaIndicator = config.shortEmaIndicator();
+        this.longEmaIndicator = config.longEmaIndicator();
+    }
+
+    private static Config validatedConfig(final BarSeries series, final int shortPeriod, final int longPeriod,
+            final Number scaleMultiplier) {
+        return validatedConfig(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ClosePriceIndicator(series), new VolumeIndicator(series), shortPeriod, longPeriod, scaleMultiplier);
+    }
+
+    private static Config validatedConfig(final Indicator<Num> highPriceIndicator,
+            final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,
+            final Indicator<Num> volumeIndicator, final int shortPeriod, final int longPeriod,
+            final Number scaleMultiplier) {
+        BarSeries series = IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator,
+                volumeIndicator);
 
         validatePeriods(shortPeriod, longPeriod);
-        final Number validatedScaleMultiplier = validateScaleMultiplier(scaleMultiplier);
+        Number validatedScaleMultiplier = validateScaleMultiplier(scaleMultiplier);
+        Num resolvedScaleMultiplier = series.numFactory().numOf(validatedScaleMultiplier);
+        DailyMeasurementIndicator dailyMeasurementIndicator = new DailyMeasurementIndicator(highPriceIndicator,
+                lowPriceIndicator);
+        TrendDirectionIndicator trendDirectionIndicator = new TrendDirectionIndicator(highPriceIndicator,
+                lowPriceIndicator, closePriceIndicator);
+        CumulativeMeasurementIndicator cumulativeMeasurementIndicator = new CumulativeMeasurementIndicator(
+                dailyMeasurementIndicator, trendDirectionIndicator);
+        VolumeForceIndicator volumeForceIndicator = new VolumeForceIndicator(volumeIndicator, dailyMeasurementIndicator,
+                trendDirectionIndicator, cumulativeMeasurementIndicator, resolvedScaleMultiplier);
 
-        this.shortPeriod = shortPeriod;
-        this.longPeriod = longPeriod;
-        this.scaleMultiplier = getBarSeries().numFactory().numOf(validatedScaleMultiplier);
-        this.highPriceIndicator = highPriceIndicator;
-        this.lowPriceIndicator = lowPriceIndicator;
-        this.closePriceIndicator = closePriceIndicator;
-        this.volumeIndicator = volumeIndicator;
-        this.dailyMeasurementIndicator = new DailyMeasurementIndicator(this.highPriceIndicator, this.lowPriceIndicator);
-        this.trendDirectionIndicator = new TrendDirectionIndicator(this.highPriceIndicator, this.lowPriceIndicator,
-                closePriceIndicator);
-        this.cumulativeMeasurementIndicator = new CumulativeMeasurementIndicator(this.dailyMeasurementIndicator,
-                this.trendDirectionIndicator);
-        this.volumeForceIndicator = new VolumeForceIndicator(this.volumeIndicator, this.dailyMeasurementIndicator,
-                this.trendDirectionIndicator, this.cumulativeMeasurementIndicator, this.scaleMultiplier);
-
-        this.shortEmaIndicator = new EMAIndicator(this.volumeForceIndicator, shortPeriod);
-        this.longEmaIndicator = new EMAIndicator(this.volumeForceIndicator, longPeriod);
+        EMAIndicator shortEmaIndicator = new EMAIndicator(volumeForceIndicator, shortPeriod);
+        EMAIndicator longEmaIndicator = new EMAIndicator(volumeForceIndicator, longPeriod);
+        return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator,
+                shortPeriod, longPeriod, resolvedScaleMultiplier, dailyMeasurementIndicator, trendDirectionIndicator,
+                cumulativeMeasurementIndicator, volumeForceIndicator, shortEmaIndicator, longEmaIndicator);
     }
 
     @Override
@@ -264,6 +291,14 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
     private static boolean isInvalid(final Num value) {
         return Num.isNaNOrNull(value);
+    }
+
+    private record Config(BarSeries series, Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator, Indicator<Num> volumeIndicator, int shortPeriod, int longPeriod,
+            Num scaleMultiplier, DailyMeasurementIndicator dailyMeasurementIndicator,
+            TrendDirectionIndicator trendDirectionIndicator,
+            CumulativeMeasurementIndicator cumulativeMeasurementIndicator, VolumeForceIndicator volumeForceIndicator,
+            EMAIndicator shortEmaIndicator, EMAIndicator longEmaIndicator) {
     }
 
     private static final class CumulativeMeasurementIndicator extends RecursiveCachedIndicator<Num> {

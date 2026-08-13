@@ -20,14 +20,22 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
     private final Indicator<Num> stopGainThreshold;
 
     protected BaseVolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
+        this(validatedConfig(referencePrice, stopGainThreshold));
+    }
+
+    private BaseVolatilityStopGainRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopGainThreshold = config.stopGainThreshold();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
         if (stopGainThreshold == null) {
             throw new IllegalArgumentException("stopGainThreshold must not be null");
         }
-        this.referencePrice = referencePrice;
-        this.stopGainThreshold = stopGainThreshold;
+        return new Config(referencePrice, stopGainThreshold);
     }
 
     @Override
@@ -74,5 +82,8 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
             return null;
         }
         return StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
     }
 }

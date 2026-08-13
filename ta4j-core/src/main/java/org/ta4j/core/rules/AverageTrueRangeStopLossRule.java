@@ -27,6 +27,10 @@ import static java.util.Objects.requireNonNull;
  */
 public class AverageTrueRangeStopLossRule extends BaseVolatilityStopLossRule {
 
+    private final Indicator<Num> referencePrice;
+    private final ATRIndicator atrIndicator;
+    private final Number atrCoefficient;
+
     /**
      * Constructor with default close price as reference.
      *
@@ -35,7 +39,7 @@ public class AverageTrueRangeStopLossRule extends BaseVolatilityStopLossRule {
      * @param atrCoefficient the coefficient to multiply ATR
      */
     public AverageTrueRangeStopLossRule(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        this(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient);
+        this(new ClosePriceIndicator(series), new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 
     /**
@@ -48,7 +52,7 @@ public class AverageTrueRangeStopLossRule extends BaseVolatilityStopLossRule {
      */
     public AverageTrueRangeStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient));
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 
     /**
@@ -61,10 +65,24 @@ public class AverageTrueRangeStopLossRule extends BaseVolatilityStopLossRule {
      */
     public AverageTrueRangeStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient));
+        this(new Config(referencePrice, requireNonNull(atrIndicator), atrCoefficient));
     }
 
-    private static Indicator<Num> createStopLossThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+    private AverageTrueRangeStopLossRule(Config config) {
+        super(config.referencePrice(),
+                BinaryOperationIndicator.product(config.atrIndicator(), config.atrCoefficient()));
+        this.referencePrice = config.referencePrice();
+        this.atrIndicator = config.atrIndicator();
+        this.atrCoefficient = config.atrCoefficient();
+    }
+
+    private record Config(Indicator<Num> referencePrice, ATRIndicator atrIndicator, Number atrCoefficient) {
+
+        private Config {
+            if (atrCoefficient == null || Double.isNaN(atrCoefficient.doubleValue())
+                    || atrCoefficient.doubleValue() <= 0) {
+                throw new IllegalArgumentException("atrCoefficient must be positive");
+            }
+        }
     }
 }

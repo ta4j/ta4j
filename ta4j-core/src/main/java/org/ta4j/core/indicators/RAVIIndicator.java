@@ -15,8 +15,11 @@ import org.ta4j.core.num.Num;
  */
 public class RAVIIndicator extends CachedIndicator<Num> {
 
-    private final SMAIndicator shortSma;
-    private final SMAIndicator longSma;
+    private final Indicator<Num> price;
+    private final int shortSmaBarCount;
+    private final int longSmaBarCount;
+    private final transient SMAIndicator shortSma;
+    private final transient SMAIndicator longSma;
 
     /**
      * Constructor.
@@ -27,6 +30,9 @@ public class RAVIIndicator extends CachedIndicator<Num> {
      */
     public RAVIIndicator(Indicator<Num> price, int shortSmaBarCount, int longSmaBarCount) {
         super(price);
+        this.price = price;
+        this.shortSmaBarCount = shortSmaBarCount;
+        this.longSmaBarCount = longSmaBarCount;
         this.shortSma = new SMAIndicator(price, shortSmaBarCount);
         this.longSma = new SMAIndicator(price, longSmaBarCount);
     }

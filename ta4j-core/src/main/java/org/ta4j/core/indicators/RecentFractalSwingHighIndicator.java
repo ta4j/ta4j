@@ -39,8 +39,7 @@ public class RecentFractalSwingHighIndicator extends AbstractRecentFractalSwingI
      *                           strictly lower values than the candidate swing high
      * @param followingLowerBars number of immediately following bars that must have
      *                           strictly lower values than the candidate swing high
-     * @param allowedEqualBars   number of bars on each side that are allowed to
-     *                           match the candidate value (to support flat tops)
+     * @param allowedEqualBars   maximum additional bars in a flat-high plateau
      * @throws IllegalArgumentException if {@code precedingLowerBars} is less than
      *                                  {@code 1}
      * @throws IllegalArgumentException if {@code followingLowerBars} is negative

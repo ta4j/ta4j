@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.num.Num;
@@ -31,7 +33,7 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator
      */
     public PPOIndicator(Indicator<Num> indicator) {
-        this(indicator, 12, 26);
+        this(validatedConfig(indicator, 12, 26));
     }
 
     /**
@@ -42,13 +44,24 @@ public class PPOIndicator extends CachedIndicator<Num> {
      * @param longBarCount  the long time frame
      */
     public PPOIndicator(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
-        super(indicator);
+        this(validatedConfig(indicator, shortBarCount, longBarCount));
+    }
+
+    private PPOIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.shortTermEma = config.shortTermEma();
+        this.longTermEma = config.longTermEma();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int shortBarCount, int longBarCount) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term barCount must be greater than short term barCount");
         }
-        this.indicator = indicator;
-        this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
-        this.longTermEma = new EMAIndicator(indicator, longBarCount);
+        EMAIndicator shortTermEma = new EMAIndicator(validatedIndicator, shortBarCount);
+        EMAIndicator longTermEma = new EMAIndicator(validatedIndicator, longBarCount);
+        return new Config(validatedIndicator, shortTermEma, longTermEma);
     }
 
     @Override
@@ -64,5 +77,8 @@ public class PPOIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         int emaUnstableBars = Math.max(shortTermEma.getCountOfUnstableBars(), longTermEma.getCountOfUnstableBars());
         return indicator.getCountOfUnstableBars() + emaUnstableBars;
+    }
+
+    private record Config(Indicator<Num> indicator, EMAIndicator shortTermEma, EMAIndicator longTermEma) {
     }
 }

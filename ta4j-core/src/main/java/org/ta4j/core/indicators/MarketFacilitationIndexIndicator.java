@@ -80,8 +80,7 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
         final Num high = highPrice.getValue(index);
         final Num low = lowPrice.getValue(index);
         final Num currentVolume = volume.getValue(index);
-        if (IndicatorUtils.isInvalid(high) || IndicatorUtils.isInvalid(low) || IndicatorUtils.isInvalid(currentVolume)
-                || currentVolume.isZero()) {
+        if (!Num.isFinite(high) || !Num.isFinite(low) || !Num.isFinite(currentVolume) || currentVolume.isZero()) {
             return NaN;
         }
         return high.minus(low).dividedBy(currentVolume);

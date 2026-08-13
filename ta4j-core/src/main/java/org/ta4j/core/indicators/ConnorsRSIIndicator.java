@@ -25,9 +25,13 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ConnorsRSIIndicator extends CachedIndicator<Num> {
 
-    private final RSIIndicator priceRsi;
-    private final RSIIndicator streakRsi;
-    private final PercentRankIndicator percentRankIndicator;
+    private final Indicator<Num> indicator;
+    private final int rsiPeriod;
+    private final int streakRsiPeriod;
+    private final int percentRankPeriod;
+    private final transient RSIIndicator priceRsi;
+    private final transient RSIIndicator streakRsi;
+    private final transient PercentRankIndicator percentRankIndicator;
 
     /**
      * Constructor using the original Connors RSI defaults ({@code rsiPeriod}=3,
@@ -37,7 +41,7 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator) {
-        this(indicator, 3, 2, 100);
+        this(validatedConfig(indicator, 3, 2, 100));
     }
 
     /**
@@ -51,15 +55,32 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public ConnorsRSIIndicator(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod, int percentRankPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, rsiPeriod, streakRsiPeriod, percentRankPeriod));
+    }
+
+    private ConnorsRSIIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.rsiPeriod = config.rsiPeriod();
+        this.streakRsiPeriod = config.streakRsiPeriod();
+        this.percentRankPeriod = config.percentRankPeriod();
+        this.priceRsi = config.priceRsi();
+        this.streakRsi = config.streakRsi();
+        this.percentRankIndicator = config.percentRankIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod,
+            int percentRankPeriod) {
         if (rsiPeriod < 1 || streakRsiPeriod < 1 || percentRankPeriod < 1) {
             throw new IllegalArgumentException("Connors RSI periods must be positive integers");
         }
 
         DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(indicator);
-        this.priceRsi = new RSIIndicator(indicator, rsiPeriod);
-        this.streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
-        this.percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
+        RSIIndicator priceRsi = new RSIIndicator(indicator, rsiPeriod);
+        RSIIndicator streakRsi = new RSIIndicator(new StreakIndicator(indicator), streakRsiPeriod);
+        PercentRankIndicator percentRankIndicator = new PercentRankIndicator(priceChangeIndicator, percentRankPeriod);
+        return new Config(indicator, rsiPeriod, streakRsiPeriod, percentRankPeriod, priceRsi, streakRsi,
+                percentRankIndicator);
     }
 
     @Override
@@ -83,5 +104,9 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         // Return the maximum unstable period of all three components
         return Math.max(Math.max(priceRsi.getCountOfUnstableBars(), streakRsi.getCountOfUnstableBars()),
                 percentRankIndicator.getCountOfUnstableBars());
+    }
+
+    private record Config(Indicator<Num> indicator, int rsiPeriod, int streakRsiPeriod, int percentRankPeriod,
+            RSIIndicator priceRsi, RSIIndicator streakRsi, PercentRankIndicator percentRankIndicator) {
     }
 }

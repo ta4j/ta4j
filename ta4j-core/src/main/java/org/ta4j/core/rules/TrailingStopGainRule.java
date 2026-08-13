@@ -42,15 +42,24 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
      * @param barCount       the number of bars to look back for the calculation
      */
     public TrailingStopGainRule(Indicator<Num> indicator, Num gainPercentage, int barCount) {
-        this.priceIndicator = Objects.requireNonNull(indicator, "priceIndicator");
+        this(validatedConfig(indicator, gainPercentage, barCount));
+    }
+
+    private TrailingStopGainRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.barCount = config.barCount();
+        this.gainPercentage = config.gainPercentage();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, Num gainPercentage, int barCount) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "priceIndicator");
         if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isNegative()) {
             throw new IllegalArgumentException("gainPercentage must be >= 0");
         }
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.barCount = barCount;
-        this.gainPercentage = gainPercentage;
+        return new Config(validatedIndicator, gainPercentage, barCount);
     }
 
     /**
@@ -60,7 +69,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
      * @param gainPercentage the gain percentage
      */
     public TrailingStopGainRule(Indicator<Num> indicator, Num gainPercentage) {
-        this(indicator, gainPercentage, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, gainPercentage, Integer.MAX_VALUE));
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -199,5 +208,8 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
             return "activationNotReached";
         }
         return buy ? "priceAboveStop" : "priceBelowStop";
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num gainPercentage, int barCount) {
     }
 }

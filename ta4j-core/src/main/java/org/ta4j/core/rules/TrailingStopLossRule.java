@@ -39,15 +39,24 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
      * @param barCount       the number of bars to look back for the calculation
      */
     public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
-        this.priceIndicator = Objects.requireNonNull(indicator, "priceIndicator");
+        this(validatedConfig(indicator, lossPercentage, barCount));
+    }
+
+    private TrailingStopLossRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.barCount = config.barCount();
+        this.lossPercentage = config.lossPercentage();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, Num lossPercentage, int barCount) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "priceIndicator");
         if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
             throw new IllegalArgumentException("lossPercentage must be >= 0");
         }
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.barCount = barCount;
-        this.lossPercentage = lossPercentage;
+        return new Config(validatedIndicator, lossPercentage, barCount);
     }
 
     /**
@@ -57,7 +66,7 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
      * @param lossPercentage the loss percentage
      */
     public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage) {
-        this(indicator, lossPercentage, Integer.MAX_VALUE);
+        this(validatedConfig(indicator, lossPercentage, Integer.MAX_VALUE));
     }
 
     /** This rule uses the {@code tradingRecord}. */
@@ -182,4 +191,6 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         return lowest;
     }
 
+    private record Config(Indicator<Num> priceIndicator, Num lossPercentage, int barCount) {
+    }
 }

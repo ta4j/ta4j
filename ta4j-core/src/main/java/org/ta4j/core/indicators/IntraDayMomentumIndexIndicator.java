@@ -22,8 +22,8 @@ import org.ta4j.core.num.Num;
  * </p>
  */
 public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
-    private final SMAIndicator averageCloseOpenDiff;
-    private final SMAIndicator averageOpenCloseDiff;
+    private final transient SMAIndicator averageCloseOpenDiff;
+    private final transient SMAIndicator averageOpenCloseDiff;
 
     private final int barCount;
 

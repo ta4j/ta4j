@@ -31,14 +31,24 @@ public class ElliottScenarioTimeStopRule extends AbstractRule {
      */
     public ElliottScenarioTimeStopRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
             final double maxWaveDurationMultiplier) {
-        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        this(validatedTimeStopRule(scenarioIndicator, maxWaveDurationMultiplier));
+    }
+
+    private ElliottScenarioTimeStopRule(final Rule timeStopRule) {
+        this.timeStopRule = timeStopRule;
+    }
+
+    private static Rule validatedTimeStopRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
+            final double maxWaveDurationMultiplier) {
+        Indicator<ElliottScenarioSet> validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
         if (maxWaveDurationMultiplier <= 0.0) {
             throw new IllegalArgumentException("maxWaveDurationMultiplier must be positive");
         }
-        Num multiplier = scenarioIndicator.getBarSeries().numFactory().numOf(maxWaveDurationMultiplier);
-        Indicator<Num> maxBarsIndicator = ElliottScenarioRuleSupport.wave3DurationIndicator(scenarioIndicator,
+        Num multiplier = validatedScenarioIndicator.getBarSeries().numFactory().numOf(maxWaveDurationMultiplier);
+        Indicator<Num> maxBarsIndicator = ElliottScenarioRuleSupport.wave3DurationIndicator(validatedScenarioIndicator,
                 multiplier);
-        this.timeStopRule = new OpenPositionDurationRule(maxBarsIndicator);
+        return new OpenPositionDurationRule(maxBarsIndicator);
     }
 
     @Override

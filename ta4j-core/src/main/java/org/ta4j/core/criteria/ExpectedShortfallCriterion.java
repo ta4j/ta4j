@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -82,7 +83,7 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateES(Returns returns, double confidence, ReturnRepresentation representation) {
         // select non-NaN returns (use raw values for statistical calculations)
-        List<Num> returnRates = returns.getRawValues().subList(1, returns.getSize() + 1);
+        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
         Num zero = returns.getBarSeries().numFactory().zero();
         if (returnRates.isEmpty()) {
             return getNeutralValue(returns.getBarSeries().numFactory());

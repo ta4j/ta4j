@@ -5,7 +5,8 @@ package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -26,6 +27,12 @@ public class TradeOnCurrentCloseModel implements TradeExecutionModel {
         if (executionTarget != null) {
             tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
         }
+    }
+
+    @Override
+    public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        return ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
     }
 
 }

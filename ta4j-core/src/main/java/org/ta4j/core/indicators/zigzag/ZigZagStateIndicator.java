@@ -7,8 +7,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -49,7 +52,9 @@ import org.ta4j.core.num.Num;
  */
 public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
 
-    private final Indicator<Num> price; // typically High, Low, or Close
+    private final Indicator<Num> highPrice;
+    private final Indicator<Num> lowPrice;
+    private final Indicator<Num> confirmationPrice;
     private final Indicator<Num> reversalAmount; // threshold in price units
 
     /**
@@ -66,9 +71,53 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      *                       indicator.
      */
     public ZigZagStateIndicator(Indicator<Num> price, Indicator<Num> reversalAmount) {
-        super(price);
-        this.price = price;
-        this.reversalAmount = reversalAmount;
+        this(price, price, price, reversalAmount);
+    }
+
+    /**
+     * Constructs an OHLC-aware ZigZag state indicator.
+     *
+     * @param highPrice      source used to locate and extend swing-high candidates
+     * @param lowPrice       source used to locate and extend swing-low candidates
+     * @param reversalAmount positive reversal threshold in price units
+     * @since 0.22.9
+     */
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> reversalAmount) {
+        this(highPrice, lowPrice, defaultConfirmationPrice(highPrice), reversalAmount);
+    }
+
+    /**
+     * Constructs a ZigZag with dedicated extreme and confirmation sources.
+     *
+     * @param highPrice         source used to locate swing highs
+     * @param lowPrice          source used to locate swing lows
+     * @param confirmationPrice source used to confirm movement away from an
+     *                          extreme, commonly the close
+     * @param reversalAmount    positive reversal threshold in price units
+     * @since 0.22.9
+     */
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
+            Indicator<Num> reversalAmount) {
+        super(requireHighPrice(highPrice));
+        this.highPrice = highPrice;
+        this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);
+        this.confirmationPrice = IndicatorUtils.requireIndicator(confirmationPrice, "confirmationPrice");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.confirmationPrice);
+        this.reversalAmount = IndicatorUtils.requireIndicator(reversalAmount, "reversalAmount");
+        IndicatorUtils.requireSameSeries(this.highPrice, this.reversalAmount);
+    }
+
+    /**
+     * Constructs an OHLC-aware ZigZag with a constant reversal threshold.
+     *
+     * @param highPrice      source used to locate swing highs
+     * @param lowPrice       source used to locate swing lows
+     * @param reversalAmount positive reversal threshold in price units
+     * @since 0.22.9
+     */
+    public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Number reversalAmount) {
+        this(highPrice, lowPrice, constantReversal(highPrice, reversalAmount));
     }
 
     public ZigZagStateIndicator(Indicator<Num> price, Number reversalAmount) {
@@ -77,21 +126,51 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
     }
 
     public ZigZagStateIndicator(BarSeries series) {
-        this(new ClosePriceIndicator(series), new ATRIndicator(series, 14));
+        this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
+                new ATRIndicator(series, 14));
+    }
+
+    ZigZagStateIndicator copy() {
+        return new ZigZagStateIndicator(highPrice, lowPrice, confirmationPrice, reversalAmount);
+    }
+
+    Indicator<Num> highPriceIndicator() {
+        return highPrice;
+    }
+
+    Indicator<Num> lowPriceIndicator() {
+        return lowPrice;
+    }
+
+    private static Indicator<Num> requireHighPrice(final Indicator<Num> highPrice) {
+        return IndicatorUtils.requireIndicator(highPrice, "highPrice");
+    }
+
+    private static Indicator<Num> defaultConfirmationPrice(final Indicator<Num> highPrice) {
+        return new ClosePriceIndicator(requireHighPrice(highPrice).getBarSeries());
+    }
+
+    private static Indicator<Num> constantReversal(final Indicator<Num> highPrice, final Number reversalAmount) {
+        final Indicator<Num> validatedHighPrice = requireHighPrice(highPrice);
+        return new ConstantIndicator<Num>(validatedHighPrice.getBarSeries(),
+                validatedHighPrice.getBarSeries().numFactory().numOf(reversalAmount));
     }
 
     @Override
     protected ZigZagState calculate(int index) {
         final BarSeries series = getBarSeries();
         final int beginIndex = series.getBeginIndex();
-        final Num p = price.getValue(index);
+        final Num high = highPrice.getValue(index);
+        final Num low = lowPrice.getValue(index);
+        final Num confirmation = confirmationPrice.getValue(index);
 
         if (index == beginIndex) {
-            // Initial state: no pivots, trend undefined, extreme is this bar
+            final Num initialPrice = Num.isFinite(high) ? high : low;
+            final Num initialReversalAmount = finitePositiveReversalAmount(index);
             return new ZigZagState(-1, null, // lastHighIndex, lastHighPrice
                     -1, null, // lastLowIndex, lastLowPrice
-                    ZigZagTrend.UNDEFINED, index, p // lastExtremeIndex, lastExtremePrice
-            );
+                    ZigZagTrend.UNDEFINED, index, initialPrice, index, high, index, low, initialReversalAmount,
+                    initialReversalAmount, initialReversalAmount);
         }
 
         final ZigZagState prev = getValue(index - 1);
@@ -105,67 +184,151 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         ZigZagTrend trend = prev.getTrend();
         int extremeIndex = prev.getLastExtremeIndex();
         Num extremePrice = prev.getLastExtremePrice();
+        Num extremeReversalAmount = prev.getLastExtremeReversalAmount();
 
-        final Num threshold = reversalAmount.getValue(index);
+        if (!Num.isFinite(high) || !Num.isFinite(low) || !Num.isFinite(confirmation)) {
+            return prev;
+        }
 
         switch (trend) {
         case UNDEFINED:
-            if (p.isGreaterThan(extremePrice)) {
-                trend = ZigZagTrend.UP;
-                extremeIndex = index;
-                extremePrice = p;
-            } else if (p.isLessThan(extremePrice)) {
-                trend = ZigZagTrend.DOWN;
-                extremeIndex = index;
-                extremePrice = p;
+            int initialHighIndex = prev.getInitialHighIndex();
+            Num initialHighPrice = prev.getInitialHighPrice();
+            Num initialHighReversalAmount = prev.getInitialHighReversalAmount();
+            int initialLowIndex = prev.getInitialLowIndex();
+            Num initialLowPrice = prev.getInitialLowPrice();
+            Num initialLowReversalAmount = prev.getInitialLowReversalAmount();
+            final boolean missingInitialHigh = !Num.isFinite(initialHighPrice);
+            final boolean missingInitialLow = !Num.isFinite(initialLowPrice);
+            if (missingInitialHigh) {
+                initialHighIndex = index;
+                initialHighPrice = high;
             }
-            break;
+            if (missingInitialLow) {
+                initialLowIndex = index;
+                initialLowPrice = low;
+            }
+            final boolean extendsHigh = high.isGreaterThan(initialHighPrice);
+            final boolean extendsLow = low.isLessThan(initialLowPrice);
+            final boolean needsCurrentReversalAmount = missingInitialHigh || missingInitialLow || extendsHigh
+                    || extendsLow || !isFinitePositive(initialHighReversalAmount)
+                    || !isFinitePositive(initialLowReversalAmount);
+            final Num currentReversalAmount = needsCurrentReversalAmount ? finitePositiveReversalAmount(index) : null;
+            if (missingInitialHigh) {
+                initialHighReversalAmount = currentReversalAmount;
+            }
+            if (missingInitialLow) {
+                initialLowReversalAmount = currentReversalAmount;
+            }
+            if (extendsHigh) {
+                initialHighIndex = index;
+                initialHighPrice = high;
+                initialHighReversalAmount = currentReversalAmount;
+            }
+            if (extendsLow) {
+                initialLowIndex = index;
+                initialLowPrice = low;
+                initialLowReversalAmount = currentReversalAmount;
+            }
+            if (!isFinitePositive(initialHighReversalAmount)) {
+                initialHighReversalAmount = currentReversalAmount;
+            }
+            if (!isFinitePositive(initialLowReversalAmount)) {
+                initialLowReversalAmount = currentReversalAmount;
+            }
+            if (extendsHigh && !extendsLow) {
+                extremeIndex = initialHighIndex;
+                extremePrice = initialHighPrice;
+                extremeReversalAmount = initialHighReversalAmount;
+            } else if (extendsLow && !extendsHigh) {
+                extremeIndex = initialLowIndex;
+                extremePrice = initialLowPrice;
+                extremeReversalAmount = initialLowReversalAmount;
+            }
+            final boolean confirmsUp = !extendsLow && isFinitePositive(initialLowReversalAmount)
+                    && confirmation.minus(initialLowPrice).isGreaterThanOrEqual(initialLowReversalAmount);
+            final boolean confirmsDown = !extendsHigh && isFinitePositive(initialHighReversalAmount)
+                    && initialHighPrice.minus(confirmation).isGreaterThanOrEqual(initialHighReversalAmount);
+            // A bar that confirms both directions has no observable intrabar ordering.
+            // Wait for an unambiguous confirmation instead of inventing a direction.
+            if (confirmsUp && !confirmsDown) {
+                lastLowIndex = initialLowIndex;
+                lastLowPrice = initialLowPrice;
+                trend = ZigZagTrend.UP;
+                extremeIndex = initialHighIndex;
+                extremePrice = initialHighPrice;
+                extremeReversalAmount = initialHighReversalAmount;
+            } else if (confirmsDown && !confirmsUp) {
+                lastHighIndex = initialHighIndex;
+                lastHighPrice = initialHighPrice;
+                trend = ZigZagTrend.DOWN;
+                extremeIndex = initialLowIndex;
+                extremePrice = initialLowPrice;
+                extremeReversalAmount = initialLowReversalAmount;
+            }
+            return new ZigZagState(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, extremeIndex,
+                    extremePrice, initialHighIndex, initialHighPrice, initialLowIndex, initialLowPrice,
+                    extremeReversalAmount, initialHighReversalAmount, initialLowReversalAmount);
 
         case UP:
-            if (p.isGreaterThan(extremePrice)) {
-                // Extend up‑leg
+            if (high.isGreaterThan(extremePrice)) {
                 extremeIndex = index;
-                extremePrice = p;
-            } else {
-                // Potential reversal down
-                Num moveDown = extremePrice.minus(p);
-                if (moveDown.isGreaterThanOrEqual(threshold)) {
-                    // Confirm swing high at extremeIndex
-                    lastHighIndex = extremeIndex;
-                    lastHighPrice = extremePrice;
-
-                    // Start new down‑leg from here
-                    trend = ZigZagTrend.DOWN;
-                    extremeIndex = index;
-                    extremePrice = p;
-                }
+                extremePrice = high;
+                extremeReversalAmount = finitePositiveReversalAmount(index);
+            }
+            if (!isFinitePositive(extremeReversalAmount)) {
+                extremeReversalAmount = resolveReversalAmount(extremeIndex, index);
+            }
+            if (isFinitePositive(extremeReversalAmount)
+                    && extremePrice.minus(confirmation).isGreaterThanOrEqual(extremeReversalAmount)) {
+                lastHighIndex = extremeIndex;
+                lastHighPrice = extremePrice;
+                trend = ZigZagTrend.DOWN;
+                extremeIndex = index;
+                extremePrice = low;
+                extremeReversalAmount = null;
             }
             break;
 
         case DOWN:
-            if (p.isLessThan(extremePrice)) {
-                // Extend down‑leg
+            if (low.isLessThan(extremePrice)) {
                 extremeIndex = index;
-                extremePrice = p;
-            } else {
-                // Potential reversal up
-                Num moveUp = p.minus(extremePrice);
-                if (moveUp.isGreaterThanOrEqual(threshold)) {
-                    // Confirm swing low at extremeIndex
-                    lastLowIndex = extremeIndex;
-                    lastLowPrice = extremePrice;
-
-                    // Start new up‑leg from here
-                    trend = ZigZagTrend.UP;
-                    extremeIndex = index;
-                    extremePrice = p;
-                }
+                extremePrice = low;
+                extremeReversalAmount = finitePositiveReversalAmount(index);
+            }
+            if (!isFinitePositive(extremeReversalAmount)) {
+                extremeReversalAmount = resolveReversalAmount(extremeIndex, index);
+            }
+            if (isFinitePositive(extremeReversalAmount)
+                    && confirmation.minus(extremePrice).isGreaterThanOrEqual(extremeReversalAmount)) {
+                lastLowIndex = extremeIndex;
+                lastLowPrice = extremePrice;
+                trend = ZigZagTrend.UP;
+                extremeIndex = index;
+                extremePrice = high;
+                extremeReversalAmount = null;
             }
             break;
         }
 
         return new ZigZagState(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, extremeIndex,
-                extremePrice);
+                extremePrice, prev.getInitialHighIndex(), prev.getInitialHighPrice(), prev.getInitialLowIndex(),
+                prev.getInitialLowPrice(), extremeReversalAmount, prev.getInitialHighReversalAmount(),
+                prev.getInitialLowReversalAmount());
+    }
+
+    private Num finitePositiveReversalAmount(final int index) {
+        final Num candidate = reversalAmount.getValue(index);
+        return isFinitePositive(candidate) ? candidate : null;
+    }
+
+    private Num resolveReversalAmount(final int extremeIndex, final int currentIndex) {
+        final Num anchored = finitePositiveReversalAmount(extremeIndex);
+        return anchored != null || extremeIndex == currentIndex ? anchored : finitePositiveReversalAmount(currentIndex);
+    }
+
+    private static boolean isFinitePositive(final Num value) {
+        return Num.isFinite(value) && value.isPositive();
     }
 
     /**
@@ -173,14 +336,15 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      * <p>
      * The ZigZag indicator has no fixed lookahead window since reversals can take
      * arbitrarily long to confirm. Each value only uses data up to the current
-     * index, so this method returns 0.
+     * index. The unstable-bar count is the maximum required by the underlying high,
+     * low, confirmation, and reversal sources.
      *
-     * @return 0, indicating no lookahead is required
+     * @return maximum warm-up required by the high, low, confirmation, and reversal
+     *         sources
      */
     @Override
     public int getCountOfUnstableBars() {
-        // There is no fixed lookahead window; reversals can take arbitrarily long.
-        // Returning 0 is reasonable: each value only uses data up to `index`.
-        return 0;
+        return Math.max(Math.max(reversalAmount.getCountOfUnstableBars(), confirmationPrice.getCountOfUnstableBars()),
+                Math.max(highPrice.getCountOfUnstableBars(), lowPrice.getCountOfUnstableBars()));
     }
 }

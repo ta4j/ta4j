@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -64,4 +69,12 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
         assertNumEquals(0, acceleration.getValue(3));
         assertNumEquals(0, acceleration.getValue(4));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new AccelerationDecelerationIndicator(series, 3, 5),
+                stableIndexes(series)));
+    }
+
 }

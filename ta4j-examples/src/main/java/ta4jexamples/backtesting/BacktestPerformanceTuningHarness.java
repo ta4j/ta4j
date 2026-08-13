@@ -276,7 +276,7 @@ import java.util.function.Consumer;
  * throughput mode</li>
  * <li>{@code --parallelism <auto|N>}: Throughput matrix cell fan-out</li>
  * <li>{@code --progress}: Enable progress logging with memory information</li>
- * <li>{@code --gcBetweenRuns}: Force GC between tuning runs (default:
+ * <li>{@code --pauseBetweenRuns}: Yield between tuning runs (default:
  * true)</li>
  * </ul>
  * <p>
@@ -448,9 +448,8 @@ public class BacktestPerformanceTuningHarness {
         if (plan.resolvedParallelism() == 1) {
             for (ThroughputMatrixCell cell : plan.cells()) {
                 tracker.record(runThroughputCell(baseSeries, plan, cell));
-                if (plan.gcBetweenRuns()) {
-                    System.gc();
-                    Thread.yield();
+                if (plan.pauseBetweenRuns()) {
+                    pauseBetweenRuns();
                 }
             }
         } else {
@@ -510,8 +509,7 @@ public class BacktestPerformanceTuningHarness {
         } catch (Exception ex) {
             LOG.warn("Warm-up failed (continuing): {}", ex.getMessage());
         }
-        System.gc();
-        Thread.yield();
+        pauseBetweenRuns();
     }
 
     /**
@@ -626,9 +624,8 @@ public class BacktestPerformanceTuningHarness {
 
                 lastLinear = current;
                 previous = current;
-                if (plan.gcBetweenRuns()) {
-                    System.gc();
-                    Thread.yield();
+                if (plan.pauseBetweenRuns()) {
+                    pauseBetweenRuns();
                 }
             }
 
@@ -673,6 +670,10 @@ public class BacktestPerformanceTuningHarness {
 
         LOG.info(RECOMMENDED_SETTINGS_PREFIX
                 + "If you hit 'no non-linear detected', increase --tuneStrategyMax to probe further.");
+    }
+
+    private static void pauseBetweenRuns() {
+        Thread.yield();
     }
 
     /**
@@ -863,7 +864,10 @@ public class BacktestPerformanceTuningHarness {
     }
 
     private static void writeJson(Path path, JsonObject object) throws IOException {
-        Files.createDirectories(path.getParent());
+        Path parent = path.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
         Files.writeString(path, PRETTY_GSON.toJson(object) + System.lineSeparator(), StandardCharsets.UTF_8);
     }
 
@@ -1013,7 +1017,10 @@ public class BacktestPerformanceTuningHarness {
                 for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
                     for (int reboundEntryThreshold = REBOUND_ENTRY_THRESHOLD_MIN; reboundEntryThreshold <= REBOUND_ENTRY_THRESHOLD_MAX; reboundEntryThreshold += REBOUND_ENTRY_THRESHOLD_INCREMENT) {
                         for (int exhaustionExitThreshold = EXHAUSTION_EXIT_THRESHOLD_MIN; exhaustionExitThreshold <= EXHAUSTION_EXIT_THRESHOLD_MAX; exhaustionExitThreshold += EXHAUSTION_EXIT_THRESHOLD_INCREMENT) {
-                            for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
+                            int decayStepCount = (int) Math
+                                    .round((DECAY_FACTOR_MAX - DECAY_FACTOR_MIN) / DECAY_FACTOR_INCREMENT);
+                            for (int decayStep = 0; decayStep <= decayStepCount; decayStep++) {
+                                double decayFactor = DECAY_FACTOR_MIN + (decayStep * DECAY_FACTOR_INCREMENT);
                                 try {
                                     int currentRsiBarCount = rsiBarCount;
                                     int currentTimeFrame = timeFrame;
@@ -1187,7 +1194,8 @@ public class BacktestPerformanceTuningHarness {
         usage.add("  --tuneMaxBarCountHints <csv>   (default: 0,512,1024,2048)");
         usage.add("  --nonlinearGcOverhead <0..1>   (default: " + DEFAULT_NONLINEAR_GC_OVERHEAD + ")");
         usage.add("  --nonlinearSlowdownRatio <x>   (default: " + DEFAULT_NONLINEAR_SLOWDOWN_RATIO + ")");
-        usage.add("  --gcBetweenRuns                (default: true)");
+        usage.add("  --pauseBetweenRuns             (default: true)");
+        usage.add("  --gcBetweenRuns                (legacy alias for --pauseBetweenRuns)");
         usage.add("");
         usage.add("Tune across heaps (fork child JVM per heap):");
         usage.add("  --tuneHeaps <csv>  (e.g. 4g,8g,16g)");
@@ -1278,12 +1286,12 @@ record Thresholds(double gcOverheadThreshold, double slowdownRatioThreshold) {
 }
 
 record TunePlan(List<Integer> strategyCounts, List<SeriesVariant> variants, ExecutionMode executionMode, int topK,
-        boolean progress, boolean gcBetweenRuns) {
+        boolean progress, boolean pauseBetweenRuns) {
 
     static TunePlan fromCli(HarnessCli cli, int fullBarCount) {
         List<Integer> strategyCounts = cli.buildTuneStrategyCounts();
         List<SeriesVariant> variants = cli.buildSeriesVariants(fullBarCount);
-        return new TunePlan(strategyCounts, variants, cli.executionMode, cli.topK, cli.progress, cli.gcBetweenRuns);
+        return new TunePlan(strategyCounts, variants, cli.executionMode, cli.topK, cli.progress, cli.pauseBetweenRuns);
     }
 
     String describe() {
@@ -1383,7 +1391,7 @@ record ThroughputCellResult(ThroughputMatrixCell cell, RunResult runResult, long
 }
 
 record ThroughputControlPlan(String dataset, Path outputDir, List<ThroughputMatrixCell> cells, String parallelism,
-        int resolvedParallelism, ExecutionMode executionMode, int topK, boolean progress, boolean gcBetweenRuns,
+        int resolvedParallelism, ExecutionMode executionMode, int topK, boolean progress, boolean pauseBetweenRuns,
         String specFingerprint) {
 
     static ThroughputControlPlan fromCli(HarnessCli cli, int fullBarCount) {
@@ -1396,12 +1404,12 @@ record ThroughputControlPlan(String dataset, Path outputDir, List<ThroughputMatr
                 .add(cli.parallelism)
                 .add(Integer.toString(resolvedParallelism))
                 .add(Boolean.toString(cli.progress))
-                .add(Boolean.toString(cli.gcBetweenRuns));
+                .add(Boolean.toString(cli.pauseBetweenRuns));
         cells.forEach(cell -> fingerprintSource.add(cell.toString()));
         Path outputDir = cli.throughputOutputDir == null ? Path.of(".agents", "benchmarks", "backtest-throughput",
                 "matrix-" + Instant.now().toString().replace(':', '-')) : cli.throughputOutputDir;
         return new ThroughputControlPlan(cli.ohlcResourceFile, outputDir.toAbsolutePath().normalize(), cells,
-                cli.parallelism, resolvedParallelism, cli.executionMode, cli.topK, cli.progress, cli.gcBetweenRuns,
+                cli.parallelism, resolvedParallelism, cli.executionMode, cli.topK, cli.progress, cli.pauseBetweenRuns,
                 BacktestPerformanceTuningHarness.shortSha256(fingerprintSource.toString()));
     }
 
@@ -1416,7 +1424,7 @@ record ThroughputControlPlan(String dataset, Path outputDir, List<ThroughputMatr
         object.addProperty("executionMode", executionMode.name());
         object.addProperty("topK", topK);
         object.addProperty("progress", progress);
-        object.addProperty("gcBetweenRuns", gcBetweenRuns);
+        object.addProperty("pauseBetweenRuns", pauseBetweenRuns);
         object.add("host", BacktestPerformanceTuningHarness.GSON.toJsonTree(host));
         JsonArray cellArray = new JsonArray();
         cells.forEach(cell -> cellArray.add(cell.toJson()));
@@ -1487,7 +1495,7 @@ final class ThroughputMatrixPerformanceTracker {
         root.addProperty("executionMode", plan.executionMode().name());
         root.addProperty("topK", plan.topK());
         root.addProperty("progress", plan.progress());
-        root.addProperty("gcBetweenRuns", plan.gcBetweenRuns());
+        root.addProperty("pauseBetweenRuns", plan.pauseBetweenRuns());
         root.addProperty("totalWallTimeMs", totalWallTimeMs);
         root.addProperty("sumCellWallTimeMs", sumCellWallTimeMs);
         root.addProperty("strategyBuildWallTimeMs", strategyBuildWallTimeMs);
@@ -1700,7 +1708,7 @@ final class HarnessCli {
     boolean tune;
     boolean throughputControl;
     boolean progress;
-    boolean gcBetweenRuns = true;
+    boolean pauseBetweenRuns = true;
 
     int topK = BacktestPerformanceTuningHarness.DEFAULT_TOP_K;
     int barCount;
@@ -1740,8 +1748,8 @@ final class HarnessCli {
             case "--tune" -> cli.tune = true;
             case "--throughputControl", "--throughput-control" -> cli.throughputControl = true;
             case "--progress" -> cli.progress = true;
-            case "--gcBetweenRuns" -> cli.gcBetweenRuns = true;
-            case "--noGcBetweenRuns" -> cli.gcBetweenRuns = false;
+            case "--pauseBetweenRuns", "--gcBetweenRuns" -> cli.pauseBetweenRuns = true;
+            case "--noPauseBetweenRuns", "--noGcBetweenRuns" -> cli.pauseBetweenRuns = false;
             case "--topK" -> cli.topK = Integer.parseInt(requireValue(args, ++i, arg));
             case "--bars", "--barCount" -> cli.barCount = Integer.parseInt(requireValue(args, ++i, arg));
             case "--strategies" -> cli.strategyCount = Integer.parseInt(requireValue(args, ++i, arg));
@@ -1813,10 +1821,10 @@ final class HarnessCli {
         if (progress) {
             args.add("--progress");
         }
-        if (gcBetweenRuns) {
-            args.add("--gcBetweenRuns");
+        if (pauseBetweenRuns) {
+            args.add("--pauseBetweenRuns");
         } else {
-            args.add("--noGcBetweenRuns");
+            args.add("--noPauseBetweenRuns");
         }
 
         return args;

@@ -12,12 +12,15 @@ set -euo pipefail
 #
 # =============================================================================
 
-for tool in mvn; do
-  command -v "$tool" >/dev/null 2>&1 || {
-    echo "Error: required tool '$tool' not found" >&2
-    exit 1
-  }
-done
+MAVEN_CMD=(mvn)
+if [[ -x "./mvnw" ]]; then
+  MAVEN_CMD=("./mvnw")
+elif [[ -f "./mvnw" ]]; then
+  MAVEN_CMD=(sh "./mvnw")
+elif ! command -v mvn >/dev/null 2>&1; then
+  echo "Error: required tool 'mvn' not found and Maven Wrapper is unavailable" >&2
+  exit 1
+fi
 
 declare -a ERRORS=()
 
@@ -39,7 +42,7 @@ module_label() {
 evaluate_expression() {
   local module="$1"
   local expression="$2"
-  local -a cmd=(mvn -q)
+  local -a cmd=("${MAVEN_CMD[@]}" -q)
 
   if [[ "$module" == "ta4j-parent" ]]; then
     cmd+=(-N)

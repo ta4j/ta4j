@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.FixedRule;
 
@@ -17,8 +16,6 @@ import org.ta4j.core.rules.FixedRule;
  * Regression coverage + opt-in perf harness for {@link RuleNameBenchmark}.
  */
 class RuleNameBenchmarkTest {
-
-    private static final String BENCHMARK_PROPERTY = "ta4j.runBenchmarks";
 
     @Test
     void eagerAndRuleTouchesChildNamesOnceAndCachesResult() {
@@ -70,7 +67,6 @@ class RuleNameBenchmarkTest {
 
     @Test
     @Tag("benchmark")
-    @EnabledIfSystemProperty(named = BENCHMARK_PROPERTY, matches = "true")
     void benchmarksRunWhenExplicitlyEnabled() throws Exception {
         int threads = Math.max(8, Runtime.getRuntime().availableProcessors());
         RuleNameBenchmark.main(new String[] { Integer.toString(threads), "2", "20000" });

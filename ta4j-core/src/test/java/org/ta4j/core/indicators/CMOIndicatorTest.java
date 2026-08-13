@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -47,4 +52,13 @@ public class CMOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         assertNumEquals(24.1983, cmo.getValue(14));
         assertNumEquals(47.644, cmo.getValue(15));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new CMOIndicator(close, 5), stableIndexes(series)));
+    }
+
 }

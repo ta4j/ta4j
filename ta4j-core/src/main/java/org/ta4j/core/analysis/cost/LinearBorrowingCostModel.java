@@ -3,27 +3,79 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.Objects;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
 
 /**
- * With this cost model, the trading costs for borrowing a position (i.e.
- * selling a position short) accrue linearly.
+ * With this cost model, the trading costs for borrowing a position accrue
+ * linearly.
+ *
+ * <p>
+ * By default borrowing costs apply to short positions only, preserving the
+ * historical behavior. Use
+ * {@link #LinearBorrowingCostModel(double, Applicability)} to apply borrowing
+ * costs to long positions, or to both long and short positions.
  */
 public class LinearBorrowingCostModel implements CostModel {
+
+    /**
+     * Defines which entry sides incur borrowing costs.
+     *
+     * @since 0.23.1
+     */
+    public enum Applicability {
+
+        /**
+         * Borrowing costs apply to short positions only.
+         *
+         * @since 0.23.1
+         */
+        SHORT_ONLY,
+
+        /**
+         * Borrowing costs apply to long positions only.
+         *
+         * @since 0.23.1
+         */
+        LONG_ONLY,
+
+        /**
+         * Borrowing costs apply to long and short positions.
+         *
+         * @since 0.23.1
+         */
+        BOTH
+    }
 
     /** The slope of the linear model (fee per period). */
     private final double feePerPeriod;
 
+    /** Which position sides incur borrowing costs. */
+    private final Applicability applicability;
+
     /**
-     * Constructor with {@code feePerPeriod * nPeriod}.
+     * Constructor with {@code feePerPeriod * nPeriod}. Borrowing costs apply to
+     * short positions only.
      *
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
+        this(feePerPeriod, Applicability.SHORT_ONLY);
+    }
+
+    /**
+     * Constructor with {@code feePerPeriod * nPeriod}.
+     *
+     * @param feePerPeriod  the coefficient (e.g. 0.0001 for 1bp per period)
+     * @param applicability which position sides incur borrowing costs
+     * @since 0.23.1
+     */
+    public LinearBorrowingCostModel(double feePerPeriod, Applicability applicability) {
         this.feePerPeriod = feePerPeriod;
+        this.applicability = Objects.requireNonNull(applicability, "applicability must not be null");
     }
 
     /**
@@ -56,8 +108,7 @@ public class LinearBorrowingCostModel implements CostModel {
         Trade exitTrade = position.getExit();
         Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
 
-        // Borrowing costs only apply to short positions.
-        if (entryTrade != null && entryTrade.getType().equals(TradeType.SELL) && entryTrade.getAmount() != null) {
+        if (entryTrade != null && entryTrade.getAmount() != null && appliesTo(entryTrade.getType())) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
                 tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
@@ -67,6 +118,14 @@ public class LinearBorrowingCostModel implements CostModel {
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }
         return borrowingCost;
+    }
+
+    private boolean appliesTo(TradeType tradeType) {
+        return switch (applicability) {
+        case BOTH -> true;
+        case LONG_ONLY -> tradeType == TradeType.BUY;
+        case SHORT_ONLY -> tradeType == TradeType.SELL;
+        };
     }
 
     /**
@@ -84,7 +143,8 @@ public class LinearBorrowingCostModel implements CostModel {
     public boolean equals(CostModel otherModel) {
         boolean equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
-            equality = ((LinearBorrowingCostModel) otherModel).feePerPeriod == this.feePerPeriod;
+            LinearBorrowingCostModel other = (LinearBorrowingCostModel) otherModel;
+            equality = other.feePerPeriod == this.feePerPeriod && other.applicability == this.applicability;
         }
         return equality;
     }

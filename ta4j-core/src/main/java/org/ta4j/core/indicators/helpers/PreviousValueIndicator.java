@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -25,7 +27,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      * @param indicator the indicator from which to calculate the previous value
      */
     public PreviousValueIndicator(Indicator<Num> indicator) {
-        this(indicator, 1);
+        this(validatedConfig(indicator, 1));
     }
 
     /**
@@ -35,12 +37,21 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
      * @param n         parameter defines the previous n-th value
      */
     public PreviousValueIndicator(Indicator<Num> indicator, int n) {
-        super(indicator);
+        this(validatedConfig(indicator, n));
+    }
+
+    private PreviousValueIndicator(Config config) {
+        super(config.indicator());
+        this.n = config.n();
+        this.indicator = config.indicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int n) {
+        Indicator<Num> validatedIndicator = Objects.requireNonNull(indicator, "indicator must not be null");
         if (n < 1) {
             throw new IllegalArgumentException("n must be positive number, but was: " + n);
         }
-        this.n = n;
-        this.indicator = indicator;
+        return new Config(validatedIndicator, n);
     }
 
     @Override
@@ -59,5 +70,8 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     public String toString() {
         final String nInfo = n == 1 ? "" : "(" + n + ")";
         return getClass().getSimpleName() + nInfo + "[" + this.indicator + "]";
+    }
+
+    private record Config(Indicator<Num> indicator, int n) {
     }
 }

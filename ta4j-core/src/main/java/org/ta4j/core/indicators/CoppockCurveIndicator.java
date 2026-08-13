@@ -17,7 +17,11 @@ import org.ta4j.core.num.Num;
  */
 public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
-    private final WMAIndicator wma;
+    private final Indicator<Num> indicator;
+    private final int longRoCBarCount;
+    private final int shortRoCBarCount;
+    private final int wmaBarCount;
+    private final transient WMAIndicator wma;
 
     /**
      * Constructor with:
@@ -44,6 +48,10 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
      */
     public CoppockCurveIndicator(Indicator<Num> indicator, int longRoCBarCount, int shortRoCBarCount, int wmaBarCount) {
         super(indicator);
+        this.indicator = indicator;
+        this.longRoCBarCount = longRoCBarCount;
+        this.shortRoCBarCount = shortRoCBarCount;
+        this.wmaBarCount = wmaBarCount;
         SumIndicator sum = new SumIndicator(new ROCIndicator(indicator, longRoCBarCount),
                 new ROCIndicator(indicator, shortRoCBarCount));
         this.wma = new WMAIndicator(sum, wmaBarCount);

@@ -33,6 +33,19 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
      */
     protected BaseVolatilityTrailingStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
             int barCount) {
+        this(validatedConfig(referencePrice, stopLossThreshold, barCount));
+    }
+
+    private BaseVolatilityTrailingStopLossRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopLossThreshold = config.stopLossThreshold();
+        this.barCount = config.barCount();
+        this.highestReferencePriceWithMaxLookback = config.highestReferencePriceWithMaxLookback();
+        this.lowestReferencePriceWithMaxLookback = config.lowestReferencePriceWithMaxLookback();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
+            int barCount) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
@@ -42,11 +55,9 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.referencePrice = referencePrice;
-        this.stopLossThreshold = stopLossThreshold;
-        this.barCount = barCount;
-        this.highestReferencePriceWithMaxLookback = new HighestValueIndicator(referencePrice, barCount);
-        this.lowestReferencePriceWithMaxLookback = new LowestValueIndicator(referencePrice, barCount);
+        return new Config(referencePrice, stopLossThreshold, barCount,
+                new HighestValueIndicator(referencePrice, barCount),
+                new LowestValueIndicator(referencePrice, barCount));
     }
 
     /**
@@ -176,5 +187,10 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
             return lowestReferencePriceWithMaxLookback.getValue(index);
         }
         return new LowestValueIndicator(referencePrice, lookback).getValue(index);
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold, int barCount,
+            HighestValueIndicator highestReferencePriceWithMaxLookback,
+            LowestValueIndicator lowestReferencePriceWithMaxLookback) {
     }
 }

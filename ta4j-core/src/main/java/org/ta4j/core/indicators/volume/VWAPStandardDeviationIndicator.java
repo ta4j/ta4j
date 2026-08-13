@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import java.util.Objects;
+
 import org.ta4j.core.num.Num;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
@@ -29,8 +31,22 @@ public class VWAPStandardDeviationIndicator extends AbstractVWAPIndicator {
      * @since 0.19
      */
     public VWAPStandardDeviationIndicator(AbstractVWAPIndicator reference) {
-        super(reference.priceIndicator, reference.volumeIndicator);
-        this.reference = reference;
+        this(validatedConfig(reference));
+    }
+
+    private VWAPStandardDeviationIndicator(Config config) {
+        super(config.reference().priceIndicator, config.reference().volumeIndicator);
+        this.reference = config.reference();
+    }
+
+    private static Config validatedConfig(AbstractVWAPIndicator reference) {
+        AbstractVWAPIndicator ownedReference = Objects.requireNonNull(reference, "reference must not be null").copy();
+        return new Config(ownedReference);
+    }
+
+    @Override
+    AbstractVWAPIndicator copy() {
+        return new VWAPStandardDeviationIndicator(reference);
     }
 
     /**
@@ -88,5 +104,8 @@ public class VWAPStandardDeviationIndicator extends AbstractVWAPIndicator {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " reference: " + reference;
+    }
+
+    private record Config(AbstractVWAPIndicator reference) {
     }
 }

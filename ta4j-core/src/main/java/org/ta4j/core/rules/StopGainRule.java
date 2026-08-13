@@ -37,7 +37,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(Indicator<Num> priceIndicator, Number gainPercentage) {
-        this(priceIndicator, numOf(priceIndicator, gainPercentage, "gainPercentage"));
+        this(validatedConfig(priceIndicator, numOf(priceIndicator, gainPercentage, "gainPercentage")));
     }
 
     /**
@@ -47,11 +47,20 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(Indicator<Num> priceIndicator, Num gainPercentage) {
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        this(validatedConfig(priceIndicator, gainPercentage));
+    }
+
+    private StopGainRule(Config config) {
+        this.priceIndicator = config.priceIndicator();
+        this.gainPercentage = config.gainPercentage();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Num gainPercentage) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
         if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isNegative()) {
             throw new IllegalArgumentException("gainPercentage must be >= 0");
         }
-        this.gainPercentage = gainPercentage;
+        return new Config(validatedPriceIndicator, gainPercentage);
     }
 
     /**
@@ -196,5 +205,8 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
         Objects.requireNonNull(priceIndicator, "priceIndicator");
         Objects.requireNonNull(value, parameterName);
         return priceIndicator.getBarSeries().numFactory().numOf(value);
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Num gainPercentage) {
     }
 }

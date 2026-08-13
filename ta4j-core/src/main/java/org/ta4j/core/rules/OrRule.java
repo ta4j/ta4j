@@ -57,11 +57,11 @@ public class OrRule extends AbstractRule {
 
     /** @return the first rule */
     public Rule getRule1() {
-        return rule1;
+        return RuleCopies.copy(rule1);
     }
 
     /** @return the second rule */
     public Rule getRule2() {
-        return rule2;
+        return RuleCopies.copy(rule2);
     }
 }

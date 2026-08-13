@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
@@ -49,6 +50,11 @@ public class NotRuleTest {
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, satisfiedRule.negation());
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, satisfiedRule.negation());
+    }
+
+    @Test
+    public void constructorRejectsNullRule() {
+        assertThrows(NullPointerException.class, () -> new NotRule(null));
     }
 
     @Test

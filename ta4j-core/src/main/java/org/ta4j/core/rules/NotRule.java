@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
@@ -25,7 +27,7 @@ public class NotRule extends AbstractRule {
      * @param ruleToNegate the trading rule to negate
      */
     public NotRule(Rule ruleToNegate) {
-        this.ruleToNegate = ruleToNegate;
+        this.ruleToNegate = Objects.requireNonNull(ruleToNegate, "ruleToNegate cannot be null");
         setName(createCompositeName(getClass().getSimpleName(), ruleToNegate));
     }
 
@@ -39,6 +41,6 @@ public class NotRule extends AbstractRule {
 
     /** @return {@link #ruleToNegate} */
     public Rule getRuleToNegate() {
-        return ruleToNegate;
+        return RuleCopies.copy(ruleToNegate);
     }
 }

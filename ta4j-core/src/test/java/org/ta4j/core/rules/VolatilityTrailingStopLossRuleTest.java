@@ -117,6 +117,10 @@ public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Ba
         assertThrows(IllegalArgumentException.class,
                 () -> new VolatilityTrailingStopLossRule(closePrice, volatility, 2, 0));
         assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityTrailingStopLossRule(closePrice, volatility, 0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityTrailingStopLossRule(closePrice, volatility, -1, 2));
+        assertThrows(IllegalArgumentException.class,
                 () -> new VolatilityTrailingStopLossRule((Indicator<Num>) null, volatility, 2, 2));
     }
 }

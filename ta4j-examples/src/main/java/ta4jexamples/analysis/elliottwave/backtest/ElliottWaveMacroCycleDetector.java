@@ -94,7 +94,7 @@ final class ElliottWaveMacroCycleDetector {
                 .build();
     }
 
-    private static List<Pivot> toPivots(final BarSeries series, final List<ElliottSwing> processedSwings) {
+    static List<Pivot> toPivots(final BarSeries series, final List<ElliottSwing> processedSwings) {
         if (processedSwings == null || processedSwings.isEmpty()) {
             return List.of();
         }
@@ -109,7 +109,7 @@ final class ElliottWaveMacroCycleDetector {
         return List.copyOf(pivots);
     }
 
-    private static List<MacroDrawdown> detectMacroDrawdowns(final List<Pivot> pivots) {
+    static List<MacroDrawdown> detectMacroDrawdowns(final List<Pivot> pivots) {
         final List<Pivot> allTimeHighs = new ArrayList<>();
         double bestHigh = Double.NEGATIVE_INFINITY;
         for (final Pivot pivot : pivots) {
@@ -154,8 +154,7 @@ final class ElliottWaveMacroCycleDetector {
         return trough;
     }
 
-    private static List<ElliottWaveAnchorCalibrationHarness.Anchor> toAnchors(
-            final List<MacroDrawdown> macroDrawdowns) {
+    static List<ElliottWaveAnchorCalibrationHarness.Anchor> toAnchors(final List<MacroDrawdown> macroDrawdowns) {
         final int anchorCount = macroDrawdowns.size() * 2;
         final int validationCutoff = Math.max(0, anchorCount - HOLDOUT_ANCHOR_COUNT);
         final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new ArrayList<>(anchorCount);
@@ -199,9 +198,9 @@ final class ElliottWaveMacroCycleDetector {
                 + " without a curated anchor registry.";
     }
 
-    private record Pivot(int index, Instant at, double price, boolean high) {
+    record Pivot(int index, Instant at, double price, boolean high) {
 
-        private Pivot {
+        Pivot {
             Objects.requireNonNull(at, "at");
             if (index < 0) {
                 throw new IllegalArgumentException("index must be >= 0");
@@ -212,9 +211,9 @@ final class ElliottWaveMacroCycleDetector {
         }
     }
 
-    private record MacroDrawdown(Pivot top, Pivot trough, double drawdownFraction) {
+    record MacroDrawdown(Pivot top, Pivot trough, double drawdownFraction) {
 
-        private MacroDrawdown {
+        MacroDrawdown {
             Objects.requireNonNull(top, "top");
             Objects.requireNonNull(trough, "trough");
             if (!top.high()) {

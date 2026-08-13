@@ -17,6 +17,7 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.WEEK;
 import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -1759,6 +1760,34 @@ public class PivotPointIndicatorTest {
         // period
         // Day 3: (110 + 104 + 108) / 3 = 322 / 3 = 107.333...
         assertNumEquals(107.33333333333333, pp.getValue(3));
+    }
+
+    @Test
+    public void pivotCopiesPreserveReversalValues() {
+        int index = series5Minutes.getEndIndex();
+        PivotPointIndicator pivot = new PivotPointIndicator(series5Minutes, DAY);
+        PivotPointIndicator pivotCopy = pivot.copy();
+        DeMarkPivotPointIndicator deMarkPivot = new DeMarkPivotPointIndicator(series5Minutes, DAY);
+        DeMarkPivotPointIndicator deMarkPivotCopy = deMarkPivot.copy();
+
+        assertNotSame(pivot, pivotCopy);
+        assertNotSame(deMarkPivot, deMarkPivotCopy);
+        assertNumEquals(pivot.getValue(index), pivotCopy.getValue(index));
+        assertNumEquals(deMarkPivot.getValue(index), deMarkPivotCopy.getValue(index));
+
+        StandardReversalIndicator standard = new StandardReversalIndicator(pivot, SUPPORT_1);
+        FibonacciReversalIndicator fibonacci = new FibonacciReversalIndicator(pivot, 0.382,
+                FibonacciReversalIndicator.FibReversalTyp.SUPPORT);
+        DeMarkReversalIndicator deMark = new DeMarkReversalIndicator(deMarkPivot,
+                DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT);
+
+        assertNumEquals(standard.getValue(index), new StandardReversalIndicator(pivotCopy, SUPPORT_1).getValue(index));
+        assertNumEquals(fibonacci.getValue(index),
+                new FibonacciReversalIndicator(pivotCopy, 0.382, FibonacciReversalIndicator.FibReversalTyp.SUPPORT)
+                        .getValue(index));
+        assertNumEquals(deMark.getValue(index),
+                new DeMarkReversalIndicator(deMarkPivotCopy, DeMarkReversalIndicator.DeMarkPivotLevel.SUPPORT)
+                        .getValue(index));
     }
 
     /**

@@ -24,9 +24,9 @@ import org.ta4j.core.num.Num;
 public class PlusDIIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final ATRIndicator atrIndicator;
-    private final PlusDMIndicator plusDMIndicator;
-    private final MMAIndicator avgPlusDMIndicator;
+    private final transient ATRIndicator atrIndicator;
+    private final transient PlusDMIndicator plusDMIndicator;
+    private final transient MMAIndicator avgPlusDMIndicator;
 
     /**
      * Constructor.

@@ -3,7 +3,13 @@
  */
 package org.ta4j.core.indicators.donchian;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 
 import org.junit.After;
 import org.junit.Before;
@@ -58,4 +64,29 @@ public class DonchianChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ba
         assertEquals(numOf(105), subject.getValue(8));
 
     }
+
+    @Test
+    public void constructorCopiesProvidedChannelBounds() {
+        DonchianChannelLowerIndicator lower = new DonchianChannelLowerIndicator(series, 3);
+        DonchianChannelUpperIndicator upper = new DonchianChannelUpperIndicator(series, 3);
+
+        DonchianChannelLowerIndicator lowerCopy = lower.copy();
+        DonchianChannelUpperIndicator upperCopy = upper.copy();
+        DonchianChannelMiddleIndicator subject = new DonchianChannelMiddleIndicator(series, 3, lower, upper);
+        DonchianChannelMiddleIndicator expected = new DonchianChannelMiddleIndicator(series, 3);
+
+        assertNotSame(lower, lowerCopy);
+        assertNotSame(upper, upperCopy);
+        assertEquals(lower.getValue(8), lowerCopy.getValue(8));
+        assertEquals(upper.getValue(8), upperCopy.getValue(8));
+        assertEquals(expected.getValue(8), subject.getValue(8));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List
+                .of(serializationFixture(series, new DonchianChannelMiddleIndicator(series, 9), stableIndexes(series)));
+    }
+
 }

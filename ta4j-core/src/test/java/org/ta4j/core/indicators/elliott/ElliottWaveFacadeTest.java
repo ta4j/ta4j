@@ -30,7 +30,9 @@ class ElliottWaveFacadeTest {
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
 
-        assertThat(suite.series()).isSameAs(series);
+        BarSeries seriesSnapshot = suite.series();
+        assertThat(seriesSnapshot).isNotSameAs(series);
+        assertThat(seriesSnapshot.getBarData()).containsExactlyElementsOf(series.getBarData());
         assertThat(suite.swing()).isNotNull();
         assertThat(suite.phase()).isNotNull();
         assertThat(suite.ratio()).isNotNull();
@@ -41,7 +43,7 @@ class ElliottWaveFacadeTest {
     }
 
     @Test
-    void indicatorsAreReused() {
+    void accessorsReturnOwnedIndicatorCopies() {
         var series = new MockBarSeriesBuilder().build();
         double[] closes = { 10, 12, 9, 13, 8 };
         for (double close : closes) {
@@ -50,14 +52,19 @@ class ElliottWaveFacadeTest {
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
 
-        // Subsequent calls return the same instance
         var phase1 = suite.phase();
         var phase2 = suite.phase();
-        assertThat(phase1).isSameAs(phase2);
+        assertThat(phase1).isNotSameAs(phase2);
+        assertThat(phase1.getValue(series.getEndIndex())).isEqualTo(phase2.getValue(series.getEndIndex()));
 
-        // Same for other indicators
-        assertThat(suite.ratio()).isSameAs(suite.ratio());
-        assertThat(suite.channel()).isSameAs(suite.channel());
+        assertEquivalentRatioCopy(suite.ratio(), suite.ratio(), series.getEndIndex());
+        assertEquivalentChannelCopy(suite.channel(), suite.channel(), series.getEndIndex());
+        assertThat(suite.confluence()).isNotSameAs(suite.confluence());
+        assertThat(suite.invalidation()).isNotSameAs(suite.invalidation());
+        assertThat(suite.scenarios()).isNotSameAs(suite.scenarios());
+        assertThat(suite.projection()).isNotSameAs(suite.projection());
+        assertThat(suite.invalidationLevel()).isNotSameAs(suite.invalidationLevel());
+        assertThat(suite.trendBias()).isNotSameAs(suite.trendBias());
     }
 
     @Test
@@ -85,12 +92,12 @@ class ElliottWaveFacadeTest {
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
         var swing = suite.swing();
 
-        // All indicators should use the same swing source
-        assertThat(suite.phase().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.ratio().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.channel().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.waveCount().getSwingIndicator()).isSameAs(swing);
-        assertThat(suite.scenarios().getSwingIndicator()).isSameAs(swing);
+        // Accessors return owned copies that preserve the same swing values.
+        assertEquivalentSwingCopy(suite.phase().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.ratio().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.channel().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.waveCount().getSwingIndicator(), swing, series.getEndIndex());
+        assertEquivalentSwingCopy(suite.scenarios().getSwingIndicator(), swing, series.getEndIndex());
     }
 
     @Test
@@ -213,5 +220,23 @@ class ElliottWaveFacadeTest {
                 .filter(scenario -> scenario.type() == ScenarioType.IMPULSE
                         && scenario.currentPhase() == ElliottPhase.WAVE2 && scenario.startIndex() == 0)
                 .toList();
+    }
+
+    private static void assertEquivalentSwingCopy(final ElliottSwingIndicator exposedSwing,
+            final ElliottSwingIndicator internalSwing, final int index) {
+        assertThat(exposedSwing).isNotSameAs(internalSwing);
+        assertThat(exposedSwing.getValue(index)).isEqualTo(internalSwing.getValue(index));
+    }
+
+    private static void assertEquivalentRatioCopy(final ElliottRatioIndicator first, final ElliottRatioIndicator second,
+            final int index) {
+        assertThat(first).isNotSameAs(second);
+        assertThat(first.getValue(index)).isEqualTo(second.getValue(index));
+    }
+
+    private static void assertEquivalentChannelCopy(final ElliottChannelIndicator first,
+            final ElliottChannelIndicator second, final int index) {
+        assertThat(first).isNotSameAs(second);
+        assertThat(first.getValue(index)).isEqualTo(second.getValue(index));
     }
 }

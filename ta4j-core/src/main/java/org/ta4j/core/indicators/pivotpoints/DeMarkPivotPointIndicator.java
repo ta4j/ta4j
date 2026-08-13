@@ -66,6 +66,10 @@ public class DeMarkPivotPointIndicator extends AbstractPivotPointIndicator {
         this.four = getBarSeries().numFactory().numOf(4);
     }
 
+    DeMarkPivotPointIndicator copy() {
+        return new DeMarkPivotPointIndicator(getBarSeries(), timeLevel);
+    }
+
     @Override
     protected Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())

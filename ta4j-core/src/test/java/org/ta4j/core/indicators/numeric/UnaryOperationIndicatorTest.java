@@ -19,6 +19,7 @@ import org.ta4j.core.num.NumFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOperationIndicator, Num> {
@@ -253,7 +254,7 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
 
         final var result = UnaryOperationIndicator.sqrt(indicator);
 
-        assertEquals(series, result.getBarSeries());
+        assertTrue(isSameSeries(series, result.getBarSeries()));
     }
 
     @Test

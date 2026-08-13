@@ -52,6 +52,7 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertThrows(IllegalArgumentException.class, () -> new MACDVIndicator(new ClosePriceIndicator(series), 0, 10));
         assertThrows(IllegalArgumentException.class,
                 () -> new MACDVIndicator(new ClosePriceIndicator(series), 5, 10, 0));
+        assertThrows(NullPointerException.class, () -> new MACDVIndicator((Indicator<Num>) null));
     }
 
     @Test

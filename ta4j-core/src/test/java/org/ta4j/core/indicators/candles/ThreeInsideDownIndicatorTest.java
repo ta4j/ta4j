@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -122,4 +125,11 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
         var tid = new ThreeInsideDownIndicator(series);
         assertTrue(tid.getValue(19));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new ThreeInsideDownIndicator(series), stableIndexes(series)));
+    }
+
 }

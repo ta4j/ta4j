@@ -283,6 +283,56 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         assertTrue(actual.isGreaterThan(series.numFactory().zero()));
     }
 
+    @Test
+    public void tradeSamplingUsesOneSamplePerClosedPosition() {
+        BarSeries series = buildDailySeries(getBarSeries("trade_sampling_series"),
+                new double[] { 100d, 110d, 99d, 118.8d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        Num amount = series.numFactory().one();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.exit(3, series.getBar(3).getClosePrice(), amount);
+
+        SortinoRatioCriterion criterion = criterion(SamplingFrequency.TRADE, Annualization.PERIOD);
+        Num actual = criterion.calculate(series, tradingRecord);
+
+        double[] tradeReturns = new double[] { 0.1d, -0.1d, 0.2d };
+        double mean = (tradeReturns[0] + tradeReturns[1] + tradeReturns[2]) / 3d;
+        double downsideDeviation = Math.sqrt(Math.pow(tradeReturns[1], 2d) / tradeReturns.length);
+        Num expected = numFactory.numOf(mean / downsideDeviation);
+
+        assertNumEquals(expected, actual, 1e-12);
+    }
+
+    @Test
+    public void tradeSamplingMarkToMarketIncludesOpenPositionAndIgnoreExcludesIt() {
+        BarSeries series = buildDailySeries(getBarSeries("trade_sampling_open_series"),
+                new double[] { 100d, 110d, 99d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        Num amount = series.numFactory().one();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), amount);
+
+        SortinoRatioCriterion markToMarket = new SortinoRatioCriterion(0d, SamplingFrequency.TRADE,
+                Annualization.PERIOD, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE,
+                OpenPositionHandling.MARK_TO_MARKET);
+        SortinoRatioCriterion ignore = new SortinoRatioCriterion(0d, SamplingFrequency.TRADE, Annualization.PERIOD,
+                ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
+
+        Num sortinoMarkToMarket = markToMarket.calculate(series, tradingRecord);
+        Num sortinoIgnore = ignore.calculate(series, tradingRecord);
+
+        assertTrue(sortinoMarkToMarket.isGreaterThan(sortinoIgnore));
+    }
+
     private SortinoRatioCriterion criterion(SamplingFrequency samplingFrequency, Annualization annualization) {
         return (SortinoRatioCriterion) getCriterion(0d, samplingFrequency, annualization, ZoneOffset.UTC);
     }

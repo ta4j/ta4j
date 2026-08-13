@@ -3,11 +3,15 @@
  */
 package org.ta4j.core.indicators.zigzag;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.AbstractRecentSwingIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -30,10 +34,8 @@ import org.ta4j.core.num.Num;
  * the given index. Use {@link ZigZagPivotHighIndicator} to detect when a new
  * swing high is confirmed in real-time.
  * <p>
- * The price indicator passed to the constructor should typically match the
- * price indicator used in the underlying {@link ZigZagStateIndicator} (e.g.,
- * both using {@code HighPriceIndicator} or both using
- * {@code ClosePriceIndicator}).
+ * The state-only constructor uses the state's high-price source. An explicit
+ * source can be supplied when custom swing pricing is intentional.
  *
  * @see ZigZagStateIndicator
  * @see ZigZagPivotHighIndicator
@@ -46,28 +48,40 @@ import org.ta4j.core.num.Num;
 public class RecentZigZagSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final ZigZagStateIndicator stateIndicator;
-    private final Indicator<Num> price; // same price as used in stateIndicator
+    private final transient Indicator<Num> price;
 
     /**
-     * Constructs a RecentZigZagSwingHighIndicator.
+     * Constructs an indicator using the state's high-price source.
+     *
+     * @param stateIndicator ZigZag state providing swing indexes and high prices
+     * @since 0.22.9
+     */
+    public RecentZigZagSwingHighIndicator(ZigZagStateIndicator stateIndicator) {
+        this(stateIndicator, Objects.requireNonNull(stateIndicator, "stateIndicator").highPriceIndicator());
+    }
+
+    /**
+     * Constructs an indicator with an explicit swing-high price source.
      *
      * @param stateIndicator the ZigZagStateIndicator that tracks the ZigZag pattern
      *                       state
-     * @param price          the price indicator to use for retrieving swing high
-     *                       values. Should typically match the price indicator used
-     *                       in the stateIndicator (e.g., both using
-     *                       {@code HighPriceIndicator} or both using
-     *                       {@code ClosePriceIndicator})
+     * @param price          the price indicator used to retrieve swing-high values;
+     *                       typically the {@code HighPriceIndicator} corresponding
+     *                       to the state indicator's high-price component
      */
     public RecentZigZagSwingHighIndicator(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
-        super(price, 0);
-        this.stateIndicator = stateIndicator;
-        this.price = price;
+        this(validatedConfig(stateIndicator, price));
+    }
+
+    private RecentZigZagSwingHighIndicator(Config config) {
+        super(config.price(), config.stateIndicator().getCountOfUnstableBars());
+        this.stateIndicator = config.stateIndicator();
+        this.price = config.price();
     }
 
     public RecentZigZagSwingHighIndicator(BarSeries series) {
-        this(new ZigZagStateIndicator(new HighPriceIndicator(series), new ATRIndicator(series, 14)),
-                new HighPriceIndicator(series));
+        this(new ZigZagStateIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                new ATRIndicator(series, 14)), new HighPriceIndicator(series));
     }
 
     /**
@@ -91,5 +105,15 @@ public class RecentZigZagSwingHighIndicator extends AbstractRecentSwingIndicator
     protected int detectLatestSwingIndex(int index) {
         final ZigZagState state = stateIndicator.getValue(index);
         return state.getLastHighIndex();
+    }
+
+    private static Config validatedConfig(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
+        ZigZagStateIndicator safeStateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator");
+        Indicator<Num> safePrice = Objects.requireNonNull(price, "price");
+        IndicatorUtils.requireSameSeries(safeStateIndicator, safePrice);
+        return new Config(safeStateIndicator.copy(), safePrice);
+    }
+
+    private record Config(ZigZagStateIndicator stateIndicator, Indicator<Num> price) {
     }
 }

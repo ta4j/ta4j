@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num tolerance) {
-        this(priceIndicator, null, lookbackCount, tolerance);
+        this(validatedConfig(priceIndicator, null, null, lookbackCount, tolerance));
     }
 
     /**
@@ -64,7 +64,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             int lookbackCount, Num tolerance) {
-        this(priceIndicator, weightIndicator, weightIndicator, lookbackCount, tolerance);
+        this(validatedConfig(priceIndicator, weightIndicator, weightIndicator, lookbackCount, tolerance));
     }
 
     /**
@@ -81,13 +81,28 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             Indicator<Num> weightIndicatorSource, int lookbackCount, Num tolerance) {
-        super(priceIndicator);
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
-        this.lookbackCount = lookbackCount;
-        this.tolerance = Objects.requireNonNull(tolerance, "tolerance must not be null");
-        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
+        this(validatedConfig(priceIndicator, weightIndicator, weightIndicatorSource, lookbackCount, tolerance));
+    }
+
+    private AbstractPriceClusterIndicator(Config config) {
+        super(config.priceIndicator());
+        this.priceIndicator = config.priceIndicator();
+        this.lookbackCount = config.lookbackCount();
+        this.tolerance = config.tolerance();
+        this.weightIndicator = config.weightIndicator();
+        this.weightIndicatorSource = config.weightIndicatorSource();
+        this.clusterIndexCache = new ConcurrentHashMap<>();
+        this.lastPrunedCacheBeginIndex = config.series().getBeginIndex() - 1;
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
+            Indicator<Num> weightIndicatorSource, int lookbackCount, Num tolerance) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        Num validatedTolerance = Objects.requireNonNull(tolerance, "tolerance must not be null");
+        BarSeries series = Objects.requireNonNull(validatedPriceIndicator.getBarSeries(),
                 "indicator must reference a bar series");
-        if (isInvalid(tolerance) || tolerance.isLessThan(series.numFactory().zero())) {
+        if (!Num.isFinite(validatedTolerance) || validatedTolerance.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("tolerance must be greater than or equal to zero");
         }
         Indicator<Num> resolvedWeight = weightIndicator;
@@ -95,17 +110,20 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             resolvedWeight = new ConstantIndicator<>(series, series.numFactory().one());
         }
         Indicator<Num> resolvedSource = weightIndicatorSource != null ? weightIndicatorSource : resolvedWeight;
-        if (resolvedWeight.getBarSeries() != series) {
+        if (!isSameSeries(series, resolvedWeight.getBarSeries())) {
             throw new IllegalArgumentException("weightIndicator must share the same bar series as priceIndicator");
         }
-        if (resolvedSource.getBarSeries() != series) {
+        if (!isSameSeries(series, resolvedSource.getBarSeries())) {
             throw new IllegalArgumentException(
                     "weightIndicatorSource must share the same bar series as priceIndicator");
         }
-        this.weightIndicator = resolvedWeight;
-        this.weightIndicatorSource = resolvedSource;
-        this.clusterIndexCache = new ConcurrentHashMap<>();
-        this.lastPrunedCacheBeginIndex = series.getBeginIndex() - 1;
+        return new Config(validatedPriceIndicator, resolvedWeight, resolvedSource, lookbackCount, validatedTolerance,
+                series);
+    }
+
+    private static Config validatedSeriesConfig(BarSeries series, int lookbackCount, Num tolerance) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        return validatedConfig(new ClosePriceIndicator(validatedSeries), null, null, lookbackCount, tolerance);
     }
 
     /**
@@ -118,7 +136,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(BarSeries series, int lookbackCount, Num tolerance) {
-        this(new ClosePriceIndicator(series), lookbackCount, tolerance);
+        this(validatedSeriesConfig(series, lookbackCount, tolerance));
     }
 
     /**
@@ -196,11 +214,11 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         List<PriceCluster> clusters = new ArrayList<>();
         for (int i = startIndex; i <= endIndex; i++) {
             Num value = priceIndicator.getValue(i);
-            if (isInvalid(value)) {
+            if (!Num.isFinite(value)) {
                 continue;
             }
             Num weight = weightIndicator().getValue(i);
-            if (isInvalid(weight) || !weight.isPositive()) {
+            if (!Num.isFinite(weight) || !weight.isPositive()) {
                 continue;
             }
             boolean assigned = false;
@@ -356,5 +374,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         }
         clusterIndexCache().keySet().removeIf(cacheIndex -> cacheIndex < beginIndex);
         lastPrunedCacheBeginIndex = beginIndex;
+    }
+
+    private record Config(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
+            Indicator<Num> weightIndicatorSource, int lookbackCount, Num tolerance, BarSeries series) {
     }
 }

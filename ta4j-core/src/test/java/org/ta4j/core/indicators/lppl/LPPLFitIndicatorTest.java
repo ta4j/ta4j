@@ -1,0 +1,173 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.indicators.lppl;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
+import org.ta4j.core.serialization.IndicatorSerialization;
+
+class LPPLFitIndicatorTest {
+
+    @Test
+    void evaluatesCurrentBarWithoutRefittingIt() {
+        BarSeries aboveSeries = LPPLTestFixtures.syntheticSeries(-0.03, 0.08);
+        BarSeries belowSeries = LPPLTestFixtures.syntheticSeries(-0.03, -0.08);
+        LPPLFit above = fit(aboveSeries);
+        LPPLFit below = fit(belowSeries);
+
+        assertThat(above.isConverged()).isTrue();
+        assertThat(below.isConverged()).isTrue();
+        assertThat(above.a()).isEqualTo(below.a());
+        assertThat(above.b()).isEqualTo(below.b());
+        assertThat(above.criticalTime()).isEqualTo(below.criticalTime());
+        assertThat(above.residual()).isPositive();
+        assertThat(below.residual()).isNegative();
+        assertThat(above.normalizedResidual()).isBetween(0.0, 1.0);
+        assertThat(below.normalizedResidual()).isBetween(-1.0, 0.0);
+    }
+
+    @Test
+    void reportsWarmupAndInvalidInputWithoutReadingPrehistory() {
+        double[] prices = LPPLTestFixtures.syntheticPrices(-0.03, 0.0);
+        prices[10] = 0.0;
+        BarSeries series = new MockBarSeriesBuilder().withData(prices).build();
+        LPPLFitIndicator indicator = new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile());
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(LPPLTestFixtures.WINDOW);
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW - 1).status()).isEqualTo(LPPLFitStatus.INSUFFICIENT_DATA);
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW).status()).isEqualTo(LPPLFitStatus.INVALID_INPUT);
+    }
+
+    @Test
+    void laterPricesCannotChangeAnEarlierFit() {
+        double[] first = LPPLTestFixtures.syntheticPrices(-0.03, 0.04);
+        double[] second = first.clone();
+        second[LPPLTestFixtures.WINDOW + 1] *= 20.0;
+        LPPLFit firstFit = fit(new MockBarSeriesBuilder().withData(first).build());
+        LPPLFit secondFit = fit(new MockBarSeriesBuilder().withData(second).build());
+
+        assertThat(secondFit).isEqualTo(firstFit);
+    }
+
+    @Test
+    void preservesFiniteHighPrecisionPricesBeforePrimitiveConversion() {
+        double[] prices = LPPLTestFixtures.syntheticPrices(-0.03, 0.04);
+        BarSeries series = new MockBarSeriesBuilder().withData(prices).build();
+        LPPLFit baseline = fit(series);
+
+        LPPLFit decimal = new LPPLFitIndicator(scaledDecimalPrices(series, prices, 0),
+                LPPLTestFixtures.compactProfile()).getValue(LPPLTestFixtures.WINDOW);
+        LPPLFit huge = new LPPLFitIndicator(scaledDecimalPrices(series, prices, 400), LPPLTestFixtures.compactProfile())
+                .getValue(LPPLTestFixtures.WINDOW);
+        LPPLFit tiny = new LPPLFitIndicator(scaledDecimalPrices(series, prices, -400),
+                LPPLTestFixtures.compactProfile()).getValue(LPPLTestFixtures.WINDOW);
+
+        assertThat(decimal.status()).isEqualTo(LPPLFitStatus.VALID);
+        assertThat(huge.status()).isEqualTo(LPPLFitStatus.VALID);
+        assertThat(tiny.status()).isEqualTo(LPPLFitStatus.VALID);
+        assertThat(decimal.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
+        assertThat(huge.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
+        assertThat(tiny.normalizedResidual()).isCloseTo(baseline.normalizedResidual(), within(1e-8));
+    }
+
+    @Test
+    void finiteDoublePricesRemainValidInputWhenTheirCenteredRatioOverflows() {
+        int valueCount = LPPLTestFixtures.WINDOW + 1;
+        double[] backingPrices = new double[valueCount];
+        List<Num> prices = new ArrayList<>(valueCount);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(backingPrices)
+                .build();
+        for (int index = 0; index < valueCount; index++) {
+            double exponent = -300.0 + 600.0 * index / LPPLTestFixtures.WINDOW;
+            prices.add(series.numFactory().numOf(Math.pow(10.0, exponent)));
+        }
+
+        LPPLFit fit = new LPPLFitIndicator(new MockIndicator(series, prices), LPPLTestFixtures.compactProfile())
+                .getValue(LPPLTestFixtures.WINDOW);
+
+        assertThat(fit.status()).isNotEqualTo(LPPLFitStatus.INVALID_INPUT);
+    }
+
+    @Test
+    void recoversAfterMissingInputLeavesTheCalibrationWindow() {
+        double[] prices = LPPLTestFixtures.syntheticPrices(LPPLTestFixtures.WINDOW + 12, LPPLTestFixtures.WINDOW + 40.0,
+                -0.03);
+        BarSeries series = new MockBarSeriesBuilder().withData(prices).build();
+        List<Num> values = new ArrayList<>(prices.length);
+        for (double price : prices) {
+            values.add(series.numFactory().numOf(price));
+        }
+        values.set(10, NaN.NaN);
+        LPPLFitIndicator indicator = new LPPLFitIndicator(new MockIndicator(series, values),
+                LPPLTestFixtures.compactProfile());
+
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW).status()).isEqualTo(LPPLFitStatus.INVALID_INPUT);
+        assertThat(indicator.getValue(LPPLTestFixtures.WINDOW + 11).status()).isEqualTo(LPPLFitStatus.VALID);
+    }
+
+    @Test
+    void honorsWarmupAtTheRetainedBoundaryOfABoundedSeries() {
+        double[] prices = LPPLTestFixtures.syntheticPrices(LPPLTestFixtures.WINDOW + 12, LPPLTestFixtures.WINDOW + 40.0,
+                -0.03);
+        MockBarSeriesBuilder builder = new MockBarSeriesBuilder();
+        builder.withMaxBarCount(LPPLTestFixtures.WINDOW + 1);
+        BarSeries series = builder.withData(prices).build();
+        LPPLFitIndicator indicator = new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile());
+
+        assertThat(indicator.getValue(series.getEndIndex() - 1).status()).isEqualTo(LPPLFitStatus.INSUFFICIENT_DATA);
+        assertThat(indicator.getValue(series.getEndIndex()).status()).isEqualTo(LPPLFitStatus.VALID);
+    }
+
+    @Test
+    void descriptorAndJsonRoundTripsPreserveProfileAndOutput() {
+        BarSeries series = LPPLTestFixtures.syntheticSeries(-0.03, 0.04);
+        LPPLFitIndicator original = new LPPLFitIndicator(new ClosePriceIndicator(series),
+                LPPLTestFixtures.compactProfile());
+        ComponentDescriptor descriptor = original.toDescriptor();
+
+        LPPLFitIndicator fromDescriptor = (LPPLFitIndicator) IndicatorSerialization.fromDescriptor(series, descriptor);
+        Indicator<?> fromJson = Indicator.fromJson(series, original.toJson());
+
+        assertThat(ComponentSerialization.toJson(fromDescriptor.toDescriptor()))
+                .isEqualTo(ComponentSerialization.toJson(descriptor));
+        assertThat(ComponentSerialization.toJson(fromJson.toDescriptor()))
+                .isEqualTo(ComponentSerialization.toJson(descriptor));
+        assertThat(fromDescriptor.getProfile()).isEqualTo(original.getProfile());
+        assertThat(fromDescriptor.getValue(LPPLTestFixtures.WINDOW))
+                .isEqualTo(original.getValue(LPPLTestFixtures.WINDOW));
+    }
+
+    private static LPPLFit fit(BarSeries series) {
+        return new LPPLFitIndicator(series, LPPLTestFixtures.compactProfile()).getValue(LPPLTestFixtures.WINDOW);
+    }
+
+    private static Indicator<Num> scaledDecimalPrices(BarSeries series, double[] prices, int scale) {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(64);
+        List<Num> values = new ArrayList<>(prices.length);
+        for (double price : prices) {
+            BigDecimal scaled = BigDecimal.valueOf(price).scaleByPowerOfTen(scale);
+            values.add(decimalFactory.numOf(scaled.toPlainString()));
+        }
+        return new MockIndicator(series, values);
+    }
+}

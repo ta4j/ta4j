@@ -58,6 +58,18 @@ public class StretchZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertThat(subject.getValue(4).isPositive()).isTrue();
     }
 
+    @Test
+    public void standardDeviationGetterReturnsIndependentHelper() {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        StretchZScoreIndicator subject = new StretchZScoreIndicator(close, 3);
+
+        StandardDeviationIndicator first = subject.getStandardDeviationIndicator();
+        StandardDeviationIndicator second = subject.getStandardDeviationIndicator();
+
+        assertThat(first).isNotSameAs(second);
+        assertNumEquals(first.getValue(4), second.getValue(4));
+    }
+
     private void addClose(double price) {
         series.barBuilder().openPrice(price).highPrice(price).lowPrice(price).closePrice(price).volume(1).add();
     }

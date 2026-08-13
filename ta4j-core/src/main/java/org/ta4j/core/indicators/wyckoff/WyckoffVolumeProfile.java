@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
-import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import static org.ta4j.core.num.NaN.NaN;
 import java.util.Objects;
 
@@ -53,7 +52,7 @@ public final class WyckoffVolumeProfile {
         this.longSma = new SMAIndicator(volumeIndicator, longWindow);
         this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
         this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
-        if (isInvalid(this.climaxThreshold) || isInvalid(this.dryUpThreshold)) {
+        if (!Num.isFinite(this.climaxThreshold) || !Num.isFinite(this.dryUpThreshold)) {
             throw new IllegalArgumentException("Volume thresholds must be valid numbers");
         }
     }
@@ -67,17 +66,17 @@ public final class WyckoffVolumeProfile {
      */
     public VolumeSnapshot snapshot(int index) {
         final Num rawVolume = volumeIndicator.getValue(index);
-        if (isInvalid(rawVolume)) {
+        if (!Num.isFinite(rawVolume)) {
             return VolumeSnapshot.empty();
         }
         final Num shortAverage = shortSma.getValue(index);
         final Num longAverage = longSma.getValue(index);
-        if (isInvalid(shortAverage) || isInvalid(longAverage) || longAverage.isZero()) {
+        if (!Num.isFinite(shortAverage) || !Num.isFinite(longAverage) || longAverage.isZero()) {
             return new VolumeSnapshot(rawVolume, NaN, false, false);
         }
         final Num ratio = shortAverage.dividedBy(longAverage);
-        final boolean climax = !isInvalid(ratio) && ratio.isGreaterThan(climaxThreshold);
-        final boolean dryUp = !isInvalid(ratio) && ratio.isLessThan(dryUpThreshold);
+        final boolean climax = Num.isFinite(ratio) && ratio.isGreaterThan(climaxThreshold);
+        final boolean dryUp = Num.isFinite(ratio) && ratio.isLessThan(dryUpThreshold);
         return new VolumeSnapshot(rawVolume, ratio, climax, dryUp);
     }
 

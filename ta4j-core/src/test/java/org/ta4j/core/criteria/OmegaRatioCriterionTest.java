@@ -89,6 +89,11 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void rejectsNullReturnRepresentation() {
+        assertThrows(NullPointerException.class, () -> new OmegaRatioCriterion((ReturnRepresentation) null));
+    }
+
+    @Test
     public void returnsNaNWhenTradingRecordHasOnlyUpsideReturns() {
         BarSeries series = buildSeries("omega_positive_only", new double[] { 100d, 110d, 121d });
         TradingRecord tradingRecord = alwaysInvested(series);
