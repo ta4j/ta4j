@@ -566,6 +566,17 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void profileRejectsLagRangesAboveTheCapacityGuard() {
+        // Review regression: the record must enforce the same MAX_PROFILE_LAGS
+        // ceiling as the indicator constructor, so a directly constructed or
+        // deserialized profile cannot advertise a 1,000,001-point scan that no
+        // indicator could ever produce.
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class, () -> new Profile(0, 2, 0,
+                1_000_000, LagSelectionPolicy.MAXIMUM_CORRELATION, List.of(), List.of(), OptionalInt.empty(), NaN.NaN));
+        assertTrue(rejected.getMessage().contains("lag range is too large"));
+    }
+
+    @Test
     public void pointRejectsNonFiniteCorrelation() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Point(0, DoubleNum.valueOf(Double.POSITIVE_INFINITY), 8));

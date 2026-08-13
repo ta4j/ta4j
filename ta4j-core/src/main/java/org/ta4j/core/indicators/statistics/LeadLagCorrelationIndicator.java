@@ -36,9 +36,11 @@ import org.ta4j.core.num.NumFactory;
  * remains {@code NaN} until the full configured lag range reaches its worst-lag
  * warm-up boundary (even if inner lags are already defined), and is also
  * {@code NaN} when no lag in the range is defined; otherwise it is the
- * correlation at the selected lag. {@code getProfile(index)} re-scans the full
- * profile at that index.
- * </p>
+ * correlation at the selected lag. The warm-up boundary is relative to the
+ * retained series head: when history has been discarded the unstable-bar counts
+ * restart from the retained begin index, so windows that would read dropped
+ * bars stay undefined. {@code getProfile(index)} re-scans the full profile at
+ * that index.
  *
  * <p>
  * Complexity for {@code L = maximumLag - minimumLag + 1} lags is
@@ -334,7 +336,8 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
          *                                  {@code bestLags}, {@code selectedLag}, or
          *                                  {@code selectedCorrelation} is null
          * @throws IllegalArgumentException if {@code barCount < 2},
-         *                                  {@code minimumLag > maximumLag},
+         *                                  {@code minimumLag > maximumLag}, the lag
+         *                                  range exceeds the profile capacity guard,
          *                                  {@code bestLags} is not ascending, a point's
          *                                  sampleCount is neither 0 nor
          *                                  {@code barCount}, or the selected
@@ -346,6 +349,13 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
             }
             if (minimumLag > maximumLag) {
                 throw new IllegalArgumentException("minimumLag must be <= maximumLag");
+            }
+            // The indicator constructor refuses lag ranges above the capacity
+            // guard; the record must enforce the same ceiling so a directly
+            // constructed or deserialized profile cannot advertise a scan that
+            // no indicator could ever produce.
+            if ((long) maximumLag - minimumLag + 1L > MAX_PROFILE_LAGS) {
+                throw new IllegalArgumentException("lag range is too large (at most " + MAX_PROFILE_LAGS + " lags)");
             }
             Objects.requireNonNull(selectionPolicy, "selectionPolicy");
             points = List.copyOf(points);
