@@ -36,7 +36,11 @@ class FloatNum implements Num {
     }
 
     static FloatNum valueOf(final String val) {
-        return new FloatNum(Float.parseFloat(val));
+        try {
+            return new FloatNum(Float.parseFloat(val));
+        } catch (NumberFormatException e) {
+            throw new NumberFormatException("not a float: \"" + val + "\"");
+        }
     }
 
     @Override
@@ -150,6 +154,11 @@ class FloatNum implements Num {
     }
 
     @Override
+    public boolean isNaN() {
+        return Float.isNaN(this.delegate);
+    }
+
+    @Override
     public boolean isPositive() {
         return this.delegate > 0;
     }
@@ -214,7 +223,12 @@ class FloatNum implements Num {
         if (!(obj instanceof final FloatNum floatNumObj)) {
             return false;
         }
-        return Math.abs(this.delegate - floatNumObj.delegate) < 0.00001f;
+        // Exact comparison: tolerance would break the equals/hashCode
+        // contract (distinct values comparing equal while Float.hashCode
+        // stays distinct) and NaN would never equal itself. Float.compare
+        // treats all NaN bit patterns as one canonical value, matching
+        // Float.hashCode.
+        return Float.compare(this.delegate, floatNumObj.delegate) == 0;
     }
 
     @Override

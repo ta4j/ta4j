@@ -1091,6 +1091,30 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         assertNumEquals(floatFactory.numOf(Float.MAX_VALUE), distance, 1.0e-6);
     }
 
+    @Test
+    public void scaledAlignmentNeverMaterializesTheOverflowingPower() {
+        // Review regression: a squared cost at scale 1024 (a 1.4e154 delta)
+        // next to a plain finite 1e308 cost was aligned by dividing the
+        // smaller operand by pow2(1024), which overflows to infinity and
+        // discards the contribution, reporting about 9.8e307 instead of the
+        // representable mean 1.48e308. The alignment must bound the power in
+        // chunks and compare the ceiling in the scaled domain so the halving
+        // guard still fires.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, 1.4e154, 1e154);
+        Indicator<Num> second = indicator(series, 0, 0);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, config).getValue(1);
+
+        Num expected = numFactory.numOf("1.48e308");
+        assertNumEquals(expected, distance, 1.0e-12);
+    }
+
     private BarSeries series(int barCount) {
         double[] raw = new double[barCount];
         for (int i = 0; i < barCount; i++) {

@@ -236,11 +236,21 @@ final class DynamicTimeWarpingSupport {
                         // compensating exponent whenever a primitive-backed sum
                         // would exceed the representable range.
                         int scale = Math.max(bestMeanScale, pathCost.scale());
+                        // 2^diff overflows for diff >= 1024 even though the
+                        // true quotient stays representable (for example a
+                        // squared cost at scale 1024 next to a plain 1e308
+                        // cost): dividing by the full power would discard the
+                        // smaller operand. Bound the power in chunks instead.
                         Num bestTotal = bestMeanScale == scale ? bestMeanValue
-                                : bestMeanValue.dividedBy(pow2(scale - bestMeanScale, numFactory));
+                                : scaledDivide(bestMeanValue, scale - bestMeanScale, numFactory);
                         Num costTotal = pathCost.scale() == scale ? pathCost.value()
-                                : pathCost.value().dividedBy(pow2(scale - pathCost.scale(), numFactory));
-                        if (overflowCapable && bestTotal.isGreaterThan(maxValue.minus(costTotal))) {
+                                : scaledDivide(pathCost.value(), scale - pathCost.scale(), numFactory);
+                        // The ceiling applies to the scaled domain: the total
+                        // overflows when bestTotal + costTotal exceeds
+                        // maxValue / 2^scale, so compare against that bound
+                        // (also chunked) rather than the raw maximum.
+                        if (overflowCapable && bestTotal
+                                .isGreaterThan(scaledCeiling(scale, maxValue, numFactory).minus(costTotal))) {
                             bestTotal = bestTotal.dividedBy(numFactory.two());
                             costTotal = costTotal.dividedBy(numFactory.two());
                             scale++;
@@ -472,6 +482,26 @@ final class DynamicTimeWarpingSupport {
 
     private static Num pow2(int exponent, NumFactory numFactory) {
         return numFactory.numOf(2).pow(exponent);
+    }
+
+    /**
+     * @return {@code value / 2^exponent} without materializing the full power:
+     *         {@code 2^exponent} overflows for {@code exponent >= 1024} even though
+     *         the quotient stays representable.
+     */
+    private static Num scaledDivide(Num value, int exponent, NumFactory numFactory) {
+        return value.dividedBy(pow2(Math.min(exponent, 1023), numFactory))
+                .dividedBy(pow2(exponent - Math.min(exponent, 1023), numFactory));
+    }
+
+    /**
+     * @return {@code maxValue / 2^scale}, the overflow ceiling expressed in the
+     *         scaled domain, never materializing {@code 2^scale} for
+     *         {@code scale >= 1024}.
+     */
+    private static Num scaledCeiling(int scale, Num maxValue, NumFactory numFactory) {
+        return maxValue.dividedBy(pow2(Math.min(scale, 1023), numFactory))
+                .dividedBy(pow2(scale - Math.min(scale, 1023), numFactory));
     }
 
     /**
