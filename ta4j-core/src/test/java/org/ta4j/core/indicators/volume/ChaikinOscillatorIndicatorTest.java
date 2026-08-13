@@ -24,45 +24,45 @@ public class ChaikinOscillatorIndicatorTest extends AbstractIndicatorTest<Indica
         series.barBuilder()
                 .openPrice(12.915)
                 .closePrice(13.600)
-                .highPrice(12.890)
-                .lowPrice(13.550)
+                .highPrice(13.550)
+                .lowPrice(12.890)
                 .volume(264266)
                 .add();
         series.barBuilder()
                 .openPrice(13.550)
                 .closePrice(13.770)
-                .highPrice(13.310)
-                .lowPrice(13.505)
+                .highPrice(13.505)
+                .lowPrice(13.310)
                 .volume(305427)
                 .add();
         series.barBuilder()
                 .openPrice(13.510)
                 .closePrice(13.590)
-                .highPrice(13.425)
-                .lowPrice(13.490)
+                .highPrice(13.490)
+                .lowPrice(13.425)
                 .volume(104077)
                 .add();
         series.barBuilder()
                 .openPrice(13.515)
                 .closePrice(13.545)
-                .highPrice(13.400)
-                .lowPrice(13.480)
+                .highPrice(13.480)
+                .lowPrice(13.400)
                 .volume(136135)
                 .add();
-        series.barBuilder().openPrice(13.490).closePrice(13.495).highPrice(13.310).lowPrice(13.345).volume(92090).add();
-        series.barBuilder().openPrice(13.350).closePrice(13.490).highPrice(13.325).lowPrice(13.420).volume(80948).add();
-        series.barBuilder().openPrice(13.415).closePrice(13.460).highPrice(13.290).lowPrice(13.300).volume(82983).add();
+        series.barBuilder().openPrice(13.490).closePrice(13.495).highPrice(13.345).lowPrice(13.310).volume(92090).add();
+        series.barBuilder().openPrice(13.350).closePrice(13.490).highPrice(13.420).lowPrice(13.325).volume(80948).add();
+        series.barBuilder().openPrice(13.415).closePrice(13.460).highPrice(13.300).lowPrice(13.290).volume(82983).add();
         series.barBuilder()
                 .openPrice(13.320)
                 .closePrice(13.320)
-                .highPrice(13.090)
-                .lowPrice(13.130)
+                .highPrice(13.130)
+                .lowPrice(13.090)
                 .volume(126918)
                 .add();
-        series.barBuilder().openPrice(13.145).closePrice(13.225).highPrice(13.090).lowPrice(13.150).volume(68560).add();
-        series.barBuilder().openPrice(13.150).closePrice(13.250).highPrice(13.110).lowPrice(13.245).volume(41178).add();
-        series.barBuilder().openPrice(13.245).closePrice(13.250).highPrice(13.120).lowPrice(13.210).volume(63606).add();
-        series.barBuilder().openPrice(13.210).closePrice(13.275).highPrice(13.185).lowPrice(13.275).volume(34402).add();
+        series.barBuilder().openPrice(13.145).closePrice(13.225).highPrice(13.150).lowPrice(13.090).volume(68560).add();
+        series.barBuilder().openPrice(13.150).closePrice(13.250).highPrice(13.245).lowPrice(13.110).volume(41178).add();
+        series.barBuilder().openPrice(13.245).closePrice(13.250).highPrice(13.210).lowPrice(13.120).volume(63606).add();
+        series.barBuilder().openPrice(13.210).closePrice(13.275).highPrice(13.275).lowPrice(13.185).volume(34402).add();
 
         var co = new ChaikinOscillatorIndicator(series);
 
