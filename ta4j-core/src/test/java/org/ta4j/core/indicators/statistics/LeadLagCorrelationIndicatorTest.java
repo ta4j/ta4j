@@ -136,6 +136,46 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void longPerfectAffineFloatSeriesRoundsWithinAccumulationScaledBounds() {
+        // Review regression: an inexact affine transform of a long float
+        // series (10,000 samples, y = 0.1x - 0.7 in float arithmetic) is
+        // mathematically correlated to about 1 - 2e-13, but the variance and
+        // covariance sums accumulate one rounding per aligned sample and push
+        // the Pearson coefficient about 1.13e-5 above one, far beyond the
+        // factory epsilon (1.19e-7). The Point validation previously compared
+        // against the bare epsilon and rejected the profile. The rounding
+        // tolerance must scale with the accumulation size (the sample count),
+        // matching the bounds treatment of the mutual-information result.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        int sampleCount = 10_000;
+        double[] seriesData = new double[sampleCount];
+        List<Num> firstValues = new ArrayList<>(sampleCount);
+        List<Num> secondValues = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            double x = 1.0e6 + (i % 7 - 3);
+            seriesData[i] = i;
+            firstValues.add(floatFactory.numOf(x));
+            secondValues.add(floatFactory.numOf(0.1 * x - 0.7));
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(seriesData).build();
+        Indicator<Num> first = new MockIndicator(series, firstValues);
+        Indicator<Num> second = new MockIndicator(series, secondValues);
+        LeadLagCorrelationIndicator indicator = new LeadLagCorrelationIndicator(first, second, sampleCount, 0, 0,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        Num correlation = indicator.getValue(series.getEndIndex());
+
+        assertFalse(correlation.isNaN());
+        // The accumulated excess is bounded by the factory epsilon scaled by
+        // the number of accumulated samples, not by the bare epsilon.
+        Num scaledBound = floatFactory.epsilon().multipliedBy(floatFactory.numOf(1.0 + sampleCount));
+        assertTrue(correlation.minus(floatFactory.one()).isLessThanOrEqual(scaledBound));
+        // The case only exercises the scaled bound when the observed excess
+        // actually exceeds the bare factory epsilon.
+        assertTrue(correlation.minus(floatFactory.one()).isGreaterThan(floatFactory.epsilon()));
+    }
+
+    @Test
     public void signedAndAbsolutePoliciesSelectDifferentLags() {
         BarSeries series = series(40);
         // Square wave with period 4: half-period negation is exact, so

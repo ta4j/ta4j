@@ -306,8 +306,14 @@ public final class EventMutualInformationEvaluator {
         // value through rounding alone (for example -1.7e-16 with DoubleNum and
         // bins of (1, 3) and (4, 12) counts); mutual information is
         // non-negative by definition, so normalize roundoff-scale negatives to
-        // zero before the result constructor validates the metrics.
-        if (mutualInformation.isNegative() && mutualInformation.abs().compareTo(numFactory.epsilon()) <= 0) {
+        // zero before the result constructor validates the metrics. The sum
+        // accumulates one term per populated joint cell, so rounding noise
+        // grows with the accumulation size; the clamp window scales with the
+        // effective bin count the same way the result bounds do, so an
+        // independent high-cardinality table can never surface a spurious
+        // negative value.
+        Num clampTolerance = numFactory.epsilon().multipliedBy(numFactory.numOf(1.0 + effectiveBinCount));
+        if (mutualInformation.isNegative() && mutualInformation.abs().compareTo(clampTolerance) <= 0) {
             mutualInformation = numFactory.zero();
         }
 

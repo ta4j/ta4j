@@ -470,10 +470,15 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                 }
                 double value = correlation.doubleValue();
                 // Pearson can exceed the mathematical bound by rounding noise
-                // of the metric's own precision only (for example 1 + 2e-16 in
-                // Double or 1.0000001 in Float); the factory epsilon is scaled
-                // to that precision, so it guards both delegate domains.
-                double roundingTolerance = correlation.getNumFactory().epsilon().doubleValue();
+                // of the metric's own precision (for example 1 + 2e-16 in
+                // Double or 1.0000001 in Float), and the variance/covariance
+                // sums accumulate one term per aligned sample, so the noise
+                // grows with the accumulation size: a 10,000-sample float
+                // window with a perfectly affine second series can report
+                // about 1.0000113. Scale the bound by the sample count so
+                // valid long windows pass while anything beyond
+                // accumulation-scale noise stays invalid.
+                double roundingTolerance = correlation.getNumFactory().epsilon().doubleValue() * (1.0 + sampleCount);
                 if (value < -1.0 - roundingTolerance || value > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException("a finite correlation must lie in [-1, 1]");
                 }

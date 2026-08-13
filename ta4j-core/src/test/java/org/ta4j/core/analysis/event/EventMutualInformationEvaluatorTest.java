@@ -707,6 +707,38 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void floatBackedIndependentContingencyReportsExactlyZero() {
+        // Review regression: a genuinely independent contingency accumulates
+        // one rounding per populated joint cell, so the raw sum can drift
+        // slightly negative. Mutual information is non-negative by
+        // definition, so the evaluator must clamp accumulation-scale negative
+        // drift to exactly zero instead of publishing a spurious tiny
+        // negative value.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        int sampleCount = 10_000;
+        int binCount = 1_000;
+        double[] data = new double[sampleCount];
+        for (int i = 0; i < sampleCount; i++) {
+            data[i] = i % binCount;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(data).build();
+        List<Num> values = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            values.add(floatFactory.numOf(i % binCount));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index / 1_000 % 2 == 0);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, sampleCount - 1,
+                new EventMutualInformationConfig(0, 0, binCount, BinningStrategy.EQUAL_FREQUENCY));
+
+        // Every populated bin holds five positives and five negatives, so the
+        // table is exactly independent: MI = 0 and MI / H(Y) = 0.
+        assertTrue(result.mutualInformationNats().isZero());
+        assertTrue(result.normalizedMutualInformation().isZero());
+    }
+
+    @Test
     public void proxySeriesWithImpracticalSpanReturnsUndefinedResult() {
         // A covered target-window span above the practical in-memory bound
         // (10,000,002 ints here, ~40 MB) must be undefined and must terminate
