@@ -470,7 +470,7 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                 throw new IllegalArgumentException("sampleCount must be >= 0");
             }
             if (!correlation.isNaN()) {
-                if (!CorrelationWindowSupport.isFinite(correlation)) {
+                if (!Num.isFinite(correlation)) {
                     throw new IllegalArgumentException("correlation must be finite or NaN");
                 }
                 double value = correlation.doubleValue();

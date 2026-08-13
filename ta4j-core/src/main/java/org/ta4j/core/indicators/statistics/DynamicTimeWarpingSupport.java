@@ -252,10 +252,10 @@ final class DynamicTimeWarpingSupport {
             if (mean.isZero() && totalValue.isPositive()) {
                 return NaN.NaN;
             }
-            return CorrelationWindowSupport.isFinite(mean) ? mean : NaN.NaN;
+            return Num.isFinite(mean) ? mean : NaN.NaN;
         }
         Num total = previousCost[sampleCount - 1];
-        return CorrelationWindowSupport.isFinite(total) ? total : NaN.NaN;
+        return Num.isFinite(total) ? total : NaN.NaN;
     }
 
     /**
@@ -386,13 +386,13 @@ final class DynamicTimeWarpingSupport {
      */
     private static ScaledCost scaledLocalCost(Num firstValue, Num secondValue, LocalDistance localDistance,
             NumFactory numFactory) {
-        if (!CorrelationWindowSupport.isFinite(firstValue) || !CorrelationWindowSupport.isFinite(secondValue)) {
+        if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
             return ScaledCost.undefined();
         }
         Num delta = firstValue.minus(secondValue);
         if (localDistance == LocalDistance.ABSOLUTE) {
             Num magnitude = delta.abs();
-            if (CorrelationWindowSupport.isFinite(magnitude)) {
+            if (Num.isFinite(magnitude)) {
                 return new ScaledCost(magnitude, 0);
             }
             // |first - second| = |first| + |second| overflows, but the halved
@@ -404,13 +404,13 @@ final class DynamicTimeWarpingSupport {
         if (delta.isZero()) {
             return new ScaledCost(numFactory.zero(), 0);
         }
-        if (!CorrelationWindowSupport.isFinite(delta)) {
+        if (!Num.isFinite(delta)) {
             // An overflowing raw delta squares beyond any realizable path
             // mean: the cost is unrepresentable.
             return ScaledCost.undefined();
         }
         Num squared = delta.multipliedBy(delta);
-        if (CorrelationWindowSupport.isFinite(squared)) {
+        if (Num.isFinite(squared)) {
             // A nonzero delta whose square underflows to zero (raw subnormal
             // deltas under NONE normalization) would otherwise be scored as
             // identical, breaking the zero-means-identical contract. Such a
@@ -451,7 +451,7 @@ final class DynamicTimeWarpingSupport {
         // result while keeping every intermediate in [-1, 1].
         Num scale = numFactory.zero();
         for (Num value : values) {
-            if (!CorrelationWindowSupport.isFinite(value)) {
+            if (!Num.isFinite(value)) {
                 // Non-finite input makes the mean and variance undefined.
                 return null;
             }
@@ -497,7 +497,7 @@ final class DynamicTimeWarpingSupport {
             java.util.Arrays.fill(zeros, numFactory.zero());
             return zeros;
         }
-        if (!CorrelationWindowSupport.isFinite(standardDeviation)) {
+        if (!Num.isFinite(standardDeviation)) {
             // Mean or variance overflow: z-scoring is numerically undefined.
             // Report the distance as NaN instead of silently measuring the raw
             // values, which would misrepresent the requested normalization.

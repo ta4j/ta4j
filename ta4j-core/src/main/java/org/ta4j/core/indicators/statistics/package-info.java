@@ -27,8 +27,11 @@
  * Boolean event streams are scored with
  * {@link org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator},
  * a rolling F1 scorer over deterministic one-to-one event matching; the
- * event-dependence machinery lives in the
- * {@link org.ta4j.core.indicators.statistics.event} subpackage.
+ * event-synchronization machinery lives in the
+ * {@link org.ta4j.core.indicators.statistics.event} subpackage, while
+ * event-dependence evaluation (predictor mutual information with its config,
+ * results, and binning strategies) lives in
+ * {@link org.ta4j.core.analysis.event}.
  * </p>
  */
 package org.ta4j.core.indicators.statistics;

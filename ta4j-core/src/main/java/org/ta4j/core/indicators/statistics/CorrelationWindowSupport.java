@@ -143,7 +143,7 @@ final class CorrelationWindowSupport {
         for (int i = 0; i < barCount; i++) {
             Num firstValue = first.getValue(firstStartIndex + i);
             Num secondValue = second.getValue(secondStartIndex + i);
-            if (!isFinite(firstValue) || !isFinite(secondValue)) {
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
                 return null;
             }
             firstValues[i] = firstValue;
@@ -171,7 +171,7 @@ final class CorrelationWindowSupport {
             }
             Num firstValue = first.getValue(i);
             Num secondValue = second.getValue(i);
-            if (!isFinite(firstValue) || !isFinite(secondValue)) {
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
                 continue;
             }
             firstValues[sampleCount] = firstValue;
@@ -247,15 +247,15 @@ final class CorrelationWindowSupport {
         }
 
         Num denominatorSquared = firstVariance.multipliedBy(secondVariance);
-        if (!isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
+        if (!Num.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
         Num denominator = denominatorSquared.sqrt();
-        if (!isFinite(denominator) || denominator.isZero()) {
+        if (!Num.isFinite(denominator) || denominator.isZero()) {
             return NaN.NaN;
         }
         Num result = covariance.dividedBy(denominator);
-        return isFinite(result) ? result : NaN.NaN;
+        return Num.isFinite(result) ? result : NaN.NaN;
     }
 
     static Num[] averageRanks(NumFactory numFactory, Num[] values, int sampleCount) {
@@ -282,20 +282,6 @@ final class CorrelationWindowSupport {
         return ranks;
     }
 
-    static boolean isFinite(Num value) {
-        if (value == null || value.isNaN()) {
-            return false;
-        }
-        Number delegate = value.getDelegate();
-        if (delegate instanceof Double primitive) {
-            return Double.isFinite(primitive);
-        }
-        if (delegate instanceof Float primitive) {
-            return Float.isFinite(primitive);
-        }
-        return true;
-    }
-
     record NumericWindow(Num[] firstValues, Num[] secondValues, int sampleCount) {
     }
 
@@ -311,7 +297,7 @@ final class CorrelationWindowSupport {
         Num[] values = new Num[barCount];
         for (int i = 0; i < barCount; i++) {
             Num value = indicator.getValue(startIndex + i);
-            if (!isFinite(value)) {
+            if (!Num.isFinite(value)) {
                 return null;
             }
             values[i] = value;

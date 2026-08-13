@@ -24,7 +24,8 @@ import org.ta4j.core.analysis.AnalysisContext;
  *                              {@code >= 0}
  * @param targetWindowEndBars   inclusive upper bound of the target window,
  *                              {@code >= targetWindowStartBars}
- * @param predictorBinCount     requested predictor bin count, at least 2
+ * @param predictorBinCount     requested predictor bin count, at least 2 and at
+ *                              most {@link #MAX_PREDICTOR_BIN_COUNT}
  * @param binningStrategy       predictor discretization
  * @param historyPolicy         how to treat requested history outside the
  *                              available range;
@@ -64,7 +65,9 @@ public record EventMutualInformationConfig(int targetWindowStartBars, int target
      * @throws IllegalArgumentException if {@code targetWindowStartBars < 0},
      *                                  {@code targetWindowEndBars <
      *                                  targetWindowStartBars}, or
-     *                                  {@code predictorBinCount < 2}
+     *                                  {@code predictorBinCount < 2} or
+     *                                  {@code predictorBinCount >
+     *                                  MAX_PREDICTOR_BIN_COUNT}
      * @throws NullPointerException     if {@code binningStrategy} or
      *                                  {@code historyPolicy} is null
      */

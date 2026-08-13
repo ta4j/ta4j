@@ -106,7 +106,7 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
                 mutualInformation = mutualInformation.plus(jointProbability.multipliedBy(ratio.log()));
             }
         }
-        return CorrelationWindowSupport.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
+        return Num.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
     }
 
     @Override
