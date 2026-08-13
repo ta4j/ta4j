@@ -782,7 +782,13 @@ class ParameterResearchTest {
     }
 
     private static Strategy stopLossStrategy(BarSeries series, ParameterSet parameters) {
-        double stopPct = Double.parseDouble(parameters.value("stopPct"));
+        String rawStopPct = parameters.value("stopPct");
+        double stopPct;
+        try {
+            stopPct = Double.parseDouble(rawStopPct);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Strategy parameter stopPct must be a number: " + rawStopPct, ex);
+        }
         return new BaseStrategy(parameters.stableId(), new FixedRule(5),
                 new StopLossRule(new ClosePriceIndicator(series), series.numFactory().numOf(stopPct)));
     }
