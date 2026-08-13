@@ -12,6 +12,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -23,6 +25,7 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 import org.ta4j.core.walkforward.WalkForwardSplitter;
@@ -33,6 +36,8 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
  * @since 0.22.4
  */
 public class StrategyWalkForwardExecutor {
+
+    private static final Logger log = LoggerFactory.getLogger(StrategyWalkForwardExecutor.class);
 
     private final BarSeriesManager seriesManager;
     private final TradingStatementGenerator tradingStatementGenerator;
@@ -232,27 +237,36 @@ public class StrategyWalkForwardExecutor {
         Consumer<Integer> effectiveCallback = progressCallback == null ? ProgressCompletion.noOp() : progressCallback;
         List<StrategyWalkForwardExecutionResult.FoldResult> foldResults = new ArrayList<>(splits.size());
         List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes = new ArrayList<>(splits.size());
+        List<WalkForwardRunResult.FoldFailure> foldFailures = new ArrayList<>();
 
         long overallStart = System.nanoTime();
         int completed = 0;
-        for (WalkForwardSplit split : splits) {
+        for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
+            WalkForwardSplit split = splits.get(splitIndex);
             long foldStart = System.nanoTime();
-            TradingRecord foldRecord = foldRecordRunner.apply(split);
-            TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
-            Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
+            try {
+                TradingRecord foldRecord = foldRecordRunner.apply(split);
+                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
+                Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
-            foldResults
-                    .add(new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
-            foldRuntimes
-                    .add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
+                foldResults
+                        .add(new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
+                foldRuntimes
+                        .add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
 
-            completed++;
-            effectiveCallback.accept(completed);
+                completed++;
+                effectiveCallback.accept(completed);
+            } catch (RuntimeException e) {
+                String message = "Walk-forward fold " + split.foldId() + " failed";
+                log.warn(message + ": {}", e.toString());
+                foldFailures.add(new WalkForwardRunResult.FoldFailure(split.foldId(), splitIndex, message, e));
+            }
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
         WalkForwardRuntimeReport runtimeReport = buildRuntimeReport(foldRuntimes, overallRuntime);
-        return new StrategyWalkForwardExecutionResult(series, strategy, config, foldResults, runtimeReport);
+        return new StrategyWalkForwardExecutionResult(series, strategy, config, foldResults, runtimeReport,
+                foldFailures);
     }
 
     private WalkForwardRuntimeReport buildRuntimeReport(List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes,

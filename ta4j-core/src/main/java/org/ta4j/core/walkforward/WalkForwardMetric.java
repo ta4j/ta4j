@@ -71,11 +71,16 @@ public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkFor
     }
 
     /**
-     * Clamps the provided value to {@code [0,1]} and maps NaN/null values to
-     * {@code 0}.
+     * Clamps the provided value to {@code [0,1]}.
+     *
+     * <p>
+     * NaN and {@code null} values are returned as {@link NaN#NaN} unchanged
+     * (matching the walk-forward family's convention that undefined values must
+     * never be coerced into a valid-looking zero). To coerce NaN/null to
+     * {@code 0} instead, use {@link #normalizeAndClamp01(Num, NumFactory)}.
      *
      * @param value input value
-     * @return clamped value
+     * @return clamped value, or {@link NaN#NaN} when {@code value} is NaN or null
      * @since 0.22.4
      */
     static Num clamp01(Num value) {
@@ -289,13 +294,13 @@ public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkFor
                 Num precisionDenominator = factory.numOf(truePositive + falsePositive);
                 Num recallDenominator = factory.numOf(truePositive + falseNegative);
                 if (precisionDenominator.isZero() || recallDenominator.isZero()) {
-                    return factory.zero();
+                    return NaN.NaN;
                 }
                 Num precision = factory.numOf(truePositive).dividedBy(precisionDenominator);
                 Num recall = factory.numOf(truePositive).dividedBy(recallDenominator);
                 Num denominator = precision.plus(recall);
                 if (denominator.isZero()) {
-                    return factory.zero();
+                    return NaN.NaN;
                 }
                 return factory.two().multipliedBy(precision).multipliedBy(recall).dividedBy(denominator);
             }
