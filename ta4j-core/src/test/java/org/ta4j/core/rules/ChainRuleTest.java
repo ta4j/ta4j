@@ -145,4 +145,16 @@ public class ChainRuleTest {
         assertTrue("Summary failure should include failed chain rule", logContent.contains("failedChainRule=0"));
         assertTrue("Summary failure should include threshold", logContent.contains("threshold=1"));
     }
+
+    @Test
+    public void doesNotWalkBeforeSeriesBeginIndex() {
+        BarSeries trimmedSeries = new MockBarSeriesBuilder().withData(0, 0, 0, 7, 0, 1, 1, 1, 2, 0).build();
+        trimmedSeries.setMaximumBarCount(5);
+        var indicator = new FixedNumIndicator(trimmedSeries, 0, 0, 0, 7, 0, 1, 1, 1, 2, 0);
+
+        ChainRule trimmedChainRule = new ChainRule(new IsEqualRule(indicator, 2),
+                new ChainLink(new IsEqualRule(indicator, 7), 5));
+
+        assertFalse(trimmedChainRule.isSatisfied(8));
+    }
 }

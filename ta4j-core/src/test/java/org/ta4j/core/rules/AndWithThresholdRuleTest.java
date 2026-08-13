@@ -14,6 +14,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 
 public class AndWithThresholdRuleTest {
 
@@ -239,5 +240,17 @@ public class AndWithThresholdRuleTest {
         assertTrue("Summary mode should include window end", logContent.contains("windowEnd=2"));
         assertTrue("Summary mode should include insufficient bars reason",
                 logContent.contains("reason=insufficientBars"));
+    }
+
+    @Test
+    public void doesNotScanWindowBeforeSeriesBeginIndex() {
+        BarSeries trimmedSeries = new MockBarSeriesBuilder().withData(10, 10, 10, 1, 10, 10, 10, 10, 10, 10).build();
+        trimmedSeries.setMaximumBarCount(5);
+        var indicator = new FixedNumIndicator(trimmedSeries, 10, 10, 10, 1, 10, 10, 10, 10, 10, 10);
+        Rule child = new UnderIndicatorRule(indicator, trimmedSeries.numFactory().numOf(5));
+
+        Rule rule = new AndWithThresholdRule(child, child, 4);
+
+        assertFalse(rule.isSatisfied(6));
     }
 }

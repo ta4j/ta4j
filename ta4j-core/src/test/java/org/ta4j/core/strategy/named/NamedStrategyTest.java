@@ -136,6 +136,19 @@ class NamedStrategyTest {
         assertFalse(NamedStrategy.unregisterImplementation(TestUnregisterStrategy.class));
     }
 
+    @Test
+    void unregisterSameSimpleNameFromOtherPackageLeavesRegistrationIntact() {
+        NamedStrategy.registerImplementation(TestUnregisterStrategy.class);
+        assertTrue(NamedStrategy.lookup("TestUnregisterStrategy").isPresent());
+
+        boolean result = NamedStrategy
+                .unregisterImplementation(org.ta4j.core.strategy.TestUnregisterStrategy.class);
+
+        assertFalse(result);
+        assertTrue(NamedStrategy.lookup("TestUnregisterStrategy").isPresent());
+        assertEquals(TestUnregisterStrategy.class, NamedStrategy.lookup("TestUnregisterStrategy").get());
+    }
+
     /**
      * Test fixture strategy for testing unregister functionality. This class does
      * NOT have a static initializer to avoid auto-registration.
