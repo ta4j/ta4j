@@ -52,10 +52,11 @@ public class IsFallingRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-
+        int beginIndex = ref.getBarSeries().getBeginIndex();
+        int start = Math.max(beginIndex, index - barCount + 1);
         int count = 0;
-        for (int i = Math.max(0, index - barCount + 1); i <= index; i++) {
-            if (ref.getValue(i).isLessThan(ref.getValue(Math.max(0, i - 1)))) {
+        for (int i = start; i <= index; i++) {
+            if (ref.getValue(i).isLessThan(ref.getValue(Math.max(beginIndex, i - 1)))) {
                 count += 1;
             }
         }
@@ -66,9 +67,9 @@ public class IsFallingRule extends AbstractRule {
         if (isTraceEnabled()) {
             traceIsSatisfied(index, satisfied,
                     traceContext("currentValue", ref.getValue(index), "previousValue",
-                            ref.getValue(Math.max(0, index - 1)), "fallingCount", count, "barCount", barCount, "ratio",
-                            ratio, "minStrength", minStrength, "windowStart", Math.max(0, index - barCount + 1),
-                            "windowEnd", index, "reason", satisfied ? "fallingStrengthMet" : "fallingStrengthTooWeak"));
+                            ref.getValue(Math.max(beginIndex, index - 1)), "fallingCount", count, "barCount", barCount,
+                            "ratio", ratio, "minStrength", minStrength, "windowStart", start, "windowEnd", index,
+                            "reason", satisfied ? "fallingStrengthMet" : "fallingStrengthTooWeak"));
         }
         return satisfied;
     }

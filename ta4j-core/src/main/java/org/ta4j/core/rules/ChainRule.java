@@ -6,6 +6,7 @@ package org.ta4j.core.rules;
 import java.util.LinkedList;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -21,6 +22,9 @@ public class ChainRule extends AbstractRule {
     private final Rule initialRule;
     private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
+    /** The first retained bar index of the backing series, or {@code 0}. */
+    private final int beginIndex;
+
     /**
      * @param initialRule the first rule that has to be satisfied before
      *                    {@link ChainLink} are evaluated
@@ -33,6 +37,21 @@ public class ChainRule extends AbstractRule {
         for (ChainLink chainLink : chainLinks) {
             this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
         }
+        this.beginIndex = findBeginIndex(initialRule, rulesInChain);
+    }
+
+    private static int findBeginIndex(Rule initialRule, LinkedList<ChainLink> rulesInChain) {
+        int beginIndex = RuleCopies.findBarSeries(initialRule).map(BarSeries::getBeginIndex).orElse(0);
+        if (beginIndex == 0) {
+            for (ChainLink chainLink : rulesInChain) {
+                int linkBeginIndex = RuleCopies.findBarSeries(chainLink.getRule()).map(BarSeries::getBeginIndex)
+                        .orElse(0);
+                if (linkBeginIndex != 0) {
+                    return linkBeginIndex;
+                }
+            }
+        }
+        return beginIndex;
     }
 
     @Override
@@ -55,7 +74,7 @@ public class ChainRule extends AbstractRule {
 
             for (int i = 0; i <= link.getThreshold(); i++) {
                 int resultingIndex = startIndex - i;
-                if (resultingIndex < 0) {
+                if (resultingIndex < beginIndex) {
                     break;
                 }
 
