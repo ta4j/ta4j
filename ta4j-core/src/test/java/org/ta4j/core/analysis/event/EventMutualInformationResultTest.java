@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.statistics.FloatNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
@@ -282,5 +283,24 @@ public class EventMutualInformationResultTest extends AbstractIndicatorTest<Indi
         new EventMutualInformationResult(factory.zero(), factory.numOf(Math.log(2)), factory.zero(), 2, 1,
                 factory.numOf(0.5), EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT, 1,
                 BinningStrategy.EQUAL_WIDTH, 0, 3);
+    }
+
+    @Test
+    public void normalizedBoundStaysAtMetricPrecisionRegardlessOfBinCount() {
+        // Review regression: the normalized bound must not scale with the bin
+        // count, or a sparse equal-width table (two endpoint samples in a
+        // 1,000,000-bin request) inflates the tolerance beyond any meaningful
+        // range and a directly constructed result can claim MI = 1.05 * H(Y),
+        // although mutual information can never exceed the target entropy.
+        // Only the evaluator's accumulation-scale roundoff may be adjusted;
+        // the public result bound stays at the factory epsilon.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num half = floatFactory.numOf(0.5);
+        Num entropy = half.multipliedBy(half.log()).plus(half.multipliedBy(half.log())).negate();
+        Num mutualInformation = entropy.multipliedBy(floatFactory.numOf(1.05));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventMutualInformationResult(mutualInformation, entropy, floatFactory.numOf(1.05), 2, 1, half,
+                        EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT,
+                        EventMutualInformationConfig.MAX_PREDICTOR_BIN_COUNT, BinningStrategy.EQUAL_WIDTH, 0, 0));
     }
 }

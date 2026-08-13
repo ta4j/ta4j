@@ -286,12 +286,14 @@ public final class EventMutualInformationEvaluator {
 
         Num sampleCountNum = numFactory.numOf(sampleCount);
         Num mutualInformation = numFactory.zero();
+        int populatedCells = 0;
         for (int bin = 0; bin < effectiveBinCount; bin++) {
             for (int label = 0; label < 2; label++) {
                 int jointCount = jointCounts[(bin * 2) + label];
                 if (jointCount == 0) {
                     continue;
                 }
+                populatedCells++;
                 Num jointProbability = numFactory.numOf(jointCount).dividedBy(sampleCountNum);
                 Num predictorProbability = numFactory.numOf(predictorCounts[bin]).dividedBy(sampleCountNum);
                 Num targetProbability = numFactory
@@ -303,16 +305,17 @@ public final class EventMutualInformationEvaluator {
         }
 
         // An exactly independent contingency table can sum to a tiny negative
-        // value through rounding alone (for example -1.7e-16 with DoubleNum and
-        // bins of (1, 3) and (4, 12) counts); mutual information is
+        // value through rounding alone (for example -1.7e-16 with DoubleNum
+        // and bins of (1, 3) and (4, 12) counts); mutual information is
         // non-negative by definition, so normalize roundoff-scale negatives to
         // zero before the result constructor validates the metrics. The sum
         // accumulates one term per populated joint cell, so rounding noise
-        // grows with the accumulation size; the clamp window scales with the
-        // effective bin count the same way the result bounds do, so an
-        // independent high-cardinality table can never surface a spurious
-        // negative value.
-        Num clampTolerance = numFactory.epsilon().multipliedBy(numFactory.numOf(1.0 + effectiveBinCount));
+        // grows with the number of populated cells; the clamp window scales
+        // with that accumulation size so an independent high-cardinality
+        // table can never surface a spurious negative value. Empty bin
+        // indexes contribute no accumulation error, so sparse equal-width
+        // tables do not inflate the window.
+        Num clampTolerance = numFactory.epsilon().multipliedBy(numFactory.numOf(1.0 + populatedCells));
         if (mutualInformation.isNegative() && mutualInformation.abs().compareTo(clampTolerance) <= 0) {
             mutualInformation = numFactory.zero();
         }
@@ -322,6 +325,16 @@ public final class EventMutualInformationEvaluator {
         Num targetEntropy = positiveProbability.multipliedBy(positiveProbability.log())
                 .plus(negativeProbability.multipliedBy(negativeProbability.log()))
                 .negate();
+        // Mutual information can never exceed the target entropy, so a
+        // computed excess is accumulation noise crossing the mathematical
+        // bound. Clamp it to the entropy so the derived normalized value
+        // stays within [0, 1] without rejecting a legitimate high-cardinality
+        // float table (a 10,000-bin Float contingency sums to about
+        // 1.0000634 * H(Y)) in the result constructor, whose normalized bound
+        // intentionally stays at the factory epsilon.
+        if (targetEntropy.isPositive() && mutualInformation.isGreaterThan(targetEntropy)) {
+            mutualInformation = targetEntropy;
+        }
         Num normalized = targetEntropy.isPositive() ? mutualInformation.dividedBy(targetEntropy) : NaN.NaN;
         return new EventMutualInformationResult(mutualInformation, targetEntropy, normalized, sampleCount,
                 positiveTargetCount, positiveTargetRate, config.predictorBinCount(), effectiveBinCount,

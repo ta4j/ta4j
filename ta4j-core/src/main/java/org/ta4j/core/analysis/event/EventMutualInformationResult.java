@@ -199,19 +199,19 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                             "target entropy must match the binary entropy of positiveTargetCount / sampleCount");
                 }
                 double normalized = normalizedMutualInformation.doubleValue();
-                // Computed ratios can exceed the mathematical bounds by
-                // rounding noise of the metric's own precision only (for
-                // example 1 + 2e-16 in Double or 1.0000001 in Float); the
-                // factory epsilon is scaled to that precision. The evaluator
-                // accumulates one p * ln(...) term per populated joint cell,
-                // so rounding noise also grows with the accumulation size: a
-                // 10,000-bin Float contingency over 10,000 samples rounds a
-                // mathematically perfect table to about 1.0000634. Scale the
-                // bound by the effective bin count so valid high-cardinality
-                // evaluations pass while anything beyond accumulation-scale
-                // noise stays invalid.
-                double roundingTolerance = normalizedMutualInformation.getNumFactory().epsilon().doubleValue()
-                        * (1.0 + effectiveBinCount);
+                // The evaluator clamps its own accumulation-scale roundoff
+                // (tiny negative sums to zero, MI above the target entropy to
+                // the entropy) before constructing the result, so a value it
+                // produces is always inside the mathematical bounds. This
+                // record is also directly constructible, and for those values
+                // the bound must stay meaningful: a computed ratio can exceed
+                // the bounds by rounding noise of the metric's own precision
+                // only (for example 1 + 2e-16 in Double or 1 + 1e-7 in
+                // Float). Scaling the tolerance by the bin count would let
+                // sparse equal-width tables smuggle values far outside
+                // [0, 1] (a 1,000,000-bin request would accept 1.05), so the
+                // tolerance stays at the factory epsilon.
+                double roundingTolerance = normalizedMutualInformation.getNumFactory().epsilon().doubleValue();
                 if (!Double.isFinite(normalized) || normalized < -roundingTolerance
                         || normalized > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException(

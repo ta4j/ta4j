@@ -661,24 +661,26 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, 15,
                 new EventMutualInformationConfig(0, 0, 10, BinningStrategy.EQUAL_FREQUENCY));
-
         Num normalized = result.normalizedMutualInformation();
         assertFalse(normalized.isNaN());
-        // The float ratio legitimately rounds one ULP above the mathematical
-        // bound of a perfect deterministic table.
-        assertTrue(normalized.isGreaterThan(floatFactory.one()));
-        assertTrue(normalized.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-5)));
+        // The float ratio lands within one ULP of the mathematical bound of a
+        // perfect deterministic table; the evaluator clamps any computed
+        // excess to the entropy, so the normalized value stays within
+        // [1 - 1e-5, 1] instead of being rejected by the result constructor.
+        assertTrue(normalized.isLessThanOrEqual(floatFactory.one()));
+        assertTrue(floatFactory.one().minus(normalized).isLessThanOrEqual(floatFactory.numOf(1.0e-5)));
     }
 
     @Test
-    public void floatBackedHighCardinalityContingencyScalesTheBoundsWithTheAccumulation() {
+    public void floatBackedPerfectContingencyClampsAccumulationNoiseToTheEntropy() {
         // Review regression: a 10,000-bin float contingency (one sample per
         // bin, perfectly determining a balanced target) accumulates MI over
         // 10,000 populated cells and rounds to 0.6931911, so MI / H(Y) is
         // about 1.0000634: mathematically exactly 1, but far beyond the
-        // factory epsilon (1e-5). The normalized bounds must scale with the
-        // accumulation size (effective bin count) or valid high-cardinality
-        // evaluations throw.
+        // factory epsilon. Mutual information can never exceed the target
+        // entropy, so the evaluator clamps the computed excess to H(Y);
+        // without the clamp the result constructor rejects the valid
+        // high-cardinality evaluation.
         NumFactory floatFactory = FloatNumFactory.getInstance();
         int sampleCount = 10_000;
         double[] data = new double[sampleCount];
@@ -696,14 +698,10 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         EventMutualInformationResult result = evaluate(predictor, target, 0, sampleCount - 1,
                 new EventMutualInformationConfig(0, 0, sampleCount, BinningStrategy.EQUAL_FREQUENCY));
 
-        Num normalized = result.normalizedMutualInformation();
-        assertFalse(normalized.isNaN());
-        // The float ratio legitimately rounds above the mathematical bound of
-        // a perfect deterministic table; the excess is bounded by the
-        // factory epsilon scaled by the number of accumulated cells
-        // (1.19e-7 * 10001 ~ 1.2e-3), not by the bare epsilon.
-        assertTrue(normalized.isGreaterThan(floatFactory.one()));
-        assertTrue(normalized.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-3)));
+        // The accumulated excess is clamped to the entropy, so the raw MI is
+        // H(Y) = ln 2 and the derived normalized value settles on exactly 1.
+        assertNumEquals(floatFactory.numOf(Math.log(2.0)), result.mutualInformationNats(), 1.0e-6);
+        assertNumEquals(floatFactory.one(), result.normalizedMutualInformation(), 0);
     }
 
     @Test
