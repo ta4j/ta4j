@@ -184,11 +184,6 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // 2e1000/3 absolute costs) were halved at every path cell, adding
         // avoidable rounding to a mean Decimal arithmetic can represent
         // directly. The ceiling must only constrain primitive-backed totals.
-        if (numFactory instanceof DoubleNumFactory) {
-            // The double range cannot hold the fixture values at all; the
-            // contract is specific to exact implementations.
-            return;
-        }
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(new double[3]).build();
         List<Num> firstValues = new ArrayList<>();
         Num cost = numFactory.numOf("2e1000").dividedBy(numFactory.numOf(3));
@@ -208,6 +203,15 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
                 DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
 
         Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 3, config).getValue(2);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            // The fixture cost overflows to infinity in double precision, so
+            // the distance is undefined for the primitive-backed factory; the
+            // representable-mean contract below is specific to exact
+            // implementations.
+            assertTrue(distance.isNaN());
+            return;
+        }
 
         // The radius-zero band fixes the diagonal path, so the distance is
         // exactly the direct mean of the three local costs.

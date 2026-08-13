@@ -45,15 +45,12 @@ import org.ta4j.core.num.NumFactory;
 public final class EventMutualInformationEvaluator {
 
     /**
-     * HotSpot's maximum usable {@code int[]} length is a few words below
-     * {@link Integer#MAX_VALUE} (observed here: {@code MAX_VALUE - 2}); a span at
-     * or above that boundary cannot be represented in memory on any supported JVM
-     * and must be reported undefined instead of throwing {@link OutOfMemoryError}.
-     * {@code MAX_VALUE - 8} conservatively covers every HotSpot header layout.
-     */
-    /**
-     * The largest {@code int[]} the JVM can allocate structurally: spans at or
-     * above this bound fail with "Requested array size exceeds VM limit".
+     * The largest {@code int[]} the JVM can allocate structurally. HotSpot's
+     * maximum usable {@code int[]} length is a few words below
+     * {@link Integer#MAX_VALUE} (observed here: {@code MAX_VALUE - 2}), and spans
+     * at or above that boundary fail with "Requested array size exceeds VM limit"
+     * instead of throwing {@link OutOfMemoryError}; {@code MAX_VALUE - 8}
+     * conservatively covers every HotSpot header layout.
      */
     private static final int MAX_PREFIX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
 
