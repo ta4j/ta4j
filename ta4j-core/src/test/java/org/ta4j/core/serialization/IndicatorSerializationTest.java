@@ -8,7 +8,9 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.analysis.InvestedInterval;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.IndicatorConstructorSelectionTestIndicator;
@@ -19,6 +21,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.macd.MACDVIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,6 +29,27 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class IndicatorSerializationTest {
+    @Test
+    public void toJsonRejectsUnresolvableIndicatorType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Indicator<Boolean> indicator = new InvestedInterval(series, new BaseTradingRecord());
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                indicator::toJson);
+        assertThat(exception.getMessage()).contains("Unknown indicator type: InvestedInterval");
+    }
+
+    @Test
+    public void toJsonRejectsNonFiniteNumericParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Num nan = NaN.NaN;
+        Indicator<Num> indicator = new FixedIndicator<>(series, nan, series.numFactory().numOf(2));
+
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                indicator::toJson);
+        assertThat(exception.getMessage()).contains("Non-finite numeric parameter");
+    }
+
 
     @Test
     public void serializeIndicator() {
@@ -280,79 +304,38 @@ public class IndicatorSerializationTest {
     }
 
     @Test
-    public void serializeCircularIndicatorReference() {
-        // Test that circular indicator references are handled gracefully
-        // This test verifies the fix for infinite recursion on circular graphs
+    public void serializeCircularIndicatorReferenceFailsLoudForUnresolvableType() {
+        // Test-local indicator types cannot be resolved on deserialization. Per the
+        // fail-fast serialization contract, toDescriptor must reject the type before
+        // traversal instead of emitting JSON that can never be read back.
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         Indicator<Num> base = new ClosePriceIndicator(series);
 
-        // Create two indicators that reference each other (circular reference)
         CircularTestIndicator indicatorA = new CircularTestIndicator(series, base, "A", 5);
         CircularTestIndicator indicatorB = new CircularTestIndicator(series, base, "B", 10);
         indicatorA.setReferencedIndicator(indicatorB);
         indicatorB.setReferencedIndicator(indicatorA);
 
-        // Serialization should complete without StackOverflowError
-        // The placeholder mechanism should detect the circular reference
-        ComponentDescriptor descriptorA = indicatorA.toDescriptor();
-
-        // Verify the descriptor structure
-        assertThat(descriptorA.getType()).isEqualTo("CircularTestIndicator");
-        // Only numeric parameters are serialized, so only 'value' will be present
-        assertThat(descriptorA.getParameters()).containsEntry("value", 5);
-        assertThat(descriptorA.getComponents()).hasSize(2); // base + indicatorB
-
-        // Verify that indicatorB is referenced (circular reference detected)
-        assertThat(descriptorA.getComponents()).anySatisfy(child -> {
-            assertThat(child.getType()).isEqualTo("CircularTestIndicator");
-            assertThat(child.getParameters()).containsEntry("value", 10);
-        });
-
-        // Verify JSON serialization also works
-        String json = indicatorA.toJson();
-        assertThat(json).contains("CircularTestIndicator");
-        assertThat(json).contains("\"value\":5");
-        assertThat(json).contains("\"value\":10");
-
-        // Verify that the circular reference doesn't cause infinite recursion
-        // by checking that the JSON doesn't contain excessive nesting
-        long indicatorCount = json.chars().filter(ch -> ch == '{').count();
-        // Should have reasonable nesting (base indicator + 2 circular indicators)
-        assertThat(indicatorCount).isLessThan(20);
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                indicatorA::toDescriptor);
+        assertThat(exception.getMessage()).contains("Unknown indicator type: CircularTestIndicator");
     }
 
     @Test
-    public void serializeSelfReferencingIndicator() {
-        // Test an indicator that references itself
-        // Note: The serialization code explicitly excludes self-references (child !=
-        // indicator),
-        // so the self-reference field won't be serialized, but this test verifies that
-        // having a self-reference doesn't cause infinite recursion or crashes
+    public void serializeSelfReferencingIndicatorFailsLoudForUnresolvableType() {
+        // Same fail-fast contract as above: a self-referencing test-local indicator
+        // is rejected before traversal. The visited-placeholder mechanism remains
+        // defensive for resolvable indicator graphs (first-party indicators cannot
+        // form cycles since children are fixed at construction).
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         Indicator<Num> base = new ClosePriceIndicator(series);
 
         CircularTestIndicator indicator = new CircularTestIndicator(series, base, "SelfRef", 7);
-        indicator.setReferencedIndicator(indicator); // Self-reference
+        indicator.setReferencedIndicator(indicator);
 
-        // Serialization should complete without StackOverflowError
-        // The self-reference is excluded by design, so only the base indicator will be
-        // serialized
-        ComponentDescriptor descriptor = indicator.toDescriptor();
-
-        assertThat(descriptor.getType()).isEqualTo("CircularTestIndicator");
-        // Only numeric parameters are serialized, so only 'value' will be present
-        assertThat(descriptor.getParameters()).containsEntry("value", 7);
-        // Self-references are excluded, so only the base indicator is included
-        assertThat(descriptor.getComponents()).hasSize(1); // base only
-
-        // Verify JSON serialization works
-        String json = indicator.toJson();
-        assertThat(json).contains("CircularTestIndicator");
-        assertThat(json).contains("\"value\":7");
-
-        // Verify no infinite recursion
-        long indicatorCount = json.chars().filter(ch -> ch == '{').count();
-        assertThat(indicatorCount).isLessThan(20);
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                indicator::toJson);
+        assertThat(exception.getMessage()).contains("Unknown indicator type: CircularTestIndicator");
     }
 
     @Test

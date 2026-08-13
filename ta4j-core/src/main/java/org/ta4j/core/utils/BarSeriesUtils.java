@@ -29,7 +29,7 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
      * values before higher values).
      */
-    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
+    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().compareTo(b2.getEndTime());
 
     private BarSeriesUtils() {
     }
@@ -231,6 +231,7 @@ public final class BarSeriesUtils {
      * @param previousIndex the previous index
      * @param currentIndex  the current index
      * @return the elapsed time in years, clamped to zero for non-positive deltas
+     * @since 0.22.2
      */
     public static Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
         var endPrev = series.getBar(previousIndex).getEndTime();

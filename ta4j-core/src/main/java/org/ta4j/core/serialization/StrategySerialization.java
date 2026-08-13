@@ -717,18 +717,16 @@ public final class StrategySerialization {
     /**
      * Rebuilds a strategy from a descriptor tree.
      * <p>
-     * If the specified strategy type cannot be instantiated (e.g., no matching
-     * constructor is found), this method will silently fall back to creating a
-     * {@link BaseStrategy} instance with the same entry/exit rules and parameters.
-     * This fallback behavior may mask configuration issues where a specific
-     * strategy type was expected but could not be constructed. Callers should
-     * verify the returned strategy type matches expectations if strict type
-     * checking is required.
+     * If the specified strategy type cannot be resolved or instantiated, an
+     * exception is thrown naming the requested type; no silent
+     * {@link BaseStrategy} substitution is performed.
      *
      * @param series     bar series to attach to the strategy
      * @param descriptor descriptor describing the strategy
-     * @return reconstructed strategy (may be a {@link BaseStrategy} fallback if the
-     *         specified type could not be instantiated)
+     * @return reconstructed strategy
+     * @throws IllegalArgumentException if the descriptor type cannot be resolved
+     * @throws IllegalStateException    if the resolved type has no suitable
+     *                                  constructor
      */
     public static Strategy fromDescriptor(BarSeries series, ComponentDescriptor descriptor) {
         Objects.requireNonNull(series, "series");
@@ -1076,10 +1074,10 @@ public final class StrategySerialization {
             if (Strategy.class.isAssignableFrom(clazz)) {
                 return (Class<? extends Strategy>) clazz;
             }
+            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
         } catch (ClassNotFoundException ex) {
-            // ignore and fall back to BaseStrategy
+            throw new IllegalArgumentException("Unknown strategy type: " + type, ex);
         }
-        return BaseStrategy.class;
     }
 
     /**
@@ -1102,17 +1100,11 @@ public final class StrategySerialization {
      * <li>{@code (Rule, Rule, int)} - entry, exit, unstableBars</li>
      * <li>{@code (Rule, Rule)} - entry, exit (unstableBars set via setter)</li>
      * </ol>
+     * <strong>Failure Behavior:</strong> If none of the above constructors are
+     * found, an {@link IllegalStateException} is thrown naming the requested
+     * type, instead of silently substituting a {@link BaseStrategy} whose type
+     * and type-specific behavior differ from the declared strategy.
      * <p>
-     * <strong>Fallback Behavior:</strong> If none of the above constructors are
-     * found and the requested type is not {@link BaseStrategy}, this method will
-     * silently create a {@link BaseStrategy} instance instead. This fallback
-     * provides resilience but may mask configuration issues where a specific
-     * strategy type was expected. The returned instance will have the same entry
-     * rule, exit rule, name, and unstableBars value, but will be of type
-     * {@code BaseStrategy} rather than the requested type.
-     * <p>
-     * If the requested type is already {@code BaseStrategy} and no suitable
-     * constructor is found, an {@link IllegalStateException} is thrown.
      *
      * @param strategyType the class of strategy to instantiate
      * @param name         strategy name (may be null)
@@ -1120,10 +1112,9 @@ public final class StrategySerialization {
      * @param exitRule     exit rule (required)
      * @param unstableBars number of unstable bars
      * @param startingType strategy entry trade type
-     * @return instantiated strategy (may be a {@link BaseStrategy} fallback if the
-     *         requested type could not be instantiated)
-     * @throws IllegalStateException if the requested type is {@code BaseStrategy}
-     *                               and no suitable constructor is found
+     * @return instantiated strategy
+     * @throws IllegalStateException if no suitable constructor is found
+     *                               for the requested type
      */
     private static Strategy instantiateStrategy(Class<? extends Strategy> strategyType, String name, Rule entryRule,
             Rule exitRule, int unstableBars, TradeType startingType) {
@@ -1223,13 +1214,8 @@ public final class StrategySerialization {
             throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
         }
 
-        // Fallback: If the requested strategy type cannot be instantiated, create a
-        // BaseStrategy instead. This provides resilience but may mask configuration
-        // issues where a specific strategy type was expected. The fallback preserves
-        // the entry/exit rules and parameters but changes the strategy type.
-        if (!strategyType.equals(BaseStrategy.class)) {
-            return new BaseStrategy(name, entryRule, exitRule, unstableBars, startingType);
-        }
+        // Fail loud: silently substituting BaseStrategy for the declared type
+        // would change the strategy's type and type-specific behavior
         throw new IllegalStateException("No suitable constructor found for strategy type: " + strategyType.getName());
     }
 
