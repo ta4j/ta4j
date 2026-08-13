@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
 
 /**
@@ -76,11 +77,13 @@ public class BaseBar implements Bar {
      *                                  values are {@code null}
      * @throws IllegalArgumentException If the calculated timePeriod between the
      *                                  provided beginTime and endTime does not
-     *                                  match the provided timePeriod, if the
-     *                                  high price is below the low price, if
-     *                                  volume or amount is negative, or if the
-     *                                  number of trades is negative
+     *                                  match the provided timePeriod, if the high
+     *                                  price is below the low price, if volume or
+     *                                  amount is negative, or if the number of
+     *                                  trades is negative
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
+            + "are rejected before any partially initialized instance can escape")
     public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount, long trades) {
 
@@ -88,6 +91,8 @@ public class BaseBar implements Bar {
                 trades);
     }
 
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
+            + "are rejected before any partially initialized instance can escape")
     private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
             Num amount, long trades) {
         if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {

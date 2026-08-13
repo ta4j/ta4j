@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.num.Num;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
  * Complete output bundle from a walk-forward engine run.
@@ -53,7 +54,8 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
      * @since 0.22.4
      */
     public WalkForwardRunResult(WalkForwardConfig config, List<WalkForwardSplit> splits,
-            List<PredictionSnapshot<P>> snapshots, Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
+            List<PredictionSnapshot<P>> snapshots,
+            Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
             Map<Integer, Map<String, Num>> globalMetricsByHorizon,
             Map<Integer, Map<String, Map<String, Num>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
             WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest) {
@@ -146,6 +148,8 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
         /**
          * Creates a validated fold failure record.
          */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "FoldFailure intentionally captures the original exception for fail-loud "
+                + "walk-forward diagnostics; exceptions are never mutated after capture")
         public FoldFailure {
             Objects.requireNonNull(foldId, "foldId");
             if (foldOrder < 0) {
@@ -154,5 +158,18 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
             Objects.requireNonNull(message, "message");
             Objects.requireNonNull(cause, "cause");
         }
+
+        /**
+         * Exposes the captured failure cause for diagnostics.
+         *
+         * @return the captured failure cause
+         */
+        @Override
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FoldFailure intentionally exposes the original exception for fail-loud "
+                + "walk-forward diagnostics; exceptions are never mutated after capture")
+        public Throwable cause() {
+            return cause;
+        }
     }
+
 }
