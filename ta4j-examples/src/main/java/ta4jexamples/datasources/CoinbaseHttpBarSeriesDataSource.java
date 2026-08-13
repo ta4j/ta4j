@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -488,14 +489,9 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
                     String baseName = filename.replace(".json", "");
                     String[] parts = baseName.split("-");
                     if (parts.length >= 5) {
-                        String productId = parts[1];
+                        String productId = decodeTickerFromCacheFilename(parts[1]);
                         // Try to determine interval from filename
-                        CoinbaseInterval interval = CoinbaseInterval.ONE_DAY; // Default
-                        try {
-                            interval = parseIntervalFromApiValue(parts[2]);
-                        } catch (IllegalArgumentException e) {
-                            LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
-                        }
+                        CoinbaseInterval interval = parseIntervalFromCacheToken(parts[2]);
 
                         return parseCoinbaseResponse(cachedResponse, productId, interval.getDuration());
                     }
@@ -537,6 +533,37 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
             }
         }
         throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
+    }
+
+    /**
+     * Parses the interval token of a cache filename into a
+     * {@link CoinbaseInterval}.
+     * <p>
+     * The token written by {@link #getCacheFilePath(String, Instant, Instant,
+     * Duration, String)} is the ISO-8601 {@link Duration} string (e.g.
+     * {@code PT1H}); API values (e.g. {@code ONE_HOUR}) are accepted as a
+     * fallback for legacy or hand-authored filenames. Unparseable tokens fall
+     * back to {@link CoinbaseInterval#ONE_DAY}.
+     *
+     * @param token the interval token from the cache filename
+     * @return the matching interval, or {@link CoinbaseInterval#ONE_DAY} when the
+     *         token cannot be parsed or mapped
+     */
+    private CoinbaseInterval parseIntervalFromCacheToken(String token) {
+        try {
+            CoinbaseInterval interval = mapDurationToInterval(Duration.parse(token));
+            if (interval != null) {
+                return interval;
+            }
+        } catch (DateTimeParseException e) {
+            LOG.debug("Could not parse duration from cache filename interval '{}': {}", token, e.getMessage());
+        }
+        try {
+            return parseIntervalFromApiValue(token);
+        } catch (IllegalArgumentException e) {
+            LOG.debug("Could not parse interval '{}' from cache filename, using default: {}", token, e.getMessage());
+        }
+        return CoinbaseInterval.ONE_DAY;
     }
 
     void pauseBetweenPaginatedRequests() throws InterruptedException {
