@@ -21,6 +21,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -467,6 +468,94 @@ public class BacktestExecutorTest {
     }
 
     @Test
+    public void executeAndKeepTopKIsolatesThrowingStrategy() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        List<Strategy> strategies = List.of(oneTrade, throwing, threeTrades, twoTrades);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, numOf(1), Trade.TradeType.BUY,
+                new NumberOfBarsCriterion(), 3, null);
+
+        // Healthy strategies are ranked and returned; the throwing one is skipped
+        assertEquals(3, result.tradingStatements().size());
+        // NumberOfBarsCriterion: the lower the criterion value, the better
+        assertSame(oneTrade, result.tradingStatements().get(0).getStrategy());
+        assertSame(twoTrades, result.tradingStatements().get(1).getStrategy());
+        assertSame(threeTrades, result.tradingStatements().get(2).getStrategy());
+        assertEquals(3, result.runtimeReport().strategyCount());
+
+        List<BacktestExecutor.StrategyFailure> failures = executor.getStrategyFailures();
+        assertEquals(1, failures.size());
+        assertSame(throwing, failures.get(0).strategy());
+        assertEquals("boom", failures.get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executeAndKeepTopKThrowsWhenAllStrategiesFail() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+
+        Strategy throwingOne = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+        Strategy throwingTwo = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(throwingOne, throwingTwo), numOf(1), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(exception.getMessage().contains("All 2 strategies failed"));
+        assertEquals(2, executor.getStrategyFailures().size());
+    }
+
+    @Test
+    public void executeWithRuntimeReportIsolatesThrowingStrategy() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(
+                List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1));
+
+        assertEquals(3, result.tradingStatements().size());
+        assertEquals(3, result.runtimeReport().strategyCount());
+
+        List<BacktestExecutor.StrategyFailure> failures = executor.getStrategyFailures();
+        assertEquals(1, failures.size());
+        assertSame(throwing, failures.get(0).strategy());
+        assertEquals("boom", failures.get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executeWithRuntimeReportThrowsWhenAllStrategiesFail() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+
+        Strategy throwingOne = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+        Strategy throwingTwo = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1)));
+
+        assertTrue(exception.getMessage().contains("All 2 strategies failed"));
+        assertEquals(2, executor.getStrategyFailures().size());
+    }
+
+    @Test
     public void executeAndKeepTopKAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
         Strategy smallestEntry = new BaseStrategy(new FixedRule(0), new FixedRule(3));
@@ -613,6 +702,25 @@ public class BacktestExecutorTest {
         private TrackingTradingRecord(Trade.TradeType tradeType, int startIndex, int endIndex,
                 CostModel transactionCostModel, CostModel holdingCostModel) {
             super(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
+        }
+    }
+
+    /**
+     * Strategy whose execution fails on the first bar, used to verify that a
+     * throwing strategy is isolated from healthy strategies.
+     */
+    private static final class ThrowingStrategy extends BaseStrategy {
+
+        private final RuntimeException failure;
+
+        private ThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure) {
+            super(entryRule, exitRule);
+            this.failure = failure;
+        }
+
+        @Override
+        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            throw failure;
         }
     }
 

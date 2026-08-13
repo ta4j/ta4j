@@ -14,6 +14,8 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
@@ -37,8 +39,20 @@ import java.util.stream.IntStream;
  */
 public class BacktestExecutor {
 
+    /** The logger. */
+    private static final Logger log = LoggerFactory.getLogger(BacktestExecutor.class);
+
     private final BarSeriesManager seriesManager;
     private final TradingStatementGenerator tradingStatementGenerator;
+
+    /**
+     * Strategies that failed during the most recent execution. Populated by
+     * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
+     * and {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int,
+     * Function)} so callers can distinguish healthy results from skipped
+     * strategies.
+     */
+    private final ConcurrentLinkedQueue<StrategyFailure> strategyFailures = new ConcurrentLinkedQueue<>();
 
     /**
      * Default batch size for processing strategies. When the number of strategies
@@ -294,6 +308,12 @@ public class BacktestExecutor {
      * {@link ProgressCompletion#logging(Class)} or
      * {@link ProgressCompletion#logging(String)} with your class or logger name.
      * </p>
+     * <p>
+     * A strategy that throws during evaluation is isolated: its failure is
+     * recorded and logged at warn level, and the remaining strategies still
+     * produce their results. The execution only throws when every strategy
+     * fails.
+     * </p>
      *
      * @param strategies       the strategies
      * @param amount           the amount used to open/close the position
@@ -398,6 +418,7 @@ public class BacktestExecutor {
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
         int strategyCount = strategyArray.length;
+        strategyFailures.clear();
         TradingStatement[] statements = new TradingStatement[strategyCount];
         long[] durations = new long[strategyCount];
 
@@ -420,19 +441,62 @@ public class BacktestExecutor {
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
 
+        if (strategyFailures.size() == strategyCount) {
+            throw allStrategiesFailed(strategyCount);
+        }
+
         List<TradingStatement> tradingStatements = new ArrayList<>(strategyCount);
         for (TradingStatement statement : statements) {
-            tradingStatements.add(statement);
+            if (statement != null) {
+                tradingStatements.add(statement);
+            }
         }
 
         List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(strategyCount);
         for (int i = 0; i < strategyCount; i++) {
-            strategyRuntimes
-                    .add(new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
+            if (statements[i] != null) {
+                strategyRuntimes
+                        .add(new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
+            }
         }
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport);
+    }
+
+    /**
+     * Builds the exception thrown when every strategy in an execution failed and
+     * no result could be produced.
+     *
+     * @param strategyCount number of strategies in the execution
+     * @return exception describing the total failure
+     */
+    private IllegalStateException allStrategiesFailed(int strategyCount) {
+        StrategyFailure firstFailure = strategyFailures.peek();
+        String firstMessage = firstFailure == null ? ""
+                : " First failure: " + firstFailure.strategy().getName() + " - " + firstFailure.cause().getMessage();
+        return new IllegalStateException(
+                "All " + strategyCount + " strategies failed during backtest execution." + firstMessage);
+    }
+
+    /**
+     * Returns the strategies that failed during the most recent execution.
+     *
+     * @return immutable snapshot of the recorded failures, in the order they were
+     *         recorded
+     */
+    List<StrategyFailure> getStrategyFailures() {
+        return List.copyOf(strategyFailures);
+    }
+
+    /**
+     * Records one strategy that failed during execution so callers can
+     * distinguish healthy results from skipped strategies.
+     *
+     * @param strategy the strategy that failed
+     * @param cause    the exception thrown while evaluating the strategy
+     */
+    record StrategyFailure(Strategy strategy, RuntimeException cause) {
     }
 
     /**
@@ -704,6 +768,12 @@ public class BacktestExecutor {
      * Memory usage is O(K + batchSize) instead of O(strategyCount), making it
      * suitable for massive parameter sweeps.
      * </p>
+     * <p>
+     * A strategy that throws during evaluation is isolated: its failure is
+     * recorded and logged at warn level, and the remaining strategies still
+     * compete for the top K. The execution only throws when every strategy
+     * fails.
+     * </p>
      *
      * @param strategies       the strategies to evaluate
      * @param amount           the amount used to open/close the position
@@ -767,6 +837,7 @@ public class BacktestExecutor {
 
         int strategyCount = strategies.size();
         int effectiveTopK = Math.min(topK, strategyCount);
+        strategyFailures.clear();
 
         Comparator<StrategyEvaluation> bestFirstComparator = createBestFirstComparator(criterion);
         PriorityQueue<StrategyEvaluation> topStrategies = new PriorityQueue<>(effectiveTopK + 1,
@@ -800,16 +871,22 @@ public class BacktestExecutor {
                 Strategy strategy = strategyArray[globalIndex];
 
                 long strategyStart = System.nanoTime();
-                TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
-                TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                        seriesManager.getBarSeries());
-                long duration = System.nanoTime() - strategyStart;
-                durationNanos[globalIndex] = duration;
-                Num criterionValue = criterion.calculate(seriesManager.getBarSeries(), statement.getTradingRecord());
-                batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
-
-                if (progressTracker != null) {
-                    progressTracker.reportCompletion();
+                try {
+                    TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
+                    TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
+                            seriesManager.getBarSeries());
+                    long duration = System.nanoTime() - strategyStart;
+                    durationNanos[globalIndex] = duration;
+                    Num criterionValue = criterion.calculate(seriesManager.getBarSeries(),
+                            statement.getTradingRecord());
+                    batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
+                } catch (RuntimeException e) {
+                    durationNanos[globalIndex] = System.nanoTime() - strategyStart;
+                    recordStrategyFailure(strategy, e);
+                } finally {
+                    if (progressTracker != null) {
+                        progressTracker.reportCompletion();
+                    }
                 }
             });
 
@@ -834,6 +911,10 @@ public class BacktestExecutor {
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
+
+        if (strategyFailures.size() == strategyCount) {
+            throw allStrategiesFailed(strategyCount);
+        }
 
         // Extract top strategies and sort them in correct order (best first)
         List<StrategyEvaluation> sortedEvaluations = new ArrayList<>(topStrategies);
@@ -951,19 +1032,8 @@ public class BacktestExecutor {
             indexStream = indexStream.parallel();
         }
 
-        indexStream.forEach(index -> {
-            Strategy strategy = strategyArray[index];
-            long strategyStart = System.nanoTime();
-            TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
-            TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                    seriesManager.getBarSeries());
-            statements[index] = statement;
-            durations[index] = System.nanoTime() - strategyStart;
-
-            if (progressTracker != null) {
-                progressTracker.reportCompletion();
-            }
-        });
+        indexStream.forEach(index -> executeSingleStrategy(index, strategyArray, statements, durations,
+                tradingRecordRunner, progressTracker));
     }
 
     /**
@@ -976,19 +1046,45 @@ public class BacktestExecutor {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
-        forEachBatchIndex(strategyCount, batchSize, index -> {
-            Strategy strategy = strategyArray[index];
-            long strategyStart = System.nanoTime();
+        forEachBatchIndex(strategyCount, batchSize, index -> executeSingleStrategy(index, strategyArray, statements,
+                durations, tradingRecordRunner, progressTracker));
+    }
+
+    /**
+     * Executes one strategy in isolation: a throwing strategy records a failure
+     * entry and is skipped, while healthy strategies keep their results. Progress
+     * is always reported so parallel batches cannot deadlock on a failed strategy.
+     */
+    private void executeSingleStrategy(int index, Strategy[] strategyArray, TradingStatement[] statements,
+            long[] durations, Function<Strategy, TradingRecord> tradingRecordRunner, ProgressTracker progressTracker) {
+        Strategy strategy = strategyArray[index];
+        long strategyStart = System.nanoTime();
+        try {
             TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
             TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
                     seriesManager.getBarSeries());
             statements[index] = statement;
             durations[index] = System.nanoTime() - strategyStart;
-
+        } catch (RuntimeException e) {
+            durations[index] = System.nanoTime() - strategyStart;
+            recordStrategyFailure(strategy, e);
+        } finally {
             if (progressTracker != null) {
                 progressTracker.reportCompletion();
             }
-        });
+        }
+    }
+
+    /**
+     * Records one failed strategy with a warn log. The strategy's slot is left
+     * null and the batch continues with the remaining strategies.
+     *
+     * @param strategy the strategy that failed
+     * @param failure  the exception thrown while evaluating the strategy
+     */
+    private void recordStrategyFailure(Strategy strategy, RuntimeException failure) {
+        strategyFailures.add(new StrategyFailure(strategy, failure));
+        log.warn("Strategy [{}] failed during backtest execution: {}", strategy.getName(), failure.getMessage(), failure);
     }
 
     private static final class ProgressTracker {
