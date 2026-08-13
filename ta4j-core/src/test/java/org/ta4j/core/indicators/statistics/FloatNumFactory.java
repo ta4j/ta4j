@@ -9,6 +9,15 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Test-only {@link NumFactory} producing {@link FloatNum} instances with
  * single-precision arithmetic.
+ *
+ * <p>
+ * Public visibility is a documented exception to the repository's
+ * package-private-by-default guideline: the float regression tests in the
+ * {@code indicators.statistics} package (DTW and lead/lag correlation) and the
+ * {@code analysis.event} package (mutual information) reuse this fixture, and
+ * package-private visibility cannot cross packages. This is test source only
+ * and adds no production API.
+ * </p>
  */
 public class FloatNumFactory implements NumFactory {
 
