@@ -264,7 +264,13 @@ final class DynamicTimeWarpingSupport {
      *         path
      */
     private static boolean better(Num candidateCost, int candidateLength, Num bestCost, int bestLength) {
-        if (bestCost == null) {
+        // An undefined cost marks an unreachable cell: NaN candidates never
+        // win, and NaN never blocks a finite best so far (compareTo ties on
+        // NaN in primitive-backed Num implementations).
+        if (candidateCost == null || candidateCost.isNaN()) {
+            return false;
+        }
+        if (bestCost == null || bestCost.isNaN()) {
             return true;
         }
         int comparison = candidateCost.compareTo(bestCost);
@@ -279,7 +285,13 @@ final class DynamicTimeWarpingSupport {
      */
     private static boolean betterNormalized(Num candidateValue, int candidateScale, int candidateLength, Num bestValue,
             int bestScale, int bestLength, NumFactory numFactory) {
-        if (bestValue == null) {
+        // An undefined value marks an unreachable cell: NaN candidates never
+        // win, and NaN never blocks a finite best so far (compareTo ties on
+        // NaN in primitive-backed Num implementations).
+        if (candidateValue == null || candidateValue.isNaN()) {
+            return false;
+        }
+        if (bestValue == null || bestValue.isNaN()) {
             return true;
         }
         // Compare the exact scaled totals instead of dividing rounded running

@@ -397,6 +397,32 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void undefinedCellsAreUnreachablePredecessors() {
+        // The squared subnormal delta at the center cell underflows to NaN in
+        // double precision. The NaN cell must not block the finite detour
+        // around it: DoubleNum reports the detour cost 1.0. DecimalNum keeps
+        // the center cell finite (MIN_VALUE squared) and takes the cheaper
+        // diagonal through it, reporting MIN_VALUE squared.
+        BarSeries series = series(3);
+        Indicator<Num> first = indicator(series, 0, Double.MIN_VALUE, 1);
+        Indicator<Num> second = indicator(series, 0, 0, 1);
+        DynamicTimeWarpingDistanceIndicator.Config config = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
+
+        Num distance = new DynamicTimeWarpingDistanceIndicator(first, second, 3, config).getValue(2);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numFactory.numOf(1), distance, 1.0e-12);
+        } else {
+            Num expected = numFactory.numOf(Double.MIN_VALUE).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
+            assertNumEquals(expected, distance, 1.0e-12);
+        }
+    }
+
+    @Test
     public void absolutePathLengthNormalizationUnderflowReportsNaNInsteadOfZero() {
         // Dividing the smallest positive double by a three-cell path underflows
         // to zero; a distinct sequence must not be reported as identical.

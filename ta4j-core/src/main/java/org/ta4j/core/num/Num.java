@@ -340,7 +340,7 @@ public interface Num extends Comparable<Num>, Serializable {
      * @param value the value to check, may be null
      * @return true if the value is non-null, not NaN, and not a primitive-backed
      *         infinity; false otherwise
-     * @since 0.22.9
+     * @since 0.24.2
      */
     public static boolean isFinite(Num value) {
         if (!isValid(value)) {

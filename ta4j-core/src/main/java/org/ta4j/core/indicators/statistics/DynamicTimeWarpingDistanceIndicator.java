@@ -181,9 +181,13 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
      * <p>
      * A Sakoe–Chiba band restricts the optimal path to cells whose row/column
      * indexes differ by at most {@code radius}. A radius of zero restricts the path
-     * to the diagonal, so the warped distance reduces to the sum of pointwise local
-     * costs. Unconstrained warping is an explicit opt-in that costs {@code O(W^2)}
-     * time instead of {@code O(W * min(W, 2r + 1))}.
+     * to the diagonal, so the warped distance is computed from the pointwise local
+     * costs along the diagonal, combined according to the configured
+     * {@link PathCostNormalization path-cost normalization}: their sum under
+     * {@link PathCostNormalization#NONE}, or their mean under
+     * {@link PathCostNormalization#BY_PATH_LENGTH}. Unconstrained warping is an
+     * explicit opt-in that costs {@code O(W^2)} time instead of
+     * {@code O(W * min(W, 2r + 1))}.
      * </p>
      *
      * @param radius       the Sakoe–Chiba radius, {@code >= 0}; must be {@code 0}
