@@ -67,6 +67,20 @@ public class RenkoUpIndicatorTest extends AbstractIndicatorTest<Indicator<Boolea
 
         assertThat(indicator.getValue(1)).as("large move forms three bricks").isTrue();
     }
+    @Test
+    public void matchesFreshIndicatorAfterRollingWindowExpiry() {
+        var series = buildSeries(100d, 100.4d, 100.9d, 101.6d, 101.2d, 101.8d);
+        series.setMaximumBarCount(3);
+
+        var existing = new RenkoUpIndicator(new ClosePriceIndicator(series), 0.5d, 2);
+        assertThat(existing.getValue(series.getEndIndex())).as("no bricks within retained window").isFalse();
+
+        series.barBuilder().openPrice(102.5).highPrice(102.5).lowPrice(102.5).closePrice(102.5).add();
+
+        var fresh = new RenkoUpIndicator(new ClosePriceIndicator(series), 0.5d, 2);
+        assertThat(existing.getValue(series.getEndIndex())).as("matches fresh indicator after expiry")
+                .isEqualTo(fresh.getValue(series.getEndIndex()));
+    }
 
     @Test(expected = IllegalArgumentException.class)
     public void rejectsNonPositivePointSize() {
