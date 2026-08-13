@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -854,6 +855,49 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testCacheFileReloadRoundTripsDashedTickerAndInterval() throws IOException, InterruptedException {
+        // Clean up any existing cache files for this test
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request writes the cache file
+        BarSeries written = dataSource.loadSeriesInstance("BTC-USD",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.HOUR_1, start, end);
+        assertNotNull(written, "First request should return data");
+
+        // Locate the written cache file for the dashed ticker
+        Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
+        List<Path> cacheFiles;
+        try (var stream = Files.list(cacheDir)) {
+            cacheFiles = stream
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-")).toList();
+        }
+        assertEquals(1, cacheFiles.size(), "Exactly one cache file should be written for BTC-USD");
+        Path cacheFile = cacheFiles.getFirst();
+
+        // Reload from the cache file path: ticker and interval must round-trip
+        // exactly
+        BarSeries reloaded = dataSource.loadSeries(cacheFile.toString());
+        assertNotNull(reloaded, "Reload from cache file should return data");
+        assertEquals("BTC-USD", reloaded.getName(), "Dashed ticker must round-trip exactly");
+        assertEquals(Duration.ofHours(1), reloaded.getFirstBar().getTimePeriod(),
+                "Interval must round-trip exactly");
+
+        // Clean up
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
+    }
+
+    @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
         cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
@@ -946,7 +990,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Use a unique notes identifier to avoid cache collisions with other tests
         String uniqueNotes = String.valueOf(System.currentTimeMillis());
         String ticker = "TEST-BARCOUNT";
-        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + ticker.replace("-", "%2D") + "-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -973,7 +1017,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + ticker.replace("-", "%2D") + "-PT24H-");
     }
 
     @Test
