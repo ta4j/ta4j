@@ -351,6 +351,7 @@ public class DecimalNumTest {
 
         assertNotEquals(decimalNum, doubleNum);
     }
+
     @Test
     public void testEqualsHashCodeContractAcrossScales() {
         final DecimalNum num1 = DecimalNum.valueOf("1.0");
@@ -367,7 +368,6 @@ public class DecimalNumTest {
 
         assertTrue(nums.contains(DecimalNum.valueOf("1.00")));
     }
-
 
     @Test
     public void testZeroEquals() {

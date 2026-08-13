@@ -154,15 +154,18 @@ public class DarkCloudIndicatorTest extends AbstractIndicatorTest<Indicator<Bool
     @Test
     public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
         var dc = new DarkCloudIndicator(series);
-        assertEquals(Math.max(1, new UpTrendIndicator(series).getCountOfUnstableBars()),
-                dc.getCountOfUnstableBars());
+        assertEquals(Math.max(1, new UpTrendIndicator(series).getCountOfUnstableBars()), dc.getCountOfUnstableBars());
     }
 
     @Test
     public void firstStableSignalAppearsAtDeclaredBoundary() {
         BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 10; ++i) {
-            boundarySeries.barBuilder().openPrice(2 * i).closePrice(2 * i + 6).highPrice(2 * i + 8).lowPrice(2 * i)
+            boundarySeries.barBuilder()
+                    .openPrice(2 * i)
+                    .closePrice(2 * i + 6)
+                    .highPrice(2 * i + 8)
+                    .lowPrice(2 * i)
                     .add();
         }
         // Big bullish first bar at index 10

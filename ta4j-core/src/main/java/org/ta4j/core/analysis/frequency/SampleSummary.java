@@ -118,8 +118,7 @@ public final class SampleSummary {
      * </p>
      *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample variance, or NaN when fewer than two samples are
-     *         available
+     * @return the sample variance, or NaN when fewer than two samples are available
      */
     public Num sampleVariance(NumFactory numFactory) {
         return moments.sampleVariance(numFactory);
@@ -145,8 +144,8 @@ public final class SampleSummary {
      * Returns the sample excess kurtosis.
      *
      * <p>
-     * The kurtosis is undefined (NaN) when fewer than four samples are available
-     * or when the sample variance is zero.
+     * The kurtosis is undefined (NaN) when fewer than four samples are available or
+     * when the sample variance is zero.
      * </p>
      *
      * @param numFactory the numeric factory to use for calculations

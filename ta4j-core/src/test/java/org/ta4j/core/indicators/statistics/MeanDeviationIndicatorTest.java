@@ -66,7 +66,8 @@ public class MeanDeviationIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertNumEquals(1.0, meanDeviation.getValue(7));
         // Window [4..8] = {5,6,7,8,9}: mean 7, deviations 2 + 1 + 0 + 1 + 2
         assertNumEquals(1.2, meanDeviation.getValue(8));
-        // Window [4..9] = {5,6,7,8,9,10}: mean 7.5, deviations 2.5 + 1.5 + 0.5 + 0.5 + 1.5 + 2.5
+        // Window [4..9] = {5,6,7,8,9,10}: mean 7.5, deviations 2.5 + 1.5 + 0.5 + 0.5 +
+        // 1.5 + 2.5
         assertNumEquals(1.5, meanDeviation.getValue(9));
     }
 }

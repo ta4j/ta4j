@@ -130,8 +130,8 @@ public final class WalkForwardTuner<C, P, O> {
             for (int i = batchStart; i < batchEnd; i++) {
                 WalkForwardCandidate<C> candidate = candidates.get(i);
                 try {
-                    WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config, candidate.id(),
-                            Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
+                    WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config,
+                            candidate.id(), Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
 
                     if (runResult.foldFailures().size() == runResult.splits().size()) {
                         log.warn("Candidate {} failed during walk-forward tuning: all {} folds failed", candidate.id(),
@@ -147,8 +147,8 @@ public final class WalkForwardTuner<C, P, O> {
                     WalkForwardObjective.Score objectiveScore = objective.evaluate(metricBundle.globalMetrics,
                             metricBundle.foldMetrics);
 
-                    WalkForwardLeaderboard.Entry<C> entry = new WalkForwardLeaderboard.Entry<>(candidate, objectiveScore,
-                            metricBundle.globalMetrics, calibrationSelection, runResult);
+                    WalkForwardLeaderboard.Entry<C> entry = new WalkForwardLeaderboard.Entry<>(candidate,
+                            objectiveScore, metricBundle.globalMetrics, calibrationSelection, runResult);
                     topEntries.offer(entry);
                     if (topEntries.size() > keepTopK) {
                         topEntries.poll();

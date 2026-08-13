@@ -185,16 +185,19 @@ public class MorningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     @Test
     public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
         var ms = new MorningStarIndicator(series);
-        assertEquals(Math.max(2, new DownTrendIndicator(series).getCountOfUnstableBars()),
-                ms.getCountOfUnstableBars());
+        assertEquals(Math.max(2, new DownTrendIndicator(series).getCountOfUnstableBars()), ms.getCountOfUnstableBars());
     }
 
     @Test
     public void firstStableSignalAppearsAtDeclaredBoundary() {
         BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 9; ++i) {
-            boundarySeries.barBuilder().openPrice(46 - 2 * i).closePrice(40 - 2 * i).highPrice(46 - 2 * i)
-                    .lowPrice(38 - 2 * i).add();
+            boundarySeries.barBuilder()
+                    .openPrice(46 - 2 * i)
+                    .closePrice(40 - 2 * i)
+                    .highPrice(46 - 2 * i)
+                    .lowPrice(38 - 2 * i)
+                    .add();
         }
         // Big bearish first bar at index 9
         boundarySeries.barBuilder().openPrice(28).closePrice(22).highPrice(28).lowPrice(20).add();

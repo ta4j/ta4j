@@ -265,8 +265,8 @@ public final class WalkForwardEngine<C, P, O> {
             for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
                 WalkForwardSplit split = splits.get(splitIndex);
                 try {
-                    executions.add(executeFold(series, context, config, split, splitIndex, maxPredictions,
-                            progressCounter));
+                    executions.add(
+                            executeFold(series, context, config, split, splitIndex, maxPredictions, progressCounter));
                 } catch (RuntimeException e) {
                     failures.add(recordFoldFailure(split, splitIndex, e));
                 }

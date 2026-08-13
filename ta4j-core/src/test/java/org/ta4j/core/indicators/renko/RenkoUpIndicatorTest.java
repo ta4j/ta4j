@@ -67,6 +67,7 @@ public class RenkoUpIndicatorTest extends AbstractIndicatorTest<Indicator<Boolea
 
         assertThat(indicator.getValue(1)).as("large move forms three bricks").isTrue();
     }
+
     @Test
     public void matchesFreshIndicatorAfterRollingWindowExpiry() {
         var series = buildSeries(100d, 100.4d, 100.9d, 101.6d, 101.2d, 101.8d);

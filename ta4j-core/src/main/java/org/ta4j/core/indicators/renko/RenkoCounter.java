@@ -51,17 +51,17 @@ final class RenkoCounter {
 
     /**
      * Evicts stale cached states when the series revision, retained window, or
-     * capacity changed since the last observation. Removed bars shift the
-     * meaning of every surviving index, so all entries are cleared; otherwise
-     * only entries at or after the earliest changed index are stale.
+     * capacity changed since the last observation. Removed bars shift the meaning
+     * of every surviving index, so all entries are cleared; otherwise only entries
+     * at or after the earliest changed index are stale.
      */
     private void reconcileCache() {
         final BarSeries series = priceIndicator.getBarSeries();
         if (series == null) {
             return;
         }
-        final BarSeries.BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(
-                observedSnapshot == null ? -1L : observedSnapshot.revision());
+        final BarSeries.BarSeriesChangeSnapshot snapshot = series
+                .getBarSeriesChangeSnapshot(observedSnapshot == null ? -1L : observedSnapshot.revision());
         if (observedSnapshot != null && sameSeriesState(snapshot, observedSnapshot)) {
             return;
         }
@@ -81,6 +81,7 @@ final class RenkoCounter {
         return left.revision() == right.revision() && left.removedThroughIndex() == right.removedThroughIndex()
                 && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
     }
+
     private RenkoState calculateState(int index) {
         if (index == 0) {
             var initial = new RenkoState(priceIndicator.getValue(0), 0, 0);

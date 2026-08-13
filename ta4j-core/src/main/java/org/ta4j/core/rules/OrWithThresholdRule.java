@@ -55,7 +55,9 @@ public class OrWithThresholdRule extends AbstractRule {
     }
 
     private static int findBeginIndex(Rule rule1, Rule rule2) {
-        return RuleCopies.findBarSeries(rule1).or(() -> RuleCopies.findBarSeries(rule2)).map(BarSeries::getBeginIndex)
+        return RuleCopies.findBarSeries(rule1)
+                .or(() -> RuleCopies.findBarSeries(rule2))
+                .map(BarSeries::getBeginIndex)
                 .orElse(0);
     }
 

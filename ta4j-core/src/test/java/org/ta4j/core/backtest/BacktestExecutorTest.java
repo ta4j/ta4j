@@ -474,8 +474,7 @@ public class BacktestExecutorTest {
         Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
         Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
-        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         List<Strategy> strategies = List.of(oneTrade, throwing, threeTrades, twoTrades);
 
@@ -522,12 +521,11 @@ public class BacktestExecutorTest {
         Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
         Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
-        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(
-                List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1));
+        BacktestExecutionResult result = executor
+                .executeWithRuntimeReport(List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1));
 
         assertEquals(3, result.tradingStatements().size());
         assertEquals(3, result.runtimeReport().strategyCount());

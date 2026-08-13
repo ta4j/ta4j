@@ -112,6 +112,7 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         assertThat(breakdown.rangeHighIndex()).isEqualTo(4);
         assertThat(breakdown.rangeLowIndex()).isEqualTo(initial.rangeLowIndex());
     }
+
     /**
      * Verifies that cached snapshots refresh when the forming bar is replaced.
      */
@@ -120,7 +121,8 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         var tracker = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
         tracker.snapshot(4);
 
-        series.addBar(series.barBuilder().openPrice(15).highPrice(16).lowPrice(14.5).closePrice(15.5).volume(100).build(),
+        series.addBar(
+                series.barBuilder().openPrice(15).highPrice(16).lowPrice(14.5).closePrice(15.5).volume(100).build(),
                 true);
 
         var fresh = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));

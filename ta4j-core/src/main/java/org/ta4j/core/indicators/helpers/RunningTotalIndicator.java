@@ -41,8 +41,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
             previous = series.getBarSeriesChangeSnapshot(-1L);
             previousSnapshot = previous;
         }
-        final BarSeries.BarSeriesChangeSnapshot snapshot = series
-                .getBarSeriesChangeSnapshot(previous.revision());
+        final BarSeries.BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(previous.revision());
         final boolean appendOnly = snapshot.endIndex() == previous.endIndex() + 1
                 && snapshot.earliestChangedIndex() == snapshot.endIndex()
                 && snapshot.removedThroughIndex() == previous.removedThroughIndex()
@@ -75,8 +74,7 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
         // so the legacy 0-anchored window is preserved (existing contract).
         // At/above beginIndex the window is anchored at beginIndex so that
         // getValue(beginIndex) equals the front bar's value, not barCount times it.
-        final int firstInWindow = index < beginIndex
-                ? Math.max(0, index - barCount + 1)
+        final int firstInWindow = index < beginIndex ? Math.max(0, index - barCount + 1)
                 : Math.max(Math.max(0, beginIndex), index - barCount + 1);
         for (int i = firstInWindow; i <= index; i++) {
             sum = sum.plus(indicator.getValue(i));

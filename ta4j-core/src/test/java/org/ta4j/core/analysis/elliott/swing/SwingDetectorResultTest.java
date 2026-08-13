@@ -37,8 +37,7 @@ class SwingDetectorResultTest {
         List<SwingPivot> pivots = List.of(pivot(1, 100, SwingPivotType.LOW), pivot(2, 110, SwingPivotType.HIGH));
         List<ElliottSwing> swings = List.of(swing(1, 2, 100, 90));
 
-        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inconsistent");
     }
 
@@ -47,8 +46,7 @@ class SwingDetectorResultTest {
         List<SwingPivot> pivots = List.of(pivot(1, 100, SwingPivotType.LOW), pivot(2, 110, SwingPivotType.HIGH));
         List<ElliottSwing> swings = List.of(swing(1, 2, 100, 110), swing(2, 3, 110, 105));
 
-        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inconsistent");
     }
 
@@ -57,8 +55,7 @@ class SwingDetectorResultTest {
         List<SwingPivot> pivots = List.of(pivot(1, 100, SwingPivotType.HIGH), pivot(2, 101, SwingPivotType.LOW));
         List<ElliottSwing> swings = List.of(swing(1, 2, 100, 101));
 
-        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inconsistent");
     }
 
@@ -67,8 +64,7 @@ class SwingDetectorResultTest {
         List<SwingPivot> pivots = List.of(pivot(2, 110, SwingPivotType.HIGH), pivot(1, 100, SwingPivotType.LOW));
         List<ElliottSwing> swings = List.of(swing(1, 2, 100, 110));
 
-        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> new SwingDetectorResult(pivots, swings)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("inconsistent");
     }
 

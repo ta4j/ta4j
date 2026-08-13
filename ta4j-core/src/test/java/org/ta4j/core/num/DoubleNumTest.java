@@ -19,6 +19,7 @@ public class DoubleNumTest {
 
         assertFalse(doubleNum.equals(decimalNum));
     }
+
     @Test
     public void testEqualsIsExactAndConsistentWithHashCode() {
         final DoubleNum num1 = DoubleNum.valueOf(1.0);
@@ -28,7 +29,6 @@ public class DoubleNumTest {
         assertEquals(num1, DoubleNum.valueOf(1.0));
         assertEquals(num1.hashCode(), DoubleNum.valueOf(1.0).hashCode());
     }
-
 
     @Test
     public void testZeroEquals() {

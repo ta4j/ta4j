@@ -137,8 +137,7 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     @Test
     public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
         var tid = new ThreeInsideDownIndicator(series);
-        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()),
-                tid.getCountOfUnstableBars());
+        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()), tid.getCountOfUnstableBars());
     }
 
 }

@@ -150,7 +150,8 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         int entryIndex = position.getEntry().getIndex();
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
-        Num extremePrice = position.getEntry().isBuy() ? new HighestValueIndicator(priceIndicator, lookback).getValue(entryIndex)
+        Num extremePrice = position.getEntry().isBuy()
+                ? new HighestValueIndicator(priceIndicator, lookback).getValue(entryIndex)
                 : new LowestValueIndicator(priceIndicator, lookback).getValue(entryIndex);
         if (Num.isNaNOrNull(extremePrice)) {
             return null;

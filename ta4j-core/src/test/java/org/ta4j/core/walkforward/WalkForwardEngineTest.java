@@ -196,9 +196,9 @@ class WalkForwardEngineTest {
         WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
 
         assertThat(result.foldFailures()).isNotEmpty();
-        assertThat(result.foldFailures()).allSatisfy(failure -> assertThat(failure.cause())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("synthetic provider failure"));
+        assertThat(result.foldFailures())
+                .allSatisfy(failure -> assertThat(failure.cause()).isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("synthetic provider failure"));
         assertThat(result.foldMetricsForHorizon(5)).isEmpty();
     }
 
@@ -225,8 +225,7 @@ class WalkForwardEngineTest {
         WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
 
         assertThat(result.foldFailures()).hasSize(1);
-        assertThat(result.foldFailures().get(0).cause())
-                .isInstanceOf(IllegalStateException.class)
+        assertThat(result.foldFailures().get(0).cause()).isInstanceOf(IllegalStateException.class)
                 .hasMessage("synthetic prediction failure");
         assertThat(progress).isNotEmpty();
         assertThat(progress.size()).isGreaterThan(4);
@@ -261,8 +260,7 @@ class WalkForwardEngineTest {
         WalkForwardRunResult.FoldFailure failure = result.foldFailures().get(0);
         assertThat(failure.foldId()).isEqualTo(splits.get(1).foldId());
         assertThat(failure.foldOrder()).isEqualTo(1);
-        assertThat(failure.cause())
-                .isInstanceOf(IllegalStateException.class)
+        assertThat(failure.cause()).isInstanceOf(IllegalStateException.class)
                 .hasMessage("synthetic fold-2 provider failure");
 
         assertThat(result.foldMetricsForHorizon(5)).containsKeys(splits.get(0).foldId(), splits.get(2).foldId());

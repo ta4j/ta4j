@@ -43,8 +43,10 @@ public class DifferenceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void returnsNaNInUnstableRegionAfterRemoval() {
-        BarSeries removed = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4)
-                .withMaxBarCount(3).build();
+        BarSeries removed = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4)
+                .withMaxBarCount(3)
+                .build();
         DifferenceIndicator diff = new DifferenceIndicator(new ClosePriceIndicator(removed));
 
         // beginIndex = 1; relative index 0 is still within the unstable region

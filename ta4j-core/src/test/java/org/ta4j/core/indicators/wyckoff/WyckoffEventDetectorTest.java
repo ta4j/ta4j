@@ -167,8 +167,10 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
 
         assertThat(events).contains(WyckoffEvent.SELLING_CLIMAX);
     }
+
     /**
-     * Verifies that cached extreme scans refresh after a mid-series bar is replaced.
+     * Verifies that cached extreme scans refresh after a mid-series bar is
+     * replaced.
      */
     @Test
     public void shouldMatchFreshDetectorAfterBarReplacement() {

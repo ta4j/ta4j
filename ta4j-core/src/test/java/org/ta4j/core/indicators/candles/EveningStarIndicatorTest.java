@@ -185,15 +185,18 @@ public class EveningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     @Test
     public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
         var es = new EveningStarIndicator(series);
-        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()),
-                es.getCountOfUnstableBars());
+        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()), es.getCountOfUnstableBars());
     }
 
     @Test
     public void firstStableSignalAppearsAtDeclaredBoundary() {
         BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 9; ++i) {
-            boundarySeries.barBuilder().openPrice(2 * i).closePrice(2 * i + 6).highPrice(2 * i + 8).lowPrice(2 * i)
+            boundarySeries.barBuilder()
+                    .openPrice(2 * i)
+                    .closePrice(2 * i + 6)
+                    .highPrice(2 * i + 8)
+                    .lowPrice(2 * i)
                     .add();
         }
         // Big bullish first bar at index 9

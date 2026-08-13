@@ -44,7 +44,8 @@ public class ChainRule extends AbstractRule {
         int beginIndex = RuleCopies.findBarSeries(initialRule).map(BarSeries::getBeginIndex).orElse(0);
         if (beginIndex == 0) {
             for (ChainLink chainLink : rulesInChain) {
-                int linkBeginIndex = RuleCopies.findBarSeries(chainLink.getRule()).map(BarSeries::getBeginIndex)
+                int linkBeginIndex = RuleCopies.findBarSeries(chainLink.getRule())
+                        .map(BarSeries::getBeginIndex)
                         .orElse(0);
                 if (linkBeginIndex != 0) {
                     return linkBeginIndex;

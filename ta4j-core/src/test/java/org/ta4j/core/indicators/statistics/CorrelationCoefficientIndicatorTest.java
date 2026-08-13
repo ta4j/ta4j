@@ -132,7 +132,8 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
         ClosePriceIndicator close = new ClosePriceIndicator(pruned);
         VolumeIndicator volume = new VolumeIndicator(pruned, 1);
-        // Window [4..8]: covariance = 3.6, variance(close) = 2, variance(volume) = 22.16
+        // Window [4..8]: covariance = 3.6, variance(close) = 2, variance(volume) =
+        // 22.16
         // -> correlation = 3.6 / sqrt(2 * 22.16) = 0.5408
         assertNumEquals(0.5408, new CorrelationCoefficientIndicator(close, volume, 6).getValue(8));
         // Sample scaling (n / (n - 1)) cancels in the correlation ratio

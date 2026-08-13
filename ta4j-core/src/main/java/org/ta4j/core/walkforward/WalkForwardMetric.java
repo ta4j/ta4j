@@ -76,8 +76,8 @@ public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkFor
      * <p>
      * NaN and {@code null} values are returned as {@link NaN#NaN} unchanged
      * (matching the walk-forward family's convention that undefined values must
-     * never be coerced into a valid-looking zero). To coerce NaN/null to
-     * {@code 0} instead, use {@link #normalizeAndClamp01(Num, NumFactory)}.
+     * never be coerced into a valid-looking zero). To coerce NaN/null to {@code 0}
+     * instead, use {@link #normalizeAndClamp01(Num, NumFactory)}.
      *
      * @param value input value
      * @return clamped value, or {@link NaN#NaN} when {@code value} is NaN or null

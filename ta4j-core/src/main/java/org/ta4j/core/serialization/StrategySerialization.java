@@ -718,8 +718,8 @@ public final class StrategySerialization {
      * Rebuilds a strategy from a descriptor tree.
      * <p>
      * If the specified strategy type cannot be resolved or instantiated, an
-     * exception is thrown naming the requested type; no silent
-     * {@link BaseStrategy} substitution is performed.
+     * exception is thrown naming the requested type; no silent {@link BaseStrategy}
+     * substitution is performed.
      *
      * @param series     bar series to attach to the strategy
      * @param descriptor descriptor describing the strategy
@@ -1101,9 +1101,9 @@ public final class StrategySerialization {
      * <li>{@code (Rule, Rule)} - entry, exit (unstableBars set via setter)</li>
      * </ol>
      * <strong>Failure Behavior:</strong> If none of the above constructors are
-     * found, an {@link IllegalStateException} is thrown naming the requested
-     * type, instead of silently substituting a {@link BaseStrategy} whose type
-     * and type-specific behavior differ from the declared strategy.
+     * found, an {@link IllegalStateException} is thrown naming the requested type,
+     * instead of silently substituting a {@link BaseStrategy} whose type and
+     * type-specific behavior differ from the declared strategy.
      * <p>
      *
      * @param strategyType the class of strategy to instantiate
@@ -1113,8 +1113,8 @@ public final class StrategySerialization {
      * @param unstableBars number of unstable bars
      * @param startingType strategy entry trade type
      * @return instantiated strategy
-     * @throws IllegalStateException if no suitable constructor is found
-     *                               for the requested type
+     * @throws IllegalStateException if no suitable constructor is found for the
+     *                               requested type
      */
     private static Strategy instantiateStrategy(Class<? extends Strategy> strategyType, String name, Rule entryRule,
             Rule exitRule, int unstableBars, TradeType startingType) {

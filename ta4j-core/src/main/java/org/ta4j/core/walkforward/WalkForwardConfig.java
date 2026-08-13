@@ -180,13 +180,12 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
      * manifests.
      *
      * <p>
-     * The hash is the lowercase hexadecimal encoding (64 characters) of the
-     * SHA-256 digest over the canonical configuration serialization, so
-     * semantically-equal configurations produce equal hashes while distinct
-     * configurations are effectively collision-free. Previously this method
-     * returned the 32-bit {@link String#hashCode()} value truncated to 8 hex
-     * characters; callers that persisted the old format must regenerate their
-     * stored identity keys.
+     * The hash is the lowercase hexadecimal encoding (64 characters) of the SHA-256
+     * digest over the canonical configuration serialization, so semantically-equal
+     * configurations produce equal hashes while distinct configurations are
+     * effectively collision-free. Previously this method returned the 32-bit
+     * {@link String#hashCode()} value truncated to 8 hex characters; callers that
+     * persisted the old format must regenerate their stored identity keys.
      *
      * @return stable hash string for this configuration
      * @since 0.22.4

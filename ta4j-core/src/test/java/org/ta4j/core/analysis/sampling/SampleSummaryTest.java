@@ -96,8 +96,8 @@ public class SampleSummaryTest extends AbstractCriterionTest {
 
     @Test
     public void zeroVarianceWindowReturnsNaNSkewnessAndKurtosis() {
-        var summary = SampleSummary.fromValues(
-                DoubleStream.of(1.0d, 1.0d, 1.0d, 1.0d, 1.0d).mapToObj(this::numOf), numFactory);
+        var summary = SampleSummary.fromValues(DoubleStream.of(1.0d, 1.0d, 1.0d, 1.0d, 1.0d).mapToObj(this::numOf),
+                numFactory);
 
         assertEquals(5, summary.count());
         assertEquals(0d, summary.sampleVariance(numFactory).doubleValue(), 0d);

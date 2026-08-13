@@ -42,8 +42,7 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void recomputesAfterMidSeriesReplace() {
-        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5)
-                .build();
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 3);
 
         assertNumEquals(12, runningTotal.getValue(4));
@@ -71,8 +70,10 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void anchorsAtBeginIndexAfterRemoval() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4)
-                .withMaxBarCount(3).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4)
+                .withMaxBarCount(3)
+                .build();
         RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 2);
 
         // remaining closes are [2, 3, 4] at indices 1..3

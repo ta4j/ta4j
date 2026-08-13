@@ -141,8 +141,7 @@ class NamedStrategyTest {
         NamedStrategy.registerImplementation(TestUnregisterStrategy.class);
         assertTrue(NamedStrategy.lookup("TestUnregisterStrategy").isPresent());
 
-        boolean result = NamedStrategy
-                .unregisterImplementation(org.ta4j.core.strategy.TestUnregisterStrategy.class);
+        boolean result = NamedStrategy.unregisterImplementation(org.ta4j.core.strategy.TestUnregisterStrategy.class);
 
         assertFalse(result);
         assertTrue(NamedStrategy.lookup("TestUnregisterStrategy").isPresent());

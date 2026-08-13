@@ -249,10 +249,10 @@ public class StrategyWalkForwardExecutor {
                 TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
                 Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
-                foldResults
-                        .add(new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
-                foldRuntimes
-                        .add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
+                foldResults.add(
+                        new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
+                foldRuntimes.add(
+                        new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
 
                 completed++;
                 effectiveCallback.accept(completed);

@@ -47,17 +47,17 @@ public record WeightedValue<T>(T value, Num weight) {
      * Weights are converted to the target numeric factory before normalization.
      * Conversion to a BigDecimal-backed factory preserves full precision.
      * Conversion to a double-based factory rounds to double precision (the
-     * primitive boundary), and throws when a finite weight cannot be represented
-     * at all (overflow to infinity or underflow to zero).
+     * primitive boundary), and throws when a finite weight cannot be represented at
+     * all (overflow to infinity or underflow to zero).
      * </p>
      *
      * @param weightedValues weighted values
      * @param numFactory     target numeric factory
      * @param <T>            value type
      * @return normalized weighted values preserving order
-     * @throws IllegalArgumentException if list is empty, total weight is zero, or
-     *                                  a weight cannot be represented in the
-     *                                  target numeric factory
+     * @throws IllegalArgumentException if list is empty, total weight is zero, or a
+     *                                  weight cannot be represented in the target
+     *                                  numeric factory
      * @since 0.22.4
      */
     public static <T> List<WeightedValue<T>> normalizeWeights(List<WeightedValue<T>> weightedValues,
@@ -93,12 +93,12 @@ public record WeightedValue<T>(T value, Num weight) {
      * Computes weighted sum for resolved values.
      *
      * <p>
-     * Entries with missing or NaN resolved values are skipped. Weights and
-     * resolved values are converted to the target numeric factory first:
-     * BigDecimal-backed targets preserve full precision, while double-based
-     * targets round to double precision (the primitive boundary) and throw when
-     * a finite value cannot be represented (overflow to infinity or underflow to
-     * zero) instead of silently collapsing it.
+     * Entries with missing or NaN resolved values are skipped. Weights and resolved
+     * values are converted to the target numeric factory first: BigDecimal-backed
+     * targets preserve full precision, while double-based targets round to double
+     * precision (the primitive boundary) and throw when a finite value cannot be
+     * represented (overflow to infinity or underflow to zero) instead of silently
+     * collapsing it.
      * </p>
      *
      * @param weightedValues weighted values

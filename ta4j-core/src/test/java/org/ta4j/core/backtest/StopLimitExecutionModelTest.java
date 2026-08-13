@@ -490,8 +490,8 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 totalTradeAmount = totalTradeAmount == null ? trade.getAmount()
                         : totalTradeAmount.plus(trade.getAmount());
             }
-            outcomes.add(new RecordOutcome(trades.size(), totalTradeAmount,
-                    model.getRejectedOrders(record).size(), model.getPendingOrder(record).isPresent()));
+            outcomes.add(new RecordOutcome(trades.size(), totalTradeAmount, model.getRejectedOrders(record).size(),
+                    model.getPendingOrder(record).isPresent()));
         }
         return outcomes;
     }

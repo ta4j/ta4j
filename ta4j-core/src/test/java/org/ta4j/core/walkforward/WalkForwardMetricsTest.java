@@ -70,13 +70,13 @@ class WalkForwardMetricsTest {
 
         // rank-1 rows with no predicted positives and no actual positives leave the
         // precision denominator zero, so F1 is undefined and must not read as 0.0.
-        List<WalkForwardObservation<String, Boolean>> noPredictedPositives = List.of(observation("fold-1", 1, 1, 0.2,
-                false));
+        List<WalkForwardObservation<String, Boolean>> noPredictedPositives = List
+                .of(observation("fold-1", 1, 1, 0.2, false));
         assertThat(f1.compute(noPredictedPositives).isNaN()).isTrue();
 
         // no true positives nor false negatives (recall denominator zero).
-        List<WalkForwardObservation<String, Boolean>> noActualPositives = List.of(observation("fold-1", 1, 1, 0.9,
-                false));
+        List<WalkForwardObservation<String, Boolean>> noActualPositives = List
+                .of(observation("fold-1", 1, 1, 0.9, false));
         assertThat(f1.compute(noActualPositives).isNaN()).isTrue();
     }
 

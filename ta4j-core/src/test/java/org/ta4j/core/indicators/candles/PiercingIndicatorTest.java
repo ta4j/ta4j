@@ -162,8 +162,12 @@ public class PiercingIndicatorTest extends AbstractIndicatorTest<Indicator<Boole
     public void firstStableSignalAppearsAtDeclaredBoundary() {
         BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 10; ++i) {
-            boundarySeries.barBuilder().openPrice(46 - 2 * i).closePrice(40 - 2 * i).highPrice(46 - 2 * i)
-                    .lowPrice(38 - 2 * i).add();
+            boundarySeries.barBuilder()
+                    .openPrice(46 - 2 * i)
+                    .closePrice(40 - 2 * i)
+                    .highPrice(46 - 2 * i)
+                    .lowPrice(38 - 2 * i)
+                    .add();
         }
         // Big bearish first bar at index 10
         boundarySeries.barBuilder().openPrice(26).closePrice(20).highPrice(26).lowPrice(18).add();

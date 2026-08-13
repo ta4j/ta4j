@@ -39,8 +39,7 @@ public class SMAIndicator extends CachedIndicator<Num> {
         // below beginIndex the series clamps reads to the first remaining bar,
         // at/above beginIndex the window is anchored at beginIndex.
         final int beginIndex = getBarSeries().getBeginIndex();
-        final int firstInWindow = index < beginIndex
-                ? Math.max(0, index - barCount + 1)
+        final int firstInWindow = index < beginIndex ? Math.max(0, index - barCount + 1)
                 : Math.max(Math.max(0, beginIndex), index - barCount + 1);
         final int realBarCount = index - firstInWindow + 1;
         final var sum = partialSum(index);

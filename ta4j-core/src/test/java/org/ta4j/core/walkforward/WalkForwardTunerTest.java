@@ -99,8 +99,8 @@ class WalkForwardTunerTest {
             if (context == 0.6) {
                 throw new IllegalStateException("synthetic candidate evaluation failure");
             }
-            return List.of(new RankedPrediction<>("p-" + decisionIndex, 1, numFactory.numOf(0.5),
-                    numFactory.numOf(0.5), 0.5));
+            return List.of(
+                    new RankedPrediction<>("p-" + decisionIndex, 1, numFactory.numOf(0.5), numFactory.numOf(0.5), 0.5));
         };
         OutcomeLabeler<Double, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> fullSeries
                 .getBar(decisionIndex + horizonBars)

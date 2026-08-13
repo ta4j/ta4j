@@ -50,7 +50,6 @@ public class IndicatorSerializationTest {
         assertThat(exception.getMessage()).contains("Non-finite numeric parameter");
     }
 
-
     @Test
     public void serializeIndicator() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();

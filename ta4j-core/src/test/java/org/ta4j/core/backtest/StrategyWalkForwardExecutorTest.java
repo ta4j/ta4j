@@ -239,7 +239,8 @@ public class StrategyWalkForwardExecutorTest {
 
         List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
         assertEquals(expectedSplits.size(), result.foldFailures().size());
-        assertTrue(result.foldFailures().stream()
+        assertTrue(result.foldFailures()
+                .stream()
                 .allMatch(f -> f.cause() instanceof IllegalStateException
                         && "synthetic fold evaluation failure".equals(f.cause().getMessage())));
         assertTrue(result.folds().isEmpty());

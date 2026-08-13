@@ -759,8 +759,7 @@ public final class IndicatorSerialization {
         }
         if (value instanceof Num num) {
             if (Num.isNaNOrNull(num) || !Num.isFinite(num)) {
-                throw new IndicatorSerializationException(
-                        "Non-finite numeric parameter cannot be serialized: " + num);
+                throw new IndicatorSerializationException("Non-finite numeric parameter cannot be serialized: " + num);
             }
             return trimDecimal(num.getDelegate().toString());
         }

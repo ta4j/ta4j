@@ -53,9 +53,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     private final PriceSource priceSource;
 
     /**
-     * Guards {@link #pendingOrders} and {@link #rejectedOrders}: {@link WeakHashMap}
-     * is not thread-safe, so every structural map access is synchronized on this
-     * lock.
+     * Guards {@link #pendingOrders} and {@link #rejectedOrders}:
+     * {@link WeakHashMap} is not thread-safe, so every structural map access is
+     * synchronized on this lock.
      */
     private final Object stateLock = new Object();
 

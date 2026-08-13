@@ -37,7 +37,9 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
  */
 public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
         List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport,
-        List<WalkForwardRunResult.FoldFailure> foldFailures) implements TradingStatementExecutionResult<WalkForwardRuntimeReport> {
+        List<WalkForwardRunResult.FoldFailure> foldFailures)
+        implements
+            TradingStatementExecutionResult<WalkForwardRuntimeReport> {
 
     /**
      * Creates a validated result with no recorded fold failures.

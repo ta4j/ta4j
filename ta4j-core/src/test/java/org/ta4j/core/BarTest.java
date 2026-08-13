@@ -40,32 +40,33 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .amount(0)
                 .build();
     }
+
     @Test
     public void testHighBelowLowRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new BaseBar(Duration.ofHours(1), beginTime, endTime,
-                numFactory.numOf(10), numFactory.numOf(8), numFactory.numOf(9), numFactory.numOf(9),
-                numFactory.zero(), numFactory.zero(), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(8),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.zero(), 0));
     }
 
     @Test
     public void testNegativeVolumeRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new BaseBar(Duration.ofHours(1), beginTime, endTime,
-                numFactory.numOf(10), numFactory.numOf(10), numFactory.numOf(9), numFactory.numOf(9),
-                numFactory.numOf(-1), numFactory.zero(), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.numOf(-1), numFactory.zero(), 0));
     }
 
     @Test
     public void testNegativeAmountRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new BaseBar(Duration.ofHours(1), beginTime, endTime,
-                numFactory.numOf(10), numFactory.numOf(10), numFactory.numOf(9), numFactory.numOf(9),
-                numFactory.zero(), numFactory.numOf(-1), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.numOf(-1), 0));
     }
 
     @Test
     public void testNegativeTradesRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new BaseBar(Duration.ofHours(1), beginTime, endTime,
-                numFactory.numOf(10), numFactory.numOf(10), numFactory.numOf(9), numFactory.numOf(9),
-                numFactory.zero(), numFactory.zero(), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.zero(), -1));
     }
 
     @Test
@@ -74,7 +75,6 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
                 null, 0);
         assertNull(nullPriceBar.getOpenPrice());
     }
-
 
     @Test
     public void createBars() {

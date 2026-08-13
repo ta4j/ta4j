@@ -204,8 +204,10 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
 
         assertThat(indicator.getLastPhaseTransitionIndex(longSeries.getEndIndex())).isEqualTo(-1);
     }
+
     /**
-     * Verifies that cached structures and transitions refresh after the forming bar is replaced.
+     * Verifies that cached structures and transitions refresh after the forming bar
+     * is replaced.
      */
     @Test
     public void shouldMatchFreshIndicatorAfterFormingBarReplacement() {
@@ -220,8 +222,13 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         indicator.getValue(lastIndex);
         indicator.getLastPhaseTransitionIndex(lastIndex);
 
-        accumulationSeries.addBar(accumulationSeries.barBuilder().openPrice(130).highPrice(132).lowPrice(128)
-                .closePrice(131).volume(2600).build(), true);
+        accumulationSeries.addBar(accumulationSeries.barBuilder()
+                .openPrice(130)
+                .highPrice(132)
+                .lowPrice(128)
+                .closePrice(131)
+                .volume(2600)
+                .build(), true);
 
         var fresh = WyckoffPhaseIndicator.builder(accumulationSeries)
                 .withSwingConfiguration(1, 1, 0)
@@ -233,8 +240,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         var expected = fresh.getValue(lastIndex);
         assertThat(cached.cycleType()).isEqualTo(expected.cycleType());
         assertThat(cached.phaseType()).isEqualTo(expected.phaseType());
-        assertThat(indicator.getTradingRangeHigh(lastIndex))
-                .isEqualByComparingTo(fresh.getTradingRangeHigh(lastIndex));
+        assertThat(indicator.getTradingRangeHigh(lastIndex)).isEqualByComparingTo(fresh.getTradingRangeHigh(lastIndex));
         assertThat(indicator.getLastPhaseTransitionIndex(lastIndex))
                 .isEqualTo(fresh.getLastPhaseTransitionIndex(lastIndex));
     }

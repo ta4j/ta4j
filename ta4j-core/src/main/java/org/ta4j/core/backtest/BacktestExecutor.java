@@ -48,9 +48,9 @@ public class BacktestExecutor {
     /**
      * Strategies that failed during the most recent execution. Populated by
      * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
-     * and {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int,
-     * Function)} so callers can distinguish healthy results from skipped
-     * strategies.
+     * and
+     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, Function)}
+     * so callers can distinguish healthy results from skipped strategies.
      */
     private final ConcurrentLinkedQueue<StrategyFailure> strategyFailures = new ConcurrentLinkedQueue<>();
 
@@ -309,10 +309,9 @@ public class BacktestExecutor {
      * {@link ProgressCompletion#logging(String)} with your class or logger name.
      * </p>
      * <p>
-     * A strategy that throws during evaluation is isolated: its failure is
-     * recorded and logged at warn level, and the remaining strategies still
-     * produce their results. The execution only throws when every strategy
-     * fails.
+     * A strategy that throws during evaluation is isolated: its failure is recorded
+     * and logged at warn level, and the remaining strategies still produce their
+     * results. The execution only throws when every strategy fails.
      * </p>
      *
      * @param strategies       the strategies
@@ -455,8 +454,8 @@ public class BacktestExecutor {
         List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(strategyCount);
         for (int i = 0; i < strategyCount; i++) {
             if (statements[i] != null) {
-                strategyRuntimes
-                        .add(new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
+                strategyRuntimes.add(
+                        new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
             }
         }
 
@@ -465,8 +464,8 @@ public class BacktestExecutor {
     }
 
     /**
-     * Builds the exception thrown when every strategy in an execution failed and
-     * no result could be produced.
+     * Builds the exception thrown when every strategy in an execution failed and no
+     * result could be produced.
      *
      * @param strategyCount number of strategies in the execution
      * @return exception describing the total failure
@@ -490,8 +489,8 @@ public class BacktestExecutor {
     }
 
     /**
-     * Records one strategy that failed during execution so callers can
-     * distinguish healthy results from skipped strategies.
+     * Records one strategy that failed during execution so callers can distinguish
+     * healthy results from skipped strategies.
      *
      * @param strategy the strategy that failed
      * @param cause    the exception thrown while evaluating the strategy
@@ -769,10 +768,9 @@ public class BacktestExecutor {
      * suitable for massive parameter sweeps.
      * </p>
      * <p>
-     * A strategy that throws during evaluation is isolated: its failure is
-     * recorded and logged at warn level, and the remaining strategies still
-     * compete for the top K. The execution only throws when every strategy
-     * fails.
+     * A strategy that throws during evaluation is isolated: its failure is recorded
+     * and logged at warn level, and the remaining strategies still compete for the
+     * top K. The execution only throws when every strategy fails.
      * </p>
      *
      * @param strategies       the strategies to evaluate
@@ -1076,15 +1074,16 @@ public class BacktestExecutor {
     }
 
     /**
-     * Records one failed strategy with a warn log. The strategy's slot is left
-     * null and the batch continues with the remaining strategies.
+     * Records one failed strategy with a warn log. The strategy's slot is left null
+     * and the batch continues with the remaining strategies.
      *
      * @param strategy the strategy that failed
      * @param failure  the exception thrown while evaluating the strategy
      */
     private void recordStrategyFailure(Strategy strategy, RuntimeException failure) {
         strategyFailures.add(new StrategyFailure(strategy, failure));
-        log.warn("Strategy [{}] failed during backtest execution: {}", strategy.getName(), failure.getMessage(), failure);
+        log.warn("Strategy [{}] failed during backtest execution: {}", strategy.getName(), failure.getMessage(),
+                failure);
     }
 
     private static final class ProgressTracker {

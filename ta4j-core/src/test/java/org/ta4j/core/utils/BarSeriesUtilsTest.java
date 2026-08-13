@@ -607,12 +607,12 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 2, 1));
         assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 1, 1));
     }
+
     @Test
     public void sortBarsPreservesInsertionOrderForEqualEndTimes() {
         final Instant endTime = Instant.parse("2019-06-01T01:01:00Z");
 
-        final Bar first = new MockBarBuilder(numFactory)
-                .endTime(endTime)
+        final Bar first = new MockBarBuilder(numFactory).endTime(endTime)
                 .timePeriod(Duration.ofDays(1))
                 .openPrice(1d)
                 .closePrice(5d)
@@ -622,8 +622,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .volume(1d)
                 .trades(1)
                 .build();
-        final Bar second = new MockBarBuilder(numFactory)
-                .endTime(endTime)
+        final Bar second = new MockBarBuilder(numFactory).endTime(endTime)
                 .timePeriod(Duration.ofDays(1))
                 .openPrice(1d)
                 .closePrice(7d)

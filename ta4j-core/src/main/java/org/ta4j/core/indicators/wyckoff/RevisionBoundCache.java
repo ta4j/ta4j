@@ -43,8 +43,8 @@ final class RevisionBoundCache {
      */
     @SafeVarargs
     final synchronized boolean reconcile(Map<Integer, ?>... caches) {
-        final BarSeries.BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(
-                observed == null ? -1L : observed.revision());
+        final BarSeries.BarSeriesChangeSnapshot snapshot = series
+                .getBarSeriesChangeSnapshot(observed == null ? -1L : observed.revision());
         if (observed != null && sameSeriesState(snapshot, observed)) {
             return false;
         }

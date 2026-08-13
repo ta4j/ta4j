@@ -16,8 +16,8 @@ import org.ta4j.core.num.NumFactory;
  * {@link ExpectedShortfallCriterion}.
  * <p>
  * Both risk criteria operate on the same view of a return series: the raw
- * returns excluding the initial placeholder value at index 0, sorted
- * ascending, with the tail size derived from the confidence level.
+ * returns excluding the initial placeholder value at index 0, sorted ascending,
+ * with the tail size derived from the confidence level.
  */
 final class RiskTailSupport {
 
