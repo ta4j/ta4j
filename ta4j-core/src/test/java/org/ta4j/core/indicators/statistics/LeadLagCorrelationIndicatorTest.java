@@ -102,13 +102,15 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
-    public void floatBackedPerfectCorrelationRoundsToFloatBound() {
+    public void floatBackedPerfectCorrelationClampsRoundedExcessToTheBound() {
         // Review regression: a perfectly correlated float pair can report a
         // Pearson coefficient one ULP above 1 (1.0000001192092896 for
         // {3.3, 1.0} vs {2.97, 0.9}); the Point validation previously
         // compared it against a double-sized 1e-12 tolerance and rejected
-        // the profile. The rounding tolerance must scale with the metric's
-        // own precision (FloatNumFactory epsilon is 1e-5).
+        // the profile. The evaluator clamps its own rounding excursions to
+        // the mathematical bound, so the selected correlation settles on
+        // exactly 1 while the Point record keeps only metric-precision
+        // slack (FloatNumFactory epsilon is 1e-5).
         NumFactory floatFactory = FloatNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(new double[] { 3.3, 1.0, 3.3, 1.0 })
@@ -130,22 +132,22 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
         Num selected = profile.selectedCorrelation();
         assertFalse(selected.isNaN());
-        // The float correlation rounds one ULP above the mathematical bound.
-        assertTrue(selected.isGreaterThan(floatFactory.one()));
-        assertTrue(selected.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-5)));
+        // The float correlation rounds one ULP above the mathematical bound;
+        // the evaluator clamps the excursion instead of inflating the bound.
+        assertNumEquals(floatFactory.one(), selected, 0);
     }
 
     @Test
-    public void longPerfectAffineFloatSeriesRoundsWithinAccumulationScaledBounds() {
+    public void longPerfectAffineFloatSeriesClampsAccumulationNoiseToTheBound() {
         // Review regression: an inexact affine transform of a long float
         // series (10,000 samples, y = 0.1x - 0.7 in float arithmetic) is
         // mathematically correlated to about 1 - 2e-13, but the variance and
         // covariance sums accumulate one rounding per aligned sample and push
         // the Pearson coefficient about 1.13e-5 above one, far beyond the
-        // factory epsilon (1.19e-7). The Point validation previously compared
-        // against the bare epsilon and rejected the profile. The rounding
-        // tolerance must scale with the accumulation size (the sample count),
-        // matching the bounds treatment of the mutual-information result.
+        // factory epsilon (1.19e-7). The evaluator clamps the excursion to
+        // the mathematical bound, so the profile reports exactly 1 while the
+        // Point record's validation stays at the bare epsilon instead of
+        // scaling with the accumulation size.
         NumFactory floatFactory = FloatNumFactory.getInstance();
         int sampleCount = 10_000;
         double[] seriesData = new double[sampleCount];
@@ -166,13 +168,10 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         Num correlation = indicator.getValue(series.getEndIndex());
 
         assertFalse(correlation.isNaN());
-        // The accumulated excess is bounded by the factory epsilon scaled by
-        // the number of accumulated samples, not by the bare epsilon.
-        Num scaledBound = floatFactory.epsilon().multipliedBy(floatFactory.numOf(1.0 + sampleCount));
-        assertTrue(correlation.minus(floatFactory.one()).isLessThanOrEqual(scaledBound));
-        // The case only exercises the scaled bound when the observed excess
-        // actually exceeds the bare factory epsilon.
-        assertTrue(correlation.minus(floatFactory.one()).isGreaterThan(floatFactory.epsilon()));
+        // The accumulation noise (about 1.13e-5 above one) is clamped to the
+        // mathematical bound, exactly as the evaluator owns its roundoff and
+        // the public record keeps only metric-precision slack.
+        assertNumEquals(floatFactory.one(), correlation, 0);
     }
 
     @Test
@@ -586,6 +585,22 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         // Rounding-scale deviations from the bounds stay accepted.
         new Point(0, numFactory.numOf(1.0 + 1.0e-13), 8);
         new Point(0, numFactory.numOf(-1.0 - 1.0e-13), 8);
+    }
+
+    @Test
+    public void pointBoundDoesNotScaleWithTheSampleCount() {
+        // Review regression: scaling the tolerance with the sample count lets
+        // a low-precision factory paired with a large window accept
+        // impossible correlations (1.9 with 100,000 samples under a
+        // 1e-5-epsilon factory, whose scaled tolerance reaches about 1.0).
+        // The evaluator clamps its own accumulation roundoff, so directly
+        // constructed points only get metric-precision slack at any count.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, floatFactory.numOf(1.9), 100_000));
+        assertThrows(IllegalArgumentException.class, () -> new Point(0, floatFactory.numOf(-1.9), 100_000));
+        // Metric-precision roundoff stays accepted at the same sample count.
+        new Point(0, floatFactory.numOf(1.0 + 1.0e-6), 100_000);
+        new Point(0, floatFactory.numOf(-1.0 - 1.0e-6), 100_000);
     }
 
     @Test

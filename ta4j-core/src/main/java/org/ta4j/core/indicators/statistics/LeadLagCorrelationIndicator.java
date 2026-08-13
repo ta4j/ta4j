@@ -271,7 +271,21 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
         if (window == null) {
             return new Point(lag, NaN.NaN, 0);
         }
-        return new Point(lag, CorrelationWindowSupport.pearson(numFactory, window), barCount);
+        Num correlation = CorrelationWindowSupport.pearson(numFactory, window);
+        // Pearson is mathematically bounded by [-1, 1]; the variance and
+        // covariance sums can push the computed value across the bound by
+        // rounding noise (for example about 1.0000113 for a 10,000-sample
+        // float window). Clamp the excursion to the mathematical bound here so
+        // the evaluator never emits a point outside [-1, 1], which keeps the
+        // Point record's public validation at the bare metric precision
+        // instead of scaling it with the accumulation size.
+        Num one = numFactory.one();
+        if (correlation.isGreaterThan(one)) {
+            correlation = one;
+        } else if (correlation.isLessThan(one.negate())) {
+            correlation = one.negate();
+        }
+        return new Point(lag, correlation, barCount);
     }
 
     private static Num selectionScore(Num correlation, LagSelectionPolicy selectionPolicy) {
@@ -456,8 +470,8 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
          * @throws IllegalArgumentException if {@code sampleCount} is negative, the
          *                                  correlation is finite with fewer than two
          *                                  samples, or the correlation lies outside
-         *                                  {@code [-1, 1]} beyond the metric's
-         *                                  precision-scaled rounding tolerance
+         *                                  {@code [-1, 1]} beyond the metric's rounding
+         *                                  tolerance
          */
         public Point {
             Objects.requireNonNull(correlation, "correlation");
@@ -469,16 +483,15 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                     throw new IllegalArgumentException("correlation must be finite or NaN");
                 }
                 double value = correlation.doubleValue();
-                // Pearson can exceed the mathematical bound by rounding noise
-                // of the metric's own precision (for example 1 + 2e-16 in
-                // Double or 1.0000001 in Float), and the variance/covariance
-                // sums accumulate one term per aligned sample, so the noise
-                // grows with the accumulation size: a 10,000-sample float
-                // window with a perfectly affine second series can report
-                // about 1.0000113. Scale the bound by the sample count so
-                // valid long windows pass while anything beyond
-                // accumulation-scale noise stays invalid.
-                double roundingTolerance = correlation.getNumFactory().epsilon().doubleValue() * (1.0 + sampleCount);
+                // Pearson is mathematically bounded by [-1, 1]. The indicator
+                // clamps its own accumulation roundoff to the bound before
+                // constructing a point, so the record only needs
+                // metric-precision slack for directly constructed values:
+                // scaling this tolerance with the sample count would let a
+                // low-precision factory paired with a large window accept
+                // impossible correlations (for example 1.9 with 100,000
+                // samples under a 1e-5-epsilon factory).
+                double roundingTolerance = correlation.getNumFactory().epsilon().doubleValue();
                 if (value < -1.0 - roundingTolerance || value > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException("a finite correlation must lie in [-1, 1]");
                 }
