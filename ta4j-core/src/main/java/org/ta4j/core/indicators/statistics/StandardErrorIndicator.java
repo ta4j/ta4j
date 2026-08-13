@@ -72,7 +72,7 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(getBarSeries().getBeginIndex(), index - this.barCount + 1);
+        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - this.barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         return sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
     }

@@ -37,7 +37,7 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1);
+        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         Num covariance = getBarSeries().numFactory().zero();
         Num average1 = sma1.getValue(index);

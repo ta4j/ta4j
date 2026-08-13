@@ -63,7 +63,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(getBarSeries().getBeginIndex(), index - barCount + 1);
+        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
         if (index - startIndex + 1 < 2) {
             // Not enough observations to compute a regression line
             return NaN;
