@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -15,6 +16,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.trend.UpTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -147,5 +149,32 @@ public class DarkCloudIndicatorTest extends AbstractIndicatorTest<Indicator<Bool
 
         var dc = new DarkCloudIndicator(series);
         assertTrue(dc.getValue(18));
+    }
+
+    @Test
+    public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
+        var dc = new DarkCloudIndicator(series);
+        assertEquals(Math.max(1, new UpTrendIndicator(series).getCountOfUnstableBars()),
+                dc.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void firstStableSignalAppearsAtDeclaredBoundary() {
+        BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 10; ++i) {
+            boundarySeries.barBuilder().openPrice(2 * i).closePrice(2 * i + 6).highPrice(2 * i + 8).lowPrice(2 * i)
+                    .add();
+        }
+        // Big bullish first bar at index 10
+        boundarySeries.barBuilder().openPrice(20).closePrice(26).highPrice(28).lowPrice(20).add();
+        // Bearish dark cloud bar at index 11
+        boundarySeries.barBuilder().openPrice(29).closePrice(22.5).highPrice(29).lowPrice(22).add();
+
+        var dc = new DarkCloudIndicator(boundarySeries);
+        int boundary = dc.getCountOfUnstableBars();
+        for (int i = 0; i < boundary; ++i) {
+            assertFalse(dc.getValue(i));
+        }
+        assertTrue(dc.getValue(boundary));
     }
 }

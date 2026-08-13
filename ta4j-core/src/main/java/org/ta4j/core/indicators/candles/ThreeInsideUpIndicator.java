@@ -45,6 +45,6 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 2;
+        return Math.max(2, trendIndicator.getCountOfUnstableBars());
     }
 }

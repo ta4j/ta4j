@@ -8,6 +8,7 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -59,6 +60,36 @@ public class ThreeWhiteSoldiersIndicatorTest extends AbstractIndicatorTest<Indic
         BarSeries series = serializationSeries(numFactory);
         return List.of(serializationFixture(series, new ThreeWhiteSoldiersIndicator(series, 5, numOf(1.0)),
                 stableIndexes(series)));
+    }
+
+    @Test
+    public void unstableBarsCoverSmaBaselineWindow() {
+        for (int barCount : new int[] { 2, 4, 8 }) {
+            BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            // Bearish pre-bars with a large upper shadow (shadow 2, average 2)
+            for (int i = 0; i < barCount - 1; ++i) {
+                boundarySeries.barBuilder().openPrice(24 + i).closePrice(22 + i).highPrice(26 + i).lowPrice(21 + i)
+                        .add();
+            }
+            // Black candle at index barCount - 1
+            boundarySeries.barBuilder().openPrice(24 + barCount).closePrice(22 + barCount).highPrice(26 + barCount)
+                    .lowPrice(21 + barCount).add();
+            // Three white soldiers with very short upper shadows (0 < 2 * 0.1)
+            boundarySeries.barBuilder().openPrice(21.5 + barCount).closePrice(23.5 + barCount)
+                    .highPrice(23.5 + barCount).lowPrice(21 + barCount).add();
+            boundarySeries.barBuilder().openPrice(22 + barCount).closePrice(24 + barCount).highPrice(24 + barCount)
+                    .lowPrice(22 + barCount).add();
+            boundarySeries.barBuilder().openPrice(22.5 + barCount).closePrice(24.5 + barCount)
+                    .highPrice(24.5 + barCount).lowPrice(22.5 + barCount).add();
+
+            var tws = new ThreeWhiteSoldiersIndicator(boundarySeries, barCount, numOf(0.1));
+            int boundary = barCount + 2;
+            assertEquals(Math.max(4, boundary), tws.getCountOfUnstableBars());
+            for (int i = 0; i < boundary; ++i) {
+                assertFalse(tws.getValue(i));
+            }
+            assertTrue(tws.getValue(boundary));
+        }
     }
 
 }
