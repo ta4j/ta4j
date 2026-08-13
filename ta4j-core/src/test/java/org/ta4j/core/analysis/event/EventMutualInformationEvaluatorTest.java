@@ -496,6 +496,34 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void equalWidthBinningSurvivesRoundedSubnormalBinWidth() {
+        // A subnormal span whose division by the bin count rounds to a wrong
+        // nonzero subnormal (5 * Double.MIN_VALUE / 4 rounds from
+        // 1.25 * Double.MIN_VALUE to Double.MIN_VALUE) must not shift samples
+        // between bins: the same values scaled to the normal range land in
+        // bins [0, 1, 2, 3] and perfectly determine the target, so the
+        // subnormal-scale evaluation must report the same mutual information
+        // and normalized MI of exactly 1.
+        boolean[] labels = { false, false, true, false };
+        EventMutualInformationConfig config = new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_WIDTH);
+        BarSeries subnormalSeries = series(4);
+        Indicator<Num> subnormalPredictor = indicator(subnormalSeries, 0, 2 * Double.MIN_VALUE, 3 * Double.MIN_VALUE,
+                5 * Double.MIN_VALUE);
+        Indicator<Boolean> subnormalTarget = eventSignal(subnormalSeries, 0, labels);
+        BarSeries scaledSeries = series(4);
+        Indicator<Num> scaledPredictor = indicator(scaledSeries, 0, 2e300, 3e300, 5e300);
+        Indicator<Boolean> scaledTarget = eventSignal(scaledSeries, 0, labels);
+
+        EventMutualInformationResult subnormal = evaluate(subnormalPredictor, subnormalTarget, 0, 3, config);
+        EventMutualInformationResult scaled = evaluate(scaledPredictor, scaledTarget, 0, 3, config);
+
+        assertEquals(4, subnormal.effectiveBinCount());
+        assertEquals(4, scaled.effectiveBinCount());
+        assertNumEquals(scaled.mutualInformationNats(), subnormal.mutualInformationNats(), 1.0e-9);
+        assertNumEquals(numFactory.one(), subnormal.normalizedMutualInformation(), 1.0e-9);
+    }
+
+    @Test
     public void unstableBoundaryAboveIntRangeStaysUnavailable() {
         // beginIndex + Integer.MAX_VALUE pushes the first stable index past the
         // int range, so no representable index is stable: STRICT must reject

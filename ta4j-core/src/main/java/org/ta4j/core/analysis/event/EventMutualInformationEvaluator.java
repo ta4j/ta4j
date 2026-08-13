@@ -396,18 +396,20 @@ public final class EventMutualInformationEvaluator {
         // span is finite (validated by the caller), so every value delta is
         // finite: correctly-rounded subtraction of finite doubles within
         // [minimum, minimum + span] cannot overflow past the double range.
-        Num width = span.dividedBy(minimum.getNumFactory().numOf(binCount));
-        // A positive subnormal span combined with a large bin count can
-        // underflow the width to zero; dividing by that width yields NaN,
-        // which intValue() rejects. The ratio form delta/span * binCount is
-        // underflow-safe: delta/span is in (0, 1] and binCount is an int, so
-        // the product can neither underflow nor overflow.
-        boolean underflowedWidth = width.isZero();
+        // Bin positions are computed as delta / span * binCount rather than
+        // delta / (span / binCount): for a positive subnormal span the
+        // rounded width is inaccurate (for example 5 * Double.MIN_VALUE / 4
+        // rounds from 1.25 * Double.MIN_VALUE to Double.MIN_VALUE, shifting
+        // the last samples into the wrong bins), and for a large bin count
+        // the width can underflow to zero entirely, which would divide by
+        // zero and throw inside {@code intValue()} on the resulting NaN. The
+        // ratio form is well conditioned in both cases: delta / span is in
+        // (0, 1] and binCount is an int, so the product can neither underflow
+        // nor overflow.
         int[] bins = new int[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
             Num position = values.get(i).minus(minimum);
-            position = underflowedWidth ? position.dividedBy(span).multipliedBy(minimum.getNumFactory().numOf(binCount))
-                    : position.dividedBy(width);
+            position = position.dividedBy(span).multipliedBy(minimum.getNumFactory().numOf(binCount));
             int bin = position.intValue();
             if (bin < 0) {
                 bin = 0;
