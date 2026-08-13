@@ -59,41 +59,6 @@ window is not ready or the statistic is undefined.
 | Does knowing one discretized state reduce uncertainty about another? | `MutualInformationIndicator` | Equal-width bins for v1; reports natural-log mutual information in nats |
 | Does correlation only matter inside a trend, volatility, or custom state? | `RegimeSegmentedCorrelationIndicator` | Filters each rolling window with an `Indicator<Boolean>` regime selector |
 
-## Evaluate sparse events
-
-When events are sparse and near-coincident rather than timestamp-identical,
-Pearson-style correlation is a poor measure. The event-analysis API under
-`org.ta4j.core.indicators.statistics.event` scores two Boolean event streams over the
-same series with deterministic one-to-one matching:
-
-- `EventSynchronizationIndicator` is a rolling `Indicator<Num>` over two
-  `Indicator<Boolean>` streams (`predicted` and `reference`). At each bar it
-  evaluates the closed trailing window `[index - barCount + 1, index]` and
-  reports the F1 score of the one-to-one matching inside that window, with
-  `getResult(index)` exposing the full diagnostics: counts, precision, recall,
-  matched pairs with signed offsets, unmatched event indexes, and lag
-  summaries.
-- Matching maximizes matched pairs, then minimizes total absolute lag, then
-  the worst lag, with stable index-based tie-breaking. The matcher, event
-  adapters, and reconstruction machinery are package-private implementation
-  details.
-
-Window semantics: only events inside the closed window participate, so a
-prediction near the window end cannot match a reference that occurs after the
-window end — the correct causal behavior for a rolling indicator, and it keeps
-training and validation windows isolated. The value is `NaN` until the window
-is fully available (stable-bar boundary plus series range); a one-shot
-evaluation of an explicit `[startIndex, endIndex]` range is the terminal window
-of an indicator with `barCount = endIndex - startIndex + 1`.
-
-Signed lag convention: `offset = referenceIndex - predictedIndex`; a positive
-offset means the prediction leads the reference, a negative offset means it
-lags.
-
-Example workflow: score `NetMomentumIndicator` zero crossings against causal
-`ZigZagPivotHighIndicator` / `ZigZagPivotLowIndicator` confirmation events
-(see `ta4jexamples.analysis.EventSynchronizationExample`).
-
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
