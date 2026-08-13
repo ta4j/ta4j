@@ -21,7 +21,6 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -442,37 +441,26 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
-    public void equalWidthBinningWithNonFiniteSpanIsUndefined() {
-        // The span overflows to infinity only in double arithmetic (BigDecimal
-        // keeps it finite), so pin the DoubleNum factory for this case: both
-        // parameterized runs exercise the same overflow path instead of one
-        // being skipped.
-        NumFactory doubleFactory = DoubleNumFactory.getInstance();
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
-                .withData(new double[] { -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE,
-                        -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE,
-                        Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE })
-                .build();
-        // The span maximum - minimum overflows to infinity for samples at both
-        // ends of the double range, so equal-width bin positions would be
-        // numerically undefined; the evaluation is undefined, not a silent
-        // collapse into bin 0.
-        List<Num> values = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-            values.add(doubleFactory.numOf(i < 6 ? -Double.MAX_VALUE : Double.MAX_VALUE));
-        }
-        Indicator<Num> predictor = new MockIndicator(series, values);
-        Indicator<Boolean> target = eventSignal(series, 0, index -> index % 2 == 0);
+    public void equalWidthBinningWithOverflowingSpanFormsEndpointBins() {
+        // maximum - minimum overflows to infinity for finite samples on
+        // opposite ends of the double range; the overflow-safe affine
+        // positions must still separate the extremes into their endpoint
+        // bins instead of reporting the evaluation undefined. DoubleNum
+        // exercises the scaled binning path; DecimalNum keeps the span
+        // finite and lands the same bins through the ordinary path.
+        BarSeries series = series(2);
+        Indicator<Num> predictor = indicator(series, -Double.MAX_VALUE, Double.MAX_VALUE);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index == 1);
 
-        EventMutualInformationResult result = evaluate(predictor, target, 0, 11,
-                new EventMutualInformationConfig(0, 0, 4, BinningStrategy.EQUAL_WIDTH));
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 1,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
 
-        assertTrue(result.mutualInformationNats().isNaN());
-        assertTrue(result.targetEntropyNats().isNaN());
-        assertTrue(result.normalizedMutualInformation().isNaN());
-        assertEquals(12, result.sampleCount());
-        assertEquals(6, result.positiveTargetCount());
-        assertEquals(0, result.effectiveBinCount());
+        assertEquals(2, result.sampleCount());
+        assertEquals(1, result.positiveTargetCount());
+        assertEquals(2, result.effectiveBinCount());
+        // One sample per endpoint bin with opposite labels: the bins explain
+        // the target completely, so MI is the target entropy ln(2).
+        assertNumEquals(numFactory.numOf(Math.log(2)), result.mutualInformationNats(), 1.0e-12);
     }
 
     @Test

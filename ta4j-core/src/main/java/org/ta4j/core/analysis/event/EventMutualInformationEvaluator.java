@@ -225,18 +225,26 @@ public final class EventMutualInformationEvaluator {
             // maximum - minimum can overflow to infinity for extreme spans
             // (e.g. samples at both ends of the double range); with a non-finite
             // span the bin width would be NaN and every sample would land in
-            // bin 0. Such an evaluation is undefined, not silently degenerate.
-            // A zero span (constant predictor) is the opposite extreme: all
-            // samples belong to bin 0, giving one effective bin and zero mutual
-            // information; computing bin positions directly would divide 0/0
-            // and throw inside {@code intValue()} on the resulting NaN.
+            // bin 0. Finite extremes are binned in overflow-safe scaled
+            // coordinates (affine bin positions are scale invariant), so
+            // samples on opposite ends of the double range still separate into
+            // their endpoint bins; only genuinely non-finite samples make the
+            // evaluation undefined. A zero span (constant predictor) is the
+            // opposite extreme: all samples belong to bin 0, giving one
+            // effective bin and zero mutual information; computing bin
+            // positions directly would divide 0/0 and throw inside
+            // {@code intValue()} on the resulting NaN.
             Num span = maximum.minus(minimum);
             if (span.isZero()) {
                 bins = new int[sampleCount];
             } else if (!Num.isFinite(span)) {
-                return new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, sampleCount, positiveTargetCount,
-                        positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
-                        config.targetWindowStartBars(), config.targetWindowEndBars());
+                if (Num.isFinite(minimum) && Num.isFinite(maximum)) {
+                    bins = equalWidthBinsScaled(predictorValues, minimum, maximum, config.predictorBinCount());
+                } else {
+                    return new EventMutualInformationResult(NaN.NaN, NaN.NaN, NaN.NaN, sampleCount, positiveTargetCount,
+                            positiveTargetRate, config.predictorBinCount(), 0, config.binningStrategy(),
+                            config.targetWindowStartBars(), config.targetWindowEndBars());
+                }
             } else {
                 bins = equalWidthBins(predictorValues, minimum, span, config.predictorBinCount());
             }
@@ -410,6 +418,47 @@ public final class EventMutualInformationEvaluator {
         for (int i = 0; i < sampleCount; i++) {
             Num position = values.get(i).minus(minimum);
             position = position.dividedBy(span).multipliedBy(minimum.getNumFactory().numOf(binCount));
+            int bin = position.intValue();
+            if (bin < 0) {
+                bin = 0;
+            }
+            if (bin >= binCount) {
+                bin = binCount - 1;
+            }
+            bins[i] = bin;
+        }
+        return bins;
+    }
+
+    /**
+     * Equal-width bins computed in overflow-safe scaled coordinates.
+     *
+     * <p>
+     * Used when the raw span {@code maximum - minimum} overflows to infinity in
+     * primitive arithmetic even though both extremes are finite (for example
+     * samples at {@code -Double.MAX_VALUE} and {@code Double.MAX_VALUE}). Affine
+     * bin positions {@code (value - minimum) / (maximum - minimum)} are invariant
+     * under a common nonzero scale, so every value is first multiplied by the same
+     * power of two that maps the larger absolute extreme into {@code [1, 2)}: the
+     * scaled span is then representable and the positions can be computed exactly
+     * as in {@link #equalWidthBins}, including the same ratio form and clamping.
+     * </p>
+     */
+    private static int[] equalWidthBinsScaled(List<Num> values, Num minimum, Num maximum, int binCount) {
+        int sampleCount = values.size();
+        if (binCount == 1) {
+            return new int[sampleCount];
+        }
+        double maxAbs = Math.max(Math.abs(minimum.doubleValue()), Math.abs(maximum.doubleValue()));
+        double scale = Math.scalb(1.0, -Math.getExponent(maxAbs));
+        NumFactory numFactory = minimum.getNumFactory();
+        Num scaleNum = numFactory.numOf(scale);
+        Num scaledMinimum = minimum.multipliedBy(scaleNum);
+        Num scaledSpan = maximum.multipliedBy(scaleNum).minus(scaledMinimum);
+        int[] bins = new int[sampleCount];
+        for (int i = 0; i < sampleCount; i++) {
+            Num position = values.get(i).multipliedBy(scaleNum).minus(scaledMinimum);
+            position = position.dividedBy(scaledSpan).multipliedBy(numFactory.numOf(binCount));
             int bin = position.intValue();
             if (bin < 0) {
                 bin = 0;
