@@ -76,7 +76,10 @@ public class BaseBar implements Bar {
      *                                  values are {@code null}
      * @throws IllegalArgumentException If the calculated timePeriod between the
      *                                  provided beginTime and endTime does not
-     *                                  match the provided timePeriod
+     *                                  match the provided timePeriod, if the
+     *                                  high price is below the low price, if
+     *                                  volume or amount is negative, or if the
+     *                                  number of trades is negative
      */
     public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount, long trades) {
@@ -87,6 +90,19 @@ public class BaseBar implements Bar {
 
     private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
             Num amount, long trades) {
+        if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {
+            throw new IllegalArgumentException(
+                    "High price must be greater than or equal to low price, but was " + highPrice + " < " + lowPrice);
+        }
+        if (volume != null && volume.isNegative()) {
+            throw new IllegalArgumentException("Volume cannot be negative, but was " + volume);
+        }
+        if (amount != null && amount.isNegative()) {
+            throw new IllegalArgumentException("Amount cannot be negative, but was " + amount);
+        }
+        if (trades < 0) {
+            throw new IllegalArgumentException("Number of trades cannot be negative, but was " + trades);
+        }
         this.timePeriod = times.timePeriod();
         this.beginTime = times.beginTime();
         this.endTime = times.endTime();
