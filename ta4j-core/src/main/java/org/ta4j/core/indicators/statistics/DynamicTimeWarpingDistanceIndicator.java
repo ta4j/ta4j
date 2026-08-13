@@ -52,7 +52,17 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
     private final boolean unconstrained;
     private final PathCostNormalization pathCostNormalization;
 
-    /** Reconstructed by the flattened constructor; never serialized directly. */
+    /**
+     * The largest rolling window length a DTW evaluation may materialize in
+     * practice. Each evaluation holds two window arrays, two DP cost rows plus
+     * their path-length rows, and the per-cell cost objects: roughly 150 bytes per
+     * bar with {@link PathCostNormalization#BY_PATH_LENGTH}, so a window of
+     * 1,000,000 bars already carries a ~150 MB working set. Larger windows are
+     * rejected at construction instead of risking an {@code OutOfMemoryError} on a
+     * typical heap at the first evaluation.
+     */
+    private static final int MAX_PRACTICAL_BAR_COUNT = 1_000_000;
+
     private final transient Config config;
 
     /**
@@ -63,8 +73,9 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
      * @param barCount rolling window length, must be at least 2
      * @param config   normalization, local distance, alignment band, and path cost
      *                 normalization
-     * @throws IllegalArgumentException if {@code barCount < 2} or the indicators
-     *                                  use different series
+     * @throws IllegalArgumentException if {@code barCount < 2}, {@code barCount}
+     *                                  exceeds the practical DTW window bound, or
+     *                                  the indicators use different series
      * @throws NullPointerException     if an indicator or the config is null
      * @since 0.24.2
      */
@@ -87,9 +98,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
      *                              {@code unconstrained} is {@code true}
      * @param unconstrained         whether the alignment band is unbounded
      * @param pathCostNormalization path cost normalization
-     * @throws IllegalArgumentException if {@code barCount < 2}, the indicators use
-     *                                  different series, or the radius is invalid
-     *                                  for the alignment band
+     * @throws IllegalArgumentException if {@code barCount < 2}, {@code barCount}
+     *                                  exceeds the practical DTW window bound, the
+     *                                  indicators use different series, or the
+     *                                  radius is invalid for the alignment band
      * @throws NullPointerException     if an indicator or an enum parameter is null
      */
     DynamicTimeWarpingDistanceIndicator(Indicator<Num> first, Indicator<Num> second, int barCount,
@@ -100,6 +112,10 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
         this.first = first;
         this.second = second;
         this.barCount = CorrelationWindowSupport.validateBarCount(barCount);
+        if (this.barCount > MAX_PRACTICAL_BAR_COUNT) {
+            throw new IllegalArgumentException(
+                    "barCount exceeds the practical DTW window bound (at most " + MAX_PRACTICAL_BAR_COUNT + ")");
+        }
         this.normalization = Objects.requireNonNull(normalization, "normalization");
         this.localDistance = Objects.requireNonNull(localDistance, "localDistance");
         this.pathCostNormalization = Objects.requireNonNull(pathCostNormalization, "pathCostNormalization");

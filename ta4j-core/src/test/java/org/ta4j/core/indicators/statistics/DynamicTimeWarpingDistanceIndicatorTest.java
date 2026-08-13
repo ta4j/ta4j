@@ -672,6 +672,19 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void constructorRejectsImpracticalBarCount() {
+        // A structurally valid but impractical window would materialize a
+        // ~150 MB working set per evaluation (window arrays, DP cost/length
+        // rows, and per-cell cost objects); the constructor must reject it up
+        // front instead of exhausting a typical heap at the first evaluation.
+        BarSeries series = series(12);
+        Indicator<Num> first = indicator(series, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new DynamicTimeWarpingDistanceIndicator(first, first, 1_000_001, DEFAULT_CONFIG));
+        assertTrue(exception.getMessage().contains("practical DTW window bound"));
+    }
+
+    @Test
     public void rejectsIndicatorsOnDifferentSeries() {
         BarSeries firstSeries = series(12);
         BarSeries secondSeries = series(12);
