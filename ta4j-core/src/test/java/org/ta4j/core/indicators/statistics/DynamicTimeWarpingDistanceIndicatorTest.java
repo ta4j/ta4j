@@ -1128,6 +1128,49 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void zeroCostCellsAfterAnOverflowingFirstCostKeepTheScaleBounded() {
+        // Review regression: after an overflowing first cost is carried as
+        // Double.MAX_VALUE * 2^1, every zero-cost diagonal cell used to
+        // satisfy the overflow guard (the stored value and the scaled ceiling
+        // both halve while the scale increments), so the scale grew once per
+        // cell until the final reconstruction materialized an overflowing
+        // residual power (2^(2050 - 1023)) and reported NaN, even though the
+        // true mean is finite. The guard must compare the representational
+        // sum against the delegate capacity, not against the capacity divided
+        // by the already-carried exponent.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        int sampleCount = 2050;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
+                .withData(new double[sampleCount])
+                .build();
+        double[] firstValues = new double[sampleCount];
+        firstValues[0] = -Double.MAX_VALUE;
+        double[] secondValues = new double[sampleCount];
+        secondValues[0] = Double.MAX_VALUE;
+        List<Num> first = new ArrayList<>(sampleCount);
+        List<Num> second = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            first.add(doubleFactory.numOf(firstValues[i]));
+            second.add(doubleFactory.numOf(secondValues[i]));
+        }
+        Indicator<Num> firstIndicator = new MockIndicator(series, first);
+        Indicator<Num> secondIndicator = new MockIndicator(series, second);
+        DynamicTimeWarpingDistanceIndicator.Config diagonal = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(firstIndicator,
+                secondIndicator, sampleCount, diagonal);
+
+        Num distance = dtw.getValue(sampleCount - 1);
+        assertFalse(distance.isNaN());
+        assertTrue(distance.isPositive());
+        // The exact mean is 2 * MAX / 2050 = MAX / 1025, which stays finite.
+        assertNumEquals(doubleFactory.numOf(Double.MAX_VALUE / 1025.0), distance, 1.0e300);
+    }
+
+    @Test
     public void scaledAlignmentNeverMaterializesTheOverflowingPower() {
         // Review regression: a squared cost at scale 1024 (a 1.4e154 delta)
         // next to a plain finite 1e308 cost was aligned by dividing the

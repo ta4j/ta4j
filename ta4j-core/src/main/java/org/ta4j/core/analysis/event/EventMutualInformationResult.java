@@ -202,9 +202,16 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 // Computed ratios can exceed the mathematical bounds by
                 // rounding noise of the metric's own precision only (for
                 // example 1 + 2e-16 in Double or 1.0000001 in Float); the
-                // factory epsilon is scaled to that precision, so anything
-                // beyond it is not a valid normalized value.
-                double roundingTolerance = normalizedMutualInformation.getNumFactory().epsilon().doubleValue();
+                // factory epsilon is scaled to that precision. The evaluator
+                // accumulates one p * ln(...) term per populated joint cell,
+                // so rounding noise also grows with the accumulation size: a
+                // 10,000-bin Float contingency over 10,000 samples rounds a
+                // mathematically perfect table to about 1.0000634. Scale the
+                // bound by the effective bin count so valid high-cardinality
+                // evaluations pass while anything beyond accumulation-scale
+                // noise stays invalid.
+                double roundingTolerance = normalizedMutualInformation.getNumFactory().epsilon().doubleValue()
+                        * (1.0 + effectiveBinCount);
                 if (!Double.isFinite(normalized) || normalized < -roundingTolerance
                         || normalized > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException(

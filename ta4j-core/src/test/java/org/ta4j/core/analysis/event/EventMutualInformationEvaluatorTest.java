@@ -671,6 +671,42 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void floatBackedHighCardinalityContingencyScalesTheBoundsWithTheAccumulation() {
+        // Review regression: a 10,000-bin float contingency (one sample per
+        // bin, perfectly determining a balanced target) accumulates MI over
+        // 10,000 populated cells and rounds to 0.6931911, so MI / H(Y) is
+        // about 1.0000634: mathematically exactly 1, but far beyond the
+        // factory epsilon (1e-5). The normalized bounds must scale with the
+        // accumulation size (effective bin count) or valid high-cardinality
+        // evaluations throw.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        int sampleCount = 10_000;
+        double[] data = new double[sampleCount];
+        for (int i = 0; i < sampleCount; i++) {
+            data[i] = i;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(data).build();
+        List<Num> values = new ArrayList<>(sampleCount);
+        for (int i = 0; i < sampleCount; i++) {
+            values.add(floatFactory.numOf(i));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index < sampleCount / 2);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, sampleCount - 1,
+                new EventMutualInformationConfig(0, 0, sampleCount, BinningStrategy.EQUAL_FREQUENCY));
+
+        Num normalized = result.normalizedMutualInformation();
+        assertFalse(normalized.isNaN());
+        // The float ratio legitimately rounds above the mathematical bound of
+        // a perfect deterministic table; the excess is bounded by the
+        // factory epsilon scaled by the number of accumulated cells
+        // (1.19e-7 * 10001 ~ 1.2e-3), not by the bare epsilon.
+        assertTrue(normalized.isGreaterThan(floatFactory.one()));
+        assertTrue(normalized.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-3)));
+    }
+
+    @Test
     public void proxySeriesWithImpracticalSpanReturnsUndefinedResult() {
         // A covered target-window span above the practical in-memory bound
         // (10,000,002 ints here, ~40 MB) must be undefined and must terminate

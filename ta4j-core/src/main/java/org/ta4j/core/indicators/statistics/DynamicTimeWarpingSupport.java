@@ -251,12 +251,17 @@ final class DynamicTimeWarpingSupport {
                                 : scaledDivide(bestMeanValue, scale - bestMeanScale, numFactory, exponentLimit);
                         Num costTotal = pathCost.scale() == scale ? pathCost.value()
                                 : scaledDivide(pathCost.value(), scale - pathCost.scale(), numFactory, exponentLimit);
-                        // The ceiling applies to the scaled domain: the total
-                        // overflows when bestTotal + costTotal exceeds
-                        // maxValue / 2^scale, so compare against that bound
-                        // (also chunked) rather than the raw maximum.
-                        if (overflowCapable && bestTotal.isGreaterThan(
-                                scaledCeiling(scale, maxValue, numFactory, exponentLimit).minus(costTotal))) {
+                        // The plus below must stay finite in the delegate
+                        // domain: it overflows when the scaled-domain sum
+                        // exceeds the delegate's own capacity, so compare
+                        // against maxValue. A comparison against the capacity
+                        // divided by the carried exponent would keep
+                        // re-triggering on zero-cost additions (halving both
+                        // operands preserves a total that already exceeds
+                        // that divided ceiling, so the scale grows once per
+                        // subsequent cell until the final reconstruction
+                        // materializes an overflowing residual power).
+                        if (overflowCapable && bestTotal.isGreaterThan(maxValue.minus(costTotal))) {
                             bestTotal = bestTotal.dividedBy(numFactory.two());
                             costTotal = costTotal.dividedBy(numFactory.two());
                             scale++;
@@ -503,16 +508,6 @@ final class DynamicTimeWarpingSupport {
     private static Num scaledDivide(Num value, int exponent, NumFactory numFactory, int exponentLimit) {
         return value.dividedBy(pow2(Math.min(exponent, exponentLimit), numFactory))
                 .dividedBy(pow2(exponent - Math.min(exponent, exponentLimit), numFactory));
-    }
-
-    /**
-     * @return {@code maxValue / 2^scale}, the overflow ceiling expressed in the
-     *         scaled domain, never materializing {@code 2^scale} past the
-     *         delegate's exponent bound.
-     */
-    private static Num scaledCeiling(int scale, Num maxValue, NumFactory numFactory, int exponentLimit) {
-        return maxValue.dividedBy(pow2(Math.min(scale, exponentLimit), numFactory))
-                .dividedBy(pow2(scale - Math.min(scale, exponentLimit), numFactory));
     }
 
     /**
