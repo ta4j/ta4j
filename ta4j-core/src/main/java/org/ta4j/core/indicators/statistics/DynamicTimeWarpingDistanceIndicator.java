@@ -27,8 +27,10 @@ import org.ta4j.core.num.Num;
  * The alignment band is caller-configured through the nested {@link Config}:
  * the Sakoe–Chiba radius bounds the warping window, and unconstrained warping
  * is an explicit opt-in. Both windows end at the evaluated index, so no future
- * samples are ever read. A window that is unavailable or contains non-finite
- * values produces {@code NaN}.
+ * samples are ever read. A window that is unavailable, contains non-finite
+ * values, or admits no anchored alignment inside the band (for example a
+ * squared local cost underflows to zero in primitive arithmetic) produces
+ * {@code NaN}.
  * </p>
  *
  * <p>

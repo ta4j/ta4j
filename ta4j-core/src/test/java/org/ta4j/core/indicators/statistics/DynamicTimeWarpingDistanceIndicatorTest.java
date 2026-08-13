@@ -438,10 +438,11 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     @Test
     public void undefinedCellsAreUnreachablePredecessors() {
         // The squared subnormal delta at the center cell underflows to NaN in
-        // double precision. The NaN cell must not block the finite detour
-        // around it: DoubleNum reports the detour cost 1.0. DecimalNum keeps
-        // the center cell finite (MIN_VALUE squared) and takes the cheaper
-        // diagonal through it, reporting MIN_VALUE squared.
+        // double precision. The NaN cell must not block the finite anchored
+        // detour around it (0,0) -> (0,1) -> (1,2) -> (2,2): DoubleNum reports
+        // the detour cost 1.0. DecimalNum keeps the center cell finite
+        // (MIN_VALUE squared) and takes the cheaper diagonal through it,
+        // reporting MIN_VALUE squared.
         BarSeries series = series(3);
         Indicator<Num> first = indicator(series, 0, Double.MIN_VALUE, 1);
         Indicator<Num> second = indicator(series, 0, 0, 1);
@@ -458,6 +459,41 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         } else {
             Num expected = numFactory.numOf(Double.MIN_VALUE).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
             assertNumEquals(expected, distance, 1.0e-12);
+        }
+    }
+
+    @Test
+    public void undefinedOriginYieldsUndefinedDistance() {
+        // Review regression: the squared subnormal delta at the origin
+        // underflows to NaN in double precision. The alignment cannot start
+        // at the origin, so the distance is undefined; scanning must not
+        // restart the path at a later cell and report a distance that
+        // silently drops the sequence starts. DecimalNum keeps the squared
+        // delta representable and reports the real positive distance.
+        BarSeries series = series(2);
+        Indicator<Num> first = indicator(series, Double.MIN_VALUE, 1);
+        Indicator<Num> second = indicator(series, 0, 1);
+        DynamicTimeWarpingDistanceIndicator.Config raw = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.NONE);
+        DynamicTimeWarpingDistanceIndicator.Config normalized = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(1),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+
+        Num rawDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, raw).getValue(1);
+        Num normalizedDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, normalized).getValue(1);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(rawDistance.isNaN());
+            assertTrue(normalizedDistance.isNaN());
+        } else {
+            Num expected = numFactory.numOf(Double.MIN_VALUE).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
+            assertNumEquals(expected, rawDistance, 1.0e-12);
+            assertTrue(normalizedDistance.isPositive());
         }
     }
 

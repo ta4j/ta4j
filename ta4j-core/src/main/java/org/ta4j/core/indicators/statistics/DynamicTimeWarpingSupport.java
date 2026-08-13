@@ -57,7 +57,9 @@ final class DynamicTimeWarpingSupport {
      * @param config     normalization, local distance, band, and cost normalization
      * @return the warped distance, or {@code NaN} when the sequences contain
      *         non-finite values, z-score normalization is numerically undefined
-     *         (mean or variance overflow), or the result is not finite
+     *         (mean or variance overflow), no anchored alignment exists inside the
+     *         band (for example a squared local cost underflows to zero in
+     *         primitive arithmetic), or the result is not finite
      */
     static Num distance(NumFactory numFactory, Num[] first, Num[] second, Config config) {
         int sampleCount = first.length;
@@ -181,9 +183,24 @@ final class DynamicTimeWarpingSupport {
                     }
                 }
                 if (bestCost == null) {
-                    // Start cell: no predecessor.
-                    bestCost = numFactory.zero();
-                    bestLength = 0;
+                    if (i == 0 && j == 0) {
+                        // DTW paths are anchored: only the origin may start a
+                        // path, because an alignment must cover both sequences
+                        // from their first element.
+                        bestCost = numFactory.zero();
+                        bestLength = 0;
+                    } else {
+                        // Every predecessor is out of band or undefined.
+                        // Restarting here would invent a path that skips the
+                        // sequence starts, so the cell stays undefined.
+                        currentCost[j] = NaN.NaN;
+                        currentLength[j] = 0;
+                        if (byPathLength) {
+                            currentMeanValue[j] = NaN.NaN;
+                            currentMeanScale[j] = 0;
+                        }
+                        continue;
+                    }
                 }
                 currentCost[j] = localCost.plus(bestCost);
                 currentLength[j] = bestLength + 1;
