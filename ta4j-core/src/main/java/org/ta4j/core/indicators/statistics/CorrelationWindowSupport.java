@@ -210,24 +210,40 @@ final class CorrelationWindowSupport {
             // correlation undefined.
             return NaN.NaN;
         }
-        Num firstAverage = numFactory.zero();
-        Num secondAverage = numFactory.zero();
+        // Anchor-shifted two-pass centering: values are centered relative to
+        // the window's first rescaled value instead of its mean. The mean of
+        // near-endpoint values (for example 1 and Math.nextDown(1)) is not
+        // exactly representable, and rounding it to an endpoint would lose the
+        // deviations entirely: the two-sample correlation of
+        // [Double.MAX_VALUE, Math.nextDown(Double.MAX_VALUE)] against [1, 0]
+        // would report ~0.7071 instead of the exact 1. The deltas relative to
+        // the anchor are exact, and their mean is a small value, so each
+        // centered deviation is computed as delta minus that mean delta
+        // without ever materializing the rescaled mean. The one-pass
+        // identities (sum of squares minus square of sums) would cancel
+        // catastrophically for near-constant windows, where the variance is
+        // tiny relative to the squared deltas (DecimalNum's 16-digit context
+        // would round it to exactly zero).
+        Num firstAnchor = firstValues[0].dividedBy(firstScale);
+        Num secondAnchor = secondValues[0].dividedBy(secondScale);
+        Num firstDeltaSum = numFactory.zero();
+        Num secondDeltaSum = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            firstAverage = firstAverage.plus(firstValues[i].dividedBy(firstScale));
-            secondAverage = secondAverage.plus(secondValues[i].dividedBy(secondScale));
+            firstDeltaSum = firstDeltaSum.plus(firstValues[i].dividedBy(firstScale).minus(firstAnchor));
+            secondDeltaSum = secondDeltaSum.plus(secondValues[i].dividedBy(secondScale).minus(secondAnchor));
         }
         Num count = numFactory.numOf(sampleCount);
-        firstAverage = firstAverage.dividedBy(count);
-        secondAverage = secondAverage.dividedBy(count);
+        Num firstMeanDelta = firstDeltaSum.dividedBy(count);
+        Num secondMeanDelta = secondDeltaSum.dividedBy(count);
         Num covariance = numFactory.zero();
         Num firstVariance = numFactory.zero();
         Num secondVariance = numFactory.zero();
         for (int i = 0; i < sampleCount; i++) {
-            Num firstDelta = firstValues[i].dividedBy(firstScale).minus(firstAverage);
-            Num secondDelta = secondValues[i].dividedBy(secondScale).minus(secondAverage);
-            covariance = covariance.plus(firstDelta.multipliedBy(secondDelta));
-            firstVariance = firstVariance.plus(firstDelta.multipliedBy(firstDelta));
-            secondVariance = secondVariance.plus(secondDelta.multipliedBy(secondDelta));
+            Num firstCentered = firstValues[i].dividedBy(firstScale).minus(firstAnchor).minus(firstMeanDelta);
+            Num secondCentered = secondValues[i].dividedBy(secondScale).minus(secondAnchor).minus(secondMeanDelta);
+            covariance = covariance.plus(firstCentered.multipliedBy(secondCentered));
+            firstVariance = firstVariance.plus(firstCentered.multipliedBy(firstCentered));
+            secondVariance = secondVariance.plus(secondCentered.multipliedBy(secondCentered));
         }
 
         Num denominatorSquared = firstVariance.multipliedBy(secondVariance);

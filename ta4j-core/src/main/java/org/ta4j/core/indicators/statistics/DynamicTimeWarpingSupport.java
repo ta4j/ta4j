@@ -458,17 +458,25 @@ final class DynamicTimeWarpingSupport {
         for (int i = 0; i < values.length; i++) {
             rescaled[i] = values[i].dividedBy(scale);
         }
-        // Incremental mean keeps the running sum finite even when the rescaled
-        // values are near the extremes: plain summation of e.g. ten values of
-        // magnitude one could overflow to infinity before the division.
-        Num mean = numFactory.zero();
-        for (int i = 0; i < values.length; i++) {
-            mean = mean.plus(rescaled[i].minus(mean).dividedBy(numFactory.numOf(i + 1)));
+        // Anchor-shifted moments: values are centered relative to the first
+        // rescaled value instead of the mean. The mean of near-endpoint values
+        // (for example 1 and Math.nextDown(1)) is not exactly representable,
+        // and rounding it to an endpoint would distort the shape: z-scoring
+        // [Double.MAX_VALUE, Math.nextDown(Double.MAX_VALUE)] would yield
+        // [0, -sqrt(2)] instead of [1, -1], breaking scale/level invariance.
+        // The deltas relative to the anchor are exact, and subtracting their
+        // exact mean delta recovers the centered values without materializing
+        // the mean.
+        Num anchor = rescaled[0];
+        Num deltaSum = numFactory.zero();
+        for (Num value : rescaled) {
+            deltaSum = deltaSum.plus(value.minus(anchor));
         }
+        Num meanDelta = deltaSum.dividedBy(numFactory.numOf(rescaled.length));
         Num sumOfSquares = numFactory.zero();
         for (Num value : rescaled) {
-            Num delta = value.minus(mean);
-            sumOfSquares = sumOfSquares.plus(delta.multipliedBy(delta));
+            Num centered = value.minus(anchor).minus(meanDelta);
+            sumOfSquares = sumOfSquares.plus(centered.multipliedBy(centered));
         }
         Num standardDeviation = sumOfSquares.dividedBy(numFactory.numOf(values.length)).sqrt();
         if (standardDeviation.isZero()) {
@@ -485,7 +493,7 @@ final class DynamicTimeWarpingSupport {
         }
         Num[] normalized = new Num[values.length];
         for (int i = 0; i < values.length; i++) {
-            normalized[i] = rescaled[i].minus(mean).dividedBy(standardDeviation);
+            normalized[i] = rescaled[i].minus(anchor).minus(meanDelta).dividedBy(standardDeviation);
         }
         return normalized;
     }

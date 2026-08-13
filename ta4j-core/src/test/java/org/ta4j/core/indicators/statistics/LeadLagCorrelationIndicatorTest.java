@@ -592,6 +592,27 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
                 numFactory.one());
     }
 
+    @Test
+    public void nearEndpointScaleSurvivesPearsonCentering() {
+        // Two samples are always perfectly collinear, so the correlation is
+        // exactly 1. The rescaled values are 1 and Math.nextDown(1), whose
+        // exact mean is 1 - 2^-54 and is not representable, so materializing
+        // it rounds to the endpoint 1 and centers the window to [0, -2^-53],
+        // reporting ~0.7071 instead of the exact 1. DecimalNum's 16-digit
+        // context sees the same input as [1, 0.9999999999999999], whose mean
+        // rounds to 1 at that precision, so the failure is factory
+        // independent.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 0.0, 0.0, 1.0, Math.nextDown(1.0) })
+                .build();
+        Indicator<Num> first = indicator(series, 0.0, 0.0, 1.0, Math.nextDown(1.0));
+        Indicator<Num> second = indicator(series, 0.0, 0.0, 1.0, 0.0);
+        LeadLagCorrelationIndicator leadLag = new LeadLagCorrelationIndicator(first, second, 2, 0, 0,
+                LagSelectionPolicy.MAXIMUM_CORRELATION);
+
+        assertNumEquals(numFactory.one(), leadLag.getValue(3), 1.0e-12);
+    }
+
     private Profile profile(Indicator<Num> first, Indicator<Num> second, int endIndex, int barCount, int minimumLag,
             int maximumLag, LagSelectionPolicy policy) {
         return indicator(first, second, barCount, minimumLag, maximumLag, policy).getProfile(endIndex);

@@ -918,6 +918,32 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         return normalized;
     }
 
+    @Test
+    public void nearEndpointScaleKeepsZScoreShapeInvariance() {
+        // [1, Math.nextDown(1)] and [1, 0] differ only by level and scale, so
+        // z-scoring must map both windows to [1, -1] and the warped distance
+        // must be 0. The exact mean of 1 and Math.nextDown(1) is 1 - 2^-54,
+        // which is not representable and rounds to the endpoint 1;
+        // materializing it would center the window to [0, -2^-53], producing
+        // z-scores [0, -sqrt(2)] and a distance near 0.5858 instead of 0.
+        // DecimalNum's 16-digit context sees the same input as [1,
+        // 0.9999999999999999], whose mean rounds to 1 at that precision, so
+        // the failure is factory independent.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 0.0, 0.0, 1.0, Math.nextDown(1.0) })
+                .build();
+        Indicator<Num> first = indicator(series, 0.0, 0.0, 1.0, Math.nextDown(1.0));
+        Indicator<Num> second = indicator(series, 0.0, 0.0, 1.0, 0.0);
+        DynamicTimeWarpingDistanceIndicator.Config diagonal = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.Z_SCORE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, second, 2, diagonal);
+
+        assertNumEquals(numFactory.zero(), dtw.getValue(3), 1.0e-12);
+    }
+
     private BarSeries series(int barCount) {
         double[] raw = new double[barCount];
         for (int i = 0; i < barCount; i++) {
