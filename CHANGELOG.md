@@ -3,6 +3,13 @@
 ### Added
 - **Parameter research has lower first-run ceremony**: Added no-validator `ParameterResearch.run(...)`, `ResearchConfig.holdout(...)` for all-pre-holdout training, `ParameterDomain.periodRange(...)` for period-like domains, and bounded `ParameterResearchReport.formatSummary(...)` output so multi-parameter studies are easier to launch and read.
 
+### Changed
+- **Parameter research candidate spaces are now provably distinct and countable**: Candidate IDs and hashes come from an escaped canonical encoding with construction-time validation, criteria survive as identity-keyed metric maps with disambiguated summary labels, pruning groups enforce representative/member invariants, raw/generated/valid/invalid counts are stage-specific and cross-validated, oversized `integerRange(...)` domains fail with an explicit limit instead of overflowing, and candidate generation enforces a configurable combination budget (`#1542`).
+- **Parameter research now executes on the full series**: Training and validation runs share the full series context with the strategy's starting trade type honored, parallel execution keeps deterministic candidate ordering, per-candidate failures are isolated and staged by phase, and pruning distinguishes exact trading records from indicator signatures instead of relying on signal signatures (`#1542`).
+
+### Fixed
+- **Backtesting terminal-index runs no longer overflow**: `BarSeriesManager.run(...)` and next-open execution guard the `Integer.MAX_VALUE` end index so research over synthetic terminal series terminates safely and preserves empty-range semantics (`#1542`).
+
 ## 0.22.7 (2026-06-27)
 
 ### Breaking

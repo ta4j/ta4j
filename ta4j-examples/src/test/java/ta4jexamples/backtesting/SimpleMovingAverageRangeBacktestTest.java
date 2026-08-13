@@ -51,8 +51,8 @@ public class SimpleMovingAverageRangeBacktestTest {
         assertTrue(narrative.contains("Training top candidates:"));
         assertTrue(narrative.contains("Validation top candidates:"));
         assertTrue(narrative.contains("Takeaway:"));
-        assertTrue(narrative.contains("NetProfitCriterion="));
-        assertTrue(narrative.contains("ReturnOverMaxDrawdownCriterion="));
+        assertTrue(narrative.contains("Net Profit="));
+        assertTrue(narrative.contains("Return Over Max Drawdown="));
     }
 
     private static BarSeries buildSwingSeries(int size) {
