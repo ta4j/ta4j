@@ -35,9 +35,10 @@ import org.ta4j.core.num.NumFactory;
  * entropy, normalized MI, event prevalence, and bin diagnostics.
  * Equal-frequency binning never splits identical predictor values, so the
  * effective bin count may be smaller than requested. A non-finite predictor
- * sample, an empty effective range, or a target-window span too large to
- * represent in memory makes the evaluation undefined (metrics {@code NaN})
- * instead of silently dropping samples or truncating the window.
+ * sample, an empty effective range, a target-window span too large to represent
+ * in memory, or a sample range beyond the practical working-set bound makes the
+ * evaluation undefined (metrics {@code NaN}) instead of silently dropping
+ * samples or truncating the window.
  * </p>
  *
  * @since 0.24.2
@@ -57,11 +58,25 @@ public final class EventMutualInformationEvaluator {
     /**
      * The largest target-window span the prefix array may cover in practice: a span
      * of {@code 10,000,000} indexes is already a 40 MB {@code int[]} on top of the
-     * per-sample evaluation state, so spans beyond this bound are reported as the
-     * documented undefined result instead of risking an {@code OutOfMemoryError} on
-     * a typical heap.
+     * per-sample evaluation state (itself bounded by
+     * {@code MAX_PRACTICAL_SAMPLE_COUNT}), so spans beyond this bound are reported
+     * as the documented undefined result instead of risking an
+     * {@code OutOfMemoryError} on a typical heap.
      */
     private static final long MAX_PRACTICAL_PREFIX_SPAN = 10_000_000L;
+
+    /**
+     * The largest effective sample range an evaluation may walk in practice. Each
+     * collected sample costs about 44 bytes of transient state on the
+     * equal-frequency path (one reference in each of the two sample lists, one
+     * boxed index and one reference slot in the sort order, and one bin entry),
+     * plus one prefix-array int per covered window bar, before the transient
+     * bin-count arrays; at this ceiling the whole working set stays in the same
+     * ~150 MB class as the practical prefix bound above, so ranges beyond it are
+     * reported as the documented undefined result instead of risking an
+     * {@code OutOfMemoryError} on a typical heap.
+     */
+    private static final long MAX_PRACTICAL_SAMPLE_COUNT = 2_000_000L;
 
     /**
      * Creates an evaluator.
@@ -160,18 +175,25 @@ public final class EventMutualInformationEvaluator {
 
     private EventMutualInformationResult evaluateInRange(Indicator<Num> predictor, Indicator<Boolean> target,
             NumFactory numFactory, int effectiveStart, int effectiveEnd, EventMutualInformationConfig config) {
+        // The effective range is bounded in the sample dimension before any
+        // allocation: walking MAX_PRACTICAL_SAMPLE_COUNT samples already holds
+        // the documented working set, so larger ranges are undefined and never
+        // reach the prefix array or the collection loop.
+        boolean infeasibleSamples = effectiveStart <= effectiveEnd
+                && (long) effectiveEnd - effectiveStart + 1L > MAX_PRACTICAL_SAMPLE_COUNT;
         // eventPrefix is null when the covered target window span is too large
         // to represent in memory (structural or practical bound): such an
         // evaluation is undefined, never silently truncated, and never walks
         // the (astronomically large) effective range.
-        int[] eventPrefix = effectiveStart <= effectiveEnd ? eventPrefix(target, effectiveStart, effectiveEnd, config)
+        int[] eventPrefix = effectiveStart <= effectiveEnd && !infeasibleSamples
+                ? eventPrefix(target, effectiveStart, effectiveEnd, config)
                 : new int[0];
-        boolean infeasibleWindow = effectiveStart <= effectiveEnd && eventPrefix == null;
+        boolean infeasibleWindow = effectiveStart <= effectiveEnd && !infeasibleSamples && eventPrefix == null;
         List<Num> predictorValues = new ArrayList<>();
         List<Boolean> labels = new ArrayList<>();
         int positiveTargetCount = 0;
-        boolean undefined = effectiveStart > effectiveEnd || infeasibleWindow;
-        if (effectiveStart <= effectiveEnd && !infeasibleWindow) {
+        boolean undefined = effectiveStart > effectiveEnd || infeasibleWindow || infeasibleSamples;
+        if (effectiveStart <= effectiveEnd && !infeasibleWindow && !infeasibleSamples) {
             // The while-true loop form keeps i from wrapping to MIN_VALUE when
             // effectiveEnd is Integer.MAX_VALUE.
             int i = effectiveStart;

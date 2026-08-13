@@ -766,6 +766,35 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
     }
 
     @Test
+    public void proxySeriesWithImpracticalSampleCountReturnsUndefinedResult() {
+        // An effective sample range above the practical working-set bound
+        // (2,000,000 samples here) must be undefined and must terminate without
+        // walking the range or allocating the sample lists and boxed sort order.
+        BaseBarSeries built = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 1, 2, 3 })
+                .build();
+        BaseBarSeries proxy = new BaseBarSeries(built.getName(), built.getBarData()) {
+            @Override
+            public int getEndIndex() {
+                return 2_000_000 + 2;
+            }
+        };
+        List<Num> predictorValues = new ArrayList<>();
+        predictorValues.add(numFactory.numOf(1));
+        Indicator<Num> predictor = new MockIndicator(proxy, predictorValues);
+        Indicator<Boolean> target = eventSignal(proxy, 0, index -> false);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 2_000_000,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_FREQUENCY));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertEquals(0, result.sampleCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
     public void emptySeriesNaturalBoundsYieldUndefinedResultUnderClamp() {
         // An empty series has natural bounds (-1, -1), which pass the
         // availability checks and previously crashed reading getValue(-1);

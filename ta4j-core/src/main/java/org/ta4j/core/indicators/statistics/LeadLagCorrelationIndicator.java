@@ -336,12 +336,14 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
          *                                  {@code bestLags}, {@code selectedLag}, or
          *                                  {@code selectedCorrelation} is null
          * @throws IllegalArgumentException if {@code barCount < 2},
-         *                                  {@code minimumLag > maximumLag}, the lag
-         *                                  range exceeds the profile capacity guard,
+         *                                  {@code minimumLag > maximumLag}, a lag bound
+         *                                  is too large to index safely, the lag range
+         *                                  exceeds the profile capacity guard,
          *                                  {@code bestLags} is not ascending, a point's
          *                                  sampleCount is neither 0 nor
          *                                  {@code barCount}, or the selected
          *                                  lag/correlation combination is inconsistent
+         * 
          */
         public Profile {
             if (barCount < 2) {
@@ -350,6 +352,13 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
             if (minimumLag > maximumLag) {
                 throw new IllegalArgumentException("minimumLag must be <= maximumLag");
             }
+            // The indicator constructor validates each bound's indexability
+            // (absolute lag must leave room for the aligned window); the record
+            // must enforce the same guard so a directly constructed or
+            // deserialized profile cannot describe a scan whose shifted window
+            // indexes cannot be represented safely.
+            CorrelationWindowSupport.validateLag(minimumLag, barCount);
+            CorrelationWindowSupport.validateLag(maximumLag, barCount);
             // The indicator constructor refuses lag ranges above the capacity
             // guard; the record must enforce the same ceiling so a directly
             // constructed or deserialized profile cannot advertise a scan that

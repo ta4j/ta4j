@@ -577,6 +577,18 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void directlyConstructedProfileRejectsUnindexableLagBounds() {
+        // The indicator constructor validates each lag bound against the window
+        // length; the record must apply the same per-bound guard so a directly
+        // constructed profile cannot describe a scan whose shifted window
+        // indexes cannot be represented safely.
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                () -> new Profile(0, 2, Integer.MIN_VALUE, Integer.MIN_VALUE, LagSelectionPolicy.MAXIMUM_CORRELATION,
+                        List.of(new Point(Integer.MIN_VALUE, NaN.NaN, 0)), List.of(), OptionalInt.empty(), NaN.NaN));
+        assertTrue(rejected.getMessage().contains("absolute lag is too large for barCount"));
+    }
+
+    @Test
     public void pointRejectsNonFiniteCorrelation() {
         assertThrows(IllegalArgumentException.class,
                 () -> new Point(0, DoubleNum.valueOf(Double.POSITIVE_INFINITY), 8));
