@@ -61,6 +61,26 @@ class WalkForwardMetricsTest {
     }
 
     @Test
+    void binaryF1ReturnsNaNForUndefinedInputs() {
+        WalkForwardMetric<String, Boolean> f1 = WalkForwardMetric.binaryF1("f1", 1,
+                (prediction, outcome) -> prediction.probability().isGreaterThanOrEqual(NUM_FACTORY.numOf(0.5)),
+                value -> value);
+
+        assertThat(f1.compute(List.of()).isNaN()).isTrue();
+
+        // rank-1 rows with no predicted positives and no actual positives leave the
+        // precision denominator zero, so F1 is undefined and must not read as 0.0.
+        List<WalkForwardObservation<String, Boolean>> noPredictedPositives = List.of(observation("fold-1", 1, 1, 0.2,
+                false));
+        assertThat(f1.compute(noPredictedPositives).isNaN()).isTrue();
+
+        // no true positives nor false negatives (recall denominator zero).
+        List<WalkForwardObservation<String, Boolean>> noActualPositives = List.of(observation("fold-1", 1, 1, 0.9,
+                false));
+        assertThat(f1.compute(noActualPositives).isNaN()).isTrue();
+    }
+
+    @Test
     void weightedObjectiveAppliesGuardrailsAndVariancePenalty() {
         WalkForwardObjective objective = WalkForwardObjective.weighted(
                 Map.of("eventAgreement", NUM_FACTORY.one(), "brier", NUM_FACTORY.minusOne()),

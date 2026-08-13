@@ -19,6 +19,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.ProgressCompletion;
 import org.ta4j.core.num.Num;
@@ -36,6 +38,8 @@ import org.ta4j.core.num.Num;
  * @since 0.22.4
  */
 public final class WalkForwardEngine<C, P, O> {
+
+    private static final Logger log = LoggerFactory.getLogger(WalkForwardEngine.class);
 
     private final WalkForwardSplitter splitter;
     private final PredictionProvider<C, P> predictionProvider;
@@ -200,8 +204,12 @@ public final class WalkForwardEngine<C, P, O> {
         AtomicInteger progressCounter = new AtomicInteger();
         int maxPredictions = config.allTopKs().stream().max(Integer::compareTo).orElse(config.optimizationTopK());
 
-        List<FoldExecution<P, O>> foldExecutions = executeFolds(series, context, config, splits, maxPredictions,
+        List<FoldExecution<P, O>> foldExecutions;
+        List<WalkForwardRunResult.FoldFailure> foldFailures;
+        WalkForwardFoldResults<P, O> foldResults = executeFolds(series, context, config, splits, maxPredictions,
                 progressCounter);
+        foldExecutions = foldResults.executions();
+        foldFailures = foldResults.failures();
         for (FoldExecution<P, O> foldExecution : foldExecutions) {
             snapshots.addAll(foldExecution.snapshots());
             for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> horizonEntry : foldExecution
@@ -231,7 +239,7 @@ public final class WalkForwardEngine<C, P, O> {
 
         return new WalkForwardRunResult<>(config, splits, snapshots, immutableObservationMap(observationsByHorizon),
                 immutableMetricMap(globalMetricsByHorizon), immutableFoldMetricMap(foldMetricsByHorizon), leakageAudit,
-                runtimeReport, manifest);
+                runtimeReport, manifest, foldFailures);
     }
 
     private List<RankedPrediction<P>> normalizePredictions(List<RankedPrediction<P>> predictions, int maxPredictions) {
@@ -246,18 +254,24 @@ public final class WalkForwardEngine<C, P, O> {
         return List.copyOf(sorted);
     }
 
-    private List<FoldExecution<P, O>> executeFolds(BarSeries series, C context, WalkForwardConfig config,
+    private WalkForwardFoldResults<P, O> executeFolds(BarSeries series, C context, WalkForwardConfig config,
             List<WalkForwardSplit> splits, int maxPredictions, AtomicInteger progressCounter) {
         if (splits.isEmpty()) {
-            return List.of();
+            return new WalkForwardFoldResults<>(List.of(), List.of());
         }
         if (maxParallelFolds == 1 || splits.size() == 1) {
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
+            List<WalkForwardRunResult.FoldFailure> failures = new ArrayList<>();
             for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
-                executions.add(executeFold(series, context, config, splits.get(splitIndex), splitIndex, maxPredictions,
-                        progressCounter));
+                WalkForwardSplit split = splits.get(splitIndex);
+                try {
+                    executions.add(executeFold(series, context, config, split, splitIndex, maxPredictions,
+                            progressCounter));
+                } catch (RuntimeException e) {
+                    failures.add(recordFoldFailure(split, splitIndex, e));
+                }
             }
-            return executions;
+            return new WalkForwardFoldResults<>(executions, failures);
         }
 
         int parallelism = Math.min(maxParallelFolds, splits.size());
@@ -272,31 +286,37 @@ public final class WalkForwardEngine<C, P, O> {
             }
 
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
-            for (Future<FoldExecution<P, O>> future : futures) {
+            List<WalkForwardRunResult.FoldFailure> failures = new ArrayList<>();
+            for (int splitIndex = 0; splitIndex < futures.size(); splitIndex++) {
+                WalkForwardSplit split = splits.get(splitIndex);
                 try {
-                    executions.add(future.get());
+                    executions.add(futures.get(splitIndex).get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Interrupted while executing walk-forward folds", e);
                 } catch (ExecutionException e) {
-                    rethrowParallelFailure(e.getCause());
+                    Throwable cause = e.getCause();
+                    if (cause instanceof Error error) {
+                        throw error;
+                    }
+                    failures.add(recordFoldFailure(split, splitIndex, cause));
                 }
             }
             executions.sort(Comparator.comparingInt(FoldExecution::foldOrder));
-            return executions;
+            return new WalkForwardFoldResults<>(executions, failures);
         } finally {
             executor.shutdownNow();
         }
     }
 
-    private static void rethrowParallelFailure(Throwable cause) {
-        if (cause instanceof Error error) {
-            throw error;
-        }
-        if (cause instanceof RuntimeException runtimeException) {
-            throw runtimeException;
-        }
-        throw new IllegalStateException("Walk-forward fold execution failed", cause);
+    private WalkForwardRunResult.FoldFailure recordFoldFailure(WalkForwardSplit split, int foldOrder, Throwable cause) {
+        String message = "Walk-forward fold " + split.foldId() + " failed";
+        log.warn(message + ": {}", cause == null ? "null" : cause.toString());
+        return new WalkForwardRunResult.FoldFailure(split.foldId(), foldOrder, message, cause);
+    }
+
+    private record WalkForwardFoldResults<P, O>(List<FoldExecution<P, O>> executions,
+            List<WalkForwardRunResult.FoldFailure> failures) {
     }
 
     private FoldExecution<P, O> executeFold(BarSeries series, C context, WalkForwardConfig config,

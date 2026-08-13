@@ -12,6 +12,8 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
@@ -32,6 +34,8 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.4
  */
 public final class WalkForwardTuner<C, P, O> {
+
+    private static final Logger log = LoggerFactory.getLogger(WalkForwardTuner.class);
 
     private final WalkForwardEngine<C, P, O> engine;
     private final WalkForwardObjective objective;
@@ -120,33 +124,46 @@ public final class WalkForwardTuner<C, P, O> {
         PriorityQueue<WalkForwardLeaderboard.Entry<C>> topEntries = new PriorityQueue<>(keepTopK + 1, comparator);
 
         int evaluated = 0;
+        int failed = 0;
         for (int batchStart = 0; batchStart < candidates.size(); batchStart += batchSize) {
             int batchEnd = Math.min(batchStart + batchSize, candidates.size());
             for (int i = batchStart; i < batchEnd; i++) {
                 WalkForwardCandidate<C> candidate = candidates.get(i);
-                WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config, candidate.id(),
-                        Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
+                try {
+                    WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config, candidate.id(),
+                            Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
 
-                MetricBundle metricBundle = selectMetrics(runResult, config.primaryHorizonBars());
-                CalibrationSelection calibrationSelection = applyCalibrationIfEnabled(runResult,
-                        config.primaryHorizonBars(), metricBundle.globalMetrics, metricBundle.foldMetrics);
+                    if (runResult.foldFailures().size() == runResult.splits().size()) {
+                        log.warn("Candidate {} failed during walk-forward tuning: all {} folds failed", candidate.id(),
+                                runResult.splits().size());
+                        failed++;
+                        continue;
+                    }
 
-                WalkForwardObjective.Score objectiveScore = objective.evaluate(metricBundle.globalMetrics,
-                        metricBundle.foldMetrics);
+                    MetricBundle metricBundle = selectMetrics(runResult, config.primaryHorizonBars());
+                    CalibrationSelection calibrationSelection = applyCalibrationIfEnabled(runResult,
+                            config.primaryHorizonBars(), metricBundle.globalMetrics, metricBundle.foldMetrics);
 
-                WalkForwardLeaderboard.Entry<C> entry = new WalkForwardLeaderboard.Entry<>(candidate, objectiveScore,
-                        metricBundle.globalMetrics, calibrationSelection, runResult);
-                topEntries.offer(entry);
-                if (topEntries.size() > keepTopK) {
-                    topEntries.poll();
+                    WalkForwardObjective.Score objectiveScore = objective.evaluate(metricBundle.globalMetrics,
+                            metricBundle.foldMetrics);
+
+                    WalkForwardLeaderboard.Entry<C> entry = new WalkForwardLeaderboard.Entry<>(candidate, objectiveScore,
+                            metricBundle.globalMetrics, calibrationSelection, runResult);
+                    topEntries.offer(entry);
+                    if (topEntries.size() > keepTopK) {
+                        topEntries.poll();
+                    }
+                    evaluated++;
+                } catch (RuntimeException e) {
+                    log.warn("Candidate {} failed during walk-forward tuning: {}", candidate.id(), e.toString());
+                    failed++;
                 }
-                evaluated++;
             }
         }
 
         List<WalkForwardLeaderboard.Entry<C>> ranked = new ArrayList<>(topEntries);
         ranked.sort(descending);
-        return new WalkForwardLeaderboard<>(ranked, evaluated, ranked.size(), config.primaryHorizonBars());
+        return new WalkForwardLeaderboard<>(ranked, evaluated, ranked.size(), config.primaryHorizonBars(), failed);
     }
 
     private static int compareScores(Num left, Num right) {

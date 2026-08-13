@@ -25,13 +25,41 @@ import org.ta4j.core.num.Num;
  * @param leakageAudit           leakage audit traces
  * @param runtimeReport          runtime summary
  * @param manifest               reproducibility manifest
+ * @param foldFailures           per-fold execution failures encountered during
+ *                               the run; healthy folds remain fully represented
+ *                               in the other components
  * @since 0.22.4
  */
 public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForwardSplit> splits,
         List<PredictionSnapshot<P>> snapshots, Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
         Map<Integer, Map<String, Num>> globalMetricsByHorizon,
         Map<Integer, Map<String, Map<String, Num>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
-        WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest) {
+        WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest,
+        List<FoldFailure> foldFailures) {
+
+    /**
+     * Creates a validated run result with no recorded fold failures.
+     *
+     * @param config                 run configuration
+     * @param splits                 fold definitions
+     * @param snapshots              captured prediction snapshots
+     * @param observationsByHorizon  observations grouped by horizon
+     * @param globalMetricsByHorizon metric map grouped by horizon then metric name
+     * @param foldMetricsByHorizon   metric map grouped by horizon, fold id, and
+     *                               metric name
+     * @param leakageAudit           leakage audit traces
+     * @param runtimeReport          runtime summary
+     * @param manifest               reproducibility manifest
+     * @since 0.22.4
+     */
+    public WalkForwardRunResult(WalkForwardConfig config, List<WalkForwardSplit> splits,
+            List<PredictionSnapshot<P>> snapshots, Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
+            Map<Integer, Map<String, Num>> globalMetricsByHorizon,
+            Map<Integer, Map<String, Map<String, Num>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
+            WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest) {
+        this(config, splits, snapshots, observationsByHorizon, globalMetricsByHorizon, foldMetricsByHorizon,
+                leakageAudit, runtimeReport, manifest, List.of());
+    }
 
     /**
      * Creates a validated run result.
@@ -44,6 +72,7 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
         globalMetricsByHorizon = globalMetricsByHorizon == null ? Map.of() : Map.copyOf(globalMetricsByHorizon);
         foldMetricsByHorizon = foldMetricsByHorizon == null ? Map.of() : Map.copyOf(foldMetricsByHorizon);
         leakageAudit = leakageAudit == null ? List.of() : List.copyOf(leakageAudit);
+        foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
         Objects.requireNonNull(runtimeReport, "runtimeReport");
         Objects.requireNonNull(manifest, "manifest");
     }
@@ -98,5 +127,32 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
     public record LeakageAudit(String foldId, int decisionIndex, int visibleStartIndex, int visibleEndIndex,
             int labelStartIndex, int labelEndIndex, int horizonBars, boolean withinFoldBounds, boolean holdout,
             String note) {
+    }
+
+    /**
+     * Records one fold whose execution failed while other independent folds
+     * completed successfully. Failed folds are isolated: their absence never
+     * invalidates the healthy folds' snapshots, observations, metrics, or runtime
+     * details carried in the same result.
+     *
+     * @param foldId    fold identifier
+     * @param foldOrder zero-based fold order in split iteration order
+     * @param message   human-readable failure description
+     * @param cause     underlying failure cause
+     * @since 0.24.2
+     */
+    public record FoldFailure(String foldId, int foldOrder, String message, Throwable cause) {
+
+        /**
+         * Creates a validated fold failure record.
+         */
+        public FoldFailure {
+            Objects.requireNonNull(foldId, "foldId");
+            if (foldOrder < 0) {
+                throw new IllegalArgumentException("foldOrder must be >= 0");
+            }
+            Objects.requireNonNull(message, "message");
+            Objects.requireNonNull(cause, "cause");
+        }
     }
 }

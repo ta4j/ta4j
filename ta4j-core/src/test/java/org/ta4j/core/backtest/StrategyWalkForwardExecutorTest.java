@@ -18,6 +18,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -29,6 +30,7 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
 public class StrategyWalkForwardExecutorTest {
@@ -192,6 +194,56 @@ public class StrategyWalkForwardExecutorTest {
         } else {
             assertFalse(result.holdoutCriterionValue(criterion).isPresent());
         }
+    }
+
+    @Test
+    public void executeIsolatesFailingFoldAndContinues() {
+        BarSeries series = buildSeries(48);
+        WalkForwardConfig config = walkForwardConfig();
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
+        WalkForwardSplit failingSplit = splits.get(1);
+        Rule throwingRule = (index, tradingRecord) -> {
+            if (index >= failingSplit.testStart() && index <= failingSplit.testEnd()) {
+                throw new IllegalStateException("synthetic fold evaluation failure");
+            }
+            return true;
+        };
+        Strategy strategy = new BaseStrategy(throwingRule, throwingRule);
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
+                new ZeroCostModel(), new TradeOnCurrentCloseModel());
+
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, numFactory.two(),
+                config);
+
+        assertEquals(1, result.foldFailures().size());
+        WalkForwardRunResult.FoldFailure failure = result.foldFailures().get(0);
+        assertEquals(failingSplit.foldId(), failure.foldId());
+        assertTrue(failure.cause() instanceof IllegalStateException);
+        assertEquals("synthetic fold evaluation failure", failure.cause().getMessage());
+        assertEquals(splits.size() - 1, result.folds().size());
+        assertFalse(result.folds().stream().anyMatch(f -> f.split().foldId().equals(failingSplit.foldId())));
+        assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeAllFoldsFailingRecordsEveryFailureWithoutAborting() {
+        BarSeries series = buildSeries(48);
+        WalkForwardConfig config = walkForwardConfig();
+        Rule alwaysThrowing = (index, tradingRecord) -> {
+            throw new IllegalStateException("synthetic fold evaluation failure");
+        };
+        Strategy strategy = new BaseStrategy(alwaysThrowing, alwaysThrowing);
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, config);
+
+        List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
+        assertEquals(expectedSplits.size(), result.foldFailures().size());
+        assertTrue(result.foldFailures().stream()
+                .allMatch(f -> f.cause() instanceof IllegalStateException
+                        && "synthetic fold evaluation failure".equals(f.cause().getMessage())));
+        assertTrue(result.folds().isEmpty());
+        assertNotNull(result.runtimeReport());
     }
 
     private BarSeries buildSeries(int bars) {
