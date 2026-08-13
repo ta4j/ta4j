@@ -102,6 +102,40 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void floatBackedPerfectCorrelationRoundsToFloatBound() {
+        // Review regression: a perfectly correlated float pair can report a
+        // Pearson coefficient one ULP above 1 (1.0000001192092896 for
+        // {3.3, 1.0} vs {2.97, 0.9}); the Point validation previously
+        // compared it against a double-sized 1e-12 tolerance and rejected
+        // the profile. The rounding tolerance must scale with the metric's
+        // own precision (FloatNumFactory epsilon is 1e-5).
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
+                .withData(new double[] { 3.3, 1.0, 3.3, 1.0 })
+                .build();
+        List<Num> firstValues = new ArrayList<>(4);
+        List<Num> secondValues = new ArrayList<>(4);
+        firstValues.add(floatFactory.numOf(3.3));
+        firstValues.add(floatFactory.numOf(1.0));
+        firstValues.add(floatFactory.numOf(3.3));
+        firstValues.add(floatFactory.numOf(1.0));
+        secondValues.add(floatFactory.numOf(2.97));
+        secondValues.add(floatFactory.numOf(0.9));
+        secondValues.add(floatFactory.numOf(2.97));
+        secondValues.add(floatFactory.numOf(0.9));
+        Indicator<Num> first = new MockIndicator(series, firstValues);
+        Indicator<Num> second = new MockIndicator(series, secondValues);
+
+        Profile profile = profile(first, second, 3, 2, -1, 1);
+
+        Num selected = profile.selectedCorrelation();
+        assertFalse(selected.isNaN());
+        // The float correlation rounds one ULP above the mathematical bound.
+        assertTrue(selected.isGreaterThan(floatFactory.one()));
+        assertTrue(selected.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-5)));
+    }
+
+    @Test
     public void signedAndAbsolutePoliciesSelectDifferentLags() {
         BarSeries series = series(40);
         // Square wave with period 4: half-period negation is exact, so

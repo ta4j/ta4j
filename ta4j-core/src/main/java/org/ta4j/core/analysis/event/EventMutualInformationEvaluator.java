@@ -51,7 +51,20 @@ public final class EventMutualInformationEvaluator {
      * and must be reported undefined instead of throwing {@link OutOfMemoryError}.
      * {@code MAX_VALUE - 8} conservatively covers every HotSpot header layout.
      */
+    /**
+     * The largest {@code int[]} the JVM can allocate structurally: spans at or
+     * above this bound fail with "Requested array size exceeds VM limit".
+     */
     private static final int MAX_PREFIX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
+
+    /**
+     * The largest target-window span the prefix array may cover in practice: a span
+     * of {@code 10,000,000} indexes is already a 40 MB {@code int[]} on top of the
+     * per-sample evaluation state, so spans beyond this bound are reported as the
+     * documented undefined result instead of risking an {@code OutOfMemoryError} on
+     * a typical heap.
+     */
+    private static final long MAX_PRACTICAL_PREFIX_SPAN = 10_000_000L;
 
     /**
      * Creates an evaluator.
@@ -150,9 +163,9 @@ public final class EventMutualInformationEvaluator {
 
     private EventMutualInformationResult evaluateInRange(Indicator<Num> predictor, Indicator<Boolean> target,
             NumFactory numFactory, int effectiveStart, int effectiveEnd, EventMutualInformationConfig config) {
-        // eventPrefix is null when the target window span cannot be represented
-        // in memory (more than Integer.MAX_VALUE distinct target indexes): such
-        // an evaluation is undefined, never silently truncated, and never walks
+        // eventPrefix is null when the covered target window span is too large
+        // to represent in memory (structural or practical bound): such an
+        // evaluation is undefined, never silently truncated, and never walks
         // the (astronomically large) effective range.
         int[] eventPrefix = effectiveStart <= effectiveEnd ? eventPrefix(target, effectiveStart, effectiveEnd, config)
                 : new int[0];
@@ -319,11 +332,13 @@ public final class EventMutualInformationEvaluator {
         long targetStart = (long) effectiveStart + config.targetWindowStartBars();
         long targetEnd = (long) effectiveEnd + config.targetWindowEndBars();
         long span = targetEnd - targetStart + 2L;
-        if (span > MAX_PREFIX_ARRAY_LENGTH) {
+        if (span > MAX_PREFIX_ARRAY_LENGTH || span > MAX_PRACTICAL_PREFIX_SPAN) {
             // A span of exactly Integer.MAX_VALUE would pass an
             // `> Integer.MAX_VALUE` check and then fail with "Requested array
-            // size exceeds VM limit"; treat every span at or above the JVM's
-            // usable int[] ceiling as unrepresentable.
+            // size exceeds VM limit", and a merely structural span such as
+            // 100,000,000 would pass and attempt a ~400 MB allocation; treat
+            // every span at or above the JVM's usable int[] ceiling or the
+            // practical in-memory bound as unrepresentable.
             return null;
         }
         int[] prefix = new int[(int) span];

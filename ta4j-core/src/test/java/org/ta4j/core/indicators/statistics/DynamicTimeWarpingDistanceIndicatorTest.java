@@ -1092,6 +1092,42 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
+    public void floatBackedSquaredReconstructionSplitsAtFloatExponentBound() {
+        // Review regression: a squared float delta of 3e19 lives at scale 128
+        // (the true mean 3e38 stays representable), but the result
+        // reconstruction split the scale at the Double exponent bound (1023),
+        // materializing pow2(128) as float infinity and reporting NaN. The
+        // split must honor the delegate's own exponent bound (127 for Float).
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
+                .withData(new double[] { 0.0, 0.0, 0.0 })
+                .build();
+        List<Num> firstValues = new ArrayList<>(3);
+        List<Num> secondValues = new ArrayList<>(3);
+        firstValues.add(floatFactory.numOf(3e19));
+        firstValues.add(floatFactory.numOf(0));
+        firstValues.add(floatFactory.numOf(0));
+        secondValues.add(floatFactory.numOf(0));
+        secondValues.add(floatFactory.numOf(0));
+        secondValues.add(floatFactory.numOf(0));
+        Indicator<Num> first = new MockIndicator(series, firstValues);
+        Indicator<Num> second = new MockIndicator(series, secondValues);
+        DynamicTimeWarpingDistanceIndicator.Config diagonal = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, second, 3, diagonal);
+
+        Num distance = dtw.getValue(2);
+        assertFalse(distance.isNaN());
+        assertTrue(distance.isPositive());
+        // The exact mean is 3e38; the float ULP there is ~4e31, so a relative
+        // offset band covers the representable neighborhood.
+        assertNumEquals(floatFactory.numOf(3e38), distance, 1.0e32);
+    }
+
+    @Test
     public void scaledAlignmentNeverMaterializesTheOverflowingPower() {
         // Review regression: a squared cost at scale 1024 (a 1.4e154 delta)
         // next to a plain finite 1e308 cost was aligned by dividing the

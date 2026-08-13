@@ -100,6 +100,11 @@ final class DynamicTimeWarpingSupport {
         Num maxValue = overflowCapable
                 ? numFactory.numOf(delegate instanceof Float ? Float.MAX_VALUE : Double.MAX_VALUE)
                 : null;
+        // The largest exponent whose power of two is representable in the
+        // delegate domain: 2^127 for Float, 2^1023 for Double. Power-of-two
+        // scaling is chunked at this bound so a Float-backed accumulation
+        // never materializes 2^1023 (infinity in Float) or 2^128.
+        int exponentLimit = delegate instanceof Float ? 127 : 1023;
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -163,7 +168,7 @@ final class DynamicTimeWarpingSupport {
                     // never materializes an overflowing product.
                     Num vertical = previousMeanValue[j];
                     if (vertical != null && betterNormalized(vertical, previousMeanScale[j], previousLength[j],
-                            bestMeanValue, bestMeanScale, bestLength, numFactory)) {
+                            bestMeanValue, bestMeanScale, bestLength, numFactory, exponentLimit)) {
                         bestCost = previousCost[j];
                         bestMeanValue = vertical;
                         bestMeanScale = previousMeanScale[j];
@@ -171,8 +176,9 @@ final class DynamicTimeWarpingSupport {
                     }
                     if (j > 0) {
                         Num horizontal = currentMeanValue[j - 1];
-                        if (horizontal != null && betterNormalized(horizontal, currentMeanScale[j - 1],
-                                currentLength[j - 1], bestMeanValue, bestMeanScale, bestLength, numFactory)) {
+                        if (horizontal != null
+                                && betterNormalized(horizontal, currentMeanScale[j - 1], currentLength[j - 1],
+                                        bestMeanValue, bestMeanScale, bestLength, numFactory, exponentLimit)) {
                             bestCost = currentCost[j - 1];
                             bestMeanValue = horizontal;
                             bestMeanScale = currentMeanScale[j - 1];
@@ -242,15 +248,15 @@ final class DynamicTimeWarpingSupport {
                         // cost): dividing by the full power would discard the
                         // smaller operand. Bound the power in chunks instead.
                         Num bestTotal = bestMeanScale == scale ? bestMeanValue
-                                : scaledDivide(bestMeanValue, scale - bestMeanScale, numFactory);
+                                : scaledDivide(bestMeanValue, scale - bestMeanScale, numFactory, exponentLimit);
                         Num costTotal = pathCost.scale() == scale ? pathCost.value()
-                                : scaledDivide(pathCost.value(), scale - pathCost.scale(), numFactory);
+                                : scaledDivide(pathCost.value(), scale - pathCost.scale(), numFactory, exponentLimit);
                         // The ceiling applies to the scaled domain: the total
                         // overflows when bestTotal + costTotal exceeds
                         // maxValue / 2^scale, so compare against that bound
                         // (also chunked) rather than the raw maximum.
-                        if (overflowCapable && bestTotal
-                                .isGreaterThan(scaledCeiling(scale, maxValue, numFactory).minus(costTotal))) {
+                        if (overflowCapable && bestTotal.isGreaterThan(
+                                scaledCeiling(scale, maxValue, numFactory, exponentLimit).minus(costTotal))) {
                             bestTotal = bestTotal.dividedBy(numFactory.two());
                             costTotal = costTotal.dividedBy(numFactory.two());
                             scale++;
@@ -288,15 +294,17 @@ final class DynamicTimeWarpingSupport {
             Num mean = totalValue.dividedBy(numFactory.numOf(previousLength[sampleCount - 1]));
             int meanScale = previousMeanScale[sampleCount - 1];
             if (meanScale > 0) {
-                // 2^scale overflows for scale >= 1024 even when the scaled
+                // 2^scale overflows past the delegate's own exponent bound
+                // (2^1023 for Double, 2^127 for Float) even when the scaled
                 // total's true value stays representable (for example a
-                // squared local cost carried as m^2 * 2^1024 with a two-cell
-                // mean of 9.8e307), so never materialize the full power:
-                // value * 2^1023 is finite whenever value * 2^scale is, and
-                // the remaining 2^(scale - 1023) restores the true value.
-                mean = mean.multipliedBy(pow2(Math.min(meanScale, 1023), numFactory));
-                if (meanScale > 1023) {
-                    mean = mean.multipliedBy(pow2(meanScale - 1023, numFactory));
+                // squared cost carried as m^2 * 2^1024 with a two-cell mean
+                // of 9.8e307, or m^2 * 2^128 in Float), so never materialize
+                // the full power: value * 2^limit is finite whenever
+                // value * 2^scale is, and the remaining 2^(scale - limit)
+                // restores the true value.
+                mean = mean.multipliedBy(pow2(Math.min(meanScale, exponentLimit), numFactory));
+                if (meanScale > exponentLimit) {
+                    mean = mean.multipliedBy(pow2(meanScale - exponentLimit, numFactory));
                 }
             }
             if (mean.isZero() && totalValue.isPositive()) {
@@ -334,7 +342,7 @@ final class DynamicTimeWarpingSupport {
      *         path
      */
     private static boolean betterNormalized(Num candidateValue, int candidateScale, int candidateLength, Num bestValue,
-            int bestScale, int bestLength, NumFactory numFactory) {
+            int bestScale, int bestLength, NumFactory numFactory, int exponentLimit) {
         // An undefined value marks an unreachable cell: NaN candidates never
         // win, and NaN never blocks a finite best so far (compareTo ties on
         // NaN in primitive-backed Num implementations).
@@ -350,7 +358,8 @@ final class DynamicTimeWarpingSupport {
         // that the longer path can look cheaper), while the scaled totals
         // carry every accumulated cost exactly and reach the documented
         // shorter-path tie-break whenever the totals really match.
-        int comparison = compareScaledTotals(candidateValue, candidateScale, bestValue, bestScale, numFactory);
+        int comparison = compareScaledTotals(candidateValue, candidateScale, bestValue, bestScale, numFactory,
+                exponentLimit);
         return comparison < 0 || (comparison == 0 && candidateLength < bestLength);
     }
 
@@ -361,7 +370,8 @@ final class DynamicTimeWarpingSupport {
      * factor finite (the multiplication direction can overflow) and preserves the
      * ordering even when the division underflows to zero.
      */
-    private static int compareScaledTotals(Num valueA, int scaleA, Num valueB, int scaleB, NumFactory numFactory) {
+    private static int compareScaledTotals(Num valueA, int scaleA, Num valueB, int scaleB, NumFactory numFactory,
+            int exponentLimit) {
         boolean zeroA = valueA.isZero();
         boolean zeroB = valueB.isZero();
         if (zeroA || zeroB) {
@@ -372,9 +382,9 @@ final class DynamicTimeWarpingSupport {
             return valueA.compareTo(valueB);
         }
         if (scaleA > scaleB) {
-            return valueA.compareTo(valueB.dividedBy(pow2(scaleA - scaleB, numFactory)));
+            return valueA.compareTo(scaledDivide(valueB, scaleA - scaleB, numFactory, exponentLimit));
         }
-        return valueA.dividedBy(pow2(scaleB - scaleA, numFactory)).compareTo(valueB);
+        return scaledDivide(valueA, scaleB - scaleA, numFactory, exponentLimit).compareTo(valueB);
     }
 
     private static int columnMin(int row, WarpingWindow warpingWindow, int sampleCount) {
@@ -486,22 +496,23 @@ final class DynamicTimeWarpingSupport {
 
     /**
      * @return {@code value / 2^exponent} without materializing the full power:
-     *         {@code 2^exponent} overflows for {@code exponent >= 1024} even though
-     *         the quotient stays representable.
+     *         {@code 2^exponent} overflows past the delegate's exponent bound
+     *         ({@code exponentLimit}, 1023 for Double and 127 for Float) even
+     *         though the quotient stays representable.
      */
-    private static Num scaledDivide(Num value, int exponent, NumFactory numFactory) {
-        return value.dividedBy(pow2(Math.min(exponent, 1023), numFactory))
-                .dividedBy(pow2(exponent - Math.min(exponent, 1023), numFactory));
+    private static Num scaledDivide(Num value, int exponent, NumFactory numFactory, int exponentLimit) {
+        return value.dividedBy(pow2(Math.min(exponent, exponentLimit), numFactory))
+                .dividedBy(pow2(exponent - Math.min(exponent, exponentLimit), numFactory));
     }
 
     /**
      * @return {@code maxValue / 2^scale}, the overflow ceiling expressed in the
-     *         scaled domain, never materializing {@code 2^scale} for
-     *         {@code scale >= 1024}.
+     *         scaled domain, never materializing {@code 2^scale} past the
+     *         delegate's exponent bound.
      */
-    private static Num scaledCeiling(int scale, Num maxValue, NumFactory numFactory) {
-        return maxValue.dividedBy(pow2(Math.min(scale, 1023), numFactory))
-                .dividedBy(pow2(scale - Math.min(scale, 1023), numFactory));
+    private static Num scaledCeiling(int scale, Num maxValue, NumFactory numFactory, int exponentLimit) {
+        return maxValue.dividedBy(pow2(Math.min(scale, exponentLimit), numFactory))
+                .dividedBy(pow2(scale - Math.min(scale, exponentLimit), numFactory));
     }
 
     /**

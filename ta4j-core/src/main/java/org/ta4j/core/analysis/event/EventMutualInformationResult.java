@@ -200,9 +200,13 @@ public record EventMutualInformationResult(Num mutualInformationNats, Num target
                 }
                 double normalized = normalizedMutualInformation.doubleValue();
                 // Computed ratios can exceed the mathematical bounds by
-                // rounding noise only (for example 1 + 2e-16); anything beyond
-                // a small tolerance is not a valid normalized value.
-                if (!Double.isFinite(normalized) || normalized < -1.0e-12 || normalized > 1.0 + 1.0e-12) {
+                // rounding noise of the metric's own precision only (for
+                // example 1 + 2e-16 in Double or 1.0000001 in Float); the
+                // factory epsilon is scaled to that precision, so anything
+                // beyond it is not a valid normalized value.
+                double roundingTolerance = normalizedMutualInformation.getNumFactory().epsilon().doubleValue();
+                if (!Double.isFinite(normalized) || normalized < -roundingTolerance
+                        || normalized > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException(
                             "a non-constant target must carry a finite normalized mutual information in [0, 1]");
                 }

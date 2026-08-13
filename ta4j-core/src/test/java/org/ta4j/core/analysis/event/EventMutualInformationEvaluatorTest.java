@@ -19,6 +19,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.statistics.FloatNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
@@ -629,6 +630,66 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         Indicator<Boolean> target = eventSignal(proxy, 0, index -> false);
 
         EventMutualInformationResult result = evaluate(predictor, target, 0, Integer.MAX_VALUE - 2,
+                new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
+
+        assertTrue(result.mutualInformationNats().isNaN());
+        assertTrue(result.targetEntropyNats().isNaN());
+        assertTrue(result.normalizedMutualInformation().isNaN());
+        assertEquals(0, result.sampleCount());
+        assertEquals(0, result.effectiveBinCount());
+    }
+
+    @Test
+    public void floatBackedDeterministicContingencyRoundsToFloatBound() {
+        // Review regression: a deterministic contingency table computed in
+        // single precision reports normalized MI one ULP above 1
+        // (1.0000001192092896 for 10 equal-frequency bins over 16 samples
+        // whose first half carries the event); the result constructor
+        // previously compared it against a double-sized 1e-12 bound and
+        // rejected the evaluation. The bounds must scale with the metric's
+        // own precision (FloatNumFactory epsilon is 1e-5).
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
+                .withData(new double[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 })
+                .build();
+        List<Num> values = new ArrayList<>(16);
+        for (int i = 0; i < 16; i++) {
+            values.add(floatFactory.numOf(i));
+        }
+        Indicator<Num> predictor = new MockIndicator(series, values);
+        Indicator<Boolean> target = eventSignal(series, 0, index -> index < 8);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 15,
+                new EventMutualInformationConfig(0, 0, 10, BinningStrategy.EQUAL_FREQUENCY));
+
+        Num normalized = result.normalizedMutualInformation();
+        assertFalse(normalized.isNaN());
+        // The float ratio legitimately rounds one ULP above the mathematical
+        // bound of a perfect deterministic table.
+        assertTrue(normalized.isGreaterThan(floatFactory.one()));
+        assertTrue(normalized.minus(floatFactory.one()).isLessThanOrEqual(floatFactory.numOf(1.0e-5)));
+    }
+
+    @Test
+    public void proxySeriesWithImpracticalSpanReturnsUndefinedResult() {
+        // A covered target-window span above the practical in-memory bound
+        // (10,000,002 ints here, ~40 MB) must be undefined and must terminate
+        // without allocating the prefix array or walking the range.
+        BaseBarSeries built = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(new double[] { 1, 2, 3 })
+                .build();
+        BaseBarSeries proxy = new BaseBarSeries(built.getName(), built.getBarData()) {
+            @Override
+            public int getEndIndex() {
+                return 10_000_000 + 2;
+            }
+        };
+        List<Num> predictorValues = new ArrayList<>();
+        predictorValues.add(numFactory.numOf(1));
+        Indicator<Num> predictor = new MockIndicator(proxy, predictorValues);
+        Indicator<Boolean> target = eventSignal(proxy, 0, index -> false);
+
+        EventMutualInformationResult result = evaluate(predictor, target, 0, 10_000_000,
                 new EventMutualInformationConfig(0, 0, 2, BinningStrategy.EQUAL_WIDTH));
 
         assertTrue(result.mutualInformationNats().isNaN());

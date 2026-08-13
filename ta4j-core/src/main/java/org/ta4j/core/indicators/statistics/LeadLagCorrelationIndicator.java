@@ -450,19 +450,14 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
     public record Point(int lag, Num correlation, int sampleCount) {
 
         /**
-         * How far a finite correlation may deviate from {@code [-1, 1]}: computed
-         * Pearson values can exceed the mathematical bound by rounding noise only.
-         */
-        private static final double MAX_CORRELATION_ROUNDING = 1.0e-12;
-
-        /**
          * Validates the point.
          *
          * @throws NullPointerException     if {@code correlation} is null
          * @throws IllegalArgumentException if {@code sampleCount} is negative, the
          *                                  correlation is finite with fewer than two
          *                                  samples, or the correlation lies outside
-         *                                  {@code [-1, 1]} beyond rounding tolerance
+         *                                  {@code [-1, 1]} beyond the metric's
+         *                                  precision-scaled rounding tolerance
          */
         public Point {
             Objects.requireNonNull(correlation, "correlation");
@@ -474,7 +469,12 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
                     throw new IllegalArgumentException("correlation must be finite or NaN");
                 }
                 double value = correlation.doubleValue();
-                if (value < -1.0 - MAX_CORRELATION_ROUNDING || value > 1.0 + MAX_CORRELATION_ROUNDING) {
+                // Pearson can exceed the mathematical bound by rounding noise
+                // of the metric's own precision only (for example 1 + 2e-16 in
+                // Double or 1.0000001 in Float); the factory epsilon is scaled
+                // to that precision, so it guards both delegate domains.
+                double roundingTolerance = correlation.getNumFactory().epsilon().doubleValue();
+                if (value < -1.0 - roundingTolerance || value > 1.0 + roundingTolerance) {
                     throw new IllegalArgumentException("a finite correlation must lie in [-1, 1]");
                 }
                 if (sampleCount < 2) {
