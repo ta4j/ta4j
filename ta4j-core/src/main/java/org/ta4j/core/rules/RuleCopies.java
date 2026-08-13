@@ -53,7 +53,17 @@ public final class RuleCopies {
         return new BaseBarSeriesBuilder().build();
     }
 
-    private static Optional<BarSeries> findBarSeries(Object value) {
+    /**
+     * Returns the first {@link BarSeries} reachable from {@code value}, if any.
+     *
+     * <p>
+     * Composite rules use this to anchor evaluation windows at the series'
+     * {@link BarSeries#getBeginIndex()} instead of literal zero.
+     *
+     * @param value the value to scan for a bar series
+     * @return the first reachable bar series, or empty if none is reachable
+     */
+    static Optional<BarSeries> findBarSeries(Object value) {
         return findBarSeries(value, new IdentityHashMap<>());
     }
 
