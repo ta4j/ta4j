@@ -1058,6 +1058,39 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         assertNumEquals(numFactory.zero(), dtw.getValue(3), 1.0e-12);
     }
 
+    @Test
+    public void floatBackedTotalsUseFloatCeiling() {
+        // Review regression: the overflow ceiling must match the delegate
+        // domain. A Float-backed accumulator converts numOf(Double.MAX_VALUE)
+        // to infinity, which silently disables the halving guard, so the
+        // scaled total overflows to infinity and the final mean is not
+        // finite. With the Float.MAX_VALUE ceiling, the scaled accumulation
+        // halves the operands and reports the finite mean instead of NaN.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
+                .withData(new double[] { 0.0, 0.0 })
+                .build();
+        List<Num> firstValues = new ArrayList<>(2);
+        List<Num> secondValues = new ArrayList<>(2);
+        firstValues.add(floatFactory.numOf(Float.MAX_VALUE));
+        firstValues.add(floatFactory.numOf(Float.MAX_VALUE));
+        secondValues.add(floatFactory.numOf(0));
+        secondValues.add(floatFactory.numOf(0));
+        Indicator<Num> first = new MockIndicator(series, firstValues);
+        Indicator<Num> second = new MockIndicator(series, secondValues);
+        DynamicTimeWarpingDistanceIndicator.Config diagonal = new DynamicTimeWarpingDistanceIndicator.Config(
+                DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
+                DynamicTimeWarpingDistanceIndicator.LocalDistance.ABSOLUTE,
+                DynamicTimeWarpingDistanceIndicator.WarpingWindow.sakoeChiba(0),
+                DynamicTimeWarpingDistanceIndicator.PathCostNormalization.BY_PATH_LENGTH);
+        DynamicTimeWarpingDistanceIndicator dtw = new DynamicTimeWarpingDistanceIndicator(first, second, 2, diagonal);
+
+        Num distance = dtw.getValue(1);
+        assertFalse(distance.isNaN());
+        assertTrue(distance.isPositive());
+        assertNumEquals(floatFactory.numOf(Float.MAX_VALUE), distance, 1.0e-6);
+    }
+
     private BarSeries series(int barCount) {
         double[] raw = new double[barCount];
         for (int i = 0; i < barCount; i++) {

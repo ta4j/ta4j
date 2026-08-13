@@ -92,10 +92,14 @@ final class DynamicTimeWarpingSupport {
         // Double and Float totals live in a fixed binary range, while
         // DecimalNum (and other exact Num implementations) can represent
         // arbitrarily large totals natively, so halving there would only add
-        // avoidable rounding to every path cell.
+        // avoidable rounding to every path cell. The ceiling matches the
+        // delegate domain: converting Double.MAX_VALUE to a Float-backed
+        // number would yield infinity and silently disable the guard.
         Number delegate = numFactory.one().getDelegate();
         boolean overflowCapable = byPathLength && (delegate instanceof Double || delegate instanceof Float);
-        Num maxValue = overflowCapable ? numFactory.numOf(Double.MAX_VALUE) : null;
+        Num maxValue = overflowCapable
+                ? numFactory.numOf(delegate instanceof Float ? Float.MAX_VALUE : Double.MAX_VALUE)
+                : null;
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -216,6 +220,15 @@ final class DynamicTimeWarpingSupport {
                         // Start cell: the path total is the local cost itself.
                         currentMeanValue[j] = pathCost.value();
                         currentMeanScale[j] = pathCost.scale();
+                    } else if (bestMeanValue == null) {
+                        // Every adopted predecessor carries a total: a null
+                        // mean can only mean a broken invariant, and
+                        // dereferencing it would NPE. Keep the cell undefined
+                        // instead of fabricating a path.
+                        currentCost[j] = NaN.NaN;
+                        currentLength[j] = 0;
+                        currentMeanValue[j] = NaN.NaN;
+                        currentMeanScale[j] = 0;
                     } else {
                         // total = bestTotal + cost, carried as value * 2^scale
                         // without materializing an overflowing sum: align both
