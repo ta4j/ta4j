@@ -468,11 +468,17 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // underflows to NaN in double precision. The alignment cannot start
         // at the origin, so the distance is undefined; scanning must not
         // restart the path at a later cell and report a distance that
-        // silently drops the sequence starts. DecimalNum keeps the squared
-        // delta representable and reports the real positive distance.
+        // silently drops the sequence starts. The three-sample shape covers
+        // the successor cells whose diagonal predecessor is the unreachable
+        // origin: their path must stay undefined as well. DecimalNum keeps
+        // the squared deltas representable and reports the real positive
+        // distance.
         BarSeries series = series(2);
         Indicator<Num> first = indicator(series, Double.MIN_VALUE, 1);
         Indicator<Num> second = indicator(series, 0, 1);
+        BarSeries longerSeries = series(3);
+        Indicator<Num> longerFirst = indicator(longerSeries, Double.MIN_VALUE, 0, 1);
+        Indicator<Num> longerSecond = indicator(longerSeries, 0, 0, 1);
         DynamicTimeWarpingDistanceIndicator.Config raw = new DynamicTimeWarpingDistanceIndicator.Config(
                 DynamicTimeWarpingDistanceIndicator.SequenceNormalization.NONE,
                 DynamicTimeWarpingDistanceIndicator.LocalDistance.SQUARED,
@@ -486,14 +492,21 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
 
         Num rawDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, raw).getValue(1);
         Num normalizedDistance = new DynamicTimeWarpingDistanceIndicator(first, second, 2, normalized).getValue(1);
+        Num rawLongerDistance = new DynamicTimeWarpingDistanceIndicator(longerFirst, longerSecond, 3, raw).getValue(2);
+        Num normalizedLongerDistance = new DynamicTimeWarpingDistanceIndicator(longerFirst, longerSecond, 3, normalized)
+                .getValue(2);
 
         if (numFactory instanceof DoubleNumFactory) {
             assertTrue(rawDistance.isNaN());
             assertTrue(normalizedDistance.isNaN());
+            assertTrue(rawLongerDistance.isNaN());
+            assertTrue(normalizedLongerDistance.isNaN());
         } else {
             Num expected = numFactory.numOf(Double.MIN_VALUE).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
             assertNumEquals(expected, rawDistance, 1.0e-12);
             assertTrue(normalizedDistance.isPositive());
+            assertNumEquals(expected, rawLongerDistance, 1.0e-12);
+            assertTrue(normalizedLongerDistance.isPositive());
         }
     }
 

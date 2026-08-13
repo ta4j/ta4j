@@ -88,14 +88,14 @@ final class DynamicTimeWarpingSupport {
         int[] previousMeanScale = byPathLength ? new int[sampleCount] : null;
         Num[] currentMeanValue = byPathLength ? new Num[sampleCount] : null;
         int[] currentMeanScale = byPathLength ? new int[sampleCount] : null;
-        Num maxValue = byPathLength ? numFactory.numOf(Double.MAX_VALUE) : null;
         // The overflow ceiling only constrains primitive-backed accumulators:
         // Double and Float totals live in a fixed binary range, while
         // DecimalNum (and other exact Num implementations) can represent
         // arbitrarily large totals natively, so halving there would only add
         // avoidable rounding to every path cell.
-        boolean overflowCapable = byPathLength && (numFactory.numOf(1).getDelegate() instanceof Double
-                || numFactory.numOf(1).getDelegate() instanceof Float);
+        Number delegate = numFactory.one().getDelegate();
+        boolean overflowCapable = byPathLength && (delegate instanceof Double || delegate instanceof Float);
+        Num maxValue = overflowCapable ? numFactory.numOf(Double.MAX_VALUE) : null;
 
         for (int i = 0; i < sampleCount; i++) {
             int columnMin = columnMin(i, config.warpingWindow(), sampleCount);
@@ -136,10 +136,17 @@ final class DynamicTimeWarpingSupport {
                 int bestMeanScale = 0;
                 int bestLength = 0;
                 if (i > 0 && j > 0) {
-                    bestCost = previousCost[j - 1];
-                    bestMeanValue = byPathLength ? previousMeanValue[j - 1] : null;
-                    bestMeanScale = byPathLength ? previousMeanScale[j - 1] : 0;
-                    bestLength = previousLength[j - 1];
+                    // An undefined diagonal marks an unreachable cell (out of
+                    // band or NaN): leaving bestCost null keeps the anchoring
+                    // branch below in charge, so a path can never restart at
+                    // an interior cell.
+                    Num diagonalValue = byPathLength ? previousMeanValue[j - 1] : previousCost[j - 1];
+                    if (diagonalValue != null && !diagonalValue.isNaN()) {
+                        bestCost = previousCost[j - 1];
+                        bestMeanValue = byPathLength ? previousMeanValue[j - 1] : null;
+                        bestMeanScale = byPathLength ? previousMeanScale[j - 1] : 0;
+                        bestLength = previousLength[j - 1];
+                    }
                 }
                 if (byPathLength) {
                     // Order predecessors by their exact scaled totals
@@ -209,11 +216,6 @@ final class DynamicTimeWarpingSupport {
                         // Start cell: the path total is the local cost itself.
                         currentMeanValue[j] = pathCost.value();
                         currentMeanScale[j] = pathCost.scale();
-                    } else if (bestMeanValue == null) {
-                        // A nonzero path must carry a total. Preserve an
-                        // undefined result rather than dereferencing an absent one.
-                        currentMeanValue[j] = NaN.NaN;
-                        currentMeanScale[j] = 0;
                     } else {
                         // total = bestTotal + cost, carried as value * 2^scale
                         // without materializing an overflowing sum: align both
