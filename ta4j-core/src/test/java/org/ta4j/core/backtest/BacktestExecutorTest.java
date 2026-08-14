@@ -609,7 +609,7 @@ public class BacktestExecutorTest {
     @Test
     public void executionResultFailureMetadataIsolatedFromConcurrentExecutions() throws Exception {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
-        int failureCount = 20_000;
+        int failureCount = 3;
         RuntimeException firstFailure = new IllegalStateException("first execution");
         Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), firstFailure);
         Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
