@@ -880,10 +880,10 @@ public class BacktestExecutor {
                             seriesManager.getBarSeries());
                     long duration = System.nanoTime() - strategyStart;
                     durationNanos[globalIndex] = duration;
-                    successFlags[globalIndex] = true;
                     Num criterionValue = criterion.calculate(seriesManager.getBarSeries(),
                             statement.getTradingRecord());
                     batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
+                    successFlags[globalIndex] = true;
                 } catch (RuntimeException e) {
                     durationNanos[globalIndex] = System.nanoTime() - strategyStart;
                     recordStrategyFailure(strategy, e, executionFailures);

@@ -51,9 +51,10 @@ final class RenkoCounter {
 
     /**
      * Evicts stale cached states when the series revision, retained window, or
-     * capacity changed since the last observation. Removed bars shift the meaning
-     * of every surviving index, so all entries are cleared; otherwise only entries
-     * at or after the earliest changed index are stale.
+     * capacity changed since the last observation. Removed bars invalidate the
+     * brick ancestry of every cached state, so all entries are cleared and the next
+     * computation re-anchors at the retained begin index; otherwise only entries at
+     * or after the earliest changed index are stale.
      */
     private void reconcileCache() {
         final BarSeries series = priceIndicator.getBarSeries();
@@ -83,17 +84,19 @@ final class RenkoCounter {
     }
 
     private RenkoState calculateState(int index) {
-        if (index == 0) {
-            var initial = new RenkoState(priceIndicator.getValue(0), 0, 0);
-            if (!isFormingBar(0)) {
-                cache.put(0, initial);
+        final BarSeries series = priceIndicator.getBarSeries();
+        final int firstIndex = series == null ? 0 : series.getBeginIndex();
+        if (index <= firstIndex) {
+            var initial = new RenkoState(priceIndicator.getValue(index), 0, 0);
+            if (!isFormingBar(index)) {
+                cache.put(index, initial);
             }
             return initial;
         }
 
         int startIndex = -1;
         RenkoState state = null;
-        for (int i = index - 1; i >= 0; i--) {
+        for (int i = index - 1; i >= firstIndex; i--) {
             state = cache.get(i);
             if (state != null) {
                 startIndex = i;
@@ -102,10 +105,10 @@ final class RenkoCounter {
         }
 
         if (startIndex < 0) {
-            startIndex = 0;
-            state = new RenkoState(priceIndicator.getValue(0), 0, 0);
-            if (!isFormingBar(0)) {
-                cache.put(0, state);
+            startIndex = firstIndex;
+            state = new RenkoState(priceIndicator.getValue(firstIndex), 0, 0);
+            if (!isFormingBar(firstIndex)) {
+                cache.put(firstIndex, state);
             }
         }
 

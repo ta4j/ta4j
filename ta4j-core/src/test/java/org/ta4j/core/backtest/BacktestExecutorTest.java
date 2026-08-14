@@ -507,19 +507,39 @@ public class BacktestExecutorTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
 
         Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-        Strategy slowThrowing = new SlowThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, slowThrowing), numOf(1),
+        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, throwing), numOf(1),
                 Trade.TradeType.BUY, new NumberOfBarsCriterion(), 2, null);
 
         BacktestRuntimeReport report = result.runtimeReport();
         assertEquals(1, report.strategyCount());
-        // The ~200ms failing duration must not pollute the aggregated statistics:
-        // with one successful strategy, min and max coincide.
+        // The failing duration must not pollute the aggregated statistics: with
+        // one successful strategy, min and max coincide.
         assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
         assertEquals(1, result.strategyFailures().size());
+    }
+
+    @Test
+    public void executeAndKeepTopKExcludesCriterionFailuresFromRuntimeReport() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy noTrades = new BaseStrategy(new FixedRule(-1), new FixedRule(-1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, noTrades), numOf(1),
+                Trade.TradeType.BUY, new ThrowingOnEmptyRecordCriterion(), 2, null);
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        // The criterion threw after the no-trade strategy's statement was
+        // generated; its duration must not enter the aggregated statistics:
+        // with one successful strategy, min and max coincide.
+        assertEquals(1, report.strategyCount());
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+        assertEquals("criterion boom", result.strategyFailures().get(0).cause().getMessage());
     }
 
     @Test
@@ -527,11 +547,10 @@ public class BacktestExecutorTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
 
         Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-        Strategy slowThrowing = new SlowThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(healthy, slowThrowing), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(healthy, throwing), numOf(1));
 
         BacktestRuntimeReport report = result.runtimeReport();
         assertEquals(1, report.strategyCount());
@@ -913,26 +932,29 @@ public class BacktestExecutorTest {
     }
 
     /**
-     * Strategy that sleeps before failing, used to verify that failed strategy
-     * durations are excluded from runtime report aggregation.
+     * Criterion that throws for empty trading records, used to verify that
+     * criterion failures after statement generation are excluded from runtime
+     * report aggregation.
      */
-    private static final class SlowThrowingStrategy extends BaseStrategy {
+    private static final class ThrowingOnEmptyRecordCriterion implements AnalysisCriterion {
 
-        private final RuntimeException failure;
-
-        private SlowThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure) {
-            super(entryRule, exitRule);
-            this.failure = failure;
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return series.numFactory().numOf(1);
         }
 
         @Override
-        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            int tradeCount = tradingRecord.getTrades().size();
+            if (tradeCount == 0) {
+                throw new IllegalStateException("criterion boom");
             }
-            throw failure;
+            return series.numFactory().numOf(tradeCount);
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+            return criterionValue1.isGreaterThan(criterionValue2);
         }
     }
 
