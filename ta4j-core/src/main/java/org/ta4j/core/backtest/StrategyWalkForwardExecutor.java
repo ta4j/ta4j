@@ -187,7 +187,8 @@ public class StrategyWalkForwardExecutor {
      * @param tradeType        trade type used to open positions
      * @param amount           amount used for entries/exits
      * @param config           walk-forward configuration
-     * @param progressCallback optional callback receiving completed fold count
+     * @param progressCallback optional callback receiving the processed fold count
+     *                         (successful and failed folds)
      * @return execution result
      * @since 0.22.4
      */
@@ -209,7 +210,8 @@ public class StrategyWalkForwardExecutor {
      * @param tradeType        trade type used to open positions
      * @param positionSizer    dynamic entry position sizer
      * @param config           walk-forward configuration
-     * @param progressCallback optional callback receiving completed fold count
+     * @param progressCallback optional callback receiving the processed fold count
+     *                         (successful and failed folds)
      * @return execution result
      * @since 0.22.9
      */
@@ -254,17 +256,17 @@ public class StrategyWalkForwardExecutor {
                 foldRuntimes.add(
                         new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
 
-                completed++;
             } catch (RuntimeException e) {
                 String message = "Walk-forward fold " + split.foldId() + " failed";
                 log.warn(message + ": {}", e.toString());
                 foldFailures.add(new WalkForwardRunResult.FoldFailure(split.foldId(), splitIndex, message, e));
-                continue;
             }
             // Progress callback failures belong to the caller, not the fold: a
             // throwing callback must not classify an otherwise successful fold as
             // failed, so the callback runs outside the fold-isolation block.
-            effectiveCallback.accept(completed);
+            // Failed folds still report progress so the final count always
+            // reaches the split total.
+            effectiveCallback.accept(++completed);
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);

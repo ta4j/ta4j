@@ -81,6 +81,20 @@ class WalkForwardMetricsTest {
     }
 
     @Test
+    void binaryF1ReturnsZeroWhenPrecisionAndRecallAreDefinedZero() {
+        WalkForwardMetric<String, Boolean> f1 = WalkForwardMetric.binaryF1("f1", 1,
+                (prediction, outcome) -> prediction.probability().isGreaterThanOrEqual(NUM_FACTORY.numOf(0.5)),
+                value -> value);
+
+        // Every predicted positive is wrong and every actual positive is missed:
+        // precision and recall are defined (non-zero denominators) and both zero,
+        // so F1 is a defined zero rather than an undefined metric.
+        List<WalkForwardObservation<String, Boolean>> allWrong = List.of(observation("fold-1", 1, 1, 0.9, false),
+                observation("fold-1", 2, 1, 0.2, true));
+        assertThat(f1.compute(allWrong)).isEqualTo(NUM_FACTORY.zero());
+    }
+
+    @Test
     void weightedObjectiveAppliesGuardrailsAndVariancePenalty() {
         WalkForwardObjective objective = WalkForwardObjective.weighted(
                 Map.of("eventAgreement", NUM_FACTORY.one(), "brier", NUM_FACTORY.minusOne()),

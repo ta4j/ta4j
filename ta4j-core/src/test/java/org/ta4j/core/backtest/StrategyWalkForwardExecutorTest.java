@@ -11,6 +11,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -266,6 +267,30 @@ public class StrategyWalkForwardExecutorTest {
         // overall runtime must be retained even with zero fold runtimes.
         assertTrue(result.runtimeReport().foldRuntimes().isEmpty());
         assertFalse(result.runtimeReport().overallRuntime().isZero());
+    }
+
+    @Test
+    public void progressCallbackCountsFailedFoldsTowardTotal() {
+        BarSeries series = buildSeries(48);
+        WalkForwardConfig config = walkForwardConfig();
+        Rule alwaysThrowing = (index, tradingRecord) -> {
+            throw new IllegalStateException("synthetic fold evaluation failure");
+        };
+        Strategy strategy = new BaseStrategy(alwaysThrowing, alwaysThrowing);
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+
+        List<Integer> progress = new ArrayList<>();
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY,
+                series.numFactory().one(), config, progress::add);
+
+        List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
+        assertEquals(expectedSplits.size(), result.foldFailures().size());
+        // Progress must report every processed fold so the final callback value
+        // reaches the split total even when folds fail.
+        assertEquals(expectedSplits.size(), progress.size());
+        for (int i = 0; i < progress.size(); i++) {
+            assertEquals(Integer.valueOf(i + 1), progress.get(i));
+        }
     }
 
     private BarSeries buildSeries(int bars) {

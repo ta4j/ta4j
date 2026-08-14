@@ -300,7 +300,9 @@ public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkFor
                 Num recall = factory.numOf(truePositive).dividedBy(recallDenominator);
                 Num denominator = precision.plus(recall);
                 if (denominator.isZero()) {
-                    return NaN.NaN;
+                    // No true positives while precision and recall are both
+                    // defined: F1 is a defined zero, not an undefined metric.
+                    return factory.zero();
                 }
                 return factory.two().multipliedBy(precision).multipliedBy(recall).dividedBy(denominator);
             }
