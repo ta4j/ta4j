@@ -698,6 +698,16 @@ public class StrategySerializationTest {
                 () -> Strategy.fromJson(series, malformedStartingType));
         assertThat(startingTypeException).hasMessageContaining("starting type").hasMessageContaining("HOLD");
     }
+    @Test
+    public void canonicalPayloadRejectsMissingUnstableBarsValue() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":null}");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+
+        assertThat(exception).hasMessageContaining("unstableBars");
+    }
 
     @Test
     public void versionTwoPayloadRejectsNonJsonIntegerObjectValues() {
