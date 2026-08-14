@@ -157,6 +157,8 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
 
         /**
          * Creates a validated fold failure record.
+         *
+         * @since 0.24.2
          */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "FoldFailure intentionally captures the original exception for fail-loud "
                 + "walk-forward diagnostics; exceptions are never mutated after capture")
@@ -173,6 +175,7 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
          * Exposes the captured failure cause for diagnostics.
          *
          * @return the captured failure cause
+         * @since 0.24.2
          */
         @Override
         @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FoldFailure intentionally exposes the original exception for fail-loud "
