@@ -47,11 +47,12 @@ final class RelationshipObjectives {
      * @param referenceBuilder builds the reference-event indicator from a window
      *                         sub-series
      * @param barCount         rolling window size in bars
-     * @param toleranceBars    symmetric event-matching tolerance in bars
+     * @param toleranceBars    symmetric event-matching tolerance in bars,
+     *                         {@code >= 0}
      * @return objective function over the predicted-event indicator
      * @throws NullPointerException     if the reference builder is null
-     * @throws IllegalArgumentException if {@code barCount} or {@code toleranceBars}
-     *                                  is not positive
+     * @throws IllegalArgumentException if {@code barCount <= 0} or
+     *                                  {@code toleranceBars < 0}
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Boolean>> eventSynchronizationF1(
@@ -60,8 +61,8 @@ final class RelationshipObjectives {
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be > 0");
         }
-        if (toleranceBars <= 0) {
-            throw new IllegalArgumentException("toleranceBars must be > 0");
+        if (toleranceBars < 0) {
+            throw new IllegalArgumentException("toleranceBars must be >= 0");
         }
         return (predicted, window) -> {
             try {

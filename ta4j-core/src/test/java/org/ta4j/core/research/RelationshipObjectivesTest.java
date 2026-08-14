@@ -109,6 +109,21 @@ class RelationshipObjectivesTest {
     }
 
     @Test
+    void eventSynchronizationF1AcceptsZeroTolerance() {
+        ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
+                .integer("lookbackStep", 1, 4)
+                .candidate((window, parameters) -> risingEvents(window.series(), parameters.intValue("lookbackStep")))
+                .maximize(RelationshipObjectives.eventSynchronizationF1(windowSeries -> risingEvents(windowSeries, 6),
+                        12, 0))
+                .search(SearchPlan.grid(10))
+                .topK(1)
+                .run();
+
+        assertThat(report.failedEvaluations()).isEmpty();
+        assertThat(report.trainingLeaderboard()).hasSize(1);
+    }
+
+    @Test
     void leadLagCorrelationSelectsMatchingShift() {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("shift", 1, 4)
