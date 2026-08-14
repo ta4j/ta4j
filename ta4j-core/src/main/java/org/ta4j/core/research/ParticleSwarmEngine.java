@@ -48,6 +48,7 @@ final class ParticleSwarmEngine extends SearchEngine {
             Comparator<ParameterResearch.EvaluatedCandidate> ranking, ParameterResearch.Direction direction,
             int maxIterations, int noImprovementIterations) {
         super(specs);
+        double maxSpan = 0d;
         for (DomainSpec spec : specs) {
             if (!spec.numeric()) {
                 throw new IllegalArgumentException("PARTICLE_SWARM requires ordered numeric domains "
@@ -59,6 +60,20 @@ final class ParticleSwarmEngine extends SearchEngine {
                         + spec.name() + "': the domain span " + spec.lowerBound() + ".." + spec.upperBound()
                         + " overflows double precision");
             }
+            maxSpan = Math.max(maxSpan, span);
+        }
+        // Finite domain spans can still overflow the derived update terms
+        // when the weights or the clamp factor are huge: maxVelocity is
+        // clampFactor times the span and the attraction terms scale by the
+        // weights, so an unrepresentable total would produce infinite or NaN
+        // velocities that project onto boundary indices. Bound the total
+        // per-iteration scale instead.
+        double velocityScale = settings.velocityClampFactor() * maxSpan;
+        double derivedScale = (settings.inertiaWeight() * settings.velocityClampFactor() + settings.cognitiveWeight()
+                + settings.socialWeight()) * maxSpan;
+        if (!Double.isFinite(velocityScale) || !Double.isFinite(derivedScale)) {
+            throw new IllegalArgumentException("PARTICLE_SWARM cannot scale position updates for this plan: the "
+                    + "derived velocity scale overflows double precision for the largest domain span " + maxSpan);
         }
         this.direction = direction;
         this.settings = settings;

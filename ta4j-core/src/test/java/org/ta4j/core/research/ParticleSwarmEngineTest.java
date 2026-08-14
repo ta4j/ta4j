@@ -143,6 +143,22 @@ class ParticleSwarmEngineTest {
         assertThat(exception.getMessage()).contains("overflows double precision");
     }
 
+    @Test
+    void particleSwarmRejectsOverflowingDerivedScales() {
+        // Finite domain spans can still overflow the derived update terms
+        // when the weights or the clamp factor are huge; the engine must
+        // reject the plan instead of projecting NaN positions onto index
+        // zero via the clamp.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.decimal("a", 0, 1e154, 1e150)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.5, Double.MAX_VALUE, 0.5, 0.2),
+                        new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.5, 0.5, 0.5, Double.MAX_VALUE),
+                        new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
+    }
+
     /**
      * Deterministic {@link Random} feeding one scripted {@code nextDouble()} draw
      * per call; the particle-swarm engines use no other random primitive.

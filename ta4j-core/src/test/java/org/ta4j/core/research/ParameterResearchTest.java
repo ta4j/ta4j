@@ -1076,6 +1076,43 @@ class ParameterResearchTest {
                 () -> new ParameterResearch.GeneticSettings(Integer.MAX_VALUE, 0, 2, 0.9, 0.1));
     }
 
+    @Test
+    void researchWindowSupportsTerminalMaximumIndex() {
+        // A retained series may legally end at Integer.MAX_VALUE; the window
+        // builder must copy the inclusive source range directly instead of
+        // overflowing an exclusive end index.
+        BarSeries series = new MockBarSeriesBuilder().withData(1d).withBeginIndex(Integer.MAX_VALUE).build();
+
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+    }
+
+    @Test
+    void geneticCrossoverAtFullRateStillExploresBeyondParents() {
+        // crossoverRate=1.0 must recombine via uniform parent-allele
+        // selection, not clone the first parent: with mutation disabled a
+        // full-rate search still evaluates genomes beyond the initial
+        // population instead of stalling after its first generation.
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series(1d, 2d, 3d))
+                .integer("a", 1, 10)
+                .integer("b", 1, 10)
+                .candidate((window, parameters) -> parameters.intValue("a") + parameters.intValue("b"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.genetic(40, 13L, new ParameterResearch.GeneticSettings(4, 0, 2, 1.0, 0.0)))
+                .run();
+
+        assertThat(report.counts().attempted()).isGreaterThan(4);
+    }
+
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {
         return ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 10)

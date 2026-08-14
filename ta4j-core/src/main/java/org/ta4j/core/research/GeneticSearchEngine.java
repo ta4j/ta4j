@@ -182,7 +182,13 @@ final class GeneticSearchEngine extends SearchEngine {
                 int[] parentB = tournament(valid).genome();
                 child = new int[parentA.length];
                 for (int d = 0; d < child.length; d++) {
-                    child[d] = random.nextDouble() < settings.crossoverRate() ? parentA[d] : parentB[d];
+                    // crossoverRate is the probability that a dimension is
+                    // recombined: crossed dimensions draw their allele from
+                    // either parent with equal probability, while uncrossed
+                    // dimensions inherit the first parent's allele.
+                    child[d] = random.nextDouble() < settings.crossoverRate()
+                            ? (random.nextBoolean() ? parentA[d] : parentB[d])
+                            : parentA[d];
                 }
                 for (int d = 0; d < child.length; d++) {
                     if (random.nextDouble() < settings.mutationRate()) {

@@ -675,24 +675,23 @@ public final class ParameterResearch {
         }
 
         private ResearchWindow buildWindow(String datasetId, ResearchWindow.WindowPhase phase, int start, int end) {
-            if (end == Integer.MAX_VALUE) {
-                throw new IllegalStateException("research window cannot include the terminal bar at index " + end
-                        + " because the exclusive end index would overflow");
-            }
             String windowId = datasetId + "|" + phase.name().toLowerCase(Locale.ROOT) + "|" + start + "|" + end;
-            BarSeries sub = series.getSubSeries(start, end + 1);
-            // getSubSeries shares Bar references with the source series, so a
-            // mutating objective could corrupt the original data unseen by the
-            // revision checks. Rebuild an owned window whose bars are frozen
-            // copies of the source values with their mutators disabled.
-            List<Bar> bars = new ArrayList<>(sub.getBarCount());
-            for (int i = sub.getBeginIndex(); i <= sub.getEndIndex(); i++) {
-                bars.add(new UnmodifiableBar(sub.getBar(i)));
+            // Build the owned window directly from the inclusive source range:
+            // getSubSeries needs an exclusive end index, which overflows when
+            // the window legally ends at Integer.MAX_VALUE. Like getSubSeries,
+            // the rebuilt series is re-based to index zero; the original
+            // absolute range stays on the ResearchWindow for reporting. Bars
+            // are frozen copies with their mutators disabled so a mutating
+            // objective cannot corrupt the original data unseen by the
+            // revision checks.
+            List<Bar> bars = new ArrayList<>(series.getBarCount());
+            for (int i = start; i <= end; i++) {
+                bars.add(new UnmodifiableBar(series.getBar(i)));
             }
-            BarSeries window = new BaseBarSeriesBuilder().withName(sub.getName())
-                    .withNumFactory(sub.numFactory())
-                    .withMaxBarCount(sub.getMaximumBarCount())
-                    .withBeginIndex(sub.getBeginIndex())
+            BarSeries window = new BaseBarSeriesBuilder().withName(series.getName())
+                    .withNumFactory(series.numFactory())
+                    .withMaxBarCount(series.getMaximumBarCount())
+                    .withBeginIndex(0)
                     .withBars(bars)
                     .build();
             return new ResearchWindow(window, start, end, phase, windowId);
@@ -1692,7 +1691,10 @@ public final class ParameterResearch {
      * @param populationSize number of individuals per generation
      * @param elitismCount   number of best individuals copied unchanged
      * @param tournamentSize tournament selection size for parent choice
-     * @param crossoverRate  per-dimension crossover probability
+     * @param crossoverRate  probability that each dimension is recombined; crossed
+     *                       dimensions take their allele from either parent with
+     *                       equal probability, while uncrossed dimensions inherit
+     *                       the first parent's allele
      * @param mutationRate   per-dimension mutation probability
      * @since 0.24.2
      */
