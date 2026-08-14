@@ -255,12 +255,16 @@ public class StrategyWalkForwardExecutor {
                         new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
 
                 completed++;
-                effectiveCallback.accept(completed);
             } catch (RuntimeException e) {
                 String message = "Walk-forward fold " + split.foldId() + " failed";
                 log.warn(message + ": {}", e.toString());
                 foldFailures.add(new WalkForwardRunResult.FoldFailure(split.foldId(), splitIndex, message, e));
+                continue;
             }
+            // Progress callback failures belong to the caller, not the fold: a
+            // throwing callback must not classify an otherwise successful fold as
+            // failed, so the callback runs outside the fold-isolation block.
+            effectiveCallback.accept(completed);
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);

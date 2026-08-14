@@ -108,6 +108,23 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertNumEquals(0.6972, se.getValue(9));
     }
 
+    @Test
+    public void evictedIndexAccessRetainsFirstBarValue() {
+        // Retained closes [30,40,50,40] live at absolute indices 2..5, so indices
+        // 0 and 1 are evicted (beginIndex = 2).
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 20, 30, 40, 50, 40)
+                .withMaxBarCount(4)
+                .build();
+        var se = new StandardErrorIndicator(new ClosePriceIndicator(pruned), 3);
+
+        // Evicted indices are served via calculate(0); the observation count must
+        // stay positive so the result is the first-bar value (0) instead of NaN
+        // from a negative sqrt argument.
+        assertNumEquals(0, se.getValue(0));
+        assertNumEquals(0, se.getValue(1));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

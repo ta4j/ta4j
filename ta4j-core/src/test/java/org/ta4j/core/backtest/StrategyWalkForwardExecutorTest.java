@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -94,6 +95,22 @@ public class StrategyWalkForwardExecutorTest {
 
         assertEquals(result.folds().size(), callbackCount.get());
         assertEquals(result.folds().size(), lastCompleted.get());
+    }
+
+    @Test
+    public void progressCallbackFailurePropagatesInsteadOfBeingRecordedAsFoldFailure() {
+        BarSeries series = buildSeries(48);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        WalkForwardConfig config = walkForwardConfig();
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+        IllegalStateException callbackFailure = new IllegalStateException("callback failure");
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> executor.execute(strategy, Trade.TradeType.BUY, numFactory.one(), config, completed -> {
+                    throw callbackFailure;
+                }));
+
+        assertSame(callbackFailure, thrown);
     }
 
     @Test

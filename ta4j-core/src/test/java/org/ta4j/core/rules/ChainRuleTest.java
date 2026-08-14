@@ -17,6 +17,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -52,6 +53,18 @@ public class ChainRuleTest {
         assertTrue(chainRule.isSatisfied(4));
         assertTrue(chainRule.isSatisfied(6));
         assertFalse(chainRule.isSatisfied(7));
+    }
+
+    @Test
+    public void isSatisfiedUsesCurrentSeriesBeginIndex() {
+        BarSeries rollingSeries = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(rollingSeries);
+        // The chain link is satisfied only at absolute index 3, which falls below
+        // the series begin index once the maximum bar count evicts the head.
+        Rule rule = new ChainRule(new InPipeRule(closePrice, 1000, 0), new ChainLink(new FixedRule(3), 4));
+
+        rollingSeries.setMaximumBarCount(5);
+        assertFalse(rule.isSatisfied(6));
     }
 
     @Test

@@ -69,6 +69,26 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void fastPathExcludesEvictedBars() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3)
+                .withMaxBarCount(3)
+                .build();
+        RunningTotalIndicator runningTotal = new RunningTotalIndicator(new ClosePriceIndicator(series), 3);
+
+        // Prime the cached partial sums with sequential access.
+        assertNumEquals(1, runningTotal.getValue(0));
+        assertNumEquals(3, runningTotal.getValue(1));
+        assertNumEquals(6, runningTotal.getValue(2));
+
+        // Appending evicts bar 0 without bumping the history revision, so the
+        // cached sum of 6 (which still includes the evicted close 1) must not be
+        // reused as the base for the new window.
+        series.addBar(series.barBuilder().openPrice(4).highPrice(4).lowPrice(4).closePrice(4).build());
+        assertNumEquals(9, runningTotal.getValue(3));
+    }
+
+    @Test
     public void anchorsAtBeginIndexAfterRemoval() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4)

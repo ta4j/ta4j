@@ -46,13 +46,22 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
                 && snapshot.earliestChangedIndex() == snapshot.endIndex()
                 && snapshot.removedThroughIndex() == previous.removedThroughIndex()
                 && snapshot.maximumBarCount() == previous.maximumBarCount();
+        // Revision equality alone does not capture window eviction: a constrained
+        // series can advance removedThroughIndex/beginIndex without bumping the
+        // history revision, which would keep a partial sum that still includes
+        // the evicted bar. Treat the sum as unchanged only when the complete
+        // snapshot state matches.
+        final boolean unchanged = snapshot.revision() == previous.revision()
+                && snapshot.endIndex() == previous.endIndex()
+                && snapshot.earliestChangedIndex() == previous.earliestChangedIndex()
+                && snapshot.removedThroughIndex() == previous.removedThroughIndex()
+                && snapshot.maximumBarCount() == previous.maximumBarCount();
         // serial access can benefit from previous partial sums
         // which saves a lot of CPU work for very long barCounts.
         // A partial sum remains valid as long as the series is unchanged or has
         // only been appended to, because neither change alters previous values.
         final boolean partialSumUsable = previousIndex != -1 && previousIndex == index - 1
-                && previousIndex >= Math.max(0, series.getBeginIndex())
-                && (snapshot.revision() == previousSnapshot.revision() || appendOnly);
+                && previousIndex >= Math.max(0, series.getBeginIndex()) && (unchanged || appendOnly);
         if (partialSumUsable && Num.isFinite(previousSum)) {
             return fastPath(index, snapshot);
         }

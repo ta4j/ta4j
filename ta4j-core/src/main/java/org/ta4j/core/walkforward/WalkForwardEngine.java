@@ -267,6 +267,8 @@ public final class WalkForwardEngine<C, P, O> {
                 try {
                     executions.add(
                             executeFold(series, context, config, split, splitIndex, maxPredictions, progressCounter));
+                } catch (ProgressCallbackException e) {
+                    throw (RuntimeException) e.getCause();
                 } catch (RuntimeException e) {
                     failures.add(recordFoldFailure(split, splitIndex, e));
                 }
@@ -298,6 +300,9 @@ public final class WalkForwardEngine<C, P, O> {
                     Throwable cause = e.getCause();
                     if (cause instanceof Error error) {
                         throw error;
+                    }
+                    if (cause instanceof ProgressCallbackException progressFailure) {
+                        throw (RuntimeException) progressFailure.getCause();
                     }
                     failures.add(recordFoldFailure(split, splitIndex, cause));
                 }
@@ -377,7 +382,24 @@ public final class WalkForwardEngine<C, P, O> {
 
     private void emitProgress(AtomicInteger progressCounter) {
         synchronized (progressCallbackLock) {
-            progressCallback.accept(progressCounter.incrementAndGet());
+            try {
+                progressCallback.accept(progressCounter.incrementAndGet());
+            } catch (RuntimeException e) {
+                // Callback failures belong to the caller; mark them so fold
+                // isolation never records them as fold failures.
+                throw new ProgressCallbackException(e);
+            }
+        }
+    }
+
+    /**
+     * Marker for progress-callback failures. Never classified as a fold failure;
+     * the originating callback exception is rethrown to the caller.
+     */
+    private static final class ProgressCallbackException extends RuntimeException {
+
+        private ProgressCallbackException(Throwable cause) {
+            super(cause);
         }
     }
 

@@ -4,6 +4,7 @@
 package org.ta4j.core.walkforward;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -266,6 +267,48 @@ class WalkForwardEngineTest {
         assertThat(result.foldMetricsForHorizon(5)).containsKeys(splits.get(0).foldId(), splits.get(2).foldId());
         assertThat(result.foldMetricsForHorizon(5)).doesNotContainKey(splits.get(1).foldId());
         assertThat(result.snapshots()).isNotEmpty();
+    }
+
+    @Test
+    void progressCallbackFailurePropagatesFromSequentialFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
+        WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 15, List.of(), 1, List.of(), 1L);
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex,
+                        context) -> List.of(new RankedPrediction<>("p", 1, fullSeries.numFactory().numOf(0.5),
+                                fullSeries.numFactory().numOf(0.5), "p")),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    throw new IllegalStateException("callback failure");
+                }, ignored -> {
+                    // no-op
+                });
+
+        assertThatThrownBy(() -> engine.run(series, "ctx", config)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("callback failure");
+    }
+
+    @Test
+    void progressCallbackFailurePropagatesFromParallelFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
+        WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 15, List.of(), 1, List.of(), 1L);
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex,
+                        context) -> List.of(new RankedPrediction<>("p", 1, fullSeries.numFactory().numOf(0.5),
+                                fullSeries.numFactory().numOf(0.5), "p")),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    throw new IllegalStateException("callback failure");
+                }, ignored -> {
+                    // no-op
+                }, 2);
+
+        assertThatThrownBy(() -> engine.run(series, "ctx", config)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("callback failure");
     }
 
     private static double[] prices(int size) {
