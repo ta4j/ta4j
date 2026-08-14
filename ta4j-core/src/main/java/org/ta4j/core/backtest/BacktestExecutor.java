@@ -46,13 +46,14 @@ public class BacktestExecutor {
     private final TradingStatementGenerator tradingStatementGenerator;
 
     /**
-     * Strategies that failed during the most recent execution. Populated by
+     * Strategies that failed during the most recent execution. Replaced atomically
+     * by
      * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
      * and
      * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, Function)}
      * so callers can distinguish healthy results from skipped strategies.
      */
-    private final ConcurrentLinkedQueue<StrategyFailure> strategyFailures = new ConcurrentLinkedQueue<>();
+    private volatile List<BacktestExecutionResult.StrategyFailure> latestFailures = List.of();
 
     /**
      * Default batch size for processing strategies. When the number of strategies
@@ -411,14 +412,14 @@ public class BacktestExecutor {
         }
 
         if (strategies.isEmpty()) {
-            strategyFailures.clear();
+            latestFailures = List.of();
             return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
                     BacktestRuntimeReport.empty());
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
         int strategyCount = strategyArray.length;
-        ConcurrentLinkedQueue<StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         TradingStatement[] statements = new TradingStatement[strategyCount];
         long[] durations = new long[strategyCount];
 
@@ -464,10 +465,7 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
-                executionFailures.stream()
-                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(),
-                                failure.cause()))
-                        .toList());
+                executionFailures.stream().toList());
     }
 
     /**
@@ -478,8 +476,8 @@ public class BacktestExecutor {
      * @return exception describing the total failure
      */
     private IllegalStateException allStrategiesFailed(int strategyCount,
-            ConcurrentLinkedQueue<StrategyFailure> executionFailures) {
-        StrategyFailure firstFailure = executionFailures.peek();
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures) {
+        BacktestExecutionResult.StrategyFailure firstFailure = executionFailures.peek();
         String firstMessage = firstFailure == null ? ""
                 : " First failure: " + firstFailure.strategy().getName() + " - " + firstFailure.cause().getMessage();
         return new IllegalStateException(
@@ -492,27 +490,13 @@ public class BacktestExecutor {
      * @return immutable snapshot of the recorded failures, in the order they were
      *         recorded
      */
-    List<StrategyFailure> getStrategyFailures() {
-        synchronized (strategyFailures) {
-            return List.copyOf(strategyFailures);
-        }
+    List<BacktestExecutionResult.StrategyFailure> getStrategyFailures() {
+        return latestFailures;
     }
 
-    private void publishStrategyFailures(ConcurrentLinkedQueue<StrategyFailure> executionFailures) {
-        synchronized (strategyFailures) {
-            strategyFailures.clear();
-            strategyFailures.addAll(executionFailures);
-        }
-    }
-
-    /**
-     * Records one strategy that failed during execution so callers can distinguish
-     * healthy results from skipped strategies.
-     *
-     * @param strategy the strategy that failed
-     * @param cause    the exception thrown while evaluating the strategy
-     */
-    record StrategyFailure(Strategy strategy, RuntimeException cause) {
+    private void publishStrategyFailures(
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures) {
+        latestFailures = List.copyOf(executionFailures);
     }
 
     /**
@@ -845,14 +829,13 @@ public class BacktestExecutor {
             throw new IllegalArgumentException("topK must be positive");
         }
         if (strategies.isEmpty()) {
-            strategyFailures.clear();
+            latestFailures = List.of();
             return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
                     BacktestRuntimeReport.empty());
         }
-
+        ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         int strategyCount = strategies.size();
         int effectiveTopK = Math.min(topK, strategyCount);
-        ConcurrentLinkedQueue<StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
 
         Comparator<StrategyEvaluation> bestFirstComparator = createBestFirstComparator(criterion);
         PriorityQueue<StrategyEvaluation> topStrategies = new PriorityQueue<>(effectiveTopK + 1,
@@ -952,10 +935,7 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durationNanos, overallRuntime, strategyRuntimes);
 
         return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
-                executionFailures.stream()
-                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(),
-                                failure.cause()))
-                        .toList());
+                executionFailures.stream().toList());
     }
 
     private Comparator<StrategyEvaluation> createBestFirstComparator(AnalysisCriterion criterion) {
@@ -1044,7 +1024,7 @@ public class BacktestExecutor {
      */
     private void executeUnbounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
             Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback,
-            ConcurrentLinkedQueue<StrategyFailure> failureLedger) {
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
@@ -1064,7 +1044,7 @@ public class BacktestExecutor {
      */
     private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
             Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int batchSize,
-            ConcurrentLinkedQueue<StrategyFailure> failureLedger) {
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
@@ -1079,7 +1059,7 @@ public class BacktestExecutor {
      */
     private void executeSingleStrategy(int index, Strategy[] strategyArray, TradingStatement[] statements,
             long[] durations, Function<Strategy, TradingRecord> tradingRecordRunner, ProgressTracker progressTracker,
-            ConcurrentLinkedQueue<StrategyFailure> failureLedger) {
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         Strategy strategy = strategyArray[index];
         long strategyStart = System.nanoTime();
         try {
@@ -1106,8 +1086,8 @@ public class BacktestExecutor {
      * @param failure  the exception thrown while evaluating the strategy
      */
     private void recordStrategyFailure(Strategy strategy, RuntimeException failure,
-            ConcurrentLinkedQueue<StrategyFailure> failureLedger) {
-        failureLedger.add(new StrategyFailure(strategy, failure));
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
+        failureLedger.add(new BacktestExecutionResult.StrategyFailure(strategy, failure));
         log.warn("Strategy [{}] failed during backtest execution: {}", strategy.getName(), failure.getMessage(),
                 failure);
     }

@@ -496,7 +496,7 @@ public class BacktestExecutorTest {
         assertSame(threeTrades, result.tradingStatements().get(2).getStrategy());
         assertEquals(3, result.runtimeReport().strategyCount());
 
-        List<BacktestExecutor.StrategyFailure> failures = executor.getStrategyFailures();
+        List<BacktestExecutionResult.StrategyFailure> failures = executor.getStrategyFailures();
         assertEquals(1, failures.size());
         assertSame(throwing, failures.get(0).strategy());
         assertEquals("boom", failures.get(0).cause().getMessage());
@@ -539,7 +539,7 @@ public class BacktestExecutorTest {
         assertSame(throwing, result.strategyFailures().getFirst().strategy());
         assertEquals("boom", result.strategyFailures().getFirst().cause().getMessage());
 
-        List<BacktestExecutor.StrategyFailure> failures = executor.getStrategyFailures();
+        List<BacktestExecutionResult.StrategyFailure> failures = executor.getStrategyFailures();
         assertEquals(1, failures.size());
         assertSame(throwing, failures.get(0).strategy());
         assertEquals("boom", failures.get(0).cause().getMessage());

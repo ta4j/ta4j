@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -72,10 +73,36 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
          *
          * @param strategy the strategy that failed
          * @param cause    the exception thrown while evaluating the strategy
+         * @since 0.24.2
          */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "StrategyFailure intentionally captures the "
+                + "original strategy reference and exception for fail-loud backtest diagnostics; the strategy is "
+                + "identified by reference and exceptions are never mutated after capture")
         public StrategyFailure {
             Objects.requireNonNull(strategy, "strategy must not be null");
             Objects.requireNonNull(cause, "cause must not be null");
+        }
+
+        /**
+         * @return the strategy that failed
+         * @since 0.24.2
+         */
+        @Override
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "StrategyFailure intentionally exposes the "
+                + "original strategy reference for fail-loud backtest diagnostics")
+        public Strategy strategy() {
+            return strategy;
+        }
+
+        /**
+         * @return the exception thrown while evaluating the strategy
+         * @since 0.24.2
+         */
+        @Override
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "StrategyFailure intentionally exposes the "
+                + "original exception for fail-loud backtest diagnostics; exceptions are never mutated after capture")
+        public RuntimeException cause() {
+            return cause;
         }
     }
 
