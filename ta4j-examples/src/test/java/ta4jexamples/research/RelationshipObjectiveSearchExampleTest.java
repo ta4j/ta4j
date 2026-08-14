@@ -9,10 +9,14 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.research.ParameterResearch.ObjectiveEvaluation;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
 import org.ta4j.core.research.ParameterResearch.RankedCandidate;
+import org.ta4j.core.research.ParameterResearch.ResearchWindow;
 import org.ta4j.core.research.ParameterResearch.SearchPlan;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
@@ -87,6 +91,50 @@ public class RelationshipObjectiveSearchExampleTest {
         assertTrue(narrative.contains("F1="));
         assertTrue(narrative.contains("Precision="));
         assertTrue(narrative.contains("Recall="));
+    }
+
+    @Test
+    public void terminalPredictionsAreExcludedFromSynchronizationF1() {
+        BarSeries series = buildMomentumSeries(200);
+        int begin = series.getBeginIndex();
+        int end = series.getEndIndex();
+        BarSeries windowSeries = series.getSubSeries(begin, end + 1);
+        int windowBegin = windowSeries.getBeginIndex();
+        int windowEnd = windowSeries.getEndIndex();
+        Indicator<Boolean> reference = RelationshipObjectiveSearchExample.rallyAheadEvents(windowSeries);
+
+        // One rally inside the synchronization window bounds both evaluation
+        // variants; the contaminated stream additionally predicts the terminal
+        // bars, which cannot be labeled.
+        int rallyIndex = -1;
+        int searchFloor = Math.max(windowBegin, windowEnd - RelationshipObjectiveSearchExample.SYNC_WINDOW_BARS + 1);
+        for (int i = windowEnd - RelationshipObjectiveSearchExample.FORECAST_BARS; i >= searchFloor; i--) {
+            if (reference.getValue(i)) {
+                rallyIndex = i;
+                break;
+            }
+        }
+        assertTrue("series has no rally inside the synchronization window", rallyIndex >= 0);
+
+        Boolean[] clean = new Boolean[windowSeries.getBarCount()];
+        Boolean[] contaminated = new Boolean[windowSeries.getBarCount()];
+        for (int i = 0; i < clean.length; i++) {
+            int index = windowBegin + i;
+            boolean rally = index == rallyIndex;
+            boolean terminal = index > windowEnd - RelationshipObjectiveSearchExample.FORECAST_BARS;
+            clean[i] = rally;
+            contaminated[i] = rally || terminal;
+        }
+
+        ObjectiveEvaluation cleanScore = RelationshipObjectiveSearchExample.scoreSynchronization(
+                new FixedBooleanIndicator(windowSeries, clean),
+                new ResearchWindow(windowSeries, windowBegin, windowEnd, ResearchWindow.WindowPhase.TRAINING, "clean"));
+        ObjectiveEvaluation contaminatedScore = RelationshipObjectiveSearchExample.scoreSynchronization(
+                new FixedBooleanIndicator(windowSeries, contaminated), new ResearchWindow(windowSeries, windowBegin,
+                        windowEnd, ResearchWindow.WindowPhase.TRAINING, "contaminated"));
+
+        assertEquals(ObjectiveEvaluation.Status.VALID, cleanScore.status());
+        assertEquals(cleanScore.score().doubleValue(), contaminatedScore.score().doubleValue(), 1e-12);
     }
 
     private static void assertF1(Num score) {

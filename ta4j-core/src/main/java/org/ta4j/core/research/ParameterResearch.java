@@ -434,9 +434,12 @@ public final class ParameterResearch {
          * Runs the search and returns the final report.
          *
          * @return final research report
-         * @throws IllegalStateException if required configuration is missing, the
-         *                               series is empty, or the dataset changed during
-         *                               the run
+         * @throws IllegalStateException    if required configuration is missing, the
+         *                                  series is empty, or the dataset changed
+         *                                  during the run
+         * @throws IllegalArgumentException if the holdout window leaves no training
+         *                                  bar, or the selected engine rejects a
+         *                                  declared domain
          * @since 0.24.2
          */
         public ParameterResearchReport run() {

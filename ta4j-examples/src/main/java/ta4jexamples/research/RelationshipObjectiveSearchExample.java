@@ -55,10 +55,12 @@ public class RelationshipObjectiveSearchExample {
     private static final String F1 = "F1";
     private static final String PRECISION = "Precision";
     private static final String RECALL = "Recall";
-    private static final int FORECAST_BARS = 5;
+    // Package-private so the regression tests can pin the synchronization
+    // evaluation semantics.
+    static final int FORECAST_BARS = 5;
     private static final double RISE_THRESHOLD_PERCENT = 1.5;
-    private static final int SYNC_WINDOW_BARS = 120;
-    private static final int TOLERANCE_BARS = 2;
+    static final int SYNC_WINDOW_BARS = 120;
+    static final int TOLERANCE_BARS = 2;
     private static final int DEFAULT_VALIDATION_BARS = 63;
     private static final int DEFAULT_TOP_CANDIDATES = 3;
 
@@ -125,15 +127,19 @@ public class RelationshipObjectiveSearchExample {
     /**
      * Scores a predicted event stream against rally events on the same window. The
      * reference reads the window only, so no holdout information leaks into
-     * training scores.
+     * training scores. The final {@value #FORECAST_BARS} bars cannot be labeled, so
+     * both streams are evaluated only through the last evaluable bar and the
+     * synchronization window is sized from the evaluable bar count.
      */
-    private static ObjectiveEvaluation scoreSynchronization(Indicator<Boolean> predicted, ResearchWindow window) {
+    static ObjectiveEvaluation scoreSynchronization(Indicator<Boolean> predicted, ResearchWindow window) {
         BarSeries series = window.series();
         Indicator<Boolean> reference = rallyAheadEvents(series);
-        int syncWindowBars = Math.min(SYNC_WINDOW_BARS, series.getBarCount());
+        int evaluableEndIndex = series.getEndIndex() - FORECAST_BARS;
+        int evaluableBarCount = evaluableEndIndex - series.getBeginIndex() + 1;
+        int syncWindowBars = Math.min(SYNC_WINDOW_BARS, evaluableBarCount);
         EventSynchronizationIndicator synchronization = new EventSynchronizationIndicator(predicted, reference,
                 syncWindowBars, TOLERANCE_BARS);
-        EventSynchronizationIndicator.Result result = synchronization.getResult(series.getEndIndex());
+        EventSynchronizationIndicator.Result result = synchronization.getResult(evaluableEndIndex);
         Num f1Score = result.f1Score();
         if (!Num.isFinite(f1Score)) {
             return ObjectiveEvaluation.failed("no events in the evaluation window");
@@ -141,7 +147,7 @@ public class RelationshipObjectiveSearchExample {
         return ObjectiveEvaluation.of(f1Score, Map.of(PRECISION, result.precision(), RECALL, result.recall()));
     }
 
-    private static Indicator<Boolean> rallyAheadEvents(BarSeries series) {
+    static Indicator<Boolean> rallyAheadEvents(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         int begin = series.getBeginIndex();
         int end = series.getEndIndex();
