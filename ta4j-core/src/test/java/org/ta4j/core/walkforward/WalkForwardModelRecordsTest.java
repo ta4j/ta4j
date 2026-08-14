@@ -156,6 +156,7 @@ class WalkForwardModelRecordsTest {
         assertThat(result.observationsByHorizon()).isEmpty();
         assertThat(result.holdoutSplit()).contains(holdout);
     }
+
     @Test
     void runResultRejectsFailureThatDoesNotMatchSplit() {
         WalkForwardConfig config = WalkForwardConfig.defaultConfig();
@@ -165,9 +166,8 @@ class WalkForwardModelRecordsTest {
         WalkForwardRunResult.FoldFailure invalid = new WalkForwardRunResult.FoldFailure("ghost", 1, "failed",
                 new IllegalStateException("boom"));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> new WalkForwardRunResult<>(config, List.of(split), null, null, null, null, List.of(),
-                        WalkForwardRuntimeReport.empty(), manifest, List.of(invalid)));
+        assertThrows(IllegalArgumentException.class, () -> new WalkForwardRunResult<>(config, List.of(split), null,
+                null, null, null, List.of(), WalkForwardRuntimeReport.empty(), manifest, List.of(invalid)));
     }
 
     @Test

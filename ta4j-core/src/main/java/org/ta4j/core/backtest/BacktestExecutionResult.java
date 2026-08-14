@@ -26,8 +26,8 @@ import java.util.*;
  * @since 0.19
  */
 public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement> tradingStatements,
-        BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures)
-        implements TradingStatementExecutionResult<BacktestRuntimeReport> {
+        BacktestRuntimeReport runtimeReport,
+        List<StrategyFailure> strategyFailures) implements TradingStatementExecutionResult<BacktestRuntimeReport> {
 
     /**
      * Ensures properties are non-null and snapshots mutable input collections.
@@ -43,8 +43,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         tradingStatements = List
                 .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
-        strategyFailures = List
-                .copyOf(Objects.requireNonNull(strategyFailures, "strategyFailures must not be null"));
+        strategyFailures = List.copyOf(Objects.requireNonNull(strategyFailures, "strategyFailures must not be null"));
     }
 
     /**

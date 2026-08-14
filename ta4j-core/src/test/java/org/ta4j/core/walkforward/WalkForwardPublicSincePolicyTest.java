@@ -31,8 +31,9 @@ class WalkForwardPublicSincePolicyTest {
 
     private static Path sourcePath() {
         String worktreeRoot = System.getProperty("review.worktree");
-        return worktreeRoot == null ? Path.of("src", "main", "java",
-                "org/ta4j/core/walkforward/WalkForwardRunResult.java") : Path.of(worktreeRoot, SOURCE_RELATIVE_PATH);
+        return worktreeRoot == null
+                ? Path.of("src", "main", "java", "org/ta4j/core/walkforward/WalkForwardRunResult.java")
+                : Path.of(worktreeRoot, SOURCE_RELATIVE_PATH);
     }
 
     private static String javadocBefore(String source, String declaration) {

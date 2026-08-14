@@ -547,8 +547,7 @@ public class BacktestExecutorTest {
 
     @Test
     public void executionResultFailureMetadataIsolatedFromConcurrentExecutions() throws Exception {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16)
-                .build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
         int failureCount = 20_000;
         RuntimeException firstFailure = new IllegalStateException("first execution");
         Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), firstFailure);
@@ -667,20 +666,18 @@ public class BacktestExecutorTest {
     @Test
     public void emptyExecutionClearsPreviousFailures() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
-        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        assertThrows(IllegalStateException.class,
-                () -> executor.executeWithRuntimeReport(List.of(throwing), numOf(1)));
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(throwing), numOf(1)));
         executor.executeWithRuntimeReport(List.of(), numOf(1));
 
         assertTrue(executor.getStrategyFailures().isEmpty());
     }
 
     /**
-     * Strategy that pauses before throwing, allowing deterministic overlap of
-     * two executor calls.
+     * Strategy that pauses before throwing, allowing deterministic overlap of two
+     * executor calls.
      */
     private static final class BlockingThrowingStrategy extends BaseStrategy {
 

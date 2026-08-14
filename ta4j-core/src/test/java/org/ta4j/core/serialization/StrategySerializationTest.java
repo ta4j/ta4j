@@ -698,6 +698,7 @@ public class StrategySerializationTest {
                 () -> Strategy.fromJson(series, malformedStartingType));
         assertThat(startingTypeException).hasMessageContaining("starting type").hasMessageContaining("HOLD");
     }
+
     @Test
     public void canonicalPayloadRejectsMissingUnstableBarsValue() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
@@ -1499,10 +1500,10 @@ public class StrategySerializationTest {
 
     private static String canonicalStrategyJson(String parameters) {
         String ruleType = SerializableRule.class.getName();
-        return "{\"type\":\"BaseStrategy\",\"label\":\"MalformedCanonical\","
-                + "\"parameters\":" + parameters + ",\"rules\":["
-                + "{\"type\":\"" + ruleType + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}},"
-                + "{\"type\":\"" + ruleType + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
+        return "{\"type\":\"BaseStrategy\",\"label\":\"MalformedCanonical\"," + "\"parameters\":" + parameters
+                + ",\"rules\":[" + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}}," + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
     }
 
     private static ComponentDescriptor shortMacroDescriptor() {

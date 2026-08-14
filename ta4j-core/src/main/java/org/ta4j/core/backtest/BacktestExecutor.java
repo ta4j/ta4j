@@ -465,7 +465,8 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
                 executionFailures.stream()
-                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(), failure.cause()))
+                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(),
+                                failure.cause()))
                         .toList());
     }
 
@@ -497,13 +498,13 @@ public class BacktestExecutor {
         }
     }
 
-
     private void publishStrategyFailures(ConcurrentLinkedQueue<StrategyFailure> executionFailures) {
         synchronized (strategyFailures) {
             strategyFailures.clear();
             strategyFailures.addAll(executionFailures);
         }
     }
+
     /**
      * Records one strategy that failed during execution so callers can distinguish
      * healthy results from skipped strategies.
@@ -952,7 +953,8 @@ public class BacktestExecutor {
 
         return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
                 executionFailures.stream()
-                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(), failure.cause()))
+                        .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(),
+                                failure.cause()))
                         .toList());
     }
 
