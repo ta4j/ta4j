@@ -443,6 +443,7 @@ public class BacktestExecutor {
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
         publishStrategyFailures(executionFailures);
+        afterFailureLedgerPublished();
 
         if (executionFailures.size() == strategyCount) {
             throw allStrategiesFailed(strategyCount, executionFailures);
@@ -501,6 +502,18 @@ public class BacktestExecutor {
     private void publishStrategyFailures(
             ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures) {
         latestFailures = List.copyOf(executionFailures);
+    }
+
+    /**
+     * Hook invoked after the failure ledger has been published and before the
+     * execution result is assembled. Package-private so concurrency tests can
+     * deterministically overlap a ledger clear with result assembly; the default
+     * implementation does nothing.
+     *
+     * @since 0.24.2
+     */
+    void afterFailureLedgerPublished() {
+        // no-op
     }
 
     /**

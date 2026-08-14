@@ -13,6 +13,9 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -614,53 +617,50 @@ public class BacktestExecutorTest {
         }
         strategies.add(healthy);
 
-        BacktestExecutor executor = new BacktestExecutor(series);
-        AtomicReference<BacktestExecutionResult> result = new AtomicReference<>();
-        AtomicReference<Throwable> executionFailure = new AtomicReference<>();
-        AtomicBoolean clearLedger = new AtomicBoolean();
-        Thread firstExecution = new Thread(() -> {
-            try {
-                result.set(executor.executeWithRuntimeReport(strategies, numOf(1)));
-            } catch (Throwable failure) {
-                executionFailure.set(failure);
+        // Block the first execution between publishing its failure ledger and
+        // assembling its result, so the clearing execution deterministically
+        // overlaps that window instead of racing it.
+        CountDownLatch ledgerPublished = new CountDownLatch(1);
+        CountDownLatch ledgerCleared = new CountDownLatch(1);
+        BacktestExecutor executor = new BacktestExecutor(series) {
+            @Override
+            void afterFailureLedgerPublished() {
+                ledgerPublished.countDown();
+                try {
+                    if (!ledgerCleared.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting for the clearing execution");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
             }
-        }, "backtest-first-execution");
-        Thread clearingExecution = null;
+        };
+
         TraceTestLogger traceLogger = new TraceTestLogger();
         traceLogger.open();
         traceLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
+        ExecutorService pool = Executors.newSingleThreadExecutor();
         try {
-            firstExecution.start();
-            long deadline = System.nanoTime() + 10_000_000_000L;
-            while (executor.getStrategyFailures().size() != failureCount && System.nanoTime() < deadline) {
-                Thread.yield();
-            }
-            assertEquals("first execution did not publish its failure ledger", failureCount,
-                    executor.getStrategyFailures().size());
+            Future<BacktestExecutionResult> firstExecution = pool
+                    .submit(() -> executor.executeWithRuntimeReport(strategies, numOf(1)));
 
-            clearLedger.set(true);
-            clearingExecution = new Thread(() -> {
-                while (clearLedger.get()) {
-                    executor.executeWithRuntimeReport(List.of(), numOf(1));
-                }
-            }, "backtest-clearing-execution");
-            clearingExecution.start();
+            assertTrue("first execution did not publish its failure ledger",
+                    ledgerPublished.await(10, TimeUnit.SECONDS));
 
-            firstExecution.join(10_000);
-            assertFalse("first execution did not finish", firstExecution.isAlive());
-            assertTrue("first execution failed", executionFailure.get() == null);
-            assertTrue(result.get() != null);
-            assertEquals(failureCount, result.get().strategyFailures().size());
-            assertSame(throwing, result.get().strategyFailures().getFirst().strategy());
-            assertSame(firstFailure, result.get().strategyFailures().getFirst().cause());
+            // The first execution is now blocked after publishing: clearing the
+            // shared ledger overlaps its result assembly by construction.
+            executor.executeWithRuntimeReport(List.of(), numOf(1));
+            assertTrue("clearing execution did not clear the shared ledger", executor.getStrategyFailures().isEmpty());
+            ledgerCleared.countDown();
+
+            BacktestExecutionResult result = firstExecution.get(10, TimeUnit.SECONDS);
+            assertEquals(failureCount, result.strategyFailures().size());
+            assertSame(throwing, result.strategyFailures().getFirst().strategy());
+            assertSame(firstFailure, result.strategyFailures().getFirst().cause());
         } finally {
-            clearLedger.set(false);
-            if (clearingExecution != null) {
-                clearingExecution.join(10_000);
-            }
-            if (firstExecution.isAlive()) {
-                firstExecution.join(10_000);
-            }
+            ledgerCleared.countDown();
+            pool.shutdownNow();
             traceLogger.close();
         }
     }
