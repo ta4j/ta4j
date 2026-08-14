@@ -12,8 +12,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -551,6 +554,88 @@ public class BacktestExecutorTest {
 
         assertTrue(exception.getMessage().contains("All 2 strategies failed"));
         assertEquals(2, executor.getStrategyFailures().size());
+    }
+
+    @Test
+    public void concurrentExecutionsKeepFailureLedgersIsolated() throws Exception {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        CountDownLatch blockedStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocked = new CountDownLatch(1);
+        Strategy blocked = new BlockingThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("blocked"), blockedStarted, releaseBlocked);
+        Strategy healthy = new BaseStrategy(new FixedRule(), new FixedRule());
+        Strategy immediateFailure = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("immediate"));
+        BacktestExecutor executor = new BacktestExecutor(series);
+        AtomicReference<BacktestExecutionResult> firstResult = new AtomicReference<>();
+        AtomicReference<Throwable> firstFailure = new AtomicReference<>();
+
+        Thread firstExecution = new Thread(() -> {
+            try {
+                firstResult.set(executor.executeWithRuntimeReport(List.of(blocked, healthy), numOf(1)));
+            } catch (Throwable failure) {
+                firstFailure.set(failure);
+            }
+        });
+        firstExecution.start();
+        try {
+            assertTrue(blockedStarted.await(10, TimeUnit.SECONDS));
+            assertThrows(IllegalStateException.class,
+                    () -> executor.executeWithRuntimeReport(List.of(immediateFailure), numOf(1)));
+        } finally {
+            releaseBlocked.countDown();
+            firstExecution.join(10_000);
+        }
+
+        assertFalse(firstExecution.isAlive());
+        assertEquals(null, firstFailure.get());
+        assertEquals(1, firstResult.get().tradingStatements().size());
+        assertSame(healthy, firstResult.get().tradingStatements().get(0).getStrategy());
+    }
+
+    @Test
+    public void emptyExecutionClearsPreviousFailures() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(throwing), numOf(1)));
+        executor.executeWithRuntimeReport(List.of(), numOf(1));
+
+        assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    /**
+     * Strategy that pauses before throwing, allowing deterministic overlap of
+     * two executor calls.
+     */
+    private static final class BlockingThrowingStrategy extends BaseStrategy {
+
+        private final RuntimeException failure;
+        private final CountDownLatch started;
+        private final CountDownLatch release;
+
+        private BlockingThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure,
+                CountDownLatch started, CountDownLatch release) {
+            super(entryRule, exitRule);
+            this.failure = failure;
+            this.started = started;
+            this.release = release;
+        }
+
+        @Override
+        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            started.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting to fail", e);
+            }
+            throw failure;
+        }
     }
 
     @Test
