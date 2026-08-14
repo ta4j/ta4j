@@ -1044,9 +1044,12 @@ public final class ParameterResearch {
          * {@link ParameterValue#normalized()} is {@code true} records a repair. Cache
          * identity and the reported {@link RankedCandidate#candidateId()} are derived
          * from the raw proposed values, while {@link RankedCandidate#parameters()}
-         * carries the repaired values; distinct raw proposals that repair to the same
-         * canonical values remain separate candidates and rank below unrepaired
-         * candidates with equal scores.
+         * carries the repaired values. Identity deliberately tracks the proposal
+         * rather than the repair so every raw proposal stays a distinct experiment:
+         * distinct raw proposals that repair to the same canonical values remain
+         * separate candidates and rank below unrepaired candidates with equal scores,
+         * and the repair itself is reported through {@link ParameterValue#normalized()}
+         * and {@link ParameterSet#repairs()}.
          * </p>
          *
          * @param series dataset being searched, limited to the training window when
