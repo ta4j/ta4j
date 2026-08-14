@@ -755,19 +755,14 @@ public final class ParameterResearch {
         }
 
         private boolean reachedTarget(Num score) {
-            Num target = targetScore;
             if (!Num.isFinite(score)) {
                 return false;
             }
-            // DecimalNum.compareTo casts to DoubleNum and throws on a mixed
-            // implementation, and NumFactory instances are not comparable by
-            // identity: when the factories differ, coerce the target through
-            // the exact decimal string so no precision is lost.
-            if (target.getClass() != score.getClass()) {
-                target = score.getNumFactory().numOf(targetScore.toString());
-            }
-            return direction == Direction.MAXIMIZE ? score.isGreaterThanOrEqual(target)
-                    : score.isLessThanOrEqual(target);
+            // compareScores stays precision-preserving across factories, so a
+            // tiny decimal target is never narrowed to zero (or a large one to
+            // infinity) by a narrower score factory.
+            int comparison = compareScores(score, targetScore);
+            return direction == Direction.MAXIMIZE ? comparison >= 0 : comparison <= 0;
         }
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
@@ -1044,12 +1039,12 @@ public final class ParameterResearch {
          * {@link ParameterValue#normalized()} is {@code true} records a repair. Cache
          * identity and the reported {@link RankedCandidate#candidateId()} are derived
          * from the raw proposed values, while {@link RankedCandidate#parameters()}
-         * carries the repaired values. Identity deliberately tracks the proposal
-         * rather than the repair so every raw proposal stays a distinct experiment:
-         * distinct raw proposals that repair to the same canonical values remain
-         * separate candidates and rank below unrepaired candidates with equal scores,
-         * and the repair itself is reported through {@link ParameterValue#normalized()}
-         * and {@link ParameterSet#repairs()}.
+         * carries the repaired values. Identity deliberately tracks the proposal rather
+         * than the repair so every raw proposal stays a distinct experiment: distinct
+         * raw proposals that repair to the same canonical values remain separate
+         * candidates and rank below unrepaired candidates with equal scores, and the
+         * repair itself is reported through {@link ParameterValue#normalized()} and
+         * {@link ParameterSet#repairs()}.
          * </p>
          *
          * @param series dataset being searched, limited to the training window when

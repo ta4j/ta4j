@@ -11,8 +11,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch;
@@ -111,20 +111,21 @@ public class RelationshipObjectiveSearchExample {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         int begin = series.getBeginIndex();
         int end = series.getEndIndex();
-        // FixedBooleanIndicator reads values by absolute series index, so the
-        // event array must be indexed absolutely: slots below `begin` stay
-        // unused.
-        Boolean[] events = new Boolean[end + 1];
+        // One slot per window bar; absolute indices are translated at read
+        // time, so storage scales with the window bar count rather than the
+        // absolute index range of a long-retained series.
+        Boolean[] events = new Boolean[end - begin + 1];
         for (int index = begin; index <= end; index++) {
-            if (index - lookback - 1 < begin) {
-                events[index] = false;
+            int localIndex = index - begin;
+            if (localIndex - lookback - 1 < 0) {
+                events[localIndex] = false;
                 continue;
             }
             Num momentum = close.getValue(index).minus(close.getValue(index - lookback));
             Num previousMomentum = close.getValue(index - 1).minus(close.getValue(index - lookback - 1));
-            events[index] = momentum.isPositive() && !previousMomentum.isPositive();
+            events[localIndex] = momentum.isPositive() && !previousMomentum.isPositive();
         }
-        return new FixedBooleanIndicator(series, events);
+        return new BeginTranslatedBooleanIndicator(series, events, begin);
     }
 
     /**
@@ -158,14 +159,40 @@ public class RelationshipObjectiveSearchExample {
         int begin = series.getBeginIndex();
         int end = series.getEndIndex();
         double threshold = RISE_THRESHOLD_PERCENT / 100.0;
-        Boolean[] events = new Boolean[end + 1];
+        Boolean[] events = new Boolean[end - begin + 1];
         for (int index = begin; index <= end; index++) {
-            events[index] = index + FORECAST_BARS <= end && close.getValue(index + FORECAST_BARS)
+            int localIndex = index - begin;
+            events[localIndex] = localIndex + FORECAST_BARS <= end - begin && close.getValue(index + FORECAST_BARS)
                     .minus(close.getValue(index))
                     .dividedBy(close.getValue(index))
                     .doubleValue() > threshold;
         }
-        return new FixedBooleanIndicator(series, events);
+        return new BeginTranslatedBooleanIndicator(series, events, begin);
+    }
+
+    /**
+     * Fixed boolean values aligned with a window's begin index. Absolute series
+     * indices are translated to local array slots on read.
+     */
+    private static final class BeginTranslatedBooleanIndicator extends AbstractIndicator<Boolean> {
+        private final Boolean[] values;
+        private final int begin;
+
+        BeginTranslatedBooleanIndicator(BarSeries series, Boolean[] values, int begin) {
+            super(series);
+            this.values = values;
+            this.begin = begin;
+        }
+
+        @Override
+        public Boolean getValue(int index) {
+            return values[index - begin];
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     static String formatResearchNarrative(ParameterResearchReport report, int maxRows) {

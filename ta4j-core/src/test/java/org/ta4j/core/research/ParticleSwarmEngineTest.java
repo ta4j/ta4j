@@ -4,7 +4,7 @@
 package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Comparator;
 import java.util.List;
@@ -137,10 +137,10 @@ class ParticleSwarmEngineTest {
         // the plan must fail at engine construction instead.
         List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.decimal("a", -1.7e308, 1.7e308, 1e300)));
 
-        assertThatThrownBy(() -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
-                new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("overflows double precision");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0), new ScriptedRandom(0d),
+                        (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
+        assertThat(exception.getMessage()).contains("overflows double precision");
     }
 
     /**

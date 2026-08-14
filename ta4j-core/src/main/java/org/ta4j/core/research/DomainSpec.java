@@ -77,11 +77,15 @@ final class DomainSpec {
             // is at least 2^-107, so 50 decimal digits never misround it.
             BigDecimal span = BigDecimal.valueOf(d.to()).subtract(BigDecimal.valueOf(d.from()));
             BigDecimal ratio = span.divide(BigDecimal.valueOf(d.step()), new MathContext(50, RoundingMode.FLOOR));
-            if (ratio.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
+            // Floor first: a non-integral ratio may exceed the limit while its
+            // floored position count is still legal (e.g. 0..2147483646.5 step
+            // 1 declares exactly Integer.MAX_VALUE values).
+            BigDecimal floored = ratio.setScale(0, RoundingMode.FLOOR);
+            if (floored.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
                 throw new IllegalArgumentException("Domain '" + d.name() + "' declares more than " + Integer.MAX_VALUE
                         + " values which exceeds the per-domain limit of " + Integer.MAX_VALUE);
             }
-            long count = ratio.setScale(0, RoundingMode.FLOOR).longValueExact() + 1L;
+            long count = floored.longValueExact() + 1L;
             int cardinality = checkedCardinality(d.name(), count);
             // Whenever the step is below the ULP at the range's largest
             // magnitude, consecutive declared positions can collapse to the

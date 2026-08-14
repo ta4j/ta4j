@@ -28,4 +28,14 @@ class GridSearchEngineTest {
         assertThat(first.stream().map(ParameterSet::stableId))
                 .doesNotContainAnyElementsOf(second.stream().map(ParameterSet::stableId).toList());
     }
+
+    @Test
+    void decimalDomainAcceptsExactlyMaximumValueCount() {
+        // 0..2147483646.5 step 1 declares exactly Integer.MAX_VALUE positions:
+        // the raw ratio exceeds the per-domain limit while the floored position
+        // count is legal and must not be rejected.
+        DomainSpec spec = DomainSpec.of(ParameterDomain.decimal("a", 0, 2147483646.5, 1));
+
+        assertThat(spec.cardinality()).isEqualTo(Integer.MAX_VALUE);
+    }
 }

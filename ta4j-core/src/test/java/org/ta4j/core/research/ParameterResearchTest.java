@@ -1025,6 +1025,25 @@ class ParameterResearchTest {
     }
 
     @Test
+    void targetScoreRejectsCrossFactoryUnderflow() {
+        // Coercing a tiny DecimalNum target through the score's DoubleNum
+        // factory underflows 1e-1000 to 0.0, so an all-zero maximizing run
+        // used to declare TARGET_SCORE_REACHED after its first evaluation.
+        // Factory-independent comparison must keep the search alive.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation.of(DoubleNum.valueOf(0)))
+                .search(SearchPlan.grid(3))
+                .targetScore(DecimalNum.valueOf("1e-1000"))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.counts().attempted()).isEqualTo(3);
+    }
+
+    @Test
     void normalizerSeesReadOnlyTrainingWindow() {
         // The normalizer receives the read-only window series even without
         // holdout validation, so a mutating normalizer is rejected instead of

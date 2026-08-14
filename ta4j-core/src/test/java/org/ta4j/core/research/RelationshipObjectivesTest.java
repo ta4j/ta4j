@@ -4,8 +4,8 @@
 package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -204,10 +204,10 @@ class RelationshipObjectivesTest {
 
     @Test
     void dynamicTimeWarpingRejectsWindowBelowTwoBars() {
-        assertThatThrownBy(() -> RelationshipObjectives.dynamicTimeWarpingDistance(
-                windowSeries -> new ClosePriceIndicator(windowSeries), 1,
-                DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(2)))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class,
+                () -> RelationshipObjectives.dynamicTimeWarpingDistance(
+                        windowSeries -> new ClosePriceIndicator(windowSeries), 1,
+                        DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(2)));
     }
 
     @Test
@@ -352,10 +352,9 @@ class RelationshipObjectivesTest {
 
     @Test
     void leadLagCorrelationRejectsWindowShorterThanTwoBars() {
-        assertThatThrownBy(() -> RelationshipObjectives
-                .leadLagCorrelation(windowSeries -> new ClosePriceIndicator(windowSeries), 1, 0, 0))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("2");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> RelationshipObjectives
+                .leadLagCorrelation(windowSeries -> new ClosePriceIndicator(windowSeries), 1, 0, 0));
+        assertThat(exception.getMessage()).contains("2");
     }
 
     @Test
