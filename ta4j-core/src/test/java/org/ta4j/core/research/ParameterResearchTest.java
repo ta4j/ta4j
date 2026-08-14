@@ -237,6 +237,24 @@ class ParameterResearchTest {
     }
 
     @Test
+    void normalizerRenamingValueRejectsProposal() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterNormalizer normalizer = (data, name, value) -> new ParameterValue("other", value, false, "");
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize(normalizer)
+                .search(SearchPlan.grid(3))
+                .run();
+
+        assertThat(report.counts().rejected()).isEqualTo(3);
+        assertThat(report.counts().attempted()).isEqualTo(0);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+    }
+
+    @Test
     void equalScoresBreakTiesByEvaluationOrder() {
         BarSeries series = series(1d, 2d, 3d);
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
@@ -582,6 +600,21 @@ class ParameterResearchTest {
     }
 
     @Test
+    void geneticSearchFillsInitialPopulationFromRemainingSpace() {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.genetic(4, 0L, new ParameterResearch.GeneticSettings(2, 1, 2, 0.9, 0.0)))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+    }
+
+    @Test
     void datasetRevisionChangeOnFinalEvaluationIsRejected() {
         BarSeries series = series(1d, 2d, 3d, 4d);
         AtomicInteger evaluations = new AtomicInteger();
@@ -591,6 +624,23 @@ class ParameterResearchTest {
                 .maximize((candidate, window) -> {
                     if (evaluations.incrementAndGet() == 3) {
                         series.addPrice(5d);
+                    }
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
+                })
+                .search(SearchPlan.grid(3));
+        assertThrows(IllegalStateException.class, builder::run);
+    }
+
+    @Test
+    void trainingWindowMutationByObjectiveIsRejected() {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        AtomicInteger evaluations = new AtomicInteger();
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    if (evaluations.incrementAndGet() == 2) {
+                        window.series().addPrice(5d);
                     }
                     return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
                 })
@@ -615,6 +665,27 @@ class ParameterResearchTest {
                         .of(window.series().numFactory().numOf(candidate)))
                 .search(SearchPlan.grid(3));
         assertThat(withTarget.run().objectiveId()).isNotEqualTo(withoutTarget.run().objectiveId());
+    }
+
+    @Test
+    void objectiveIdSeparatesAmbiguousCategoricalLiterals() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport first = ParameterResearch.<String>builder(series)
+                .categorical("label", "a,b", "c")
+                .candidate((window, parameters) -> parameters.value("label"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(1)))
+                .search(SearchPlan.grid(2))
+                .run();
+        ParameterResearchReport second = ParameterResearch.<String>builder(series)
+                .categorical("label", "a", "b,c")
+                .candidate((window, parameters) -> parameters.value("label"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(1)))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(first.objectiveId()).isNotEqualTo(second.objectiveId());
     }
 
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {

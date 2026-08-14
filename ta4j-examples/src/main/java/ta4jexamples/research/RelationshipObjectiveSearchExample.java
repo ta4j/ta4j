@@ -42,6 +42,11 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  * {@link #main(String[])} between {@code SearchPlan.grid(...)},
  * {@code SearchPlan.genetic(...)}, and {@code SearchPlan.particleSwarm(...)}.
  * </p>
+ *
+ * <p>
+ * The class and {@link #main(String[])} stay {@code public} because the Maven
+ * {@code exec:java} workflow invokes them reflectively.
+ * </p>
  */
 public class RelationshipObjectiveSearchExample {
 

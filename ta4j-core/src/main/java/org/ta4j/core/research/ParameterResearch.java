@@ -465,6 +465,8 @@ public final class ParameterResearch {
                             snapshot.endIndex())
                     : null;
             BarSeries normalizerData = holdoutWindow != null ? trainingWindow.series() : series;
+            SeriesSnapshot trainingSnapshot = new SeriesSnapshot(trainingWindow.series());
+
             String objectiveId = computeObjectiveId(holdoutBars);
             Comparator<EvaluatedCandidate> ranking = rankingComparator(direction);
             List<DomainSpec> specs = new ArrayList<>(domains.size());
@@ -536,6 +538,8 @@ public final class ParameterResearch {
                                 "evaluation threw " + ex.getClass().getSimpleName() + message(ex));
                     }
                     evaluationNanos += System.nanoTime() - evaluationStart;
+                    verifyUnchanged(trainingSnapshot, trainingWindow.series());
+
                     cache.put(candidateId, evaluated);
                     engine.observe(evaluated);
                     evaluations.add(evaluated);
@@ -645,13 +649,25 @@ public final class ParameterResearch {
             }
             List<ParameterValue> values = new ArrayList<>(proposed.values().size());
             for (ParameterValue value : proposed.values()) {
+                ParameterValue normalized;
                 try {
-                    values.add(normalizer.normalize(normalizerData, value.name(), value.value()));
+                    normalized = normalizer.normalize(normalizerData, value.name(), value.value());
                 } catch (RuntimeException ex) {
                     return null;
                 }
+                // A normalizer must not change parameter names: renaming would
+                // alias or duplicate declared parameters, so it rejects the
+                // proposal like any other normalization failure.
+                if (normalized == null || !value.name().equals(normalized.name())) {
+                    return null;
+                }
+                values.add(normalized);
             }
-            return new ParameterSet(values);
+            try {
+                return new ParameterSet(values);
+            } catch (RuntimeException ex) {
+                return null;
+            }
         }
 
         private EvaluatedCandidate classify(String candidateId, ParameterSet parameters, int ordinal,
@@ -692,12 +708,15 @@ public final class ParameterResearch {
                 ResearchWindow holdoutWindow, Comparator<EvaluatedCandidate> ranking, EvaluationCache cache,
                 List<FailedEvaluation> failures) {
             List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
+            SeriesSnapshot holdoutSnapshot = new SeriesSnapshot(holdoutWindow.series());
+
             Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
             long evaluationNanos = 0L;
             for (int i = 0; i < leaderboardSize; i++) {
                 if (Thread.currentThread().isInterrupted()) {
                     break;
                 }
+
                 EvaluatedCandidate training = ranked.get(i);
                 String key = cacheKey(training.candidateId(), holdoutWindow.windowId());
                 EvaluatedCandidate cached = cache.get(key);
@@ -712,6 +731,8 @@ public final class ParameterResearch {
                         holdout = EvaluatedCandidate.failed(training.candidateId(), training.parameters(), i + 1,
                                 "holdout evaluation threw " + ex.getClass().getSimpleName() + message(ex));
                     }
+                    verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
+
                     evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
                 }
@@ -951,7 +972,9 @@ public final class ParameterResearch {
          *
          * <p>
          * A {@link RuntimeException} thrown from this method rejects the whole proposal
-         * without consuming evaluation budget. Returning a {@link ParameterValue} whose
+         * without consuming evaluation budget, as does returning {@code null} or a
+         * {@link ParameterValue} whose {@link ParameterValue#name()} differs from
+         * {@code name}. Returning a {@link ParameterValue} whose
          * {@link ParameterValue#normalized()} is {@code true} records a repair. Cache
          * identity and the reported {@link RankedCandidate#candidateId()} are derived
          * from the raw proposed values, while {@link RankedCandidate#parameters()}
@@ -1965,13 +1988,23 @@ public final class ParameterResearch {
             return "bool:" + d.name();
         }
         if (domain instanceof ParameterDomain.CategoricalDomain d) {
-            return "categorical:" + d.name() + ":" + String.join(",", d.values());
+            return "categorical:" + d.name() + ":" + categoricalValues(d.values());
         }
         throw new IllegalArgumentException("Unsupported parameter domain: " + domain.getClass().getName());
     }
 
     static String canonicalDecimal(double value) {
         return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
+    private static String categoricalValues(List<String> values) {
+        // Length-prefix every literal so values containing separators cannot
+        // collide: ["a,b", "c"] and ["a", "b,c"] must not share a fingerprint.
+        StringBuilder builder = new StringBuilder();
+        for (String value : values) {
+            builder.append(value.length()).append(':').append(value).append(';');
+        }
+        return builder.toString();
     }
 
     private static String message(RuntimeException ex) {

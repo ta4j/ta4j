@@ -77,6 +77,24 @@ class RelationshipObjectivesTest {
         return new FixedBooleanIndicator(series, events);
     }
 
+    private static Indicator<Num> invertedPreviousClose(BarSeries series, int shift) {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        int begin = series.getBeginIndex();
+        Num[] values = new Num[series.getBarCount()];
+        for (int i = 0; i < values.length; i++) {
+            int index = begin + i;
+            Num shifted = index - shift >= begin ? close.getValue(index - shift) : close.getValue(begin);
+            values[i] = shifted.negate();
+        }
+        return new FixedIndicator<>(series, values);
+    }
+
+    private static FixedBooleanIndicator alwaysTrue(BarSeries series) {
+        Boolean[] events = new Boolean[series.getBarCount()];
+        java.util.Arrays.fill(events, true);
+        return new FixedBooleanIndicator(series, events);
+    }
+
     private static FixedBooleanIndicator nextBarUp(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         int begin = series.getBeginIndex();
@@ -143,6 +161,27 @@ class RelationshipObjectivesTest {
     }
 
     @Test
+    void leadLagCorrelationScoresAbsoluteCorrelation() {
+        ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
+                .integer("shift", 1, 4)
+                .candidate((window,
+                        parameters) -> (Indicator<Num>) invertedPreviousClose(window.series(),
+                                parameters.intValue("shift")))
+                .maximize(RelationshipObjectives.leadLagCorrelation(
+                        windowSeries -> new PreviousValueIndicator(new ClosePriceIndicator(windowSeries), 2), 20, 0, 0))
+                .search(SearchPlan.grid(10))
+                .topK(1)
+                .run();
+
+        assertThat(report.failedEvaluations()).isEmpty();
+        RankedCandidate winner = report.trainingLeaderboard().getFirst();
+        assertThat(winner.parameters().intValue("shift")).isEqualTo(2);
+        assertThat(winner.trainingScore().doubleValue()).isCloseTo(1.0, within(1e-6));
+        assertThat(winner.trainingMetrics()).containsKey("selectedCorrelation");
+        assertThat(winner.trainingMetrics().get("selectedCorrelation").doubleValue()).isNegative();
+    }
+
+    @Test
     void dynamicTimeWarpingMinimizesForMatchingSmoothing() {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("period", 2, 5)
@@ -178,6 +217,25 @@ class RelationshipObjectivesTest {
         assertThat(winner.trainingScore().doubleValue()).isBetween(0.0, 1.0);
         assertThat(winner.trainingMetrics()).containsKeys("mutualInformationNats", "normalizedMutualInformation",
                 "targetEntropyNats", "sampleCount", "positiveTargetRate");
+    }
+
+    @Test
+    void eventMutualInformationOmitsUndefinedMetrics() {
+        ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
+                .integer("lookback", 1, 2)
+                .candidate((window, parameters) -> momentum(window.series(), parameters.intValue("lookback")))
+                .maximize(RelationshipObjectives.eventMutualInformation(RelationshipObjectivesTest::alwaysTrue,
+                        new EventMutualInformationConfig(1, 1, 4, BinningStrategy.EQUAL_FREQUENCY), false))
+                .search(SearchPlan.grid(10))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.failedEvaluations()).isEmpty();
+        RankedCandidate winner = report.trainingLeaderboard().getFirst();
+        assertThat(winner.trainingScore().doubleValue()).isCloseTo(0.0, within(1e-9));
+        assertThat(winner.trainingMetrics()).containsKeys("mutualInformationNats", "targetEntropyNats", "sampleCount",
+                "positiveTargetRate");
+        assertThat(winner.trainingMetrics()).doesNotContainKey("normalizedMutualInformation");
     }
 
     @Test

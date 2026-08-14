@@ -18,7 +18,10 @@ import java.util.Set;
  *
  * <p>
  * Genomes are one canonical-value index per dimension. The initial population
- * is sampled distinctly, and every breeding batch prefers unseen genomes:
+ * is sampled distinctly — falling back to deterministic enumeration of the
+ * remaining space when random draws collide — and every breeding batch prefers
+ * unseen genomes:
+ * 
  * children are re-sampled until they are canonical candidates not yet proposed
  * in this run, so each batch yields at least one new evaluation until the
  * search space is covered. When no unseen genome can be produced, the engine
@@ -206,7 +209,30 @@ final class GeneticSearchEngine extends SearchEngine {
                 genomes.add(genome);
             }
         }
+        // When the declared space is close to the requested population size,
+        // random draws can collide repeatedly. Enumerate the remaining space
+        // deterministically so the population reaches its documented size while
+        // unseen genomes still exist.
+        if (genomes.size() < target && totalSpace() <= Integer.MAX_VALUE) {
+            for (long index = 0; index < totalSpace() && genomes.size() < target; index++) {
+                int[] genome = genomeAt(index);
+                if (seen.add(Arrays.toString(genome))) {
+                    genomes.add(genome);
+                }
+            }
+        }
         return genomes;
+    }
+
+    private int[] genomeAt(long index) {
+        int[] genome = new int[specs().size()];
+        long remaining = index;
+        for (int dimension = genome.length - 1; dimension >= 0; dimension--) {
+            int cardinality = specs().get(dimension).cardinality();
+            genome[dimension] = (int) (remaining % cardinality);
+            remaining /= cardinality;
+        }
+        return genome;
     }
 
     private int[] randomGenome() {

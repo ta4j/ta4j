@@ -93,10 +93,12 @@ final class RelationshipObjectives {
      *
      * <p>
      * The lag is selected by
-     * {@link LeadLagCorrelationIndicator.LagSelectionPolicy#MAXIMUM_ABSOLUTE_CORRELATION};
-     * the reported correlation keeps its original sign.
+     * {@link LeadLagCorrelationIndicator.LagSelectionPolicy#MAXIMUM_ABSOLUTE_CORRELATION}
+     * and the score is the absolute value of that correlation; the signed
+     * correlation is reported in the {@code selectedCorrelation} metric.
      * </p>
      *
+     * 
      * @param referenceBuilder builds the reference indicator from a window
      *                         sub-series
      * @param barCount         aligned-sample window size in bars
@@ -140,9 +142,11 @@ final class RelationshipObjectives {
                         .map(LeadLagCorrelationIndicator.Point::sampleCount)
                         .orElse(0);
                 Map<String, Num> metrics = new LinkedHashMap<>();
+                metrics.put("selectedCorrelation", correlation);
                 metrics.put("selectedLag", window.series().numFactory().numOf(selectedLag));
                 metrics.put("sampleCount", window.series().numFactory().numOf(sampleCount));
-                return ParameterResearch.ObjectiveEvaluation.of(correlation, metrics);
+                return ParameterResearch.ObjectiveEvaluation.of(correlation.abs(), metrics);
+
             } catch (RuntimeException ex) {
                 return ParameterResearch.ObjectiveEvaluation
                         .failed("lead/lag correlation evaluation failed" + message(ex));
@@ -219,12 +223,13 @@ final class RelationshipObjectives {
                             .failed("mutual information is undefined in the evaluation window");
                 }
                 Map<String, Num> metrics = new LinkedHashMap<>();
-                metrics.put("mutualInformationNats", result.mutualInformationNats());
-                metrics.put("normalizedMutualInformation", result.normalizedMutualInformation());
-                metrics.put("targetEntropyNats", result.targetEntropyNats());
+                putIfFinite(metrics, "mutualInformationNats", result.mutualInformationNats());
+                putIfFinite(metrics, "normalizedMutualInformation", result.normalizedMutualInformation());
+                putIfFinite(metrics, "targetEntropyNats", result.targetEntropyNats());
                 metrics.put("sampleCount", window.series().numFactory().numOf(result.sampleCount()));
-                metrics.put("positiveTargetRate", result.positiveTargetRate());
+                putIfFinite(metrics, "positiveTargetRate", result.positiveTargetRate());
                 return ParameterResearch.ObjectiveEvaluation.of(score, metrics);
+
             } catch (RuntimeException ex) {
                 return ParameterResearch.ObjectiveEvaluation
                         .failed("event mutual information evaluation failed" + message(ex));
@@ -241,6 +246,12 @@ final class RelationshipObjectives {
             metrics.put(nameB, valueB);
         }
         return metrics;
+    }
+
+    private static void putIfFinite(Map<String, Num> metrics, String name, Num value) {
+        if (Num.isFinite(value)) {
+            metrics.put(name, value);
+        }
     }
 
     private static String message(RuntimeException ex) {
