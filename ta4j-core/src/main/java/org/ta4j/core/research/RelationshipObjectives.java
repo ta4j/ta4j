@@ -6,7 +6,6 @@ package org.ta4j.core.research;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.ta4j.core.BarSeries;
@@ -25,13 +24,13 @@ import org.ta4j.core.num.Num;
  * information) with the unified parameter search workflow.
  *
  * <p>
- * Each factory takes one {@link BiFunction} that builds the searched indicator
- * from a window sub-series and a normalized parameter set, plus one
- * {@link Function} that builds the reference (or target) indicator from a
- * window sub-series. Both are applied to exactly the evaluation window's
- * sub-series, so no evaluation can read bars outside its window (leakage
- * isolation). Undefined results are reported as failed evaluations with a
- * factual reason instead of silently ranking {@code NaN} values.
+ * The searched indicator arrives from the workflow's candidate factory; each
+ * factory only takes the {@link Function} that builds the reference (or target)
+ * indicator from a window sub-series. Reference builders are applied to exactly
+ * the evaluation window's sub-series, so no evaluation can read bars outside
+ * its window (leakage isolation). Undefined results are reported as failed
+ * evaluations with a factual reason instead of silently ranking {@code NaN}
+ * values.
  * </p>
  *
  * @since 0.24.2
@@ -45,22 +44,18 @@ final class RelationshipObjectives {
      * Maximizes the event-synchronization F1 score between a predicted event stream
      * and a reference event stream over a rolling window.
      *
-     * @param predictedBuilder builds the searched predicted-event indicator from a
-     *                         window sub-series and a parameter set
      * @param referenceBuilder builds the reference-event indicator from a window
      *                         sub-series
      * @param barCount         rolling window size in bars
      * @param toleranceBars    symmetric event-matching tolerance in bars
      * @return objective function over the predicted-event indicator
-     * @throws NullPointerException     if a builder is null
+     * @throws NullPointerException     if the reference builder is null
      * @throws IllegalArgumentException if {@code barCount} or {@code toleranceBars}
      *                                  is not positive
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Boolean>> eventSynchronizationF1(
-            BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Boolean>> predictedBuilder,
             Function<BarSeries, Indicator<Boolean>> referenceBuilder, int barCount, int toleranceBars) {
-        Objects.requireNonNull(predictedBuilder, "predictedBuilder");
         Objects.requireNonNull(referenceBuilder, "referenceBuilder");
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be > 0");
@@ -101,23 +96,19 @@ final class RelationshipObjectives {
      * the reported correlation keeps its original sign.
      * </p>
      *
-     * @param candidateBuilder builds the searched indicator from a window
-     *                         sub-series and a parameter set
      * @param referenceBuilder builds the reference indicator from a window
      *                         sub-series
      * @param barCount         aligned-sample window size in bars
      * @param minimumLag       inclusive lower lag bound
      * @param maximumLag       inclusive upper lag bound
      * @return objective function over the searched indicator
-     * @throws NullPointerException     if a builder is null
+     * @throws NullPointerException     if the reference builder is null
      * @throws IllegalArgumentException if {@code barCount <= 0} or
      *                                  {@code minimumLag > maximumLag}
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Num>> leadLagCorrelation(
-            BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> candidateBuilder,
             Function<BarSeries, Indicator<Num>> referenceBuilder, int barCount, int minimumLag, int maximumLag) {
-        Objects.requireNonNull(candidateBuilder, "candidateBuilder");
         Objects.requireNonNull(referenceBuilder, "referenceBuilder");
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be > 0");
@@ -162,22 +153,19 @@ final class RelationshipObjectives {
      * Minimizes the dynamic time warping distance between a searched indicator and
      * a reference indicator over a rolling window.
      *
-     * @param candidateBuilder builds the searched indicator from a window
-     *                         sub-series and a parameter set
      * @param referenceBuilder builds the reference indicator from a window
      *                         sub-series
      * @param barCount         rolling window size in bars
      * @param config           distance configuration
      * @return objective function over the searched indicator
-     * @throws NullPointerException     if a builder or the config is null
+     * @throws NullPointerException     if the reference builder or the config is
+     *                                  null
      * @throws IllegalArgumentException if {@code barCount <= 0}
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Num>> dynamicTimeWarpingDistance(
-            BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> candidateBuilder,
             Function<BarSeries, Indicator<Num>> referenceBuilder, int barCount,
             DynamicTimeWarpingDistanceIndicator.Config config) {
-        Objects.requireNonNull(candidateBuilder, "candidateBuilder");
         Objects.requireNonNull(referenceBuilder, "referenceBuilder");
         Objects.requireNonNull(config, "config");
         if (barCount <= 0) {
@@ -205,22 +193,18 @@ final class RelationshipObjectives {
      * Maximizes the mutual information between a searched continuous predictor and
      * a Boolean event target over an explicit bar window.
      *
-     * @param predictorBuilder builds the searched predictor indicator from a window
-     *                         sub-series and a parameter set
-     * @param targetBuilder    builds the Boolean event-target indicator from a
-     *                         window sub-series
-     * @param config           binning and target-window configuration
-     * @param useNormalized    whether to score the normalized mutual information
-     *                         instead of the raw mutual information in nats
+     * @param targetBuilder builds the Boolean event-target indicator from a window
+     *                      sub-series
+     * @param config        binning and target-window configuration
+     * @param useNormalized whether to score the normalized mutual information
+     *                      instead of the raw mutual information in nats
      * @return objective function over the predictor indicator
-     * @throws NullPointerException if a builder or the config is null
+     * @throws NullPointerException if the target builder or the config is null
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Num>> eventMutualInformation(
-            BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> predictorBuilder,
             Function<BarSeries, Indicator<Boolean>> targetBuilder, EventMutualInformationConfig config,
             boolean useNormalized) {
-        Objects.requireNonNull(predictorBuilder, "predictorBuilder");
         Objects.requireNonNull(targetBuilder, "targetBuilder");
         Objects.requireNonNull(config, "config");
         return (predictor, window) -> {

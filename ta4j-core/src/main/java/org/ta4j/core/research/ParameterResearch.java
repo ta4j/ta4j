@@ -450,6 +450,7 @@ public final class ParameterResearch {
                     ? buildWindow(datasetId, ResearchWindow.WindowPhase.HOLDOUT, snapshot.endIndex() - holdoutBars + 1,
                             snapshot.endIndex())
                     : null;
+            BarSeries normalizerData = holdoutWindow != null ? trainingWindow.series() : series;
             String objectiveId = computeObjectiveId(holdoutBars);
             Comparator<EvaluatedCandidate> ranking = rankingComparator(direction);
             List<DomainSpec> specs = new ArrayList<>(domains.size());
@@ -484,7 +485,10 @@ public final class ParameterResearch {
                 }
                 for (ParameterSet proposed : batch) {
                     counters.proposed++;
-                    ParameterSet normalized = normalizeProposal(proposed);
+                    if (Thread.currentThread().isInterrupted()) {
+                        break;
+                    }
+                    ParameterSet normalized = normalizeProposal(proposed, normalizerData);
                     if (normalized == null) {
                         counters.rejected++;
                         continue;
@@ -532,6 +536,10 @@ public final class ParameterResearch {
                         break;
                     }
                 }
+                if (Thread.currentThread().isInterrupted()) {
+                    reason = TerminationReason.CANCELED;
+                    break;
+                }
                 if (targetReached) {
                     reason = TerminationReason.TARGET_SCORE_REACHED;
                     break;
@@ -545,8 +553,7 @@ public final class ParameterResearch {
                     break;
                 }
             }
-            long orchestrationNanos = System.nanoTime() - orchestrationStart - evaluationNanos;
-            if (counters.successful == 0) {
+            if (counters.successful == 0 && reason != TerminationReason.CANCELED) {
                 reason = TerminationReason.NO_VALID_CANDIDATES;
             }
             List<EvaluatedCandidate> ranked = evaluations.stream()
@@ -558,7 +565,8 @@ public final class ParameterResearch {
             Map<String, HoldoutEvaluation> holdoutById = Map.of();
             if (holdoutWindow != null && !ranked.isEmpty()) {
                 verifyUnchanged(snapshot, series);
-                HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, ranking, cache);
+                HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, ranking, cache,
+                        failures);
                 holdoutLeaderboard = holdout.leaderboard();
                 holdoutById = holdout.byId();
                 evaluationNanos += holdout.evaluationNanos();
@@ -582,6 +590,7 @@ public final class ParameterResearch {
             RunCounts counts = new RunCounts(counters.proposed, counters.rejected, counters.repaired,
                     counters.duplicate, counters.cached, counters.attempted, counters.successful, counters.failed,
                     budget - (int) counters.attempted, engine.iterationsCompleted());
+            long orchestrationNanos = System.nanoTime() - orchestrationStart - evaluationNanos;
             return new ParameterResearchReport(datasetId, searchPlan, objectiveId, trainingWindow,
                     Optional.ofNullable(holdoutWindow), topK, trainingLeaderboard, holdoutLeaderboard, reason, counts,
                     failures, evaluationNanos, orchestrationNanos, warnings);
@@ -603,18 +612,22 @@ public final class ParameterResearch {
         }
 
         private ResearchWindow buildWindow(String datasetId, ResearchWindow.WindowPhase phase, int start, int end) {
+            if (end == Integer.MAX_VALUE) {
+                throw new IllegalStateException("research window cannot include the terminal bar at index " + end
+                        + " because the exclusive end index would overflow");
+            }
             String windowId = datasetId + "|" + phase.name().toLowerCase(Locale.ROOT) + "|" + start + "|" + end;
             return new ResearchWindow(series.getSubSeries(start, end + 1), start, end, phase, windowId);
         }
 
-        private ParameterSet normalizeProposal(ParameterSet proposed) {
+        private ParameterSet normalizeProposal(ParameterSet proposed, BarSeries normalizerData) {
             if (normalizer == null) {
                 return proposed;
             }
             List<ParameterValue> values = new ArrayList<>(proposed.values().size());
             for (ParameterValue value : proposed.values()) {
                 try {
-                    values.add(normalizer.normalize(series, value.name(), value.value()));
+                    values.add(normalizer.normalize(normalizerData, value.name(), value.value()));
                 } catch (RuntimeException ex) {
                     return null;
                 }
@@ -657,7 +670,8 @@ public final class ParameterResearch {
         }
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
-                ResearchWindow holdoutWindow, Comparator<EvaluatedCandidate> ranking, EvaluationCache cache) {
+                ResearchWindow holdoutWindow, Comparator<EvaluatedCandidate> ranking, EvaluationCache cache,
+                List<FailedEvaluation> failures) {
             List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
             Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
             long evaluationNanos = 0L;
@@ -679,8 +693,12 @@ public final class ParameterResearch {
                     evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
                 }
+                if (!holdout.valid() && cached == null) {
+                    failures.add(new FailedEvaluation(holdout.candidateId(), holdout.parameters(),
+                            "holdout: " + holdout.failureReason()));
+                }
                 if (holdout.valid()) {
-                    holdoutEvaluations.add(new HoldoutEvaluation(holdout, i + 1, 0));
+                    holdoutEvaluations.add(new HoldoutEvaluation(training, holdout, i + 1, 0));
                 }
             }
             holdoutEvaluations.sort((a, b) -> ranking.compare(a.evaluation(), b.evaluation()));
@@ -689,11 +707,12 @@ public final class ParameterResearch {
             for (HoldoutEvaluation evaluation : holdoutEvaluations) {
                 RankedCandidate row = new RankedCandidate(evaluation.evaluation().candidateId(),
                         evaluation.evaluation().parameters(), evaluation.trainingRank(), rank,
-                        evaluation.evaluation().score(), evaluation.evaluation().score(), series.numFactory().zero(),
-                        evaluation.evaluation().metrics(), evaluation.evaluation().metrics());
+                        evaluation.training().score(), evaluation.evaluation().score(),
+                        evaluation.evaluation().score().minus(evaluation.training().score()),
+                        evaluation.training().metrics(), evaluation.evaluation().metrics());
                 leaderboard.add(row);
-                byId.put(row.candidateId(),
-                        new HoldoutEvaluation(evaluation.evaluation(), evaluation.trainingRank(), rank));
+                byId.put(row.candidateId(), new HoldoutEvaluation(evaluation.training(), evaluation.evaluation(),
+                        evaluation.trainingRank(), rank));
                 rank++;
             }
             return new HoldoutResult(leaderboard, byId, evaluationNanos);
@@ -893,12 +912,16 @@ public final class ParameterResearch {
          * <p>
          * A {@link RuntimeException} thrown from this method rejects the whole proposal
          * without consuming evaluation budget. Returning a {@link ParameterValue} whose
-         * {@link ParameterValue#normalized()} is {@code true} records a repair;
-         * repaired candidates are keyed and reported by their repaired canonical values
-         * and rank below unrepaired candidates with equal scores.
+         * {@link ParameterValue#normalized()} is {@code true} records a repair. Cache
+         * identity and the reported {@link RankedCandidate#candidateId()} are derived
+         * from the raw proposed values, while {@link RankedCandidate#parameters()}
+         * carries the repaired values; distinct raw proposals that repair to the same
+         * canonical values remain separate candidates and rank below unrepaired
+         * candidates with equal scores.
          * </p>
          *
-         * @param series dataset being searched
+         * @param series dataset being searched, limited to the training window when
+         *               holdout validation is configured
          * @param name   parameter name
          * @param value  proposed canonical value
          * @return normalized value
@@ -1622,9 +1645,15 @@ public final class ParameterResearch {
         ITERATION_LIMIT,
         /** A valid evaluation reached the configured target score. */
         TARGET_SCORE_REACHED,
-        /** The best score stagnated for the configured number of iterations. */
+        /**
+         * The best score stagnated for the configured number of iterations, or the
+         * engine could no longer propose a candidate that was not already proposed.
+         */
         NO_IMPROVEMENT,
-        /** The running thread was interrupted between proposal batches. */
+        /**
+         * The running thread was interrupted between proposal batches or candidate
+         * evaluations.
+         */
         CANCELED,
         /** The search completed without a single valid evaluation. */
         NO_VALID_CANDIDATES
@@ -1782,9 +1811,11 @@ public final class ParameterResearch {
     }
 
     /**
-     * One holdout evaluation with its training rank and holdout rank.
+     * One holdout evaluation with its source training evaluation, training rank,
+     * and holdout rank.
      */
-    private record HoldoutEvaluation(EvaluatedCandidate evaluation, int trainingRank, int holdoutRank) {
+    private record HoldoutEvaluation(EvaluatedCandidate training, EvaluatedCandidate evaluation, int trainingRank,
+            int holdoutRank) {
     }
 
     /**
@@ -1813,10 +1844,11 @@ public final class ParameterResearch {
     /**
      * Dataset revision snapshot verified during the run.
      */
-    private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount) {
+    private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount, long barHistoryRevision) {
 
         private SeriesSnapshot(BarSeries series) {
-            this(series.getName(), series.getBeginIndex(), series.getEndIndex(), series.getBarCount());
+            this(series.getName(), series.getBeginIndex(), series.getEndIndex(), series.getBarCount(),
+                    series.getBarHistoryRevision());
         }
     }
 
@@ -1899,12 +1931,14 @@ public final class ParameterResearch {
 
     private static void verifyUnchanged(SeriesSnapshot snapshot, BarSeries series) {
         if (!Objects.equals(snapshot.name(), series.getName()) || snapshot.beginIndex() != series.getBeginIndex()
-                || snapshot.endIndex() != series.getEndIndex() || snapshot.barCount() != series.getBarCount()) {
+                || snapshot.endIndex() != series.getEndIndex() || snapshot.barCount() != series.getBarCount()
+                || snapshot.barHistoryRevision() != series.getBarHistoryRevision()) {
             throw new IllegalStateException("dataset changed during research: expected name='" + snapshot.name()
                     + "' beginIndex=" + snapshot.beginIndex() + " endIndex=" + snapshot.endIndex() + " barCount="
-                    + snapshot.barCount() + ", but observed name='" + series.getName() + "' beginIndex="
-                    + series.getBeginIndex() + " endIndex=" + series.getEndIndex() + " barCount="
-                    + series.getBarCount());
+                    + snapshot.barCount() + " barHistoryRevision=" + snapshot.barHistoryRevision()
+                    + ", but observed name='" + series.getName() + "' beginIndex=" + series.getBeginIndex()
+                    + " endIndex=" + series.getEndIndex() + " barCount=" + series.getBarCount() + " barHistoryRevision="
+                    + series.getBarHistoryRevision());
         }
     }
 

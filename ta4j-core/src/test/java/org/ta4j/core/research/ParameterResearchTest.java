@@ -45,6 +45,15 @@ class ParameterResearchTest {
                 .search(SearchPlan.grid(budget));
     }
 
+    private static ParameterResearch.Builder<Integer> holdoutConfigBuilder(BarSeries series) {
+        return ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> 1)
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(series.numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(2));
+    }
+
     @Test
     void builderRequiresDomainsCandidateObjectiveAndPlan() {
         BarSeries series = series(1d, 2d, 3d);
@@ -423,7 +432,7 @@ class ParameterResearchTest {
 
         RankedCandidate holdoutWinner = report.holdoutLeaderboard().get(0);
         assertThat(holdoutWinner.holdoutRank()).isEqualTo(1);
-        assertThat(holdoutWinner.trainingScore().intValue()).isEqualTo(2);
+        assertThat(holdoutWinner.trainingScore().intValue()).isEqualTo(1);
 
         RankedCandidate rebuilt = training.stream()
                 .filter(row -> row.candidateId().equals(holdoutWinner.candidateId()))
@@ -436,18 +445,13 @@ class ParameterResearchTest {
     @Test
     void holdoutConfigurationValidation() {
         BarSeries series = series(1d, 2d, 3d, 4d, 5d);
-        ParameterResearch.Builder<Integer> base = ParameterResearch.<Integer>builder(series)
-                .integer("a", 1, 2)
-                .candidate((window, parameters) -> 1)
-                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(series.numFactory().numOf(candidate)))
-                .search(SearchPlan.grid(2));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutFraction(0d));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutFraction(1d));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutFraction(Double.NaN));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutFraction(0.5d).holdoutBarCount(2));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutBarCount(0));
-        assertThrows(IllegalArgumentException.class, () -> base.holdoutBarCount(5).run());
+        assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutFraction(0d));
+        assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutFraction(1d));
+        assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutFraction(Double.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> holdoutConfigBuilder(series).holdoutFraction(0.5d).holdoutBarCount(2));
+        assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutBarCount(0));
+        assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutBarCount(5).run());
     }
 
     @Test

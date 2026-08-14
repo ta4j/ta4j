@@ -56,6 +56,7 @@ public class SimpleMovingAverageRangeBacktest {
     private static final int DEFAULT_TOP_STRATEGIES = 3;
     private static final int DEFAULT_VALIDATION_BARS = 63;
     private static final int DEFAULT_REPORT_ROWS = 5;
+    private static final double STARTING_CAPITAL = 50.0;
 
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
@@ -161,7 +162,7 @@ public class SimpleMovingAverageRangeBacktest {
         BarSeries series = window.series();
         BacktestExecutor executor = new BacktestExecutor(series);
         TradingStatement statement = executor
-                .execute(List.of(strategy), series.numFactory().numOf(50), Trade.TradeType.BUY)
+                .execute(List.of(strategy), series.numFactory().numOf(STARTING_CAPITAL), Trade.TradeType.BUY)
                 .getFirst();
         Num netProfit = new NetProfitCriterion().calculate(series, statement.getTradingRecord());
         Num returnOverDrawdown = new ReturnOverMaxDrawdownCriterion().calculate(series, statement.getTradingRecord());
@@ -169,9 +170,12 @@ public class SimpleMovingAverageRangeBacktest {
             // No trades or no drawdown: neutral ratio instead of a failed evaluation.
             returnOverDrawdown = series.numFactory().zero();
         }
+        // Normalize profit to a fraction of the starting capital so the 7:3
+        // weighting mixes unit-consistent terms; reported metrics stay raw.
+        Num profitFraction = netProfit.dividedBy(series.numFactory().numOf(STARTING_CAPITAL));
         Num seven = series.numFactory().numOf(7);
         Num three = series.numFactory().numOf(3);
-        Num score = netProfit.multipliedBy(seven).plus(returnOverDrawdown.multipliedBy(three));
+        Num score = profitFraction.multipliedBy(seven).plus(returnOverDrawdown.multipliedBy(three));
         return ObjectiveEvaluation.of(score,
                 Map.of(NET_PROFIT, netProfit, RETURN_OVER_MAX_DRAWDOWN, returnOverDrawdown));
     }

@@ -70,7 +70,7 @@ final class ParticleSwarmEngine extends SearchEngine {
                 }
                 particles.add(new Particle(position, new double[specs().size()], position.clone()));
             }
-            return proposeBatch(0, particles.size());
+            return proposeBatch(particles.size());
         }
         if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
             terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
@@ -86,7 +86,7 @@ final class ParticleSwarmEngine extends SearchEngine {
         }
         move();
         int count = Math.min(particles.size(), maxNew);
-        return proposeBatch(0, count);
+        return proposeBatch(count);
     }
 
     @Override
@@ -94,12 +94,12 @@ final class ParticleSwarmEngine extends SearchEngine {
         batchEvaluations.put(evaluated.candidateId(), evaluated);
     }
 
-    private List<ParameterResearch.ParameterSet> proposeBatch(int from, int count) {
+    private List<ParameterResearch.ParameterSet> proposeBatch(int count) {
         pendingBatch = new LinkedHashMap<>();
         batchEvaluations = new LinkedHashMap<>();
         List<ParameterResearch.ParameterSet> batch = new ArrayList<>(count);
         int newIds = 0;
-        for (int p = from; p < from + count; p++) {
+        for (int p = 0; p < count; p++) {
             Particle particle = particles.get(p);
             int[] indices = new int[specs().size()];
             for (int d = 0; d < indices.length; d++) {
@@ -112,10 +112,15 @@ final class ParticleSwarmEngine extends SearchEngine {
             pendingBatch.computeIfAbsent(set.stableId(), key -> new ArrayList<>()).add(p);
             batch.add(set);
         }
-        if (newIds == 0) {
+        if (count > 0 && newIds == 0) {
             // Every particle of this batch projects onto an already-proposed
-            // grid point: the swarm cannot yield a new evaluation anymore.
-            terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
+            // grid point. A covered declared space is exhausted; otherwise the
+            // swarm stalled and cannot yield a new evaluation right now.
+            if (exhausted()) {
+                terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
+            } else {
+                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+            }
             return List.of();
         }
         return batch;

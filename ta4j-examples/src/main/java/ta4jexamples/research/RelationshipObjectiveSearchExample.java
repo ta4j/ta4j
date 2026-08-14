@@ -129,7 +129,11 @@ public class RelationshipObjectiveSearchExample {
         EventSynchronizationIndicator synchronization = new EventSynchronizationIndicator(predicted, reference,
                 syncWindowBars, TOLERANCE_BARS);
         EventSynchronizationIndicator.Result result = synchronization.getResult(series.getEndIndex());
-        return ObjectiveEvaluation.of(result.f1Score(), Map.of(PRECISION, result.precision(), RECALL, result.recall()));
+        Num f1Score = result.f1Score();
+        if (!Num.isFinite(f1Score)) {
+            return ObjectiveEvaluation.failed("no events in the evaluation window");
+        }
+        return ObjectiveEvaluation.of(f1Score, Map.of(PRECISION, result.precision(), RECALL, result.recall()));
     }
 
     private static Indicator<Boolean> rallyAheadEvents(BarSeries series) {

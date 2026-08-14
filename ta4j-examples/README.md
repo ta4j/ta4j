@@ -54,7 +54,6 @@ If chart windows do not appear, you are likely in a headless environment; switch
 Run a fixed throughput matrix and write `matrix_performance.json`:
 
 ```bash
-mvn -pl ta4j-examples -am compile
 mvn -pl ta4j-examples -am compile exec:java \
   -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
   -Dexec.args="--throughputControl --throughputOutputDir .agents/benchmarks/backtest-throughput/current --matrixStrategyCounts 250,500,1000 --matrixBarCounts 500,1000 --matrixMaxBarCountHints 0 --executionMode topK --topK 10 --parallelism 1"

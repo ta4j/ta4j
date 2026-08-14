@@ -20,6 +20,7 @@ import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator;
+import org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.ObjectiveEvaluation;
@@ -94,10 +95,8 @@ class RelationshipObjectivesTest {
                 .integer("lookbackStep", 1, 4)
                 .candidate(
                         (window, parameters) -> risingEvents(window.series(), parameters.intValue("lookbackStep") * 3))
-                .maximize(RelationshipObjectives.eventSynchronizationF1(
-                        (windowSeries, parameters) -> risingEvents(windowSeries,
-                                parameters.intValue("lookbackStep") * 3),
-                        windowSeries -> risingEvents(windowSeries, 6), 12, 1))
+                .maximize(RelationshipObjectives.eventSynchronizationF1(windowSeries -> risingEvents(windowSeries, 6),
+                        12, 1))
                 .search(SearchPlan.grid(20))
                 .topK(1)
                 .run();
@@ -117,8 +116,6 @@ class RelationshipObjectivesTest {
                         parameters) -> (Indicator<Num>) new PreviousValueIndicator(
                                 new ClosePriceIndicator(window.series()), parameters.intValue("shift")))
                 .maximize(RelationshipObjectives.leadLagCorrelation(
-                        (windowSeries, parameters) -> new PreviousValueIndicator(new ClosePriceIndicator(windowSeries),
-                                parameters.intValue("shift")),
                         windowSeries -> new PreviousValueIndicator(new ClosePriceIndicator(windowSeries), 2), 20, 0, 0))
                 .search(SearchPlan.grid(10))
                 .topK(1)
@@ -138,8 +135,6 @@ class RelationshipObjectivesTest {
                         parameters) -> (Indicator<Num>) new SMAIndicator(new ClosePriceIndicator(window.series()),
                                 parameters.intValue("period")))
                 .minimize(RelationshipObjectives.dynamicTimeWarpingDistance(
-                        (windowSeries, parameters) -> new SMAIndicator(new ClosePriceIndicator(windowSeries),
-                                parameters.intValue("period")),
                         windowSeries -> new SMAIndicator(new ClosePriceIndicator(windowSeries), 3), 12,
                         DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(2)))
                 .search(SearchPlan.grid(10))
@@ -157,9 +152,7 @@ class RelationshipObjectivesTest {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("lookback", 1, 3)
                 .candidate((window, parameters) -> momentum(window.series(), parameters.intValue("lookback")))
-                .maximize(RelationshipObjectives.eventMutualInformation(
-                        (windowSeries, parameters) -> momentum(windowSeries, parameters.intValue("lookback")),
-                        RelationshipObjectivesTest::nextBarUp,
+                .maximize(RelationshipObjectives.eventMutualInformation(RelationshipObjectivesTest::nextBarUp,
                         new EventMutualInformationConfig(1, 1, 4, BinningStrategy.EQUAL_FREQUENCY), true))
                 .search(SearchPlan.grid(10))
                 .run();
@@ -177,9 +170,8 @@ class RelationshipObjectivesTest {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("lookback", 1, 4)
                 .candidate((window, parameters) -> risingEvents(window.series(), parameters.intValue("lookback")))
-                .maximize(RelationshipObjectives.eventSynchronizationF1(
-                        (windowSeries, parameters) -> risingEvents(windowSeries, parameters.intValue("lookback")),
-                        windowSeries -> risingEvents(windowSeries, 2), 12, 1))
+                .maximize(RelationshipObjectives.eventSynchronizationF1(windowSeries -> risingEvents(windowSeries, 2),
+                        12, 1))
                 .search(SearchPlan.grid(10))
                 .holdoutBarCount(15)
                 .topK(2)
@@ -200,9 +192,7 @@ class RelationshipObjectivesTest {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("lookback", 1, 2)
                 .candidate((window, parameters) -> noEvents(window.series()))
-                .maximize(RelationshipObjectives.eventSynchronizationF1(
-                        (windowSeries, parameters) -> noEvents(windowSeries), RelationshipObjectivesTest::noEvents, 12,
-                        1))
+                .maximize(RelationshipObjectives.eventSynchronizationF1(RelationshipObjectivesTest::noEvents, 12, 1))
                 .search(SearchPlan.grid(10))
                 .run();
 
@@ -229,9 +219,8 @@ class RelationshipObjectivesTest {
         return ParameterResearch.builder(series)
                 .integer("lookback", 1, 4)
                 .candidate((window, parameters) -> risingEvents(window.series(), parameters.intValue("lookback")))
-                .maximize(RelationshipObjectives.eventSynchronizationF1(
-                        (windowSeries, parameters) -> risingEvents(windowSeries, parameters.intValue("lookback")),
-                        windowSeries -> risingEvents(windowSeries, 2), 12, 1))
+                .maximize(RelationshipObjectives.eventSynchronizationF1(windowSeries -> risingEvents(windowSeries, 2),
+                        12, 1))
                 .search(SearchPlan.grid(10))
                 .holdoutBarCount(15)
                 .topK(2)
@@ -259,9 +248,9 @@ class RelationshipObjectivesTest {
     private static ParameterResearch.ObjectiveFunction<Indicator<Boolean>> leakingF1(BarSeries fullSeries) {
         return (predicted, window) -> {
             Indicator<Boolean> leakingReference = futureRiseEvents(fullSeries, 5, 4.0);
-            var synchronization = new org.ta4j.core.indicators.statistics.event.EventSynchronizationIndicator(predicted,
+            EventSynchronizationIndicator synchronization = new EventSynchronizationIndicator(predicted,
                     leakingReference, 12, 1);
-            var result = synchronization.getResult(window.series().getEndIndex());
+            EventSynchronizationIndicator.Result result = synchronization.getResult(window.series().getEndIndex());
             return ObjectiveEvaluation.of(result.f1Score());
         };
     }

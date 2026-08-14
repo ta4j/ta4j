@@ -19,26 +19,17 @@ import java.util.List;
  */
 final class GridSearchEngine extends SearchEngine {
 
-    private final long totalSpace;
     private final int[] indices;
     private long emitted;
-    private boolean initialized;
 
     GridSearchEngine(List<DomainSpec> specs) {
         super(specs);
-        long space = 1L;
-        for (DomainSpec spec : specs) {
-            space = Math.multiplyExact(space, spec.cardinality());
-        }
-        totalSpace = space;
         indices = new int[specs.size()];
     }
 
     @Override
     List<ParameterResearch.ParameterSet> propose(int maxNew) {
-        if (!initialized) {
-            initialized = true;
-        }
+        long totalSpace = totalSpace();
         if (emitted >= totalSpace) {
             terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
             return List.of();

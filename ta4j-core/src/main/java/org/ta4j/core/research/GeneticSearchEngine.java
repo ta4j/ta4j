@@ -130,6 +130,17 @@ final class GeneticSearchEngine extends SearchEngine {
                 next.add(child);
             }
         }
+        if (next.isEmpty() && count > 0) {
+            // Breeding produced no unseen child: a covered declared space is
+            // exhausted, otherwise the search stalled and cannot yield a new
+            // evaluation with these settings.
+            if (exhausted()) {
+                terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
+            } else {
+                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+            }
+            return List.of();
+        }
         // Pad with elites only when no unseen child could be bred; elites are
         // already evaluated, so the pipeline serves them from the cache.
         if (next.size() < count) {

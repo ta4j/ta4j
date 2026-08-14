@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.research;
 
+import java.math.BigDecimal;
 import java.util.AbstractList;
 import java.util.List;
 import java.util.RandomAccess;
@@ -52,7 +53,10 @@ final class DomainSpec {
             long count = (long) Math.floor((d.to() - d.from()) / d.step() + 1e-9) + 1L;
             int cardinality = checkedCardinality(d.name(), count);
             List<String> values = new IndexedValues(cardinality, index -> {
-                return ParameterResearch.canonicalDecimal(d.from() + index * d.step());
+                double value = BigDecimal.valueOf(d.from())
+                        .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(index)))
+                        .doubleValue();
+                return ParameterResearch.canonicalDecimal(Math.min(value, d.to()));
             });
             return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step());
         }
