@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.24.2
  */
-public final class RelationshipObjectives {
+final class RelationshipObjectives {
 
     private RelationshipObjectives() {
     }
@@ -57,7 +57,7 @@ public final class RelationshipObjectives {
      *                                  is not positive
      * @since 0.24.2
      */
-    public static ParameterResearch.ObjectiveFunction<Indicator<Boolean>> eventSynchronizationF1(
+    static ParameterResearch.ObjectiveFunction<Indicator<Boolean>> eventSynchronizationF1(
             BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Boolean>> predictedBuilder,
             Function<BarSeries, Indicator<Boolean>> referenceBuilder, int barCount, int toleranceBars) {
         Objects.requireNonNull(predictedBuilder, "predictedBuilder");
@@ -73,7 +73,7 @@ public final class RelationshipObjectives {
                 Indicator<Boolean> reference = referenceBuilder.apply(window.series());
                 EventSynchronizationIndicator synchronization = new EventSynchronizationIndicator(predicted, reference,
                         barCount, toleranceBars);
-                EventSynchronizationIndicator.Result result = synchronization.getResult(window.endIndex());
+                EventSynchronizationIndicator.Result result = synchronization.getResult(window.series().getEndIndex());
                 if (result.predictedCount() == 0 && result.referenceCount() == 0) {
                     return ParameterResearch.ObjectiveEvaluation.failed("no events in the evaluation window");
                 }
@@ -114,7 +114,7 @@ public final class RelationshipObjectives {
      *                                  {@code minimumLag > maximumLag}
      * @since 0.24.2
      */
-    public static ParameterResearch.ObjectiveFunction<Indicator<Num>> leadLagCorrelation(
+    static ParameterResearch.ObjectiveFunction<Indicator<Num>> leadLagCorrelation(
             BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> candidateBuilder,
             Function<BarSeries, Indicator<Num>> referenceBuilder, int barCount, int minimumLag, int maximumLag) {
         Objects.requireNonNull(candidateBuilder, "candidateBuilder");
@@ -131,7 +131,7 @@ public final class RelationshipObjectives {
                 LeadLagCorrelationIndicator indicator = new LeadLagCorrelationIndicator(candidate, reference, barCount,
                         minimumLag, maximumLag,
                         LeadLagCorrelationIndicator.LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
-                LeadLagCorrelationIndicator.Profile profile = indicator.getProfile(window.endIndex());
+                LeadLagCorrelationIndicator.Profile profile = indicator.getProfile(window.series().getEndIndex());
                 if (profile.selectedLag().isEmpty()) {
                     return ParameterResearch.ObjectiveEvaluation.failed("no defined lag in the evaluation window");
                 }
@@ -173,7 +173,7 @@ public final class RelationshipObjectives {
      * @throws IllegalArgumentException if {@code barCount <= 0}
      * @since 0.24.2
      */
-    public static ParameterResearch.ObjectiveFunction<Indicator<Num>> dynamicTimeWarpingDistance(
+    static ParameterResearch.ObjectiveFunction<Indicator<Num>> dynamicTimeWarpingDistance(
             BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> candidateBuilder,
             Function<BarSeries, Indicator<Num>> referenceBuilder, int barCount,
             DynamicTimeWarpingDistanceIndicator.Config config) {
@@ -188,7 +188,7 @@ public final class RelationshipObjectives {
                 Indicator<Num> reference = referenceBuilder.apply(window.series());
                 DynamicTimeWarpingDistanceIndicator indicator = new DynamicTimeWarpingDistanceIndicator(candidate,
                         reference, barCount, config);
-                Num distance = indicator.getValue(window.endIndex());
+                Num distance = indicator.getValue(window.series().getEndIndex());
                 if (!Num.isFinite(distance)) {
                     return ParameterResearch.ObjectiveEvaluation
                             .failed("distance is undefined in the evaluation window");
@@ -216,7 +216,7 @@ public final class RelationshipObjectives {
      * @throws NullPointerException if a builder or the config is null
      * @since 0.24.2
      */
-    public static ParameterResearch.ObjectiveFunction<Indicator<Num>> eventMutualInformation(
+    static ParameterResearch.ObjectiveFunction<Indicator<Num>> eventMutualInformation(
             BiFunction<BarSeries, ParameterResearch.ParameterSet, Indicator<Num>> predictorBuilder,
             Function<BarSeries, Indicator<Boolean>> targetBuilder, EventMutualInformationConfig config,
             boolean useNormalized) {
@@ -227,7 +227,7 @@ public final class RelationshipObjectives {
             try {
                 Indicator<Boolean> target = targetBuilder.apply(window.series());
                 EventMutualInformationResult result = new EventMutualInformationEvaluator().evaluate(predictor, target,
-                        window.startIndex(), window.endIndex(), config);
+                        window.series().getBeginIndex(), window.series().getEndIndex(), config);
                 Num score = useNormalized ? result.normalizedMutualInformation() : result.mutualInformationNats();
                 if (!Num.isFinite(score)) {
                     return ParameterResearch.ObjectiveEvaluation
