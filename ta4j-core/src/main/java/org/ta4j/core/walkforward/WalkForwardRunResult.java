@@ -3,10 +3,12 @@
  */
 package org.ta4j.core.walkforward;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.ta4j.core.num.Num;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -75,6 +77,14 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
         foldMetricsByHorizon = foldMetricsByHorizon == null ? Map.of() : Map.copyOf(foldMetricsByHorizon);
         leakageAudit = leakageAudit == null ? List.of() : List.copyOf(leakageAudit);
         foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
+        Set<Integer> failureOrders = new HashSet<>();
+        for (FoldFailure failure : foldFailures) {
+            if (failure.foldOrder() >= splits.size()
+                    || !splits.get(failure.foldOrder()).foldId().equals(failure.foldId())
+                    || !failureOrders.add(failure.foldOrder())) {
+                throw new IllegalArgumentException("foldFailure must identify a unique split by foldOrder and foldId");
+            }
+        }
         Objects.requireNonNull(runtimeReport, "runtimeReport");
         Objects.requireNonNull(manifest, "manifest");
     }
