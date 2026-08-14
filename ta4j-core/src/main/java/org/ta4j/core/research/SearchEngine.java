@@ -60,6 +60,16 @@ abstract class SearchEngine {
     abstract void observe(ParameterResearch.EvaluatedCandidate evaluated);
 
     /**
+     * Finalizes the engine's most recently observed batch, if one has not been
+     * finalized yet. Engines normally finalize the previous batch at the start of
+     * the next {@link #propose(int)} call, but the pipeline invokes this directly
+     * when the run stops between batches so the final evaluations are still
+     * reflected in iteration and stagnation bookkeeping. Implementations must be
+     * idempotent: calling this when no batch is pending must be a no-op.
+     */
+    abstract void finalizeObserved();
+
+    /**
      * @return termination reason, or {@code null} when the engine can still propose
      */
     final ParameterResearch.TerminationReason terminationReason() {

@@ -52,6 +52,11 @@ final class GridSearchEngine extends SearchEngine {
         // Grid search is stateless between batches.
     }
 
+    @Override
+    void finalizeObserved() {
+        // Grid search keeps no between-batch iteration state.
+    }
+
     private void advance() {
         for (int i = indices.length - 1; i >= 0; i--) {
             indices[i]++;

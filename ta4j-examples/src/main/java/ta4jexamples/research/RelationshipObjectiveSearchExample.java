@@ -136,6 +136,9 @@ public class RelationshipObjectiveSearchExample {
         Indicator<Boolean> reference = rallyAheadEvents(series);
         int evaluableEndIndex = series.getEndIndex() - FORECAST_BARS;
         int evaluableBarCount = evaluableEndIndex - series.getBeginIndex() + 1;
+        if (evaluableBarCount <= 0) {
+            return ObjectiveEvaluation.failed("window too short to evaluate event synchronization");
+        }
         int syncWindowBars = Math.min(SYNC_WINDOW_BARS, evaluableBarCount);
         EventSynchronizationIndicator synchronization = new EventSynchronizationIndicator(predicted, reference,
                 syncWindowBars, TOLERANCE_BARS);

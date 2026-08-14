@@ -137,6 +137,15 @@ public class RelationshipObjectiveSearchExampleTest {
         assertEquals(cleanScore.score().doubleValue(), contaminatedScore.score().doubleValue(), 1e-12);
     }
 
+    @Test
+    public void scoreSynchronizationFailsForShortWindows() {
+        BarSeries series = buildMomentumSeries(200).getSubSeries(0, 3);
+        Indicator<Boolean> predicted = RelationshipObjectiveSearchExample.momentumCrossUpEvents(series, 1);
+        ObjectiveEvaluation evaluation = RelationshipObjectiveSearchExample.scoreSynchronization(predicted,
+                new ResearchWindow(series, 0, 2, ResearchWindow.WindowPhase.TRAINING, "short"));
+        assertEquals(ObjectiveEvaluation.Status.FAILED, evaluation.status());
+    }
+
     private static void assertF1(Num score) {
         assertTrue(Num.isFinite(score));
         assertTrue(score.doubleValue() >= 0.0);

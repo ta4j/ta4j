@@ -4,6 +4,7 @@
 package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.util.LinkedHashMap;
@@ -339,6 +340,55 @@ class RelationshipObjectivesTest {
                     && close.getValue(index + horizon).minus(close.getValue(index)).doubleValue() > threshold;
         }
         return new FixedBooleanIndicator(series, events);
+    }
+
+    @Test
+    void leadLagCorrelationRejectsWindowShorterThanTwoBars() {
+        assertThatThrownBy(() -> RelationshipObjectives
+                .leadLagCorrelation(windowSeries -> new ClosePriceIndicator(windowSeries), 1, 0, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("2");
+    }
+
+    @Test
+    void leadLagCorrelationRequiresFullLagRange() {
+        // Each lag is compared over an equally sized aligned window; trailing
+        // lags shift that window into the past, so they warm up later. When the
+        // training window is shorter than the worst lag's warm-up boundary the
+        // profile contains undefined points and the objective must fail
+        // instead of scoring on a truncated lag range.
+        ParameterResearchReport report = ParameterResearch.builder(waveSeries(6))
+                .integer("shift", 1, 2)
+                .candidate((window,
+                        parameters) -> (Indicator<Num>) new PreviousValueIndicator(
+                                new ClosePriceIndicator(window.series()), parameters.intValue("shift")))
+                .maximize(RelationshipObjectives.leadLagCorrelation(
+                        windowSeries -> new PreviousValueIndicator(new ClosePriceIndicator(windowSeries), 2), 20, -2,
+                        2))
+                .search(SearchPlan.grid(10))
+                .run();
+
+        assertThat(report.failedEvaluations()).hasSize(2);
+        assertThat(report.trainingLeaderboard()).isEmpty();
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+    }
+
+    @Test
+    void leadLagCorrelationExplainsOneBarFailure() {
+        ParameterResearchReport report = ParameterResearch.builder(waveSeries(1))
+                .integer("shift", 1, 1)
+                .candidate((window,
+                        parameters) -> (Indicator<Num>) new PreviousValueIndicator(
+                                new ClosePriceIndicator(window.series()), parameters.intValue("shift")))
+                .maximize(RelationshipObjectives.leadLagCorrelation(
+                        windowSeries -> new PreviousValueIndicator(new ClosePriceIndicator(windowSeries), 1), 20, 0, 0))
+                .search(SearchPlan.grid(10))
+                .run();
+
+        assertThat(report.failedEvaluations()).singleElement()
+                .extracting(failed -> failed.reason())
+                .asString()
+                .contains("bars");
     }
 
     private static Map<String, Double> trainingScoresById(ParameterResearchReport report) {

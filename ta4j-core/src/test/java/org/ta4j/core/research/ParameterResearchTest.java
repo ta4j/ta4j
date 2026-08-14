@@ -9,18 +9,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.CandidateValidator;
+import org.ta4j.core.research.ParameterResearch.Direction;
+import org.ta4j.core.research.ParameterResearch.EvaluatedCandidate;
+import org.ta4j.core.research.ParameterResearch.GeneticSettings;
 import org.ta4j.core.research.ParameterResearch.ParameterDomain;
 import org.ta4j.core.research.ParameterResearch.ParameterNormalizer;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
@@ -29,6 +35,7 @@ import org.ta4j.core.research.ParameterResearch.ParameterValue;
 import org.ta4j.core.research.ParameterResearch.RankedCandidate;
 import org.ta4j.core.research.ParameterResearch.ResearchWindow;
 import org.ta4j.core.research.ParameterResearch.SearchPlan;
+import org.ta4j.core.research.ParameterResearch.SwarmSettings;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
 class ParameterResearchTest {
@@ -789,6 +796,223 @@ class ParameterResearchTest {
                 .run();
 
         assertThat(report.terminationReason()).isEqualTo(TerminationReason.TARGET_SCORE_REACHED);
+    }
+
+    @Test
+    void rankingSortAcceptsMixedNumFactories() {
+        // DecimalNum.compareTo and DoubleNum.compareTo each cast the argument to
+        // their own implementation, so ranking scores produced by different
+        // factories used to throw ClassCastException. Ranking must compare
+        // cross-factory scores without coercing them — coercion at evaluation
+        // time would destroy decimal precision.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(candidate == 1 ? DecimalNum.valueOf(10) : DoubleNum.valueOf(5)))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().failed()).isZero();
+        assertThat(report.trainingLeaderboard()).hasSize(2);
+        assertThat(report.trainingLeaderboard().getFirst().parameters().intValue("a")).isEqualTo(1);
+        assertThat(report.trainingLeaderboard().getFirst().trainingScore().doubleValue()).isEqualTo(10d);
+    }
+
+    @Test
+    void failedEvaluationsRetainMetrics() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 1)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation.failed("boom",
+                        Map.of("detail", DecimalNum.valueOf(7))))
+                .search(SearchPlan.grid(1))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+        assertThat(report.failedEvaluations()).hasSize(1);
+        assertThat(report.failedEvaluations().getFirst().metrics()).containsEntry("detail", DecimalNum.valueOf(7));
+    }
+
+    @Test
+    void decimalDomainCountsExactGridPositions() {
+        // (0.9999999995 - 0) / 0.5 is 1.999999999, which the old double
+        // arithmetic pushed to 2.0 with its 1e-9 fudge, inventing a third
+        // declared position. Exact decimal arithmetic keeps the two real ones.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<String>builder(series)
+                .decimal("x", 0d, 0.9999999995, 0.5)
+                .candidate((window, parameters) -> parameters.value("x"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(1)))
+                .search(SearchPlan.grid(3))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.counts().proposed()).isEqualTo(2);
+        assertThat(report.counts().attempted()).isEqualTo(2);
+    }
+
+    @Test
+    void targetScoreComparisonPreservesDecimalPrecision() {
+        // Coercing the target through doubleValue() collapses
+        // 1.0000000000000000001 to 1.0 and stops after the first, slightly
+        // lower score. Exact same-factory comparison must require the
+        // genuinely higher score.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(candidate == 1 ? DecimalNum.valueOf("1.0000000000000000000")
+                                : DecimalNum.valueOf("1.0000000000000000002")))
+                .search(SearchPlan.grid(2))
+                .targetScore(DecimalNum.valueOf("1.0000000000000000001"))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.TARGET_SCORE_REACHED);
+        assertThat(report.counts().attempted()).isEqualTo(2);
+    }
+
+    @Test
+    void normalizerSeesReadOnlyTrainingWindow() {
+        // The normalizer receives the read-only window series even without
+        // holdout validation, so a mutating normalizer is rejected instead of
+        // corrupting the source series.
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .normalize((data, name, value) -> {
+                    data.getBar(data.getEndIndex()).addPrice(data.numFactory().numOf(99));
+                    return new ParameterValue(name, value, false, "");
+                })
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().rejected()).isEqualTo(2);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+        assertThat(series.getBar(3).getClosePrice().doubleValue()).isEqualTo(4d);
+    }
+
+    @Test
+    void geneticStagnationIgnoresTieBreakerImprovements() {
+        // The no-improvement streak must track primary scores only: repair-count
+        // tie-breakers improving generation over generation must not reset it.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 10)),
+                DomainSpec.of(ParameterDomain.integer("b", 1, 10)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> {
+            int byScore = b.score().compareTo(a.score());
+            return byScore != 0 ? byScore : Integer.compare(a.parameters().repairCount(), b.parameters().repairCount());
+        };
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(4, 1, 2, 0.9, 0.1),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, 2);
+
+        List<List<Integer>> repairScript = List.of(List.of(4, 3, 2, 1), List.of(1, 0, 0, 0), List.of(0, 0, 0, 0));
+        for (List<Integer> repairs : repairScript) {
+            List<ParameterSet> batch = engine.propose(10);
+            assertThat(batch).isNotEmpty();
+            for (int i = 0; i < batch.size(); i++) {
+                ParameterSet set = batch.get(i);
+                int count = repairs.get(Math.min(i, repairs.size() - 1));
+                engine.observe(EvaluatedCandidate.valid(set.stableId(), withRepairs(set, count), i,
+                        DecimalNum.valueOf(5), Map.of()));
+            }
+        }
+
+        assertThat(engine.propose(10)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.NO_IMPROVEMENT);
+    }
+
+    @Test
+    void finalizedObservationCountsFinalGeneration() {
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(2, 1, 2, 0.0, 0.0),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, -1);
+
+        List<ParameterSet> batch = engine.propose(4);
+        assertThat(batch).isNotEmpty();
+        for (int i = 0; i < batch.size(); i++) {
+            ParameterSet set = batch.get(i);
+            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
+        }
+
+        assertThat(engine.iterationsCompleted()).isZero();
+        engine.finalizeObserved();
+        assertThat(engine.iterationsCompleted()).isEqualTo(1);
+        engine.finalizeObserved();
+        assertThat(engine.iterationsCompleted()).isEqualTo(1);
+    }
+
+    @Test
+    void particleSwarmContinuesThroughTransientCollisions() {
+        // With inertia disabled and unit attraction weights the movement is
+        // fully scripted. The first post-observation projection collides with
+        // the two already-seen points; the engine must keep moving until a
+        // particle reaches the unseen middle point instead of declaring
+        // convergence on the first cached batch.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 3)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d, 1d, 0.2, 0.2, 0.5, 0.5, 0.2, 0.2, 0.5, 0.5, 0.2, 0.2, 0.5, 0.5), ranking,
+                Direction.MAXIMIZE, -1, -1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first).hasSize(2);
+        for (int i = 0; i < first.size(); i++) {
+            ParameterSet set = first.get(i);
+            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
+        }
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(engine.terminationReason()).isNull();
+        assertThat(second).hasSize(2);
+        assertThat(second.stream().map(ParameterSet::stableId)).contains("a=2");
+
+        for (int i = 0; i < second.size(); i++) {
+            ParameterSet set = second.get(i);
+            int score = set.stableId().equals("a=2") ? 3 : 2;
+            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(score), Map.of()));
+        }
+
+        assertThat(engine.propose(2)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+    }
+
+    private static ParameterSet withRepairs(ParameterSet set, int repairs) {
+        List<ParameterValue> values = new ArrayList<>();
+        for (int i = 0; i < set.values().size(); i++) {
+            ParameterValue value = set.values().get(i);
+            values.add(i < repairs ? new ParameterValue(value.name(), value.value(), true, "repaired") : value);
+        }
+        return new ParameterSet(values);
+    }
+
+    /**
+     * Deterministic {@link Random} feeding one scripted {@code nextDouble()} draw
+     * per call; the particle-swarm engines use no other random primitive.
+     */
+    private static final class ScriptedRandom extends Random {
+
+        private final double[] script;
+        private int cursor;
+
+        private ScriptedRandom(double... script) {
+            this.script = script;
+        }
+
+        @Override
+        public double nextDouble() {
+            if (cursor >= script.length) {
+                throw new IllegalStateException("script exhausted at draw " + cursor);
+            }
+            return script[cursor++];
+        }
     }
 
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {

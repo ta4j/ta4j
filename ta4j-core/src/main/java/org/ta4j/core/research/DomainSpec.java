@@ -4,6 +4,8 @@
 package org.ta4j.core.research;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,12 +61,19 @@ final class DomainSpec {
             return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step());
         }
         if (domain instanceof ParameterResearch.ParameterDomain.DecimalDomain d) {
-            double ratio = Math.floor((d.to() - d.from()) / d.step() + 1e-9);
-            if (ratio > Integer.MAX_VALUE - 1d) {
+            // Exact decimal-string arithmetic: double division misrounds the
+            // ratio for non-dyadic bounds and can drop or add a declared end
+            // position. BigDecimal.valueOf parses via the canonical decimal
+            // string of the double, so span and step are the exact declared
+            // decimals; the quotient is a dyadic rational, and its exact value
+            // is at least 2^-107, so 50 decimal digits never misround it.
+            BigDecimal span = BigDecimal.valueOf(d.to()).subtract(BigDecimal.valueOf(d.from()));
+            BigDecimal ratio = span.divide(BigDecimal.valueOf(d.step()), new MathContext(50, RoundingMode.FLOOR));
+            if (ratio.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE - 1L)) > 0) {
                 throw new IllegalArgumentException("Domain '" + d.name() + "' declares more than " + Integer.MAX_VALUE
                         + " values which exceeds the per-domain limit of " + Integer.MAX_VALUE);
             }
-            long count = (long) ratio + 1L;
+            long count = ratio.setScale(0, RoundingMode.FLOOR).longValueExact() + 1L;
             int cardinality = checkedCardinality(d.name(), count);
             // When the step is at or below half the ULP of the largest magnitude
             // in the range, consecutive declared positions collapse to the same

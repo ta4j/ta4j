@@ -26,6 +26,10 @@ import java.util.Random;
  */
 final class ParticleSwarmEngine extends SearchEngine {
 
+    private static final int STALL_MOVE_LIMIT = 16;
+
+    private final ParameterResearch.Direction direction;
+
     private final ParameterResearch.SwarmSettings settings;
     private final Random random;
     private final Comparator<ParameterResearch.EvaluatedCandidate> ranking;
@@ -41,7 +45,8 @@ final class ParticleSwarmEngine extends SearchEngine {
     private int noImprovementStreak;
 
     ParticleSwarmEngine(List<DomainSpec> specs, ParameterResearch.SwarmSettings settings, Random random,
-            Comparator<ParameterResearch.EvaluatedCandidate> ranking, int maxIterations, int noImprovementIterations) {
+            Comparator<ParameterResearch.EvaluatedCandidate> ranking, ParameterResearch.Direction direction,
+            int maxIterations, int noImprovementIterations) {
         super(specs);
         for (DomainSpec spec : specs) {
             if (!spec.numeric()) {
@@ -49,7 +54,9 @@ final class ParticleSwarmEngine extends SearchEngine {
                         + "(integer or decimal), but parameter '" + spec.name() + "' is not numeric");
             }
         }
+        this.direction = direction;
         this.settings = settings;
+
         this.random = random;
         this.ranking = ranking;
         this.maxIterations = maxIterations;
@@ -94,36 +101,55 @@ final class ParticleSwarmEngine extends SearchEngine {
         batchEvaluations.put(evaluated.candidateId(), evaluated);
     }
 
-    private List<ParameterResearch.ParameterSet> proposeBatch(int count) {
-        pendingBatch = new LinkedHashMap<>();
-        batchEvaluations = new LinkedHashMap<>();
-        List<ParameterResearch.ParameterSet> batch = new ArrayList<>(count);
-        int newIds = 0;
-        for (int p = 0; p < count; p++) {
-            Particle particle = particles.get(p);
-            int[] indices = new int[specs().size()];
-            for (int d = 0; d < indices.length; d++) {
-                indices[d] = specs().get(d).projectIndex(particle.position[d]);
-            }
-            if (!proposed(canonicalId(indices))) {
-                newIds++;
-            }
-            ParameterResearch.ParameterSet set = parameterSet(indices);
-            pendingBatch.computeIfAbsent(set.stableId(), key -> new ArrayList<>()).add(p);
-            batch.add(set);
+    @Override
+    void finalizeObserved() {
+        if (!pendingBatch.isEmpty()) {
+            finalizeIteration();
         }
-        if (count > 0 && newIds == 0) {
-            // Every particle of this batch projects onto an already-proposed
-            // grid point. A covered declared space is exhausted; otherwise the
-            // swarm stalled and cannot yield a new evaluation right now.
+    }
+
+    private List<ParameterResearch.ParameterSet> proposeBatch(int count) {
+        // A batch whose particles all project onto already-proposed grid points
+        // would be served entirely from the cache with no observation at all,
+        // and re-proposing it forever would stall the swarm. A transient
+        // collision must not end the run while budget remains: keep moving the
+        // swarm until at least one particle reaches an unseen grid point, the
+        // declared space is covered, or the movement budget is spent.
+        for (int attempt = 0; attempt < STALL_MOVE_LIMIT; attempt++) {
+            pendingBatch = new LinkedHashMap<>();
+            batchEvaluations = new LinkedHashMap<>();
+            List<ParameterResearch.ParameterSet> batch = new ArrayList<>(count);
+            int newIds = 0;
+            for (int p = 0; p < count; p++) {
+                Particle particle = particles.get(p);
+                int[] indices = new int[specs().size()];
+                for (int d = 0; d < indices.length; d++) {
+                    indices[d] = specs().get(d).projectIndex(particle.position[d]);
+                }
+                if (!proposed(canonicalId(indices))) {
+                    newIds++;
+                }
+                ParameterResearch.ParameterSet set = parameterSet(indices);
+                pendingBatch.computeIfAbsent(set.stableId(), key -> new ArrayList<>()).add(p);
+                batch.add(set);
+            }
+            if (count == 0 || newIds > 0) {
+                return batch;
+            }
             if (exhausted()) {
                 terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
-            } else {
-                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+                return List.of();
             }
-            return List.of();
+            if (gbestPosition == null) {
+                gbestPosition = particles.get(0).position.clone();
+            }
+            move();
         }
-        return batch;
+        // STALL_MOVE_LIMIT full swarm moves without reaching a single unseen
+        // grid point: the swarm is effectively converged, and no batch was
+        // evaluated, so the stagnation streak cannot advance by observation.
+        terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+        return List.of();
     }
 
     private void finalizeIteration() {
@@ -156,7 +182,8 @@ final class ParticleSwarmEngine extends SearchEngine {
             if (gbestPosition == null) {
                 gbestPosition = particles.get(0).position.clone();
             }
-        } else if (gbestEvaluated == null || ranking.compare(newGbest, gbestEvaluated) < 0) {
+        } else if (gbestEvaluated == null
+                || ParameterResearch.scoreIsBetter(direction, newGbest.score(), gbestEvaluated.score())) {
             improved = true;
             gbestEvaluated = newGbest;
             gbestPosition = gbestParticle.pbestPosition.clone();

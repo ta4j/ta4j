@@ -491,7 +491,7 @@ public final class ParameterResearch {
                     ? buildWindow(datasetId, ResearchWindow.WindowPhase.HOLDOUT, snapshot.endIndex() - holdoutBars + 1,
                             snapshot.endIndex())
                     : null;
-            BarSeries normalizerData = holdoutWindow != null ? trainingWindow.series() : series;
+            BarSeries normalizerData = trainingWindow.series();
             SeriesSnapshot trainingSnapshot = new SeriesSnapshot(trainingWindow.series());
 
             String objectiveId = computeObjectiveId(holdoutBars);
@@ -500,7 +500,8 @@ public final class ParameterResearch {
             for (ParameterDomain domain : domains) {
                 specs.add(DomainSpec.of(domain));
             }
-            SearchEngine engine = createEngine(specs, ranking);
+            SearchEngine engine = createEngine(specs, ranking, direction);
+
             int budget = searchPlan.maxEvaluations();
             EvaluationCache cache = new EvaluationCache();
             List<EvaluatedCandidate> evaluations = new ArrayList<>();
@@ -562,7 +563,7 @@ public final class ParameterResearch {
                         evaluated = classify(candidateId, normalized, (int) counters.attempted, outcome);
                     } catch (RuntimeException ex) {
                         evaluated = EvaluatedCandidate.failed(candidateId, normalized, (int) counters.attempted,
-                                "evaluation threw " + ex.getClass().getSimpleName() + message(ex));
+                                "evaluation threw " + ex.getClass().getSimpleName() + message(ex), Map.of());
                     }
                     evaluationNanos += System.nanoTime() - evaluationStart;
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
@@ -578,8 +579,10 @@ public final class ParameterResearch {
                     }
                     if (evaluated.valid() && targetScore != null && reachedTarget(evaluated.score())) {
                         targetReached = true;
+                        engine.finalizeObserved();
                         break;
                     }
+
                 }
                 if (Thread.currentThread().isInterrupted()) {
                     reason = TerminationReason.CANCELED;
@@ -590,10 +593,13 @@ public final class ParameterResearch {
                     break;
                 }
                 if (engine.terminationReason() != null) {
+                    engine.finalizeObserved();
                     reason = engine.terminationReason();
                     break;
                 }
+
                 if (engine.exhausted()) {
+                    engine.finalizeObserved();
                     reason = TerminationReason.SEARCH_SPACE_EXHAUSTED;
                     break;
                 }
@@ -716,16 +722,18 @@ public final class ParameterResearch {
             if (outcome.status() == ObjectiveEvaluation.Status.FAILED) {
                 String reason = outcome.failureReason().isBlank() ? "objective declared failure"
                         : outcome.failureReason();
-                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, reason);
+                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, reason, outcome.metrics());
             }
             Num score = outcome.score();
             if (!Num.isFinite(score)) {
-                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, "objective score is not finite");
+                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, "objective score is not finite",
+                        Map.of());
             }
             return EvaluatedCandidate.valid(candidateId, parameters, ordinal, score, outcome.metrics());
         }
 
-        private SearchEngine createEngine(List<DomainSpec> specs, Comparator<EvaluatedCandidate> ranking) {
+        private SearchEngine createEngine(List<DomainSpec> specs, Comparator<EvaluatedCandidate> ranking,
+                Direction direction) {
             if (specs.isEmpty()) {
                 throw new IllegalArgumentException("at least one parameter domain is required");
             }
@@ -734,19 +742,23 @@ public final class ParameterResearch {
             return switch (searchPlan.kind()) {
             case GRID -> new GridSearchEngine(specs);
             case GENETIC -> new GeneticSearchEngine(specs, searchPlan.geneticSettings(), new Random(searchPlan.seed()),
-                    ranking, maxIter, noImprovement);
+                    ranking, direction, maxIter, noImprovement);
             case PARTICLE_SWARM -> new ParticleSwarmEngine(specs, searchPlan.swarmSettings(),
-                    new Random(searchPlan.seed()), ranking, maxIter, noImprovement);
+                    new Random(searchPlan.seed()), ranking, direction, maxIter, noImprovement);
             };
         }
 
         private boolean reachedTarget(Num score) {
             Num target = targetScore;
-            // Coerce the configured target into the score's numeric factory when
-            // they differ, so comparison stays in the score's domain instead of
-            // throwing on mixed Num implementations.
-            if (!target.getNumFactory().equals(score.getNumFactory())) {
-                target = score.getNumFactory().numOf(targetScore.doubleValue());
+            if (!Num.isFinite(score)) {
+                return false;
+            }
+            // DecimalNum.compareTo casts to DoubleNum and throws on a mixed
+            // implementation, and NumFactory instances are not comparable by
+            // identity: when the factories differ, coerce the target through
+            // the exact decimal string so no precision is lost.
+            if (target.getClass() != score.getClass()) {
+                target = score.getNumFactory().numOf(targetScore.toString());
             }
             return direction == Direction.MAXIMIZE ? score.isGreaterThanOrEqual(target)
                     : score.isLessThanOrEqual(target);
@@ -776,7 +788,8 @@ public final class ParameterResearch {
                         holdout = classify(training.candidateId(), training.parameters(), i + 1, outcome);
                     } catch (RuntimeException ex) {
                         holdout = EvaluatedCandidate.failed(training.candidateId(), training.parameters(), i + 1,
-                                "holdout evaluation threw " + ex.getClass().getSimpleName() + message(ex));
+                                "holdout evaluation threw " + ex.getClass().getSimpleName() + message(ex), Map.of());
+
                     }
                     verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
 
@@ -785,7 +798,7 @@ public final class ParameterResearch {
                 }
                 if (!holdout.valid() && cached == null) {
                     failures.add(new FailedEvaluation(holdout.candidateId(), holdout.parameters(),
-                            "holdout: " + holdout.failureReason()));
+                            "holdout: " + holdout.failureReason(), holdout.metrics()));
                 }
                 if (holdout.valid()) {
                     holdoutEvaluations.add(new HoldoutEvaluation(training, holdout, i + 1, 0));
@@ -1842,12 +1855,15 @@ public final class ParameterResearch {
      * @param candidateId stable candidate id
      * @param parameters  normalized parameter set
      * @param reason      factual failure reason
+     * @param metrics     metrics reported by the objective, or empty when none were
+     *                    reported before the failure
      * @since 0.24.2
      */
-    public record FailedEvaluation(String candidateId, ParameterSet parameters, String reason) {
+    public record FailedEvaluation(String candidateId, ParameterSet parameters, String reason,
+            Map<String, Num> metrics) {
 
         /**
-         * Creates a validated failed-evaluation row.
+         * Creates a validated failed-evaluation row with defensive copies.
          *
          * @since 0.24.2
          */
@@ -1857,6 +1873,7 @@ public final class ParameterResearch {
             }
             Objects.requireNonNull(parameters, "parameters");
             reason = reason == null ? "" : reason;
+            metrics = metrics == null ? Map.of() : Map.copyOf(metrics);
         }
     }
 
@@ -1929,12 +1946,13 @@ public final class ParameterResearch {
             return new EvaluatedCandidate(candidateId, parameters, ordinal, score, metrics, true, "");
         }
 
-        static EvaluatedCandidate failed(String candidateId, ParameterSet parameters, int ordinal, String reason) {
-            return new EvaluatedCandidate(candidateId, parameters, ordinal, null, Map.of(), false, reason);
+        static EvaluatedCandidate failed(String candidateId, ParameterSet parameters, int ordinal, String reason,
+                Map<String, Num> metrics) {
+            return new EvaluatedCandidate(candidateId, parameters, ordinal, null, metrics, false, reason);
         }
 
         FailedEvaluation toFailedEvaluation() {
-            return new FailedEvaluation(candidateId, parameters, failureReason);
+            return new FailedEvaluation(candidateId, parameters, failureReason, metrics);
         }
     }
 
@@ -2080,6 +2098,51 @@ public final class ParameterResearch {
     }
 
     /**
+     * Direction-aware primary-score comparison that tolerates scores produced by
+     * different {@link NumFactory} implementations.
+     *
+     * <p>
+     * {@code Num.compareTo} implementations may reject foreign instances (for
+     * example {@link org.ta4j.core.num.DecimalNum#compareTo} casts to
+     * {@code DecimalNum}); instead of coercing scores at evaluation time — which
+     * would destroy decimal precision — the foreign score is parsed through the
+     * left operand's factory using its exact {@code toString()} representation. NaN
+     * scores are ordered after everything else, so an objective that declares
+     * failure for non-finite scores keeps its ranking behavior.
+     * </p>
+     *
+     * @param left  first score
+     * @param right second score
+     * @return a negative integer, zero, or a positive integer as {@code left} ranks
+     *         better than, equal to, or worse than {@code right}
+     */
+    static int compareScores(Num left, Num right) {
+        boolean leftNaN = !Num.isFinite(left);
+        boolean rightNaN = !Num.isFinite(right);
+        if (leftNaN || rightNaN) {
+            return Boolean.compare(leftNaN, rightNaN);
+        }
+        if (left.getClass() == right.getClass()) {
+            return left.compareTo(right);
+        }
+        return left.compareTo(left.getNumFactory().numOf(right.toString()));
+    }
+
+    /**
+     * Reports whether {@code candidate} is a strict improvement over
+     * {@code current} under the given goal direction, by primary score only.
+     *
+     * @param direction goal direction
+     * @param candidate candidate score
+     * @param current   current best score
+     * @return {@code true} when the candidate score is strictly better
+     */
+    static boolean scoreIsBetter(Direction direction, Num candidate, Num current) {
+        return direction == Direction.MAXIMIZE ? compareScores(candidate, current) > 0
+                : compareScores(candidate, current) < 0;
+    }
+
+    /**
      * Shared deterministic ranking: better primary score under the goal direction,
      * then fewer repair notes, then lower evaluation ordinal, then canonical
      * candidate ID lexicographically. Used by the training leaderboard, the holdout
@@ -2087,8 +2150,8 @@ public final class ParameterResearch {
      */
     private static Comparator<EvaluatedCandidate> rankingComparator(Direction direction) {
         return (a, b) -> {
-            int comparison = direction == Direction.MAXIMIZE ? b.score().compareTo(a.score())
-                    : a.score().compareTo(b.score());
+            int comparison = direction == Direction.MAXIMIZE ? compareScores(b.score(), a.score())
+                    : compareScores(a.score(), b.score());
             if (comparison != 0) {
                 return comparison;
             }

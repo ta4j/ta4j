@@ -32,7 +32,8 @@ import java.util.Set;
  *
  * <p>
  * Each generation is finalized at the next proposal request: the best valid
- * evaluation of the generation is compared against the best-ever evaluation to
+ * evaluation of the generation is compared against the best-ever evaluation by
+ * primary score only — normalizer tie-breakers never reset the streak — to
  * derive the no-improvement streak, the iteration counter advances, and the
  * next generation is bred from the current generation's valid evaluations via
  * elitism, tournament selection, uniform per-dimension crossover, and
@@ -43,6 +44,7 @@ import java.util.Set;
 final class GeneticSearchEngine extends SearchEngine {
 
     private static final int UNSEEN_CHILD_ATTEMPTS = 1000;
+    private final ParameterResearch.Direction direction;
 
     private final ParameterResearch.GeneticSettings settings;
     private final Random random;
@@ -58,9 +60,12 @@ final class GeneticSearchEngine extends SearchEngine {
     private int noImprovementStreak;
 
     GeneticSearchEngine(List<DomainSpec> specs, ParameterResearch.GeneticSettings settings, Random random,
-            Comparator<ParameterResearch.EvaluatedCandidate> ranking, int maxIterations, int noImprovementIterations) {
+            Comparator<ParameterResearch.EvaluatedCandidate> ranking, ParameterResearch.Direction direction,
+            int maxIterations, int noImprovementIterations) {
         super(specs);
+        this.direction = direction;
         this.settings = settings;
+
         this.random = random;
         this.ranking = ranking;
         this.maxIterations = maxIterations;
@@ -100,6 +105,13 @@ final class GeneticSearchEngine extends SearchEngine {
         }
     }
 
+    @Override
+    void finalizeObserved() {
+        if (!generationEvaluations.isEmpty()) {
+            finalizeGeneration();
+        }
+    }
+
     private List<GenomeEvaluation> finalizeGeneration() {
         completeIteration();
         List<GenomeEvaluation> valid = generationEvaluations.stream()
@@ -110,7 +122,8 @@ final class GeneticSearchEngine extends SearchEngine {
             noImprovementStreak++;
         } else {
             ParameterResearch.EvaluatedCandidate generationBest = valid.get(0).evaluated();
-            if (bestEver == null || ranking.compare(generationBest, bestEver) < 0) {
+            if (bestEver == null
+                    || ParameterResearch.scoreIsBetter(direction, generationBest.score(), bestEver.score())) {
                 bestEver = generationBest;
                 noImprovementStreak = 0;
             } else {

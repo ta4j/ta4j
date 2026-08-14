@@ -99,6 +99,7 @@ final class RelationshipObjectives {
      * </p>
      *
      * 
+     *
      * @param referenceBuilder builds the reference indicator from a window
      *                         sub-series
      * @param barCount         aligned-sample window size in bars
@@ -106,26 +107,33 @@ final class RelationshipObjectives {
      * @param maximumLag       inclusive upper lag bound
      * @return objective function over the searched indicator
      * @throws NullPointerException     if the reference builder is null
-     * @throws IllegalArgumentException if {@code barCount <= 0} or
+     * @throws IllegalArgumentException if {@code barCount < 2} or
      *                                  {@code minimumLag > maximumLag}
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Num>> leadLagCorrelation(
             Function<BarSeries, Indicator<Num>> referenceBuilder, int barCount, int minimumLag, int maximumLag) {
         Objects.requireNonNull(referenceBuilder, "referenceBuilder");
-        if (barCount <= 0) {
-            throw new IllegalArgumentException("barCount must be > 0");
+        if (barCount < 2) {
+            throw new IllegalArgumentException("barCount must be at least 2");
         }
         if (minimumLag > maximumLag) {
             throw new IllegalArgumentException("minimumLag cannot be greater than maximumLag");
         }
         return (candidate, window) -> {
             try {
+                if (window.series().getBarCount() < 2) {
+                    return ParameterResearch.ObjectiveEvaluation.failed("window has fewer than 2 bars");
+                }
                 Indicator<Num> reference = referenceBuilder.apply(window.series());
                 LeadLagCorrelationIndicator indicator = new LeadLagCorrelationIndicator(candidate, reference, barCount,
                         minimumLag, maximumLag,
                         LeadLagCorrelationIndicator.LagSelectionPolicy.MAXIMUM_ABSOLUTE_CORRELATION);
                 LeadLagCorrelationIndicator.Profile profile = indicator.getProfile(window.series().getEndIndex());
+                if (profile.points().stream().anyMatch(point -> !point.isDefined())) {
+                    return ParameterResearch.ObjectiveEvaluation
+                            .failed("not all lags are defined in the evaluation window");
+                }
                 if (profile.selectedLag().isEmpty()) {
                     return ParameterResearch.ObjectiveEvaluation.failed("no defined lag in the evaluation window");
                 }
