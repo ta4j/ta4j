@@ -19,12 +19,7 @@ import java.util.List;
  */
 final class GridSearchEngine extends SearchEngine {
 
-    /**
-     * Upper bound for one proposal batch: with a budget reaching into a search
-     * space of billions of points, pre-sizing one batch for the entire remaining
-     * space would allocate an enormous list before the first evaluation.
-     */
-    private static final int MAX_BATCH_SIZE = 65536;
+    // Batch cap: see SearchEngine.MAX_COHORT_SIZE.
 
     private final int[] indices;
     private long emitted;
@@ -41,7 +36,7 @@ final class GridSearchEngine extends SearchEngine {
             terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
             return List.of();
         }
-        int batchSize = (int) Math.min(Math.min(maxNew, MAX_BATCH_SIZE), totalSpace - emitted);
+        int batchSize = (int) Math.min(Math.min(maxNew, MAX_COHORT_SIZE), totalSpace - emitted);
         List<ParameterResearch.ParameterSet> batch = new ArrayList<>(batchSize);
         for (int i = 0; i < batchSize; i++) {
             batch.add(parameterSet(indices));

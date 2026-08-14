@@ -182,11 +182,12 @@ public final class ParameterResearch {
          *
          * <p>
          * Declared positions are generated from {@code from + index * step} and mapped
-         * to their canonical {@code double} representation. When {@code step} is at or
-         * below half the ULP of the largest magnitude in the range, consecutive
-         * positions collapse to the same {@code double}; the collapsed positions are
-         * consolidated into the distinct canonical values, and the effective
-         * cardinality is reported as that distinct count.
+         * to their canonical {@code double} representation. When {@code step} is below
+         * the ULP of the largest magnitude in the range, consecutive positions can
+         * collapse to the same {@code double}; the collapsed positions are consolidated
+         * into the distinct canonical values, and the effective cardinality is reported
+         * as that distinct count. Consolidation begins below one full ULP because steps
+         * between half and one ULP can still merge pairs of positions.
          * </p>
          *
          * @param name parameter name
@@ -406,9 +407,10 @@ public final class ParameterResearch {
          * evaluation reaches it.
          *
          * <p>
-         * Comparison happens in the numeric factory of each evaluated score: when the
-         * configured target uses a different factory, it is coerced to the score's
-         * factory at comparison time.
+         * Comparison is factory-independent and precision-preserving: the target is
+         * compared against each evaluated score with exact decimal semantics, so a tiny
+         * or high-precision target is never rounded through the score's numeric
+         * factory.
          * </p>
          *
          * @param targetScore objective value considered good enough
@@ -1707,6 +1709,9 @@ public final class ParameterResearch {
             if (populationSize < 2) {
                 throw new IllegalArgumentException("populationSize must be >= 2");
             }
+            if (populationSize > SearchEngine.MAX_COHORT_SIZE) {
+                throw new IllegalArgumentException("populationSize must be <= " + SearchEngine.MAX_COHORT_SIZE);
+            }
             if (elitismCount < 0 || elitismCount >= populationSize) {
                 throw new IllegalArgumentException("elitismCount must be in [0, populationSize)");
             }
@@ -1756,6 +1761,9 @@ public final class ParameterResearch {
         public SwarmSettings {
             if (swarmSize < 2) {
                 throw new IllegalArgumentException("swarmSize must be >= 2");
+            }
+            if (swarmSize > SearchEngine.MAX_COHORT_SIZE) {
+                throw new IllegalArgumentException("swarmSize must be <= " + SearchEngine.MAX_COHORT_SIZE);
             }
             if (!Double.isFinite(inertiaWeight) || inertiaWeight < 0d || inertiaWeight > 1d) {
                 throw new IllegalArgumentException("inertiaWeight must be in [0, 1]");

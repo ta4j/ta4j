@@ -27,9 +27,9 @@ final class DomainSpec {
 
     /**
      * Upper bound on the number of declared positions that are eagerly enumerated
-     * when a decimal domain's step is at or below half-ULP precision: beyond this
-     * the declared domain is rejected instead of materializing a huge
-     * distinct-value list.
+     * when a decimal domain's step is below the ULP of the largest magnitude in the
+     * range: beyond this the declared domain is rejected instead of materializing a
+     * huge distinct-value list.
      */
     private static final int COLLAPSE_VERIFICATION_LIMIT = 100_000;
 

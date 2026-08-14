@@ -1066,6 +1066,16 @@ class ParameterResearchTest {
         assertThat(series.getBar(3).getClosePrice().doubleValue()).isEqualTo(4d);
     }
 
+    @Test
+    void cohortSettingsRejectOversizedSwarmsAndPopulations() {
+        // Settings beyond the engine cohort bound must fail at plan-build time
+        // instead of pre-allocating an unbounded list before the first proposal.
+        assertThrows(IllegalArgumentException.class,
+                () -> new ParameterResearch.SwarmSettings(Integer.MAX_VALUE, 0.5, 0.5, 0.5, 1.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ParameterResearch.GeneticSettings(Integer.MAX_VALUE, 0, 2, 0.9, 0.1));
+    }
+
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {
         return ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 10)

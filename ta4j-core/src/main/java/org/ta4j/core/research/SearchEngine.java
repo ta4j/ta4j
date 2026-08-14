@@ -29,6 +29,15 @@ import java.util.Set;
  */
 abstract class SearchEngine {
 
+    /**
+     * Practical upper bound for any single cohort an engine materializes in one
+     * proposal cycle (a grid batch, a generation, or a swarm): configurable cohort
+     * sizes beyond this bound are rejected at plan-build time, and budget-driven
+     * batches are capped to it, so no proposal can pre-allocate an unbounded list
+     * before the first evaluation.
+     */
+    static final int MAX_COHORT_SIZE = 65536;
+
     private final List<DomainSpec> specs;
     private final long totalSpace;
     private final Set<String> proposedIds = new HashSet<>();
