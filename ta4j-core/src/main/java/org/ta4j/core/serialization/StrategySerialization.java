@@ -753,8 +753,8 @@ public final class StrategySerialization {
         Rule exitRule = instantiateRule(series, extractChild(descriptor, EXIT_LABEL), null);
 
         String name = descriptor.getLabel();
-        int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
         TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
+        int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
 
         Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars, startingType);
         strategy.setUnstableBars(unstableBars);
@@ -877,7 +877,7 @@ public final class StrategySerialization {
 
     private static int extractUnstableBars(Object value) {
         if (value == null) {
-            return 0;
+            throw new IllegalArgumentException("Missing integer value at " + UNSTABLE_BARS_KEY);
         }
         String text = String.valueOf(value).trim();
         final int unstableBars;
