@@ -194,6 +194,34 @@ class ParticleSwarmEngineTest {
         assertThat(engine.iterationsCompleted()).isEqualTo(3);
     }
 
+    @Test
+    void particleSwarmSuppressesCognitivePullWithoutValidPersonalBest() {
+        // Particle A launches on index 0, where the objective fails, so its
+        // pbest snapshot still holds the invalid launch point while the
+        // validated personal best stays absent. Without gating, the cognitive
+        // term drags A back toward index 0 on every move and it reaches
+        // index 3; with the gate, only the social pull toward B's valid
+        // global best at index 10 acts and A reaches index 4.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 0, 10)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 0.5, 0.5, 0.2),
+                new ScriptedRandom(0d, 1d, 0.5, 0.5, 0.5, 0.5, 0.75, 0.5, 0.5, 0.5), ranking, Direction.MAXIMIZE, -1,
+                -1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first.stream().map(ParameterSet::stableId)).containsExactly("a=0", "a=10");
+        engine.observe(EvaluatedCandidate.failed("a=0", first.get(0), 0, "invalid", Map.of()));
+        engine.observe(EvaluatedCandidate.valid("a=10", first.get(1), 1, DecimalNum.valueOf(10), Map.of()));
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(second.stream().map(ParameterSet::stableId)).contains("a=2", "a=10");
+        engine.observe(EvaluatedCandidate.failed("a=2", second.get(0), 2, "invalid", Map.of()));
+        engine.observe(EvaluatedCandidate.valid("a=10", second.get(1), 3, DecimalNum.valueOf(10), Map.of()));
+
+        List<ParameterSet> third = engine.propose(2);
+        assertThat(third.stream().map(ParameterSet::stableId)).contains("a=4", "a=10");
+    }
+
     /**
      * Deterministic {@link Random} feeding one scripted {@code nextDouble()} draw
      * per call; the particle-swarm engines use no other random primitive.

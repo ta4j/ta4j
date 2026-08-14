@@ -950,6 +950,19 @@ class ParameterResearchTest {
     }
 
     @Test
+    void subtractScoresKeepsSameFactoryOverflowFinite() {
+        // Double.MAX_VALUE - (-Double.MAX_VALUE) overflows to positive
+        // infinity in native DoubleNum arithmetic even though both operands
+        // are finite; the delta must fall back to the exact decimal path
+        // instead of emitting a non-finite report value.
+        Num delta = ParameterResearch.subtractScores(DoubleNum.valueOf(Double.MAX_VALUE),
+                DoubleNum.valueOf(-Double.MAX_VALUE));
+        assertThat(Num.isFinite(delta)).isTrue();
+        assertThat(delta.bigDecimalValue()).isEqualByComparingTo(
+                BigDecimal.valueOf(Double.MAX_VALUE).multiply(BigDecimal.valueOf(2)));
+    }
+
+    @Test
     void holdoutDeltaToleratesMixedNumFactories() {
         // A valid objective may return DecimalNum during training and
         // DoubleNum during holdout; report-building score deltas must not
@@ -1127,6 +1140,22 @@ class ParameterResearchTest {
                         .search(SearchPlan.grid(ParameterResearch.MAX_RETAINED_EVALUATIONS + 1))
                         .run());
         assertThat(exception.getMessage()).contains("retained-evaluation limit");
+    }
+
+    @Test
+    void candidateRebindingIsRejected() {
+        // Re-binding the candidate factory through a retained typed alias
+        // would leave both Builder<A> and Builder<B> usable while run()
+        // builds only one type: the bridge cast would fail at run time
+        // instead of at configuration time. The second binding must be
+        // rejected while the first alias is still reachable.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<String> builder = ParameterResearch.<String>builder(series)
+                .candidate((window, parameters) -> "first");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> builder.candidate((window, parameters) -> 42));
+        assertThat(exception.getMessage()).contains("already bound");
     }
 
     @Test

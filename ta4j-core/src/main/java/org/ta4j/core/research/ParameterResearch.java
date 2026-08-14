@@ -270,7 +270,10 @@ public final class ParameterResearch {
          * @return this builder with {@code U} as its candidate type
          * @throws NullPointerException  if {@code factory} is null
          * @throws IllegalStateException if the objective is already configured, because
-         *                               the candidate type must be declared first
+         *                               the candidate type must be declared first, or if
+         *                               a candidate factory was already bound, because
+         *                               re-binding would leave previously returned
+         *                               builder references with a stale candidate type
          * @since 0.24.2
          */
         @SuppressWarnings("unchecked")
@@ -278,6 +281,10 @@ public final class ParameterResearch {
             if (objective != null) {
                 throw new IllegalStateException("candidate(...) must be declared before maximize(...)/minimize(...) "
                         + "so the candidate type cannot diverge from the objective");
+            }
+            if (candidateFactory != null) {
+                throw new IllegalStateException("candidate(...) was already bound: re-binding the candidate type on "
+                        + "the same builder would leave previously returned builder references with a stale type");
             }
             this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) Objects.requireNonNull(factory,
                     "factory");
@@ -2212,16 +2219,22 @@ public final class ParameterResearch {
      * by different {@link NumFactory} implementations: a cross-factory subtraction
      * goes through exact {@link BigDecimal} values instead of coercing one operand
      * through the other's factory, which could overflow to infinity or round away
-     * the delta.
+     * the delta. A same-factory subtraction whose native result is non-finite
+     * (e.g. {@code Double.MAX_VALUE - (-Double.MAX_VALUE)}) also falls back to the
+     * exact decimal path, so finite operand scores never produce an infinite delta.
      *
      * @param minuend    score to subtract from
      * @param subtrahend score to subtract
      * @return {@code minuend - subtrahend}; in the minuend's factory when both
-     *         operands share it, otherwise as an exact decimal
+     *         operands share it and the result stays finite, otherwise as an exact
+     *         decimal
      */
     static Num subtractScores(Num minuend, Num subtrahend) {
         if (minuend.getClass() == subtrahend.getClass()) {
-            return minuend.minus(subtrahend);
+            Num result = minuend.minus(subtrahend);
+            if (Num.isFinite(result)) {
+                return result;
+            }
         }
         return DecimalNum.valueOf(minuend.bigDecimalValue().subtract(subtrahend.bigDecimalValue()));
     }
