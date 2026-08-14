@@ -63,10 +63,9 @@ public class SimpleMovingAverageRangeBacktestTest {
 
     @Test
     public void smaResearchRankingIsInvariantToPriceScale() {
-        ParameterResearchReport original = SimpleMovingAverageRangeBacktest
-                .runSmaResearch(buildSwingSeries(80), 20);
-        ParameterResearchReport scaled = SimpleMovingAverageRangeBacktest
-                .runSmaResearch(buildSwingSeries(80, 0.01), 20);
+        ParameterResearchReport original = SimpleMovingAverageRangeBacktest.runSmaResearch(buildSwingSeries(80), 20);
+        ParameterResearchReport scaled = SimpleMovingAverageRangeBacktest.runSmaResearch(buildSwingSeries(80, 0.01),
+                20);
 
         List<RankedCandidate> originalLeaderboard = original.trainingLeaderboard();
         List<RankedCandidate> scaledLeaderboard = scaled.trainingLeaderboard();

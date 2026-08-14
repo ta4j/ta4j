@@ -175,8 +175,8 @@ public class SimpleMovingAverageRangeBacktest {
         // Score the dimensionless net return (cost-adjusted, scale-invariant
         // across price levels) so the 7:3 weighting mixes unit-consistent
         // terms; reported metrics stay raw.
-        Num netReturn = new NetReturnCriterion(ReturnRepresentation.DECIMAL)
-                .calculate(series, statement.getTradingRecord());
+        Num netReturn = new NetReturnCriterion(ReturnRepresentation.DECIMAL).calculate(series,
+                statement.getTradingRecord());
         if (!Num.isFinite(netReturn)) {
             // No closed trades: neutral return instead of a failed evaluation.
             netReturn = series.numFactory().zero();
