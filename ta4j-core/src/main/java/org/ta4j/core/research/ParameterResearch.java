@@ -1838,6 +1838,12 @@ public final class ParameterResearch {
         return candidateId + "\u0000" + windowId;
     }
 
+    /**
+     * Shared deterministic ranking: better primary score under the goal direction,
+     * then fewer repair notes, then lower evaluation ordinal, then canonical
+     * candidate ID lexicographically. Used by the training leaderboard, the holdout
+     * ranking, and engine-internal ordering.
+     */
     private static Comparator<EvaluatedCandidate> rankingComparator(Direction direction) {
         return (a, b) -> {
             int comparison = direction == Direction.MAXIMIZE ? b.score().compareTo(a.score())
