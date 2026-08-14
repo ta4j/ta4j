@@ -464,7 +464,7 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
-                strategyFailures.stream()
+                executionFailures.stream()
                         .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(), failure.cause()))
                         .toList());
     }
@@ -951,7 +951,7 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durationNanos, overallRuntime, strategyRuntimes);
 
         return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
-                strategyFailures.stream()
+                executionFailures.stream()
                         .map(failure -> new BacktestExecutionResult.StrategyFailure(failure.strategy(), failure.cause()))
                         .toList());
     }
