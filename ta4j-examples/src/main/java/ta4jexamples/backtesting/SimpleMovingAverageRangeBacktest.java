@@ -16,8 +16,10 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -41,7 +43,7 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  * <p>
  * The example searches fast/slow SMA periods plus stop-loss percentages,
  * rejects invalid fast/slow combinations, ranks candidates by a weighted
- * objective over net profit and return-over-max-drawdown, and checks whether
+ * objective over net return and return-over-max-drawdown, and checks whether
  * the selected training candidates survive a holdout window.
  * </p>
  */
@@ -170,12 +172,18 @@ public class SimpleMovingAverageRangeBacktest {
             // No trades or no drawdown: neutral ratio instead of a failed evaluation.
             returnOverDrawdown = series.numFactory().zero();
         }
-        // Normalize profit to a fraction of the starting capital so the 7:3
-        // weighting mixes unit-consistent terms; reported metrics stay raw.
-        Num profitFraction = netProfit.dividedBy(series.numFactory().numOf(STARTING_CAPITAL));
+        // Score the dimensionless net return (cost-adjusted, scale-invariant
+        // across price levels) so the 7:3 weighting mixes unit-consistent
+        // terms; reported metrics stay raw.
+        Num netReturn = new NetReturnCriterion(ReturnRepresentation.DECIMAL)
+                .calculate(series, statement.getTradingRecord());
+        if (!Num.isFinite(netReturn)) {
+            // No closed trades: neutral return instead of a failed evaluation.
+            netReturn = series.numFactory().zero();
+        }
         Num seven = series.numFactory().numOf(7);
         Num three = series.numFactory().numOf(3);
-        Num score = profitFraction.multipliedBy(seven).plus(returnOverDrawdown.multipliedBy(three));
+        Num score = netReturn.multipliedBy(seven).plus(returnOverDrawdown.multipliedBy(three));
         return ObjectiveEvaluation.of(score,
                 Map.of(NET_PROFIT, netProfit, RETURN_OVER_MAX_DRAWDOWN, returnOverDrawdown));
     }

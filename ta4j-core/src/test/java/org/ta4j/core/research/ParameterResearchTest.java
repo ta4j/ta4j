@@ -20,6 +20,7 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.CandidateValidator;
 import org.ta4j.core.research.ParameterResearch.Direction;
@@ -430,6 +431,22 @@ class ParameterResearchTest {
 
         assertThat(report.terminationReason()).isEqualTo(TerminationReason.TARGET_SCORE_REACHED);
         assertThat(report.counts().attempted()).isLessThanOrEqualTo(50);
+    }
+
+    @Test
+    void targetScoreRejectsNonFiniteValues() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 5)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)));
+
+        assertThrows(IllegalArgumentException.class, () -> builder.targetScore(NaN.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.targetScore(DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.targetScore(DoubleNum.valueOf(Double.NEGATIVE_INFINITY)));
     }
 
     @Test

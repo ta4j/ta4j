@@ -412,11 +412,15 @@ public final class ParameterResearch {
          *
          * @param targetScore objective value considered good enough
          * @return this builder
-         * @throws NullPointerException if {@code targetScore} is null
+         * @throws NullPointerException     if {@code targetScore} is null
+         * @throws IllegalArgumentException if {@code targetScore} is not finite
          * @since 0.24.2
          */
         public Builder<T> targetScore(Num targetScore) {
             this.targetScore = Objects.requireNonNull(targetScore, "targetScore");
+            if (!Num.isFinite(targetScore)) {
+                throw new IllegalArgumentException("targetScore must be finite, but was " + targetScore);
+            }
             return this;
         }
 

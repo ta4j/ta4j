@@ -5,12 +5,16 @@ package ta4jexamples.backtesting;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+
 import static org.junit.Assert.assertTrue;
+
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
+import org.ta4j.core.research.ParameterResearch.RankedCandidate;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
 public class SimpleMovingAverageRangeBacktestTest {
@@ -57,10 +61,29 @@ public class SimpleMovingAverageRangeBacktestTest {
         assertTrue(narrative.contains("Return Over Max Drawdown="));
     }
 
+    @Test
+    public void smaResearchRankingIsInvariantToPriceScale() {
+        ParameterResearchReport original = SimpleMovingAverageRangeBacktest
+                .runSmaResearch(buildSwingSeries(80), 20);
+        ParameterResearchReport scaled = SimpleMovingAverageRangeBacktest
+                .runSmaResearch(buildSwingSeries(80, 0.01), 20);
+
+        List<RankedCandidate> originalLeaderboard = original.trainingLeaderboard();
+        List<RankedCandidate> scaledLeaderboard = scaled.trainingLeaderboard();
+        assertEquals(originalLeaderboard.size(), scaledLeaderboard.size());
+        for (int i = 0; i < originalLeaderboard.size(); i++) {
+            assertEquals(originalLeaderboard.get(i).parameters(), scaledLeaderboard.get(i).parameters());
+        }
+    }
+
     private static BarSeries buildSwingSeries(int size) {
+        return buildSwingSeries(size, 1.0);
+    }
+
+    private static BarSeries buildSwingSeries(int size, double scale) {
         double[] prices = new double[size];
         for (int i = 0; i < size; i++) {
-            prices[i] = 100 + (i * 0.15) + (Math.sin(i / 4.0) * 6.0) + (Math.cos(i / 11.0) * 2.0);
+            prices[i] = scale * (100 + (i * 0.15) + (Math.sin(i / 4.0) * 6.0) + (Math.cos(i / 11.0) * 2.0));
         }
         return new MockBarSeriesBuilder().withData(prices).build();
     }
