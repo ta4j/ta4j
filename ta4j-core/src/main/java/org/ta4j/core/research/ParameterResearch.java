@@ -2147,11 +2147,12 @@ public final class ParameterResearch {
     /**
      * Dataset revision snapshot verified during the run.
      */
-    private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount, long barHistoryRevision) {
+    private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount, long barHistoryRevision,
+            int maxBarCount) {
 
         private SeriesSnapshot(BarSeries series) {
             this(series.getName(), series.getBeginIndex(), series.getEndIndex(), series.getBarCount(),
-                    series.getBarHistoryRevision());
+                    series.getBarHistoryRevision(), series.getMaximumBarCount());
         }
     }
 
@@ -2315,13 +2316,15 @@ public final class ParameterResearch {
     private static void verifyUnchanged(SeriesSnapshot snapshot, BarSeries series) {
         if (!Objects.equals(snapshot.name(), series.getName()) || snapshot.beginIndex() != series.getBeginIndex()
                 || snapshot.endIndex() != series.getEndIndex() || snapshot.barCount() != series.getBarCount()
-                || snapshot.barHistoryRevision() != series.getBarHistoryRevision()) {
+                || snapshot.barHistoryRevision() != series.getBarHistoryRevision()
+                || snapshot.maxBarCount() != series.getMaximumBarCount()) {
             throw new IllegalStateException("dataset changed during research: expected name='" + snapshot.name()
                     + "' beginIndex=" + snapshot.beginIndex() + " endIndex=" + snapshot.endIndex() + " barCount="
-                    + snapshot.barCount() + " barHistoryRevision=" + snapshot.barHistoryRevision()
-                    + ", but observed name='" + series.getName() + "' beginIndex=" + series.getBeginIndex()
-                    + " endIndex=" + series.getEndIndex() + " barCount=" + series.getBarCount() + " barHistoryRevision="
-                    + series.getBarHistoryRevision());
+                    + snapshot.barCount() + " barHistoryRevision=" + snapshot.barHistoryRevision() + " maxBarCount="
+                    + snapshot.maxBarCount() + ", but observed name='" + series.getName() + "' beginIndex="
+                    + series.getBeginIndex() + " endIndex=" + series.getEndIndex() + " barCount=" + series.getBarCount()
+                    + " barHistoryRevision=" + series.getBarHistoryRevision() + " maxBarCount="
+                    + series.getMaximumBarCount());
         }
     }
 

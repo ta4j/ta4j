@@ -172,6 +172,28 @@ class ParticleSwarmEngineTest {
                         new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
     }
 
+    @Test
+    void particleSwarmCountsStallMovesAgainstTheIterationLimit() {
+        // All-zero scripted draws pin both particles to index zero, so every
+        // batch after the first stalls on already-proposed points. Each retry
+        // move must consume an iteration, and the engine must stop at the
+        // iteration limit instead of burning the whole stall budget.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 0, 1)));
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.5, 0.5, 0.5, 0.2),
+                new ScriptedRandom(0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d, 0d), (a, b) -> 0,
+                Direction.MAXIMIZE, 3, -1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first).hasSize(2);
+        for (ParameterSet set : first) {
+            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, 0, DecimalNum.valueOf(1), Map.of()));
+        }
+
+        assertThat(engine.propose(2)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.ITERATION_LIMIT);
+        assertThat(engine.iterationsCompleted()).isEqualTo(3);
+    }
+
     /**
      * Deterministic {@link Random} feeding one scripted {@code nextDouble()} draw
      * per call; the particle-swarm engines use no other random primitive.

@@ -1130,6 +1130,54 @@ class ParameterResearchTest {
     }
 
     @Test
+    void gridRejectsEveryProposalAndStillTerminates() {
+        // A rejecting normalizer never shrinks the budget, so the grid keeps
+        // proposing until the space is exhausted. The engine must terminate
+        // with an exhausted space without retaining every proposed id.
+        BarSeries series = series(1d, 2d, 3d);
+
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize((data, name, value) -> null)
+                .search(SearchPlan.grid(1))
+                .run();
+        assertThat(report.counts().attempted()).isZero();
+        assertThat(report.counts().proposed()).isEqualTo(3);
+        // Zero successful evaluations overrides the engine-level exhaustion
+        // reason, matching the other all-rejected scenarios.
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+    }
+
+    @Test
+    void normalizerMutationOfWindowCapacityAbortsTheRun() {
+        // Structural changes that SeriesSnapshot tracks must abort the run,
+        // including maximum-bar-count changes: a normalizer can mutate the
+        // window and reject the proposal, which would otherwise corrupt the
+        // window silently for every later evaluation.
+        BarSeries series = series(1d, 2d, 3d);
+        final boolean[] mutated = { false };
+
+        assertThrows(IllegalStateException.class,
+                () -> ParameterResearch.<Integer>builder(series)
+                        .integer("a", 1, 2)
+                        .candidate((window, parameters) -> parameters.intValue("a"))
+                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                                .of(window.series().numFactory().numOf(candidate)))
+                        .normalize((data, name, value) -> {
+                            if (!mutated[0]) {
+                                mutated[0] = true;
+                                data.setMaximumBarCount(100);
+                            }
+                            return new ParameterValue(name, value, false, "");
+                        })
+                        .search(SearchPlan.grid(2))
+                        .run());
+    }
+
+    @Test
     void geneticCrossoverAtFullRateStillExploresBeyondParents() {
         // crossoverRate=1.0 must recombine via uniform parent-allele
         // selection, not clone the first parent: with mutation disabled a

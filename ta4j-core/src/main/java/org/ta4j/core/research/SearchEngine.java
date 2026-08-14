@@ -162,8 +162,16 @@ abstract class SearchEngine {
     }
 
     /**
+     * @return {@code true} when this engine retains the canonical id of every
+     *         proposal for deduplication and exhaustion accounting
+     */
+    protected boolean tracksProposals() {
+        return true;
+    }
+
+    /**
      * Builds a raw proposal from one canonical value index per dimension and
-     * registers it as proposed.
+     * registers it as proposed when the engine tracks proposals.
      *
      * @param indices one index per dimension
      * @return proposal
@@ -175,7 +183,9 @@ abstract class SearchEngine {
             values.add(new ParameterResearch.ParameterValue(spec.name(), spec.valueAt(indices[i]), false, ""));
         }
         ParameterResearch.ParameterSet set = new ParameterResearch.ParameterSet(values);
-        proposedIds.add(set.stableId());
+        if (tracksProposals()) {
+            proposedIds.add(set.stableId());
+        }
         return set;
     }
 

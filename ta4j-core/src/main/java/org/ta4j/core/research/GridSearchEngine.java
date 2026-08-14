@@ -53,6 +53,14 @@ final class GridSearchEngine extends SearchEngine {
     void observe(ParameterResearch.EvaluatedCandidate evaluated) {
         // Grid search is stateless between batches.
     }
+    @Override
+    protected boolean tracksProposals() {
+        // The odometer never revisits a combination and exhaustion is tracked
+        // by the emitted counter, so retaining every proposed id would only
+        // waste memory — unboundedly so when a normalizer or validator
+        // rejects everything and the budget never shrinks.
+        return false;
+    }
 
     @Override
     void finalizeObserved() {

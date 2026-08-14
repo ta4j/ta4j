@@ -167,7 +167,15 @@ final class ParticleSwarmEngine extends SearchEngine {
             if (gbestPosition == null) {
                 gbestPosition = particles.get(0).position.clone();
             }
+            // Each stall move consumes an iteration like any other swarm
+            // update, so a swarm pinned to already-proposed grid points
+            // cannot outrun the configured iteration limit.
             move();
+            completeIteration();
+            if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
+                terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
+                return List.of();
+            }
         }
         // STALL_MOVE_LIMIT full swarm moves without reaching a single unseen
         // grid point: the swarm is effectively converged, and no batch was
