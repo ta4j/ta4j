@@ -879,14 +879,26 @@ public final class StrategySerialization {
         if (value == null) {
             return 0;
         }
+        String text = String.valueOf(value).trim();
+        final int unstableBars;
         if (value instanceof Number) {
-            return ((Number) value).intValue();
+            try {
+                unstableBars = new BigDecimal(text).intValueExact();
+            } catch (NumberFormatException | ArithmeticException ex) {
+                throw new IllegalArgumentException("Expected integer value at " + UNSTABLE_BARS_KEY + ": " + text, ex);
+            }
+        } else {
+            if (!isIntegerLiteral(text)) {
+                throw new IllegalArgumentException("Expected integer value at " + UNSTABLE_BARS_KEY + ": " + text);
+            }
+            try {
+                unstableBars = Integer.parseInt(text);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Expected integer value at " + UNSTABLE_BARS_KEY + ": " + text, ex);
+            }
         }
-        try {
-            return Integer.parseInt(String.valueOf(value));
-        } catch (NumberFormatException e) {
-            return 0;
-        }
+        requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
+        return unstableBars;
     }
 
     private static TradeType extractStartingType(Object value) {
@@ -896,10 +908,11 @@ public final class StrategySerialization {
         if (value instanceof TradeType tradeType) {
             return tradeType;
         }
+        String text = String.valueOf(value).trim();
         try {
-            return TradeType.valueOf(String.valueOf(value).trim().toUpperCase(Locale.ROOT));
+            return TradeType.valueOf(text.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            return TradeType.BUY;
+            throw new IllegalArgumentException("Unsupported starting type at " + STARTING_TYPE_KEY + ": " + text, ex);
         }
     }
 
