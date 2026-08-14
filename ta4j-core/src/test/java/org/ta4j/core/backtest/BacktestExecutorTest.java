@@ -532,6 +532,9 @@ public class BacktestExecutorTest {
 
         assertEquals(3, result.tradingStatements().size());
         assertEquals(3, result.runtimeReport().strategyCount());
+        assertEquals(1, result.strategyFailures().size());
+        assertSame(throwing, result.strategyFailures().getFirst().strategy());
+        assertEquals("boom", result.strategyFailures().getFirst().cause().getMessage());
 
         List<BacktestExecutor.StrategyFailure> failures = executor.getStrategyFailures();
         assertEquals(1, failures.size());
