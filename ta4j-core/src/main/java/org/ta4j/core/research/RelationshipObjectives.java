@@ -173,7 +173,7 @@ final class RelationshipObjectives {
      * @return objective function over the searched indicator
      * @throws NullPointerException     if the reference builder or the config is
      *                                  null
-     * @throws IllegalArgumentException if {@code barCount <= 0}
+     * @throws IllegalArgumentException if {@code barCount < 2}
      * @since 0.24.2
      */
     static ParameterResearch.ObjectiveFunction<Indicator<Num>> dynamicTimeWarpingDistance(
@@ -181,8 +181,8 @@ final class RelationshipObjectives {
             DynamicTimeWarpingDistanceIndicator.Config config) {
         Objects.requireNonNull(referenceBuilder, "referenceBuilder");
         Objects.requireNonNull(config, "config");
-        if (barCount <= 0) {
-            throw new IllegalArgumentException("barCount must be > 0");
+        if (barCount < 2) {
+            throw new IllegalArgumentException("barCount must be at least 2");
         }
         return (candidate, window) -> {
             try {

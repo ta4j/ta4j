@@ -203,6 +203,14 @@ class RelationshipObjectivesTest {
     }
 
     @Test
+    void dynamicTimeWarpingRejectsWindowBelowTwoBars() {
+        assertThatThrownBy(() -> RelationshipObjectives.dynamicTimeWarpingDistance(
+                windowSeries -> new ClosePriceIndicator(windowSeries), 1,
+                DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(2)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void eventMutualInformationRanksFiniteScores() {
         ParameterResearchReport report = ParameterResearch.builder(waveSeries(60))
                 .integer("lookback", 1, 3)
