@@ -244,13 +244,13 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         // Recovery: EMA resets to the first stable RSI value instead of remaining NaN
         assertThat(emaOnRsi.getValue(3)).isEqualByComparingTo(firstRsiValue);
 
-        Num multiplier = numFactory.two().dividedBy(numFactory.numOf(emaOnRsi.getBarCount() + 1));
-
-        Num expectedIndex4 = firstRsiValue.plus(rsi.getValue(4).minus(firstRsiValue).multipliedBy(multiplier));
-        assertThat(emaOnRsi.getValue(4)).isEqualByComparingTo(expectedIndex4);
-
-        Num expectedIndex5 = expectedIndex4.plus(rsi.getValue(5).minus(expectedIndex4).multipliedBy(multiplier));
-        assertThat(emaOnRsi.getValue(5)).isEqualByComparingTo(expectedIndex5);
+        // Independently computed reference values: Wilder RSI(3) on the closes
+        // [1,2,3,4,3,4,5] gives RSI(4) = 100 - 100/(1 + (2/3)/(1/3)) = 66.666..., so
+        // EMA(4) = 100 + (66.666... - 100) * 2/3 = 77.777...; RSI(5) equals 77.777...,
+        // so the recurrence leaves EMA(5) = EMA(4) = 77.777... (agreed by both Num
+        // factories within GENERAL_OFFSET).
+        assertNumEquals(77.7778, emaOnRsi.getValue(4));
+        assertNumEquals(77.7778, emaOnRsi.getValue(5));
     }
 
     @Test

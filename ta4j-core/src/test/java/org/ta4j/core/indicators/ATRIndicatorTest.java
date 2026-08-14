@@ -82,7 +82,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .openPrice(0)
                 .closePrice(0)
                 .highPrice(0)
-                .lowPrice(2)
+                .lowPrice(0)
                 .volume(0)
                 .amount(0)
                 .trades(0)

@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -107,10 +108,11 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void returnsNanWhenEncounteringInvalidData() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().closePrice(10).highPrice(10).lowPrice(10).volume(1).add();
-        series.barBuilder().closePrice(11).highPrice(11).lowPrice(11).volume(-1).add();
+        series.barBuilder().closePrice(11).highPrice(11).lowPrice(11).volume(1).add();
         series.barBuilder().closePrice(12).highPrice(12).lowPrice(12).volume(1).add();
 
-        var vwap = new VWAPIndicator(series, 2);
+        var volume = new MockIndicator(series, 0, numOf(1), numOf(-1), numOf(1));
+        var vwap = new VWAPIndicator(new TypicalPriceIndicator(series), volume, 2);
 
         assertThat(vwap.getValue(1).isNaN()).isTrue();
         assertThat(vwap.getValue(2).isNaN()).isTrue();

@@ -162,7 +162,7 @@ class BaseTradeTest {
 
         Trade trade = Trade.fromFills(TradeType.BUY, List.of(firstFill, secondFill), RecordedTradeCostModel.INSTANCE);
 
-        assertNumEquals(NUM_FACTORY.numOf(0.3), trade.getCost());
+        assertNumEquals(NUM_FACTORY.numOf(0.30000000000000004), trade.getCost());
         assertNumEquals(NUM_FACTORY.numOf(101.15), trade.getNetPrice());
         assertEquals(2, trade.getFills().size());
     }

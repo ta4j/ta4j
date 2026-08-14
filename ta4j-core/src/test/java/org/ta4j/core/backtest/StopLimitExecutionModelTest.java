@@ -10,6 +10,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -415,6 +420,89 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
         assertEquals(1, tradingRecord.getTrades().size());
         assertEquals(ExecutionSide.SELL, tradingRecord.getTrades().getFirst().getFills().getFirst().side());
+    }
+
+    @Test
+    public void concurrentExecutionsOnSharedModelKeepAllOrders() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                2);
+        int threadCount = 8;
+        int recordsPerThread = 12;
+        int trials = 3;
+
+        for (int trial = 0; trial < trials; trial++) {
+            ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch startGate = new CountDownLatch(1);
+            List<Future<List<RecordOutcome>>> futures = new ArrayList<>(threadCount);
+            try {
+                for (int t = 0; t < threadCount; t++) {
+                    futures.add(pool.submit(() -> {
+                        startGate.await();
+                        return driveRecordsOnSharedModel(model, series, recordsPerThread);
+                    }));
+                }
+                startGate.countDown();
+                for (Future<List<RecordOutcome>> future : futures) {
+                    for (RecordOutcome outcome : future.get(30, TimeUnit.SECONDS)) {
+                        // Expiry commits the filled portion as one trade per fill
+                        assertEquals(2, outcome.tradeCount());
+                        assertEquals(numFactory.numOf(4), outcome.totalTradeAmount());
+                        assertEquals(2, outcome.rejectionCount());
+                        assertFalse(outcome.pendingOrderPresent());
+                    }
+                }
+            } finally {
+                pool.shutdown();
+            }
+        }
+    }
+
+    private List<RecordOutcome> driveRecordsOnSharedModel(StopLimitExecutionModel model, BarSeries series,
+            int recordsPerThread) {
+        List<TradingRecord> records = new ArrayList<>(recordsPerThread);
+        for (int r = 0; r < recordsPerThread; r++) {
+            TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY);
+            records.add(record);
+            model.execute(0, record, series, numFactory.numOf(10));
+        }
+        List<RecordOutcome> outcomes = new ArrayList<>(recordsPerThread);
+        for (TradingRecord record : records) {
+            // Second signal while a pending order exists -> rejection
+            model.execute(0, record, series, numFactory.numOf(10));
+            // First partial fill on the activation bar (no expiry yet)
+            model.onBar(0, record, series);
+            // Second partial fill, then expiry (maxBarsToFill=2) commits the filled
+            // portion as one trade per fill
+            model.onBar(1, record, series);
+            // No pending order left, so this must be a no-op
+            model.onBar(2, record, series);
+            // Still no pending order, so this must be a no-op
+            model.onRunEnd(2, record);
+
+            List<Trade> trades = record.getTrades();
+            Num totalTradeAmount = null;
+            for (Trade trade : trades) {
+                totalTradeAmount = totalTradeAmount == null ? trade.getAmount()
+                        : totalTradeAmount.plus(trade.getAmount());
+            }
+            outcomes.add(new RecordOutcome(trades.size(), totalTradeAmount, model.getRejectedOrders(record).size(),
+                    model.getPendingOrder(record).isPresent()));
+        }
+        return outcomes;
+    }
+
+    /**
+     * Per-record outcome of one concurrent drive: the expiry commits the filled
+     * portion as one trade per fill (2 x 2), two rejections (ignored-while-pending,
+     * expired-partial), and no leftover pending order.
+     */
+    private record RecordOutcome(int tradeCount, Num totalTradeAmount, int rejectionCount,
+            boolean pendingOrderPresent) {
     }
 
     private static final class LegacyTradingRecordWithoutLotExposure implements TradingRecord {

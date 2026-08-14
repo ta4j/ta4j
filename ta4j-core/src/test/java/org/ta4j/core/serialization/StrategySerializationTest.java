@@ -685,6 +685,32 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void canonicalPayloadRejectsMalformedStrategyParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":1.9}");
+        IllegalArgumentException unstableBarsException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+        assertThat(unstableBarsException).hasMessageContaining("unstableBars").hasMessageContaining("1.9");
+
+        String malformedStartingType = canonicalStrategyJson("{\"startingType\":\"HOLD\"}");
+        IllegalArgumentException startingTypeException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedStartingType));
+        assertThat(startingTypeException).hasMessageContaining("starting type").hasMessageContaining("HOLD");
+    }
+
+    @Test
+    public void canonicalPayloadRejectsMissingUnstableBarsValue() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":null}");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+
+        assertThat(exception).hasMessageContaining("unstableBars");
+    }
+
+    @Test
     public void versionTwoPayloadRejectsNonJsonIntegerObjectValues() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
 
@@ -1200,10 +1226,10 @@ public class StrategySerializationTest {
     }
 
     @Test
-    public void customStrategyOutsideCorePackageUsesFullyQualifiedName() {
-        // Test that strategies outside org.ta4j.core use fully qualified names
-        // We'll manually create a descriptor with a fully qualified name to simulate
-        // a strategy from a different package (e.g., com.example.MyStrategy)
+    public void fromDescriptorFailsLoudForUnresolvableStrategyType() {
+        // Strategies outside org.ta4j.core carry fully qualified names, but a type
+        // that cannot be resolved on the classpath must fail loudly instead of
+        // silently falling back to BaseStrategy.
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
 
         // Create a descriptor with a fully qualified name outside org.ta4j.core
@@ -1223,12 +1249,36 @@ public class StrategySerializationTest {
                         .build())
                 .build();
 
-        // This should fail to resolve the class and fall back to BaseStrategy
-        // But the important thing is that the deserializer can handle fully qualified
-        // names
-        Strategy restored = StrategySerialization.fromDescriptor(series, descriptor);
-        assertThat(restored).isInstanceOf(BaseStrategy.class);
-        assertThat(restored.getName()).isEqualTo("TestStrategy");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, descriptor));
+        assertThat(exception.getMessage()).contains("Unknown strategy type: com.example.CustomStrategy");
+    }
+
+    @Test
+    public void fromDescriptorFailsLoudForTypeThatIsNotAStrategy() {
+        // A resolvable class that does not implement Strategy must fail loudly
+        // instead of silently falling back to BaseStrategy.
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(String.class.getName())
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("entry")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, descriptor));
+        assertThat(exception.getMessage()).contains("Descriptor type does not implement Strategy: java.lang.String");
     }
 
     @Test
@@ -1271,6 +1321,35 @@ public class StrategySerializationTest {
         TradingRecord record = new BaseTradingRecord();
         assertThat(restored.shouldEnter(3, record)).isTrue();
         assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
+    @Test
+    public void fromJsonRejectsUnknownStrategyType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String json = "{\"type\":\"NoSuchStrategy\",\"parameters\":{\"unstableBars\":0},\"rules\":[]}";
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, json));
+        assertThat(exception.getMessage()).contains("Unknown strategy type: NoSuchStrategy");
+    }
+
+    @Test
+    public void fromJsonFailsLoudWhenStrategyTypeHasNoSuitableConstructor() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        Strategy strategy = new NoSuitableConstructorStrategy(
+                List.of(new SerializableRule(true), new SerializableRule(false)));
+
+        String json = strategy.toJson();
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> Strategy.fromJson(series, json));
+        assertThat(exception.getMessage()).contains("No suitable constructor found for strategy type");
+    }
+
+    private static final class NoSuitableConstructorStrategy extends BaseStrategy {
+
+        private NoSuitableConstructorStrategy(List<Rule> rules) {
+            super(rules.get(0), rules.get(1), 0);
+        }
     }
 
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
@@ -1444,6 +1523,14 @@ public class StrategySerializationTest {
             token = token.substring(1);
         }
         return Integer.parseInt(token);
+    }
+
+    private static String canonicalStrategyJson(String parameters) {
+        String ruleType = SerializableRule.class.getName();
+        return "{\"type\":\"BaseStrategy\",\"label\":\"MalformedCanonical\"," + "\"parameters\":" + parameters
+                + ",\"rules\":[" + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}}," + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
     }
 
     private static ComponentDescriptor shortMacroDescriptor() {

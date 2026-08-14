@@ -114,6 +114,48 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
     }
 
     /**
+     * Verifies that cached snapshots refresh when the forming bar is replaced.
+     */
+    @Test
+    public void shouldRefreshSnapshotAfterFormingBarReplacement() {
+        var tracker = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
+        tracker.snapshot(4);
+
+        series.addBar(
+                series.barBuilder().openPrice(15).highPrice(16).lowPrice(14.5).closePrice(15.5).volume(100).build(),
+                true);
+
+        var fresh = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
+        var refreshed = tracker.snapshot(series.getEndIndex());
+        var expected = fresh.snapshot(series.getEndIndex());
+        assertThat(refreshed.rangeHigh()).isEqualByComparingTo(expected.rangeHigh());
+        assertThat(refreshed.rangeLow()).isEqualByComparingTo(expected.rangeLow());
+        assertThat(refreshed.rangeHighIndex()).isEqualTo(expected.rangeHighIndex());
+        assertThat(refreshed.closePrice()).isEqualByComparingTo(expected.closePrice());
+        assertThat(refreshed.inRange()).isEqualTo(expected.inRange());
+        assertThat(refreshed.brokeAboveRange()).isEqualTo(expected.brokeAboveRange());
+    }
+
+    /**
+     * Verifies that cached snapshots refresh after the retained window rolls.
+     */
+    @Test
+    public void shouldRefreshSnapshotAfterRollingWindowRemoval() {
+        var tracker = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
+        tracker.snapshot(4);
+
+        series.setMaximumBarCount(4);
+
+        var fresh = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
+        var refreshed = tracker.snapshot(series.getEndIndex());
+        var expected = fresh.snapshot(series.getEndIndex());
+        assertThat(refreshed.rangeHigh()).isEqualByComparingTo(expected.rangeHigh());
+        assertThat(refreshed.rangeLow()).isEqualByComparingTo(expected.rangeLow());
+        assertThat(refreshed.closePrice()).isEqualByComparingTo(expected.closePrice());
+        assertThat(refreshed.inRange()).isEqualTo(expected.inRange());
+    }
+
+    /**
      * Adds bar.
      */
     private void addBar(BarSeries target, double open, double high, double low, double close) {
