@@ -724,6 +724,31 @@ class ParameterResearchTest {
     }
 
     @Test
+    void decimalDomainConsolidatesAboveHalfUlpCollisions() {
+        // Step 1.1 exceeds half the ULP at 1e16 (1.0) but is still below the
+        // full ULP (2.0): the four declared positions canonicalize as 1e16,
+        // 1e16 + 2, 1e16 + 2, and 1e16 + 4, so the domain must collapse the
+        // duplicated middle position instead of declaring four points.
+        BarSeries series = series(1d, 2d, 3d);
+        List<String> evaluated = new ArrayList<>();
+        ParameterResearchReport report = ParameterResearch.<String>builder(series)
+                .decimal("a", 1e16, 1e16 + 4d, 1.1d)
+                .candidate((window, parameters) -> parameters.value("a"))
+                .maximize((candidate, window) -> {
+                    evaluated.add(candidate);
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(1));
+                })
+                .search(SearchPlan.grid(4))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.counts().attempted()).isEqualTo(3);
+        assertThat(report.counts().proposed()).isEqualTo(3);
+        assertThat(report.counts().duplicate()).isZero();
+        assertThat(evaluated).containsExactly("10000000000000000", "10000000000000002", "10000000000000004");
+    }
+
+    @Test
     void decimalDomainRejectsUnverifiableCollapse() {
         // More than 100_000 declared positions collapse at a step below half-ULP
         // precision; eager distinct-value verification is refused instead of
@@ -818,6 +843,44 @@ class ParameterResearchTest {
         assertThat(report.trainingLeaderboard()).hasSize(2);
         assertThat(report.trainingLeaderboard().getFirst().parameters().intValue("a")).isEqualTo(1);
         assertThat(report.trainingLeaderboard().getFirst().trainingScore().doubleValue()).isEqualTo(10d);
+    }
+
+    @Test
+    void compareScoresIsSymmetricAcrossFactories() {
+        // 0.1 as a double is slightly above the decimal 0.1, so the decimal
+        // literal below is strictly greater. Coercing the right operand into
+        // the left factory used to report equality in one direction only;
+        // the comparison must agree from both directions.
+        Num decimal = DecimalNum.valueOf("0.100000000000000001");
+        Num floating = DoubleNum.valueOf(0.1);
+
+        assertThat(ParameterResearch.compareScores(decimal, floating)).isPositive();
+        assertThat(ParameterResearch.compareScores(floating, decimal)).isNegative();
+        assertThat(ParameterResearch.compareScores(decimal, floating))
+                .isEqualTo(-ParameterResearch.compareScores(floating, decimal));
+    }
+
+    @Test
+    void holdoutDeltaToleratesMixedNumFactories() {
+        // A valid objective may return DecimalNum during training and
+        // DoubleNum during holdout; report-building score deltas must not
+        // throw ClassCastException when subtracting across factories.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 1)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.phase() == ResearchWindow.WindowPhase.TRAINING ? DecimalNum.valueOf(2)
+                                : DoubleNum.valueOf(1)))
+                .search(SearchPlan.grid(1))
+                .holdoutBarCount(2)
+                .run();
+
+        assertThat(report.counts().failed()).isZero();
+        assertThat(report.trainingLeaderboard()).isNotEmpty();
+        assertThat(report.trainingLeaderboard().getFirst().scoreDelta().doubleValue()).isEqualTo(-1d);
+        assertThat(report.holdoutLeaderboard()).isNotEmpty();
+        assertThat(report.holdoutLeaderboard().getFirst().scoreDelta().doubleValue()).isEqualTo(-1d);
     }
 
     @Test

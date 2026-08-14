@@ -75,15 +75,16 @@ final class DomainSpec {
             }
             long count = ratio.setScale(0, RoundingMode.FLOOR).longValueExact() + 1L;
             int cardinality = checkedCardinality(d.name(), count);
-            // When the step is at or below half the ULP of the largest magnitude
-            // in the range, consecutive declared positions collapse to the same
-            // double. Enumerate the distinct canonical values eagerly so the
-            // reported cardinality matches the values that can actually be
-            // evaluated, keeping search-space exhaustion honest.
-            if (d.step() <= Math.ulp(Math.max(Math.abs(d.from()), Math.abs(d.to()))) / 2d) {
+            // Whenever the step is below the ULP at the range's largest
+            // magnitude, consecutive declared positions can collapse to the
+            // same double (steps between half and one ULP can still merge
+            // pairs of positions). Enumerate the distinct canonical values
+            // eagerly so the reported cardinality matches the values that can
+            // actually be evaluated, keeping search-space exhaustion honest.
+            if (d.step() < Math.ulp(Math.max(Math.abs(d.from()), Math.abs(d.to())))) {
                 if (cardinality > COLLAPSE_VERIFICATION_LIMIT) {
                     throw new IllegalArgumentException("Domain '" + d.name() + "' declares " + cardinality
-                            + " values at a step below half-ULP precision; double arithmetic cannot represent "
+                            + " values at a step below ULP precision; double arithmetic cannot represent "
                             + "the declared positions distinctly");
                 }
                 List<String> distinct = new ArrayList<>(cardinality);
@@ -198,16 +199,6 @@ final class DomainSpec {
             return cardinality - 1;
         }
         return index;
-    }
-
-    /**
-     * Continuous position of a grid index.
-     *
-     * @param index grid index
-     * @return continuous position
-     */
-    double positionOf(int index) {
-        return lowerBound + index * step;
     }
 
     /**

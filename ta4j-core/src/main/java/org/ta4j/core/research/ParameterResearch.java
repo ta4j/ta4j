@@ -633,7 +633,7 @@ public final class ParameterResearch {
                 HoldoutEvaluation holdout = holdoutById.get(evaluated.candidateId());
                 Integer holdoutRank = holdout == null ? null : holdout.holdoutRank();
                 Num holdoutScore = holdout == null ? null : holdout.evaluation().score();
-                Num scoreDelta = holdout == null ? null : holdoutScore.minus(evaluated.score());
+                Num scoreDelta = holdout == null ? null : subtractScores(holdoutScore, evaluated.score());
                 trainingLeaderboard.add(new RankedCandidate(evaluated.candidateId(), evaluated.parameters(), i + 1,
                         holdoutRank, evaluated.score(), holdoutScore, scoreDelta, evaluated.metrics(),
                         holdout == null ? Map.of() : holdout.evaluation().metrics()));
@@ -811,7 +811,7 @@ public final class ParameterResearch {
                 RankedCandidate row = new RankedCandidate(evaluation.evaluation().candidateId(),
                         evaluation.evaluation().parameters(), evaluation.trainingRank(), rank,
                         evaluation.training().score(), evaluation.evaluation().score(),
-                        evaluation.evaluation().score().minus(evaluation.training().score()),
+                        subtractScores(evaluation.evaluation().score(), evaluation.training().score()),
                         evaluation.training().metrics(), evaluation.evaluation().metrics());
                 leaderboard.add(row);
                 byId.put(row.candidateId(), new HoldoutEvaluation(evaluation.training(), evaluation.evaluation(),
@@ -1318,6 +1318,20 @@ public final class ParameterResearch {
     }
 
     /**
+     * Canonical {@code name=value} token shared by proposal registration
+     * ({@link ParameterSet#stableId()}) and engine lookups
+     * ({@link SearchEngine#canonicalId(int[])}); both formats must stay
+     * byte-identical.
+     *
+     * @param name  escaped parameter name
+     * @param value escaped canonical value
+     * @return escaped name-value token
+     */
+    static String canonicalToken(String name, String value) {
+        return escapeToken(name) + "=" + escapeToken(value);
+    }
+
+    /**
      * Ordered normalized parameter set.
      *
      * @param values canonical values in declaration order
@@ -1476,8 +1490,7 @@ public final class ParameterResearch {
         public String stableId() {
             StringJoiner joiner = new StringJoiner("|");
             for (ParameterValue value : values) {
-                joiner.add(ParameterResearch.escapeToken(value.name()) + "="
-                        + ParameterResearch.escapeToken(value.value()));
+                joiner.add(ParameterResearch.canonicalToken(value.name(), value.value()));
             }
             return joiner.toString();
         }
@@ -2105,10 +2118,11 @@ public final class ParameterResearch {
      * {@code Num.compareTo} implementations may reject foreign instances (for
      * example {@link org.ta4j.core.num.DecimalNum#compareTo} casts to
      * {@code DecimalNum}); instead of coercing scores at evaluation time — which
-     * would destroy decimal precision — the foreign score is parsed through the
-     * left operand's factory using its exact {@code toString()} representation. NaN
-     * scores are ordered after everything else, so an objective that declares
-     * failure for non-finite scores keeps its ranking behavior.
+     * would destroy decimal precision — cross-factory scores are compared through
+     * exact {@link BigDecimal} values built from both {@code getDelegate()}
+     * strings, so the comparison is symmetric and preserves decimal precision in
+     * both operands. NaN scores are ordered after everything else, so an objective
+     * that declares failure for non-finite scores keeps its ranking behavior.
      * </p>
      *
      * @param left  first score
@@ -2125,7 +2139,25 @@ public final class ParameterResearch {
         if (left.getClass() == right.getClass()) {
             return left.compareTo(right);
         }
-        return left.compareTo(left.getNumFactory().numOf(right.toString()));
+        return new BigDecimal(left.getDelegate().toString()).compareTo(new BigDecimal(right.getDelegate().toString()));
+    }
+
+    /**
+     * Subtracts {@code subtrahend} from {@code minuend}, tolerating scores produced
+     * by different {@link NumFactory} implementations: a foreign subtrahend is
+     * parsed through the minuend's factory using its exact {@code toString()}
+     * representation before subtracting, mirroring the mixed-factory handling in
+     * {@link #compareScores(Num, Num)}.
+     *
+     * @param minuend    score to subtract from
+     * @param subtrahend score to subtract
+     * @return {@code minuend - subtrahend} in the minuend's factory
+     */
+    static Num subtractScores(Num minuend, Num subtrahend) {
+        if (minuend.getClass() == subtrahend.getClass()) {
+            return minuend.minus(subtrahend);
+        }
+        return minuend.minus(minuend.getNumFactory().numOf(subtrahend.toString()));
     }
 
     /**

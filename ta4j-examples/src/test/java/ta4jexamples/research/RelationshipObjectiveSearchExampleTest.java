@@ -135,6 +135,7 @@ public class RelationshipObjectiveSearchExampleTest {
 
         assertEquals(ObjectiveEvaluation.Status.VALID, cleanScore.status());
         assertEquals(cleanScore.score().doubleValue(), contaminatedScore.score().doubleValue(), 1e-12);
+        assertEquals(ObjectiveEvaluation.Status.VALID, contaminatedScore.status());
     }
 
     @Test

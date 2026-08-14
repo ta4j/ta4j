@@ -129,9 +129,7 @@ abstract class SearchEngine {
             if (i > 0) {
                 id.append('|');
             }
-            id.append(ParameterResearch.escapeToken(specs.get(i).name()))
-                    .append('=')
-                    .append(ParameterResearch.escapeToken(specs.get(i).valueAt(indices[i])));
+            id.append(ParameterResearch.canonicalToken(specs.get(i).name(), specs.get(i).valueAt(indices[i])));
         }
         return id.toString();
     }
