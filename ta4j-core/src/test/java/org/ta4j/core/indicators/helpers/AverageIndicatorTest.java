@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -86,29 +87,29 @@ public class AverageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         assertEquals(sma.getCountOfUnstableBars(), averageIndicator.getCountOfUnstableBars());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void indicatorShouldFailOnNull() {
-        new AverageIndicator();
+        assertThrows(IllegalArgumentException.class, AverageIndicator::new);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void indicatorShouldFailOnEmptyList() {
-        new AverageIndicator(Collections.emptyList());
+        assertThrows(IllegalArgumentException.class, () -> new AverageIndicator(Collections.emptyList()));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void indicatorShouldFailOnListContainsNull() {
-        new AverageIndicator(Arrays.asList(one, null));
+        assertThrows(IllegalArgumentException.class, () -> new AverageIndicator(Arrays.asList(one, null)));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void indicatorShouldFailOnNullVarargsArray() {
-        new AverageIndicator((Indicator<Num>[]) null);
+        assertThrows(IllegalArgumentException.class, () -> new AverageIndicator((Indicator<Num>[]) null));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void indicatorShouldFailOnDifferentSeries() {
         BarSeries other = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
-        new AverageIndicator(one, new ClosePriceIndicator(other));
+        assertThrows(IllegalArgumentException.class, () -> new AverageIndicator(one, new ClosePriceIndicator(other)));
     }
 }

@@ -32,8 +32,8 @@ public class AndWithThresholdRule extends AbstractRule {
      */
     private final int threshold;
 
-    /** The first retained bar index of the backing series, or {@code 0}. */
-    private final int beginIndex;
+    /** The backing series, or {@code null} when neither rule exposes one. */
+    private final BarSeries series;
 
     /**
      * Constructor.
@@ -51,15 +51,8 @@ public class AndWithThresholdRule extends AbstractRule {
         this.rule1 = config.rule1();
         this.rule2 = config.rule2();
         this.threshold = config.threshold();
-        this.beginIndex = findBeginIndex(rule1, rule2);
+        this.series = RuleCopies.findBarSeries(rule1).or(() -> RuleCopies.findBarSeries(rule2)).orElse(null);
         setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
-    }
-
-    private static int findBeginIndex(Rule rule1, Rule rule2) {
-        return RuleCopies.findBarSeries(rule1)
-                .or(() -> RuleCopies.findBarSeries(rule2))
-                .map(BarSeries::getBeginIndex)
-                .orElse(0);
     }
 
     private static Config validatedConfig(Rule rule1, Rule rule2, int threshold) {
@@ -73,6 +66,7 @@ public class AndWithThresholdRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        int beginIndex = series == null ? 0 : series.getBeginIndex();
         int windowStart = index - this.threshold + 1;
         if (windowStart < beginIndex) {
             if (isTraceEnabled()) {

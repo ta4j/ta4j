@@ -511,6 +511,25 @@ public class ElliottWaveIndicatorSuiteDemo {
     }
 
     /**
+     * Auto-selects an Elliott degree from the bar series duration and history size.
+     * <p>
+     * This helper is exposed for demo entry points that should default to the same
+     * recommendation logic as this suite. It delegates to
+     * {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}.
+     *
+     * @param series bar series used for recommendation
+     * @return recommended degree, or {@link #DEFAULT_DEGREE} when recommendation
+     *         cannot be derived
+     * @since 0.24.2
+     * @deprecated use {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}
+     *             instead
+     */
+    @Deprecated(since = "0.24.2", forRemoval = false)
+    public static ElliottDegree autoSelectDegree(BarSeries series) {
+        return ElliottWaveDemoSupport.autoSelectDegree(series);
+    }
+
+    /**
      * Parses an explicit degree token from {@code args[3]} when present.
      * <p>
      * This method is only active when {@link #hasDegreeToken(String[])} returns

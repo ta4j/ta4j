@@ -275,9 +275,15 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
+        // Primary mode follows the primary scenario's direction. The other modes
+        // fold levels across scenarios, so the sign follows the selected level's
+        // position relative to the current price instead.
+        final boolean bullish = mode == InvalidationMode.PRIMARY ? primary.get().isBullish()
+                : currentPrice.isGreaterThan(invalidation);
+
         // For bullish, distance = current - invalidation (positive if above)
         // For bearish, distance = invalidation - current (positive if below)
-        if (primary.get().isBullish()) {
+        if (bullish) {
             return currentPrice.minus(invalidation);
         } else {
             return invalidation.minus(currentPrice);

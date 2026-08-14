@@ -503,6 +503,43 @@ public class BacktestExecutorTest {
     }
 
     @Test
+    public void executeAndKeepTopKExcludesFailedDurationsFromRuntimeReport() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy slowThrowing = new SlowThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, slowThrowing), numOf(1),
+                Trade.TradeType.BUY, new NumberOfBarsCriterion(), 2, null);
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        assertEquals(1, report.strategyCount());
+        // The ~200ms failing duration must not pollute the aggregated statistics:
+        // with one successful strategy, min and max coincide.
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+    }
+
+    @Test
+    public void executeWithRuntimeReportExcludesFailedDurations() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy slowThrowing = new SlowThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(healthy, slowThrowing), numOf(1));
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        assertEquals(1, report.strategyCount());
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+    }
+
+    @Test
     public void executeAndKeepTopKThrowsWhenAllStrategiesFail() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
 
@@ -871,6 +908,30 @@ public class BacktestExecutorTest {
 
         @Override
         public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            throw failure;
+        }
+    }
+
+    /**
+     * Strategy that sleeps before failing, used to verify that failed strategy
+     * durations are excluded from runtime report aggregation.
+     */
+    private static final class SlowThrowingStrategy extends BaseStrategy {
+
+        private final RuntimeException failure;
+
+        private SlowThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure) {
+            super(entryRule, exitRule);
+            this.failure = failure;
+        }
+
+        @Override
+        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             throw failure;
         }
     }

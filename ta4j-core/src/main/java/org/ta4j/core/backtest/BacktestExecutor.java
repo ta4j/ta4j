@@ -456,14 +456,18 @@ public class BacktestExecutor {
         }
 
         List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(strategyCount);
+        long[] successfulDurations = new long[strategyCount];
+        int successfulCount = 0;
         for (int i = 0; i < strategyCount; i++) {
             if (statements[i] != null) {
                 strategyRuntimes.add(
                         new BacktestRuntimeReport.StrategyRuntime(strategyArray[i], Duration.ofNanos(durations[i])));
+                successfulDurations[successfulCount++] = durations[i];
             }
         }
 
-        BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
+        BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
+                overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
                 executionFailures.stream().toList());
     }
@@ -855,6 +859,7 @@ public class BacktestExecutor {
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
         long[] durationNanos = new long[strategyCount];
+        boolean[] successFlags = new boolean[strategyCount];
 
         // Process in batches
         for (int batchStart = 0; batchStart < strategyCount; batchStart += batchSize) {
@@ -875,6 +880,7 @@ public class BacktestExecutor {
                             seriesManager.getBarSeries());
                     long duration = System.nanoTime() - strategyStart;
                     durationNanos[globalIndex] = duration;
+                    successFlags[globalIndex] = true;
                     Num criterionValue = criterion.calculate(seriesManager.getBarSeries(),
                             statement.getTradingRecord());
                     batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
@@ -931,8 +937,16 @@ public class BacktestExecutor {
                     .add(new BacktestRuntimeReport.StrategyRuntime(evaluation.statement().getStrategy(), runtime));
         }
 
-        // Calculate summary statistics from saved durations
-        BacktestRuntimeReport runtimeReport = buildRuntimeReport(durationNanos, overallRuntime, strategyRuntimes);
+        // Calculate summary statistics from successful durations only
+        long[] successfulDurations = new long[strategyCount];
+        int successfulCount = 0;
+        for (int i = 0; i < strategyCount; i++) {
+            if (successFlags[i]) {
+                successfulDurations[successfulCount++] = durationNanos[i];
+            }
+        }
+        BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
+                overallRuntime, strategyRuntimes);
 
         return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
                 executionFailures.stream().toList());

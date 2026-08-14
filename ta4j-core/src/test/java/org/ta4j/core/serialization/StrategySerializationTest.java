@@ -1255,6 +1255,33 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void fromDescriptorFailsLoudForTypeThatIsNotAStrategy() {
+        // A resolvable class that does not implement Strategy must fail loudly
+        // instead of silently falling back to BaseStrategy.
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(String.class.getName())
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("entry")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, descriptor));
+        assertThat(exception.getMessage()).contains("Descriptor type does not implement Strategy: java.lang.String");
+    }
+
+    @Test
     public void customStrategyInTestPackageRoundTrips() {
         // Test that a custom strategy in the test package (org.ta4j.core.serialization)
         // can be round-tripped correctly

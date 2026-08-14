@@ -145,6 +145,14 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
         // Losing position under MULTIPLICATIVE: 1 + 0 = 1.0
         var losingPosition = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
         assertNumEquals(numOf(1), multiplicativeCriterion.calculate(series, losingPosition));
+
+        // LOG representation: winning ratio 1 -> ln(1 + 1) = ln(2); losing ratio 0 ->
+        // ln(1 + 0) = 0
+        var logCriterion = new PositionsRatioCriterion(PositionFilter.PROFIT, ReturnRepresentation.LOG);
+        assertNumEquals(Math.log(2), logCriterion.calculate(series, winningPosition));
+        assertNumEquals(numOf(0), logCriterion.calculate(series, losingPosition));
+        assertNumEquals(logCriterion.calculate(series, recordWithOneWinningPosition),
+                logCriterion.calculate(series, winningPosition));
     }
 
 }

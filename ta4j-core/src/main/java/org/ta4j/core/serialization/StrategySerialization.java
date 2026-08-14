@@ -1079,6 +1079,7 @@ public final class StrategySerialization {
             if (Strategy.class.isAssignableFrom(clazz)) {
                 return (Class<? extends Strategy>) clazz;
             }
+            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
         } catch (ClassNotFoundException ex) {
             // ignore and try package-local lookup
         }

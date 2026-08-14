@@ -6,6 +6,8 @@ package ta4jexamples.analysis.elliottwave.demo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -33,7 +35,7 @@ class ElliottWaveDemoSelfContainmentTest {
                         try {
                             return Files.readString(path).contains(FORBIDDEN_REFERENCE);
                         } catch (IOException e) {
-                            return false;
+                            throw new UncheckedIOException("Failed to read " + path, e);
                         }
                     })
                     .toList();

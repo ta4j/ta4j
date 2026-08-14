@@ -77,7 +77,7 @@ public class MockBarSeriesBuilder extends BaseBarSeriesBuilder {
                     .openPrice(i)
                     .closePrice(i + 1)
                     .highPrice(i + 3)
-                    .lowPrice(i + 2)
+                    .lowPrice(i)
                     .volume(i + 4)
                     .amount(i + 5)
                     .trades((int) (i + 6))

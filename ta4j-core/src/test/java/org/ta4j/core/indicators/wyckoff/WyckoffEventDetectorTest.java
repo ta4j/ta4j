@@ -175,18 +175,23 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
     @Test
     public void shouldMatchFreshDetectorAfterBarReplacement() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
-        var structure = new WyckoffStructureTracker.StructureSnapshot(numOf(10.0), numOf(11.0), 3, 4, numOf(10.3), true,
-                false, false);
-        var volume = new WyckoffVolumeProfile.VolumeSnapshot(numOf(800), numOf(0.7), false, true);
-        var previous = new WyckoffPhase(WyckoffCycleType.ACCUMULATION, WyckoffPhaseType.PHASE_B, 0.55, -1);
+        var structure = new WyckoffStructureTracker.StructureSnapshot(NaN, NaN, -1, -1, NaN, false, false, false);
+        var volume = new WyckoffVolumeProfile.VolumeSnapshot(numOf(9000), numOf(2.0), true, false);
 
-        detector.detect(5, structure, volume, previous);
+        // Prime the extreme caches with the original bars.
+        detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+
         ((BaseBarSeries) series).replaceBar(2,
-                series.barBuilder().openPrice(7).highPrice(7.5).lowPrice(6.5).closePrice(7).volume(1000).build());
+                series.barBuilder().openPrice(9.8).highPrice(10.2).lowPrice(10.0).closePrice(9.4).volume(1000).build());
+
+        // The replacement bar (low 10.0 vs cached low 9.0) must force a cache
+        // refresh; a cached detector and a fresh detector must agree.
         var fresh = new WyckoffEventDetector(series, numOf(0.05));
-        var cached = detector.detect(5, structure, volume, previous);
-        var expected = fresh.detect(5, structure, volume, previous);
+        EnumSet<WyckoffEvent> cached = detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+        EnumSet<WyckoffEvent> expected = fresh.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+
         assertThat(cached).isEqualTo(expected);
+        assertThat(cached).contains(WyckoffEvent.SELLING_CLIMAX);
     }
 
     /**

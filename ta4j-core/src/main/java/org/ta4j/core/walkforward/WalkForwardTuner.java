@@ -133,7 +133,7 @@ public final class WalkForwardTuner<C, P, O> {
                     WalkForwardRunResult<P, O> runResult = engine.run(series, candidate.context(), config,
                             candidate.id(), Map.of("batchIndex", String.valueOf(batchStart / batchSize)));
 
-                    if (runResult.foldFailures().size() == runResult.splits().size()) {
+                    if (!runResult.splits().isEmpty() && runResult.foldFailures().size() == runResult.splits().size()) {
                         log.warn("Candidate {} failed during walk-forward tuning: all {} folds failed", candidate.id(),
                                 runResult.splits().size());
                         failed++;
