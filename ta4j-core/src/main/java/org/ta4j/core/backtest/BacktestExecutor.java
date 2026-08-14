@@ -475,7 +475,9 @@ public class BacktestExecutor {
 
     /**
      * Builds the exception thrown when every strategy in an execution failed and no
-     * result could be produced.
+     * result could be produced. The first recorded failure is attached as the cause
+     * and the remaining failures are suppressed so callers keep the original stack
+     * traces.
      *
      * @param strategyCount number of strategies in the execution
      * @return exception describing the total failure
@@ -485,8 +487,14 @@ public class BacktestExecutor {
         BacktestExecutionResult.StrategyFailure firstFailure = executionFailures.peek();
         String firstMessage = firstFailure == null ? ""
                 : " First failure: " + firstFailure.strategy().getName() + " - " + firstFailure.cause().getMessage();
-        return new IllegalStateException(
-                "All " + strategyCount + " strategies failed during backtest execution." + firstMessage);
+        IllegalStateException exception = new IllegalStateException(
+                "All " + strategyCount + " strategies failed during backtest execution." + firstMessage,
+                firstFailure == null ? null : firstFailure.cause());
+        executionFailures.stream()
+                .skip(1)
+                .map(BacktestExecutionResult.StrategyFailure::cause)
+                .forEach(exception::addSuppressed);
+        return exception;
     }
 
     /**

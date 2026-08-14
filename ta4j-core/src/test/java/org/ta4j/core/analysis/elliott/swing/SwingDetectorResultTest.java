@@ -69,6 +69,22 @@ class SwingDetectorResultTest {
     }
 
     @Test
+    void rejectsDisconnectedSwingChain() {
+        // The pivot-chain derivation only inspects the first swing's origin and
+        // each swing's destination, so a disconnected pair would pass the
+        // consistency equality even though the second swing cannot follow the
+        // first or be reconstructed from those pivots.
+        List<ElliottSwing> swings = List.of(swing(1, 2, 100, 110), swing(5, 6, 210, 200));
+        List<SwingPivot> derived = List.of(pivot(1, 100, SwingPivotType.LOW), pivot(2, 110, SwingPivotType.HIGH),
+                pivot(6, 200, SwingPivotType.LOW));
+
+        assertThatThrownBy(() -> new SwingDetectorResult(derived, swings)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("contiguous");
+        assertThatThrownBy(() -> SwingDetectorResult.fromSwings(swings)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("contiguous");
+    }
+
+    @Test
     void acceptsConsistentPivotsAndSwings() {
         List<SwingPivot> pivots = List.of(pivot(1, 100, SwingPivotType.LOW), pivot(2, 110, SwingPivotType.HIGH),
                 pivot(3, 105, SwingPivotType.LOW));

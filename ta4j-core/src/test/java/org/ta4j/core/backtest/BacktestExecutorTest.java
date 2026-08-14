@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
@@ -12,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -670,9 +672,9 @@ public class BacktestExecutorTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
 
         Strategy throwingOne = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+                new IllegalStateException("boom-one"));
         Strategy throwingTwo = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
-                new IllegalStateException("boom"));
+                new IllegalStateException("boom-two"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
         IllegalStateException exception = assertThrows(IllegalStateException.class,
@@ -680,6 +682,14 @@ public class BacktestExecutorTest {
 
         assertTrue(exception.getMessage().contains("All 2 strategies failed"));
         assertEquals(2, executor.getStrategyFailures().size());
+        // The aggregate must retain the original failures: the first recorded
+        // failure is attached as the cause and the rest are suppressed, so
+        // callers keep the original stack traces.
+        assertNotNull(exception.getCause());
+        assertEquals(1, exception.getSuppressed().length);
+        Set<String> retainedMessages = Set.of(exception.getCause().getMessage(),
+                exception.getSuppressed()[0].getMessage());
+        assertEquals(Set.of("boom-one", "boom-two"), retainedMessages);
     }
 
     @Test
