@@ -1309,8 +1309,8 @@ public class StrategySerializationTest {
     @Test
     public void fromJsonFailsLoudWhenStrategyTypeHasNoSuitableConstructor() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
-        Strategy strategy = new NoSuitableConstructorStrategy(series, new SerializableRule(true),
-                new SerializableRule(false));
+        Strategy strategy = new NoSuitableConstructorStrategy(
+                List.of(new SerializableRule(true), new SerializableRule(false)));
 
         String json = strategy.toJson();
         IllegalStateException exception = assertThrows(IllegalStateException.class,
@@ -1320,8 +1320,8 @@ public class StrategySerializationTest {
 
     private static final class NoSuitableConstructorStrategy extends BaseStrategy {
 
-        private NoSuitableConstructorStrategy(BarSeries series, Rule entryRule, Rule exitRule) {
-            super(entryRule, exitRule, 0);
+        private NoSuitableConstructorStrategy(List<Rule> rules) {
+            super(rules.get(0), rules.get(1), 0);
         }
     }
 
