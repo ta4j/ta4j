@@ -194,6 +194,12 @@ final class ParticleSwarmEngine extends SearchEngine {
         if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
             terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
         }
+
+        // Drain the batch so a repeated finalizeObserved() call is a no-op:
+        // re-running the iteration would double-count completeIteration() and
+        // advance the stagnation streak twice for one batch.
+        pendingBatch = new LinkedHashMap<>();
+        batchEvaluations = new LinkedHashMap<>();
     }
 
     private void move() {
