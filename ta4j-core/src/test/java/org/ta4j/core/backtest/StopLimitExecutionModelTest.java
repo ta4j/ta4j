@@ -5,12 +5,18 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -188,6 +194,35 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertTrue(rejection.reason().contains("Unable to resolve reference bar"));
+    }
+
+    @Test
+    public void currentCloseSignalOnTerminalBarHasNoActivationBar() {
+        // The bar after Integer.MAX_VALUE cannot exist: stop-limit activation
+        // must not wrap to a negative index, which would hand a sizing
+        // context a negative entry index and make sizers that read the entry
+        // bar throw.
+        Bar bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-01T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(bar))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 2,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        assertNull(model.estimateEntryTarget(Integer.MAX_VALUE, series, Trade.TradeType.BUY));
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        model.execute(Integer.MAX_VALUE, tradingRecord, series, numFactory.one());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        assertTrue(model.getRejectedOrders(tradingRecord).getFirst().reason().contains("activation bar"));
     }
 
     @Test

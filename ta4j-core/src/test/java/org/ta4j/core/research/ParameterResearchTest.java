@@ -958,8 +958,8 @@ class ParameterResearchTest {
         Num delta = ParameterResearch.subtractScores(DoubleNum.valueOf(Double.MAX_VALUE),
                 DoubleNum.valueOf(-Double.MAX_VALUE));
         assertThat(Num.isFinite(delta)).isTrue();
-        assertThat(delta.bigDecimalValue()).isEqualByComparingTo(
-                BigDecimal.valueOf(Double.MAX_VALUE).multiply(BigDecimal.valueOf(2)));
+        assertThat(delta.bigDecimalValue())
+                .isEqualByComparingTo(BigDecimal.valueOf(Double.MAX_VALUE).multiply(BigDecimal.valueOf(2)));
     }
 
     @Test
@@ -1178,6 +1178,33 @@ class ParameterResearchTest {
         // Zero successful evaluations overrides the engine-level exhaustion
         // reason, matching the other all-rejected scenarios.
         assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+    }
+
+    @Test
+    void rejectionHeavyRunsTerminateAtTheProposalLimit() {
+        // Rejected proposals never consume the evaluation budget, so a
+        // rejection-heavy run over a space too large to exhaust would propose
+        // (and retain proposal ids) without bound. The run-wide proposal cap
+        // must terminate the search independent of completed evaluations.
+        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
+        ParameterResearch.MAX_PROPOSALS_PER_RUN = 500;
+        try {
+            BarSeries series = series(1d, 2d, 3d);
+
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .decimal("a", 0, 1_000_000_000, 1)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                            .of(window.series().numFactory().numOf(candidate)))
+                    .normalize((data, name, value) -> null)
+                    .search(SearchPlan.genetic(1, 7L, ParameterResearch.GeneticSettings.defaults()))
+                    .run();
+            assertThat(report.counts().attempted()).isZero();
+            assertThat(report.counts().proposed()).isLessThanOrEqualTo(500L);
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+        } finally {
+            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
+        }
     }
 
     @Test

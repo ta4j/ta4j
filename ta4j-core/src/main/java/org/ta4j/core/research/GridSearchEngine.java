@@ -53,6 +53,7 @@ final class GridSearchEngine extends SearchEngine {
     void observe(ParameterResearch.EvaluatedCandidate evaluated) {
         // Grid search is stateless between batches.
     }
+
     @Override
     protected boolean tracksProposals() {
         // The odometer never revisits a combination and exhaustion is tracked

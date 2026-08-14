@@ -91,6 +91,15 @@ public final class ParameterResearch {
      */
     static final int MAX_RETAINED_EVALUATIONS = 1_000_000;
 
+    /**
+     * Maximum number of proposals a single run processes before terminating.
+     * Rejected proposals never consume the evaluation budget, so a rejection-heavy
+     * normalizer over a large space would otherwise make genetic or particle-swarm
+     * engines propose (and retain proposal ids) without bound. Non-final so tests
+     * can exercise the bound cheaply.
+     */
+    static int MAX_PROPOSALS_PER_RUN = 1_000_000;
+
     private ParameterResearch() {
     }
 
@@ -270,10 +279,11 @@ public final class ParameterResearch {
          * @return this builder with {@code U} as its candidate type
          * @throws NullPointerException  if {@code factory} is null
          * @throws IllegalStateException if the objective is already configured, because
-         *                               the candidate type must be declared first, or if
-         *                               a candidate factory was already bound, because
-         *                               re-binding would leave previously returned
-         *                               builder references with a stale candidate type
+         *                               the candidate type must be declared first, or
+         *                               if a candidate factory was already bound,
+         *                               because re-binding would leave previously
+         *                               returned builder references with a stale
+         *                               candidate type
          * @since 0.24.2
          */
         @SuppressWarnings("unchecked")
@@ -630,6 +640,13 @@ public final class ParameterResearch {
                 if (engine.exhausted()) {
                     engine.finalizeObserved();
                     reason = TerminationReason.SEARCH_SPACE_EXHAUSTED;
+                    break;
+                }
+
+                if (counters.proposed >= MAX_PROPOSALS_PER_RUN) {
+                    engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
+                    engine.finalizeObserved();
+                    reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
                     break;
                 }
             }
@@ -1834,6 +1851,12 @@ public final class ParameterResearch {
         EVALUATION_BUDGET_EXHAUSTED,
         /** The configured iteration limit was reached. */
         ITERATION_LIMIT,
+        /**
+         * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals — mostly rejected,
+         * since rejected proposals never consume the evaluation budget — before the
+         * space or budget could end the search.
+         */
+        PROPOSAL_LIMIT_EXCEEDED,
         /** A valid evaluation reached the configured target score. */
         TARGET_SCORE_REACHED,
         /**
@@ -2219,9 +2242,9 @@ public final class ParameterResearch {
      * by different {@link NumFactory} implementations: a cross-factory subtraction
      * goes through exact {@link BigDecimal} values instead of coercing one operand
      * through the other's factory, which could overflow to infinity or round away
-     * the delta. A same-factory subtraction whose native result is non-finite
-     * (e.g. {@code Double.MAX_VALUE - (-Double.MAX_VALUE)}) also falls back to the
-     * exact decimal path, so finite operand scores never produce an infinite delta.
+     * the delta. A same-factory subtraction whose native result is non-finite (e.g.
+     * {@code Double.MAX_VALUE - (-Double.MAX_VALUE)}) also falls back to the exact
+     * decimal path, so finite operand scores never produce an infinite delta.
      *
      * @param minuend    score to subtract from
      * @param subtrahend score to subtract

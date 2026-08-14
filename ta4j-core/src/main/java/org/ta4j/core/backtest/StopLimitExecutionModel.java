@@ -148,11 +148,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (referenceTarget == null) {
             return null;
         }
-        int activationIndex = resolveActivationIndex(referenceTarget.index());
-        if (activationIndex > barSeries.getEndIndex()) {
-            return null;
-        }
-        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+        return activationTarget(referenceTarget, barSeries, tradeType);
     }
 
     @Override
@@ -188,14 +184,14 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
         Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
-        int activationIndex = resolveActivationIndex(referenceTarget.index());
-        if (activationIndex > barSeries.getEndIndex()) {
+        ExecutionTarget activation = activationTarget(referenceTarget, barSeries, tradeType);
+        if (activation == null) {
             addRejectedOrder(tradingRecord, new RejectedOrder(index, index, tradeType, requestedAmount,
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
-        pendingOrders.put(tradingRecord, new PendingOrder(index, activationIndex, tradeType, requestedAmount, stopPrice,
-                limitPrice, activationIndex + maxBarsToFill - 1));
+        pendingOrders.put(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
+                stopPrice, limitPrice, activation.index() + maxBarsToFill - 1));
     }
 
     @Override
@@ -276,6 +272,34 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return referenceIndex + 1;
         }
         return referenceIndex;
+    }
+
+    /**
+     * Resolves the bar that activates a stop-limit order referenced at
+     * {@code referenceTarget}, or {@code null} when no activation bar exists.
+     *
+     * <p>
+     * {@link PriceSource#CURRENT_CLOSE} activates on the bar after the reference:
+     * when the reference is the last representable index, that bar cannot exist and
+     * a naive {@code referenceIndex + 1} would wrap to a negative index, defeating
+     * the subsequent end-index check.
+     * </p>
+     *
+     * @param referenceTarget resolved reference execution target
+     * @param barSeries       series being executed
+     * @param tradeType       trade direction of the pending order
+     * @return activation target, or {@code null} when no activation bar exists
+     */
+    private ExecutionTarget activationTarget(ExecutionTarget referenceTarget, BarSeries barSeries,
+            TradeType tradeType) {
+        if (priceSource == PriceSource.CURRENT_CLOSE && referenceTarget.index() == Integer.MAX_VALUE) {
+            return null;
+        }
+        int activationIndex = resolveActivationIndex(referenceTarget.index());
+        if (activationIndex > barSeries.getEndIndex()) {
+            return null;
+        }
+        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {
