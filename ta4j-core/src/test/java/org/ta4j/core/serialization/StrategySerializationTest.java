@@ -685,6 +685,21 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void canonicalPayloadRejectsMalformedStrategyParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":1.9}");
+        IllegalArgumentException unstableBarsException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+        assertThat(unstableBarsException).hasMessageContaining("unstableBars").hasMessageContaining("1.9");
+
+        String malformedStartingType = canonicalStrategyJson("{\"startingType\":\"HOLD\"}");
+        IllegalArgumentException startingTypeException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedStartingType));
+        assertThat(startingTypeException).hasMessageContaining("starting type").hasMessageContaining("HOLD");
+    }
+
+    @Test
     public void versionTwoPayloadRejectsNonJsonIntegerObjectValues() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
 
@@ -1470,6 +1485,14 @@ public class StrategySerializationTest {
             token = token.substring(1);
         }
         return Integer.parseInt(token);
+    }
+
+    private static String canonicalStrategyJson(String parameters) {
+        String ruleType = SerializableRule.class.getName();
+        return "{\"type\":\"BaseStrategy\",\"label\":\"MalformedCanonical\","
+                + "\"parameters\":" + parameters + ",\"rules\":["
+                + "{\"type\":\"" + ruleType + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}},"
+                + "{\"type\":\"" + ruleType + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
     }
 
     private static ComponentDescriptor shortMacroDescriptor() {
