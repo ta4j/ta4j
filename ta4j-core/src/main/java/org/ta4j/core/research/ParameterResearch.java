@@ -31,6 +31,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 
 /**
@@ -2149,8 +2150,10 @@ public final class ParameterResearch {
      * would destroy decimal precision — cross-factory scores are compared through
      * exact {@link BigDecimal} values built from both {@code getDelegate()}
      * strings, so the comparison is symmetric and preserves decimal precision in
-     * both operands. NaN scores are ordered after everything else, so an objective
-     * that declares failure for non-finite scores keeps its ranking behavior.
+     * both operands. Every zero-valued score compares equal to every other
+     * zero-valued score regardless of factory or sign, and NaN scores are ordered
+     * after everything else, so an objective that declares failure for non-finite
+     * scores keeps its ranking behavior.
      * </p>
      *
      * @param left  first score
@@ -2164,6 +2167,9 @@ public final class ParameterResearch {
         if (leftNaN || rightNaN) {
             return Boolean.compare(leftNaN, rightNaN);
         }
+        if (left.isZero() && right.isZero()) {
+            return 0;
+        }
         if (left.getClass() == right.getClass()) {
             return left.compareTo(right);
         }
@@ -2172,20 +2178,21 @@ public final class ParameterResearch {
 
     /**
      * Subtracts {@code subtrahend} from {@code minuend}, tolerating scores produced
-     * by different {@link NumFactory} implementations: a foreign subtrahend is
-     * parsed through the minuend's factory using its exact {@code toString()}
-     * representation before subtracting, mirroring the mixed-factory handling in
-     * {@link #compareScores(Num, Num)}.
+     * by different {@link NumFactory} implementations: a cross-factory subtraction
+     * goes through exact {@link BigDecimal} values instead of coercing one operand
+     * through the other's factory, which could overflow to infinity or round away
+     * the delta.
      *
      * @param minuend    score to subtract from
      * @param subtrahend score to subtract
-     * @return {@code minuend - subtrahend} in the minuend's factory
+     * @return {@code minuend - subtrahend}; in the minuend's factory when both
+     *         operands share it, otherwise as an exact decimal
      */
     static Num subtractScores(Num minuend, Num subtrahend) {
         if (minuend.getClass() == subtrahend.getClass()) {
             return minuend.minus(subtrahend);
         }
-        return minuend.minus(minuend.getNumFactory().numOf(subtrahend.toString()));
+        return DecimalNum.valueOf(minuend.bigDecimalValue().subtract(subtrahend.bigDecimalValue()));
     }
 
     /**

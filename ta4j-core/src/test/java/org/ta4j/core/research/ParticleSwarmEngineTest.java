@@ -4,18 +4,19 @@
 package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.research.ParameterResearch.Direction;
 import org.ta4j.core.research.ParameterResearch.EvaluatedCandidate;
 import org.ta4j.core.research.ParameterResearch.ParameterDomain;
 import org.ta4j.core.research.ParameterResearch.ParameterSet;
+import org.ta4j.core.research.ParameterResearch.ParameterValue;
 import org.ta4j.core.research.ParameterResearch.SwarmSettings;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
@@ -80,6 +81,66 @@ class ParticleSwarmEngineTest {
         engine.finalizeObserved();
         assertThat(engine.iterationsCompleted()).isEqualTo(1);
         assertThat(engine.terminationReason()).isNull();
+    }
+
+    @Test
+    void gbestTracksRankingTieBreakImprovements() {
+        // Two particles share the same primary score but one was repaired:
+        // the ranking prefers the unrepaired candidate, so the global best
+        // must move to it even though scoreIsBetter() alone sees a tie.
+        // Fully scripted: particle 0 lands on 3.0 ("a=3", repaired) and
+        // particle 1 on 7.0 ("a=7", unrepaired, lower score). After the
+        // second batch, particle 1 reaches "a=6" with the same score as
+        // particle 0 but without repairs, so the gbest must jump to 6.0;
+        // the next move from 6.0 then discovers the unseen "a=4".
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 7)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> {
+            int byScore = b.score().compareTo(a.score());
+            if (byScore != 0) {
+                return byScore;
+            }
+            int byRepair = Integer.compare(a.parameters().repairCount(), b.parameters().repairCount());
+            if (byRepair != 0) {
+                return byRepair;
+            }
+            return Integer.compare(a.evaluationOrdinal(), b.evaluationOrdinal());
+        };
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(1d / 3d, 1d, 0d, 0d, 0d, 0.25, 0d, 1d / 3d, 0d, 1d / 3d), ranking,
+                Direction.MAXIMIZE, -1, -1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first).hasSize(2);
+        engine.observe(EvaluatedCandidate.valid("a=3",
+                new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 0, DecimalNum.valueOf(5),
+                Map.of()));
+        engine.observe(
+                EvaluatedCandidate.valid("a=7", new ParameterSet(List.of(new ParameterValue("a", "7", false, ""))), 1,
+                        DecimalNum.valueOf(4), Map.of()));
+
+        List<ParameterSet> second = engine.propose(2);
+        engine.observe(EvaluatedCandidate.valid("a=3",
+                new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 2, DecimalNum.valueOf(5),
+                Map.of()));
+        engine.observe(
+                EvaluatedCandidate.valid("a=6", new ParameterSet(List.of(new ParameterValue("a", "6", false, ""))), 3,
+                        DecimalNum.valueOf(5), Map.of()));
+
+        List<ParameterSet> third = engine.propose(2);
+        assertThat(third.stream().map(ParameterSet::stableId)).contains("a=4");
+    }
+
+    @Test
+    void particleSwarmRejectsOverflowingDomainSpans() {
+        // A finite bound pair whose span overflows double precision used to
+        // turn the first position draw into infinity and poison the swarm;
+        // the plan must fail at engine construction instead.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.decimal("a", -1.7e308, 1.7e308, 1e300)));
+
+        assertThatThrownBy(() -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("overflows double precision");
     }
 
     /**

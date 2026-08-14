@@ -5,7 +5,7 @@ package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -912,6 +912,37 @@ class ParameterResearchTest {
         assertThat(ParameterResearch.compareScores(floating, decimal)).isNegative();
         assertThat(ParameterResearch.compareScores(decimal, floating))
                 .isEqualTo(-ParameterResearch.compareScores(floating, decimal));
+    }
+
+    @Test
+    void compareScoresNormalizesSignedZeroAcrossFactories() {
+        // DoubleNum distinguishes -0.0 from 0.0, so the old cross-class path
+        // could rank a signed zero against an unsigned one, breaking
+        // transitivity with the decimal zero. Every zero must rank equal.
+        Num negativeZero = DoubleNum.valueOf(-0.0);
+        Num positiveZero = DoubleNum.valueOf(0.0);
+        Num decimalZero = DecimalNum.valueOf(0);
+
+        assertThat(ParameterResearch.compareScores(negativeZero, positiveZero)).isZero();
+        assertThat(ParameterResearch.compareScores(positiveZero, negativeZero)).isZero();
+        assertThat(ParameterResearch.compareScores(negativeZero, decimalZero)).isZero();
+        assertThat(ParameterResearch.compareScores(decimalZero, positiveZero)).isZero();
+        assertThat(ParameterResearch.compareScores(decimalZero, DoubleNum.valueOf(1))).isNegative();
+        assertThat(ParameterResearch.compareScores(DoubleNum.valueOf(1), negativeZero)).isPositive();
+    }
+
+    @Test
+    void subtractScoresPreservesDecimalPrecisionAcrossFactories() {
+        // Coercing the decimal subtrahend through the DoubleNum minuend's
+        // factory used to round 0.100000000000000001 down to 0.1 and report
+        // a zero delta; a decimal score outside double range used to coerce
+        // to infinity. Cross-factory subtraction must stay exact.
+        Num delta = ParameterResearch.subtractScores(DoubleNum.valueOf(0.1),
+                DecimalNum.valueOf("0.100000000000000001"));
+        assertThat(delta.bigDecimalValue()).isEqualByComparingTo(new BigDecimal("-0.000000000000000001"));
+
+        Num huge = ParameterResearch.subtractScores(DoubleNum.valueOf(1), DecimalNum.valueOf("1e1000"));
+        assertThat(huge.bigDecimalValue()).isEqualByComparingTo(BigDecimal.ONE.subtract(new BigDecimal("1e1000")));
     }
 
     @Test

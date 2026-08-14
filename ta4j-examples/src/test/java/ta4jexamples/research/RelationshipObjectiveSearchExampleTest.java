@@ -57,6 +57,24 @@ public class RelationshipObjectiveSearchExampleTest {
     }
 
     @Test
+    public void eventIndicatorsHonorNonZeroSeriesBegin() {
+        // Training windows inherit the source series' begin index; the fixed
+        // event indicators used to read their arrays at absolute indices, so
+        // every shifted window failed with IndexOutOfBoundsException.
+        BarSeries full = buildMomentumSeries(200);
+        BarSeries shifted = full.getSubSeries(40, full.getEndIndex());
+
+        ParameterResearchReport report = RelationshipObjectiveSearchExample.runRelationshipResearch(shifted,
+                SearchPlan.grid(29), 40);
+
+        assertEquals(29, report.counts().proposed());
+        assertEquals(29, report.counts().attempted());
+        assertEquals(29, report.counts().successful());
+        assertTrue(report.failedEvaluations().isEmpty());
+        assertFalse(report.trainingLeaderboard().isEmpty());
+    }
+
+    @Test
     public void seededEnginesAreDeterministicAcrossRuns() {
         BarSeries series = buildMomentumSeries(200);
 

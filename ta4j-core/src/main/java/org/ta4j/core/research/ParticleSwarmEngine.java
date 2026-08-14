@@ -53,6 +53,12 @@ final class ParticleSwarmEngine extends SearchEngine {
                 throw new IllegalArgumentException("PARTICLE_SWARM requires ordered numeric domains "
                         + "(integer or decimal), but parameter '" + spec.name() + "' is not numeric");
             }
+            double span = spec.upperBound() - spec.lowerBound();
+            if (!Double.isFinite(span)) {
+                throw new IllegalArgumentException("PARTICLE_SWARM cannot scale position updates for parameter '"
+                        + spec.name() + "': the domain span " + spec.lowerBound() + ".." + spec.upperBound()
+                        + " overflows double precision");
+            }
         }
         this.direction = direction;
         this.settings = settings;
@@ -182,13 +188,16 @@ final class ParticleSwarmEngine extends SearchEngine {
             if (gbestPosition == null) {
                 gbestPosition = particles.get(0).position.clone();
             }
-        } else if (gbestEvaluated == null
-                || ParameterResearch.scoreIsBetter(direction, newGbest.score(), gbestEvaluated.score())) {
+        } else if (gbestEvaluated == null) {
             improved = true;
             gbestEvaluated = newGbest;
             gbestPosition = gbestParticle.pbestPosition.clone();
         } else {
-            improved = false;
+            improved = ParameterResearch.scoreIsBetter(direction, newGbest.score(), gbestEvaluated.score());
+            if (ranking.compare(newGbest, gbestEvaluated) < 0) {
+                gbestEvaluated = newGbest;
+                gbestPosition = gbestParticle.pbestPosition.clone();
+            }
         }
         noImprovementStreak = improved ? 0 : noImprovementStreak + 1;
         if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {

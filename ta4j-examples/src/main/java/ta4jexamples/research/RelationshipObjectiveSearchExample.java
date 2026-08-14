@@ -110,16 +110,19 @@ public class RelationshipObjectiveSearchExample {
     static Indicator<Boolean> momentumCrossUpEvents(BarSeries series, int lookback) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         int begin = series.getBeginIndex();
-        Boolean[] events = new Boolean[series.getBarCount()];
-        for (int i = 0; i < events.length; i++) {
-            int index = begin + i;
+        int end = series.getEndIndex();
+        // FixedBooleanIndicator reads values by absolute series index, so the
+        // event array must be indexed absolutely: slots below `begin` stay
+        // unused.
+        Boolean[] events = new Boolean[end + 1];
+        for (int index = begin; index <= end; index++) {
             if (index - lookback - 1 < begin) {
-                events[i] = false;
+                events[index] = false;
                 continue;
             }
             Num momentum = close.getValue(index).minus(close.getValue(index - lookback));
             Num previousMomentum = close.getValue(index - 1).minus(close.getValue(index - lookback - 1));
-            events[i] = momentum.isPositive() && !previousMomentum.isPositive();
+            events[index] = momentum.isPositive() && !previousMomentum.isPositive();
         }
         return new FixedBooleanIndicator(series, events);
     }
@@ -155,10 +158,9 @@ public class RelationshipObjectiveSearchExample {
         int begin = series.getBeginIndex();
         int end = series.getEndIndex();
         double threshold = RISE_THRESHOLD_PERCENT / 100.0;
-        Boolean[] events = new Boolean[series.getBarCount()];
-        for (int i = 0; i < events.length; i++) {
-            int index = begin + i;
-            events[i] = index + FORECAST_BARS <= end && close.getValue(index + FORECAST_BARS)
+        Boolean[] events = new Boolean[end + 1];
+        for (int index = begin; index <= end; index++) {
+            events[index] = index + FORECAST_BARS <= end && close.getValue(index + FORECAST_BARS)
                     .minus(close.getValue(index))
                     .dividedBy(close.getValue(index))
                     .doubleValue() > threshold;

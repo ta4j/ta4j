@@ -69,6 +69,8 @@ public class SimpleMovingAverageRangeBacktestTest {
 
         List<RankedCandidate> originalLeaderboard = original.trainingLeaderboard();
         List<RankedCandidate> scaledLeaderboard = scaled.trainingLeaderboard();
+        assertFalse(originalLeaderboard.isEmpty());
+        assertFalse(scaledLeaderboard.isEmpty());
         assertEquals(originalLeaderboard.size(), scaledLeaderboard.size());
         for (int i = 0; i < originalLeaderboard.size(); i++) {
             assertEquals(originalLeaderboard.get(i).parameters(), scaledLeaderboard.get(i).parameters());
