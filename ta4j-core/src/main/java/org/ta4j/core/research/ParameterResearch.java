@@ -83,6 +83,14 @@ public final class ParameterResearch {
 
     private static final int SHORT_HASH_LENGTH = 12;
 
+    /**
+     * Maximum number of evaluations a single run retains. Every evaluated candidate
+     * is kept for the report (plus deduplication and cache bookkeeping), so
+     * unbounded budgets would exhaust memory long before a huge space is searched;
+     * budgets above this limit must be split into multiple runs.
+     */
+    static final int MAX_RETAINED_EVALUATIONS = 1_000_000;
+
     private ParameterResearch() {
     }
 
@@ -510,6 +518,12 @@ public final class ParameterResearch {
             SearchEngine engine = createEngine(specs, ranking, direction);
 
             int budget = searchPlan.maxEvaluations();
+            if (budget > MAX_RETAINED_EVALUATIONS) {
+                throw new IllegalArgumentException("search plan may evaluate up to " + budget
+                        + " candidates, which exceeds the retained-evaluation limit of " + MAX_RETAINED_EVALUATIONS
+                        + "; every evaluated candidate is retained for the report, so split the search into"
+                        + " multiple runs instead of raising the budget");
+            }
             EvaluationCache cache = new EvaluationCache();
             List<EvaluatedCandidate> evaluations = new ArrayList<>();
             List<FailedEvaluation> failures = new ArrayList<>();
@@ -540,6 +554,7 @@ public final class ParameterResearch {
                         break;
                     }
                     ParameterSet normalized = normalizeProposal(proposed, normalizerData);
+                    verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     if (normalized == null) {
                         counters.rejected++;
                         continue;
@@ -683,10 +698,15 @@ public final class ParameterResearch {
             // absolute range stays on the ResearchWindow for reporting. Bars
             // are frozen copies with their mutators disabled so a mutating
             // objective cannot corrupt the original data unseen by the
-            // revision checks.
-            List<Bar> bars = new ArrayList<>(series.getBarCount());
+            // revision checks. The loop breaks once the terminal index is
+            // copied so the increment can never wrap past Integer.MAX_VALUE.
+            long windowLength = (long) end - start + 1;
+            List<Bar> bars = new ArrayList<>((int) Math.min(windowLength, series.getBarCount()));
             for (int i = start; i <= end; i++) {
                 bars.add(new UnmodifiableBar(series.getBar(i)));
+                if (i == end) {
+                    break;
+                }
             }
             BarSeries window = new BaseBarSeriesBuilder().withName(series.getName())
                     .withNumFactory(series.numFactory())
@@ -1576,7 +1596,9 @@ public final class ParameterResearch {
      * Search plan: engine kind, exact evaluation budget, seed, and engine settings.
      *
      * @param kind            engine kind
-     * @param maxEvaluations  exact budget of unique objective evaluations
+     * @param maxEvaluations  exact budget of unique objective evaluations; must not
+     *                        exceed {@link #MAX_RETAINED_EVALUATIONS} because every
+     *                        evaluation is retained for the report
      * @param seed            run-local seed for stochastic engines; ignored by grid
      *                        search
      * @param geneticSettings genetic algorithm settings; required for

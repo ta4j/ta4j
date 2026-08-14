@@ -15,11 +15,15 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.CandidateValidator;
@@ -1080,19 +1084,49 @@ class ParameterResearchTest {
     void researchWindowSupportsTerminalMaximumIndex() {
         // A retained series may legally end at Integer.MAX_VALUE; the window
         // builder must copy the inclusive source range directly instead of
-        // overflowing an exclusive end index.
-        BarSeries series = new MockBarSeriesBuilder().withData(1d).withBeginIndex(Integer.MAX_VALUE).build();
+        // overflowing an exclusive end index. The fixture itself must land on
+        // the terminal index, and the objective must read the copied bar so
+        // that a missing or empty window cannot pass.
+        final Bar first = new TimeBarBuilder(DoubleNumFactory.getInstance()).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        assertThat(series.getEndIndex()).isEqualTo(Integer.MAX_VALUE);
 
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(window.series().numFactory().numOf(candidate)))
+                        .of(window.series().getBar(0).getClosePrice()))
                 .search(SearchPlan.grid(2))
                 .run();
 
         assertThat(report.counts().attempted()).isEqualTo(2);
         assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.trainingWindow().barCount()).isEqualTo(1);
+        assertThat(report.trainingWindow().series().getEndIndex()).isEqualTo(0);
+        assertThat(report.trainingWindow().series().getBar(0).getClosePrice().doubleValue()).isEqualTo(1.0);
+    }
+
+    @Test
+    void searchPlansRejectBudgetsBeyondRetentionLimit() {
+        // Every evaluated candidate is retained for the report, so a budget
+        // that cannot be retained must fail fast instead of exhausting
+        // memory mid-run.
+        BarSeries series = series(1d, 2d, 3d);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> ParameterResearch.<Integer>builder(series)
+                        .integer("a", 1, 2)
+                        .candidate((window, parameters) -> parameters.intValue("a"))
+                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                                .of(window.series().numFactory().numOf(candidate)))
+                        .search(SearchPlan.grid(ParameterResearch.MAX_RETAINED_EVALUATIONS + 1))
+                        .run());
+        assertThat(exception.getMessage()).contains("retained-evaluation limit");
     }
 
     @Test

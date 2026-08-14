@@ -63,15 +63,18 @@ final class ParticleSwarmEngine extends SearchEngine {
             maxSpan = Math.max(maxSpan, span);
         }
         // Finite domain spans can still overflow the derived update terms
-        // when the weights or the clamp factor are huge: maxVelocity is
-        // clampFactor times the span and the attraction terms scale by the
-        // weights, so an unrepresentable total would produce infinite or NaN
-        // velocities that project onto boundary indices. Bound the total
-        // per-iteration scale instead.
+        // when the weights or the clamp factor are huge. move() scales each
+        // contribution separately (the inertia term by clampFactor times the
+        // span, the attraction terms by cognitive/social weight times the
+        // span), so each per-term scale must be finite: an overflowing sum is
+        // clamped back to the finite maxVelocity, but a term that overflows
+        // on its own produces infinite or NaN velocities that project onto
+        // boundary indices. Validating per-term scales (rather than their
+        // naive sum) also keeps representable plans accepted.
         double velocityScale = settings.velocityClampFactor() * maxSpan;
-        double derivedScale = (settings.inertiaWeight() * settings.velocityClampFactor() + settings.cognitiveWeight()
-                + settings.socialWeight()) * maxSpan;
-        if (!Double.isFinite(velocityScale) || !Double.isFinite(derivedScale)) {
+        double cognitiveScale = settings.cognitiveWeight() * maxSpan;
+        double socialScale = settings.socialWeight() * maxSpan;
+        if (!Double.isFinite(velocityScale) || !Double.isFinite(cognitiveScale) || !Double.isFinite(socialScale)) {
             throw new IllegalArgumentException("PARTICLE_SWARM cannot scale position updates for this plan: the "
                     + "derived velocity scale overflows double precision for the largest domain span " + maxSpan);
         }

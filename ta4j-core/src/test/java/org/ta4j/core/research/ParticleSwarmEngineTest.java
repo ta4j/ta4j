@@ -4,6 +4,7 @@
 package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Comparator;
@@ -156,6 +157,18 @@ class ParticleSwarmEngineTest {
                         new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
         assertThrows(IllegalArgumentException.class,
                 () -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.5, 0.5, 0.5, Double.MAX_VALUE),
+                        new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
+    }
+
+    @Test
+    void particleSwarmAcceptsRepresentableExtremeWeights() {
+        // Huge weights over a tiny span: each move() contribution stays
+        // finite on its own even though the naive sum of the scales would
+        // overflow, so this representable plan must be accepted.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.decimal("a", 0, 1e-300, 1e-300)));
+
+        assertDoesNotThrow(
+                () -> new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.5, Double.MAX_VALUE, Double.MAX_VALUE, 0.2),
                         new ScriptedRandom(0d), (a, b) -> 0, Direction.MAXIMIZE, -1, -1));
     }
 
