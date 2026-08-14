@@ -3,995 +3,874 @@
  */
 package org.ta4j.core.research;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.StringJoiner;
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-import java.util.stream.IntStream;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
-import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.BacktestExecutionResult;
-import org.ta4j.core.backtest.BacktestRuntimeReport;
-import org.ta4j.core.backtest.BarSeriesManager;
-import org.ta4j.core.backtest.BarSeriesManager.TradingRecordFactory;
-import org.ta4j.core.backtest.TradeExecutionModel;
-import org.ta4j.core.backtest.TradeOnNextOpenModel;
-import org.ta4j.core.backtest.TradingStatementExecutionResult.RankedTradingStatement;
-import org.ta4j.core.backtest.TradingStatementExecutionResult.RankingProfile;
-import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.reports.TradingStatement;
-import org.ta4j.core.reports.TradingStatementGenerator;
-import org.ta4j.core.walkforward.WalkForwardCandidate;
 
 /**
- * Utilities for parameter research workflows that separate candidate
- * generation, training-window selection, optional pruning, and holdout
- * validation.
+ * Unified parameter search over a typed parameter space driven by a generic
+ * objective function.
  *
  * <p>
- * The workflow is deliberately conservative: candidate spaces can be generated
- * from the training window, pruning defaults to exact trading behavior rather
- * than fuzzy indicator similarity, and reports preserve the candidate and
- * selection metadata needed to reproduce a run.
+ * The workflow owns, in order: ordered parameter declaration; candidate
+ * construction and validation; objective and direction (maximize or minimize);
+ * search plan and exact evaluation budget; training window and optional holdout
+ * policy; top-K retention; and a final report. Search engines are deterministic
+ * for identical code, data, configuration, and seed: grid search iterates the
+ * Cartesian product in declaration order, while the genetic and particle-swarm
+ * engines derive all randomness from the run-local seed.
  * </p>
  *
- * @since 0.22.8
+ * <p>
+ * <b>Leakage boundaries.</b> Every evaluation receives a {@link ResearchWindow}
+ * whose {@link ResearchWindow#series()} is a sub-series restricted to exactly
+ * the window's bars, so candidates built or scored on the window cannot read
+ * outside it. Training-window results select the top K; those candidates are
+ * then rebuilt from scratch on the holdout window. Normalization and
+ * cross-parameter validation happen before any objective invocation and do not
+ * consume evaluation budget.
+ * </p>
+ *
+ * <p>
+ * <b>Budget semantics.</b> {@code maxEvaluations} is the exact budget of unique
+ * objective evaluations: cache hits and duplicate proposals never consume it,
+ * and the final generation or swarm batch is truncated rather than allowed to
+ * exceed it. A budget-limited grid run reports
+ * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} and never claims
+ * exhaustive optimality. Objective or candidate-factory failures that occur
+ * after an attempted evaluation do consume budget and are ranked below every
+ * valid evaluation.
+ * </p>
+ *
+ * <p>
+ * <b>Dataset revision contract.</b> The series name, begin index, end index,
+ * and bar count are snapshotted when the run starts and verified before every
+ * proposal batch and the holdout rebuild. A mismatch fails the run with an
+ * {@link IllegalStateException} instead of silently evaluating candidates on
+ * mutated data.
+ * </p>
+ *
+ * @since 0.24.2
  */
 public final class ParameterResearch {
 
     private static final int SHORT_HASH_LENGTH = 12;
-    private static final double NO_DISTANCE = 0d;
-
-    /**
-     * Default upper bound on the declared raw candidate-space cardinality.
-     *
-     * <p>
-     * The bound is enforced on the checked product of domain sizes before any
-     * normalization or combination allocation, so oversized ranges fail fast
-     * instead of materializing huge value lists.
-     * </p>
-     *
-     * @see #generateCandidateSpace(BarSeries, List, CandidateValidator, int)
-     * @see ResearchConfig#maxCombinations()
-     */
-    public static final int DEFAULT_MAX_COMBINATIONS = 100_000;
 
     private ParameterResearch() {
     }
 
     /**
-     * Generates a deterministic candidate space from one or more parameter domains.
+     * Starts a parameter research workflow for the supplied series.
      *
-     * @param series  series used by domain normalizers
-     * @param domains ordered parameter domains
-     * @return candidate generation result
-     * @since 0.22.8
+     * @param series dataset to search over
+     * @param <T>    candidate type, inferred from {@link Builder#candidate}
+     * @return workflow builder
+     * @throws NullPointerException if {@code series} is null
+     * @since 0.24.2
      */
-    public static CandidateGenerationResult generateCandidateSpace(BarSeries series, List<ParameterDomain> domains) {
-        return generateCandidateSpace(series, domains, CandidateValidator.acceptAll(), DEFAULT_MAX_COMBINATIONS);
+    public static <T> Builder<T> builder(BarSeries series) {
+        return new Builder<>(Objects.requireNonNull(series, "series"));
     }
 
     /**
-     * Generates a deterministic candidate space and captures rejected combinations.
+     * Optimization direction of the objective.
      *
-     * @param series    series used by domain normalizers
-     * @param domains   ordered parameter domains
-     * @param validator optional cross-parameter validator
-     * @return candidate generation result
-     * @since 0.22.8
+     * @since 0.24.2
      */
-    public static CandidateGenerationResult generateCandidateSpace(BarSeries series, List<ParameterDomain> domains,
-            CandidateValidator validator) {
-        return generateCandidateSpace(series, domains, validator, DEFAULT_MAX_COMBINATIONS);
+    public enum Direction {
+        /** Higher scores are better. */
+        MAXIMIZE,
+        /** Lower scores are better. */
+        MINIMIZE
     }
 
     /**
-     * Generates a deterministic candidate space under an explicit cardinality
-     * budget.
+     * Fluent workflow builder.
      *
-     * <p>
-     * The declared raw cardinality (the checked product of the domain sizes) is
-     * validated against {@code maxCombinations} before any value is normalized or
-     * any combination is materialized, so oversized ranges fail fast without
-     * allocating intermediate value lists.
-     * </p>
-     *
-     * @param series          series used by domain normalizers
-     * @param domains         ordered parameter domains
-     * @param validator       optional cross-parameter validator
-     * @param maxCombinations maximum declared raw combinations, inclusive
-     * @return candidate generation result
-     * @throws IllegalArgumentException when the declared cardinality exceeds the
-     *                                  budget or no candidates survive
-     * @since 0.22.8
+     * @param <T> candidate type, bound by {@link #candidate}
+     * @since 0.24.2
      */
-    public static CandidateGenerationResult generateCandidateSpace(BarSeries series, List<ParameterDomain> domains,
-            CandidateValidator validator, int maxCombinations) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(domains, "domains");
-        if (maxCombinations <= 0) {
-            throw new IllegalArgumentException("maxCombinations must be > 0");
-        }
-        CandidateValidator effectiveValidator = validator == null ? CandidateValidator.acceptAll() : validator;
-        if (series.isEmpty()) {
-            throw new IllegalArgumentException("series cannot be empty");
-        }
-        if (domains.isEmpty()) {
-            throw new IllegalArgumentException("domains cannot be empty");
+    public static final class Builder<T> {
+
+        private final BarSeries series;
+        private final List<ParameterDomain> domains = new ArrayList<>();
+        private CandidateFactory<T> candidateFactory;
+        private ObjectiveFunction<T> objective;
+        private Direction direction;
+        private SearchPlan searchPlan;
+        private double holdoutFraction = Double.NaN;
+        private int holdoutBarCount = -1;
+        private int topK = 10;
+        private CandidateValidator validator = CandidateValidator.acceptAll();
+        private ParameterNormalizer normalizer;
+        private Num targetScore;
+        private Integer maxIterations;
+        private Integer noImprovementIterations;
+
+        private Builder(BarSeries series) {
+            this.series = series;
         }
 
-        List<ParameterDomain> effectiveDomains = new ArrayList<>(domains.size());
-        Set<String> domainNames = new LinkedHashSet<>();
-        for (ParameterDomain domain : domains) {
-            Objects.requireNonNull(domain, "domains cannot contain null values");
-            if (!domainNames.add(domain.name())) {
-                throw new IllegalArgumentException("Duplicate parameter domain name: " + domain.name());
-            }
-            effectiveDomains.add(domain);
+        /**
+         * Declares an ordered integer domain.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @return this builder
+         * @throws IllegalArgumentException if the domain is invalid or the name is
+         *                                  already declared
+         * @since 0.24.2
+         */
+        public Builder<T> integer(String name, int from, int to) {
+            return integer(name, from, to, 1);
         }
 
-        long rawCombinationCount = declaredRawCombinationCount(effectiveDomains, maxCombinations);
-        List<InvalidCandidate> invalidCandidates = new ArrayList<>();
-        List<List<ParameterValue>> normalizedValuesByDomain = new ArrayList<>(effectiveDomains.size());
-        for (ParameterDomain domain : effectiveDomains) {
-            List<ParameterValue> normalizedValues = new ArrayList<>();
-            for (String rawValue : domain.rawValues()) {
-                try {
-                    ParameterValue normalized = Objects.requireNonNull(
-                            domain.normalizer().normalize(series, domain.name(), rawValue), "normalizer returned null");
-                    if (!domain.name().equals(normalized.name())) {
-                        throw new IllegalArgumentException("Normalizer returned parameter name " + normalized.name()
-                                + " for domain " + domain.name());
-                    }
-                    normalizedValues.add(normalized);
-                } catch (RuntimeException ex) {
-                    invalidCandidates.add(new InvalidCandidate(domain.name() + "=" + rawValue,
-                            Map.of(domain.name(), rawValue), CandidateFailureStage.GENERATION, ex.getMessage()));
+        /**
+         * Declares an ordered integer domain with a positive step.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @return this builder
+         * @throws IllegalArgumentException if the domain is invalid or the name is
+         *                                  already declared
+         * @since 0.24.2
+         */
+        public Builder<T> integer(String name, int from, int to, int step) {
+            return domain(ParameterDomain.integer(name, from, to, step));
+        }
+
+        /**
+         * Declares an ordered decimal domain.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @return this builder
+         * @throws IllegalArgumentException if the domain is invalid or the name is
+         *                                  already declared
+         * @since 0.24.2
+         */
+        public Builder<T> decimal(String name, double from, double to, double step) {
+            return domain(ParameterDomain.decimal(name, from, to, step));
+        }
+
+        /**
+         * Declares a Boolean domain whose canonical values are {@code "false"} and
+         * {@code "true"}, in that order.
+         *
+         * @param name parameter name
+         * @return this builder
+         * @throws IllegalArgumentException if the name is already declared
+         * @since 0.24.2
+         */
+        public Builder<T> bool(String name) {
+            return domain(ParameterDomain.bool(name));
+        }
+
+        /**
+         * Declares a categorical domain over ordered literal values.
+         *
+         * @param name   parameter name
+         * @param values ordered categorical values
+         * @return this builder
+         * @throws IllegalArgumentException if the domain is invalid or the name is
+         *                                  already declared
+         * @since 0.24.2
+         */
+        public Builder<T> categorical(String name, String... values) {
+            return domain(ParameterDomain.categorical(name, values));
+        }
+
+        /**
+         * Declares a parameter domain.
+         *
+         * @param domain parameter domain
+         * @return this builder
+         * @throws IllegalArgumentException if the name is already declared
+         * @since 0.24.2
+         */
+        public Builder<T> domain(ParameterDomain domain) {
+            Objects.requireNonNull(domain, "domain");
+            for (ParameterDomain declared : domains) {
+                if (declared.name().equals(domain.name())) {
+                    throw new IllegalArgumentException("Duplicate parameter domain name: " + domain.name());
                 }
             }
-            if (normalizedValues.isEmpty()) {
-                throw new IllegalArgumentException("No valid values remain for parameter domain " + domain.name());
+            domains.add(domain);
+            return this;
+        }
+
+        /**
+         * Binds the candidate factory and re-binds the builder's candidate type to the
+         * factory result type.
+         *
+         * @param factory builds a candidate from a window and a normalized parameter
+         *                set
+         * @param <U>     candidate type
+         * @return this builder with {@code U} as its candidate type
+         * @throws NullPointerException if {@code factory} is null
+         * @since 0.24.2
+         */
+        @SuppressWarnings("unchecked")
+        public <U> Builder<U> candidate(CandidateFactory<U> factory) {
+            this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) Objects.requireNonNull(factory,
+                    "factory");
+            return (Builder<U>) this;
+        }
+
+        /**
+         * Sets the objective with maximization direction.
+         *
+         * @param objective objective function
+         * @return this builder
+         * @throws NullPointerException if {@code objective} is null
+         * @since 0.24.2
+         */
+        public Builder<T> maximize(ObjectiveFunction<T> objective) {
+            this.objective = Objects.requireNonNull(objective, "objective");
+            this.direction = Direction.MAXIMIZE;
+            return this;
+        }
+
+        /**
+         * Sets the objective with minimization direction.
+         *
+         * @param objective objective function
+         * @return this builder
+         * @throws NullPointerException if {@code objective} is null
+         * @since 0.24.2
+         */
+        public Builder<T> minimize(ObjectiveFunction<T> objective) {
+            this.objective = Objects.requireNonNull(objective, "objective");
+            this.direction = Direction.MINIMIZE;
+            return this;
+        }
+
+        /**
+         * Sets the search plan (engine kind, exact budget, seed, settings).
+         *
+         * @param plan search plan
+         * @return this builder
+         * @throws NullPointerException if {@code plan} is null
+         * @since 0.24.2
+         */
+        public Builder<T> search(SearchPlan plan) {
+            this.searchPlan = Objects.requireNonNull(plan, "plan");
+            return this;
+        }
+
+        /**
+         * Holds out the given fraction of the final bars for validation.
+         *
+         * @param fraction holdout fraction in {@code (0, 1)}
+         * @return this builder
+         * @throws IllegalArgumentException if the fraction is out of range or a holdout
+         *                                  bar count was already set
+         * @since 0.24.2
+         */
+        public Builder<T> holdoutFraction(double fraction) {
+            if (!(fraction > 0d && fraction < 1d) || Double.isNaN(fraction)) {
+                throw new IllegalArgumentException("holdoutFraction must be in (0, 1), but was " + fraction);
             }
-            normalizedValuesByDomain.add(List.copyOf(normalizedValues));
-        }
-
-        List<StrategyCandidate> candidates = new ArrayList<>();
-        Set<String> seenCandidateIds = new LinkedHashSet<>();
-        collectCombinations(normalizedValuesByDomain, 0, new ArrayList<>(), parameters -> {
-            ParameterSet parameterSet = new ParameterSet(parameters);
-            String candidateId = parameterSet.stableId();
-            try {
-                effectiveValidator.validate(parameterSet);
-            } catch (RuntimeException ex) {
-                invalidCandidates.add(new InvalidCandidate(candidateId, parameterSet.asMap(),
-                        CandidateFailureStage.COMBINATION_VALIDATION, ex.getMessage()));
-                return;
+            if (holdoutBarCount >= 0) {
+                throw new IllegalArgumentException("set either holdoutFraction or holdoutBarCount, not both");
             }
+            this.holdoutFraction = fraction;
+            return this;
+        }
 
-            if (!seenCandidateIds.add(candidateId)) {
-                invalidCandidates.add(new InvalidCandidate(candidateId, parameterSet.asMap(),
-                        CandidateFailureStage.DUPLICATE_NORMALIZED, "Duplicate normalized parameter set"));
-                return;
+        /**
+         * Holds out the given number of final bars for validation.
+         *
+         * @param barCount number of final bars held out
+         * @return this builder
+         * @throws IllegalArgumentException if the count is not positive or a holdout
+         *                                  fraction was already set
+         * @since 0.24.2
+         */
+        public Builder<T> holdoutBarCount(int barCount) {
+            if (barCount <= 0) {
+                throw new IllegalArgumentException("holdoutBarCount must be > 0, but was " + barCount);
             }
-            candidates.add(new StrategyCandidate(candidateId, parameterSet));
-        });
-
-        if (candidates.isEmpty()) {
-            throw new IllegalArgumentException("No candidates remain after normalization and validation");
-        }
-        return new CandidateGenerationResult(candidates, invalidCandidates, rawCombinationCount,
-                hashCandidateIds(candidates));
-    }
-
-    private static long declaredRawCombinationCount(List<ParameterDomain> domains, int maxCombinations) {
-        long rawCombinationCount = 1L;
-        for (ParameterDomain domain : domains) {
-            long domainCount = domain.rawValues().size();
-            if (rawCombinationCount > maxCombinations / domainCount) {
-                rawCombinationCount = Long.MAX_VALUE;
-            } else {
-                rawCombinationCount *= domainCount;
+            if (!Double.isNaN(holdoutFraction)) {
+                throw new IllegalArgumentException("set either holdoutFraction or holdoutBarCount, not both");
             }
+            this.holdoutBarCount = barCount;
+            return this;
         }
-        if (rawCombinationCount > maxCombinations) {
-            if (rawCombinationCount == Long.MAX_VALUE) {
-                throw new IllegalArgumentException("Declared candidate space exceeds the maximum of " + maxCombinations
-                        + " combinations; narrow the parameter domains or raise maxCombinations");
+
+        /**
+         * Sets how many top training candidates are retained and rebuilt on the holdout
+         * window.
+         *
+         * @param topK number of retained candidates
+         * @return this builder
+         * @throws IllegalArgumentException if {@code topK <= 0}
+         * @since 0.24.2
+         */
+        public Builder<T> topK(int topK) {
+            if (topK <= 0) {
+                throw new IllegalArgumentException("topK must be > 0, but was " + topK);
             }
-            throw new IllegalArgumentException(
-                    "Declared candidate space has " + rawCombinationCount + " combinations, exceeding the maximum of "
-                            + maxCombinations + "; narrow the parameter domains or raise maxCombinations");
-        }
-        return rawCombinationCount;
-    }
-
-    /**
-     * Runs parameter research by generating candidates from the training window,
-     * selecting on training data, and validating selected representatives on a
-     * holdout window.
-     *
-     * @param series          full series
-     * @param domains         ordered parameter domains
-     * @param strategyFactory strategy factory
-     * @param config          research configuration
-     * @return structured research report
-     * @since 0.22.8
-     */
-    public static ParameterResearchReport run(BarSeries series, List<ParameterDomain> domains,
-            StrategyFactory strategyFactory, ResearchConfig config) {
-        return run(series, domains, CandidateValidator.acceptAll(), strategyFactory, config);
-    }
-
-    /**
-     * Runs parameter research by generating candidates from the training window,
-     * selecting on training data, and validating selected representatives on a
-     * holdout window.
-     *
-     * <p>
-     * Candidates are normalized against a training-window sub-series (restarting at
-     * index 0) so period-like parameters cannot leak validation-window length, but
-     * strategies are executed on the full series with original-series indexes so
-     * indicators see the same history they would see in production.
-     * </p>
-     *
-     * @param series          full series
-     * @param domains         ordered parameter domains
-     * @param validator       optional cross-parameter validator
-     * @param strategyFactory strategy factory
-     * @param config          research configuration
-     * @return structured research report
-     * @since 0.22.8
-     */
-    public static ParameterResearchReport run(BarSeries series, List<ParameterDomain> domains,
-            CandidateValidator validator, StrategyFactory strategyFactory, ResearchConfig config) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(domains, "domains");
-        Objects.requireNonNull(strategyFactory, "strategyFactory");
-        Objects.requireNonNull(config, "config");
-        ResearchWindow window = resolveWindow(series, config);
-        BarSeries trainingSeries = trainingWindowSeries(series, window);
-        CandidateGenerationResult candidateSpace = generateCandidateSpace(trainingSeries, domains, validator,
-                config.maxCombinations());
-        return runWithCandidateSpace(series, candidateSpace, strategyFactory, config, window, List.of());
-    }
-
-    /**
-     * Runs parameter research against a caller-supplied candidate space.
-     *
-     * <p>
-     * Prefer
-     * {@link #run(BarSeries, List, CandidateValidator, StrategyFactory, ResearchConfig)}
-     * when period-like normalizers depend on series length; that overload builds
-     * candidates from the training window and avoids validation-window leakage.
-     * </p>
-     *
-     * @param series          full series
-     * @param candidateSpace  normalized candidate space
-     * @param strategyFactory strategy factory
-     * @param config          research configuration
-     * @return structured research report
-     * @since 0.22.8
-     */
-    public static ParameterResearchReport run(BarSeries series, CandidateGenerationResult candidateSpace,
-            StrategyFactory strategyFactory, ResearchConfig config) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(candidateSpace, "candidateSpace");
-        Objects.requireNonNull(strategyFactory, "strategyFactory");
-        Objects.requireNonNull(config, "config");
-        ResearchWindow window = resolveWindow(series, config);
-        return runWithCandidateSpace(series, candidateSpace, strategyFactory, config, window,
-                List.of("Candidate space supplied by caller; ensure it was generated from training data only."));
-    }
-
-    /**
-     * Converts generated strategy candidates into walk-forward tuner candidates.
-     *
-     * @param candidateSpace generated candidate space
-     * @return candidates suitable for {@code WalkForwardTuner}
-     * @since 0.22.8
-     */
-    public static List<WalkForwardCandidate<ParameterSet>> toWalkForwardCandidates(
-            CandidateGenerationResult candidateSpace) {
-        Objects.requireNonNull(candidateSpace, "candidateSpace");
-        return candidateSpace.candidates()
-                .stream()
-                .map(candidate -> new WalkForwardCandidate<>(candidate.id(), candidate.parameters()))
-                .toList();
-    }
-
-    private static ParameterResearchReport runWithCandidateSpace(BarSeries fullSeries,
-            CandidateGenerationResult candidateSpace, StrategyFactory strategyFactory, ResearchConfig config,
-            ResearchWindow window, List<String> initialWarnings) {
-        if (fullSeries.isEmpty()) {
-            throw new IllegalArgumentException("series cannot be empty");
-        }
-        ResearchExecutor executor = new ResearchExecutor(fullSeries, config);
-        ExecutionBundle trainingExecution = executeCandidates(fullSeries, candidateSpace.candidates(), strategyFactory,
-                executor, config.amount(), config.tradeType(), window.trainingStartIndex(), window.trainingEndIndex(),
-                CandidateFailureStage.STRATEGY_BUILD, CandidateFailureStage.TRAINING_EXECUTION);
-        if (trainingExecution.candidates().isEmpty()) {
-            throw new IllegalArgumentException("No candidates could be evaluated on the training window: "
-                    + trainingExecution.invalidCandidates());
+            this.topK = topK;
+            return this;
         }
 
-        BacktestExecutionResult trainingResult = trainingExecution.result();
-        List<RankedTradingStatement> baselineRanking = trainingResult.rankTradingStatements(config.rankingProfile());
-        PruningResult pruningResult = buildPruningGroups(config, fullSeries, trainingExecution, baselineRanking,
-                window.trainingStartIndex(), window.trainingEndIndex());
-        List<PruningGroup> pruningGroups = pruningResult.groups();
-        Set<String> representativeIds = representativeIds(pruningGroups);
-        List<CandidateScore> baselineScores = toScores(baselineRanking, trainingExecution.candidates(),
-                representativeIds);
-        List<StrategyCandidate> representativeCandidates = filterCandidates(trainingExecution.candidates(),
-                representativeIds);
-        List<TradingStatement> representativeStatements = filterStatements(trainingExecution.candidates(),
-                trainingResult.tradingStatements(), representativeIds);
+        /**
+         * Sets the cross-parameter validator applied to every normalized proposal
+         * before evaluation.
+         *
+         * @param validator cross-parameter validator
+         * @return this builder
+         * @throws NullPointerException if {@code validator} is null
+         * @since 0.24.2
+         */
+        public Builder<T> validate(CandidateValidator validator) {
+            this.validator = Objects.requireNonNull(validator, "validator");
+            return this;
+        }
 
-        BacktestExecutionResult representativeTrainingResult = new BacktestExecutionResult(fullSeries,
-                representativeStatements, trainingResult.runtimeReport());
-        List<RankedTradingStatement> representativeRanking = representativeTrainingResult
-                .rankTradingStatements(config.rankingProfile());
-        List<CandidateScore> trainingScores = toScores(representativeRanking, representativeCandidates,
-                representativeIds);
+        /**
+         * Sets the optional value normalizer applied to every proposed value before
+         * validation.
+         *
+         * @param normalizer value normalizer
+         * @return this builder
+         * @throws NullPointerException if {@code normalizer} is null
+         * @since 0.24.2
+         */
+        public Builder<T> normalize(ParameterNormalizer normalizer) {
+            this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
+            return this;
+        }
 
-        List<StrategyCandidate> selectedCandidates = topCandidates(trainingScores, representativeCandidates,
-                config.topK());
-        ValidationBundle validationBundle = validateSelected(fullSeries, executor, selectedCandidates, strategyFactory,
-                config, window);
+        /**
+         * Sets an optional target score that terminates the run as soon as a valid
+         * evaluation reaches it.
+         *
+         * @param targetScore objective value considered good enough
+         * @return this builder
+         * @throws NullPointerException if {@code targetScore} is null
+         * @since 0.24.2
+         */
+        public Builder<T> targetScore(Num targetScore) {
+            this.targetScore = Objects.requireNonNull(targetScore, "targetScore");
+            return this;
+        }
 
-        List<InvalidCandidate> invalidCandidates = new ArrayList<>();
-        invalidCandidates.addAll(candidateSpace.invalidCandidates());
-        invalidCandidates.addAll(trainingExecution.invalidCandidates());
-        invalidCandidates.addAll(pruningResult.invalidCandidates());
-        invalidCandidates.addAll(validationBundle.invalidCandidates());
-
-        List<String> warnings = new ArrayList<>(initialWarnings);
-        warnings.addAll(windowWarnings(config, window, fullSeries));
-        warnings.addAll(policyWarnings(config, validationBundle.validationScores()));
-
-        String baselineTopCandidateId = baselineRanking.isEmpty() ? ""
-                : trainingExecution.candidates().get(baselineRanking.getFirst().originalIndex()).id();
-        String selectedTopCandidateId = trainingScores.isEmpty() ? "" : trainingScores.getFirst().candidateId();
-
-        return new ParameterResearchReport(resolveDatasetId(fullSeries), fullSeries.getBarCount(), window,
-                candidateSpace.candidateSpaceHash(), config.pruningPolicy(), candidateSpace.rawCandidateCount(),
-                candidateSpace.generatedCandidateCount(), trainingExecution.candidates().size(),
-                invalidCandidates.size(), candidateSpace.candidates(), baselineTopCandidateId, selectedTopCandidateId,
-                pruningGroups, baselineScores, trainingScores, validationBundle.validationScores(), invalidCandidates,
-                warnings, trainingResult.runtimeReport(), validationBundle.runtimeReport());
-    }
-
-    /**
-     * Executes candidates on one window of the full series with per-candidate
-     * failure isolation.
-     *
-     * <p>
-     * Strategy construction and execution failures are recorded as invalid
-     * candidates with stage-specific labels instead of aborting the run. Parallel
-     * execution writes into index-ordered arrays so result ordering stays
-     * deterministic regardless of scheduling.
-     * </p>
-     *
-     * @param fullSeries            full series
-     * @param candidates            candidates to evaluate
-     * @param strategyFactory       strategy factory
-     * @param executor              shared execution context
-     * @param amount                trade amount
-     * @param tradeTypeOverride     starting trade type, or null for per-strategy
-     * @param startIndex            inclusive window start on the full series
-     * @param endIndex              inclusive window end on the full series
-     * @param buildFailureStage     stage for strategy-build failures
-     * @param executionFailureStage stage for execution failures
-     * @return execution bundle
-     */
-    private static ExecutionBundle executeCandidates(BarSeries fullSeries, List<StrategyCandidate> candidates,
-            StrategyFactory strategyFactory, ResearchExecutor executor, Num amount, TradeType tradeTypeOverride,
-            int startIndex, int endIndex, CandidateFailureStage buildFailureStage,
-            CandidateFailureStage executionFailureStage) {
-        List<StrategyCandidate> executableCandidates = new ArrayList<>(candidates.size());
-        List<Strategy> strategies = new ArrayList<>(candidates.size());
-        List<InvalidCandidate> invalidCandidates = new ArrayList<>();
-        for (StrategyCandidate candidate : candidates) {
-            try {
-                Strategy strategy = Objects.requireNonNull(strategyFactory.create(fullSeries, candidate.parameters()),
-                        "strategyFactory returned null");
-                strategies.add(strategy);
-                executableCandidates.add(candidate);
-            } catch (RuntimeException ex) {
-                invalidCandidates.add(new InvalidCandidate(candidate.id(), candidate.parameters().asMap(),
-                        buildFailureStage, ex.getMessage()));
+        /**
+         * Caps the number of iterations (generations or swarm updates) for iterative
+         * plans.
+         *
+         * @param iterations maximum iterations
+         * @return this builder
+         * @throws IllegalArgumentException if {@code iterations <= 0}
+         * @since 0.24.2
+         */
+        public Builder<T> maxIterations(int iterations) {
+            if (iterations <= 0) {
+                throw new IllegalArgumentException("maxIterations must be > 0, but was " + iterations);
             }
+            this.maxIterations = iterations;
+            return this;
         }
 
-        int executableCount = strategies.size();
-        TradingStatement[] statements = new TradingStatement[executableCount];
-        long[] durations = new long[executableCount];
-        InvalidCandidate[] executionFailures = new InvalidCandidate[executableCount];
-        long overallStart = System.nanoTime();
-        IntStream stream = IntStream.range(0, executableCount);
-        if (executableCount > 1) {
-            stream = stream.parallel();
-        }
-        stream.forEach(index -> {
-            StrategyCandidate candidate = executableCandidates.get(index);
-            Strategy strategy = strategies.get(index);
-            long startNanos = System.nanoTime();
-            try {
-                TradeType tradeType = tradeTypeOverride != null ? tradeTypeOverride : strategy.getStartingType();
-                TradingRecord record = executor.manager().run(strategy, tradeType, amount, startIndex, endIndex);
-                statements[index] = executor.statementGenerator().generate(strategy, record, fullSeries);
-                durations[index] = System.nanoTime() - startNanos;
-            } catch (RuntimeException ex) {
-                executionFailures[index] = new InvalidCandidate(candidate.id(), candidate.parameters().asMap(),
-                        executionFailureStage, ex.getMessage());
+        /**
+         * Terminates iterative plans when the best score has not improved for the given
+         * number of iterations.
+         *
+         * @param iterations stagnation tolerance
+         * @return this builder
+         * @throws IllegalArgumentException if {@code iterations <= 0}
+         * @since 0.24.2
+         */
+        public Builder<T> noImprovementIterations(int iterations) {
+            if (iterations <= 0) {
+                throw new IllegalArgumentException("noImprovementIterations must be > 0, but was " + iterations);
             }
-        });
-        Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
+            this.noImprovementIterations = iterations;
+            return this;
+        }
 
-        List<StrategyCandidate> executedCandidates = new ArrayList<>(executableCount);
-        List<Strategy> executedStrategies = new ArrayList<>(executableCount);
-        List<TradingStatement> executedStatements = new ArrayList<>(executableCount);
-        List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>(executableCount);
-        long[] executedDurations = new long[executableCount];
-        int executedCount = 0;
-        for (int index = 0; index < executableCount; index++) {
-            if (executionFailures[index] != null) {
-                invalidCandidates.add(executionFailures[index]);
-                continue;
+        /**
+         * Runs the search and returns the final report.
+         *
+         * @return final research report
+         * @throws IllegalStateException if required configuration is missing, the
+         *                               series is empty, or the dataset changed during
+         *                               the run
+         * @since 0.24.2
+         */
+        public ParameterResearchReport run() {
+            if (domains.isEmpty()) {
+                throw new IllegalStateException("at least one parameter domain is required");
             }
-            executedCandidates.add(executableCandidates.get(index));
-            executedStrategies.add(strategies.get(index));
-            executedStatements.add(statements[index]);
-            executedDurations[executedCount] = durations[index];
-            strategyRuntimes.add(new BacktestRuntimeReport.StrategyRuntime(strategies.get(index),
-                    Duration.ofNanos(durations[index])));
-            executedCount++;
-        }
-
-        BacktestExecutionResult result = executedStrategies.isEmpty()
-                ? new BacktestExecutionResult(fullSeries, List.of(), BacktestRuntimeReport.empty())
-                : new BacktestExecutionResult(fullSeries, List.copyOf(executedStatements), buildRuntimeReport(
-                        Arrays.copyOf(executedDurations, executedCount), overallRuntime, strategyRuntimes));
-        return new ExecutionBundle(executedCandidates, result, invalidCandidates);
-    }
-
-    /**
-     * Mirrors {@code BacktestExecutor.buildRuntimeReport} statistics.
-     */
-    private static BacktestRuntimeReport buildRuntimeReport(long[] durations, Duration overallRuntime,
-            List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes) {
-        LongSummaryStatistics summaryStatistics = Arrays.stream(durations).summaryStatistics();
-        if (summaryStatistics.getCount() == 0) {
-            return new BacktestRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO,
-                    strategyRuntimes);
-        }
-        long[] sortedDurations = durations.clone();
-        Arrays.sort(sortedDurations);
-        int midPoint = sortedDurations.length / 2;
-        long medianNanos;
-        if (sortedDurations.length % 2 == 0) {
-            medianNanos = (sortedDurations[midPoint - 1] + sortedDurations[midPoint]) / 2;
-        } else {
-            medianNanos = sortedDurations[midPoint];
-        }
-        return new BacktestRuntimeReport(overallRuntime, Duration.ofNanos(summaryStatistics.getMin()),
-                Duration.ofNanos(summaryStatistics.getMax()),
-                Duration.ofNanos(Math.round(summaryStatistics.getAverage())), Duration.ofNanos(medianNanos),
-                strategyRuntimes);
-    }
-
-    private static ValidationBundle validateSelected(BarSeries fullSeries, ResearchExecutor executor,
-            List<StrategyCandidate> selectedCandidates, StrategyFactory strategyFactory, ResearchConfig config,
-            ResearchWindow window) {
-        if (!window.hasValidationWindow() || selectedCandidates.isEmpty()) {
-            return new ValidationBundle(List.of(), BacktestRuntimeReport.empty(), List.of());
-        }
-
-        ExecutionBundle execution = executeCandidates(fullSeries, selectedCandidates, strategyFactory, executor,
-                config.amount(), config.tradeType(), window.validationStartIndex(), window.validationEndIndex(),
-                CandidateFailureStage.VALIDATION_STRATEGY_BUILD, CandidateFailureStage.VALIDATION_EXECUTION);
-        if (execution.candidates().isEmpty()) {
-            return new ValidationBundle(List.of(), execution.result().runtimeReport(), execution.invalidCandidates());
-        }
-        List<RankedTradingStatement> ranked = execution.result().rankTradingStatements(config.rankingProfile());
-        Set<String> selectedIds = candidateIds(selectedCandidates);
-        List<CandidateScore> validationScores = toScores(ranked, execution.candidates(), selectedIds);
-        return new ValidationBundle(validationScores, execution.result().runtimeReport(),
-                execution.invalidCandidates());
-    }
-
-    private static PruningResult buildPruningGroups(ResearchConfig config, BarSeries fullSeries,
-            ExecutionBundle execution, List<RankedTradingStatement> baselineRanking, int windowStartIndex,
-            int windowEndIndex) {
-        return switch (config.pruningPolicy()) {
-        case NONE -> new PruningResult(noneGroups(execution.candidates()), List.of());
-        case EXACT_TRADING_RECORD -> new PruningResult(exactSignatureGroups(execution,
-                candidateIndex -> tradingRecordSignature(
-                        execution.result().tradingStatements().get(candidateIndex).getTradingRecord()),
-                "exact trading record", NO_DISTANCE), List.of());
-        case INDICATOR_DISTANCE ->
-            indicatorDistanceGroups(config, fullSeries, execution, baselineRanking, windowStartIndex, windowEndIndex);
-        case OBJECTIVE_DISTANCE ->
-            new PruningResult(objectiveDistanceGroups(config, execution, baselineRanking), List.of());
-        };
-    }
-
-    private static List<PruningGroup> noneGroups(List<StrategyCandidate> candidates) {
-        List<PruningGroup> groups = new ArrayList<>(candidates.size());
-        for (StrategyCandidate candidate : candidates) {
-            groups.add(new PruningGroup(candidate.id(), List.of(candidate.id()), "no pruning", NO_DISTANCE));
-        }
-        return List.copyOf(groups);
-    }
-
-    private static List<PruningGroup> exactSignatureGroups(ExecutionBundle execution,
-            IntFunction<String> signatureSupplier, String reason, double maximumDistance) {
-        Map<String, PruningGroupBuilder> groupsBySignature = new LinkedHashMap<>();
-        for (int i = 0; i < execution.candidates().size(); i++) {
-            StrategyCandidate candidate = execution.candidates().get(i);
-            String signature = signatureSupplier.apply(i);
-            PruningGroupBuilder builder = groupsBySignature.computeIfAbsent(signature,
-                    ignored -> new PruningGroupBuilder(candidate.id(), reason));
-            builder.add(candidate.id(), maximumDistance);
-        }
-        return groupsBySignature.values().stream().map(PruningGroupBuilder::build).toList();
-    }
-
-    private static PruningResult indicatorDistanceGroups(ResearchConfig config, BarSeries fullSeries,
-            ExecutionBundle execution, List<RankedTradingStatement> baselineRanking, int windowStartIndex,
-            int windowEndIndex) {
-        if (config.indicatorFactory() == null) {
-            throw new IllegalArgumentException("indicatorFactory is required for INDICATOR_DISTANCE pruning");
-        }
-
-        Map<String, double[]> signaturesByCandidateId = new LinkedHashMap<>();
-        List<InvalidCandidate> invalidCandidates = new ArrayList<>();
-        for (StrategyCandidate candidate : execution.candidates()) {
-            try {
-                Indicator<Num> indicator = Objects.requireNonNull(
-                        config.indicatorFactory().create(fullSeries, candidate.parameters()),
-                        "indicatorFactory returned null");
-                signaturesByCandidateId.put(candidate.id(),
-                        captureIndicatorSignature(fullSeries, indicator, windowStartIndex, windowEndIndex));
-            } catch (RuntimeException ex) {
-                invalidCandidates.add(new InvalidCandidate(candidate.id(), candidate.parameters().asMap(),
-                        CandidateFailureStage.PRUNING_INDICATOR, ex.getMessage()));
+            if (candidateFactory == null) {
+                throw new IllegalStateException("candidate(...) is required before run()");
             }
-        }
-
-        List<PruningGroupBuilder> builders = new ArrayList<>();
-        List<double[]> representativeSignatures = new ArrayList<>();
-        Set<Integer> groupedIndexes = new LinkedHashSet<>();
-        for (RankedTradingStatement ranked : baselineRanking) {
-            groupedIndexes.add(ranked.originalIndex());
-            StrategyCandidate candidate = execution.candidates().get(ranked.originalIndex());
-            double[] signature = signaturesByCandidateId.get(candidate.id());
-            if (signature != null) {
-                addIndicatorDistanceGroup(config, builders, representativeSignatures, candidate, signature);
+            if (objective == null) {
+                throw new IllegalStateException("maximize(...) or minimize(...) is required before run()");
             }
-        }
-        for (int i = 0; i < execution.candidates().size(); i++) {
-            if (groupedIndexes.contains(i)) {
-                continue;
+            if (searchPlan == null) {
+                throw new IllegalStateException("search(...) is required before run()");
             }
-            StrategyCandidate candidate = execution.candidates().get(i);
-            double[] signature = signaturesByCandidateId.get(candidate.id());
-            if (signature != null) {
-                addIndicatorDistanceGroup(config, builders, representativeSignatures, candidate, signature);
+            SeriesSnapshot snapshot = new SeriesSnapshot(series);
+            if (snapshot.barCount() <= 0) {
+                throw new IllegalStateException("series has no bars");
             }
-        }
-        return new PruningResult(builders.stream().map(PruningGroupBuilder::build).toList(),
-                List.copyOf(invalidCandidates));
-    }
-
-    private static void addIndicatorDistanceGroup(ResearchConfig config, List<PruningGroupBuilder> builders,
-            List<double[]> representativeSignatures, StrategyCandidate candidate, double[] signature) {
-        for (int groupIndex = 0; groupIndex < representativeSignatures.size(); groupIndex++) {
-            double distance = rmsDistance(representativeSignatures.get(groupIndex), signature);
-            if (distance <= config.distanceTolerance()) {
-                builders.get(groupIndex).add(candidate.id(), distance);
-                return;
+            int holdoutBars = resolveHoldoutBars(snapshot.barCount());
+            String datasetId = resolveDatasetId(series);
+            ResearchWindow trainingWindow = buildWindow(datasetId, ResearchWindow.WindowPhase.TRAINING,
+                    snapshot.beginIndex(), snapshot.endIndex() - holdoutBars);
+            ResearchWindow holdoutWindow = holdoutBars > 0
+                    ? buildWindow(datasetId, ResearchWindow.WindowPhase.HOLDOUT, snapshot.endIndex() - holdoutBars + 1,
+                            snapshot.endIndex())
+                    : null;
+            String objectiveId = computeObjectiveId(holdoutBars);
+            Comparator<EvaluatedCandidate> ranking = rankingComparator(direction);
+            List<DomainSpec> specs = new ArrayList<>(domains.size());
+            for (ParameterDomain domain : domains) {
+                specs.add(DomainSpec.of(domain));
             }
-        }
-        PruningGroupBuilder builder = new PruningGroupBuilder(candidate.id(), "indicator RMS distance");
-        builder.add(candidate.id(), NO_DISTANCE);
-        builders.add(builder);
-        representativeSignatures.add(signature);
-    }
-
-    private static List<PruningGroup> objectiveDistanceGroups(ResearchConfig config, ExecutionBundle execution,
-            List<RankedTradingStatement> baselineRanking) {
-        List<PruningGroupBuilder> builders = new ArrayList<>();
-        List<Double> representativeScores = new ArrayList<>();
-        Set<Integer> groupedIndexes = new LinkedHashSet<>();
-        for (RankedTradingStatement ranked : baselineRanking) {
-            groupedIndexes.add(ranked.originalIndex());
-            StrategyCandidate candidate = execution.candidates().get(ranked.originalIndex());
-            double score = ranked.compositeScore().doubleValue();
-            boolean matched = false;
-            if (Double.isFinite(score)) {
-                for (int groupIndex = 0; groupIndex < representativeScores.size(); groupIndex++) {
-                    double distance = Math.abs(representativeScores.get(groupIndex) - score);
-                    if (distance <= config.distanceTolerance()) {
-                        builders.get(groupIndex).add(candidate.id(), distance);
-                        matched = true;
+            SearchEngine engine = createEngine(specs, ranking);
+            int budget = searchPlan.maxEvaluations();
+            EvaluationCache cache = new EvaluationCache();
+            List<EvaluatedCandidate> evaluations = new ArrayList<>();
+            List<FailedEvaluation> failures = new ArrayList<>();
+            RunCounters counters = new RunCounters();
+            long orchestrationStart = System.nanoTime();
+            long evaluationNanos = 0L;
+            TerminationReason reason = null;
+            boolean targetReached = false;
+            while (true) {
+                if (Thread.currentThread().isInterrupted()) {
+                    reason = TerminationReason.CANCELED;
+                    break;
+                }
+                verifyUnchanged(snapshot, series);
+                int remaining = budget - (int) counters.attempted;
+                List<ParameterSet> batch = engine.propose(remaining);
+                if (batch.isEmpty()) {
+                    reason = engine.terminationReason();
+                    if (reason == null) {
+                        reason = counters.attempted >= budget ? TerminationReason.EVALUATION_BUDGET_EXHAUSTED
+                                : TerminationReason.SEARCH_SPACE_EXHAUSTED;
+                    }
+                    break;
+                }
+                for (ParameterSet proposed : batch) {
+                    counters.proposed++;
+                    ParameterSet normalized = normalizeProposal(proposed);
+                    if (normalized == null) {
+                        counters.rejected++;
+                        continue;
+                    }
+                    if (!normalized.repairs().isEmpty()) {
+                        counters.repaired++;
+                    }
+                    try {
+                        validator.validate(normalized);
+                    } catch (RuntimeException ex) {
+                        counters.rejected++;
+                        continue;
+                    }
+                    String candidateId = proposed.stableId();
+                    EvaluatedCandidate cached = cache.get(candidateId);
+                    if (cached != null) {
+                        counters.duplicate++;
+                        counters.cached++;
+                        engine.observe(cached);
+                        continue;
+                    }
+                    counters.attempted++;
+                    long evaluationStart = System.nanoTime();
+                    EvaluatedCandidate evaluated;
+                    try {
+                        T candidate = candidateFactory.build(trainingWindow, normalized);
+                        ObjectiveEvaluation outcome = objective.evaluate(candidate, trainingWindow);
+                        evaluated = classify(candidateId, normalized, (int) counters.attempted, outcome);
+                    } catch (RuntimeException ex) {
+                        evaluated = EvaluatedCandidate.failed(candidateId, normalized, (int) counters.attempted,
+                                "evaluation threw " + ex.getClass().getSimpleName() + message(ex));
+                    }
+                    evaluationNanos += System.nanoTime() - evaluationStart;
+                    cache.put(candidateId, evaluated);
+                    engine.observe(evaluated);
+                    evaluations.add(evaluated);
+                    if (evaluated.valid()) {
+                        counters.successful++;
+                    } else {
+                        counters.failed++;
+                        failures.add(evaluated.toFailedEvaluation());
+                    }
+                    if (evaluated.valid() && targetScore != null && reachedTarget(evaluated.score())) {
+                        targetReached = true;
                         break;
                     }
                 }
+                if (targetReached) {
+                    reason = TerminationReason.TARGET_SCORE_REACHED;
+                    break;
+                }
+                if (engine.terminationReason() != null) {
+                    reason = engine.terminationReason();
+                    break;
+                }
+                if (engine.exhausted()) {
+                    reason = TerminationReason.SEARCH_SPACE_EXHAUSTED;
+                    break;
+                }
             }
-            if (!matched) {
-                PruningGroupBuilder builder = new PruningGroupBuilder(candidate.id(), "objective score distance");
-                builder.add(candidate.id(), NO_DISTANCE);
-                builders.add(builder);
-                representativeScores.add(score);
+            long orchestrationNanos = System.nanoTime() - orchestrationStart - evaluationNanos;
+            if (counters.successful == 0) {
+                reason = TerminationReason.NO_VALID_CANDIDATES;
             }
-        }
-        for (int i = 0; i < execution.candidates().size(); i++) {
-            if (!groupedIndexes.contains(i)) {
-                StrategyCandidate candidate = execution.candidates().get(i);
-                PruningGroupBuilder builder = new PruningGroupBuilder(candidate.id(), "objective score unavailable");
-                builder.add(candidate.id(), NO_DISTANCE);
-                builders.add(builder);
+            List<EvaluatedCandidate> ranked = evaluations.stream()
+                    .filter(EvaluatedCandidate::valid)
+                    .sorted(ranking)
+                    .toList();
+            int leaderboardSize = Math.min(topK, ranked.size());
+            List<RankedCandidate> holdoutLeaderboard = List.of();
+            Map<String, HoldoutEvaluation> holdoutById = Map.of();
+            if (holdoutWindow != null && !ranked.isEmpty()) {
+                verifyUnchanged(snapshot, series);
+                HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, ranking, cache);
+                holdoutLeaderboard = holdout.leaderboard();
+                holdoutById = holdout.byId();
+                evaluationNanos += holdout.evaluationNanos();
             }
-        }
-        return builders.stream().map(PruningGroupBuilder::build).toList();
-    }
-
-    private static String tradingRecordSignature(TradingRecord tradingRecord) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("start=")
-                .append(tradingRecord.getStartIndex())
-                .append(";end=")
-                .append(tradingRecord.getEndIndex());
-        for (Trade trade : tradingRecord.getTrades()) {
-            builder.append('|')
-                    .append(trade.getType())
-                    .append('@')
-                    .append(trade.getIndex())
-                    .append(':')
-                    .append(formatNum(trade.getPricePerAsset()))
-                    .append(':')
-                    .append(formatNum(trade.getAmount()));
-        }
-        return builder.toString();
-    }
-
-    private static double[] captureIndicatorSignature(BarSeries series, Indicator<Num> indicator, int windowStartIndex,
-            int windowEndIndex) {
-        int effectiveStart = Math.max(series.getBeginIndex(),
-                Math.max(windowStartIndex, indicator.getCountOfUnstableBars()));
-        if (effectiveStart > windowEndIndex) {
-            return new double[0];
-        }
-        long length = (long) windowEndIndex - effectiveStart + 1L;
-        if (length > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("Indicator signature window is too large: " + length + " values");
-        }
-        double[] values = new double[(int) length];
-        int index = effectiveStart;
-        for (int offset = 0;; offset++) {
-            double value = indicator.getValue(index).doubleValue();
-            if (!Double.isFinite(value)) {
-                throw new IllegalArgumentException("Indicator produced a non-finite value at index " + index);
+            List<RankedCandidate> trainingLeaderboard = new ArrayList<>(leaderboardSize);
+            for (int i = 0; i < leaderboardSize; i++) {
+                EvaluatedCandidate evaluated = ranked.get(i);
+                HoldoutEvaluation holdout = holdoutById.get(evaluated.candidateId());
+                Integer holdoutRank = holdout == null ? null : holdout.holdoutRank();
+                Num holdoutScore = holdout == null ? null : holdout.evaluation().score();
+                Num scoreDelta = holdout == null ? null : holdoutScore.minus(evaluated.score());
+                trainingLeaderboard.add(new RankedCandidate(evaluated.candidateId(), evaluated.parameters(), i + 1,
+                        holdoutRank, evaluated.score(), holdoutScore, scoreDelta, evaluated.metrics(),
+                        holdout == null ? Map.of() : holdout.evaluation().metrics()));
             }
-            values[offset] = value;
-            if (offset == values.length - 1) {
-                break;
+            List<String> warnings = new ArrayList<>();
+            if (topK > ranked.size()) {
+                warnings.add("topK " + topK + " exceeds the " + ranked.size()
+                        + " valid evaluations; leaderboard contains " + ranked.size() + " candidates");
             }
-            index++;
-        }
-        return values;
-    }
+            RunCounts counts = new RunCounts(counters.proposed, counters.rejected, counters.repaired,
+                    counters.duplicate, counters.cached, counters.attempted, counters.successful, counters.failed,
+                    budget - (int) counters.attempted, engine.iterationsCompleted());
+            return new ParameterResearchReport(datasetId, searchPlan, objectiveId, trainingWindow,
+                    Optional.ofNullable(holdoutWindow), topK, trainingLeaderboard, holdoutLeaderboard, reason, counts,
+                    failures, evaluationNanos, orchestrationNanos, warnings);
 
-    private static double rmsDistance(double[] left, double[] right) {
-        if (left.length != right.length) {
-            return Double.POSITIVE_INFINITY;
         }
-        if (left.length == 0) {
-            return 0d;
-        }
-        double sumSquared = 0d;
-        for (int i = 0; i < left.length; i++) {
-            double delta = left[i] - right[i];
-            sumSquared += delta * delta;
-        }
-        return Math.sqrt(sumSquared / left.length);
-    }
 
-    private static List<CandidateScore> toScores(List<RankedTradingStatement> rankedStatements,
-            List<StrategyCandidate> candidates, Set<String> representativeIds) {
-        List<CandidateScore> scores = new ArrayList<>(rankedStatements.size());
-        int rank = 1;
-        for (RankedTradingStatement ranked : rankedStatements) {
-            StrategyCandidate candidate = candidates.get(ranked.originalIndex());
-            scores.add(new CandidateScore(candidate.id(), ranked.statement().getStrategy().getName(), rank,
-                    ranked.compositeScore(), ranked.rawScores(), representativeIds.contains(candidate.id())));
-            rank++;
-        }
-        return List.copyOf(scores);
-    }
-
-    private static List<StrategyCandidate> topCandidates(List<CandidateScore> scores,
-            List<StrategyCandidate> representativeCandidates, int topK) {
-        Map<String, StrategyCandidate> candidatesById = new LinkedHashMap<>();
-        for (StrategyCandidate candidate : representativeCandidates) {
-            candidatesById.put(candidate.id(), candidate);
-        }
-        List<StrategyCandidate> selected = new ArrayList<>();
-        int limit = Math.min(topK, scores.size());
-        for (int i = 0; i < limit; i++) {
-            StrategyCandidate candidate = candidatesById.get(scores.get(i).candidateId());
-            if (candidate != null) {
-                selected.add(candidate);
+        private int resolveHoldoutBars(int totalBars) {
+            int holdoutBars = 0;
+            if (!Double.isNaN(holdoutFraction)) {
+                holdoutBars = Math.max(1, (int) Math.round(totalBars * holdoutFraction));
+            } else if (holdoutBarCount >= 0) {
+                holdoutBars = holdoutBarCount;
             }
-        }
-        return List.copyOf(selected);
-    }
-
-    private static List<StrategyCandidate> filterCandidates(List<StrategyCandidate> candidates,
-            Set<String> representativeIds) {
-        List<StrategyCandidate> filtered = new ArrayList<>();
-        for (StrategyCandidate candidate : candidates) {
-            if (representativeIds.contains(candidate.id())) {
-                filtered.add(candidate);
+            if (holdoutBars > 0 && holdoutBars >= totalBars) {
+                throw new IllegalArgumentException("holdout window of " + holdoutBars
+                        + " bars must leave at least one training bar of " + totalBars);
             }
+            return holdoutBars;
         }
-        return List.copyOf(filtered);
-    }
 
-    private static List<TradingStatement> filterStatements(List<StrategyCandidate> candidates,
-            List<TradingStatement> statements, Set<String> representativeIds) {
-        List<TradingStatement> filtered = new ArrayList<>();
-        for (int i = 0; i < candidates.size(); i++) {
-            if (representativeIds.contains(candidates.get(i).id())) {
-                filtered.add(statements.get(i));
+        private ResearchWindow buildWindow(String datasetId, ResearchWindow.WindowPhase phase, int start, int end) {
+            String windowId = datasetId + "|" + phase.name().toLowerCase(Locale.ROOT) + "|" + start + "|" + end;
+            return new ResearchWindow(series.getSubSeries(start, end + 1), start, end, phase, windowId);
+        }
+
+        private ParameterSet normalizeProposal(ParameterSet proposed) {
+            if (normalizer == null) {
+                return proposed;
             }
-        }
-        return List.copyOf(filtered);
-    }
-
-    private static Set<String> representativeIds(List<PruningGroup> pruningGroups) {
-        Set<String> ids = new LinkedHashSet<>();
-        for (PruningGroup group : pruningGroups) {
-            ids.add(group.representativeId());
-        }
-        return Set.copyOf(ids);
-    }
-
-    private static Set<String> candidateIds(List<StrategyCandidate> selectedCandidates) {
-        Set<String> ids = new LinkedHashSet<>();
-        for (StrategyCandidate candidate : selectedCandidates) {
-            ids.add(candidate.id());
-        }
-        return Set.copyOf(ids);
-    }
-
-    private static List<String> policyWarnings(ResearchConfig config, List<CandidateScore> validationScores) {
-        List<String> warnings = new ArrayList<>();
-        if (config.pruningPolicy() == PruningPolicy.INDICATOR_DISTANCE) {
-            warnings.add(
-                    "INDICATOR_DISTANCE is fuzzy and can hide trading-behavior differences; use exact policies for selection gates.");
-        }
-        if (config.pruningPolicy() == PruningPolicy.OBJECTIVE_DISTANCE) {
-            warnings.add(
-                    "OBJECTIVE_DISTANCE clusters by score similarity after evaluation; it is a reporting reduction, not a compute-saving gate.");
-        }
-        if (validationScores.isEmpty()) {
-            warnings.add(
-                    "No validation scores were produced; configure a positive validationBarCount to hold out data.");
-        }
-        return List.copyOf(warnings);
-    }
-
-    private static List<String> windowWarnings(ResearchConfig config, ResearchWindow window, BarSeries series) {
-        List<String> warnings = new ArrayList<>();
-        int actualValidationBars = window.hasValidationWindow()
-                ? window.validationEndIndex() - window.validationStartIndex() + 1
-                : 0;
-        if (config.validationBarCount() > actualValidationBars) {
-            warnings.add("validationBarCount was reduced from " + config.validationBarCount() + " to "
-                    + actualValidationBars + " to leave at least one training bar.");
+            List<ParameterValue> values = new ArrayList<>(proposed.values().size());
+            for (ParameterValue value : proposed.values()) {
+                try {
+                    values.add(normalizer.normalize(series, value.name(), value.value()));
+                } catch (RuntimeException ex) {
+                    return null;
+                }
+            }
+            return new ParameterSet(values);
         }
 
-        int actualTrainingBars = window.trainingEndIndex() - window.trainingStartIndex() + 1;
-        if (config.trainingBarCount() > 0 && config.trainingBarCount() > actualTrainingBars) {
-            warnings.add("trainingBarCount was reduced from " + config.trainingBarCount() + " to " + actualTrainingBars
-                    + " by the available pre-validation data.");
+        private EvaluatedCandidate classify(String candidateId, ParameterSet parameters, int ordinal,
+                ObjectiveEvaluation outcome) {
+            if (outcome.status() == ObjectiveEvaluation.Status.FAILED) {
+                String reason = outcome.failureReason().isBlank() ? "objective declared failure"
+                        : outcome.failureReason();
+                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, reason);
+            }
+            Num score = outcome.score();
+            if (!Num.isFinite(score)) {
+                return EvaluatedCandidate.failed(candidateId, parameters, ordinal, "objective score is not finite");
+            }
+            return EvaluatedCandidate.valid(candidateId, parameters, ordinal, score, outcome.metrics());
         }
-        if (series.getBeginIndex() != 0) {
-            warnings.add(
-                    "Candidate normalization uses a training-window sub-series that restarts at index 0; execution uses original-series indexes.");
-        }
-        return List.copyOf(warnings);
-    }
 
-    private static ResearchWindow resolveWindow(BarSeries series, ResearchConfig config) {
-        if (series.isEmpty()) {
-            throw new IllegalArgumentException("series cannot be empty");
+        private SearchEngine createEngine(List<DomainSpec> specs, Comparator<EvaluatedCandidate> ranking) {
+            if (specs.isEmpty()) {
+                throw new IllegalArgumentException("at least one parameter domain is required");
+            }
+            int maxIter = maxIterations == null ? -1 : maxIterations;
+            int noImprovement = noImprovementIterations == null ? -1 : noImprovementIterations;
+            return switch (searchPlan.kind()) {
+            case GRID -> new GridSearchEngine(specs);
+            case GENETIC -> new GeneticSearchEngine(specs, searchPlan.geneticSettings(), new Random(searchPlan.seed()),
+                    ranking, maxIter, noImprovement);
+            case PARTICLE_SWARM -> new ParticleSwarmEngine(specs, searchPlan.swarmSettings(),
+                    new Random(searchPlan.seed()), ranking, maxIter, noImprovement);
+            };
         }
-        int begin = series.getBeginIndex();
-        int end = series.getEndIndex();
-        int barCount = series.getBarCount();
-        int validationCount = Math.max(0, Math.min(config.validationBarCount(), barCount - 1));
-        int validationStart = validationCount == 0 ? -1 : end - validationCount + 1;
-        int validationEnd = validationCount == 0 ? -1 : end;
-        int latestTrainingEnd = validationCount == 0 ? end : validationStart - 1;
-        int availableTrainingCount = latestTrainingEnd - begin + 1;
-        int requestedTrainingCount = config.trainingBarCount() <= 0 ? availableTrainingCount
-                : Math.min(config.trainingBarCount(), availableTrainingCount);
-        if (requestedTrainingCount <= 0) {
-            throw new IllegalArgumentException("training window must contain at least one bar");
+
+        private boolean reachedTarget(Num score) {
+            return direction == Direction.MAXIMIZE ? score.isGreaterThanOrEqual(targetScore)
+                    : score.isLessThanOrEqual(targetScore);
         }
-        int trainingStart = latestTrainingEnd - requestedTrainingCount + 1;
-        return new ResearchWindow(trainingStart, latestTrainingEnd, validationStart, validationEnd);
+
+        private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
+                ResearchWindow holdoutWindow, Comparator<EvaluatedCandidate> ranking, EvaluationCache cache) {
+            List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
+            Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
+            long evaluationNanos = 0L;
+            for (int i = 0; i < leaderboardSize; i++) {
+                EvaluatedCandidate training = ranked.get(i);
+                String key = cacheKey(training.candidateId(), holdoutWindow.windowId());
+                EvaluatedCandidate cached = cache.get(key);
+                EvaluatedCandidate holdout = cached;
+                if (cached == null) {
+                    long evaluationStart = System.nanoTime();
+                    try {
+                        T candidate = candidateFactory.build(holdoutWindow, training.parameters());
+                        ObjectiveEvaluation outcome = objective.evaluate(candidate, holdoutWindow);
+                        holdout = classify(training.candidateId(), training.parameters(), i + 1, outcome);
+                    } catch (RuntimeException ex) {
+                        holdout = EvaluatedCandidate.failed(training.candidateId(), training.parameters(), i + 1,
+                                "holdout evaluation threw " + ex.getClass().getSimpleName() + message(ex));
+                    }
+                    evaluationNanos += System.nanoTime() - evaluationStart;
+                    cache.put(key, holdout);
+                }
+                if (holdout.valid()) {
+                    holdoutEvaluations.add(new HoldoutEvaluation(holdout, i + 1, 0));
+                }
+            }
+            holdoutEvaluations.sort((a, b) -> ranking.compare(a.evaluation(), b.evaluation()));
+            List<RankedCandidate> leaderboard = new ArrayList<>(holdoutEvaluations.size());
+            int rank = 1;
+            for (HoldoutEvaluation evaluation : holdoutEvaluations) {
+                RankedCandidate row = new RankedCandidate(evaluation.evaluation().candidateId(),
+                        evaluation.evaluation().parameters(), evaluation.trainingRank(), rank,
+                        evaluation.evaluation().score(), evaluation.evaluation().score(), series.numFactory().zero(),
+                        evaluation.evaluation().metrics(), evaluation.evaluation().metrics());
+                leaderboard.add(row);
+                byId.put(row.candidateId(),
+                        new HoldoutEvaluation(evaluation.evaluation(), evaluation.trainingRank(), rank));
+                rank++;
+            }
+            return new HoldoutResult(leaderboard, byId, evaluationNanos);
+        }
+
+        private String computeObjectiveId(int holdoutBars) {
+            StringJoiner joiner = new StringJoiner("|");
+            joiner.add(direction.name());
+            for (ParameterDomain domain : domains) {
+                joiner.add(domainSpec(domain));
+            }
+            joiner.add(searchPlan.kind().name())
+                    .add(String.valueOf(searchPlan.maxEvaluations()))
+                    .add(String.valueOf(searchPlan.seed()))
+                    .add(String.valueOf(topK))
+                    .add(String.valueOf(holdoutBars));
+            return shortHash(joiner.toString());
+        }
     }
 
     /**
-     * Builds the training-window sub-series used for candidate normalization.
+     * Builds a candidate for one window from a normalized parameter set.
      *
-     * <p>
-     * The regular {@code getSubSeries(begin, end)} path is used whenever the window
-     * end is not the maximum possible index; the terminal-index window (end ==
-     * {@code Integer.MAX_VALUE}) cannot be represented by {@code endIndex + 1}, so
-     * a fresh series is built bar by bar instead.
-     * </p>
-     */
-    private static BarSeries trainingWindowSeries(BarSeries fullSeries, ResearchWindow window) {
-        int trainingStartIndex = window.trainingStartIndex();
-        int trainingEndIndex = window.trainingEndIndex();
-        if (trainingEndIndex != Integer.MAX_VALUE) {
-            return fullSeries.getSubSeries(trainingStartIndex, trainingEndIndex + 1);
-        }
-        BarSeries trainingSeries = new BaseBarSeriesBuilder().withName(fullSeries.getName())
-                .withNumFactory(fullSeries.numFactory())
-                .build();
-        for (int index = trainingStartIndex;; index++) {
-            trainingSeries.addBar(fullSeries.getBar(index));
-            if (index == trainingEndIndex) {
-                break;
-            }
-        }
-        return trainingSeries;
-    }
-
-    private static void collectCombinations(List<List<ParameterValue>> valuesByDomain, int domainIndex,
-            List<ParameterValue> current, Consumer<List<ParameterValue>> consumer) {
-        if (domainIndex == valuesByDomain.size()) {
-            consumer.accept(List.copyOf(current));
-            return;
-        }
-        for (ParameterValue value : valuesByDomain.get(domainIndex)) {
-            current.add(value);
-            collectCombinations(valuesByDomain, domainIndex + 1, current, consumer);
-            current.remove(current.size() - 1);
-        }
-    }
-
-    private static String hashCandidateIds(List<StrategyCandidate> candidates) {
-        StringJoiner joiner = new StringJoiner("\n");
-        for (StrategyCandidate candidate : candidates) {
-            joiner.add(candidate.id());
-        }
-        return shortHash(joiner.toString());
-    }
-
-    private static String shortHash(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder builder = new StringBuilder();
-            for (byte b : hash) {
-                builder.append(String.format(Locale.ROOT, "%02x", b));
-            }
-            return builder.substring(0, SHORT_HASH_LENGTH);
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 is unavailable", ex);
-        }
-    }
-
-    private static String resolveDatasetId(BarSeries series) {
-        String name = series.getName();
-        if (name == null || name.isBlank()) {
-            return "series";
-        }
-        return name;
-    }
-
-    private static String formatNum(Num value) {
-        if (value == null) {
-            return "null";
-        }
-        return value.toString();
-    }
-
-    /**
-     * Strategy construction callback used by the research runner.
-     *
-     * @since 0.22.8
+     * @param <T> candidate type
+     * @since 0.24.2
      */
     @FunctionalInterface
-    public interface StrategyFactory {
+    public interface CandidateFactory<T> {
 
         /**
-         * Builds a strategy for one candidate on the supplied series.
+         * Builds a candidate restricted to the supplied window.
          *
-         * @param series     target series
+         * @param window     evaluation window
          * @param parameters normalized parameter set
-         * @return strategy to evaluate
-         * @since 0.22.8
+         * @return candidate to evaluate
+         * @since 0.24.2
          */
-        Strategy create(BarSeries series, ParameterSet parameters);
+        T build(ResearchWindow window, ParameterSet parameters);
     }
 
     /**
-     * Indicator construction callback for explicit fuzzy indicator-distance
-     * reports.
+     * Scores one candidate on one window.
      *
-     * @since 0.22.8
+     * @param <T> candidate type
+     * @since 0.24.2
      */
     @FunctionalInterface
-    public interface IndicatorFactory {
+    public interface ObjectiveFunction<T> {
 
         /**
-         * Builds an indicator for one candidate on the supplied series.
+         * Evaluates a candidate on the supplied window.
          *
-         * @param series     target series
-         * @param parameters normalized parameter set
-         * @return indicator signature source
-         * @since 0.22.8
+         * <p>
+         * A {@link RuntimeException} thrown from this method is captured as a failed
+         * evaluation and consumes budget. The same applies to {@link #evaluate}
+         * returning a {@link ObjectiveEvaluation} whose score is NaN or infinite, or
+         * whose status is {@link ObjectiveEvaluation.Status#FAILED}.
+         * </p>
+         *
+         * @param candidate candidate to evaluate
+         * @param window    evaluation window
+         * @return evaluation outcome
+         * @since 0.24.2
          */
-        Indicator<Num> create(BarSeries series, ParameterSet parameters);
+        ObjectiveEvaluation evaluate(T candidate, ResearchWindow window);
+    }
+
+    /**
+     * One objective evaluation outcome.
+     *
+     * @param score         objective score; required when the status is
+     *                      {@link Status#VALID}
+     * @param metrics       optional auxiliary metrics keyed by name
+     * @param status        validity status
+     * @param failureReason factual failure reason when the status is
+     *                      {@link Status#FAILED}
+     * @since 0.24.2
+     */
+    public record ObjectiveEvaluation(Num score, Map<String, Num> metrics, Status status, String failureReason) {
+
+        /**
+         * Validity status of an objective evaluation.
+         *
+         * @since 0.24.2
+         */
+        public enum Status {
+            /** Score is usable for ranking. */
+            VALID,
+            /** Evaluation is invalid and ranked below every valid evaluation. */
+            FAILED
+        }
+
+        /**
+         * Creates a validated evaluation outcome.
+         *
+         * @throws NullPointerException if {@code status} is null, or the status is
+         *                              {@link Status#VALID} and {@code score} is null
+         * @since 0.24.2
+         */
+        public ObjectiveEvaluation {
+            metrics = metrics == null ? Map.of() : Map.copyOf(metrics);
+            failureReason = failureReason == null ? "" : failureReason;
+            Objects.requireNonNull(status, "status");
+            if (status == Status.VALID) {
+                Objects.requireNonNull(score, "score");
+            }
+        }
+
+        /**
+         * Creates a valid evaluation with a score only.
+         *
+         * @param score objective score
+         * @return valid evaluation
+         * @since 0.24.2
+         */
+        public static ObjectiveEvaluation of(Num score) {
+            return of(score, Map.of());
+        }
+
+        /**
+         * Creates a valid evaluation with auxiliary metrics.
+         *
+         * @param score   objective score
+         * @param metrics auxiliary metrics
+         * @return valid evaluation
+         * @since 0.24.2
+         */
+        public static ObjectiveEvaluation of(Num score, Map<String, Num> metrics) {
+            return new ObjectiveEvaluation(score, metrics, Status.VALID, "");
+        }
+
+        /**
+         * Creates a failed evaluation with a factual reason.
+         *
+         * @param reason failure reason
+         * @return failed evaluation
+         * @since 0.24.2
+         */
+        public static ObjectiveEvaluation failed(String reason) {
+            return failed(reason, Map.of());
+        }
+
+        /**
+         * Creates a failed evaluation with a factual reason and metrics.
+         *
+         * @param reason  failure reason
+         * @param metrics auxiliary metrics
+         * @return failed evaluation
+         * @since 0.24.2
+         */
+        public static ObjectiveEvaluation failed(String reason, Map<String, Num> metrics) {
+            return new ObjectiveEvaluation(null, metrics, Status.FAILED, Objects.requireNonNull(reason, "reason"));
+        }
     }
 
     /**
      * Cross-parameter validation callback.
      *
-     * @since 0.22.8
+     * @since 0.24.2
      */
     @FunctionalInterface
     public interface CandidateValidator {
 
         /**
-         * Accepts or rejects one parameter set.
+         * Accepts or rejects one normalized parameter set by throwing a
+         * {@link RuntimeException} with a factual reason.
          *
          * @param parameters normalized parameter set
-         * @since 0.22.8
+         * @since 0.24.2
          */
         void validate(ParameterSet parameters);
 
         /**
-         * Returns a validator that accepts all parameter sets.
+         * Returns a validator that accepts every parameter set.
          *
          * @return no-op validator
-         * @since 0.22.8
+         * @since 0.24.2
          */
         static CandidateValidator acceptAll() {
             return parameters -> {
@@ -1001,199 +880,268 @@ public final class ParameterResearch {
     }
 
     /**
-     * Normalizes one raw parameter value.
+     * Normalizes one proposed parameter value.
      *
-     * @since 0.22.8
+     * @since 0.24.2
      */
     @FunctionalInterface
     public interface ParameterNormalizer {
 
         /**
-         * Normalizes one raw parameter value.
+         * Normalizes one proposed value.
          *
-         * @param series   series context
-         * @param name     parameter name
-         * @param rawValue raw value token
-         * @return normalized parameter value
-         * @since 0.22.8
+         * <p>
+         * A {@link RuntimeException} thrown from this method rejects the whole proposal
+         * without consuming evaluation budget. Returning a {@link ParameterValue} whose
+         * {@link ParameterValue#normalized()} is {@code true} records a repair;
+         * repaired candidates are keyed and reported by their repaired canonical values
+         * and rank below unrepaired candidates with equal scores.
+         * </p>
+         *
+         * @param series dataset being searched
+         * @param name   parameter name
+         * @param value  proposed canonical value
+         * @return normalized value
+         * @since 0.24.2
          */
-        ParameterValue normalize(BarSeries series, String name, String rawValue);
+        ParameterValue normalize(BarSeries series, String name, String value);
     }
 
     /**
-     * Parameter domain for candidate-space generation.
+     * Typed parameter domain for candidate-space generation.
      *
-     * @param name       parameter name
-     * @param rawValues  ordered raw values
-     * @param normalizer value normalizer
-     * @since 0.22.8
+     * @since 0.24.2
      */
-    public record ParameterDomain(String name, List<String> rawValues, ParameterNormalizer normalizer) {
+    public sealed interface ParameterDomain permits ParameterDomain.IntegerDomain, ParameterDomain.DecimalDomain,
+            ParameterDomain.BooleanDomain, ParameterDomain.CategoricalDomain {
 
         /**
-         * Creates a validated parameter domain.
-         *
-         * <p>
-         * The raw value list is wrapped as an unmodifiable view; callers must not
-         * mutate the backing list after construction. Large lazy ranges (see
-         * {@link #integerRange}) are only iterated, never copied.
-         * </p>
-         *
-         * @since 0.22.8
+         * @return parameter name
+         * @since 0.24.2
          */
-        public ParameterDomain {
-            if (name == null || name.isBlank()) {
-                throw new IllegalArgumentException("name cannot be blank");
-            }
-            Objects.requireNonNull(rawValues, "rawValues");
-            if (rawValues.isEmpty()) {
-                throw new IllegalArgumentException("rawValues cannot be empty");
-            }
-            for (String rawValue : rawValues) {
-                if (rawValue == null || rawValue.isBlank()) {
-                    throw new IllegalArgumentException("rawValues cannot contain blank values");
-                }
-            }
-            rawValues = Collections.unmodifiableList(rawValues);
-            Objects.requireNonNull(normalizer, "normalizer");
+        String name();
+
+        /**
+         * Creates an inclusive integer domain with unit step.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @return integer domain
+         * @throws IllegalArgumentException if the range is invalid
+         * @since 0.24.2
+         */
+        static IntegerDomain integer(String name, int from, int to) {
+            return integer(name, from, to, 1);
         }
 
         /**
-         * Creates a domain with literal string values.
+         * Creates an inclusive integer domain.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @return integer domain
+         * @throws IllegalArgumentException if the range is invalid
+         * @since 0.24.2
+         */
+        static IntegerDomain integer(String name, int from, int to, int step) {
+            return new IntegerDomain(name, from, to, step);
+        }
+
+        /**
+         * Creates an inclusive decimal domain.
+         *
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @return decimal domain
+         * @throws IllegalArgumentException if the range is invalid
+         * @since 0.24.2
+         */
+        static DecimalDomain decimal(String name, double from, double to, double step) {
+            return new DecimalDomain(name, from, to, step);
+        }
+
+        /**
+         * Creates a Boolean domain.
+         *
+         * @param name parameter name
+         * @return Boolean domain
+         * @since 0.24.2
+         */
+        static BooleanDomain bool(String name) {
+            return new BooleanDomain(name);
+        }
+
+        /**
+         * Creates a categorical domain.
          *
          * @param name   parameter name
-         * @param values ordered values
-         * @return parameter domain
-         * @since 0.22.8
+         * @param values ordered categorical values
+         * @return categorical domain
+         * @throws IllegalArgumentException if the values are invalid
+         * @since 0.24.2
          */
-        public static ParameterDomain values(String name, List<?> values) {
-            Objects.requireNonNull(values, "values");
-            List<String> rawValues = new ArrayList<>(values.size());
-            for (Object value : values) {
-                if (value == null) {
-                    throw new IllegalArgumentException("values cannot contain null entries");
-                }
-                rawValues.add(String.valueOf(value));
-            }
-            return new ParameterDomain(name, rawValues, (series, parameterName,
-                    rawValue) -> new ParameterValue(parameterName, rawValue, rawValue, false, ""));
+        static CategoricalDomain categorical(String name, String... values) {
+            return new CategoricalDomain(name, List.of(values));
         }
 
         /**
-         * Creates an inclusive integer range domain.
+         * Creates a categorical domain.
          *
-         * @param name  parameter name
-         * @param start first value
-         * @param stop  last value
-         * @param step  positive increment
-         * @return integer range domain
-         * @since 0.22.8
+         * @param name   parameter name
+         * @param values ordered categorical values
+         * @return categorical domain
+         * @throws IllegalArgumentException if the values are invalid
+         * @since 0.24.2
          */
-        public static ParameterDomain integerRange(String name, int start, int stop, int step) {
-            return integerRange(name, start, stop, step, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+        static CategoricalDomain categorical(String name, List<String> values) {
+            return new CategoricalDomain(name, values);
         }
 
         /**
-         * Creates an inclusive integer range for lookback/period-like parameters.
+         * Ordered inclusive integer domain.
          *
-         * <p>
-         * Values are normalized to the available training series length so generated
-         * strategies cannot request more bars than the selection window contains.
-         * </p>
-         *
-         * @param name  parameter name
-         * @param start first value
-         * @param stop  last value
-         * @param step  positive increment
-         * @return period range domain capped to {@code [1, series.getBarCount()]}
-         * @since 0.22.8
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @since 0.24.2
          */
-        public static ParameterDomain periodRange(String name, int start, int stop, int step) {
-            return integerRange(name, start, stop, step, 1, Integer.MAX_VALUE, true);
+        record IntegerDomain(String name, int from, int to, int step) implements ParameterDomain {
+
+            /**
+             * Creates a validated integer domain.
+             *
+             * @throws IllegalArgumentException if the name is blank, the step is not
+             *                                  positive, or {@code from > to}
+             * @since 0.24.2
+             */
+            public IntegerDomain {
+                if (name == null || name.isBlank()) {
+                    throw new IllegalArgumentException("name cannot be blank");
+                }
+                if (step <= 0) {
+                    throw new IllegalArgumentException("step must be positive");
+                }
+                if (from > to) {
+                    throw new IllegalArgumentException("from cannot be greater than to");
+                }
+            }
         }
 
         /**
-         * Creates an inclusive integer range domain with natural bounds.
+         * Ordered inclusive decimal domain.
          *
-         * @param name              parameter name
-         * @param start             first value
-         * @param stop              last value
-         * @param step              positive increment
-         * @param minimum           inclusive lower bound
-         * @param maximum           inclusive upper bound
-         * @param capAtSeriesLength whether the maximum is capped at series length
-         * @return integer range domain
-         * @since 0.22.8
+         * @param name parameter name
+         * @param from inclusive lower bound
+         * @param to   inclusive upper bound
+         * @param step positive increment
+         * @since 0.24.2
          */
-        public static ParameterDomain integerRange(String name, int start, int stop, int step, int minimum, int maximum,
-                boolean capAtSeriesLength) {
-            if (step <= 0) {
-                throw new IllegalArgumentException("step must be positive");
-            }
-            if (start > stop) {
-                throw new IllegalArgumentException("start cannot be greater than stop");
-            }
-            if (minimum > maximum) {
-                throw new IllegalArgumentException("minimum cannot be greater than maximum");
-            }
-            long rawCount = ((long) stop - start) / step + 1L;
-            if (rawCount > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException(
-                        "Integer range is too large: " + rawCount + " values (max " + Integer.MAX_VALUE + ")");
-            }
-            int count = (int) rawCount;
-            List<String> values = new AbstractList<>() {
-                @Override
-                public String get(int index) {
-                    return String.valueOf((long) start + (long) index * step);
-                }
+        record DecimalDomain(String name, double from, double to, double step) implements ParameterDomain {
 
-                @Override
-                public int size() {
-                    return count;
+            /**
+             * Creates a validated decimal domain.
+             *
+             * @throws IllegalArgumentException if the name is blank, any bound is not
+             *                                  finite, the step is not positive, or
+             *                                  {@code from > to}
+             * @since 0.24.2
+             */
+            public DecimalDomain {
+                if (name == null || name.isBlank()) {
+                    throw new IllegalArgumentException("name cannot be blank");
                 }
-            };
-            return new ParameterDomain(name, values, (series, parameterName, rawValue) -> {
-                int rawInteger;
-                try {
-                    rawInteger = Integer.parseInt(rawValue);
-                } catch (NumberFormatException ex) {
-                    throw new IllegalArgumentException(
-                            "Parameter " + parameterName + " must be an integer, but was '" + rawValue + "'", ex);
+                if (!Double.isFinite(from) || !Double.isFinite(to) || !Double.isFinite(step)) {
+                    throw new IllegalArgumentException("decimal domain bounds must be finite");
                 }
-                int effectiveMaximum = capAtSeriesLength ? Math.max(minimum, Math.min(maximum, series.getBarCount()))
-                        : maximum;
-                int normalizedInteger = Math.max(minimum, Math.min(effectiveMaximum, rawInteger));
-                boolean normalized = rawInteger != normalizedInteger;
-                String note = normalized ? "clamped from " + rawInteger + " to " + normalizedInteger : "";
-                return new ParameterValue(parameterName, rawValue, String.valueOf(normalizedInteger), normalized, note);
-            });
+                if (step <= 0d) {
+                    throw new IllegalArgumentException("step must be positive");
+                }
+                if (from > to) {
+                    throw new IllegalArgumentException("from cannot be greater than to");
+                }
+            }
+        }
+
+        /**
+         * Boolean domain with canonical values {@code "false"} and {@code "true"}.
+         *
+         * @param name parameter name
+         * @since 0.24.2
+         */
+        record BooleanDomain(String name) implements ParameterDomain {
+
+            /**
+             * Creates a validated Boolean domain.
+             *
+             * @throws IllegalArgumentException if the name is blank
+             * @since 0.24.2
+             */
+            public BooleanDomain {
+                if (name == null || name.isBlank()) {
+                    throw new IllegalArgumentException("name cannot be blank");
+                }
+            }
+        }
+
+        /**
+         * Categorical domain over ordered literal values.
+         *
+         * @param name   parameter name
+         * @param values ordered categorical values
+         * @since 0.24.2
+         */
+        record CategoricalDomain(String name, List<String> values) implements ParameterDomain {
+
+            /**
+             * Creates a validated categorical domain.
+             *
+             * @throws IllegalArgumentException if the name is blank or the values are empty
+             *                                  or contain blank entries
+             * @since 0.24.2
+             */
+            public CategoricalDomain {
+                if (name == null || name.isBlank()) {
+                    throw new IllegalArgumentException("name cannot be blank");
+                }
+                if (values == null || values.isEmpty()) {
+                    throw new IllegalArgumentException("values cannot be empty");
+                }
+                for (String value : values) {
+                    if (value == null || value.isBlank()) {
+                        throw new IllegalArgumentException("values cannot contain blank entries");
+                    }
+                }
+                values = List.copyOf(values);
+            }
         }
     }
 
     /**
-     * One normalized parameter value.
+     * One canonical parameter value.
      *
      * @param name       parameter name
-     * @param rawValue   raw input value
-     * @param value      normalized value
-     * @param normalized whether the raw value changed
-     * @param note       normalization note
-     * @since 0.22.8
+     * @param value      canonical value
+     * @param normalized whether a normalizer repaired the proposed value
+     * @param note       repair note
+     * @since 0.24.2
      */
-    public record ParameterValue(String name, String rawValue, String value, boolean normalized, String note) {
+    public record ParameterValue(String name, String value, boolean normalized, String note) {
 
         /**
          * Creates a validated parameter value.
          *
-         * @since 0.22.8
+         * @throws IllegalArgumentException if the name or value is blank
+         * @since 0.24.2
          */
         public ParameterValue {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("name cannot be blank");
-            }
-            if (rawValue == null || rawValue.isBlank()) {
-                throw new IllegalArgumentException("rawValue cannot be blank");
             }
             if (value == null || value.isBlank()) {
                 throw new IllegalArgumentException("value cannot be blank");
@@ -1203,17 +1151,36 @@ public final class ParameterResearch {
     }
 
     /**
+     * Escapes the stable-id separators so canonical tokens are unambiguous.
+     */
+    static String escapeToken(String token) {
+        StringBuilder builder = new StringBuilder(token.length());
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            switch (c) {
+            case '\\' -> builder.append("\\\\");
+            case '|' -> builder.append("\\|");
+            case '=' -> builder.append("\\=");
+            default -> builder.append(c);
+            }
+        }
+        return builder.toString();
+    }
+
+    /**
      * Ordered normalized parameter set.
      *
-     * @param values normalized values in domain order
-     * @since 0.22.8
+     * @param values canonical values in declaration order
+     * @since 0.24.2
      */
     public record ParameterSet(List<ParameterValue> values) {
 
         /**
          * Creates a validated parameter set.
          *
-         * @since 0.22.8
+         * @throws IllegalArgumentException if the values are empty or contain duplicate
+         *                                  names
+         * @since 0.24.2
          */
         public ParameterSet {
             values = List.copyOf(Objects.requireNonNull(values, "values"));
@@ -1230,11 +1197,12 @@ public final class ParameterResearch {
         }
 
         /**
-         * Returns the normalized value for a parameter.
+         * Returns the canonical value of a parameter.
          *
          * @param name parameter name
-         * @return normalized value
-         * @since 0.22.8
+         * @return canonical value
+         * @throws IllegalArgumentException if the parameter is unknown
+         * @since 0.24.2
          */
         public String value(String name) {
             for (ParameterValue value : values) {
@@ -1246,57 +1214,106 @@ public final class ParameterResearch {
         }
 
         /**
-         * Returns the normalized value parsed as an integer.
+         * Returns a parameter value parsed as an integer.
          *
          * @param name parameter name
          * @return integer value
-         * @since 0.22.8
+         * @throws IllegalArgumentException if the parameter is unknown or not an
+         *                                  integer
+         * @since 0.24.2
          */
         public int intValue(String name) {
-            String rawValue = value(name);
+            String canonical = value(name);
             try {
-                return Integer.parseInt(rawValue);
+                return Integer.parseInt(canonical);
             } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Parameter " + name + " is not a valid integer: " + rawValue, ex);
+                throw new IllegalArgumentException("Parameter '" + name + "' is not an integer: " + canonical, ex);
             }
         }
 
         /**
-         * Returns normalized values in domain order.
+         * Returns a parameter value parsed as a decimal.
          *
-         * @return ordered values
-         * @since 0.22.8
+         * @param name parameter name
+         * @return decimal value
+         * @throws IllegalArgumentException if the parameter is unknown or not a decimal
+         * @since 0.24.2
          */
-        public List<String> valuesInOrder() {
-            return values.stream().map(ParameterValue::value).toList();
+        public double decimalValue(String name) {
+            String canonical = value(name);
+            try {
+                return Double.parseDouble(canonical);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Parameter '" + name + "' is not a decimal: " + canonical, ex);
+            }
         }
 
         /**
-         * Returns normalized values as a string array.
+         * Returns a parameter value parsed as a Boolean.
          *
-         * @return ordered value array
-         * @since 0.22.8
+         * @param name parameter name
+         * @return Boolean value
+         * @throws IllegalArgumentException if the parameter is unknown or neither
+         *                                  {@code "true"} nor {@code "false"}
+         * @since 0.24.2
          */
-        public String[] asStringArray() {
-            return valuesInOrder().toArray(String[]::new);
+        public boolean booleanValue(String name) {
+            String canonical = value(name);
+            if ("true".equals(canonical)) {
+                return true;
+            }
+            if ("false".equals(canonical)) {
+                return false;
+            }
+            throw new IllegalArgumentException("Parameter '" + name + "' is not a boolean: " + canonical);
         }
 
         /**
-         * Returns normalized values keyed by parameter name.
+         * Returns a parameter value as its categorical literal.
          *
-         * @return ordered parameter map
-         * @since 0.22.8
+         * @param name parameter name
+         * @return categorical value
+         * @throws IllegalArgumentException if the parameter is unknown
+         * @since 0.24.2
          */
-        public Map<String, String> asMap() {
-            Map<String, String> map = new LinkedHashMap<>();
+        public String categoricalValue(String name) {
+            return value(name);
+        }
+
+        /**
+         * Returns the number of repaired (normalized) values in this set.
+         *
+         * @return repair count
+         * @since 0.24.2
+         */
+        public int repairCount() {
+            int count = 0;
             for (ParameterValue value : values) {
-                map.put(value.name(), value.value());
+                if (value.normalized()) {
+                    count++;
+                }
             }
-            return Collections.unmodifiableMap(map);
+            return count;
         }
 
         /**
-         * Returns a stable candidate identifier based on normalized values.
+         * Returns the repaired values keyed by name.
+         *
+         * @return unmodifiable repair map, empty when nothing was repaired
+         * @since 0.24.2
+         */
+        public Map<String, String> repairs() {
+            Map<String, String> repairs = new LinkedHashMap<>();
+            for (ParameterValue value : values) {
+                if (value.normalized()) {
+                    repairs.put(value.name(), value.note());
+                }
+            }
+            return Collections.unmodifiableMap(repairs);
+        }
+
+        /**
+         * Returns a stable candidate identifier based on canonical values.
          *
          * <p>
          * Name/value tokens are escaped so ids are unambiguous and collision-free even
@@ -1304,844 +1321,598 @@ public final class ParameterResearch {
          * </p>
          *
          * @return stable id
-         * @since 0.22.8
+         * @since 0.24.2
          */
         public String stableId() {
             StringJoiner joiner = new StringJoiner("|");
             for (ParameterValue value : values) {
-                joiner.add(escapeToken(value.name()) + "=" + escapeToken(value.value()));
+                joiner.add(ParameterResearch.escapeToken(value.name()) + "="
+                        + ParameterResearch.escapeToken(value.value()));
             }
             return joiner.toString();
         }
 
-        private static String escapeToken(String token) {
-            StringBuilder builder = new StringBuilder(token.length());
-            for (int i = 0; i < token.length(); i++) {
-                char c = token.charAt(i);
-                switch (c) {
-                case '\\' -> builder.append("\\\\");
-                case '|' -> builder.append("\\|");
-                case '=' -> builder.append("\\=");
-                default -> builder.append(c);
-                }
-            }
-            return builder.toString();
-        }
     }
 
     /**
-     * Candidate descriptor used by parameter research and walk-forward tuning.
+     * Evaluation window over one dataset.
      *
-     * @param id         stable candidate id
-     * @param parameters normalized parameter set
-     * @since 0.22.8
+     * @param series     sub-series restricted to exactly this window's bars
+     * @param startIndex inclusive start index on the original series
+     * @param endIndex   inclusive end index on the original series
+     * @param phase      window phase
+     * @param windowId   stable window identifier
+     * @since 0.24.2
      */
-    public record StrategyCandidate(String id, ParameterSet parameters) {
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "the window series is a fresh "
+            + "per-window sub-series created solely for objective access; the workflow never mutates it")
+    public record ResearchWindow(BarSeries series, int startIndex, int endIndex, WindowPhase phase, String windowId) {
 
         /**
-         * Creates a validated strategy candidate.
+         * Window phase.
          *
-         * @since 0.22.8
+         * @since 0.24.2
          */
-        public StrategyCandidate {
-            if (id == null || id.isBlank()) {
-                throw new IllegalArgumentException("id cannot be blank");
-            }
-            Objects.requireNonNull(parameters, "parameters");
-            if (!id.equals(parameters.stableId())) {
-                throw new IllegalArgumentException(
-                        "id must equal the stable id of the parameters, but was '" + id + "'");
-            }
+        public enum WindowPhase {
+            /** Candidate selection window. */
+            TRAINING,
+            /** Independent validation window. */
+            HOLDOUT,
+            /** Reserved for walk-forward folds; not produced by the current workflow. */
+            FOLD
         }
-    }
-
-    /**
-     * Candidate-space generation output.
-     *
-     * @param candidates         valid normalized candidates
-     * @param invalidCandidates  rejected or duplicate candidates
-     * @param rawCandidateCount  declared raw combination count before normalization
-     * @param candidateSpaceHash stable hash of valid candidate ids
-     * @since 0.22.8
-     */
-    public record CandidateGenerationResult(List<StrategyCandidate> candidates,
-            List<InvalidCandidate> invalidCandidates, long rawCandidateCount, String candidateSpaceHash) {
-
-        /**
-         * Creates a validated candidate generation result.
-         *
-         * @since 0.22.8
-         */
-        public CandidateGenerationResult {
-            List<StrategyCandidate> copiedCandidates = List.copyOf(Objects.requireNonNull(candidates, "candidates"));
-            List<InvalidCandidate> copiedInvalid = List
-                    .copyOf(Objects.requireNonNull(invalidCandidates, "invalidCandidates"));
-            candidates = copiedCandidates;
-            invalidCandidates = copiedInvalid;
-            if (candidates.isEmpty()) {
-                throw new IllegalArgumentException("candidates cannot be empty");
-            }
-            Set<String> ids = new HashSet<>(candidates.size());
-            for (StrategyCandidate candidate : candidates) {
-                if (!ids.add(candidate.id())) {
-                    throw new IllegalArgumentException("Duplicate candidate id: " + candidate.id());
-                }
-            }
-            if (rawCandidateCount < 0 || rawCandidateCount < candidates.size() + invalidCandidates.size()) {
-                throw new IllegalArgumentException(
-                        "rawCandidateCount must be at least the number of generated candidates");
-            }
-            if (candidateSpaceHash == null || candidateSpaceHash.isBlank()) {
-                throw new IllegalArgumentException("candidateSpaceHash cannot be blank");
-            }
-            if (!candidateSpaceHash.equals(hashCandidateIds(candidates))) {
-                throw new IllegalArgumentException("candidateSpaceHash does not match the candidate ids");
-            }
-        }
-
-        /**
-         * Counts valid and rejected candidates.
-         *
-         * <p>
-         * Generation-stage failures represent malformed raw values that never formed a
-         * complete combination, so they are excluded from the generated count;
-         * combination-validation and duplicate rows are included.
-         * </p>
-         *
-         * @return total generated count
-         * @since 0.22.8
-         */
-        public int generatedCandidateCount() {
-            return candidates.size() + generatedInvalidCount();
-        }
-
-        private int generatedInvalidCount() {
-            int count = 0;
-            for (InvalidCandidate invalidCandidate : invalidCandidates) {
-                if (invalidCandidate.stage() != CandidateFailureStage.GENERATION) {
-                    count++;
-                }
-            }
-            return count;
-        }
-    }
-
-    /**
-     * Candidate failure stage.
-     *
-     * @since 0.22.8
-     */
-    public enum CandidateFailureStage {
-        /** Failure occurred while generating candidate values. */
-        GENERATION,
-        /** Validator rejected a complete combination. */
-        COMBINATION_VALIDATION,
-        /** Candidate normalized to an already-seen parameter set. */
-        DUPLICATE_NORMALIZED,
-        /** Strategy construction failed during training evaluation. */
-        STRATEGY_BUILD,
-        /** Strategy execution failed during training evaluation. */
-        TRAINING_EXECUTION,
-        /** Strategy construction failed during validation evaluation. */
-        VALIDATION_STRATEGY_BUILD,
-        /** Strategy execution failed during validation evaluation. */
-        VALIDATION_EXECUTION,
-        /** Indicator-distance signature construction failed during pruning. */
-        PRUNING_INDICATOR
-    }
-
-    /**
-     * Rejected candidate descriptor.
-     *
-     * @param candidateId stable or raw candidate id
-     * @param parameters  candidate parameters when available
-     * @param stage       failure stage
-     * @param reason      failure reason
-     * @since 0.22.8
-     */
-    public record InvalidCandidate(String candidateId, Map<String, String> parameters, CandidateFailureStage stage,
-            String reason) {
-
-        /**
-         * Creates a validated invalid-candidate row.
-         *
-         * @since 0.22.8
-         */
-        public InvalidCandidate {
-            if (candidateId == null || candidateId.isBlank()) {
-                throw new IllegalArgumentException("candidateId cannot be blank");
-            }
-            parameters = Collections.unmodifiableMap(new LinkedHashMap<>(parameters == null ? Map.of() : parameters));
-            Objects.requireNonNull(stage, "stage");
-            reason = reason == null ? "" : reason;
-        }
-    }
-
-    /**
-     * Pruning policy for representative selection.
-     *
-     * @since 0.22.8
-     */
-    public enum PruningPolicy {
-        /** Keep every valid candidate. */
-        NONE,
-        /** Group candidates with identical executed trading records. */
-        EXACT_TRADING_RECORD,
-        /** Group candidates by fuzzy indicator RMS distance. */
-        INDICATOR_DISTANCE,
-        /** Group already-evaluated candidates by composite objective distance. */
-        OBJECTIVE_DISTANCE
-    }
-
-    /**
-     * Parameter research configuration.
-     *
-     * @param trainingBarCount     number of bars before holdout used for selection
-     * @param validationBarCount   number of final bars held out for validation
-     * @param pruningPolicy        representative-selection policy
-     * @param rankingProfile       weighted ranking profile
-     * @param topK                 number of selected candidates to validate
-     * @param amount               trade amount
-     * @param tradeType            starting trade type, or {@code null} to honor
-     *                             each strategy's own starting type
-     * @param distanceTolerance    fuzzy distance tolerance
-     * @param indicatorFactory     optional indicator factory for indicator-distance
-     *                             reports
-     * @param transactionCostModel per-order transaction cost model
-     * @param holdingCostModel     per-bar holding cost model
-     * @param tradeExecutionModel  execution model applied to generated signals
-     * @param tradingRecordFactory factory for per-candidate trading records
-     * @param maxCombinations      maximum declared raw candidate combinations
-     * @since 0.22.8
-     */
-    public record ResearchConfig(int trainingBarCount, int validationBarCount, PruningPolicy pruningPolicy,
-            RankingProfile rankingProfile, int topK, Num amount, TradeType tradeType, double distanceTolerance,
-            IndicatorFactory indicatorFactory, CostModel transactionCostModel, CostModel holdingCostModel,
-            TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory, int maxCombinations) {
-
-        private static final TradingRecordFactory DEFAULT_TRADING_RECORD_FACTORY = (tradeType, startIndex, endIndex,
-                transactionCostModel, holdingCostModel) -> new BaseTradingRecord(tradeType, startIndex, endIndex,
-                        transactionCostModel, holdingCostModel);
-
-        /**
-         * Creates a validated research config.
-         *
-         * @since 0.22.8
-         */
-        public ResearchConfig {
-            if (trainingBarCount < 0) {
-                throw new IllegalArgumentException("trainingBarCount must be >= 0");
-            }
-            if (validationBarCount < 0) {
-                throw new IllegalArgumentException("validationBarCount must be >= 0");
-            }
-            pruningPolicy = pruningPolicy == null ? PruningPolicy.EXACT_TRADING_RECORD : pruningPolicy;
-            Objects.requireNonNull(rankingProfile, "rankingProfile");
-            if (topK <= 0) {
-                throw new IllegalArgumentException("topK must be > 0");
-            }
-            Objects.requireNonNull(amount, "amount");
-            if (distanceTolerance < 0d || !Double.isFinite(distanceTolerance)) {
-                throw new IllegalArgumentException("distanceTolerance must be finite and >= 0");
-            }
-            if (pruningPolicy == PruningPolicy.INDICATOR_DISTANCE && indicatorFactory == null) {
-                throw new IllegalArgumentException("indicatorFactory is required for INDICATOR_DISTANCE pruning");
-            }
-            transactionCostModel = transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
-            holdingCostModel = holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
-            tradeExecutionModel = tradeExecutionModel == null ? new TradeOnNextOpenModel() : tradeExecutionModel;
-            tradingRecordFactory = tradingRecordFactory == null ? DEFAULT_TRADING_RECORD_FACTORY : tradingRecordFactory;
-            if (maxCombinations <= 0) {
-                throw new IllegalArgumentException("maxCombinations must be > 0");
-            }
-        }
-
-        /**
-         * Creates a holdout research config using exact trading-record pruning.
-         *
-         * @param trainingBarCount   training bars; use {@code 0} for all pre-holdout
-         * @param validationBarCount final bars held out for validation
-         * @param rankingProfile     weighted ranking profile
-         * @param amount             trade amount
-         * @param topK               number of selected candidates to validate
-         * @return research config
-         * @since 0.22.8
-         */
-        public static ResearchConfig holdout(int trainingBarCount, int validationBarCount,
-                RankingProfile rankingProfile, Num amount, int topK) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, PruningPolicy.EXACT_TRADING_RECORD,
-                    rankingProfile, topK, amount, null, NO_DISTANCE, null, null, null, null, null,
-                    DEFAULT_MAX_COMBINATIONS);
-        }
-
-        /**
-         * Creates a holdout research config using all pre-holdout bars for training and
-         * exact trading-record pruning.
-         *
-         * @param validationBarCount final bars held out for validation
-         * @param rankingProfile     weighted ranking profile
-         * @param amount             trade amount
-         * @param topK               number of selected candidates to validate
-         * @return research config
-         * @since 0.22.8
-         */
-        public static ResearchConfig holdout(int validationBarCount, RankingProfile rankingProfile, Num amount,
-                int topK) {
-            return holdout(0, validationBarCount, rankingProfile, amount, topK);
-        }
-
-        /**
-         * Returns a copy with a different pruning policy.
-         *
-         * @param policy pruning policy
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withPruningPolicy(PruningPolicy policy) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, policy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy configured for fuzzy indicator-distance reporting.
-         *
-         * @param tolerance tolerance in indicator units
-         * @param factory   indicator factory
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withIndicatorDistance(double tolerance, IndicatorFactory factory) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, PruningPolicy.INDICATOR_DISTANCE,
-                    rankingProfile, topK, amount, tradeType, tolerance, factory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy configured for objective-distance reporting.
-         *
-         * @param tolerance normalized objective-score tolerance
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withObjectiveDistance(double tolerance) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, PruningPolicy.OBJECTIVE_DISTANCE,
-                    rankingProfile, topK, amount, tradeType, tolerance, indicatorFactory, transactionCostModel,
-                    holdingCostModel, tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy with a different starting trade type.
-         *
-         * <p>
-         * Pass {@code null} to honor each strategy's own starting type instead of
-         * forcing a single type on every candidate.
-         * </p>
-         *
-         * @param tradeType starting trade type, or {@code null}
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withTradeType(TradeType tradeType) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, pruningPolicy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy with a different declared-candidate budget.
-         *
-         * @param maxCombinations maximum declared raw combinations, inclusive
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withMaxCombinations(int maxCombinations) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, pruningPolicy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy with different transaction and holding costs.
-         *
-         * @param transactionCostModel per-order transaction cost model
-         * @param holdingCostModel     per-bar holding cost model
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withCosts(CostModel transactionCostModel, CostModel holdingCostModel) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, pruningPolicy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy with a different trade execution model.
-         *
-         * @param tradeExecutionModel execution model applied to generated signals
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withTradeExecutionModel(TradeExecutionModel tradeExecutionModel) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, pruningPolicy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-
-        /**
-         * Returns a copy with a different trading-record factory.
-         *
-         * @param tradingRecordFactory factory for per-candidate trading records
-         * @return updated config
-         * @since 0.22.8
-         */
-        public ResearchConfig withTradingRecordFactory(TradingRecordFactory tradingRecordFactory) {
-            return new ResearchConfig(trainingBarCount, validationBarCount, pruningPolicy, rankingProfile, topK, amount,
-                    tradeType, distanceTolerance, indicatorFactory, transactionCostModel, holdingCostModel,
-                    tradeExecutionModel, tradingRecordFactory, maxCombinations);
-        }
-    }
-
-    /**
-     * Training and validation index window on the original series.
-     *
-     * @param trainingStartIndex   inclusive training start index
-     * @param trainingEndIndex     inclusive training end index
-     * @param validationStartIndex inclusive validation start index, or {@code -1}
-     * @param validationEndIndex   inclusive validation end index, or {@code -1}
-     * @since 0.22.8
-     */
-    public record ResearchWindow(int trainingStartIndex, int trainingEndIndex, int validationStartIndex,
-            int validationEndIndex) {
 
         /**
          * Creates a validated research window.
          *
-         * @since 0.22.8
+         * @throws NullPointerException     if {@code series}, {@code phase}, or
+         *                                  {@code windowId} is null
+         * @throws IllegalArgumentException if the indexes are inverted, the windowId is
+         *                                  blank, or the sub-series bar count does not
+         *                                  match the index range
+         * @since 0.24.2
          */
         public ResearchWindow {
-            if (trainingStartIndex < 0 || trainingEndIndex < trainingStartIndex) {
-                throw new IllegalArgumentException("training window is invalid");
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(phase, "phase");
+            if (windowId == null || windowId.isBlank()) {
+                throw new IllegalArgumentException("windowId cannot be blank");
             }
-            if ((validationStartIndex == -1) != (validationEndIndex == -1)) {
-                throw new IllegalArgumentException("validation indexes must both be present or absent");
+            if (startIndex > endIndex) {
+                throw new IllegalArgumentException("startIndex cannot be greater than endIndex");
             }
-            if (validationStartIndex != -1 && validationEndIndex < validationStartIndex) {
-                throw new IllegalArgumentException("validation window is invalid");
-            }
-            if (validationStartIndex != -1 && validationStartIndex <= trainingEndIndex) {
-                throw new IllegalArgumentException("validation window must start after the training window");
+            if (series.getBarCount() != endIndex - startIndex + 1) {
+                throw new IllegalArgumentException("series bar count must match the window index range, but was "
+                        + series.getBarCount() + " for [" + startIndex + ", " + endIndex + "]");
             }
         }
 
         /**
-         * Returns whether the report includes a validation window.
-         *
-         * @return true when validation indexes are present
-         * @since 0.22.8
+         * @return number of bars in the window
+         * @since 0.24.2
          */
-        public boolean hasValidationWindow() {
-            return validationStartIndex != -1;
+        public int barCount() {
+            return endIndex - startIndex + 1;
         }
     }
 
     /**
-     * Candidate pruning group.
+     * Search plan: engine kind, exact evaluation budget, seed, and engine settings.
      *
-     * @param representativeId representative candidate id
-     * @param memberIds        representative plus discarded member ids
-     * @param reason           grouping reason
-     * @param maximumDistance  maximum distance observed inside the group
-     * @since 0.22.8
+     * @param kind            engine kind
+     * @param maxEvaluations  exact budget of unique objective evaluations
+     * @param seed            run-local seed for stochastic engines; ignored by grid
+     *                        search
+     * @param geneticSettings genetic algorithm settings; required for
+     *                        {@link Kind#GENETIC}
+     * @param swarmSettings   particle-swarm settings; required for
+     *                        {@link Kind#PARTICLE_SWARM}
+     * @since 0.24.2
      */
-    public record PruningGroup(String representativeId, List<String> memberIds, String reason, double maximumDistance) {
+    public record SearchPlan(Kind kind, int maxEvaluations, long seed, GeneticSettings geneticSettings,
+            SwarmSettings swarmSettings) {
 
         /**
-         * Creates a validated pruning group.
+         * Engine kind.
          *
-         * <p>
-         * The representative must be the first member and all member ids must be unique
-         * and non-blank.
-         * </p>
-         *
-         * @since 0.22.8
+         * @since 0.24.2
          */
-        public PruningGroup {
-            if (representativeId == null || representativeId.isBlank()) {
-                throw new IllegalArgumentException("representativeId cannot be blank");
+        public enum Kind {
+            /** Deterministic Cartesian-product search. */
+            GRID,
+            /** Genetic algorithm search. */
+            GENETIC,
+            /** Particle-swarm search over bounded numeric dimensions. */
+            PARTICLE_SWARM
+        }
+
+        /**
+         * Creates a validated search plan.
+         *
+         * @throws NullPointerException     if {@code kind} is null, or a required
+         *                                  settings record is missing
+         * @throws IllegalArgumentException if {@code maxEvaluations <= 0}
+         * @since 0.24.2
+         */
+        public SearchPlan {
+            Objects.requireNonNull(kind, "kind");
+            if (maxEvaluations <= 0) {
+                throw new IllegalArgumentException("maxEvaluations must be > 0");
             }
-            memberIds = List.copyOf(Objects.requireNonNull(memberIds, "memberIds"));
-            if (memberIds.isEmpty()) {
-                throw new IllegalArgumentException("memberIds cannot be empty");
+            if (kind == Kind.GENETIC) {
+                Objects.requireNonNull(geneticSettings, "geneticSettings is required for GENETIC");
             }
-            if (!memberIds.getFirst().equals(representativeId)) {
-                throw new IllegalArgumentException("the representative must be the first member");
-            }
-            Set<String> uniqueMembers = new HashSet<>(memberIds.size());
-            for (String memberId : memberIds) {
-                if (memberId == null || memberId.isBlank()) {
-                    throw new IllegalArgumentException("memberIds cannot contain blank values");
-                }
-                if (!uniqueMembers.add(memberId)) {
-                    throw new IllegalArgumentException("memberIds cannot contain duplicates");
-                }
-            }
-            reason = reason == null ? "" : reason;
-            if (maximumDistance < 0d || !Double.isFinite(maximumDistance)) {
-                throw new IllegalArgumentException("maximumDistance must be finite and >= 0");
+            if (kind == Kind.PARTICLE_SWARM) {
+                Objects.requireNonNull(swarmSettings, "swarmSettings is required for PARTICLE_SWARM");
             }
         }
 
         /**
-         * Returns candidates represented by the first group member.
+         * Creates a grid plan.
          *
-         * @return discarded member ids
-         * @since 0.22.8
+         * @param maxEvaluations exact evaluation budget
+         * @return grid plan
+         * @since 0.24.2
          */
-        public List<String> discardedIds() {
-            return memberIds.subList(1, memberIds.size());
+        public static SearchPlan grid(int maxEvaluations) {
+            return new SearchPlan(Kind.GRID, maxEvaluations, 0L, null, null);
+        }
+
+        /**
+         * Creates a genetic plan with default settings.
+         *
+         * @param maxEvaluations exact evaluation budget
+         * @param seed           run-local seed
+         * @return genetic plan
+         * @since 0.24.2
+         */
+        public static SearchPlan genetic(int maxEvaluations, long seed) {
+            return new SearchPlan(Kind.GENETIC, maxEvaluations, seed, GeneticSettings.defaults(), null);
+        }
+
+        /**
+         * Creates a genetic plan with explicit settings.
+         *
+         * @param maxEvaluations exact evaluation budget
+         * @param seed           run-local seed
+         * @param settings       genetic algorithm settings
+         * @return genetic plan
+         * @since 0.24.2
+         */
+        public static SearchPlan genetic(int maxEvaluations, long seed, GeneticSettings settings) {
+            return new SearchPlan(Kind.GENETIC, maxEvaluations, seed, settings, null);
+        }
+
+        /**
+         * Creates a particle-swarm plan with default settings.
+         *
+         * @param maxEvaluations exact evaluation budget
+         * @param seed           run-local seed
+         * @return particle-swarm plan
+         * @since 0.24.2
+         */
+        public static SearchPlan particleSwarm(int maxEvaluations, long seed) {
+            return new SearchPlan(Kind.PARTICLE_SWARM, maxEvaluations, seed, null, SwarmSettings.defaults());
+        }
+
+        /**
+         * Creates a particle-swarm plan with explicit settings.
+         *
+         * @param maxEvaluations exact evaluation budget
+         * @param seed           run-local seed
+         * @param settings       particle-swarm settings
+         * @return particle-swarm plan
+         * @since 0.24.2
+         */
+        public static SearchPlan particleSwarm(int maxEvaluations, long seed, SwarmSettings settings) {
+            return new SearchPlan(Kind.PARTICLE_SWARM, maxEvaluations, seed, null, settings);
         }
     }
 
     /**
-     * Ranked candidate score row.
+     * Genetic algorithm settings.
      *
-     * @param candidateId    candidate id
-     * @param strategyName   strategy name
-     * @param rank           one-based rank
-     * @param compositeScore weighted normalized score
-     * @param metricValues   raw metric values keyed by criterion identity
-     * @param representative whether this row is a representative candidate
-     * @since 0.22.8
+     * @param populationSize number of individuals per generation
+     * @param elitismCount   number of best individuals copied unchanged
+     * @param tournamentSize tournament selection size for parent choice
+     * @param crossoverRate  per-dimension crossover probability
+     * @param mutationRate   per-dimension mutation probability
+     * @since 0.24.2
      */
-    public record CandidateScore(String candidateId, String strategyName, int rank, Num compositeScore,
-            Map<AnalysisCriterion, Num> metricValues, boolean representative) {
+    public record GeneticSettings(int populationSize, int elitismCount, int tournamentSize, double crossoverRate,
+            double mutationRate) {
 
         /**
-         * Creates a validated candidate score row.
+         * Creates validated genetic settings.
          *
-         * @since 0.22.8
+         * @throws IllegalArgumentException if any constraint is violated
+         * @since 0.24.2
          */
-        public CandidateScore {
+        public GeneticSettings {
+            if (populationSize < 2) {
+                throw new IllegalArgumentException("populationSize must be >= 2");
+            }
+            if (elitismCount < 0 || elitismCount >= populationSize) {
+                throw new IllegalArgumentException("elitismCount must be in [0, populationSize)");
+            }
+            if (tournamentSize < 2 || tournamentSize > populationSize) {
+                throw new IllegalArgumentException("tournamentSize must be in [2, populationSize]");
+            }
+            if (!Double.isFinite(crossoverRate) || crossoverRate < 0d || crossoverRate > 1d) {
+                throw new IllegalArgumentException("crossoverRate must be in [0, 1]");
+            }
+            if (!Double.isFinite(mutationRate) || mutationRate < 0d || mutationRate > 1d) {
+                throw new IllegalArgumentException("mutationRate must be in [0, 1]");
+            }
+        }
+
+        /**
+         * Returns conservative defaults: population 50, elitism 2, tournament 5,
+         * crossover 0.9, mutation 0.1.
+         *
+         * @return default settings
+         * @since 0.24.2
+         */
+        public static GeneticSettings defaults() {
+            return new GeneticSettings(50, 2, 5, 0.9, 0.1);
+        }
+    }
+
+    /**
+     * Particle-swarm settings.
+     *
+     * @param swarmSize           number of particles
+     * @param inertiaWeight       velocity retention weight
+     * @param cognitiveWeight     personal-best attraction weight
+     * @param socialWeight        global-best attraction weight
+     * @param velocityClampFactor velocity bound as a fraction of the dimension
+     *                            range
+     * @since 0.24.2
+     */
+    public record SwarmSettings(int swarmSize, double inertiaWeight, double cognitiveWeight, double socialWeight,
+            double velocityClampFactor) {
+
+        /**
+         * Creates validated swarm settings.
+         *
+         * @throws IllegalArgumentException if any constraint is violated
+         * @since 0.24.2
+         */
+        public SwarmSettings {
+            if (swarmSize < 2) {
+                throw new IllegalArgumentException("swarmSize must be >= 2");
+            }
+            if (!Double.isFinite(inertiaWeight) || inertiaWeight < 0d || inertiaWeight > 1d) {
+                throw new IllegalArgumentException("inertiaWeight must be in [0, 1]");
+            }
+            if (!Double.isFinite(cognitiveWeight) || cognitiveWeight < 0d) {
+                throw new IllegalArgumentException("cognitiveWeight must be >= 0");
+            }
+            if (!Double.isFinite(socialWeight) || socialWeight < 0d) {
+                throw new IllegalArgumentException("socialWeight must be >= 0");
+            }
+            if (!Double.isFinite(velocityClampFactor) || velocityClampFactor <= 0d) {
+                throw new IllegalArgumentException("velocityClampFactor must be > 0");
+            }
+        }
+
+        /**
+         * Returns the classic Clerc-Kennedy defaults: swarm 50, inertia 0.7298,
+         * cognitive and social weights 1.49618, velocity clamp factor 0.2.
+         *
+         * @return default settings
+         * @since 0.24.2
+         */
+        public static SwarmSettings defaults() {
+            return new SwarmSettings(50, 0.7298, 1.49618, 1.49618, 0.2);
+        }
+    }
+
+    /**
+     * Reason a search terminated.
+     *
+     * @since 0.24.2
+     */
+    public enum TerminationReason {
+        /** Grid search iterated the entire declared space. */
+        SEARCH_SPACE_EXHAUSTED,
+        /** The exact evaluation budget was consumed before the space was exhausted. */
+        EVALUATION_BUDGET_EXHAUSTED,
+        /** The configured iteration limit was reached. */
+        ITERATION_LIMIT,
+        /** A valid evaluation reached the configured target score. */
+        TARGET_SCORE_REACHED,
+        /** The best score stagnated for the configured number of iterations. */
+        NO_IMPROVEMENT,
+        /** The running thread was interrupted between proposal batches. */
+        CANCELED,
+        /** The search completed without a single valid evaluation. */
+        NO_VALID_CANDIDATES
+    }
+
+    /**
+     * Run-level counts.
+     *
+     * @param proposed            proposals processed
+     * @param rejected            proposals rejected by the normalizer or validator
+     * @param repaired            proposals with at least one repaired value
+     * @param duplicate           duplicate proposals seen again after evaluation
+     * @param cached              evaluation-side cache hits
+     * @param attempted           unique objective evaluations
+     * @param successful          evaluations with a valid score
+     * @param failed              evaluations with an invalid score
+     * @param budgetRemaining     unused evaluation budget
+     * @param iterationsCompleted completed engine iterations (0 for grid search)
+     * @since 0.24.2
+     */
+    public record RunCounts(long proposed, long rejected, long repaired, long duplicate, long cached, long attempted,
+            long successful, long failed, int budgetRemaining, int iterationsCompleted) {
+    }
+
+    /**
+     * One ranked candidate on the training and holdout leaderboards.
+     *
+     * @param candidateId     stable candidate id
+     * @param parameters      normalized parameter set
+     * @param trainingRank    1-based training leaderboard rank
+     * @param holdoutRank     1-based holdout leaderboard rank, or {@code null} when
+     *                        the candidate is not on the holdout leaderboard
+     * @param trainingScore   training objective score
+     * @param holdoutScore    holdout objective score, or {@code null} when absent
+     * @param scoreDelta      {@code holdoutScore - trainingScore}, or {@code null}
+     *                        when absent
+     * @param trainingMetrics training auxiliary metrics
+     * @param holdoutMetrics  holdout auxiliary metrics, empty when absent
+     * @since 0.24.2
+     */
+    public record RankedCandidate(String candidateId, ParameterSet parameters, int trainingRank, Integer holdoutRank,
+            Num trainingScore, Num holdoutScore, Num scoreDelta, Map<String, Num> trainingMetrics,
+            Map<String, Num> holdoutMetrics) {
+
+        /**
+         * Creates a validated ranked candidate with defensive metric copies.
+         *
+         * @since 0.24.2
+         */
+        public RankedCandidate {
+            Objects.requireNonNull(candidateId, "candidateId");
+            Objects.requireNonNull(parameters, "parameters");
+            Objects.requireNonNull(trainingScore, "trainingScore");
+            trainingMetrics = trainingMetrics == null ? Map.of() : Map.copyOf(trainingMetrics);
+            holdoutMetrics = holdoutMetrics == null ? Map.of() : Map.copyOf(holdoutMetrics);
+        }
+    }
+
+    /**
+     * One invalid evaluation retained in the report diagnostics.
+     *
+     * @param candidateId stable candidate id
+     * @param parameters  normalized parameter set
+     * @param reason      factual failure reason
+     * @since 0.24.2
+     */
+    public record FailedEvaluation(String candidateId, ParameterSet parameters, String reason) {
+
+        /**
+         * Creates a validated failed-evaluation row.
+         *
+         * @since 0.24.2
+         */
+        public FailedEvaluation {
             if (candidateId == null || candidateId.isBlank()) {
                 throw new IllegalArgumentException("candidateId cannot be blank");
             }
-            strategyName = strategyName == null ? "" : strategyName;
-            if (rank <= 0) {
-                throw new IllegalArgumentException("rank must be > 0");
-            }
-            Objects.requireNonNull(compositeScore, "compositeScore");
-            metricValues = Collections
-                    .unmodifiableMap(new LinkedHashMap<>(metricValues == null ? Map.of() : metricValues));
+            Objects.requireNonNull(parameters, "parameters");
+            reason = reason == null ? "" : reason;
         }
     }
 
     /**
-     * Structured parameter research report.
+     * Final parameter research report.
      *
-     * @param datasetId               dataset identifier
-     * @param barCount                full-series bar count
-     * @param window                  training and validation window
-     * @param candidateSpaceHash      stable candidate-space hash
-     * @param pruningPolicy           pruning policy
-     * @param rawCandidateCount       declared raw combination count before
-     *                                normalization
-     * @param generatedCandidateCount generated candidate count
-     * @param validCandidateCount     evaluated candidate count
-     * @param invalidCandidateCount   rejected candidate count
-     * @param candidates              normalized candidate space
-     * @param baselineTopCandidateId  best full-space training candidate
-     * @param selectedTopCandidateId  best representative training candidate
-     * @param pruningGroups           pruning groups
-     * @param baselineScores          full-space training scores before pruning
-     * @param trainingScores          representative training scores
-     * @param validationScores        selected holdout scores
-     * @param invalidCandidates       rejected candidates
-     * @param warnings                report warnings
-     * @param trainingRuntimeReport   training runtime report
-     * @param validationRuntimeReport validation runtime report
-     * @since 0.22.8
+     * @param datasetId                 dataset identifier
+     * @param searchPlan                executed search plan
+     * @param objectiveId               deterministic fingerprint of the objective
+     *                                  configuration
+     * @param trainingWindow            training window
+     * @param holdoutWindow             holdout window, or empty when no holdout was
+     *                                  configured
+     * @param topK                      requested leaderboard size
+     * @param trainingLeaderboard       ranked training candidates, at most
+     *                                  {@code topK}
+     * @param holdoutLeaderboard        independently ranked holdout candidates
+     * @param terminationReason         why the search terminated
+     * @param counts                    run-level counts
+     * @param failedEvaluations         invalid evaluations retained for diagnostics
+     * @param elapsedEvaluationNanos    nanoseconds spent inside candidate factories
+     *                                  and objectives
+     * @param elapsedOrchestrationNanos nanoseconds spent on generation, validation,
+     *                                  ranking, and holdout orchestration
+     * @param warnings                  run warnings
+     * @since 0.24.2
      */
-    public record ParameterResearchReport(String datasetId, int barCount, ResearchWindow window,
-            String candidateSpaceHash, PruningPolicy pruningPolicy, long rawCandidateCount, int generatedCandidateCount,
-            int validCandidateCount, int invalidCandidateCount, List<StrategyCandidate> candidates,
-            String baselineTopCandidateId, String selectedTopCandidateId, List<PruningGroup> pruningGroups,
-            List<CandidateScore> baselineScores, List<CandidateScore> trainingScores,
-            List<CandidateScore> validationScores, List<InvalidCandidate> invalidCandidates, List<String> warnings,
-            BacktestRuntimeReport trainingRuntimeReport, BacktestRuntimeReport validationRuntimeReport) {
+    public record ParameterResearchReport(String datasetId, SearchPlan searchPlan, String objectiveId,
+            ResearchWindow trainingWindow, Optional<ResearchWindow> holdoutWindow, int topK,
+            List<RankedCandidate> trainingLeaderboard, List<RankedCandidate> holdoutLeaderboard,
+            TerminationReason terminationReason, RunCounts counts, List<FailedEvaluation> failedEvaluations,
+            long elapsedEvaluationNanos, long elapsedOrchestrationNanos, List<String> warnings) {
 
         /**
-         * Creates a validated research report.
+         * Creates a validated report with defensive copies.
          *
-         * @since 0.22.8
+         * @since 0.24.2
          */
         public ParameterResearchReport {
-            datasetId = datasetId == null || datasetId.isBlank() ? "series" : datasetId;
-            if (barCount < 0 || generatedCandidateCount < 0 || validCandidateCount < 0 || invalidCandidateCount < 0
-                    || rawCandidateCount < 0) {
-                throw new IllegalArgumentException("report counts must be >= 0");
+            if (datasetId == null || datasetId.isBlank()) {
+                throw new IllegalArgumentException("datasetId cannot be blank");
             }
-            Objects.requireNonNull(window, "window");
-            if (candidateSpaceHash == null || candidateSpaceHash.isBlank()) {
-                throw new IllegalArgumentException("candidateSpaceHash cannot be blank");
+            Objects.requireNonNull(searchPlan, "searchPlan");
+            if (objectiveId == null || objectiveId.isBlank()) {
+                throw new IllegalArgumentException("objectiveId cannot be blank");
             }
-            Objects.requireNonNull(pruningPolicy, "pruningPolicy");
-            List<StrategyCandidate> copiedCandidates = List.copyOf(Objects.requireNonNull(candidates, "candidates"));
-            List<PruningGroup> copiedPruningGroups = List
-                    .copyOf(Objects.requireNonNull(pruningGroups, "pruningGroups"));
-            List<CandidateScore> copiedBaselineScores = List
-                    .copyOf(Objects.requireNonNull(baselineScores, "baselineScores"));
-            List<CandidateScore> copiedTrainingScores = List
-                    .copyOf(Objects.requireNonNull(trainingScores, "trainingScores"));
-            List<CandidateScore> copiedValidationScores = List
-                    .copyOf(Objects.requireNonNull(validationScores, "validationScores"));
-            List<InvalidCandidate> copiedInvalidCandidates = List
-                    .copyOf(Objects.requireNonNull(invalidCandidates, "invalidCandidates"));
-            List<String> copiedWarnings = List.copyOf(Objects.requireNonNull(warnings, "warnings"));
-            candidates = copiedCandidates;
-            pruningGroups = copiedPruningGroups;
-            baselineScores = copiedBaselineScores;
-            trainingScores = copiedTrainingScores;
-            validationScores = copiedValidationScores;
-            invalidCandidates = copiedInvalidCandidates;
-            warnings = copiedWarnings;
-            if (candidates.isEmpty()) {
-                throw new IllegalArgumentException("candidates cannot be empty");
-            }
-            if (rawCandidateCount < generatedCandidateCount) {
-                throw new IllegalArgumentException("rawCandidateCount must be >= generatedCandidateCount");
-            }
-            if (generatedCandidateCount < validCandidateCount) {
-                throw new IllegalArgumentException("generatedCandidateCount must be >= validCandidateCount");
-            }
-            if (validCandidateCount > candidates.size()) {
-                throw new IllegalArgumentException("validCandidateCount cannot exceed the candidate space size");
-            }
-            if (invalidCandidateCount != invalidCandidates.size()) {
-                throw new IllegalArgumentException("invalidCandidateCount must match invalidCandidates.size()");
-            }
-            Objects.requireNonNull(trainingRuntimeReport, "trainingRuntimeReport");
-            Objects.requireNonNull(validationRuntimeReport, "validationRuntimeReport");
+            Objects.requireNonNull(trainingWindow, "trainingWindow");
+            holdoutWindow = holdoutWindow == null ? Optional.empty() : holdoutWindow;
+            Objects.requireNonNull(terminationReason, "terminationReason");
+            Objects.requireNonNull(counts, "counts");
+            trainingLeaderboard = List.copyOf(trainingLeaderboard);
+            holdoutLeaderboard = List.copyOf(holdoutLeaderboard);
+            failedEvaluations = List.copyOf(failedEvaluations);
+            warnings = List.copyOf(warnings);
+        }
+    }
+
+    /**
+     * One evaluated candidate internal to the pipeline.
+     */
+    record EvaluatedCandidate(String candidateId, ParameterSet parameters, int evaluationOrdinal, Num score,
+            Map<String, Num> metrics, boolean valid, String failureReason) {
+
+        static EvaluatedCandidate valid(String candidateId, ParameterSet parameters, int ordinal, Num score,
+                Map<String, Num> metrics) {
+            return new EvaluatedCandidate(candidateId, parameters, ordinal, score, metrics, true, "");
         }
 
-        /**
-         * Counts representative candidates after pruning.
-         *
-         * @return representative count
-         * @since 0.22.8
-         */
-        public int representativeCount() {
-            return pruningGroups.size();
+        static EvaluatedCandidate failed(String candidateId, ParameterSet parameters, int ordinal, String reason) {
+            return new EvaluatedCandidate(candidateId, parameters, ordinal, null, Map.of(), false, reason);
         }
 
-        /**
-         * Counts candidates removed by pruning.
-         *
-         * @return pruned candidate count
-         * @since 0.22.8
-         */
-        public int prunedCandidateCount() {
-            int members = pruningGroups.stream().mapToInt(group -> group.memberIds().size()).sum();
-            return members - pruningGroups.size();
+        FailedEvaluation toFailedEvaluation() {
+            return new FailedEvaluation(candidateId, parameters, failureReason);
+        }
+    }
+
+    /**
+     * One holdout evaluation with its training rank and holdout rank.
+     */
+    private record HoldoutEvaluation(EvaluatedCandidate evaluation, int trainingRank, int holdoutRank) {
+    }
+
+    /**
+     * Holdout rebuild outcome.
+     */
+    private record HoldoutResult(List<RankedCandidate> leaderboard, Map<String, HoldoutEvaluation> byId,
+            long evaluationNanos) {
+    }
+
+    /**
+     * Run-local evaluation cache.
+     */
+    private static final class EvaluationCache {
+
+        private final Map<String, EvaluatedCandidate> entries = new LinkedHashMap<>();
+
+        EvaluatedCandidate get(String key) {
+            return entries.get(key);
         }
 
-        /**
-         * Returns invalid-candidate counts broken down by failure stage.
-         *
-         * @return unmodifiable stage-count map in declaration order
-         * @since 0.22.8
-         */
-        public Map<CandidateFailureStage, Integer> invalidCandidateCountByStage() {
-            Map<CandidateFailureStage, Integer> counts = new EnumMap<>(CandidateFailureStage.class);
-            for (InvalidCandidate invalidCandidate : invalidCandidates) {
-                counts.merge(invalidCandidate.stage(), 1, Integer::sum);
+        void put(String key, EvaluatedCandidate evaluated) {
+            entries.put(key, evaluated);
+        }
+    }
+
+    /**
+     * Dataset revision snapshot verified during the run.
+     */
+    private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount) {
+
+        private SeriesSnapshot(BarSeries series) {
+            this(series.getName(), series.getBeginIndex(), series.getEndIndex(), series.getBarCount());
+        }
+    }
+
+    /**
+     * Mutable run counters.
+     */
+    private static final class RunCounters {
+        long proposed;
+        long rejected;
+        long repaired;
+        long duplicate;
+        long cached;
+        long attempted;
+        long successful;
+        long failed;
+    }
+
+    private static String cacheKey(String candidateId, String windowId) {
+        return candidateId + "\u0000" + windowId;
+    }
+
+    private static Comparator<EvaluatedCandidate> rankingComparator(Direction direction) {
+        return (a, b) -> {
+            int comparison = direction == Direction.MAXIMIZE ? b.score().compareTo(a.score())
+                    : a.score().compareTo(b.score());
+            if (comparison != 0) {
+                return comparison;
             }
-            return Collections.unmodifiableMap(counts);
-        }
-
-        /**
-         * Formats the invalid-candidate stage breakdown.
-         *
-         * @return stage breakdown text
-         * @since 0.22.8
-         */
-        public String invalidStageBreakdown() {
-            StringJoiner joiner = new StringJoiner(", ", "{", "}");
-            for (Map.Entry<CandidateFailureStage, Integer> entry : invalidCandidateCountByStage().entrySet()) {
-                joiner.add(stageLabel(entry.getKey()) + "=" + entry.getValue());
+            comparison = Integer.compare(a.parameters().repairCount(), b.parameters().repairCount());
+            if (comparison != 0) {
+                return comparison;
             }
-            return joiner.toString();
-        }
-
-        private static String stageLabel(CandidateFailureStage stage) {
-            return switch (stage) {
-            case GENERATION -> "generation";
-            case COMBINATION_VALIDATION -> "combination";
-            case DUPLICATE_NORMALIZED -> "duplicate";
-            case STRATEGY_BUILD -> "strategy-build";
-            case TRAINING_EXECUTION -> "training-execution";
-            case VALIDATION_STRATEGY_BUILD -> "validation-strategy-build";
-            case VALIDATION_EXECUTION -> "validation-execution";
-            case PRUNING_INDICATOR -> "pruning-indicator";
-            };
-        }
-
-        /**
-         * Formats a concise human-readable report summary.
-         *
-         * @return summary text
-         * @since 0.22.8
-         */
-        public String formatSummary() {
-            return formatSummary(5);
-        }
-
-        /**
-         * Formats a concise human-readable report summary.
-         *
-         * @param maxRows maximum number of score rows to include for each section
-         * @return summary text
-         * @since 0.22.8
-         */
-        public String formatSummary(int maxRows) {
-            if (maxRows < 0) {
-                throw new IllegalArgumentException("maxRows must be >= 0");
+            comparison = Integer.compare(a.evaluationOrdinal(), b.evaluationOrdinal());
+            if (comparison != 0) {
+                return comparison;
             }
+            return a.candidateId().compareTo(b.candidateId());
+        };
+    }
+
+    private static String resolveDatasetId(BarSeries series) {
+        String name = series.getName();
+        if (name == null || name.isBlank()) {
+            return "series";
+        }
+        return name;
+    }
+
+    private static String domainSpec(ParameterDomain domain) {
+        if (domain instanceof ParameterDomain.IntegerDomain d) {
+            return "integer:" + d.name() + ":" + d.from() + ":" + d.to() + ":" + d.step();
+        }
+        if (domain instanceof ParameterDomain.DecimalDomain d) {
+            return "decimal:" + d.name() + ":" + canonicalDecimal(d.from()) + ":" + canonicalDecimal(d.to()) + ":"
+                    + canonicalDecimal(d.step());
+        }
+        if (domain instanceof ParameterDomain.BooleanDomain d) {
+            return "bool:" + d.name();
+        }
+        if (domain instanceof ParameterDomain.CategoricalDomain d) {
+            return "categorical:" + d.name() + ":" + String.join(",", d.values());
+        }
+        throw new IllegalArgumentException("Unsupported parameter domain: " + domain.getClass().getName());
+    }
+
+    static String canonicalDecimal(double value) {
+        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
+    }
+
+    private static String message(RuntimeException ex) {
+        String message = ex.getMessage();
+        return message == null ? "" : ": " + message;
+    }
+
+    private static void verifyUnchanged(SeriesSnapshot snapshot, BarSeries series) {
+        if (!Objects.equals(snapshot.name(), series.getName()) || snapshot.beginIndex() != series.getBeginIndex()
+                || snapshot.endIndex() != series.getEndIndex() || snapshot.barCount() != series.getBarCount()) {
+            throw new IllegalStateException("dataset changed during research: expected name='" + snapshot.name()
+                    + "' beginIndex=" + snapshot.beginIndex() + " endIndex=" + snapshot.endIndex() + " barCount="
+                    + snapshot.barCount() + ", but observed name='" + series.getName() + "' beginIndex="
+                    + series.getBeginIndex() + " endIndex=" + series.getEndIndex() + " barCount="
+                    + series.getBarCount());
+        }
+    }
+
+    private static String shortHash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder();
-            builder.append("Parameter research '")
-                    .append(datasetId)
-                    .append("'")
-                    .append(System.lineSeparator())
-                    .append("Candidate space: hash=")
-                    .append(candidateSpaceHash)
-                    .append(", raw=")
-                    .append(rawCandidateCount)
-                    .append(", generated=")
-                    .append(generatedCandidateCount)
-                    .append(", valid=")
-                    .append(validCandidateCount)
-                    .append(", representatives=")
-                    .append(representativeCount())
-                    .append(", pruned=")
-                    .append(prunedCandidateCount())
-                    .append(", invalid=")
-                    .append(invalidCandidateCount);
-            if (invalidCandidateCount > 0) {
-                builder.append(", stages=").append(invalidStageBreakdown());
+            for (byte b : hash) {
+                builder.append(String.format(Locale.ROOT, "%02x", b));
             }
-            builder.append(", policy=").append(pruningPolicy);
-            builder.append(System.lineSeparator())
-                    .append("Windows: bars=")
-                    .append(barCount)
-                    .append(", training=")
-                    .append(window.trainingStartIndex())
-                    .append('-')
-                    .append(window.trainingEndIndex());
-            if (window.hasValidationWindow()) {
-                builder.append(", validation=")
-                        .append(window.validationStartIndex())
-                        .append('-')
-                        .append(window.validationEndIndex());
-            } else {
-                builder.append(", validation=none");
-            }
-            builder.append(System.lineSeparator())
-                    .append("Selection: baselineTop=")
-                    .append(baselineTopCandidateId)
-                    .append(", selectedTop=")
-                    .append(selectedTopCandidateId);
-            appendScores(builder, "Training top candidates", trainingScores, maxRows);
-            appendScores(builder, "Validation top candidates", validationScores, maxRows);
-            if (!warnings.isEmpty()) {
-                builder.append(System.lineSeparator()).append("Warnings:");
-                for (String warning : warnings) {
-                    builder.append(System.lineSeparator()).append("- ").append(warning);
-                }
-            }
-            return builder.toString();
-        }
-
-        private static void appendScores(StringBuilder builder, String label, List<CandidateScore> scores,
-                int maxRows) {
-            builder.append(System.lineSeparator()).append(label).append(":");
-            if (scores.isEmpty()) {
-                builder.append(" none");
-                return;
-            }
-            int limit = Math.min(maxRows, scores.size());
-            for (int i = 0; i < limit; i++) {
-                CandidateScore score = scores.get(i);
-                builder.append(System.lineSeparator())
-                        .append("- #")
-                        .append(score.rank())
-                        .append(' ')
-                        .append(score.candidateId())
-                        .append(" score=")
-                        .append(score.compositeScore());
-                if (!score.metricValues().isEmpty()) {
-                    builder.append(" metrics=").append(formatMetrics(score.metricValues()));
-                }
-            }
-            if (scores.size() > limit) {
-                builder.append(System.lineSeparator()).append("- ... ").append(scores.size() - limit).append(" more");
-            }
-        }
-
-        private static String formatMetrics(Map<AnalysisCriterion, Num> metricValues) {
-            Map<String, Integer> labelCounts = new LinkedHashMap<>();
-            for (AnalysisCriterion criterion : metricValues.keySet()) {
-                labelCounts.merge(criterion.toString(), 1, Integer::sum);
-            }
-            Map<String, Integer> occurrenceByLabel = new LinkedHashMap<>();
-            StringJoiner joiner = new StringJoiner(", ", "{", "}");
-            for (Map.Entry<AnalysisCriterion, Num> entry : metricValues.entrySet()) {
-                String label = entry.getKey().toString();
-                int occurrence = occurrenceByLabel.merge(label, 1, Integer::sum);
-                String displayLabel = labelCounts.get(label) > 1 ? label + " #" + occurrence : label;
-                joiner.add(displayLabel + "=" + entry.getValue());
-            }
-            return joiner.toString();
-        }
-    }
-
-    private record ExecutionBundle(List<StrategyCandidate> candidates, BacktestExecutionResult result,
-            List<InvalidCandidate> invalidCandidates) {
-    }
-
-    private record ValidationBundle(List<CandidateScore> validationScores, BacktestRuntimeReport runtimeReport,
-            List<InvalidCandidate> invalidCandidates) {
-    }
-
-    private record PruningResult(List<PruningGroup> groups, List<InvalidCandidate> invalidCandidates) {
-    }
-
-    private record ResearchExecutor(BarSeriesManager manager, TradingStatementGenerator statementGenerator) {
-
-        private ResearchExecutor(BarSeries series, ResearchConfig config) {
-            this(new BarSeriesManager(series, config.transactionCostModel(), config.holdingCostModel(),
-                    config.tradeExecutionModel(), config.tradingRecordFactory()), new TradingStatementGenerator());
-        }
-    }
-
-    private static final class PruningGroupBuilder {
-
-        private final String representativeId;
-        private final String reason;
-        private final List<String> memberIds = new ArrayList<>();
-        private double maximumDistance;
-
-        private PruningGroupBuilder(String representativeId, String reason) {
-            this.representativeId = representativeId;
-            this.reason = reason;
-        }
-
-        private void add(String candidateId, double distance) {
-            memberIds.add(candidateId);
-            maximumDistance = Math.max(maximumDistance, distance);
-        }
-
-        private PruningGroup build() {
-            return new PruningGroup(representativeId, memberIds, reason, maximumDistance);
+            return builder.substring(0, SHORT_HASH_LENGTH);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable", ex);
         }
     }
 }

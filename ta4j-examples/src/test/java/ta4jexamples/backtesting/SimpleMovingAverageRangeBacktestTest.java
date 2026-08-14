@@ -11,7 +11,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
-import org.ta4j.core.research.ParameterResearch.PruningPolicy;
+import org.ta4j.core.research.ParameterResearch.TerminationReason;
 
 public class SimpleMovingAverageRangeBacktestTest {
 
@@ -24,25 +24,27 @@ public class SimpleMovingAverageRangeBacktestTest {
     public void smaResearchUsesMultiParameterCandidatesAndHoldoutValidation() {
         BarSeries series = buildSwingSeries(80);
 
-        ParameterResearchReport report = SimpleMovingAverageRangeBacktest.runSmaResearch(series,
-                PruningPolicy.EXACT_TRADING_RECORD, 20);
+        ParameterResearchReport report = SimpleMovingAverageRangeBacktest.runSmaResearch(series, 20);
 
-        assertEquals(60, report.generatedCandidateCount());
-        assertEquals(42, report.validCandidateCount());
-        assertEquals(18, report.invalidCandidateCount());
-        assertFalse(report.trainingScores().isEmpty());
-        assertFalse(report.validationScores().isEmpty());
-        assertEquals(0, report.window().trainingStartIndex());
-        assertEquals(59, report.window().trainingEndIndex());
-        assertEquals(60, report.window().validationStartIndex());
-        assertEquals(79, report.window().validationEndIndex());
+        assertEquals(60, report.counts().proposed());
+        assertEquals(18, report.counts().rejected());
+        assertEquals(42, report.counts().attempted());
+        assertEquals(42, report.counts().successful());
+        assertEquals(TerminationReason.SEARCH_SPACE_EXHAUSTED, report.terminationReason());
+        assertFalse(report.trainingLeaderboard().isEmpty());
+        assertTrue(report.trainingLeaderboard().size() <= 3);
+        assertFalse(report.holdoutLeaderboard().isEmpty());
+        assertEquals(0, report.trainingWindow().startIndex());
+        assertEquals(59, report.trainingWindow().endIndex());
+        assertTrue(report.holdoutWindow().isPresent());
+        assertEquals(60, report.holdoutWindow().orElseThrow().startIndex());
+        assertEquals(79, report.holdoutWindow().orElseThrow().endIndex());
     }
 
     @Test
     public void smaResearchNarrativeExplainsCandidateSpaceHoldoutAndTakeaway() {
         BarSeries series = buildSwingSeries(80);
-        ParameterResearchReport report = SimpleMovingAverageRangeBacktest.runSmaResearch(series, PruningPolicy.NONE,
-                20);
+        ParameterResearchReport report = SimpleMovingAverageRangeBacktest.runSmaResearch(series, 20);
 
         String narrative = SimpleMovingAverageRangeBacktest.formatResearchNarrative(report, 2);
 
