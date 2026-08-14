@@ -14,11 +14,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.logging.log4j.Level;
 import org.junit.Test;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -540,6 +543,71 @@ public class BacktestExecutorTest {
         assertEquals(1, failures.size());
         assertSame(throwing, failures.get(0).strategy());
         assertEquals("boom", failures.get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executionResultFailureMetadataIsolatedFromConcurrentExecutions() throws Exception {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16)
+                .build();
+        int failureCount = 20_000;
+        RuntimeException firstFailure = new IllegalStateException("first execution");
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), firstFailure);
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        List<Strategy> strategies = new ArrayList<>(failureCount + 1);
+        for (int i = 0; i < failureCount; i++) {
+            strategies.add(throwing);
+        }
+        strategies.add(healthy);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        AtomicReference<BacktestExecutionResult> result = new AtomicReference<>();
+        AtomicReference<Throwable> executionFailure = new AtomicReference<>();
+        AtomicBoolean clearLedger = new AtomicBoolean();
+        Thread firstExecution = new Thread(() -> {
+            try {
+                result.set(executor.executeWithRuntimeReport(strategies, numOf(1)));
+            } catch (Throwable failure) {
+                executionFailure.set(failure);
+            }
+        }, "backtest-first-execution");
+        Thread clearingExecution = null;
+        TraceTestLogger traceLogger = new TraceTestLogger();
+        traceLogger.open();
+        traceLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
+        try {
+            firstExecution.start();
+            long deadline = System.nanoTime() + 10_000_000_000L;
+            while (executor.getStrategyFailures().size() != failureCount && System.nanoTime() < deadline) {
+                Thread.yield();
+            }
+            assertEquals("first execution did not publish its failure ledger", failureCount,
+                    executor.getStrategyFailures().size());
+
+            clearLedger.set(true);
+            clearingExecution = new Thread(() -> {
+                while (clearLedger.get()) {
+                    executor.executeWithRuntimeReport(List.of(), numOf(1));
+                }
+            }, "backtest-clearing-execution");
+            clearingExecution.start();
+
+            firstExecution.join(10_000);
+            assertFalse("first execution did not finish", firstExecution.isAlive());
+            assertTrue("first execution failed", executionFailure.get() == null);
+            assertTrue(result.get() != null);
+            assertEquals(failureCount, result.get().strategyFailures().size());
+            assertSame(throwing, result.get().strategyFailures().getFirst().strategy());
+            assertSame(firstFailure, result.get().strategyFailures().getFirst().cause());
+        } finally {
+            clearLedger.set(false);
+            if (clearingExecution != null) {
+                clearingExecution.join(10_000);
+            }
+            if (firstExecution.isAlive()) {
+                firstExecution.join(10_000);
+            }
+            traceLogger.close();
+        }
     }
 
     @Test
