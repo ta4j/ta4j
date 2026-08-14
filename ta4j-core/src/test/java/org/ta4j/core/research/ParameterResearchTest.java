@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +108,7 @@ class ParameterResearchTest {
         assertThrows(IllegalArgumentException.class, () -> ParameterDomain.decimal("a", Double.NaN, 2d, 1d));
         assertThrows(IllegalArgumentException.class, () -> ParameterDomain.categorical("a"));
         assertThrows(IllegalArgumentException.class, () -> ParameterDomain.categorical("a", "x", " "));
+        assertThrows(IllegalArgumentException.class, () -> ParameterDomain.categorical("a", "x", "x", "y"));
     }
 
     @Test
@@ -537,6 +539,82 @@ class ParameterResearchTest {
         assertThat(set.stableId()).isEqualTo("x=5|flag=true");
         assertThrows(IllegalArgumentException.class, () -> set.intValue("missing"));
         assertThrows(IllegalArgumentException.class, () -> set.booleanValue("x"));
+    }
+
+    @Test
+    void decimalDomainRejectsCardinalityOverflow() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .decimal("a", 0d, 1d, 1e-20)
+                .candidate((window, parameters) -> (int) Math.round(parameters.decimalValue("a") * 10))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(2));
+        assertThrows(IllegalArgumentException.class, builder::run);
+    }
+
+    @Test
+    void candidateDeclaredAfterObjectiveIsRejected() {
+        BarSeries series = series(1d, 2d, 3d);
+        assertThrows(IllegalStateException.class,
+                () -> ParameterResearch.<Integer>builder(series)
+                        .integer("a", 1, 3)
+                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                                .of(window.series().numFactory().numOf(candidate)))
+                        .candidate((window, parameters) -> parameters.intValue("a")));
+    }
+
+    @Test
+    void geneticSearchCarriesElitesIntoLaterGenerations() {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 10)
+                .integer("b", 1, 10)
+                .candidate((window, parameters) -> parameters.intValue("a") + parameters.intValue("b"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.genetic(12, 3L, new ParameterResearch.GeneticSettings(10, 1, 2, 0.9, 0.1)))
+                .run();
+
+        assertThat(report.counts().duplicate()).isGreaterThan(0);
+        assertThat(report.counts().attempted()).isEqualTo(12);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.EVALUATION_BUDGET_EXHAUSTED);
+    }
+
+    @Test
+    void datasetRevisionChangeOnFinalEvaluationIsRejected() {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        AtomicInteger evaluations = new AtomicInteger();
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    if (evaluations.incrementAndGet() == 3) {
+                        series.addPrice(5d);
+                    }
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
+                })
+                .search(SearchPlan.grid(3));
+        assertThrows(IllegalStateException.class, builder::run);
+    }
+
+    @Test
+    void objectiveIdCoversTerminationConfiguration() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> withTarget = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(3))
+                .targetScore(series.numFactory().numOf(2));
+        ParameterResearch.Builder<Integer> withoutTarget = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(3));
+        assertThat(withTarget.run().objectiveId()).isNotEqualTo(withoutTarget.run().objectiveId());
     }
 
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {

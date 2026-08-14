@@ -124,30 +124,34 @@ final class GeneticSearchEngine extends SearchEngine {
     private List<int[]> breed(int count, List<GenomeEvaluation> valid) {
         List<int[]> next = new ArrayList<>(count);
         Set<String> batchIds = new HashSet<>();
-        for (int i = 0; i < count; i++) {
+        // Reserve the configured elite slots first: elites are already evaluated,
+        // so the pipeline serves them from the cache without spending budget.
+        // Always leave at least one slot for a child so the final budget point is
+        // never wasted on an elite.
+        int eliteCount = Math.min(settings.elitismCount(), Math.min(Math.max(0, count - 1), valid.size()));
+        for (int i = 0; i < eliteCount; i++) {
+            int[] elite = valid.get(i).genome().clone();
+            next.add(elite);
+            batchIds.add(canonicalId(elite));
+        }
+        int childrenFound = 0;
+        for (int i = 0; i < count - eliteCount; i++) {
             int[] child = unseenChild(valid, batchIds);
             if (child != null) {
                 next.add(child);
+                childrenFound++;
             }
         }
-        if (next.isEmpty() && count > 0) {
-            // Breeding produced no unseen child: a covered declared space is
-            // exhausted, otherwise the search stalled and cannot yield a new
-            // evaluation with these settings.
+        if (childrenFound == 0 && count > 0) {
+            // No unseen child was bred: a covered declared space is exhausted,
+            // otherwise the search stalled and cannot yield a new evaluation
+            // with these settings.
             if (exhausted()) {
                 terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
             } else {
                 terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
             }
             return List.of();
-        }
-        // Pad with elites only when no unseen child could be bred; elites are
-        // already evaluated, so the pipeline serves them from the cache.
-        if (next.size() < count) {
-            int eliteCount = Math.min(settings.elitismCount(), Math.min(count - next.size(), valid.size()));
-            for (int i = 0; i < eliteCount; i++) {
-                next.add(valid.get(i).genome().clone());
-            }
         }
         return next;
     }

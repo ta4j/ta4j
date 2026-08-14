@@ -50,7 +50,12 @@ final class DomainSpec {
             return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step());
         }
         if (domain instanceof ParameterResearch.ParameterDomain.DecimalDomain d) {
-            long count = (long) Math.floor((d.to() - d.from()) / d.step() + 1e-9) + 1L;
+            double ratio = Math.floor((d.to() - d.from()) / d.step() + 1e-9);
+            if (ratio > Integer.MAX_VALUE - 1d) {
+                throw new IllegalArgumentException("Domain '" + d.name() + "' declares more than " + Integer.MAX_VALUE
+                        + " values which exceeds the per-domain limit of " + Integer.MAX_VALUE);
+            }
+            long count = (long) ratio + 1L;
             int cardinality = checkedCardinality(d.name(), count);
             List<String> values = new IndexedValues(cardinality, index -> {
                 double value = BigDecimal.valueOf(d.from())

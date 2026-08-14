@@ -85,11 +85,19 @@ public final class ParameterResearch {
      * @param series dataset to search over
      * @param <T>    candidate type, inferred from {@link Builder#candidate}
      * @return workflow builder
-     * @throws NullPointerException if {@code series} is null
+     * @throws NullPointerException     if {@code series} is null
+     * @throws IllegalArgumentException if {@code series} does not report its bar
+     *                                  history revision via
+     *                                  {@link BarSeries#getBarHistoryRevision()}
      * @since 0.24.2
      */
     public static <T> Builder<T> builder(BarSeries series) {
-        return new Builder<>(Objects.requireNonNull(series, "series"));
+        BarSeries validated = Objects.requireNonNull(series, "series");
+        if (validated.getBarHistoryRevision() < 0L) {
+            throw new IllegalArgumentException("series must report a non-negative bar history revision via "
+                    + "getBarHistoryRevision() so dataset mutations are detectable");
+        }
+        return new Builder<>(validated);
     }
 
     /**
@@ -232,11 +240,17 @@ public final class ParameterResearch {
          *                set
          * @param <U>     candidate type
          * @return this builder with {@code U} as its candidate type
-         * @throws NullPointerException if {@code factory} is null
+         * @throws NullPointerException  if {@code factory} is null
+         * @throws IllegalStateException if the objective is already configured, because
+         *                               the candidate type must be declared first
          * @since 0.24.2
          */
         @SuppressWarnings("unchecked")
         public <U> Builder<U> candidate(CandidateFactory<U> factory) {
+            if (objective != null) {
+                throw new IllegalStateException("candidate(...) must be declared before maximize(...)/minimize(...) "
+                        + "so the candidate type cannot diverge from the objective");
+            }
             this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) Objects.requireNonNull(factory,
                     "factory");
             return (Builder<U>) this;
@@ -553,6 +567,7 @@ public final class ParameterResearch {
                     break;
                 }
             }
+            verifyUnchanged(snapshot, series);
             if (counters.successful == 0 && reason != TerminationReason.CANCELED) {
                 reason = TerminationReason.NO_VALID_CANDIDATES;
             }
@@ -570,7 +585,11 @@ public final class ParameterResearch {
                 holdoutLeaderboard = holdout.leaderboard();
                 holdoutById = holdout.byId();
                 evaluationNanos += holdout.evaluationNanos();
+                if (Thread.currentThread().isInterrupted()) {
+                    reason = TerminationReason.CANCELED;
+                }
             }
+            verifyUnchanged(snapshot, series);
             List<RankedCandidate> trainingLeaderboard = new ArrayList<>(leaderboardSize);
             for (int i = 0; i < leaderboardSize; i++) {
                 EvaluatedCandidate evaluated = ranked.get(i);
@@ -676,6 +695,9 @@ public final class ParameterResearch {
             Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
             long evaluationNanos = 0L;
             for (int i = 0; i < leaderboardSize; i++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    break;
+                }
                 EvaluatedCandidate training = ranked.get(i);
                 String key = cacheKey(training.candidateId(), holdoutWindow.windowId());
                 EvaluatedCandidate cached = cache.get(key);
@@ -718,6 +740,16 @@ public final class ParameterResearch {
             return new HoldoutResult(leaderboard, byId, evaluationNanos);
         }
 
+        /**
+         * Computes a deterministic objective fingerprint from the value-based
+         * configuration: declared domains, plan kind, budget, seed, top-K, holdout
+         * size, target score, iteration limits, and engine settings.
+         *
+         * <p>
+         * Candidate factories, objectives, validators, and normalizers are lambdas
+         * without identity and are intentionally excluded.
+         * </p>
+         */
         private String computeObjectiveId(int holdoutBars) {
             StringJoiner joiner = new StringJoiner("|");
             joiner.add(direction.name());
@@ -728,7 +760,15 @@ public final class ParameterResearch {
                     .add(String.valueOf(searchPlan.maxEvaluations()))
                     .add(String.valueOf(searchPlan.seed()))
                     .add(String.valueOf(topK))
-                    .add(String.valueOf(holdoutBars));
+                    .add(String.valueOf(holdoutBars))
+                    .add(String.valueOf(targetScore))
+                    .add(String.valueOf(maxIterations))
+                    .add(String.valueOf(noImprovementIterations));
+            if (searchPlan.kind() == SearchPlan.Kind.GENETIC) {
+                joiner.add(String.valueOf(searchPlan.geneticSettings()));
+            } else if (searchPlan.kind() == SearchPlan.Kind.PARTICLE_SWARM) {
+                joiner.add(String.valueOf(searchPlan.swarmSettings()));
+            }
             return shortHash(joiner.toString());
         }
     }
@@ -1125,7 +1165,8 @@ public final class ParameterResearch {
              * Creates a validated categorical domain.
              *
              * @throws IllegalArgumentException if the name is blank or the values are empty
-             *                                  or contain blank entries
+             *                                  or contain blank entries or duplicate
+             *                                  literals
              * @since 0.24.2
              */
             public CategoricalDomain {
@@ -1139,6 +1180,9 @@ public final class ParameterResearch {
                     if (value == null || value.isBlank()) {
                         throw new IllegalArgumentException("values cannot contain blank entries");
                     }
+                }
+                if (new LinkedHashSet<>(values).size() != values.size()) {
+                    throw new IllegalArgumentException("values cannot contain duplicates");
                 }
                 values = List.copyOf(values);
             }
@@ -1669,7 +1713,9 @@ public final class ParameterResearch {
      * @param cached              evaluation-side cache hits
      * @param attempted           unique objective evaluations
      * @param successful          evaluations with a valid score
-     * @param failed              evaluations with an invalid score
+     * @param failed              training evaluations with an invalid score;
+     *                            holdout failures are excluded and reported via
+     *                            {@link ParameterResearchReport#failedEvaluations()}
      * @param budgetRemaining     unused evaluation budget
      * @param iterationsCompleted completed engine iterations (0 for grid search)
      * @since 0.24.2
@@ -1742,7 +1788,9 @@ public final class ParameterResearch {
      * @param datasetId                 dataset identifier
      * @param searchPlan                executed search plan
      * @param objectiveId               deterministic fingerprint of the objective
-     *                                  configuration
+     *                                  configuration derived from value-based
+     *                                  settings; lambda-based factories are
+     *                                  excluded
      * @param trainingWindow            training window
      * @param holdoutWindow             holdout window, or empty when no holdout was
      *                                  configured
@@ -1752,7 +1800,9 @@ public final class ParameterResearch {
      * @param holdoutLeaderboard        independently ranked holdout candidates
      * @param terminationReason         why the search terminated
      * @param counts                    run-level counts
-     * @param failedEvaluations         invalid evaluations retained for diagnostics
+     * @param failedEvaluations         invalid evaluations retained for
+     *                                  diagnostics, including holdout-phase
+     *                                  failures
      * @param elapsedEvaluationNanos    nanoseconds spent inside candidate factories
      *                                  and objectives
      * @param elapsedOrchestrationNanos nanoseconds spent on generation, validation,
