@@ -262,6 +262,10 @@ public class StrategyWalkForwardExecutorTest {
                         && "synthetic fold evaluation failure".equals(f.cause().getMessage())));
         assertTrue(result.folds().isEmpty());
         assertNotNull(result.runtimeReport());
+        // Every fold failed, but the run still consumed wall-clock time: the
+        // overall runtime must be retained even with zero fold runtimes.
+        assertTrue(result.runtimeReport().foldRuntimes().isEmpty());
+        assertFalse(result.runtimeReport().overallRuntime().isZero());
     }
 
     private BarSeries buildSeries(int bars) {

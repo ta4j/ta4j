@@ -217,25 +217,58 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
      */
     static Num selectAcrossDirections(final Num bullish, final Num bearish, final Num reference,
             final boolean preferWidest) {
+        return selectDirectionalAcrossDirections(bullish, bearish, reference, preferWidest).level();
+    }
+
+    /**
+     * Selects one of two directional invalidation levels and reports which side the
+     * level was folded from.
+     *
+     * <p>
+     * Selection follows the same rules as {@link #selectAcrossDirections}; the
+     * returned side lets {@link #distanceToInvalidation} keep the sign convention
+     * of the originating direction, so a crossed boundary reports a negative
+     * distance instead of being re-read through the opposite side.
+     *
+     * @param bullish      bullish invalidation level, may be {@code null}
+     * @param bearish      bearish invalidation level, may be {@code null}
+     * @param reference    price used to rank distances
+     * @param preferWidest {@code true} to prefer the farthest level, {@code false}
+     *                     for the closest
+     * @return the selected level with its originating side; when both levels are
+     *         {@code null} the level is NaN and the side defaults to bullish
+     * @since 0.24.2
+     */
+    static DirectionalSelection selectDirectionalAcrossDirections(final Num bullish, final Num bearish,
+            final Num reference, final boolean preferWidest) {
         if (bullish == null && bearish == null) {
-            return NaN;
+            return new DirectionalSelection(NaN, true);
         }
         if (bullish == null) {
-            return bearish;
+            return new DirectionalSelection(bearish, false);
         }
         if (bearish == null) {
-            return bullish;
+            return new DirectionalSelection(bullish, true);
         }
         if (Num.isNaNOrNull(reference)) {
-            return bullish;
+            return new DirectionalSelection(bullish, true);
         }
 
         final Num bullishDistance = bullish.minus(reference).abs();
         final Num bearishDistance = bearish.minus(reference).abs();
-        if (preferWidest) {
-            return bearishDistance.isGreaterThan(bullishDistance) ? bearish : bullish;
-        }
-        return bullishDistance.isGreaterThan(bearishDistance) ? bearish : bullish;
+        final boolean takeBearish = preferWidest ? bearishDistance.isGreaterThan(bullishDistance)
+                : bullishDistance.isGreaterThan(bearishDistance);
+        return takeBearish ? new DirectionalSelection(bearish, false) : new DirectionalSelection(bullish, true);
+    }
+
+    /**
+     * A folded invalidation level together with the side it was folded from.
+     *
+     * @param level   selected invalidation level
+     * @param bullish {@code true} when the level came from the bullish fold
+     * @since 0.24.2
+     */
+    record DirectionalSelection(Num level, boolean bullish) {
     }
 
     /**
@@ -275,11 +308,12 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        // Primary mode follows the primary scenario's direction. The other modes
-        // fold levels across scenarios, so the sign follows the selected level's
-        // position relative to the current price instead.
+        // Primary mode follows the primary scenario's direction. The folded modes
+        // follow the direction of the side the selected level was folded from, so
+        // a crossed boundary reports a negative distance instead of flipping the
+        // sign through the opposite side.
         final boolean bullish = mode == InvalidationMode.PRIMARY ? primary.get().isBullish()
-                : currentPrice.isGreaterThan(invalidation);
+                : selectedSideBullish(index);
 
         // For bullish, distance = current - invalidation (positive if above)
         // For bearish, distance = invalidation - current (positive if below)
@@ -288,6 +322,22 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
         } else {
             return invalidation.minus(currentPrice);
         }
+    }
+
+    /**
+     * Determines the side whose fold produced the invalidation level at
+     * {@code index} for the non-primary modes, using the same close-price reference
+     * as the level selection.
+     *
+     * @param index bar index
+     * @return {@code true} when the selected level came from the bullish fold
+     */
+    private boolean selectedSideBullish(final int index) {
+        final List<ElliottScenario> scenarios = scenarioIndicator.getValue(index).all();
+        final boolean conservative = mode == InvalidationMode.CONSERVATIVE;
+        final Num reference = getBarSeries().getBar(index).getClosePrice();
+        return selectDirectionalAcrossDirections(foldDirectionalInvalidations(scenarios, true, conservative),
+                foldDirectionalInvalidations(scenarios, false, conservative), reference, !conservative).bullish();
     }
 
     /**

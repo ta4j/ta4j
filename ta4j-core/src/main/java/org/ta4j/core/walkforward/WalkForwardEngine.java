@@ -268,7 +268,7 @@ public final class WalkForwardEngine<C, P, O> {
                     executions.add(
                             executeFold(series, context, config, split, splitIndex, maxPredictions, progressCounter));
                 } catch (ProgressCallbackException e) {
-                    throw (RuntimeException) e.getCause();
+                    throw markProgressCallbackFailure(e);
                 } catch (RuntimeException e) {
                     failures.add(recordFoldFailure(split, splitIndex, e));
                 }
@@ -302,7 +302,7 @@ public final class WalkForwardEngine<C, P, O> {
                         throw error;
                     }
                     if (cause instanceof ProgressCallbackException progressFailure) {
-                        throw (RuntimeException) progressFailure.getCause();
+                        throw markProgressCallbackFailure(progressFailure);
                     }
                     failures.add(recordFoldFailure(split, splitIndex, cause));
                 }
@@ -403,6 +403,36 @@ public final class WalkForwardEngine<C, P, O> {
         }
     }
 
+    /**
+     * Unwraps the originating callback exception and attaches the marker as a
+     * suppressed exception, so callers that isolate candidate or fold failures (for
+     * example {@link WalkForwardTuner}) can still distinguish a callback failure
+     * from a genuine evaluation failure via
+     * {@link #isProgressCallbackFailure(RuntimeException)}.
+     */
+    private static RuntimeException markProgressCallbackFailure(ProgressCallbackException failure) {
+        RuntimeException original = (RuntimeException) failure.getCause();
+        original.addSuppressed(failure);
+        return original;
+    }
+
+    /**
+     * Returns whether an exception propagated from {@code run} originated from the
+     * progress callback rather than from candidate evaluation.
+     *
+     * @param exception exception rethrown by this engine
+     * @return {@code true} when the exception was raised by the progress callback
+     * @since 0.24.2
+     */
+    static boolean isProgressCallbackFailure(RuntimeException exception) {
+        for (Throwable suppressed : exception.getSuppressed()) {
+            if (suppressed instanceof ProgressCallbackException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Map<Integer, Map<String, Num>> computeGlobalMetrics(
             Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon) {
         Map<Integer, Map<String, Num>> result = new LinkedHashMap<>();
@@ -437,7 +467,11 @@ public final class WalkForwardEngine<C, P, O> {
     private WalkForwardRuntimeReport buildRuntimeReport(List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes,
             Duration overallRuntime) {
         if (foldRuntimes.isEmpty()) {
-            return WalkForwardRuntimeReport.empty();
+            // No fold completed (for example when every fold failed), but the run
+            // still consumed wall-clock time: retain the measured overall runtime
+            // while leaving the fold summary fields at zero.
+            return new WalkForwardRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    Duration.ZERO, List.of());
         }
 
         List<Duration> durations = new ArrayList<>(foldRuntimes.size());

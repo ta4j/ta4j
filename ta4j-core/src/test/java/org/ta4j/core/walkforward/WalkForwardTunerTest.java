@@ -4,6 +4,7 @@
 package org.ta4j.core.walkforward;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
@@ -127,6 +128,42 @@ class WalkForwardTunerTest {
         assertThat(leaderboard.entries().get(0).candidate().context()).isEqualTo(0.9);
         assertThat(leaderboard.failedCount()).isEqualTo(1);
         assertThat(leaderboard.evaluatedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void tunerRethrowsProgressCallbackFailures() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(420)).build();
+        NumFactory numFactory = series.numFactory();
+        WalkForwardConfig config = new WalkForwardConfig(120, 60, 30, 2, 2, 0, 5, List.of(), 1, List.of(), 7L);
+
+        PredictionProvider<Double, Double> provider = (fullSeries, decisionIndex, context) -> List
+                .of(new RankedPrediction<>("p-" + decisionIndex, 1, numFactory.numOf(0.5), numFactory.numOf(0.5), 0.5));
+        OutcomeLabeler<Double, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> true;
+
+        List<WalkForwardMetric<Double, Boolean>> metrics = List
+                .of(WalkForwardMetric.agreement("eventAgreement", 1, (prediction, outcome) -> outcome));
+
+        WalkForwardEngine<Double, Double, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics, ignored -> {
+                    throw new IllegalStateException("synthetic progress callback failure");
+                }, ignored -> {
+                    // no-op
+                });
+
+        WalkForwardObjective objective = WalkForwardObjective.weighted(Map.of("eventAgreement", numFactory.one()),
+                Map.of(), Map.of(), numFactory.zero());
+
+        WalkForwardTuner<Double, Double, Boolean> tuner = new WalkForwardTuner<>(engine, objective, 2, 1,
+                WalkForwardTuner.CalibrationMode.NONE, WalkForwardTuner.CalibrationGate.defaultGate(), 1,
+                outcome -> outcome ? numFactory.one() : numFactory.zero());
+
+        // A callback failure must propagate to the caller instead of being
+        // classified as a candidate failure, which would fail every remaining
+        // candidate and silently truncate the leaderboard.
+        List<WalkForwardCandidate<Double>> candidates = List.of(new WalkForwardCandidate<>("c-1", 0.9),
+                new WalkForwardCandidate<>("c-2", 0.6));
+        assertThatThrownBy(() -> tuner.tune(series, candidates, config)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("synthetic progress callback failure");
     }
 
     @Test

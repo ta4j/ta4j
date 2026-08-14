@@ -252,8 +252,16 @@ public final class IndicatorSerialization {
         // Symmetric gate: fail on write if the read side could never resolve this
         // type (first-party indicators outside org.ta4j.core.indicators, third-party
         // or anonymous indicator classes)
-        if (resolveIndicatorClass(type) == null) {
+        Class<?> resolvedType = resolveIndicatorClass(type);
+        if (resolvedType == null) {
             throw new IndicatorSerializationException("Unknown indicator type: " + type);
+        }
+        // A third-party class whose simple name collides with a built-in type
+        // would be written under the built-in name and deserialized as the wrong
+        // indicator: fail on write instead.
+        if (!resolvedType.equals(indicator.getClass())) {
+            throw new IndicatorSerializationException("Indicator type " + indicator.getClass().getName()
+                    + " collides with the built-in simple name: " + type);
         }
         Map<String, Object> parameters = extractNumericParameters(indicator);
 

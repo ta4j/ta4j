@@ -276,7 +276,11 @@ public class StrategyWalkForwardExecutor {
     private WalkForwardRuntimeReport buildRuntimeReport(List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes,
             Duration overallRuntime) {
         if (foldRuntimes.isEmpty()) {
-            return WalkForwardRuntimeReport.empty();
+            // No fold completed (for example when every fold failed), but the run
+            // still consumed wall-clock time: retain the measured overall runtime
+            // while leaving the fold summary fields at zero.
+            return new WalkForwardRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    Duration.ZERO, List.of());
         }
 
         List<Duration> durations = new ArrayList<>(foldRuntimes.size());

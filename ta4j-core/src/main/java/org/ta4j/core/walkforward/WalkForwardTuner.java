@@ -155,6 +155,12 @@ public final class WalkForwardTuner<C, P, O> {
                     }
                     evaluated++;
                 } catch (RuntimeException e) {
+                    if (WalkForwardEngine.isProgressCallbackFailure(e)) {
+                        // Progress callback failures belong to the caller: rethrow
+                        // instead of classifying them as candidate failures, which
+                        // would silently truncate the leaderboard.
+                        throw e;
+                    }
                     log.warn("Candidate {} failed during walk-forward tuning: {}", candidate.id(), e.toString());
                     failed++;
                 }

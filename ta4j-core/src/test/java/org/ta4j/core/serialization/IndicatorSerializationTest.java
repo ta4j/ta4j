@@ -40,6 +40,40 @@ public class IndicatorSerializationTest {
     }
 
     @Test
+    public void toDescriptorRejectsSimpleNameCollisionWithBuiltInType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        RSIIndicator thirdPartyCollision = new RSIIndicator(series);
+
+        // The simple name resolves to the built-in RSIIndicator, so writing would
+        // emit the built-in type with this class's fields and deserialize as the
+        // wrong indicator: the write must fail instead.
+        IndicatorSerializationException exception = assertThrows(IndicatorSerializationException.class,
+                thirdPartyCollision::toDescriptor);
+        assertThat(exception.getMessage()).contains("collides with the built-in simple name: RSIIndicator");
+    }
+
+    /**
+     * Third-party indicator double whose simple name collides with the built-in
+     * {@code RSIIndicator}.
+     */
+    private static final class RSIIndicator extends CachedIndicator<Num> {
+
+        private RSIIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().numFactory().one();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    @Test
     public void toJsonRejectsNonFiniteNumericParameter() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         Num nan = NaN.NaN;

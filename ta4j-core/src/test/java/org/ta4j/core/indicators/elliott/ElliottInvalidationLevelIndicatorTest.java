@@ -168,6 +168,25 @@ class ElliottInvalidationLevelIndicatorTest {
     }
 
     @Test
+    void distanceToInvalidationReportsNegativeWhenSelectedSideIsCrossed() {
+        BarSeries series = seriesWithClose(103);
+        NumFactory numFactory = series.numFactory();
+        // Single bullish scenario: both folded modes select its level 100. With
+        // the price at 90 the bullish boundary has been crossed, so the distance
+        // must be negative (-10) instead of being re-read as a bearish +10.
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bullish", true, 100, 0.9, numFactory)), 0);
+
+        ElliottInvalidationLevelIndicator conservative = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series),
+                ElliottInvalidationLevelIndicator.InvalidationMode.CONSERVATIVE);
+        assertThat(conservative.distanceToInvalidation(0, numFactory.numOf(90))).isEqualTo(numFactory.numOf(-10));
+
+        ElliottInvalidationLevelIndicator aggressive = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series), ElliottInvalidationLevelIndicator.InvalidationMode.AGGRESSIVE);
+        assertThat(aggressive.distanceToInvalidation(0, numFactory.numOf(90))).isEqualTo(numFactory.numOf(-10));
+    }
+
+    @Test
     void unstableBarsFromScenarioIndicator() {
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 3, ElliottDegree.MINOR);

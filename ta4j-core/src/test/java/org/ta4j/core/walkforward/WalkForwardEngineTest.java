@@ -201,6 +201,10 @@ class WalkForwardEngineTest {
                 .allSatisfy(failure -> assertThat(failure.cause()).isInstanceOf(IllegalArgumentException.class)
                         .hasMessage("synthetic provider failure"));
         assertThat(result.foldMetricsForHorizon(5)).isEmpty();
+        // Every fold failed, but the run still consumed wall-clock time: the
+        // overall runtime must be retained even with zero fold runtimes.
+        assertThat(result.runtimeReport().foldRuntimes()).isEmpty();
+        assertThat(result.runtimeReport().overallRuntime().isZero()).isFalse();
     }
 
     @Test
