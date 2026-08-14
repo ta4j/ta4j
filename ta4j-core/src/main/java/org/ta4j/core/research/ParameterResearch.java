@@ -676,7 +676,8 @@ public final class ParameterResearch {
             BarSeries sub = series.getSubSeries(start, end + 1);
             // getSubSeries shares Bar references with the source series, so a
             // mutating objective could corrupt the original data unseen by the
-            // revision checks. Rebuild an owned window whose bars are read-only.
+            // revision checks. Rebuild an owned window whose bars are frozen
+            // copies of the source values with their mutators disabled.
             List<Bar> bars = new ArrayList<>(sub.getBarCount());
             for (int i = sub.getBeginIndex(); i <= sub.getEndIndex(); i++) {
                 bars.add(new UnmodifiableBar(sub.getBar(i)));
@@ -2009,69 +2010,92 @@ public final class ParameterResearch {
     }
 
     /**
-     * Bar view whose mutators are disabled. Research windows wrap their bars in
-     * this type so objectives that mutate {@code window.series()} bars fail with an
-     * {@link UnsupportedOperationException} (captured as a failed evaluation)
-     * instead of corrupting the source series.
+     * Frozen bar copy whose mutators are disabled. Research windows own one per
+     * source bar, copying the scalar values up front: objectives that mutate
+     * {@code window.series()} bars fail with an
+     * {@link UnsupportedOperationException} (captured as a failed evaluation), and
+     * later mutations of the caller's original series cannot leak into an
+     * already-built window because the shared bar objects are never referenced. The
+     * retained {@link Num} instances are immutable by contract, so sharing them
+     * does not alias the source bar.
      */
     private static final class UnmodifiableBar implements Bar {
 
         private static final long serialVersionUID = 1L;
 
-        private final Bar delegate;
+        private final Duration timePeriod;
+        private final Instant beginTime;
+        private final Instant endTime;
+        private final Num openPrice;
+        private final Num highPrice;
+        private final Num lowPrice;
+        private final Num closePrice;
+        private final Num volume;
+        private final Num amount;
+        private final long trades;
 
-        private UnmodifiableBar(Bar delegate) {
-            this.delegate = Objects.requireNonNull(delegate, "delegate");
+        private UnmodifiableBar(Bar source) {
+            Objects.requireNonNull(source, "source");
+            this.timePeriod = source.getTimePeriod();
+            this.beginTime = source.getBeginTime();
+            this.endTime = source.getEndTime();
+            this.openPrice = source.getOpenPrice();
+            this.highPrice = source.getHighPrice();
+            this.lowPrice = source.getLowPrice();
+            this.closePrice = source.getClosePrice();
+            this.volume = source.getVolume();
+            this.amount = source.getAmount();
+            this.trades = source.getTrades();
         }
 
         @Override
         public Duration getTimePeriod() {
-            return delegate.getTimePeriod();
+            return timePeriod;
         }
 
         @Override
         public Instant getBeginTime() {
-            return delegate.getBeginTime();
+            return beginTime;
         }
 
         @Override
         public Instant getEndTime() {
-            return delegate.getEndTime();
+            return endTime;
         }
 
         @Override
         public Num getOpenPrice() {
-            return delegate.getOpenPrice();
+            return openPrice;
         }
 
         @Override
         public Num getHighPrice() {
-            return delegate.getHighPrice();
+            return highPrice;
         }
 
         @Override
         public Num getLowPrice() {
-            return delegate.getLowPrice();
+            return lowPrice;
         }
 
         @Override
         public Num getClosePrice() {
-            return delegate.getClosePrice();
+            return closePrice;
         }
 
         @Override
         public Num getVolume() {
-            return delegate.getVolume();
+            return volume;
         }
 
         @Override
         public Num getAmount() {
-            return delegate.getAmount();
+            return amount;
         }
 
         @Override
         public long getTrades() {
-            return delegate.getTrades();
+            return trades;
         }
 
         @Override

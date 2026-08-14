@@ -8,6 +8,7 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.RandomAccess;
 
@@ -40,8 +41,14 @@ final class DomainSpec {
     private final double upperBound;
     private final double step;
 
+    /**
+     * Strictly increasing distinct doubles for a consolidated decimal domain,
+     * aligned with {@link #values}; {@code null} for every other domain.
+     */
+    private final double[] distinctGrid;
+
     private DomainSpec(String name, List<String> values, int cardinality, boolean numeric, double lowerBound,
-            double upperBound, double step) {
+            double upperBound, double step, double[] distinctGrid) {
         this.name = name;
         this.values = values;
         this.cardinality = cardinality;
@@ -49,6 +56,7 @@ final class DomainSpec {
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.step = step;
+        this.distinctGrid = distinctGrid;
     }
 
     static DomainSpec of(ParameterResearch.ParameterDomain domain) {
@@ -58,7 +66,7 @@ final class DomainSpec {
             List<String> values = new IndexedValues(cardinality, index -> {
                 return String.valueOf(d.from() + (long) index * d.step());
             });
-            return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step());
+            return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step(), null);
         }
         if (domain instanceof ParameterResearch.ParameterDomain.DecimalDomain d) {
             // Exact decimal-string arithmetic: double division misrounds the
@@ -88,6 +96,12 @@ final class DomainSpec {
                             + "the declared positions distinctly");
                 }
                 List<String> distinct = new ArrayList<>(cardinality);
+                // The doubles produced below are monotonically non-decreasing
+                // and duplicates collapse together with their canonical
+                // strings, so the retained grid is strictly increasing and
+                // aligned with `distinct`.
+                double[] grid = new double[cardinality];
+                int gridSize = 0;
                 String previous = null;
                 for (int index = 0; index < cardinality; index++) {
                     double value = BigDecimal.valueOf(d.from())
@@ -96,10 +110,12 @@ final class DomainSpec {
                     String canonical = ParameterResearch.canonicalDecimal(Math.min(value, d.to()));
                     if (!canonical.equals(previous)) {
                         distinct.add(canonical);
+                        grid[gridSize++] = value;
                         previous = canonical;
                     }
                 }
-                return new DomainSpec(d.name(), distinct, distinct.size(), true, d.from(), d.to(), d.step());
+                return new DomainSpec(d.name(), distinct, distinct.size(), true, d.from(), d.to(), d.step(),
+                        Arrays.copyOf(grid, gridSize));
             }
             List<String> values = new IndexedValues(cardinality, index -> {
                 double value = BigDecimal.valueOf(d.from())
@@ -107,13 +123,15 @@ final class DomainSpec {
                         .doubleValue();
                 return ParameterResearch.canonicalDecimal(Math.min(value, d.to()));
             });
-            return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step());
+            return new DomainSpec(d.name(), values, cardinality, true, d.from(), d.to(), d.step(), null);
         }
         if (domain instanceof ParameterResearch.ParameterDomain.BooleanDomain d) {
-            return new DomainSpec(d.name(), List.of("false", "true"), 2, false, Double.NaN, Double.NaN, Double.NaN);
+            return new DomainSpec(d.name(), List.of("false", "true"), 2, false, Double.NaN, Double.NaN, Double.NaN,
+                    null);
         }
         if (domain instanceof ParameterResearch.ParameterDomain.CategoricalDomain d) {
-            return new DomainSpec(d.name(), d.values(), d.values().size(), false, Double.NaN, Double.NaN, Double.NaN);
+            return new DomainSpec(d.name(), d.values(), d.values().size(), false, Double.NaN, Double.NaN, Double.NaN,
+                    null);
         }
         throw new IllegalArgumentException("Unsupported parameter domain: " + domain.getClass().getName());
     }
@@ -185,12 +203,29 @@ final class DomainSpec {
 
     /**
      * Projects a continuous position onto the discrete grid: the index of the
-     * nearest grid point, clamped to the domain.
+     * nearest grid point, clamped to the domain. For decimal domains whose declared
+     * positions consolidate into distinct doubles, the projection follows the
+     * consolidated distinct values instead of the declared step grid, so swarm
+     * coordinates map to the values that are actually evaluated.
      *
      * @param position continuous position
      * @return grid index in {@code [0, cardinality)}
      */
     int projectIndex(double position) {
+        if (distinctGrid != null) {
+            int index = Arrays.binarySearch(distinctGrid, position);
+            if (index >= 0) {
+                return index;
+            }
+            index = -index - 1;
+            if (index <= 0) {
+                return 0;
+            }
+            if (index >= distinctGrid.length) {
+                return distinctGrid.length - 1;
+            }
+            return position - distinctGrid[index - 1] <= distinctGrid[index] - position ? index - 1 : index;
+        }
         int index = (int) Math.round((position - lowerBound) / step);
         if (index < 0) {
             return 0;

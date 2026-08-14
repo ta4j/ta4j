@@ -747,6 +747,21 @@ class ParameterResearchTest {
     }
 
     @Test
+    void decimalDomainProjectsSwarmPositionsOntoConsolidatedGrid() {
+        // 1e16 has ULP 2: a declared step of 0.1 consolidates 1,001 positions
+        // into 51 distinct doubles. Swarm projection must land on the nearest
+        // distinct double instead of an index of the uncompressed step grid,
+        // where every position above the lower bound would clamp to the last
+        // value.
+        DomainSpec spec = DomainSpec.of(ParameterDomain.decimal("a", 1e16, 1e16 + 100d, 0.1d));
+        assertThat(spec.cardinality()).isEqualTo(51);
+        assertThat(spec.valueAt(spec.projectIndex(1e16 + 5d))).isEqualTo("10000000000000004");
+        assertThat(spec.valueAt(spec.projectIndex(1e16 + 50d))).isEqualTo("10000000000000050");
+        assertThat(spec.valueAt(spec.projectIndex(1e16 - 1d))).isEqualTo("10000000000000000");
+        assertThat(spec.valueAt(spec.projectIndex(1e16 + 101d))).isEqualTo("10000000000000100");
+    }
+
+    @Test
     void decimalDomainRejectsUnverifiableCollapse() {
         // More than 100_000 declared positions collapse at a step below half-ULP
         // precision; eager distinct-value verification is refused instead of
@@ -804,6 +819,30 @@ class ParameterResearchTest {
         assertThat(report.failedEvaluations())
                 .allSatisfy(failure -> assertThat(failure.reason()).contains("UnsupportedOperationException"));
         assertThat(series.getBar(0).getClosePrice().doubleValue()).isEqualTo(1d);
+    }
+
+    @Test
+    void windowBarsAreFrozenCopiesOfSourceBars() {
+        // Mutating the caller's original series mid-run must not leak into the
+        // already-built research window: its bars are copies, not views.
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        AtomicInteger evaluations = new AtomicInteger();
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    if (evaluations.incrementAndGet() == 1) {
+                        series.getBar(1).addPrice(DecimalNum.valueOf(999));
+                    }
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().getBar(1).getClosePrice());
+                })
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().successful()).isEqualTo(2);
+        assertThat(report.trainingLeaderboard())
+                .allSatisfy(ranked -> assertThat(ranked.trainingScore().doubleValue()).isEqualTo(2d));
+        assertThat(series.getBar(1).getClosePrice().doubleValue()).isEqualTo(999d);
     }
 
     @Test
