@@ -5,6 +5,7 @@ package org.ta4j.core.research;
 
 import java.math.BigDecimal;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.RandomAccess;
 
@@ -20,6 +21,14 @@ import java.util.RandomAccess;
  * </p>
  */
 final class DomainSpec {
+
+    /**
+     * Upper bound on the number of declared positions that are eagerly enumerated
+     * when a decimal domain's step is at or below half-ULP precision: beyond this
+     * the declared domain is rejected instead of materializing a huge
+     * distinct-value list.
+     */
+    private static final int COLLAPSE_VERIFICATION_LIMIT = 100_000;
 
     private final String name;
     private final List<String> values;
@@ -57,6 +66,31 @@ final class DomainSpec {
             }
             long count = (long) ratio + 1L;
             int cardinality = checkedCardinality(d.name(), count);
+            // When the step is at or below half the ULP of the largest magnitude
+            // in the range, consecutive declared positions collapse to the same
+            // double. Enumerate the distinct canonical values eagerly so the
+            // reported cardinality matches the values that can actually be
+            // evaluated, keeping search-space exhaustion honest.
+            if (d.step() <= Math.ulp(Math.max(Math.abs(d.from()), Math.abs(d.to()))) / 2d) {
+                if (cardinality > COLLAPSE_VERIFICATION_LIMIT) {
+                    throw new IllegalArgumentException("Domain '" + d.name() + "' declares " + cardinality
+                            + " values at a step below half-ULP precision; double arithmetic cannot represent "
+                            + "the declared positions distinctly");
+                }
+                List<String> distinct = new ArrayList<>(cardinality);
+                String previous = null;
+                for (int index = 0; index < cardinality; index++) {
+                    double value = BigDecimal.valueOf(d.from())
+                            .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(index)))
+                            .doubleValue();
+                    String canonical = ParameterResearch.canonicalDecimal(Math.min(value, d.to()));
+                    if (!canonical.equals(previous)) {
+                        distinct.add(canonical);
+                        previous = canonical;
+                    }
+                }
+                return new DomainSpec(d.name(), distinct, distinct.size(), true, d.from(), d.to(), d.step());
+            }
             List<String> values = new IndexedValues(cardinality, index -> {
                 double value = BigDecimal.valueOf(d.from())
                         .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(index)))

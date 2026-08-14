@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.CandidateValidator;
 import org.ta4j.core.research.ParameterResearch.ParameterDomain;
@@ -635,7 +636,7 @@ class ParameterResearchTest {
     void trainingWindowMutationByObjectiveIsRejected() {
         BarSeries series = series(1d, 2d, 3d, 4d);
         AtomicInteger evaluations = new AtomicInteger();
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 3)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> {
@@ -644,8 +645,12 @@ class ParameterResearchTest {
                     }
                     return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
                 })
-                .search(SearchPlan.grid(3));
-        assertThrows(IllegalStateException.class, builder::run);
+                .search(SearchPlan.grid(3))
+                .run();
+
+        assertThat(report.counts().successful()).isEqualTo(2);
+        assertThat(report.counts().failed()).isEqualTo(1);
+        assertThat(series.getBar(3).getClosePrice().doubleValue()).isEqualTo(4d);
     }
 
     @Test
@@ -686,6 +691,104 @@ class ParameterResearchTest {
                 .run();
 
         assertThat(first.objectiveId()).isNotEqualTo(second.objectiveId());
+    }
+
+    @Test
+    void decimalDomainConsolidatesCollapsedPositions() {
+        // 1e16 has ULP 2: positions 1e16, 1e16 + 1, 1e16 + 2 collapse to two
+        // distinct doubles, so the domain must expose exactly those two values.
+        BarSeries series = series(1d, 2d, 3d);
+        List<String> evaluated = new ArrayList<>();
+        ParameterResearchReport report = ParameterResearch.<String>builder(series)
+                .decimal("a", 1e16, 1e16 + 2d, 1d)
+                .candidate((window, parameters) -> parameters.value("a"))
+                .maximize((candidate, window) -> {
+                    evaluated.add(candidate);
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(1));
+                })
+                .search(SearchPlan.grid(3))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.counts().proposed()).isEqualTo(2);
+        assertThat(report.counts().duplicate()).isZero();
+        assertThat(evaluated).containsExactly("10000000000000000", "10000000000000002");
+    }
+
+    @Test
+    void decimalDomainRejectsUnverifiableCollapse() {
+        // More than 100_000 declared positions collapse at a step below half-ULP
+        // precision; eager distinct-value verification is refused instead of
+        // materializing a huge list.
+        double huge = Math.scalb(1d, 53);
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .decimal("a", huge, huge + 100_000d, 1d)
+                .candidate((window, parameters) -> 1)
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(1));
+        assertThrows(IllegalArgumentException.class, builder::run);
+    }
+
+    @Test
+    void objectiveIdSeparatesAmbiguousDomainNames() {
+        // A single boolean domain named "x|bool:y" must not fingerprint like two
+        // boolean domains "x" and "y".
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport aliased = ParameterResearch.<Integer>builder(series)
+                .bool("x|bool:y")
+                .candidate((window, parameters) -> 1)
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(1))
+                .run();
+        ParameterResearchReport separated = ParameterResearch.<Integer>builder(series)
+                .bool("x")
+                .bool("y")
+                .candidate((window, parameters) -> 1)
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(1))
+                .run();
+
+        assertThat(aliased.objectiveId()).isNotEqualTo(separated.objectiveId());
+    }
+
+    @Test
+    void barMutationByObjectiveFailsEvaluationAndPreservesSource() {
+        BarSeries series = series(1d, 2d, 3d, 4d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    window.series().getBar(0).addPrice(window.series().numFactory().numOf(99));
+                    return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
+                })
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().successful()).isZero();
+        assertThat(report.counts().failed()).isEqualTo(2);
+        assertThat(report.failedEvaluations())
+                .allSatisfy(failure -> assertThat(failure.reason()).contains("UnsupportedOperationException"));
+        assertThat(series.getBar(0).getClosePrice().doubleValue()).isEqualTo(1d);
+    }
+
+    @Test
+    void targetScoreCoercesCrossFactoryNums() {
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 3)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.grid(3))
+                .targetScore(DecimalNum.valueOf(2))
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.TARGET_SCORE_REACHED);
     }
 
     private static ParameterResearchReport runGenetic(BarSeries series, long seed) {

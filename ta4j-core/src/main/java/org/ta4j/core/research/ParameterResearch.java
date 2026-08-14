@@ -22,6 +22,12 @@ import java.util.Random;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import java.time.Duration;
+import java.time.Instant;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -173,13 +179,25 @@ public final class ParameterResearch {
         /**
          * Declares an ordered decimal domain.
          *
+         * <p>
+         * Declared positions are generated from {@code from + index * step} and mapped
+         * to their canonical {@code double} representation. When {@code step} is at or
+         * below half the ULP of the largest magnitude in the range, consecutive
+         * positions collapse to the same {@code double}; the collapsed positions are
+         * consolidated into the distinct canonical values, and the effective
+         * cardinality is reported as that distinct count.
+         * </p>
+         *
          * @param name parameter name
          * @param from inclusive lower bound
          * @param to   inclusive upper bound
          * @param step positive increment
          * @return this builder
-         * @throws IllegalArgumentException if the domain is invalid or the name is
-         *                                  already declared
+         * @throws IllegalArgumentException if the domain is invalid, the name is
+         *                                  already declared, or more than
+         *                                  {@code 100_000} positions collapse to fewer
+         *                                  distinct values (verification would be
+         *                                  prohibitively expensive)
          * @since 0.24.2
          */
         public Builder<T> decimal(String name, double from, double to, double step) {
@@ -386,6 +404,12 @@ public final class ParameterResearch {
          * Sets an optional target score that terminates the run as soon as a valid
          * evaluation reaches it.
          *
+         * <p>
+         * Comparison happens in the numeric factory of each evaluated score: when the
+         * configured target uses a different factory, it is coerced to the score's
+         * factory at comparison time.
+         * </p>
+         *
          * @param targetScore objective value considered good enough
          * @return this builder
          * @throws NullPointerException if {@code targetScore} is null
@@ -522,7 +546,7 @@ public final class ParameterResearch {
                         continue;
                     }
                     String candidateId = proposed.stableId();
-                    EvaluatedCandidate cached = cache.get(candidateId);
+                    EvaluatedCandidate cached = cache.get(new CacheKey(candidateId, null));
                     if (cached != null) {
                         counters.duplicate++;
                         counters.cached++;
@@ -543,7 +567,7 @@ public final class ParameterResearch {
                     evaluationNanos += System.nanoTime() - evaluationStart;
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
 
-                    cache.put(candidateId, evaluated);
+                    cache.put(new CacheKey(candidateId, null), evaluated);
                     engine.observe(evaluated);
                     evaluations.add(evaluated);
                     if (evaluated.valid()) {
@@ -643,7 +667,21 @@ public final class ParameterResearch {
                         + " because the exclusive end index would overflow");
             }
             String windowId = datasetId + "|" + phase.name().toLowerCase(Locale.ROOT) + "|" + start + "|" + end;
-            return new ResearchWindow(series.getSubSeries(start, end + 1), start, end, phase, windowId);
+            BarSeries sub = series.getSubSeries(start, end + 1);
+            // getSubSeries shares Bar references with the source series, so a
+            // mutating objective could corrupt the original data unseen by the
+            // revision checks. Rebuild an owned window whose bars are read-only.
+            List<Bar> bars = new ArrayList<>(sub.getBarCount());
+            for (int i = sub.getBeginIndex(); i <= sub.getEndIndex(); i++) {
+                bars.add(new UnmodifiableBar(sub.getBar(i)));
+            }
+            BarSeries window = new BaseBarSeriesBuilder().withName(sub.getName())
+                    .withNumFactory(sub.numFactory())
+                    .withMaxBarCount(sub.getMaximumBarCount())
+                    .withBeginIndex(sub.getBeginIndex())
+                    .withBars(bars)
+                    .build();
+            return new ResearchWindow(window, start, end, phase, windowId);
         }
 
         private ParameterSet normalizeProposal(ParameterSet proposed, BarSeries normalizerData) {
@@ -703,8 +741,15 @@ public final class ParameterResearch {
         }
 
         private boolean reachedTarget(Num score) {
-            return direction == Direction.MAXIMIZE ? score.isGreaterThanOrEqual(targetScore)
-                    : score.isLessThanOrEqual(targetScore);
+            Num target = targetScore;
+            // Coerce the configured target into the score's numeric factory when
+            // they differ, so comparison stays in the score's domain instead of
+            // throwing on mixed Num implementations.
+            if (!target.getNumFactory().equals(score.getNumFactory())) {
+                target = score.getNumFactory().numOf(targetScore.doubleValue());
+            }
+            return direction == Direction.MAXIMIZE ? score.isGreaterThanOrEqual(target)
+                    : score.isLessThanOrEqual(target);
         }
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
@@ -719,9 +764,8 @@ public final class ParameterResearch {
                 if (Thread.currentThread().isInterrupted()) {
                     break;
                 }
-
                 EvaluatedCandidate training = ranked.get(i);
-                String key = cacheKey(training.candidateId(), holdoutWindow.windowId());
+                CacheKey key = new CacheKey(training.candidateId(), holdoutWindow.windowId());
                 EvaluatedCandidate cached = cache.get(key);
                 EvaluatedCandidate holdout = cached;
                 if (cached == null) {
@@ -1430,7 +1474,15 @@ public final class ParameterResearch {
     /**
      * Evaluation window over one dataset.
      *
-     * @param series     sub-series restricted to exactly this window's bars
+     * <p>
+     * The window series is a fresh {@link BaseBarSeries} backed by read-only bar
+     * wrappers: objectives receive the same bars across evaluations, and any
+     * attempt to mutate a bar fails the evaluation instead of corrupting the source
+     * series.
+     * </p>
+     *
+     * @param series     series restricted to exactly this window's bars, backed by
+     *                   read-only bar wrappers
      * @param startIndex inclusive start index on the original series
      * @param endIndex   inclusive end index on the original series
      * @param phase      window phase
@@ -1438,7 +1490,7 @@ public final class ParameterResearch {
      * @since 0.24.2
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "the window series is a fresh "
-            + "per-window sub-series created solely for objective access; the workflow never mutates it")
+            + "per-window series created solely for objective access; the workflow never mutates it")
     public record ResearchWindow(BarSeries series, int startIndex, int endIndex, WindowPhase phase, String windowId) {
 
         /**
@@ -1902,18 +1954,103 @@ public final class ParameterResearch {
     }
 
     /**
+     * Cache entry key. Structured instead of concatenated so candidate IDs and
+     * window IDs cannot alias across the delimiter: training entries use a null
+     * window ID, holdout entries use the window ID.
+     */
+    private record CacheKey(String candidateId, String windowId) {
+    }
+
+    /**
      * Run-local evaluation cache.
      */
     private static final class EvaluationCache {
 
-        private final Map<String, EvaluatedCandidate> entries = new LinkedHashMap<>();
+        private final Map<CacheKey, EvaluatedCandidate> entries = new LinkedHashMap<>();
 
-        EvaluatedCandidate get(String key) {
+        EvaluatedCandidate get(CacheKey key) {
             return entries.get(key);
         }
 
-        void put(String key, EvaluatedCandidate evaluated) {
+        void put(CacheKey key, EvaluatedCandidate evaluated) {
             entries.put(key, evaluated);
+        }
+    }
+
+    /**
+     * Bar view whose mutators are disabled. Research windows wrap their bars in
+     * this type so objectives that mutate {@code window.series()} bars fail with an
+     * {@link UnsupportedOperationException} (captured as a failed evaluation)
+     * instead of corrupting the source series.
+     */
+    private static final class UnmodifiableBar implements Bar {
+
+        private static final long serialVersionUID = 1L;
+
+        private final Bar delegate;
+
+        private UnmodifiableBar(Bar delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "delegate");
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return delegate.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return delegate.getBeginTime();
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return delegate.getEndTime();
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return delegate.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return delegate.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return delegate.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return delegate.getClosePrice();
+        }
+
+        @Override
+        public Num getVolume() {
+            return delegate.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return delegate.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            throw new UnsupportedOperationException("research window bars are read-only");
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            throw new UnsupportedOperationException("research window bars are read-only");
         }
     }
 
@@ -1940,10 +2077,6 @@ public final class ParameterResearch {
         long attempted;
         long successful;
         long failed;
-    }
-
-    private static String cacheKey(String candidateId, String windowId) {
-        return candidateId + "\u0000" + windowId;
     }
 
     /**
@@ -1980,18 +2113,22 @@ public final class ParameterResearch {
     }
 
     private static String domainSpec(ParameterDomain domain) {
+        // Length-prefix the name so names containing type labels or separators
+        // cannot alias across fingerprints, e.g. a boolean domain named
+        // "x|bool:y" must not collide with separate domains "x" and "bool:y".
+        String name = domain.name().length() + ":" + domain.name();
         if (domain instanceof ParameterDomain.IntegerDomain d) {
-            return "integer:" + d.name() + ":" + d.from() + ":" + d.to() + ":" + d.step();
+            return "integer:" + name + ":" + d.from() + ":" + d.to() + ":" + d.step();
         }
         if (domain instanceof ParameterDomain.DecimalDomain d) {
-            return "decimal:" + d.name() + ":" + canonicalDecimal(d.from()) + ":" + canonicalDecimal(d.to()) + ":"
+            return "decimal:" + name + ":" + canonicalDecimal(d.from()) + ":" + canonicalDecimal(d.to()) + ":"
                     + canonicalDecimal(d.step());
         }
         if (domain instanceof ParameterDomain.BooleanDomain d) {
-            return "bool:" + d.name();
+            return "bool:" + name;
         }
         if (domain instanceof ParameterDomain.CategoricalDomain d) {
-            return "categorical:" + d.name() + ":" + categoricalValues(d.values());
+            return "categorical:" + name + ":" + categoricalValues(d.values());
         }
         throw new IllegalArgumentException("Unsupported parameter domain: " + domain.getClass().getName());
     }
