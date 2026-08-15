@@ -301,20 +301,28 @@ public final class ParameterResearch {
          * methods, an objective whose candidate type diverges from the bound factory
          * cannot be expressed at all: type mismatches fail at configuration time
          * instead of surfacing as a bridge {@link ClassCastException} deep inside the
-         * run.
+         * run. Exactly one factory can be bound per workflow: a second
+         * {@code candidate(...)} call is rejected so that a retained stage from the
+         * first binding can never mutate the objective fields of a differently typed
+         * workflow and bridge a cast inside {@code run()}.
          * </p>
          *
          * @param factory builds a candidate from a window and a normalized parameter
          *                set
          * @param <U>     candidate type
          * @return the candidate stage with {@code U} as its candidate type
-         * @throws NullPointerException if {@code factory} is null
+         * @throws NullPointerException  if {@code factory} is null
+         * @throws IllegalStateException if a candidate factory is already bound
          * @since 0.24.2
          */
         @SuppressWarnings("unchecked")
         public <U> CandidateStage<U> candidate(CandidateFactory<U> factory) {
-            this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) Objects.requireNonNull(factory,
-                    "factory");
+            Objects.requireNonNull(factory, "factory");
+            if (candidateFactory != null) {
+                throw new IllegalStateException(
+                        "candidate(...) is already bound on this builder; reuse the returned CandidateStage");
+            }
+            this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) factory;
             return (CandidateStage<U>) (CandidateStage<?>) new CandidateStage<>(this);
         }
 
@@ -585,16 +593,11 @@ public final class ParameterResearch {
             Set<String> proposedRawIds = new HashSet<>();
             // Raw re-proposals (genetic elite slots, swarm re-projections)
             // re-run the user normalizer and validator on identical raw
-            // values; elite-heavy populations can amplify that callback
-            // work far beyond MAX_PROPOSALS_PER_RUN. The run configuration
-            // is frozen once runInternal() starts and the dataset revision
-            // contract makes the normalizer deterministic per run, so the
-            // processed outcome per raw id (validated normalized set, or
-            // rejection) is memoized and re-proposals serve it without
-            // re-invoking user callbacks. The memo never exceeds
-            // MAX_PROPOSALS_PER_RUN entries because only that many distinct
-            // raw ids can be proposed under the run-wide cap.
-            Map<String, ParameterSet> processedRawIds = new LinkedHashMap<>();
+            // values. Neither callback is required to be pure, so each
+            // proposal event re-invokes both callbacks and every raw
+            // re-proposal counts against the run-wide proposal cap, keeping
+            // that callback work bounded even when elite slots dominate the
+            // budget.
             while (true) {
                 if (Thread.currentThread().isInterrupted()) {
                     engine.finalizeObserved();
@@ -602,7 +605,7 @@ public final class ParameterResearch {
                     break;
                 }
                 verifyUnchanged(snapshot, series);
-                long allowance = MAX_PROPOSALS_PER_RUN - (counters.proposed - counters.rawReproposals);
+                long allowance = MAX_PROPOSALS_PER_RUN - counters.proposed;
                 if (allowance <= 0) {
                     engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
                     engine.finalizeObserved();
@@ -633,34 +636,26 @@ public final class ParameterResearch {
                     batchProcessed = true;
                     counters.proposed++;
                     // A re-proposal of an already-proposed raw id (genetic
-                    // elite slots, swarm re-projections) is bounded by the
-                    // evaluation budget and excluded from the proposal cap;
-                    // every other proposal, including a normalized alias of a
-                    // new raw id, still counts because it performs the full
-                    // normalization and validation work. That work is
-                    // memoized per raw id (see processedRawIds above): the
-                    // run configuration is frozen and the dataset contract
-                    // makes both callbacks deterministic for the run.
+                    // elite slots, swarm re-projections) re-invokes the
+                    // normalizer and validator because neither callback is
+                    // required to be pure or idempotent, and counts against
+                    // the proposal cap so its normalization and validation
+                    // work stays bounded by MAX_PROPOSALS_PER_RUN.
                     String rawId = proposed.stableId();
                     if (!proposedRawIds.add(rawId)) {
                         counters.rawReproposals++;
                     }
-                    ParameterSet processed;
-                    if (processedRawIds.containsKey(rawId)) {
-                        processed = processedRawIds.get(rawId);
-                    } else {
-                        processed = normalizeProposal(proposed, normalizerData, runNormalizer, runDomainsByName);
-                        if (processed != null) {
-                            if (!processed.repairs().isEmpty()) {
-                                counters.repaired++;
-                            }
-                            try {
-                                runValidator.validate(processed);
-                            } catch (RuntimeException ex) {
-                                processed = null;
-                            }
+                    ParameterSet processed = normalizeProposal(proposed, normalizerData, runNormalizer,
+                            runDomainsByName);
+                    if (processed != null) {
+                        if (!processed.repairs().isEmpty()) {
+                            counters.repaired++;
                         }
-                        processedRawIds.put(rawId, processed);
+                        try {
+                            runValidator.validate(processed);
+                        } catch (RuntimeException ex) {
+                            processed = null;
+                        }
                     }
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     if (processed == null) {

@@ -648,6 +648,21 @@ class ParameterResearchTest {
     }
 
     @Test
+    void candidateRebindingIsRejected() {
+        // Retaining the first CandidateStage while binding a second factory
+        // would let both stages mutate the same objective fields and can
+        // bridge a ClassCastException inside run(). The builder must reject
+        // the second binding so the factory (and every stage's candidate
+        // type) stays fixed for the workflow.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series).integer("a", 1, 2);
+        builder.candidate((window, parameters) -> parameters.intValue("a"));
+
+        assertThrows(IllegalStateException.class,
+                () -> builder.candidate((window, parameters) -> parameters.intValue("a") + 1));
+    }
+
+    @Test
     void topKWarningWhenFewerValidCandidatesThanRequested() {
         BarSeries series = series(1d, 2d, 3d);
         ParameterResearchReport report = sumGridBuilder(series, 2).topK(5).run();
@@ -1306,40 +1321,50 @@ class ParameterResearchTest {
     }
 
     @Test
-    void rawReproposalsServeMemoizedNormalizationWithoutReinvokingCallbacks() {
-        // Genetic elitism re-proposes already-seen raw sets: the 8 elite slots
-        // of every later generation carry gen-1 raw sets forward. The run
-        // configuration is frozen and the normalizer/validator are
-        // deterministic per run, so their outcome is memoized per distinct
-        // raw id: with an identity normalizer over a wide domain the
-        // callbacks must fire once per distinct raw id even though the
-        // budget proposes many more sets.
-        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
-        AtomicInteger normalizerCalls = new AtomicInteger();
-        AtomicInteger validatorCalls = new AtomicInteger();
-        Set<String> validatedRawIds = Collections.synchronizedSet(new HashSet<>());
+    void rawReproposalsReinvokeCallbacksAndCountAgainstTheProposalCap() {
+        // Genetic elitism re-proposes already-seen raw sets: the 8 elite
+        // slots of every later generation carry gen-1 raw sets forward.
+        // Normalizers and validators are not required to be pure or
+        // idempotent, so every proposal event must re-invoke both callbacks,
+        // and raw re-proposals must count against the run-wide proposal cap
+        // so that elite-dominated callback work stays bounded.
+        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
+        ParameterResearch.MAX_PROPOSALS_PER_RUN = 40;
+        try {
+            BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+            AtomicInteger normalizerCalls = new AtomicInteger();
+            AtomicInteger validatorCalls = new AtomicInteger();
+            Set<String> validatedRawIds = Collections.synchronizedSet(new HashSet<>());
 
-        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
-                .integer("a", 1, 100)
-                .candidate((window, parameters) -> parameters.intValue("a"))
-                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(window.series().numFactory().numOf(candidate)))
-                .normalize((data, name, value) -> {
-                    normalizerCalls.incrementAndGet();
-                    return new ParameterValue(name, value, true, "");
-                })
-                .validate(parameters -> {
-                    validatorCalls.incrementAndGet();
-                    validatedRawIds.add(parameters.stableId());
-                })
-                .search(SearchPlan.genetic(64, 7L, new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
-                .run();
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .integer("a", 1, 100)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                            .of(window.series().numFactory().numOf(candidate)))
+                    .normalize((data, name, value) -> {
+                        normalizerCalls.incrementAndGet();
+                        return new ParameterValue(name, value, true, "");
+                    })
+                    .validate(parameters -> {
+                        validatorCalls.incrementAndGet();
+                        validatedRawIds.add(parameters.stableId());
+                    })
+                    .search(SearchPlan.genetic(1000, 7L, new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
+                    .run();
 
-        // The run really did re-propose raw sets, and the callbacks fired
-        // exactly once per distinct raw id instead of once per proposal.
-        assertThat(report.counts().proposed()).isGreaterThan(validatedRawIds.size());
-        assertThat(validatorCalls.get()).isEqualTo(validatedRawIds.size());
-        assertThat(normalizerCalls.get()).isEqualTo(validatorCalls.get());
+            // Elite slots really did re-propose gen-1 raw sets, each proposal
+            // event re-invoked both callbacks and incremented the repaired
+            // count, and the cap terminated the run once the counted proposal
+            // events (re-proposals included) reached the limit.
+            assertThat(report.counts().proposed()).isGreaterThan(validatedRawIds.size());
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
+            assertThat(normalizerCalls.get()).isEqualTo(report.counts().proposed());
+            assertThat(validatorCalls.get()).isEqualTo(report.counts().proposed());
+            assertThat(report.counts().repaired()).isEqualTo(report.counts().proposed());
+            assertThat(report.counts().proposed()).isEqualTo(40);
+        } finally {
+            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
+        }
     }
 
     @Test
@@ -1419,43 +1444,14 @@ class ParameterResearchTest {
     }
 
     @Test
-    void geneticEliteReproposalsDoNotTripTheProposalCap() {
-        // A genetic engine re-proposes its elite slots every generation; those
-        // proposals are cache hits and never consume the evaluation budget.
-        // The proposal cap must exclude cache-served duplicates so a healthy
-        // elitist run exhausts its declared evaluation budget instead of
-        // tripping the cap early.
-        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
-        ParameterResearch.MAX_PROPOSALS_PER_RUN = 50;
-        try {
-            BarSeries series = series(1d, 2d, 3d);
-
-            ParameterResearchReport report = ParameterResearch.<Double>builder(series)
-                    .decimal("a", 0d, 1d, 0.01d)
-                    .candidate((window, parameters) -> parameters.decimalValue("a"))
-                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                            .of(window.series().numFactory().numOf(candidate)))
-                    .search(SearchPlan.genetic(32, 7L, new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
-                    .run();
-            assertThat(report.counts().attempted()).isEqualTo(32);
-            assertThat(report.terminationReason()).isEqualTo(TerminationReason.EVALUATION_BUDGET_EXHAUSTED);
-            assertThat(report.counts().proposed()).isGreaterThan(50L);
-            assertThat(report.counts().duplicate()).isGreaterThan(0L);
-        } finally {
-            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
-        }
-    }
-
-    @Test
     void normalizedAliasCollisionsCountTowardTheProposalCap() {
         // A normalizer that aliases every declared value onto one canonical
         // value turns each new raw proposal into a cache hit. Cache hits do
         // not consume the evaluation budget, so exempting them from the
         // proposal cap would let the grid walk the whole space — paying full
         // normalization and validation work per aliased raw id — while the
-        // cap is supposed to bound that proposal work. Aliased new raw ids
-        // must still charge the cap; only re-proposals of an already-proposed
-        // raw id (genetic elites, swarm re-projections) are exempt.
+        // cap is supposed to bound that proposal work. Every proposal event,
+        // new raw ids and raw re-proposals alike, charges the cap.
         int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
         ParameterResearch.MAX_PROPOSALS_PER_RUN = 50;
         try {
