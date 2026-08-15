@@ -159,23 +159,56 @@ final class GeneticSearchEngine extends SearchEngine {
         int childrenFound = 0;
         for (int i = 0; i < count - eliteCount; i++) {
             int[] child = unseenChild(valid, batchIds);
+            if (child == null) {
+                // Breeding cannot reach an unseen genome with these settings
+                // (for example mutationRate 0 with a converged population):
+                // fall back to random exploration so the search keeps consuming
+                // its budget until the declared space is covered or a configured
+                // limit fires, instead of stopping with an NO_IMPROVEMENT streak
+                // that was never configured.
+                child = unseenGenome(batchIds);
+            }
             if (child != null) {
                 next.add(child);
                 childrenFound++;
             }
         }
         if (childrenFound == 0 && count > 0) {
-            // No unseen child was bred: a covered declared space is exhausted,
-            // otherwise the search stalled and cannot yield a new evaluation
-            // with these settings.
+            // No unseen genome was bred and no unseen cell remained for random
+            // exploration: the declared space is effectively covered.
             if (exhausted()) {
                 terminate(ParameterResearch.TerminationReason.SEARCH_SPACE_EXHAUSTED);
             } else {
+                // Unreachable in practice: the deterministic sweep in
+                // unseenGenome only gives up once every cell is proposed.
                 terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
             }
             return List.of();
         }
         return next;
+    }
+
+    private int[] unseenGenome(Set<String> batchIds) {
+        for (int attempt = 0; attempt < UNSEEN_CHILD_ATTEMPTS; attempt++) {
+            int[] candidate = randomGenome();
+            String id = canonicalId(candidate);
+            if (!proposed(id) && batchIds.add(id)) {
+                return candidate;
+            }
+        }
+        // When the space is nearly covered, random draws can collide
+        // repeatedly: sweep the remaining space deterministically so
+        // exploration stops only when every declared cell has been proposed.
+        if (totalSpace() <= Integer.MAX_VALUE) {
+            for (long index = 0; index < totalSpace(); index++) {
+                int[] candidate = genomeAt(index);
+                String id = canonicalId(candidate);
+                if (!proposed(id) && batchIds.add(id)) {
+                    return candidate;
+                }
+            }
+        }
+        return null;
     }
 
     private int[] unseenChild(List<GenomeEvaluation> valid, Set<String> batchIds) {

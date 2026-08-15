@@ -70,7 +70,7 @@ class ParticleSwarmEngineTest {
         List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 6)));
         Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
         ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
-                new ScriptedRandom(0d, 1d), ranking, Direction.MAXIMIZE, 3, -1);
+                new ScriptedRandom(0d, 1d, 0d), ranking, Direction.MAXIMIZE, 3, -1);
 
         List<ParameterSet> first = engine.propose(2);
         assertThat(first).hasSize(2);
@@ -163,7 +163,7 @@ class ParticleSwarmEngineTest {
         List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
         Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
         ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
-                new ScriptedRandom(0d, 1d), ranking, Direction.MAXIMIZE, -1, 1);
+                new ScriptedRandom(0d, 1d, 0d), ranking, Direction.MAXIMIZE, -1, 1);
 
         List<ParameterSet> first = engine.propose(2);
         assertThat(first.stream().map(ParameterSet::stableId)).containsExactlyInAnyOrder("a=1", "a=4");
@@ -348,7 +348,11 @@ class ParticleSwarmEngineTest {
 
     /**
      * Deterministic {@link Random} feeding one scripted {@code nextDouble()} draw
-     * per call; the particle-swarm engines use no other random primitive.
+     * per call. It is seeded explicitly so that any unscripted primitive would
+     * still produce a reproducible sequence, and {@code nextInt(int)} is scripted
+     * too: particle-swarm engines draw it to seed the start cursor of particles
+     * with no validated personal best, and an unseeded fallback would silently
+     * break determinism.
      */
     private static final class ScriptedRandom extends Random {
 
@@ -356,6 +360,7 @@ class ParticleSwarmEngineTest {
         private int cursor;
 
         private ScriptedRandom(double... script) {
+            super(0L);
             this.script = script;
         }
 
@@ -365,6 +370,14 @@ class ParticleSwarmEngineTest {
                 throw new IllegalStateException("script exhausted at draw " + cursor);
             }
             return script[cursor++];
+        }
+
+        @Override
+        public int nextInt(int bound) {
+            if (bound <= 0) {
+                throw new IllegalArgumentException("bound must be positive");
+            }
+            return (int) Math.floor(nextDouble() * bound);
         }
     }
 }

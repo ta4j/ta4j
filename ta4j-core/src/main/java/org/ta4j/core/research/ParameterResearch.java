@@ -540,8 +540,10 @@ public final class ParameterResearch {
             String objectiveId = computeObjectiveId(holdoutBars);
             Comparator<EvaluatedCandidate> ranking = rankingComparator(direction);
             List<DomainSpec> specs = new ArrayList<>(domains.size());
+            Map<String, ParameterDomain> runDomainsByName = new LinkedHashMap<>();
             for (ParameterDomain domain : domains) {
                 specs.add(DomainSpec.of(domain));
+                runDomainsByName.put(domain.name(), domain);
             }
             SearchEngine engine = createEngine(specs, ranking, direction);
 
@@ -613,7 +615,8 @@ public final class ParameterResearch {
                         break;
                     }
                     counters.proposed++;
-                    ParameterSet normalized = normalizeProposal(proposed, normalizerData, runNormalizer);
+                    ParameterSet normalized = normalizeProposal(proposed, normalizerData, runNormalizer,
+                            runDomainsByName);
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     if (normalized == null) {
                         counters.rejected++;
@@ -791,7 +794,7 @@ public final class ParameterResearch {
         }
 
         private ParameterSet normalizeProposal(ParameterSet proposed, BarSeries normalizerData,
-                ParameterNormalizer activeNormalizer) {
+                ParameterNormalizer activeNormalizer, Map<String, ParameterDomain> runDomainsByName) {
             if (activeNormalizer == null) {
                 return proposed;
             }
@@ -809,13 +812,73 @@ public final class ParameterResearch {
                 if (normalized == null || !value.name().equals(normalized.name())) {
                     return null;
                 }
-                values.add(normalized);
+                values.add(canonicalValue(runDomainsByName, normalized));
             }
             try {
                 return new ParameterSet(values);
             } catch (RuntimeException ex) {
                 return null;
             }
+        }
+
+        private static ParameterValue canonicalValue(Map<String, ParameterDomain> domainsByName, ParameterValue value) {
+            ParameterDomain domain = domainsByName.get(value.name());
+            if (domain == null) {
+                return value;
+            }
+            String canonical = canonicalValueFor(domain, value.value());
+            if (canonical == null || canonical.equals(value.value())) {
+                return value;
+            }
+            return new ParameterValue(value.name(), canonical, true,
+                    value.note().isBlank() ? "canonicalized" : value.note());
+        }
+
+        private static String canonicalValueFor(ParameterDomain domain, String raw) {
+            if (domain instanceof ParameterDomain.IntegerDomain d) {
+                try {
+                    long parsed = Long.parseLong(raw);
+                    if (parsed >= d.from() && parsed <= d.to() && (parsed - d.from()) % d.step() == 0L) {
+                        return String.valueOf(parsed);
+                    }
+                    return null;
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            }
+            if (domain instanceof ParameterDomain.DecimalDomain d) {
+                try {
+                    double parsed = Double.parseDouble(raw);
+                    if (!(parsed >= d.from() && parsed <= d.to())) {
+                        return null;
+                    }
+                    String canonical = canonicalDecimal(parsed);
+                    // Mirror DomainSpec's declared-position arithmetic: the
+                    // canonical string of the nearest declared indexes must
+                    // equal the parsed value's canonical string. The index
+                    // window absorbs double-division rounding and below-ULP
+                    // position collapses.
+                    long index = Math.round((parsed - d.from()) / d.step());
+                    for (long i = Math.max(0L, index - 2); i <= index + 2; i++) {
+                        double declared = Math.min(BigDecimal.valueOf(d.from())
+                                .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(i))).doubleValue(),
+                                d.to());
+                        if (canonicalDecimal(declared).equals(canonical)) {
+                            return canonical;
+                        }
+                    }
+                    return null;
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            }
+            if (domain instanceof ParameterDomain.BooleanDomain) {
+                return "true".equals(raw) || "false".equals(raw) ? raw : null;
+            }
+            if (domain instanceof ParameterDomain.CategoricalDomain c) {
+                return c.values().contains(raw) ? raw : null;
+            }
+            return null;
         }
 
         private EvaluatedCandidate classify(String candidateId, ParameterSet parameters, int ordinal,
@@ -1153,6 +1216,19 @@ public final class ParameterResearch {
          * cache. Repaired candidates still rank below unrepaired candidates with equal
          * scores, and the repair itself is reported through
          * {@link ParameterValue#normalized()} and {@link ParameterSet#repairs()}.
+         * </p>
+
+         * <p>
+         * A returned value that parses to a declared position of the parameter's
+         * {@link ParameterDomain} is re-canonicalized onto that position's canonical
+         * string before caching or reporting (for example {@code "05"} becomes
+         * {@code "5"} on an integer domain): the returned value's {@code normalized}
+         * flag is additionally forced to {@code true} and the {@link
+         * ParameterValue#note()} is set to {@code "canonicalized"} when absent. This
+         * keeps equal logical values under one cache identity even when a normalizer
+         * emits a parseable non-canonical form. Values that do not parse to a declared
+         * position (out-of-domain repairs) are kept verbatim; their raw-string identity
+         * cannot collide with any engine proposal.
          * </p>
          *
          * @param series dataset being searched, limited to the training window when

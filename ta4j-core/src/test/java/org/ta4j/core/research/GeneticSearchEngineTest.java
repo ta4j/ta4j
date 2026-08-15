@@ -7,9 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNum;
@@ -147,6 +149,38 @@ class GeneticSearchEngineTest {
         return new ParameterSet(values);
     }
 
+
+    @Test
+    void zeroMutationStallKeepsExploringUntilSpaceIsExhausted() {
+        // mutationRate 0 is legal and leaves breeding unable to reach an unseen
+        // genome: every child equals a parent. The engine must fall back to
+        // random exploration and keep proposing until the declared space is
+        // exhausted instead of terminating with NO_IMPROVEMENT, which is
+        // reserved for the configured no-improvement streak.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 5)),
+                DomainSpec.of(ParameterDomain.integer("b", 1, 5)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(4, 1, 2, 0.0, 0.0),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, -1);
+
+        Set<String> seen = new HashSet<>();
+        int guard = 0;
+        while (engine.terminationReason() == null && guard++ < 40) {
+            List<ParameterSet> batch = engine.propose(25);
+            if (batch.isEmpty()) {
+                break;
+            }
+            for (int i = 0; i < batch.size(); i++) {
+                ParameterSet set = batch.get(i);
+                engine.observe(set.stableId(),
+                        EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
+                seen.add(set.stableId());
+            }
+        }
+
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(seen).hasSize(25);
+    }
     private static String canonicalDistinctFrom(ParameterSet a, ParameterSet b) {
         // The regression test needs a repair whose canonical value collides
         // with neither raw candidate, or the normalized id would equal the raw

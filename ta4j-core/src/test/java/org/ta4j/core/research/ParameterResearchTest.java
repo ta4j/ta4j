@@ -273,6 +273,34 @@ class ParameterResearchTest {
     }
 
     @Test
+    void nonCanonicalNormalizerOutputCollapsesOntoDeclaredCandidate() {
+        // A normalizer may emit a declared value in a non-canonical string form
+        // ("05" instead of "5"). Run identity must be the declared canonical
+        // value, so the repair deduplicates against the later proposal of the
+        // same logical candidate instead of evaluating it twice under two keys.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterNormalizer normalizer = (data, name, value) -> "1".equals(value)
+                ? new ParameterValue(name, "05", true, "padded")
+                : new ParameterValue(name, value, false, "");
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 5)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize(normalizer)
+                .search(SearchPlan.grid(5))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(4);
+        assertThat(report.counts().repaired()).isEqualTo(1);
+        assertThat(report.counts().duplicate()).isEqualTo(1);
+        assertThat(report.trainingLeaderboard()).hasSize(4);
+        RankedCandidate top = report.trainingLeaderboard().get(0);
+        assertThat(top.parameters().value("a")).isEqualTo("5");
+        assertThat(top.parameters().repairCount()).isEqualTo(1);
+    }
+
+    @Test
     void normalizerRenamingValueRejectsProposal() {
         BarSeries series = series(1d, 2d, 3d);
         ParameterNormalizer normalizer = (data, name, value) -> new ParameterValue("other", value, false, "");
