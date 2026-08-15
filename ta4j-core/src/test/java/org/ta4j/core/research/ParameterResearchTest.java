@@ -1398,9 +1398,10 @@ class ParameterResearchTest {
     void allInvalidInitialBatchStillExploresTheSpace() {
         // When every particle in the initial batch fails evaluation, no
         // validated personal or global best exists. The swarm must keep
-        // exploring via bounded, seeded random steps until every grid point
-        // has been proposed, instead of freezing at the launch positions (or
-        // being attracted toward the arbitrary fallback gbestPosition).
+        // exploring by resampling uniformly drawn grid points until every
+        // grid point has been proposed, instead of freezing at the launch
+        // positions (or being attracted toward the arbitrary fallback
+        // gbestPosition).
         BarSeries series = series(1d, 2d, 3d);
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
                 .decimal("a", 0d, 2d, 1d)
@@ -1412,6 +1413,28 @@ class ParameterResearchTest {
                 .run();
 
         assertThat(report.counts().attempted()).isEqualTo(3);
+    }
+
+    @Test
+    void noBestResamplingEscapesClampedLaunchCells() {
+        // The no-best exploration reach must not scale with the velocity
+        // clamp: with velocityClampFactor 1e-6 each velocity-scaled step is
+        // at most 1e-4, so the swarm could never cross a projection boundary
+        // within the 16-move stall limit and would terminate with unseen grid
+        // points remaining. Resampling onto uniformly drawn grid points keeps
+        // exploration independent of the damping knob, so every declared
+        // point gets proposed.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 0, 100)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    throw new RuntimeException("fail every evaluation");
+                })
+                .search(SearchPlan.particleSwarm(1000, 23L, new SwarmSettings(2, 0.5, 0.5, 1.49618, 1e-6)))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(101);
     }
 
     @Test

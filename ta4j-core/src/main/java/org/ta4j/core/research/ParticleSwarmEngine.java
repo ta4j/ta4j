@@ -4,6 +4,7 @@
 package org.ta4j.core.research;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,8 +21,11 @@ import java.util.Random;
  * evaluation via {@link DomainSpec#projectIndex(double)}. Personal and global
  * bests are tracked by evaluation outcome; positions leaving a dimension are
  * clamped and the velocity component is absorbed (set to zero). Velocities are
- * clamped to {@code velocityClampFactor} times the dimension range. All
- * randomness comes from the run-local seeded {@link Random}.
+ * clamped to {@code velocityClampFactor} times the dimension range; until a
+ * validated global best exists, particles take the next unseen cell of a
+ * mixed-radix grid sweep instead of velocity-scaled steps, so a small clamp
+ * factor cannot freeze the swarm inside its launch cells. All randomness comes
+ * from the run-local seeded {@link Random}.
  * </p>
  */
 final class ParticleSwarmEngine extends SearchEngine {
@@ -42,6 +46,13 @@ final class ParticleSwarmEngine extends SearchEngine {
     private Map<String, ParameterResearch.EvaluatedCandidate> batchEvaluations = new LinkedHashMap<>();
     private ParameterResearch.EvaluatedCandidate gbestEvaluated;
     private double[] gbestPosition;
+    /**
+     * Mixed-radix cursor sweeping the declared grid in the no-best phase; each move
+     * hands the next unseen cell to a particle, so exploration covers the whole
+     * space regardless of the velocity clamp. {@code null} until the first no-best
+     * move.
+     */
+    private int[] noBestCursor;
     private int noImprovementStreak;
 
     ParticleSwarmEngine(List<DomainSpec> specs, ParameterResearch.SwarmSettings settings, Random random,
@@ -248,36 +259,45 @@ final class ParticleSwarmEngine extends SearchEngine {
 
     private void move() {
         for (Particle particle : particles) {
+            int[] resampled = gbestEvaluated == null ? nextUnexploredCell() : null;
             for (int d = 0; d < particle.position.length; d++) {
                 DomainSpec spec = specs().get(d);
-                double maxVelocity = settings.velocityClampFactor() * (spec.upperBound() - spec.lowerBound());
-                double velocity;
                 if (gbestEvaluated == null) {
                     // No validated personal or global best exists yet: the
-                    // attraction terms carry no signal, so take a bounded,
-                    // seeded random step instead of freezing the swarm at its
-                    // launch positions (or pulling it toward an arbitrary
-                    // fallback point with no validated evaluation).
-                    velocity = (random.nextDouble() * 2d - 1d) * maxVelocity;
-                } else {
-                    double r1 = random.nextDouble();
-                    double r2 = random.nextDouble();
-                    // A particle whose initial evaluation failed keeps its
-                    // launch position as the pbest snapshot but has no
-                    // validated personal best: attracting it back toward that
-                    // failed point would pin it to an invalid region, so the
-                    // cognitive pull stays zero until a valid evaluation
-                    // establishes a personal best.
-                    double cognitivePull = particle.pbestEvaluated == null ? 0d
-                            : particle.pbestPosition[d] - particle.position[d];
-                    // The global best exists and is validated here (the
-                    // no-best case is handled above), so the social pull may
-                    // attract the swarm toward it.
-                    double socialPull = gbestPosition[d] - particle.position[d];
-                    velocity = settings.inertiaWeight() * particle.velocity[d]
-                            + settings.cognitiveWeight() * r1 * cognitivePull
-                            + settings.socialWeight() * r2 * socialPull;
+                    // attraction terms carry no signal, so hand the particle
+                    // the next unseen cell of the mixed-radix sweep instead of
+                    // taking a velocity-clamped step. The velocity clamp is a
+                    // damping knob for attraction dynamics; scaling
+                    // exploration by it can pin the swarm inside its launch
+                    // cells (velocityClampFactor 1e-6 caps each step at 1e-4
+                    // of the range) until the stall limit expires with unseen
+                    // grid points remaining. Once the sweep is exhausted the
+                    // particle keeps its position and the batch layer reports
+                    // SEARCH_SPACE_EXHAUSTED.
+                    if (resampled != null) {
+                        particle.position[d] = spec.gridPointAt(resampled[d]);
+                        particle.velocity[d] = 0d;
+                    }
+                    continue;
                 }
+                double maxVelocity = settings.velocityClampFactor() * (spec.upperBound() - spec.lowerBound());
+                double velocity;
+                double r1 = random.nextDouble();
+                double r2 = random.nextDouble();
+                // A particle whose initial evaluation failed keeps its
+                // launch position as the pbest snapshot but has no
+                // validated personal best: attracting it back toward that
+                // failed point would pin it to an invalid region, so the
+                // cognitive pull stays zero until a valid evaluation
+                // establishes a personal best.
+                double cognitivePull = particle.pbestEvaluated == null ? 0d
+                        : particle.pbestPosition[d] - particle.position[d];
+                // The global best exists and is validated here (the
+                // no-best case is handled above), so the social pull may
+                // attract the swarm toward it.
+                double socialPull = gbestPosition[d] - particle.position[d];
+                velocity = settings.inertiaWeight() * particle.velocity[d]
+                        + settings.cognitiveWeight() * r1 * cognitivePull + settings.socialWeight() * r2 * socialPull;
                 velocity = clamp(velocity, -maxVelocity, maxVelocity);
                 double position = particle.position[d] + velocity;
                 if (position < spec.lowerBound() || position > spec.upperBound()) {
@@ -287,6 +307,45 @@ final class ParticleSwarmEngine extends SearchEngine {
                 particle.position[d] = position;
                 particle.velocity[d] = velocity;
             }
+        }
+    }
+
+    /**
+     * Returns the next cell of the mixed-radix sweep that has not been proposed yet
+     * and advances the cursor past it; {@code null} when every declared cell has
+     * been proposed. The cursor starts at a uniformly drawn cell, so the sweep
+     * order varies across seeds.
+     *
+     * @return unseen cell indices, or {@code null} when the sweep is exhausted
+     */
+    private int[] nextUnexploredCell() {
+        if (noBestCursor == null) {
+            noBestCursor = new int[specs().size()];
+            for (int d = 0; d < noBestCursor.length; d++) {
+                noBestCursor[d] = random.nextInt(specs().get(d).cardinality());
+            }
+        }
+        int[] start = noBestCursor.clone();
+        do {
+            if (!proposed(canonicalId(noBestCursor))) {
+                int[] cell = noBestCursor.clone();
+                advanceCursor();
+                return cell;
+            }
+            advanceCursor();
+        } while (!Arrays.equals(noBestCursor, start));
+        return null;
+    }
+
+    /**
+     * Advances the sweep cursor by one cell in mixed-radix order.
+     */
+    private void advanceCursor() {
+        for (int d = noBestCursor.length - 1; d >= 0; d--) {
+            if (++noBestCursor[d] < specs().get(d).cardinality()) {
+                return;
+            }
+            noBestCursor[d] = 0;
         }
     }
 

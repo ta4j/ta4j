@@ -199,6 +199,18 @@ final class DomainSpec {
     }
 
     /**
+     * Returns the continuous grid point for a value index: the consolidated
+     * distinct double when the domain collapses below-ULP positions, otherwise
+     * {@code lowerBound + index * step}.
+     *
+     * @param index value index in {@code [0, cardinality)}
+     * @return continuous position of the grid point
+     */
+    double gridPointAt(int index) {
+        return distinctGrid != null ? distinctGrid[index] : lowerBound + index * step;
+    }
+
+    /**
      * @return continuous grid step, or {@code NaN} when not numeric
      */
     double step() {
