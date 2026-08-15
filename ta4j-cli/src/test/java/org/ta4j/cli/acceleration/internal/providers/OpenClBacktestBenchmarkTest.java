@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -47,6 +48,11 @@ class OpenClBacktestBenchmarkTest {
     private static final int TRIALS = 5;
     private static final long SEED = 42L;
 
+    @BeforeAll
+    static void selectRngVersionOne() {
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+    }
+
     @Test
     void compareTransparentScalarAndOpenClBacktests() throws IOException {
         String library = System.getProperty(OpenClAccelerationProviderFactory.LIBRARY_PROPERTY);
@@ -75,12 +81,12 @@ class OpenClBacktestBenchmarkTest {
                     new Spec(BAR_COUNT, DECISIONS, PATHS, HORIZON, LOOKBACK, TRIALS, SEED), scalarMedian, openClMedian,
                     speedup, scalar, openCl);
             Path output = outputPath();
-            Files.createDirectories(output.getParent());
             Files.writeString(output, new GsonBuilder().setPrettyPrinting().create().toJson(report) + "\n",
                     StandardCharsets.UTF_8);
         } finally {
             logs.close();
             System.clearProperty(AccelerationRuntime.PROPERTY);
+            System.clearProperty("ta4j.forecast.rngVersion");
             CliIndicatorAccelerationService.clearQuarantineForTests();
         }
     }

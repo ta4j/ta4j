@@ -61,15 +61,20 @@ public final class CliIndicatorAccelerationService implements Provider {
             return notExecuted(Status.SKIPPED, Backend.CPU, DiagnosticCode.UNSUPPORTED, "none",
                     "forecast acceleration requires DoubleNum and log-return state");
         }
-        if (legacyRngStreamRequested()) {
-            // -Dta4j.forecast.rngVersion=0 selects the pre-0.23.1 shared
-            // SplittableRandom stream on the scalar lane. Native kernels only
-            // implement the versioned per-path stream (RNG version 1), so an
-            // accelerated result would silently publish different values than
-            // the scalar lane the property promises to restore. Fall back to
-            // scalar so the documented legacy values actually materialize.
+        if (!rngVersionOneSelected()) {
+            // The scalar lane defaults to the pre-0.23.1 shared
+            // SplittableRandom stream when ta4j.forecast.rngVersion is unset,
+            // and -Dta4j.forecast.rngVersion=0 restores it explicitly. Native
+            // kernels only implement the versioned per-path stream (RNG
+            // version 1), so an accelerated result would silently publish
+            // different values than the scalar lane. Only rngVersion=1 matches
+            // the native kernels; every other configuration falls back to
+            // scalar so the documented values actually materialize.
+            String configured = System.getProperty("ta4j.forecast.rngVersion");
+            String value = configured == null || configured.isBlank() ? "unset" : configured.trim();
             return notExecuted(Status.SKIPPED, Backend.CPU, DiagnosticCode.CPU_FASTER, "none",
-                    "ta4j.forecast.rngVersion=0 requests the legacy stream, which native lanes cannot reproduce");
+                    "ta4j.forecast.rngVersion=" + value + " does not select RNG version 1, "
+                            + "which native lanes require");
         }
 
         Request<Forecast> forecastRequest = (Request<Forecast>) (Request<?>) request;
@@ -192,16 +197,13 @@ public final class CliIndicatorAccelerationService implements Provider {
     }
 
     /**
-     * True when the pre-0.23.1 shared {@link java.util.SplittableRandom} stream was
-     * requested via {@code -Dta4j.forecast.rngVersion=0}. Native lanes cannot
-     * reproduce that stream, so acceleration must not engage.
+     * True when {@code -Dta4j.forecast.rngVersion=1} selects the versioned per-path
+     * RNG stream that the native kernels implement. An unset property, an explicit
+     * legacy value, or an unknown version must not engage native acceleration.
      */
-    private static boolean legacyRngStreamRequested() {
+    private static boolean rngVersionOneSelected() {
         String configured = System.getProperty("ta4j.forecast.rngVersion");
-        if (configured == null || configured.isBlank()) {
-            return false;
-        }
-        return "0".equals(configured.trim());
+        return configured != null && "1".equals(configured.trim());
     }
 
     private static <T> Result<T> notExecuted(Status status, Backend backend, DiagnosticCode code, String providerId,

@@ -51,6 +51,7 @@ class MetalBacktestBenchmarkTest {
     @BeforeAll
     static void enableApproximateOptIn() {
         System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
     }
 
     @Test
@@ -85,8 +86,8 @@ class MetalBacktestBenchmarkTest {
             Files.writeString(output, new GsonBuilder().setPrettyPrinting().create().toJson(report) + "\n",
                     StandardCharsets.UTF_8);
         } finally {
-            logs.close();
             System.clearProperty(AccelerationRuntime.PROPERTY);
+            System.clearProperty("ta4j.forecast.rngVersion");
             CliIndicatorAccelerationService.clearQuarantineForTests();
         }
     }

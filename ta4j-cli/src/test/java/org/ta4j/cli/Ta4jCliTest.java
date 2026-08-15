@@ -8,14 +8,19 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.criteria.Annualization;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.num.Num;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,6 +32,7 @@ import java.nio.file.Path;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -233,6 +239,30 @@ class Ta4jCliTest {
         assertThat(payload.get("experimentId").getAsString()).isEqualTo("kalman-filter");
         assertThat(payload.getAsJsonArray("results")).hasSize(1);
         assertThat(outputDir.resolve("summary.md")).exists();
+    }
+
+    @Test
+    void performanceRejectsOversizedRepetitionCount() throws Exception {
+        Path outputDir = tempDir.resolve("performance-oversized-repetitions");
+
+        CliRunResult result = runCliAllowingError("performance", "run", "--experiment", "kalman-filter", "--bar-counts",
+                "16", "--scenarios", "endOnly", "--repetitions", "1000001", "--warmups", "0", "--output-dir",
+                outputDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("repetitions must not exceed 1000000");
+    }
+
+    @Test
+    void performanceRejectsOversizedWarmupCount() throws Exception {
+        Path outputDir = tempDir.resolve("performance-oversized-warmups");
+
+        CliRunResult result = runCliAllowingError("performance", "run", "--experiment", "kalman-filter", "--bar-counts",
+                "16", "--scenarios", "endOnly", "--repetitions", "1", "--warmups", "1000001", "--output-dir",
+                outputDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("warmups must not exceed 1000000");
     }
 
     @Test
@@ -632,6 +662,17 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestRejectsNegativeUnstableBarsValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--unstable-bars", "-1");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--unstable-bars must not be negative: -1.");
+    }
+
+    @Test
     void sweepRejectsInvalidTopKValue() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
@@ -651,6 +692,38 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("--top-k must be greater than zero.");
+    }
+
+    @Test
+    void sweepReportsPartialFailuresWithoutDroppingSurvivors() throws Exception {
+        ExplodingOnceCriterion.throwBudget.set(1);
+        TraceTestLogger logs = new TraceTestLogger();
+        logs.open();
+        try {
+            Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+            Path outputFile = tempDir.resolve("sweep-partial.json");
+
+            int exitCode = runCli("strategy", "sweep", "--data-file", dataFile.toString(), "--param-grid", "fast=3,5",
+                    "--param-grid", "slow=20,30", "--top-k", "2", "--criterion-json",
+                    "{\"type\":\"" + ExplodingOnceCriterion.class.getName() + "\"}", "--output", outputFile.toString());
+
+            assertThat(exitCode).isZero();
+            JsonObject payload = readJson(outputFile);
+            JsonObject result = result(payload);
+            assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+            assertThat(result.get("candidateCount").getAsInt()).isEqualTo(4);
+            assertThat(result.get("failedStrategyCount").getAsInt()).isEqualTo(1);
+            JsonArray failedStrategies = result.getAsJsonArray("failedStrategies");
+            assertThat(failedStrategies).hasSize(1);
+            assertThat(failedStrategies.get(0).getAsJsonObject().get("name").getAsString()).isNotBlank();
+            assertThat(failedStrategies.get(0).getAsJsonObject().get("message").getAsString())
+                    .contains("injected criterion failure");
+            assertThat(result.getAsJsonArray("leaderboard")).hasSize(2);
+            assertThat(logs.getLogOutput()).contains("injected criterion failure");
+        } finally {
+            ExplodingOnceCriterion.throwBudget.set(0);
+            logs.close();
+        }
     }
 
     @Test
@@ -690,6 +763,28 @@ class Ta4jCliTest {
                 .contains("--strategies MissingStrategy_VALUE")
                 .contains("--strategies-json-file " + tempDir.resolve("missing.json"))
                 .contains("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
+    }
+
+    public static final class ExplodingOnceCriterion implements AnalysisCriterion {
+        static final AtomicInteger throwBudget = new AtomicInteger();
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            if (throwBudget.getAndDecrement() > 0) {
+                throw new IllegalStateException("injected criterion failure");
+            }
+            return series.numFactory().zero();
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue, Num otherCriterionValue) {
+            return criterionValue.isGreaterThan(otherCriterionValue);
+        }
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return series.numFactory().zero();
+        }
     }
 
     private int runCli(String... args) {

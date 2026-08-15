@@ -3,8 +3,10 @@
  */
 package org.ta4j.cli.acceleration.internal.providers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,21 @@ class ForecastSnapshotTest {
         mutation.join();
 
         assertThrows(StaleSeriesException.class, () -> stamp.requireCurrent(series, "before publication"));
+    }
+
+    @Test
+    void materializeSamplesRejectsNonFiniteAndNonPositiveTerminalPrices() {
+        BarSeries series = series();
+        ForecastSnapshot snapshot = snapshot(series);
+
+        MalformedProviderResultException nanFailure = assertThrows(MalformedProviderResultException.class,
+                () -> snapshot.materializeSamples(new float[] { 100f, Float.NaN, 101f }, "Metal"));
+        assertThat(nanFailure.getMessage()).contains("Metal sample price is non-finite or non-positive")
+                .contains("index 0 path 1");
+
+        MalformedProviderResultException negativeFailure = assertThrows(MalformedProviderResultException.class,
+                () -> snapshot.materializeSamples(new float[] { 100f, -5f, 101f }, "Metal"));
+        assertThat(negativeFailure.getMessage()).contains("index 0 path 1");
     }
 
     private void assertInvalidated(Consumer<BarSeries> mutation) {
@@ -68,6 +85,14 @@ class ForecastSnapshotTest {
                 .volume(last.getVolume())
                 .build();
         series.addBar(replacement, true);
+    }
+
+    private ForecastSnapshot snapshot(BarSeries series) {
+        NativeForecastRequest request = new NativeForecastRequest(0, 1, 2, 3, 1, 42L, 0, 0, 0.94d,
+                new double[] { 0.05, 0.5, 0.95 }, new int[] { 1 }, new double[] { 100d }, new double[] { 0.01d },
+                new double[] { 1e-4d }, new double[] { 1e-4d }, new double[] { 0.01d });
+        return new ForecastSnapshot(series, SeriesStamp.capture(series), series.numFactory(), 0, 1, 2, 3,
+                List.of(0.05, 0.5, 0.95), request);
     }
 
     private BarSeries series() {

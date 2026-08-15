@@ -628,13 +628,28 @@ cleanup:
 
 static cl_int initialize_state(char* error, size_t error_size) {
     cl_int error_status = CL_SUCCESS;
-    cl_platform_id platforms[8];
+    cl_platform_id* platforms = NULL;
     cl_uint platform_count = 0;
     cl_device_id selected = NULL;
     int selected_gpu = 0;
     char version[128];
 
-    error_status = clGetPlatformIDs(8, platforms, &platform_count);
+    // Two-phase query so hosts exposing more platforms than any fixed bound
+    // can never overflow a stack buffer: ask for the count, allocate exactly
+    // that many IDs, then enumerate.
+    error_status = clGetPlatformIDs(0, NULL, &platform_count);
+    if (error_status != CL_SUCCESS || platform_count < 1) {
+        fail(error, error_size, "no OpenCL platform");
+        error_status = CL_DEVICE_NOT_FOUND;
+        goto cleanup;
+    }
+    platforms = (cl_platform_id*)calloc(platform_count, sizeof(cl_platform_id));
+    if (platforms == NULL) {
+        fail(error, error_size, "out of host memory");
+        error_status = CL_OUT_OF_HOST_MEMORY;
+        goto cleanup;
+    }
+    error_status = clGetPlatformIDs(platform_count, platforms, &platform_count);
     if (error_status != CL_SUCCESS || platform_count < 1) {
         fail(error, error_size, "no OpenCL platform");
         error_status = CL_DEVICE_NOT_FOUND;
@@ -788,6 +803,10 @@ static cl_int initialize_state(char* error, size_t error_size) {
 
 cleanup:
     if (error_status != CL_SUCCESS && STATE.initialized == 0) {
+        if (platforms != NULL) {
+            free(platforms);
+            STATE.platform = NULL;
+        }
         if (STATE.rng_self_test != NULL) {
             clReleaseKernel(STATE.rng_self_test);
             STATE.rng_self_test = NULL;

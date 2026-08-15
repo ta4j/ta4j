@@ -46,6 +46,12 @@ via `-Dta4j.cli.acceleration.metal.approximate=true`. Without it the provider
 reports itself unavailable with a diagnostic naming the property and falls
 back to scalar execution, so approximate results are never silently selected.
 
+Native lanes implement only the versioned per-path RNG stream (RNG version 1),
+so acceleration engages only when `-Dta4j.forecast.rngVersion=1` is set. An
+unset property or any other version keeps the scalar lane, which serves the
+pre-0.23.1 shared `SplittableRandom` stream, so accelerated values can never
+silently diverge from the values the property promises.
+
 ## Canonical Local Input
 
 The canonical MVP input is a local OHLCV file. CSV input should include a header row and these columns in order:

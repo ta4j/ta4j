@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
@@ -39,10 +40,15 @@ import org.ta4j.core.num.DoubleNumFactory;
  * including the documented qualification route.
  */
 class QualificationAfterQuarantineTest {
+    @BeforeEach
+    void selectRngVersionOne() {
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+    }
 
     @AfterEach
     void restore() {
         CliIndicatorAccelerationService.clearQuarantineForTests();
+        System.clearProperty("ta4j.forecast.rngVersion");
     }
 
     @Test
