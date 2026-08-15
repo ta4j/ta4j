@@ -46,6 +46,7 @@ EXAMPLES_JARS=(
 )
 CLI_JARS=(
   "ta4j-cli/target/ta4j-cli-%s.jar"
+  "ta4j-cli/target/ta4j-cli-%s-jar-with-dependencies.jar"
   "ta4j-cli/target/ta4j-cli-%s-sources.jar"
   "ta4j-cli/target/ta4j-cli-%s-javadoc.jar"
 )

@@ -41,6 +41,11 @@ for every unsupported, unavailable, slower, stale, or failed request. See
 [the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for classifiers,
 platform status, diagnostics, rollback, and benchmark evidence.
 
+The Metal provider's approximate fp32 execution lane requires explicit opt-in
+via `-Dta4j.cli.acceleration.metal.approximate=true`. Without it the provider
+reports itself unavailable with a diagnostic naming the property and falls
+back to scalar execution, so approximate results are never silently selected.
+
 ## Canonical Local Input
 
 The canonical MVP input is a local OHLCV file. CSV input should include a header row and these columns in order:
@@ -117,7 +122,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 Every workflow response uses a versioned envelope with `schemaVersion`, `status`, `command`, and `result`. Volatile timestamps, resolved paths, artifacts, and timings live under `run`. Add `--reproducible` to omit `run` and make identical executions byte-stable.
 
-`performance compare` reports `status: "regression"` in the envelope when the candidate exceeds `--max-regression-pct` or its checksums diverge, and exits non-zero so exit-code-based automation and CI can gate on the result while the comparison artifacts remain inspectable. All other commands exit non-zero only on failure.
+`performance compare` exits non-zero when the candidate exceeds `--max-regression-pct` or its checksums diverge, so exit-code-based automation and CI can gate on the result while the comparison artifacts remain inspectable. A failing gate reports envelope `status: "error"` while the nested comparison keeps its own `result.status: "regression"`, so callers can distinguish a gated result from a crash. Batch executions report `status: "partial"` when some strategy inputs or folds failed but others succeeded, and `status: "error"` only when every member failed; per-failure detail is additive in `failedStrategies` / `failedStrategyCount` and `failedFoldCount` / `foldFailures` without dropping healthy results.
 
 Use `--error-format JSON` for structured error envelopes with usage, I/O, or software categories. `catalog` reports aliases and supported models directly from the live registry, while `completion --shell bash` emits completion usable by Bash and by Zsh through `bashcompinit`.
 
@@ -180,7 +185,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
-  - `--param-grid key=v1,v2,...`: candidate grid dimensions.
+  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, and the grid must not expand past 10,000 candidate strategies.
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
   - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
@@ -201,7 +206,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--calibration`: `none` or rolling `conformal`.
   - `--price-model`: `auto`, empirical Monte Carlo paths, or a `lognormal` moment-matched adapter.
   - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon. `--horizon` is rejected for state-only inspection.
-  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history.
+  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, and `--samples` × `--horizon` must not exceed 10,000,000.
   - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
   - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
   - `--neighbor-count`, `--minimum-neighbor-count`, `--[no-]standardize-features`: analog projection controls.

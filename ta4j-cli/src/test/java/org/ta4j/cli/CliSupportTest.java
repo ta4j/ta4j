@@ -590,7 +590,8 @@ class CliSupportTest {
                 outputPath, chartPath, false);
         Map<String, Object> statementMap = CliSupport.statementToMap(series, statement, backtestCriteria);
         Map<String, Object> runtimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
-        Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForward, walkForwardCriteria);
+        Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForward, walkForwardCriteria,
+                false, null, null);
 
         assertThat(chartPath).exists();
         assertThat(Files.size(chartPath)).isGreaterThan(0L);

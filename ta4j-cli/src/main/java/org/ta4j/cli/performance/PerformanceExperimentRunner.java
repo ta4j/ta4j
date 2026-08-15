@@ -34,7 +34,7 @@ import com.google.gson.JsonObject;
  * <p>
  * The runner executes named scenarios for a registered experiment, writes
  * machine-readable JSON, and emits a short Markdown summary that can be
- * compared across git refs by {@link PerformanceComparison}.
+ * compared across git refs by {@code PerformanceComparison}.
  *
  * @since 0.23.1
  */

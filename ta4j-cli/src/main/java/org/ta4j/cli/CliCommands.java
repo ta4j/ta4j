@@ -5,10 +5,10 @@ package org.ta4j.cli;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.ta4j.cli.performance.PerformanceComparison;
 import org.ta4j.cli.performance.PerformanceExperimentRunner;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 import picocli.AutoComplete;
 import picocli.CommandLine;
@@ -210,6 +211,9 @@ final class CliCommands {
             boolean gatePassed = comparison.get("regressionWithinThreshold").getAsBoolean()
                     && comparison.get("checksumMatch").getAsBoolean();
             result.put("status", gatePassed ? "ok" : "regression");
+            if (!gatePassed) {
+                response.put("status", "error");
+            }
             out().println(CliSupport.toJson(response));
             // The comparison artifacts are still written (the JSON reports the
             // failing gate), but a regressed or checksum-divergent candidate
@@ -486,26 +490,43 @@ final class CliCommands {
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
 
+            Map<Trade.TradeType, List<Strategy>> strategyGroups = new LinkedHashMap<>();
+            for (Strategy strategy : resolvedStrategies.strategies()) {
+                strategyGroups.computeIfAbsent(strategy.getStartingType(), type -> new ArrayList<>()).add(strategy);
+            }
+            boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
+            Consumer<Integer> progressCallback = singleStrategy
+                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy backtest")
+                    : null;
+
             List<TradingStatement> statements = new ArrayList<>(resolvedStrategies.strategies().size());
-            List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(resolvedStrategies.strategies().size());
-            for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
-                Strategy strategy = resolvedStrategies.strategies().get(index);
-                BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy),
-                        positionSizing.positionSizer(), strategy.getStartingType(),
-                        resolvedStrategies.strategies().size() == 1
-                                ? CliSupport.progressCallback(artifacts.progress, err(), "strategy backtest")
-                                : null);
-                statements.add(result.tradingStatements().getFirst());
-                runtimeReports.add(result.runtimeReport());
-                reportProgress(artifacts.progress && resolvedStrategies.strategies().size() > 1, err(),
-                        "strategy backtest", index + 1);
+            List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(strategyGroups.size());
+            List<Map<String, Object>> failedStrategies = new ArrayList<>();
+            int completedStrategies = 0;
+            for (Map.Entry<Trade.TradeType, List<Strategy>> group : strategyGroups.entrySet()) {
+                List<Strategy> groupStrategies = group.getValue();
+                try {
+                    BacktestExecutionResult result = executor.executeWithRuntimeReport(groupStrategies,
+                            positionSizing.positionSizer(), group.getKey(), progressCallback);
+                    statements.addAll(result.tradingStatements());
+                    runtimeReports.add(result.runtimeReport());
+                    for (BacktestExecutionResult.StrategyFailure failure : result.strategyFailures()) {
+                        failedStrategies.add(failureEntry(failure.strategy().getName(), failure.cause().getMessage()));
+                    }
+                } catch (RuntimeException ex) {
+                    for (Strategy strategy : groupStrategies) {
+                        failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
+                    }
+                }
+                completedStrategies += groupStrategies.size();
+                reportProgress(artifacts.progress && !singleStrategy, err(), "strategy backtest", completedStrategies);
             }
 
             List<Map<String, Object>> statementMaps = statements.stream()
                     .map(statement -> CliSupport.statementToMap(series, statement, resolvedCriteria))
                     .toList();
-            TradingStatement statement = statements.getFirst();
-            Path chartPath = CliSupport.saveChart(artifacts.chart, series, statement);
+            TradingStatement statement = statements.isEmpty() ? null : statements.getFirst();
+            Path chartPath = statement == null ? null : CliSupport.saveChart(artifacts.chart, series, statement);
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy backtest", series, data.dataFile,
@@ -519,11 +540,16 @@ final class CliCommands {
             payload.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
             payload.put("invalidStrategies", CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(),
                     artifacts.reproducible, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
-            payload.put("statement", statementMaps.getFirst());
+            payload.put("failedStrategyCount", failedStrategies.size());
+            payload.put("failedStrategies", failedStrategies);
+            payload.put("statement", statement == null ? null : statementMaps.getFirst());
             payload.put("statements", statementMaps);
             CliSupport.markPartial(response, resolvedStrategies.invalidStrategies());
+            if (!failedStrategies.isEmpty()) {
+                response.put("status", statements.isEmpty() ? "error" : "partial");
+            }
             CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return 0;
+            return statements.isEmpty() ? CommandLine.ExitCode.SOFTWARE : 0;
         }
     }
 
@@ -573,25 +599,42 @@ final class CliCommands {
 
             List<Map<String, Object>> resultEntries = new ArrayList<>(resolvedStrategies.strategies().size());
             List<Map<String, Object>> runtimeEntries = new ArrayList<>(resolvedStrategies.strategies().size());
+            List<Map<String, Object>> failedStrategies = new ArrayList<>();
             TradingStatement primaryStatement = null;
             Map<String, Object> primaryBacktest = null;
             Map<String, Object> primaryBacktestRuntime = null;
             Map<String, Object> primaryWalkForward = null;
+            boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
+            Consumer<Integer> progressCallback = singleStrategy
+                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward")
+                    : null;
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
-                BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy),
-                        positionSizing.positionSizer(), strategy.getStartingType());
-                StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
-                        positionSizing.positionSizer(), strategy.getStartingType(), config,
-                        resolvedStrategies.strategies().size() == 1
-                                ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward")
-                                : null);
+                BacktestExecutionResult backtest;
+                StrategyWalkForwardExecutionResult walkForwardResult;
+                try {
+                    backtest = executor.executeWithRuntimeReport(List.of(strategy), positionSizing.positionSizer(),
+                            strategy.getStartingType());
+                } catch (RuntimeException ex) {
+                    failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    continue;
+                }
+                try {
+                    walkForwardResult = executor.executeWalkForward(strategy, positionSizing.positionSizer(),
+                            strategy.getStartingType(), config, progressCallback);
+                } catch (RuntimeException ex) {
+                    failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    continue;
+                }
 
                 TradingStatement statement = backtest.tradingStatements().getFirst();
                 Map<String, Object> backtestMap = CliSupport.statementToMap(series, statement, resolvedCriteria);
                 Map<String, Object> backtestRuntimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
                 Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForwardResult,
-                        resolvedCriteria);
+                        resolvedCriteria, artifacts.reproducible, strategyInput.strategyJsonFile,
+                        strategyInput.strategiesJsonFile);
                 Map<String, Object> resultEntry = new LinkedHashMap<>();
                 resultEntry.put("backtest", backtestMap);
                 resultEntry.put("walkForward", walkForwardMap);
@@ -607,11 +650,11 @@ final class CliCommands {
                     primaryBacktestRuntime = backtestRuntimeMap;
                     primaryWalkForward = walkForwardMap;
                 }
-                reportProgress(artifacts.progress && resolvedStrategies.strategies().size() > 1, err(),
-                        "strategy walk-forward", index + 1);
+                reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
             }
 
-            Path chartPath = CliSupport.saveChart(artifacts.chart, series, primaryStatement);
+            Path chartPath = primaryStatement == null ? null
+                    : CliSupport.saveChart(artifacts.chart, series, primaryStatement);
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy walk-forward", series,
                     data.dataFile, data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
@@ -622,14 +665,22 @@ final class CliCommands {
             payload.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
             payload.put("invalidStrategies", CliSupport.outputInvalidStrategies(resolvedStrategies.invalidStrategies(),
                     artifacts.reproducible, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile));
+            payload.put("failedStrategyCount", failedStrategies.size());
+            payload.put("failedStrategies", failedStrategies);
             payload.put("backtest", primaryBacktest);
             payload.put("walkForward", primaryWalkForward);
             payload.put("results", resultEntries);
             CliSupport.putRunMetadata(response, "backtestRuntime", primaryBacktestRuntime);
             CliSupport.putRunMetadata(response, "results", runtimeEntries);
             CliSupport.markPartial(response, resolvedStrategies.invalidStrategies());
+            boolean anyFoldFailures = resultEntries.stream()
+                    .anyMatch(entry -> ((Number) ((Map<?, ?>) entry.get("walkForward")).get("failedFoldCount"))
+                            .intValue() > 0);
+            if (!failedStrategies.isEmpty() || anyFoldFailures) {
+                response.put("status", resultEntries.isEmpty() ? "error" : "partial");
+            }
             CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return 0;
+            return resultEntries.isEmpty() ? CommandLine.ExitCode.SOFTWARE : 0;
         }
     }
 
@@ -998,7 +1049,12 @@ final class CliCommands {
             payload.put("exitRuleName", strategy.getExitRule().getName());
             payload.put("exitRuleJson", JsonParser.parseString(strategy.getExitRule().toJson()));
             payload.put("backtest", CliSupport.statementToMap(series, statement, resolvedCriteria));
-            payload.put("walkForward", CliSupport.walkForwardToMap(series, walkForwardResult, resolvedCriteria));
+            Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForwardResult,
+                    resolvedCriteria, artifacts.reproducible, null, null);
+            payload.put("walkForward", walkForwardMap);
+            if (((Number) walkForwardMap.get("failedFoldCount")).intValue() > 0) {
+                response.put("status", "partial");
+            }
             CliSupport.putRunMetadata(response, "backtestRuntime",
                     CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
             CliSupport.putRunMetadata(response, "walkForwardRuntime",
@@ -1006,6 +1062,13 @@ final class CliCommands {
             CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
             return 0;
         }
+    }
+
+    private static Map<String, Object> failureEntry(String strategyName, String message) {
+        Map<String, Object> failure = new LinkedHashMap<>();
+        failure.put("name", strategyName);
+        failure.put("message", message == null ? "strategy execution failed" : message);
+        return failure;
     }
 
     private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {

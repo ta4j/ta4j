@@ -13,8 +13,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.Request;
 import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -28,6 +30,7 @@ class MetalAccelerationProviderTest {
     @AfterEach
     void reset() {
         System.clearProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY);
+        System.clearProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY);
         System.clearProperty(MetalAccelerationProviderFactory.LIBRARY_PROPERTY);
         MetalAccelerationProviderFactory.clearProbeCacheForTests();
     }
@@ -77,7 +80,7 @@ class MetalAccelerationProviderTest {
                 return super.evaluate(request);
             }
         };
-        long bytesPerDecision = 5L * Double.BYTES + Integer.BYTES + 16L * Double.BYTES + 64L * Float.BYTES;
+        long bytesPerDecision = 2L * (5L * Double.BYTES + Integer.BYTES + 16L * Double.BYTES) + 52L * 64L;
         System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(bytesPerDecision));
 
         Result<Forecast> result = provider(bridge).evaluate(request(forecast));
@@ -99,6 +102,7 @@ class MetalAccelerationProviderTest {
             }
         };
         System.setProperty(MetalAccelerationProviderFactory.LIBRARY_PROPERTY, "/tmp/metal.dylib");
+        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
         MetalAccelerationProviderFactory factory = new MetalAccelerationProviderFactory(() -> {
             loads.incrementAndGet();
             return new MetalNativeLibrary.LoadResult(true, Path.of("/tmp/metal.dylib"), "");
@@ -155,9 +159,40 @@ class MetalAccelerationProviderTest {
         assertThat(failure).hasMessageContaining("device lost");
     }
 
+    @Test
+    void optInGateDisablesApproximateResultsWithoutNativeWork() {
+        // The Metal lane always produces approximate fp32 samples, so it must
+        // stay opt-in: without the property, the factory advertises the probe
+        // (nativeInitialized stays true) but disables the provider, and
+        // evaluate short-circuits before any native call.
+        AtomicInteger evaluations = new AtomicInteger();
+        MetalNativeBridge bridge = new FakeBridge() {
+            @Override
+            public MetalEvaluationResult evaluate(NativeForecastRequest request) {
+                evaluations.incrementAndGet();
+                return super.evaluate(request);
+            }
+        };
+        System.setProperty(MetalAccelerationProviderFactory.LIBRARY_PROPERTY, "/tmp/metal.dylib");
+        MetalAccelerationProviderFactory factory = new MetalAccelerationProviderFactory(
+                () -> new MetalNativeLibrary.LoadResult(true, Path.of("/tmp/metal.dylib"), ""), bridge, true);
+
+        Capability capability = factory.probe().capability();
+        assertThat(capability.available()).isFalse();
+        assertThat(capability.nativeInitialized()).isTrue();
+        assertThat(capability.detail()).contains(MetalAccelerationProvider.APPROXIMATE_PROPERTY);
+
+        MonteCarloPriceForecastIndicator forecast = forecast(series(), 64);
+        Result<Forecast> result = factory.probe().evaluate(request(forecast));
+        assertThat(result.status()).isEqualTo(Status.UNAVAILABLE);
+        assertThat(result.backend()).isEqualTo(Backend.METAL);
+        assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+        assertThat(evaluations).hasValue(0);
+    }
+
     private static MetalAccelerationProvider provider(MetalNativeBridge bridge) {
         return new MetalAccelerationProvider(new Capability("metal", Backend.METAL, true, true, "Apple M5 Max", ""),
-                bridge, qualifiedProbe());
+                bridge, qualifiedProbe(), true);
     }
 
     private static MetalProbeResult qualifiedProbe() {

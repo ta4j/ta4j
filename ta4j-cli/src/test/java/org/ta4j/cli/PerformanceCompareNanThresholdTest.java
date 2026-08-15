@@ -15,7 +15,6 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.ta4j.cli.performance.PerformanceComparison;
 
 /**
  * Guards the performance comparison regression threshold against {@code NaN}.

@@ -143,7 +143,7 @@ class OpenClAccelerationProviderTest {
                 .build();
         int end = forecast.getBarSeries().getEndIndex();
         Request<Forecast> request = new Request<>(forecast, end, end);
-        long estimate = ForecastSnapshot.estimatedNativeBytes(1L, 16L, iterationCount, 1L);
+        long estimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, iterationCount, 1L, false);
         long paddedSamples = (long) nextPowerOfTwo(iterationCount) * Double.BYTES;
         long ceiling = estimate + (paddedSamples - estimate) / 2L; // between raw estimate and padded allocation
 

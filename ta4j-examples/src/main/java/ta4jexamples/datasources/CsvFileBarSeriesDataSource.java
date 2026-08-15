@@ -251,6 +251,7 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                     }
                 } catch (CsvValidationException e) {
                     LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
+                    return null;
                 }
             }
         } catch (IOException ioe) {

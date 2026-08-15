@@ -135,6 +135,40 @@ class CliIndicatorAccelerationServiceTest {
     }
 
     @Test
+    void malformedNativeOutputQuarantinesProviderAndFailsClosed() {
+        // A provider that materializes output contradicting the captured
+        // request (shape or value invariants) is quarantined under its
+        // provider id and the request fails closed to scalar execution.
+        CliIndicatorAccelerationService.useProviderForTests(new ForecastAccelerationProvider() {
+            @Override
+            public Capability capability() {
+                return new Capability("metal", Backend.METAL, true, true, "fixture", "");
+            }
+
+            @Override
+            public double predictedSpeedup(Request<Forecast> request) {
+                return 1d;
+            }
+
+            @Override
+            public Result<Forecast> evaluate(Request<Forecast> request) {
+                throw new MalformedProviderResultException("materialized row count 7 does not match decision count 4");
+            }
+        });
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        int end = forecast.getBarSeries().getEndIndex();
+        Request<Forecast> request = new Request<>(forecast, end - 1, end);
+
+        Result<Forecast> first = new CliIndicatorAccelerationService().evaluate(request);
+        assertThat(first.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_FAILURE);
+        assertThat(first.diagnostic().detail()).contains("malformed native output: materialized row count 7");
+
+        Result<Forecast> second = new CliIndicatorAccelerationService().evaluate(request);
+        assertThat(second.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_FAILURE);
+        assertThat(second.diagnostic().detail()).contains("quarantined", "materialized row count 7");
+    }
+
+    @Test
     void legacyRngVersionDisablesAccelerationBecauseNativeLanesCannotReproduceIt() {
         // -Dta4j.forecast.rngVersion=0 switches the scalar lane to the
         // pre-0.23.1 shared SplittableRandom stream (see

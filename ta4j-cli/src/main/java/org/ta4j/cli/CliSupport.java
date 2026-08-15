@@ -71,6 +71,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.rules.named.NamedRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 import ta4jexamples.charting.workflow.ChartWorkflow;
@@ -133,6 +134,9 @@ final class CliSupport {
     private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.";
     private static final String INDICATOR_INPUT_GUIDANCE = "Use --indicator with compact shorthand or serialized JSON, or use --indicator-json-file.";
     private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
+    static final Set<String> SWEEP_PARAM_KEYS = Set.of("fast", "slow");
+    static final int MAX_SWEEP_STRATEGIES = 10_000;
+    static final long MAX_MONTE_CARLO_WORK = 10_000_000L;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -484,6 +488,19 @@ final class CliSupport {
         if (gridParams.isEmpty()) {
             throw new IllegalArgumentException("At least one --param-grid option is required for sweep.");
         }
+        validateSweepParams(fixedParams.keySet(), gridParams.keySet());
+        long candidateCount = 1L;
+        for (List<String> values : gridParams.values()) {
+            try {
+                candidateCount = Math.multiplyExact(candidateCount, values.size());
+            } catch (ArithmeticException ex) {
+                throw new IllegalArgumentException("Sweep parameter grid is too large to expand.", ex);
+            }
+        }
+        if (candidateCount > MAX_SWEEP_STRATEGIES) {
+            throw new IllegalArgumentException("Sweep parameter grid expands to " + candidateCount
+                    + " candidate strategies; at most " + MAX_SWEEP_STRATEGIES + " are supported.");
+        }
 
         List<Map<String, String>> combinations = new ArrayList<>();
         buildCartesianProduct(new ArrayList<>(gridParams.keySet()), gridParams, 0, new LinkedHashMap<>(fixedParams),
@@ -498,6 +515,21 @@ final class CliSupport {
             strategies.add(strategy);
         }
         return List.copyOf(strategies);
+    }
+
+    private static void validateSweepParams(Set<String> fixedKeys, Set<String> gridKeys) {
+        for (String key : fixedKeys) {
+            if (!SWEEP_PARAM_KEYS.contains(key)) {
+                throw new IllegalArgumentException(
+                        "Unknown sweep parameter '" + key + "'. Supported parameters: fast, slow.");
+            }
+        }
+        for (String key : gridKeys) {
+            if (!SWEEP_PARAM_KEYS.contains(key)) {
+                throw new IllegalArgumentException(
+                        "Unknown sweep parameter '" + key + "'. Supported parameters: fast, slow.");
+            }
+        }
     }
 
     static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {
@@ -686,6 +718,7 @@ final class CliSupport {
 
     private static ReturnForecastProjectionIndicator buildMonteCarloReturnForecast(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
+        requireBoundedMonteCarloWork(request);
         if (request.samples() <= 0) {
             throw new IllegalArgumentException("--samples must be greater than zero.");
         }
@@ -714,6 +747,7 @@ final class CliSupport {
 
     private static ForecastProjectionIndicator buildMonteCarloPriceForecast(BarSeries series,
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
+        requireBoundedMonteCarloWork(request);
         double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
         return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), stateIndicator)
                 .horizon(request.horizon())
@@ -725,6 +759,22 @@ final class CliSupport {
                 .volatilityDecayFactor(request.volatilityDecay())
                 .quantiles(quantiles)
                 .build();
+    }
+
+    private static void requireBoundedMonteCarloWork(ForecastRequest request) {
+        long work;
+        try {
+            work = Math.multiplyExact(request.samples(), (long) request.horizon());
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("--samples x --horizon is too large.", ex);
+        }
+        if (work <= 0L) {
+            return; // positivity is validated by the individual builders
+        }
+        if (work > MAX_MONTE_CARLO_WORK) {
+            throw new IllegalArgumentException(
+                    "--samples x --horizon must not exceed " + MAX_MONTE_CARLO_WORK + " (requested " + work + ").");
+        }
     }
 
     private static ReturnForecastProjectionIndicator buildAnalogReturnForecast(
@@ -1102,7 +1152,7 @@ final class CliSupport {
     }
 
     static Map<String, Object> walkForwardToMap(BarSeries series, StrategyWalkForwardExecutionResult result,
-            List<CriterionSpec> criteria) {
+            List<CriterionSpec> criteria, boolean reproducible, String strategyJsonFile, String strategiesJsonFile) {
         Map<String, Object> walkForward = linkedMap();
         Map<String, Object> config = linkedMap();
         config.put("configHash", result.config().configHash());
@@ -1123,6 +1173,18 @@ final class CliSupport {
         }
         walkForward.put("folds", folds);
 
+        List<Map<String, Object>> foldFailures = new ArrayList<>(result.foldFailures().size());
+        for (WalkForwardRunResult.FoldFailure failure : result.foldFailures()) {
+            Map<String, Object> failureMap = linkedMap();
+            failureMap.put("foldId", failure.foldId());
+            failureMap.put("foldOrder", failure.foldOrder());
+            failureMap.put("message",
+                    sanitizeFailureMessage(failure.message(), reproducible, strategyJsonFile, strategiesJsonFile));
+            foldFailures.add(failureMap);
+        }
+        walkForward.put("failedFoldCount", foldFailures.size());
+        walkForward.put("foldFailures", foldFailures);
+
         Map<String, Object> aggregateCriteria = linkedMap();
         for (CriterionSpec criterion : criteria) {
             Map<String, Object> values = linkedMap();
@@ -1137,6 +1199,15 @@ final class CliSupport {
         }
         walkForward.put("criteria", aggregateCriteria);
         return walkForward;
+    }
+
+    private static String sanitizeFailureMessage(String message, boolean reproducible, String strategyJsonFile,
+            String strategiesJsonFile) {
+        if (!reproducible || message == null) {
+            return message;
+        }
+        return redactStrategyInputFile(redactStrategyInputFile(message, "--strategy-json-file", strategyJsonFile),
+                "--strategies-json-file", strategiesJsonFile);
     }
 
     static Map<String, Object> walkForwardRuntimeToMap(WalkForwardRuntimeReport runtimeReport) {
