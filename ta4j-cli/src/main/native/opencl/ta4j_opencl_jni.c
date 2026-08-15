@@ -641,26 +641,27 @@ static cl_int initialize_state(char* error, size_t error_size) {
         goto cleanup;
     }
     // A host commonly exposes several platforms (vendor GPU runtime plus CPU
-    // ICDs). Search every platform for the first FP64-capable GPU, then the
-    // first FP64-capable CPU, instead of assuming platform 0 is usable.
-    for (cl_uint platform_index = 0; platform_index < platform_count && selected == NULL; ++platform_index) {
-        cl_uint device_count = 0;
-        cl_device_id* devices = NULL;
-        if (clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count) != CL_SUCCESS
-                || device_count < 1) {
-            continue;
-        }
-        devices = (cl_device_id*)calloc(device_count, sizeof(cl_device_id));
-        if (devices == NULL) {
-            fail(error, error_size, "out of host memory");
-            error_status = CL_OUT_OF_HOST_MEMORY;
-            goto cleanup;
-        }
-        if (clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, device_count, devices, NULL) != CL_SUCCESS) {
-            free(devices);
-            continue;
-        }
-        for (cl_uint pass = 0; pass < 2 && selected == NULL; ++pass) {
+    // ICDs). Run a GPU pass across every platform first, then a CPU fallback
+    // pass across every platform, so a CPU ICD listed before a vendor GPU ICD
+    // can never hide a usable FP64 GPU.
+    for (cl_uint pass = 0; pass < 2 && selected == NULL; ++pass) {
+        for (cl_uint platform_index = 0; platform_index < platform_count && selected == NULL; ++platform_index) {
+            cl_uint device_count = 0;
+            cl_device_id* devices = NULL;
+            if (clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count) != CL_SUCCESS
+                    || device_count < 1) {
+                continue;
+            }
+            devices = (cl_device_id*)calloc(device_count, sizeof(cl_device_id));
+            if (devices == NULL) {
+                fail(error, error_size, "out of host memory");
+                error_status = CL_OUT_OF_HOST_MEMORY;
+                goto cleanup;
+            }
+            if (clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, device_count, devices, NULL) != CL_SUCCESS) {
+                free(devices);
+                continue;
+            }
             for (cl_uint index = 0; index < device_count; ++index) {
                 cl_device_type device_type = 0;
                 cl_ulong double_config = 0;
@@ -677,8 +678,8 @@ static cl_int initialize_state(char* error, size_t error_size) {
                     break;
                 }
             }
+            free(devices);
         }
-        free(devices);
     }
     if (selected == NULL) {
         fail(error, error_size, "no FP64-capable OpenCL device");
@@ -855,11 +856,13 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativePr
         pthread_mutex_unlock(&STATE_MUTEX);
         return (*environment)->NewStringUTF(environment, "ERROR||||||||0|ABI mismatch");
     }
-    error[0] = '\0';
     if (!ensure_state(error, sizeof(error))) {
         char detail[768];
+        // Sanitize the error text before embedding it so the envelope's pipe
+        // delimiters survive; sanitizing the full payload would replace every
+        // delimiter with '/' and make the probe metadata unparseable.
+        sanitize(error);
         snprintf(detail, sizeof(detail), "ERROR||||||||0|%.750s", error);
-        sanitize(detail);
         pthread_mutex_unlock(&STATE_MUTEX);
         return (*environment)->NewStringUTF(environment, detail);
     }

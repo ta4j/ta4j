@@ -5,9 +5,12 @@ package org.ta4j.cli;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
+import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -78,6 +81,28 @@ class CliSupportTest {
         assertThat(filteredSeries.getFirstBar().getEndTime()).isAfterOrEqualTo(Instant.parse("2013-02-01T00:00:00Z"));
         assertThat(filteredSeries.getLastBar().getEndTime())
                 .isBeforeOrEqualTo(Instant.parse("2013-03-15T23:59:59.999999999Z"));
+    }
+
+    @Test
+    void loadSeriesSlicesSourceBarsBeforeResampling() throws Exception {
+        Path dataFile = copyResource("Binance-ETH-USD-PT5M-20230313_20230315.json");
+        BarSeries source = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Instant fromDate = Instant.parse("2023-03-13T18:07:00Z");
+
+        int startIndex = source.getBeginIndex();
+        while (startIndex <= source.getEndIndex() && source.getBar(startIndex).getEndTime().isBefore(fromDate)) {
+            startIndex++;
+        }
+        BarSeries expected = new BaseBarSeriesAggregator(new DurationBarAggregator(Duration.ofMinutes(15), true))
+                .aggregate(source.getSubSeries(startIndex, source.getEndIndex() + 1), "expected");
+        BarSeries actual = CliSupport.loadSeries(dataFile.toString(), "PT15M", "2023-03-13T18:07:00Z", null);
+
+        List<Bar> expectedBars = expected.getBarData();
+        List<Bar> actualBars = actual.getBarData();
+        assertThat(actualBars).hasSameSizeAs(expectedBars);
+        for (int index = 0; index < actualBars.size(); index++) {
+            assertThat(actualBars.get(index).getVolume()).isEqualTo(expectedBars.get(index).getVolume());
+        }
     }
 
     @Test
@@ -410,6 +435,20 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", null,
                 null, null, series)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Threshold indicator tests require either --exit-below or --exit-above.");
+    }
+
+    @Test
+    void buildIndicatorTestStrategyRejectsNonFiniteThresholds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String thresholdIndicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
+
+        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "NaN", null,
+                "70", null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid numeric value for --entry-below: NaN.");
+        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, null,
+                "Infinity", null, "70", series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid numeric value for --entry-above: Infinity.");
     }
 
     @Test

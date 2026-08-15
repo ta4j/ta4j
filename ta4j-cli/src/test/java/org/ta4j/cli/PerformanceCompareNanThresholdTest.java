@@ -45,6 +45,15 @@ class PerformanceCompareNanThresholdTest {
                   "warmups": 0,
                   "barCounts": [100],
                   "scenarioIds": ["sequential"],
+                  "host": {
+                    "hostId": "sha256:fixture",
+                    "osName": "fixture-os",
+                    "osArch": "fixture-arch",
+                    "osVersion": "fixture-version",
+                    "javaVersion": "fixture-java",
+                    "jvmName": "fixture-jvm",
+                    "availableProcessors": 1
+                  },
                   "results": [
                     {
                       "scenarioId": "sequential",
