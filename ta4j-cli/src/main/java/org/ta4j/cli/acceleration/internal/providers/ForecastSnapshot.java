@@ -111,7 +111,11 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             int index = fromInclusive + offset;
             Forecast forecast = switch (status) {
             case 0 -> stableForecast(index, rowOffset, rows, providerName);
-            case 1, 2 -> Forecast.unstable(index, horizon);
+            // Status 1 is a genuinely unstable input. Status 2 signals a native
+            // numerical failure inside the provider, which must be treated as a
+            // malformed result so the acceleration service can quarantine the
+            // provider and fall back to scalar execution.
+            case 1 -> Forecast.unstable(index, horizon);
             default -> throw new MalformedProviderResultException(
                     providerName + " decision " + index + " failed with status " + status);
             };

@@ -100,6 +100,24 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
+    void medianOfSortedReturnsMiddleValueForOddCounts() {
+        assertEquals(2L, PerformanceExperimentRunner.medianOfSorted(List.of(1L, 2L, 3L)));
+    }
+
+    @Test
+    void medianOfSortedAveragesMiddleValuesForEvenCounts() {
+        assertEquals(50_500_000L, PerformanceExperimentRunner.medianOfSorted(List.of(1_000_000L, 100_000_000L)));
+    }
+
+    @Test
+    void medianOfSortedDoesNotOverflowForLargeEvenCounts() {
+        assertEquals(Long.MAX_VALUE,
+                PerformanceExperimentRunner.medianOfSorted(List.of(Long.MAX_VALUE, Long.MAX_VALUE)));
+        assertEquals(Long.MAX_VALUE - 1,
+                PerformanceExperimentRunner.medianOfSorted(List.of(Long.MAX_VALUE - 2, Long.MAX_VALUE)));
+    }
+
+    @Test
     void runnerWritesReusableKalmanArtifacts() throws Exception {
         Path outputDir = tempDir.resolve("kalman");
 

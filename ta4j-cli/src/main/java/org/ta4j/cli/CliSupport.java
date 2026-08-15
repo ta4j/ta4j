@@ -93,6 +93,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -199,6 +200,7 @@ final class CliSupport {
         if (loadedSeries == null || loadedSeries.isEmpty()) {
             throw new IllegalArgumentException("Unable to load bar data from " + dataFile + ".");
         }
+        requireFiniteBars(loadedSeries, dataFile);
 
         BarSeries effectiveSeries = loadedSeries;
         Instant fromDate = parseOptionalInstant(fromDateToken, true);
@@ -222,6 +224,25 @@ final class CliSupport {
             throw new IllegalArgumentException("The selected date/timeframe filter produced an empty series.");
         }
         return effectiveSeries;
+    }
+
+    static void requireFiniteBars(BarSeries series, String dataFile) {
+        for (long index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            Bar bar = series.getBar(Math.toIntExact(index));
+            requireFiniteBarField(bar.getOpenPrice(), "open", index, dataFile);
+            requireFiniteBarField(bar.getHighPrice(), "high", index, dataFile);
+            requireFiniteBarField(bar.getLowPrice(), "low", index, dataFile);
+            requireFiniteBarField(bar.getClosePrice(), "close", index, dataFile);
+            requireFiniteBarField(bar.getVolume(), "volume", index, dataFile);
+            requireFiniteBarField(bar.getAmount(), "amount", index, dataFile);
+        }
+    }
+
+    private static void requireFiniteBarField(Num value, String field, long index, String dataFile) {
+        if (value != null && !Num.isFinite(value)) {
+            throw new IllegalArgumentException(
+                    "Non-finite " + field + " value in " + dataFile + " at bar " + index + ".");
+        }
     }
 
     static BacktestExecutor buildExecutor(BarSeries series, String executionModelToken, String commissionToken,
@@ -566,18 +587,49 @@ final class CliSupport {
     }
 
     private static boolean sameFile(Path left, Path right) {
-        if (left.toAbsolutePath().normalize().equals(right.toAbsolutePath().normalize())) {
+        Path leftNormalized = left.toAbsolutePath().normalize();
+        Path rightNormalized = right.toAbsolutePath().normalize();
+        if (leftNormalized.equals(rightNormalized)) {
             return true;
         }
-        if (Files.exists(left) && Files.exists(right)) {
-            try {
-                return Files.isSameFile(left, right);
-            } catch (IOException ex) {
-                throw new UncheckedIOException(
-                        "Could not compare output artifact paths " + left + " and " + right + ".", ex);
+        try {
+            if (Files.exists(leftNormalized) && Files.exists(rightNormalized)) {
+                return Files.isSameFile(leftNormalized, rightNormalized);
             }
+            // When either leaf does not exist yet, follow symlinks in the deepest
+            // existing ancestor so aliases through symlinked parent directories are
+            // still detected before any artifact overwrites another.
+            return resolveAliasedTarget(leftNormalized).equals(resolveAliasedTarget(rightNormalized));
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Could not compare output artifact paths " + left + " and " + right + ".",
+                    ex);
         }
-        return false;
+    }
+
+    private static Path resolveAliasedTarget(Path path) {
+        Path existing = path;
+        ArrayDeque<Path> missing = new ArrayDeque<>();
+        while (existing != null && !Files.exists(existing)) {
+            Path name = existing.getFileName();
+            if (name == null) {
+                return path;
+            }
+            missing.addFirst(name);
+            existing = existing.getParent();
+        }
+        if (existing == null) {
+            return path;
+        }
+        Path resolved;
+        try {
+            resolved = existing.toRealPath();
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Could not resolve output artifact path " + path + ".", ex);
+        }
+        for (Path name : missing) {
+            resolved = resolved.resolve(name);
+        }
+        return resolved;
     }
 
     static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {

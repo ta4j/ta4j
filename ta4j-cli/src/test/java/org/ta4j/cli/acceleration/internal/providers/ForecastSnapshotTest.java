@@ -51,6 +51,18 @@ class ForecastSnapshotTest {
         assertThat(negativeFailure.getMessage()).contains("index 0 path 1");
     }
 
+    @Test
+    void materializeRowsTreatsStatusTwoAsMalformedProviderResult() {
+        ForecastSnapshot snapshot = snapshot(series());
+
+        double[] rows = new double[4 + 3];
+        rows[0] = 2d;
+        MalformedProviderResultException failure = assertThrows(MalformedProviderResultException.class,
+                () -> snapshot.materializeRows(rows, "Metal"));
+
+        assertThat(failure.getMessage()).contains("Metal decision 0 failed with status 2");
+    }
+
     private void assertInvalidated(Consumer<BarSeries> mutation) {
         BarSeries series = series();
         SeriesStamp stamp = SeriesStamp.capture(series);

@@ -66,6 +66,8 @@ The canonical MVP input is a local OHLCV file. CSV input should include a header
 
 JSON input may use the existing ta4j example bar-series formats already supported by `JsonFileBarSeriesDataSource`.
 
+All `open`, `high`, `low`, `close`, and `volume` values (plus `amount` when JSON provides it) must be finite: `NaN` or `Infinity` tokens are rejected before any backtest runs.
+
 Use `--data-file - --data-format csv` or `--data-file - --data-format json` to read bar data from stdin.
 
 ## Quick Start
@@ -495,6 +497,8 @@ ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
 
 The base ref is required and must resolve to a commit containing `ta4j-cli/pom.xml`, otherwise the baseline worktree cannot run the ta4j-cli harness. When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory and uses one temporary Maven local repository for the whole invocation, so concurrent benchmark runs do not share mutable SNAPSHOT artifacts.
 
+Reported median durations average the two middle measurements when `--repetitions` is even, so `performance compare` thresholds are evaluated against the true median of the run times.
+
 ## Common Use Cases
 
 These recipes are shorter than the coverage examples and focus on the workflows most users are likely to repeat.
@@ -593,9 +597,10 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 - Compact expressions are the shortest interactive path; canonical JSON, version 2 strategy JSON, named example labels, and fully qualified criterion class names remain supported where documented.
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
-- Output artifacts (`--output`, `--chart`) must not refer to the same file as any input path (`--data-file`, `--strategy-json-file`, `--strategies-json-file`, `--indicator-json-file`, `--entry-rule-json-file`, `--exit-rule-json-file`, `--criteria-file`) or to each other, including symlink aliases; the CLI rejects such collisions before reading inputs or writing outputs.
+- Output artifacts (`--output`, `--chart`) must not refer to the same file as any input path (`--data-file`, `--strategy-json-file`, `--strategies-json-file`, `--indicator-json-file`, `--entry-rule-json-file`, `--exit-rule-json-file`, `--criteria-file`) or to each other, including symlink aliases and symlinked parent directories, even when the leaf files do not exist yet; the CLI rejects such collisions before reading inputs or writing outputs.
 - `strategy walk-forward` and `rule test` fail with a usage error when the configured geometry produces zero folds instead of reporting an empty success.
 - The reproducible `input.seriesSha256` fingerprint covers every observable bar field: begin/end time, time period, OHLCV, volume, amount, and trade count.
+- Loaded bar data must be finite: `NaN` or `Infinity` tokens in any OHLCV or amount column are rejected with a usage error instead of producing a backtest result.
 - `strategy backtest` and `strategy walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
 - `indicator test` accepts compact expressions or inline serialized numeric indicators, plus serialized JSON files. If you omit threshold options, it defaults to close-price crossovers around the indicator.
 - `rule test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `strategy walk-forward`.
