@@ -5,6 +5,7 @@ package org.ta4j.core.research;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.math.MathContext;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.CandidateValidator;
@@ -1413,6 +1415,49 @@ class ParameterResearchTest {
     }
 
     @Test
+    void holdoutCallbackMutationOfTrainingWindowAbortsTheRun() {
+        // A stateful candidate factory that captures the training window's
+        // series during the training invocation can mutate it during the
+        // holdout invocation. The holdout rebuild must verify the training
+        // window around every holdout callback, or the run silently returns a
+        // structurally corrupted training window despite the stable-window
+        // contract.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        BarSeries[] captured = new BarSeries[1];
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate(new ParameterResearch.CandidateFactory<Integer>() {
+                    @Override
+                    public Integer build(ResearchWindow window, ParameterSet parameters) {
+                        if (window.phase() == ResearchWindow.WindowPhase.TRAINING) {
+                            captured[0] = window.series();
+                        } else if (captured[0] != null) {
+                            captured[0].setMaximumBarCount(100);
+                        }
+                        return parameters.intValue("a");
+                    }
+                })
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .holdoutBarCount(2)
+                .search(SearchPlan.grid(2))
+                .topK(1);
+
+        assertThrows(IllegalStateException.class, builder::run);
+    }
+
+    @Test
+    void crossFactoryScoresWithNonDecimalDelegateToStringsCompareExactly() {
+        // A custom Num implementation is free to expose a Number delegate whose
+        // toString() is not BigDecimal-compatible; cross-factory ranking must
+        // compare through bigDecimalValue() instead of parsing delegate text.
+        Num custom = new NonDecimalDelegateNum(DecimalNum.valueOf("2.5"));
+        assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf(2))).isPositive();
+        assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf(3))).isNegative();
+        assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf("2.50"))).isZero();
+    }
+
+    @Test
     void interruptedRunFinalizesObservedBatch() {
         // Cancellation exits must finalize pending engine observations, or the
         // report undercounts completed iterations even when the whole batch
@@ -1518,5 +1563,209 @@ class ParameterResearchTest {
                         .of(window.series().numFactory().numOf(candidate)))
                 .search(SearchPlan.genetic(10, seed, new ParameterResearch.GeneticSettings(4, 1, 2, 0.9, 0.1)))
                 .run();
+    }
+
+    /**
+     * Test Num whose arithmetic and exact decimal value come from a wrapped
+     * {@link DecimalNum}, but whose {@link #getDelegate()} formats as a non-decimal
+     * token to prove ranking never parses delegate text.
+     */
+    private static final class NonDecimalDelegateNum implements Num {
+
+        private static final long serialVersionUID = 1L;
+
+        private final DecimalNum value;
+
+        private NonDecimalDelegateNum(DecimalNum value) {
+            this.value = value;
+        }
+
+        @Override
+        public Number getDelegate() {
+            BigDecimal delegate = value.getDelegate();
+            return new Number() {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public int intValue() {
+                    return delegate.intValue();
+                }
+
+                @Override
+                public long longValue() {
+                    return delegate.longValue();
+                }
+
+                @Override
+                public float floatValue() {
+                    return delegate.floatValue();
+                }
+
+                @Override
+                public double doubleValue() {
+                    return delegate.doubleValue();
+                }
+
+                @Override
+                public String toString() {
+                    return delegate.toPlainString() + "/delegate";
+                }
+            };
+        }
+
+        @Override
+        public BigDecimal bigDecimalValue() {
+            return value.bigDecimalValue();
+        }
+
+        @Override
+        public String getName() {
+            return "NonDecimalDelegateNum";
+        }
+
+        @Override
+        public NumFactory getNumFactory() {
+            return value.getNumFactory();
+        }
+
+        @Override
+        public Num plus(Num augend) {
+            return value.plus(augend);
+        }
+
+        @Override
+        public Num minus(Num subtrahend) {
+            return value.minus(subtrahend);
+        }
+
+        @Override
+        public Num multipliedBy(Num multiplicand) {
+            return value.multipliedBy(multiplicand);
+        }
+
+        @Override
+        public Num dividedBy(Num divisor) {
+            return value.dividedBy(divisor);
+        }
+
+        @Override
+        public Num remainder(Num divisor) {
+            return value.remainder(divisor);
+        }
+
+        @Override
+        public Num floor() {
+            return value.floor();
+        }
+
+        @Override
+        public Num ceil() {
+            return value.ceil();
+        }
+
+        @Override
+        public Num pow(int n) {
+            return value.pow(n);
+        }
+
+        @Override
+        public Num pow(Num n) {
+            return value.pow(n);
+        }
+
+        @Override
+        public Num log() {
+            return value.log();
+        }
+
+        @Override
+        public Num exp() {
+            return value.exp();
+        }
+
+        @Override
+        public Num sqrt() {
+            return value.sqrt();
+        }
+
+        @Override
+        public Num sqrt(MathContext mathContext) {
+            return value.sqrt(mathContext);
+        }
+
+        @Override
+        public Num abs() {
+            return value.abs();
+        }
+
+        @Override
+        public Num negate() {
+            return value.negate();
+        }
+
+        @Override
+        public boolean isZero() {
+            return value.isZero();
+        }
+
+        @Override
+        public boolean isPositive() {
+            return value.isPositive();
+        }
+
+        @Override
+        public boolean isPositiveOrZero() {
+            return value.isPositiveOrZero();
+        }
+
+        @Override
+        public boolean isNegative() {
+            return value.isNegative();
+        }
+
+        @Override
+        public boolean isNegativeOrZero() {
+            return value.isNegativeOrZero();
+        }
+
+        @Override
+        public boolean isEqual(Num other) {
+            return value.isEqual(other);
+        }
+
+        @Override
+        public boolean isGreaterThan(Num other) {
+            return value.isGreaterThan(other);
+        }
+
+        @Override
+        public boolean isGreaterThanOrEqual(Num other) {
+            return value.isGreaterThanOrEqual(other);
+        }
+
+        @Override
+        public boolean isLessThan(Num other) {
+            return value.isLessThan(other);
+        }
+
+        @Override
+        public boolean isLessThanOrEqual(Num other) {
+            return value.isLessThanOrEqual(other);
+        }
+
+        @Override
+        public Num min(Num other) {
+            return value.min(other);
+        }
+
+        @Override
+        public Num max(Num other) {
+            return value.max(other);
+        }
+
+        @Override
+        public int compareTo(Num other) {
+            return value.compareTo(other);
+        }
     }
 }

@@ -690,8 +690,8 @@ public final class ParameterResearch {
             Map<String, HoldoutEvaluation> holdoutById = Map.of();
             if (holdoutWindow != null && !ranked.isEmpty()) {
                 verifyUnchanged(snapshot, series);
-                HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, ranking, cache,
-                        failures);
+                HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, trainingWindow,
+                        ranking, cache, failures);
                 holdoutLeaderboard = holdout.leaderboard();
                 holdoutById = holdout.byId();
                 evaluationNanos += holdout.evaluationNanos();
@@ -840,10 +840,15 @@ public final class ParameterResearch {
         }
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
-                ResearchWindow holdoutWindow, Comparator<EvaluatedCandidate> ranking, EvaluationCache cache,
-                List<FailedEvaluation> failures) {
+                ResearchWindow holdoutWindow, ResearchWindow trainingWindow, Comparator<EvaluatedCandidate> ranking,
+                EvaluationCache cache, List<FailedEvaluation> failures) {
             List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
             SeriesSnapshot holdoutSnapshot = new SeriesSnapshot(holdoutWindow.series());
+            // A stateful candidate factory may have captured the training
+            // window's series during the training invocation and can mutate it
+            // during a holdout callback, so the training window is re-checked
+            // around every holdout invocation like the holdout window itself.
+            SeriesSnapshot trainingSnapshot = new SeriesSnapshot(trainingWindow.series());
 
             Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
             long evaluationNanos = 0L;
@@ -868,6 +873,7 @@ public final class ParameterResearch {
 
                     }
                     verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
+                    verifyUnchanged(trainingSnapshot, trainingWindow.series());
 
                     evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
@@ -2254,12 +2260,13 @@ public final class ParameterResearch {
      * example {@link org.ta4j.core.num.DecimalNum#compareTo} casts to
      * {@code DecimalNum}); instead of coercing scores at evaluation time — which
      * would destroy decimal precision — cross-factory scores are compared through
-     * exact {@link BigDecimal} values built from both {@code getDelegate()}
-     * strings, so the comparison is symmetric and preserves decimal precision in
-     * both operands. Every zero-valued score compares equal to every other
-     * zero-valued score regardless of factory or sign, and NaN scores are ordered
-     * after everything else, so an objective that declares failure for non-finite
-     * scores keeps its ranking behavior.
+     * exact {@link BigDecimal} values from both {@code bigDecimalValue()}
+     * conversions, which stay exact even when a custom {@code Num}'s delegate does
+     * not format as a decimal token. The comparison is symmetric and preserves
+     * decimal precision in both operands. Every zero-valued score compares equal to
+     * every other zero-valued score regardless of factory or sign, and NaN scores
+     * are ordered after everything else, so an objective that declares failure for
+     * non-finite scores keeps its ranking behavior.
      * </p>
      *
      * @param left  first score
@@ -2279,7 +2286,7 @@ public final class ParameterResearch {
         if (left.getClass() == right.getClass()) {
             return left.compareTo(right);
         }
-        return new BigDecimal(left.getDelegate().toString()).compareTo(new BigDecimal(right.getDelegate().toString()));
+        return left.bigDecimalValue().compareTo(right.bigDecimalValue());
     }
 
     /**
