@@ -250,25 +250,34 @@ final class ParticleSwarmEngine extends SearchEngine {
         for (Particle particle : particles) {
             for (int d = 0; d < particle.position.length; d++) {
                 DomainSpec spec = specs().get(d);
-                double r1 = random.nextDouble();
-                double r2 = random.nextDouble();
-                // A particle whose initial evaluation failed keeps its launch
-                // position as the pbest snapshot but has no validated personal
-                // best: attracting it back toward that failed point would pin
-                // it to an invalid region, so the cognitive pull stays zero
-                // until a valid evaluation establishes a personal best.
-                double cognitivePull = particle.pbestEvaluated == null ? 0d
-                        : particle.pbestPosition[d] - particle.position[d];
-                // The same guard applies to the social term: when every
-                // particle in the initial batch fails, gbestPosition falls
-                // back to an arbitrary launch position with no validated
-                // evaluation. Pulling the swarm toward that point would
-                // collapse exploration toward an invalid region, so the
-                // social pull stays zero until a valid global best exists.
-                double socialPull = gbestEvaluated == null ? 0d : gbestPosition[d] - particle.position[d];
-                double velocity = settings.inertiaWeight() * particle.velocity[d]
-                        + settings.cognitiveWeight() * r1 * cognitivePull + settings.socialWeight() * r2 * socialPull;
                 double maxVelocity = settings.velocityClampFactor() * (spec.upperBound() - spec.lowerBound());
+                double velocity;
+                if (gbestEvaluated == null) {
+                    // No validated personal or global best exists yet: the
+                    // attraction terms carry no signal, so take a bounded,
+                    // seeded random step instead of freezing the swarm at its
+                    // launch positions (or pulling it toward an arbitrary
+                    // fallback point with no validated evaluation).
+                    velocity = (random.nextDouble() * 2d - 1d) * maxVelocity;
+                } else {
+                    double r1 = random.nextDouble();
+                    double r2 = random.nextDouble();
+                    // A particle whose initial evaluation failed keeps its
+                    // launch position as the pbest snapshot but has no
+                    // validated personal best: attracting it back toward that
+                    // failed point would pin it to an invalid region, so the
+                    // cognitive pull stays zero until a valid evaluation
+                    // establishes a personal best.
+                    double cognitivePull = particle.pbestEvaluated == null ? 0d
+                            : particle.pbestPosition[d] - particle.position[d];
+                    // The global best exists and is validated here (the
+                    // no-best case is handled above), so the social pull may
+                    // attract the swarm toward it.
+                    double socialPull = gbestPosition[d] - particle.position[d];
+                    velocity = settings.inertiaWeight() * particle.velocity[d]
+                            + settings.cognitiveWeight() * r1 * cognitivePull
+                            + settings.socialWeight() * r2 * socialPull;
+                }
                 velocity = clamp(velocity, -maxVelocity, maxVelocity);
                 double position = particle.position[d] + velocity;
                 if (position < spec.lowerBound() || position > spec.upperBound()) {
