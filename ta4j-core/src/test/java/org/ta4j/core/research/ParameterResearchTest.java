@@ -221,6 +221,10 @@ class ParameterResearchTest {
 
     @Test
     void repairedCandidatesRankBelowUnrepairedWithEqualScores() {
+        // With canonical (post-normalization) identities, a proposal that
+        // repairs onto another candidate's value collides with it in the
+        // cache instead of doubling it; among DISTINCT candidates with equal
+        // scores, the repaired one still ranks below unrepaired ones.
         BarSeries series = series(1d, 2d, 3d);
         ParameterNormalizer normalizer = (data, name, value) -> {
             if ("1".equals(value)) {
@@ -232,19 +236,19 @@ class ParameterResearchTest {
                 .integer("a", 1, 5)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(window.series().numFactory().numOf(candidate)))
+                        .of(window.series().numFactory().one()))
                 .normalize(normalizer)
                 .search(SearchPlan.grid(5))
                 .run();
 
         assertThat(report.counts().repaired()).isEqualTo(1);
-        RankedCandidate first = report.trainingLeaderboard().get(0);
-        RankedCandidate second = report.trainingLeaderboard().get(1);
-        assertThat(first.parameters().intValue("a")).isEqualTo(5);
-        assertThat(first.parameters().repairCount()).isEqualTo(0);
-        assertThat(second.parameters().intValue("a")).isEqualTo(5);
-        assertThat(second.parameters().repairCount()).isEqualTo(1);
-        assertThat(second.parameters().repairs()).containsEntry("a", "clamped");
+        assertThat(report.trainingLeaderboard()).hasSize(4);
+        RankedCandidate top = report.trainingLeaderboard().get(0);
+        RankedCandidate bottom = report.trainingLeaderboard().get(3);
+        assertThat(top.parameters().repairCount()).isEqualTo(0);
+        assertThat(bottom.parameters().intValue("a")).isEqualTo(5);
+        assertThat(bottom.parameters().repairCount()).isEqualTo(1);
+        assertThat(bottom.parameters().repairs()).containsEntry("a", "clamped");
     }
 
     @Test
@@ -1292,6 +1296,28 @@ class ParameterResearchTest {
         BarSeries empty = new MockBarSeriesBuilder().build();
         assertThrows(IllegalArgumentException.class, () -> new ParameterResearch.ResearchWindow(empty,
                 Integer.MIN_VALUE, Integer.MAX_VALUE, ParameterResearch.ResearchWindow.WindowPhase.TRAINING, "w"));
+    }
+
+    @Test
+    void repairedCandidatesShareCanonicalIdentity() {
+        // Two proposals that repair to the same canonical value must dedupe
+        // through the run cache: identities come from the normalized set, not
+        // the raw proposal, or repaired duplicates would be double-counted.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize((data, name, value) -> new ParameterValue(name, "2", true, "clamped"))
+                .search(SearchPlan.grid(2))
+                .run();
+        assertThat(report.counts().proposed()).isEqualTo(2);
+        assertThat(report.counts().repaired()).isEqualTo(2);
+        assertThat(report.counts().attempted()).isEqualTo(1);
+        assertThat(report.counts().duplicate()).isEqualTo(1);
+        assertThat(report.counts().successful()).isEqualTo(1);
+        assertThat(report.trainingLeaderboard()).hasSize(1);
     }
 
     @Test

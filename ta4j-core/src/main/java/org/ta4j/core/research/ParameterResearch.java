@@ -599,7 +599,7 @@ public final class ParameterResearch {
                         counters.rejected++;
                         continue;
                     }
-                    String candidateId = proposed.stableId();
+                    String candidateId = normalized.stableId();
                     EvaluatedCandidate cached = cache.get(new CacheKey(candidateId, null));
                     if (cached != null) {
                         counters.duplicate++;
