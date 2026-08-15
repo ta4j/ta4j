@@ -1931,7 +1931,9 @@ public final class ParameterResearch {
      * @param attempted           unique training-window objective evaluations
      * @param holdoutAttempted    holdout-window objective evaluations; 0 when no
      *                            holdout window is configured
-     * @param successful          evaluations with a valid score
+     * @param successful          training evaluations with a valid score; holdout
+     *                            outcomes are excluded and reported via
+     *                            {@link ParameterResearchReport#holdoutLeaderboard()}
      * @param failed              training evaluations with an invalid score;
      *                            holdout failures are excluded and reported via
      *                            {@link ParameterResearchReport#failedEvaluations()}

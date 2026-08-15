@@ -127,6 +127,10 @@ final class ParticleSwarmEngine extends SearchEngine {
             return List.of();
         }
         move();
+        // Every swarm update advances the iteration tracker exactly once, so a
+        // leading move whose batch fully collides cannot slip a second update
+        // past the configured iteration cap or the stagnation streak.
+        completeIteration();
         int count = Math.min(particles.size(), maxNew);
         return proposeBatch(count);
     }
@@ -178,24 +182,24 @@ final class ParticleSwarmEngine extends SearchEngine {
             if (gbestPosition == null) {
                 gbestPosition = particles.get(0).position.clone();
             }
-            // Each stall move consumes an iteration like any other swarm
-            // update, so a swarm pinned to already-proposed grid points
-            // cannot outrun the configured iteration limit.
-            move();
-            completeIteration();
+            // Each retry move is another swarm update; check the iteration cap
+            // before executing it so a pinned swarm cannot outrun the limit.
             if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
                 terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
                 return List.of();
             }
-            // A stall move is an iteration that produced no new evaluation, so
-            // it advances the stagnation streak exactly like an observed
-            // non-improving iteration; a configured noImprovementIterations
-            // limit must not ride out the remaining stall moves.
+            // The update that produced these positions proposed nothing new:
+            // an empty generation advances the stagnation streak exactly like
+            // an observed non-improving iteration, so a configured
+            // noImprovementIterations limit must not ride out stall moves.
             noImprovementStreak++;
             if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
                 terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
                 return List.of();
             }
+            move();
+            completeIteration();
+
         }
         // STALL_MOVE_LIMIT full swarm moves without reaching a single unseen
         // grid point: the swarm is effectively converged. With the stagnation

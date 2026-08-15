@@ -1438,6 +1438,29 @@ class ParameterResearchTest {
     }
 
     @Test
+    void collidingSwarmCountsEveryUpdateAgainstIterationTracker() {
+        // With a tiny velocity clamp every swarm update moves the particles
+        // by less than one grid step, so after the launch every batch fully
+        // collides with already-proposed grid points and the stall loop moves
+        // the swarm 16 more times before the fallthrough. Each of those
+        // updates is an iteration: 1 launch generation + 1 leading move + 16
+        // stall moves must all appear in iterationsCompleted, or a pinned
+        // swarm understates the work it performed against the iteration cap.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 0, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .search(SearchPlan.particleSwarm(100, 23L, new SwarmSettings(2, 0.5, 0.5, 1.49618, 1e-6)))
+                .maxIterations(100)
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_IMPROVEMENT);
+        assertThat(report.counts().iterationsCompleted()).isEqualTo(18);
+    }
+
+    @Test
     void holdoutCallbackMutationOfTrainingWindowAbortsTheRun() {
         // A stateful candidate factory that captures the training window's
         // series during the training invocation can mutate it during the
