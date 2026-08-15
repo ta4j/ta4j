@@ -30,7 +30,9 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
@@ -132,6 +134,24 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.loadSeries(dataFile.toString(), null, "2015-01-01", "2015-01-31"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The selected date/timeframe filter produced an empty series.");
+    }
+
+    @Test
+    void requireFiniteBarsRejectsNonFiniteObservableFields() {
+        BaseBarSeries nanClose = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        nanClose.barBuilder().closePrice(Double.NaN).add();
+
+        assertThatThrownBy(() -> CliSupport.requireFiniteBars(nanClose, "test.csv"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Non-finite close value in test.csv at bar 0.");
+
+        BaseBarSeries infiniteVolume = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        infiniteVolume.barBuilder().closePrice(1d).volume(Double.POSITIVE_INFINITY).add();
+
+        assertThatThrownBy(() -> CliSupport.requireFiniteBars(infiniteVolume, "test.csv"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Non-finite volume value in test.csv at bar 0.");
     }
 
     @Test

@@ -791,6 +791,52 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestRejectsArtifactsAliasedThroughSymlinkedParentDirectories() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path realDir = tempDir.resolve("real");
+        Files.createDirectory(realDir);
+        Path aliasDir = tempDir.resolve("alias");
+        Files.createSymbolicLink(aliasDir, realDir);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", realDir.resolve("result.json").toString(),
+                "--chart", aliasDir.resolve("result.json").toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --chart must not refer to the same file");
+        assertThat(Files.exists(realDir.resolve("result.json"))).isFalse();
+    }
+
+    @Test
+    void backtestRejectsNonFiniteTokensInCsvData() throws Exception {
+        Path nanCloseFile = tempDir.resolve("nan-close.csv");
+        Files.writeString(nanCloseFile, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                2013-01-03,547.88,549.67,541.00,NaN,12605900
+                2013-01-04,536.97,538.63,525.83,527.00,21226200
+                """);
+
+        CliRunResult nanClose = runCliAllowingError("strategy", "backtest", "--data-file", nanCloseFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(nanClose.exitCode()).isEqualTo(2);
+        assertThat(nanClose.stderr()).contains("Unable to load bar data from " + nanCloseFile);
+
+        Path infiniteVolumeFile = tempDir.resolve("infinite-volume.csv");
+        Files.writeString(infiniteVolumeFile, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                2013-01-03,547.88,549.67,541.00,542.10,Infinity
+                2013-01-04,536.97,538.63,525.83,527.00,21226200
+                """);
+
+        CliRunResult infiniteVolume = runCliAllowingError("strategy", "backtest", "--data-file",
+                infiniteVolumeFile.toString(), "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(infiniteVolume.exitCode()).isEqualTo(2);
+        assertThat(infiniteVolume.stderr()).contains("Unable to load bar data from " + infiniteVolumeFile);
+    }
+
+    @Test
     void backtestRejectsOutputPathAliasingStrategyJsonFile() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path strategyJsonFile = tempDir.resolve("strategy.json");

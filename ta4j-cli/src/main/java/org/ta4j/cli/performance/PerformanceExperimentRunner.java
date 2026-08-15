@@ -302,6 +302,21 @@ public final class PerformanceExperimentRunner {
     }
 
     /**
+     * Returns the median of an already sorted list of non-negative durations. Even
+     * counts average the two middle values with an overflow-safe midpoint formula
+     * so {@code Long.MAX_VALUE} inputs cannot wrap negative.
+     */
+    static long medianOfSorted(List<Long> sortedDurations) {
+        int size = sortedDurations.size();
+        if (size % 2 == 1) {
+            return sortedDurations.get(size / 2);
+        }
+        long lower = sortedDurations.get(size / 2 - 1);
+        long upper = sortedDurations.get(size / 2);
+        return lower / 2 + upper / 2 + (lower % 2 + upper % 2) / 2;
+    }
+
+    /**
      * Artifacts from one performance experiment run.
      *
      * @param outputDir       directory containing written artifacts
@@ -426,7 +441,7 @@ public final class PerformanceExperimentRunner {
             long totalDuration = measurements.stream().mapToLong(PerformanceScenario.Measurement::durationNanos).sum();
             long totalOperations = measurements.stream().mapToLong(PerformanceScenario.Measurement::operations).sum();
             long average = totalDuration / measurements.size();
-            long median = durations.get(durations.size() / 2);
+            long median = medianOfSorted(durations);
             int p90Index = Math.min(durations.size() - 1, (int) Math.ceil(durations.size() * 0.9d) - 1);
             double operationsPerSecond = totalDuration == 0 ? 0d : totalOperations / (totalDuration / 1_000_000_000d);
             return new ScenarioStats(durations.getFirst(), durations.getLast(), average, median,
