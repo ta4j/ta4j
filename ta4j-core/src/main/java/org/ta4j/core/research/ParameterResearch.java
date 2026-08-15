@@ -291,63 +291,50 @@ public final class ParameterResearch {
         }
 
         /**
-         * Binds the candidate factory and re-binds the builder's candidate type to the
-         * factory result type.
+         * Binds the candidate factory and returns the candidate stage of the workflow.
+         *
+         * <p>
+         * The returned {@link CandidateStage} is the only workflow type that exposes
+         * the objective methods ({@link CandidateStage#maximize},
+         * {@link CandidateStage#minimize}) and {@link CandidateStage#run run()}.
+         * Because a stale pre-binding builder reference no longer offers objective
+         * methods, an objective whose candidate type diverges from the bound factory
+         * cannot be expressed at all: type mismatches fail at configuration time
+         * instead of surfacing as a bridge {@link ClassCastException} deep inside the
+         * run.
+         * </p>
          *
          * @param factory builds a candidate from a window and a normalized parameter
          *                set
          * @param <U>     candidate type
-         * @return this builder with {@code U} as its candidate type
-         * @throws NullPointerException  if {@code factory} is null
-         * @throws IllegalStateException if the objective is already configured, because
-         *                               the candidate type must be declared first, or
-         *                               if a candidate factory was already bound,
-         *                               because re-binding would leave previously
-         *                               returned builder references with a stale
-         *                               candidate type
+         * @return the candidate stage with {@code U} as its candidate type
+         * @throws NullPointerException if {@code factory} is null
          * @since 0.24.2
          */
         @SuppressWarnings("unchecked")
-        public <U> Builder<U> candidate(CandidateFactory<U> factory) {
-            if (objective != null) {
-                throw new IllegalStateException("candidate(...) must be declared before maximize(...)/minimize(...) "
-                        + "so the candidate type cannot diverge from the objective");
-            }
-            if (candidateFactory != null) {
-                throw new IllegalStateException("candidate(...) was already bound: re-binding the candidate type on "
-                        + "the same builder would leave previously returned builder references with a stale type");
-            }
+        public <U> CandidateStage<U> candidate(CandidateFactory<U> factory) {
             this.candidateFactory = (CandidateFactory<T>) (CandidateFactory<?>) Objects.requireNonNull(factory,
                     "factory");
-            return (Builder<U>) this;
+            return (CandidateStage<U>) (CandidateStage<?>) new CandidateStage<>(this);
         }
 
         /**
-         * Sets the objective with maximization direction.
+         * Stores an objective typed by the candidate stage.
+         *
+         * <p>
+         * The cast is erased; the objective is only ever invoked with candidates built
+         * by the factory that produced the stage, so a stage-typed objective always
+         * lines up with the bound factory.
+         * </p>
          *
          * @param objective objective function
-         * @return this builder
-         * @throws NullPointerException if {@code objective} is null
+         * @param direction optimization direction
          * @since 0.24.2
          */
-        public Builder<T> maximize(ObjectiveFunction<T> objective) {
-            this.objective = Objects.requireNonNull(objective, "objective");
-            this.direction = Direction.MAXIMIZE;
-            return this;
-        }
-
-        /**
-         * Sets the objective with minimization direction.
-         *
-         * @param objective objective function
-         * @return this builder
-         * @throws NullPointerException if {@code objective} is null
-         * @since 0.24.2
-         */
-        public Builder<T> minimize(ObjectiveFunction<T> objective) {
-            this.objective = Objects.requireNonNull(objective, "objective");
-            this.direction = Direction.MINIMIZE;
-            return this;
+        @SuppressWarnings("unchecked")
+        private void bindObjective(ObjectiveFunction<?> objective, Direction direction) {
+            this.objective = (ObjectiveFunction<T>) objective;
+            this.direction = direction;
         }
 
         /**
@@ -520,12 +507,9 @@ public final class ParameterResearch {
          *                                  engine rejects a declared domain
          * @since 0.24.2
          */
-        public ParameterResearchReport run() {
+        private ParameterResearchReport runInternal() {
             if (domains.isEmpty()) {
                 throw new IllegalStateException("at least one parameter domain is required");
-            }
-            if (candidateFactory == null) {
-                throw new IllegalStateException("candidate(...) is required before run()");
             }
             if (objective == null) {
                 throw new IllegalStateException("maximize(...) or minimize(...) is required before run()");
@@ -599,6 +583,18 @@ public final class ParameterResearch {
             TerminationReason reason = null;
             boolean targetReached = false;
             Set<String> proposedRawIds = new HashSet<>();
+            // Raw re-proposals (genetic elite slots, swarm re-projections)
+            // re-run the user normalizer and validator on identical raw
+            // values; elite-heavy populations can amplify that callback
+            // work far beyond MAX_PROPOSALS_PER_RUN. The run configuration
+            // is frozen once runInternal() starts and the dataset revision
+            // contract makes the normalizer deterministic per run, so the
+            // processed outcome per raw id (validated normalized set, or
+            // rejection) is memoized and re-proposals serve it without
+            // re-invoking user callbacks. The memo never exceeds
+            // MAX_PROPOSALS_PER_RUN entries because only that many distinct
+            // raw ids can be proposed under the run-wide cap.
+            Map<String, ParameterSet> processedRawIds = new LinkedHashMap<>();
             while (true) {
                 if (Thread.currentThread().isInterrupted()) {
                     engine.finalizeObserved();
@@ -629,39 +625,49 @@ public final class ParameterResearch {
                     }
                     break;
                 }
+                boolean batchProcessed = false;
                 for (ParameterSet proposed : batch) {
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
+                    batchProcessed = true;
                     counters.proposed++;
                     // A re-proposal of an already-proposed raw id (genetic
                     // elite slots, swarm re-projections) is bounded by the
                     // evaluation budget and excluded from the proposal cap;
                     // every other proposal, including a normalized alias of a
                     // new raw id, still counts because it performs the full
-                    // normalization and validation work.
-                    if (!proposedRawIds.add(proposed.stableId())) {
+                    // normalization and validation work. That work is
+                    // memoized per raw id (see processedRawIds above): the
+                    // run configuration is frozen and the dataset contract
+                    // makes both callbacks deterministic for the run.
+                    String rawId = proposed.stableId();
+                    if (!proposedRawIds.add(rawId)) {
                         counters.rawReproposals++;
                     }
-                    ParameterSet normalized = normalizeProposal(proposed, normalizerData, runNormalizer,
-                            runDomainsByName);
+                    ParameterSet processed;
+                    if (processedRawIds.containsKey(rawId)) {
+                        processed = processedRawIds.get(rawId);
+                    } else {
+                        processed = normalizeProposal(proposed, normalizerData, runNormalizer, runDomainsByName);
+                        if (processed != null) {
+                            if (!processed.repairs().isEmpty()) {
+                                counters.repaired++;
+                            }
+                            try {
+                                runValidator.validate(processed);
+                            } catch (RuntimeException ex) {
+                                processed = null;
+                            }
+                        }
+                        processedRawIds.put(rawId, processed);
+                    }
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
-                    if (normalized == null) {
+                    if (processed == null) {
                         counters.rejected++;
                         continue;
                     }
-                    if (!normalized.repairs().isEmpty()) {
-                        counters.repaired++;
-                    }
-                    try {
-                        runValidator.validate(normalized);
-                    } catch (RuntimeException ex) {
-                        counters.rejected++;
-                        verifyUnchanged(trainingSnapshot, trainingWindow.series());
-                        continue;
-                    }
-                    verifyUnchanged(trainingSnapshot, trainingWindow.series());
-                    String candidateId = normalized.stableId();
+                    String candidateId = processed.stableId();
                     EvaluatedCandidate cached = cache.get(new CacheKey(candidateId, null));
                     if (cached != null) {
                         counters.duplicate++;
@@ -673,11 +679,11 @@ public final class ParameterResearch {
                     long evaluationStart = System.nanoTime();
                     EvaluatedCandidate evaluated;
                     try {
-                        T candidate = runCandidateFactory.build(trainingWindow, normalized);
+                        T candidate = runCandidateFactory.build(trainingWindow, processed);
                         ObjectiveEvaluation outcome = runObjective.evaluate(candidate, trainingWindow);
-                        evaluated = classify(candidateId, normalized, (int) counters.attempted, outcome);
+                        evaluated = classify(candidateId, processed, (int) counters.attempted, outcome);
                     } catch (RuntimeException ex) {
-                        evaluated = EvaluatedCandidate.failed(candidateId, normalized, (int) counters.attempted,
+                        evaluated = EvaluatedCandidate.failed(candidateId, processed, (int) counters.attempted,
                                 "evaluation threw " + ex.getClass().getSimpleName() + message(ex), Map.of());
                     }
                     evaluationNanos += System.nanoTime() - evaluationStart;
@@ -698,10 +704,12 @@ public final class ParameterResearch {
                         engine.finalizeObserved();
                         break;
                     }
-
                 }
+
                 if (Thread.currentThread().isInterrupted()) {
-                    engine.finalizeObserved();
+                    if (batchProcessed) {
+                        engine.finalizeObserved();
+                    }
                     reason = TerminationReason.CANCELED;
                     break;
                 }
@@ -893,6 +901,18 @@ public final class ParameterResearch {
                     // index would wrap the +2 window and silently skip every
                     // declared position. Indices beyond the engine's
                     // enumerable range cannot belong to a declared position.
+                    // Declared values match DomainSpec exactly: positions run
+                    // from 0 through lastIndex without any clamping to d.to(),
+                    // so the last declared index is an alias of d.to() and any
+                    // position beyond it is out of range. lastIndex is floored
+                    // division, mirroring DomainSpec.of; longValueExact is safe
+                    // because a domain reaching canonicalization has passed
+                    // DomainSpec.of, which rejects cardinalities beyond
+                    // Integer.MAX_VALUE - 1.
+                    long lastIndex = BigDecimal.valueOf(d.to())
+                            .subtract(BigDecimal.valueOf(d.from()))
+                            .divide(BigDecimal.valueOf(d.step()), 0, RoundingMode.FLOOR)
+                            .longValueExact();
                     BigDecimal rawDecimal = new BigDecimal(raw);
                     BigDecimal indexDecimal = rawDecimal.subtract(BigDecimal.valueOf(d.from()))
                             .divide(BigDecimal.valueOf(d.step()), 0, RoundingMode.HALF_UP);
@@ -900,10 +920,11 @@ public final class ParameterResearch {
                         return null;
                     }
                     long index = indexDecimal.longValue();
-                    for (long i = Math.max(0L, index - 2); i <= index + 2; i++) {
-                        double declared = Math.min(BigDecimal.valueOf(d.from())
+                    long upper = Math.min(index + 2, lastIndex);
+                    for (long i = Math.max(0L, index - 2); i <= upper; i++) {
+                        double declared = BigDecimal.valueOf(d.from())
                                 .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(i)))
-                                .doubleValue(), d.to());
+                                .doubleValue();
                         if (canonicalDecimal(declared).equals(canonical)) {
                             return canonical;
                         }
@@ -1068,6 +1089,250 @@ public final class ParameterResearch {
                 joiner.add(String.valueOf(searchPlan.swarmSettings()));
             }
             return shortHash(joiner.toString());
+        }
+    }
+
+    /**
+     * Candidate stage of the workflow.
+     *
+     * <p>
+     * Returned by {@link Builder#candidate}: the stage carries the candidate type
+     * {@code T} bound by the factory and is the only workflow type that exposes the
+     * objective methods ({@link #maximize}, {@link #minimize}) and {@link #run()}.
+     * Domain, plan, holdout, retention, and callback configuration methods delegate
+     * to the underlying builder, so every stage method returns this stage.
+     * </p>
+     *
+     * @param <T> candidate type bound by {@link Builder#candidate}
+     * @since 0.24.2
+     */
+    public static final class CandidateStage<T> {
+
+        private final Builder<?> builder;
+
+        private CandidateStage(Builder<?> builder) {
+            this.builder = builder;
+        }
+
+        /**
+         * Sets the objective with maximization direction.
+         *
+         * @param objective objective function
+         * @return this stage
+         * @throws NullPointerException if {@code objective} is null
+         * @since 0.24.2
+         */
+        public CandidateStage<T> maximize(ObjectiveFunction<T> objective) {
+            builder.bindObjective(Objects.requireNonNull(objective, "objective"), Direction.MAXIMIZE);
+            return this;
+        }
+
+        /**
+         * Sets the objective with minimization direction.
+         *
+         * @param objective objective function
+         * @return this stage
+         * @throws NullPointerException if {@code objective} is null
+         * @since 0.24.2
+         */
+        public CandidateStage<T> minimize(ObjectiveFunction<T> objective) {
+            builder.bindObjective(Objects.requireNonNull(objective, "objective"), Direction.MINIMIZE);
+            return this;
+        }
+
+        /**
+         * Declares an ordered integer domain; delegates to
+         * {@link Builder#integer(String, int, int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> integer(String name, int from, int to) {
+            builder.integer(name, from, to);
+            return this;
+        }
+
+        /**
+         * Declares an ordered integer domain with a custom step; delegates to
+         * {@link Builder#integer(String, int, int, int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> integer(String name, int from, int to, int step) {
+            builder.integer(name, from, to, step);
+            return this;
+        }
+
+        /**
+         * Declares an ordered decimal domain; delegates to
+         * {@link Builder#decimal(String, double, double, double)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> decimal(String name, double from, double to, double step) {
+            builder.decimal(name, from, to, step);
+            return this;
+        }
+
+        /**
+         * Declares a two-value boolean domain; delegates to
+         * {@link Builder#bool(String)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> bool(String name) {
+            builder.bool(name);
+            return this;
+        }
+
+        /**
+         * Declares a categorical domain; delegates to
+         * {@link Builder#categorical(String, String...)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> categorical(String name, String... values) {
+            builder.categorical(name, values);
+            return this;
+        }
+
+        /**
+         * Declares a custom parameter domain; delegates to
+         * {@link Builder#domain(ParameterDomain)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> domain(ParameterDomain domain) {
+            builder.domain(domain);
+            return this;
+        }
+
+        /**
+         * Sets the search plan; delegates to {@link Builder#search(SearchPlan)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> search(SearchPlan plan) {
+            builder.search(plan);
+            return this;
+        }
+
+        /**
+         * Holds out the given fraction of the final bars; delegates to
+         * {@link Builder#holdoutFraction(double)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> holdoutFraction(double fraction) {
+            builder.holdoutFraction(fraction);
+            return this;
+        }
+
+        /**
+         * Holds out the given number of final bars; delegates to
+         * {@link Builder#holdoutBarCount(int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> holdoutBarCount(int barCount) {
+            builder.holdoutBarCount(barCount);
+            return this;
+        }
+
+        /**
+         * Sets how many top training candidates are rebuilt on the holdout window;
+         * delegates to {@link Builder#topK(int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> topK(int topK) {
+            builder.topK(topK);
+            return this;
+        }
+
+        /**
+         * Sets the cross-parameter validator; delegates to
+         * {@link Builder#validate(CandidateValidator)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> validate(CandidateValidator validator) {
+            builder.validate(validator);
+            return this;
+        }
+
+        /**
+         * Sets the optional value normalizer; delegates to
+         * {@link Builder#normalize(ParameterNormalizer)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> normalize(ParameterNormalizer normalizer) {
+            builder.normalize(normalizer);
+            return this;
+        }
+
+        /**
+         * Sets an optional target score; delegates to {@link Builder#targetScore(Num)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> targetScore(Num targetScore) {
+            builder.targetScore(targetScore);
+            return this;
+        }
+
+        /**
+         * Caps the number of iterations; delegates to
+         * {@link Builder#maxIterations(int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> maxIterations(int iterations) {
+            builder.maxIterations(iterations);
+            return this;
+        }
+
+        /**
+         * Sets the stagnation tolerance; delegates to
+         * {@link Builder#noImprovementIterations(int)}.
+         *
+         * @return this stage
+         * @since 0.24.2
+         */
+        public CandidateStage<T> noImprovementIterations(int iterations) {
+            builder.noImprovementIterations(iterations);
+            return this;
+        }
+
+        /**
+         * Runs the search and returns the final report.
+         *
+         * @return final research report
+         * @throws IllegalStateException    if required configuration is missing, the
+         *                                  series is empty, or the dataset changed
+         *                                  during the run
+         * @throws IllegalArgumentException if the holdout window leaves no training
+         *                                  bar, the topK holdout reservation leaves no
+         *                                  training evaluation budget, or the selected
+         *                                  engine rejects a declared domain
+         * @since 0.24.2
+         */
+        public ParameterResearchReport run() {
+            return builder.runInternal();
         }
     }
 

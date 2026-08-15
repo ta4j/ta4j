@@ -10,9 +10,12 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -49,7 +52,7 @@ class ParameterResearchTest {
         return new MockBarSeriesBuilder().withData(closes).build();
     }
 
-    private static ParameterResearch.Builder<Integer> sumGridBuilder(BarSeries series, int budget) {
+    private static ParameterResearch.CandidateStage<Integer> sumGridBuilder(BarSeries series, int budget) {
         return ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .integer("b", 3, 4)
@@ -59,7 +62,7 @@ class ParameterResearchTest {
                 .search(SearchPlan.grid(budget));
     }
 
-    private static ParameterResearch.Builder<Integer> holdoutConfigBuilder(BarSeries series) {
+    private static ParameterResearch.CandidateStage<Integer> holdoutConfigBuilder(BarSeries series) {
         return ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> 1)
@@ -71,27 +74,19 @@ class ParameterResearchTest {
     @Test
     void builderRequiresDomainsCandidateObjectiveAndPlan() {
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> noDomains = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> noDomains = ParameterResearch.<Integer>builder(series)
                 .candidate((window, parameters) -> 1)
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                         .of(series.numFactory().numOf(candidate)))
                 .search(SearchPlan.grid(4));
         assertThrows(IllegalStateException.class, noDomains::run);
-
-        ParameterResearch.Builder<Integer> noCandidate = ParameterResearch.<Integer>builder(series)
-                .integer("a", 1, 2)
-                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(series.numFactory().numOf(candidate)))
-                .search(SearchPlan.grid(4));
-        assertThrows(IllegalStateException.class, noCandidate::run);
-
-        ParameterResearch.Builder<Integer> noObjective = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> noObjective = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> 1)
                 .search(SearchPlan.grid(4));
         assertThrows(IllegalStateException.class, noObjective::run);
 
-        ParameterResearch.Builder<Integer> noPlan = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> noPlan = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> 1)
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
@@ -398,7 +393,7 @@ class ParameterResearchTest {
     @Test
     void particleSwarmRejectsNonNumericDomainsBeforeEvaluation() {
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 5)
                 .bool("flag")
                 .candidate((window, parameters) -> parameters.intValue("a"))
@@ -492,7 +487,7 @@ class ParameterResearchTest {
     @Test
     void targetScoreRejectsNonFiniteValues() {
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 5)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
@@ -636,13 +631,12 @@ class ParameterResearchTest {
         // run() start, so the leaderboard still reflects the original
         // maximize objective with candidate 4 on top.
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 0, 4)
                 .candidate((window, parameters) -> parameters.intValue("a"));
         builder.maximize((candidate, window) -> {
             if (candidate == 0) {
-                builder.candidate((w, p) -> p.intValue("a") + 100)
-                        .minimize((c, w) -> ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(c)));
+                builder.minimize((c, w) -> ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(c)));
             }
             return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
         }).search(SearchPlan.grid(5));
@@ -693,7 +687,7 @@ class ParameterResearchTest {
     @Test
     void datasetRevisionFailsTheRun() {
         BarSeries series = series(1d, 2d, 3d, 4d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 4)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> {
@@ -722,24 +716,13 @@ class ParameterResearchTest {
     @Test
     void decimalDomainRejectsCardinalityOverflow() {
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .decimal("a", 0d, 1d, 1e-20)
                 .candidate((window, parameters) -> (int) Math.round(parameters.decimalValue("a") * 10))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                         .of(window.series().numFactory().numOf(candidate)))
                 .search(SearchPlan.grid(2));
         assertThrows(IllegalArgumentException.class, builder::run);
-    }
-
-    @Test
-    void candidateDeclaredAfterObjectiveIsRejected() {
-        BarSeries series = series(1d, 2d, 3d);
-        assertThrows(IllegalStateException.class,
-                () -> ParameterResearch.<Integer>builder(series)
-                        .integer("a", 1, 3)
-                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                                .of(window.series().numFactory().numOf(candidate)))
-                        .candidate((window, parameters) -> parameters.intValue("a")));
     }
 
     @Test
@@ -778,7 +761,7 @@ class ParameterResearchTest {
     void datasetRevisionChangeOnFinalEvaluationIsRejected() {
         BarSeries series = series(1d, 2d, 3d, 4d);
         AtomicInteger evaluations = new AtomicInteger();
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 3)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> {
@@ -815,14 +798,14 @@ class ParameterResearchTest {
     @Test
     void objectiveIdCoversTerminationConfiguration() {
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> withTarget = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> withTarget = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 3)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                         .of(window.series().numFactory().numOf(candidate)))
                 .search(SearchPlan.grid(3))
                 .targetScore(series.numFactory().numOf(2));
-        ParameterResearch.Builder<Integer> withoutTarget = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> withoutTarget = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 3)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
@@ -922,7 +905,7 @@ class ParameterResearchTest {
         // materializing a huge list.
         double huge = Math.scalb(1d, 53);
         BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .decimal("a", huge, huge + 100_000d, 1d)
                 .candidate((window, parameters) -> 1)
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
@@ -1301,22 +1284,6 @@ class ParameterResearchTest {
     }
 
     @Test
-    void candidateRebindingIsRejected() {
-        // Re-binding the candidate factory through a retained typed alias
-        // would leave both Builder<A> and Builder<B> usable while run()
-        // builds only one type: the bridge cast would fail at run time
-        // instead of at configuration time. The second binding must be
-        // rejected while the first alias is still reachable.
-        BarSeries series = series(1d, 2d, 3d);
-        ParameterResearch.Builder<String> builder = ParameterResearch.<String>builder(series)
-                .candidate((window, parameters) -> "first");
-
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> builder.candidate((window, parameters) -> 42));
-        assertThat(exception.getMessage()).contains("already bound");
-    }
-
-    @Test
     void gridRejectsEveryProposalAndStillTerminates() {
         // A rejecting normalizer never shrinks the budget, so the grid keeps
         // proposing until the space is exhausted. The engine must terminate
@@ -1336,6 +1303,64 @@ class ParameterResearchTest {
         // Zero successful evaluations overrides the engine-level exhaustion
         // reason, matching the other all-rejected scenarios.
         assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+    }
+
+    @Test
+    void rawReproposalsServeMemoizedNormalizationWithoutReinvokingCallbacks() {
+        // Genetic elitism re-proposes already-seen raw sets: the 8 elite slots
+        // of every later generation carry gen-1 raw sets forward. The run
+        // configuration is frozen and the normalizer/validator are
+        // deterministic per run, so their outcome is memoized per distinct
+        // raw id: with an identity normalizer over a wide domain the
+        // callbacks must fire once per distinct raw id even though the
+        // budget proposes many more sets.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        AtomicInteger normalizerCalls = new AtomicInteger();
+        AtomicInteger validatorCalls = new AtomicInteger();
+        Set<String> validatedRawIds = Collections.synchronizedSet(new HashSet<>());
+
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 100)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize((data, name, value) -> {
+                    normalizerCalls.incrementAndGet();
+                    return new ParameterValue(name, value, true, "");
+                })
+                .validate(parameters -> {
+                    validatorCalls.incrementAndGet();
+                    validatedRawIds.add(parameters.stableId());
+                })
+                .search(SearchPlan.genetic(64, 7L, new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
+                .run();
+
+        // The run really did re-propose raw sets, and the callbacks fired
+        // exactly once per distinct raw id instead of once per proposal.
+        assertThat(report.counts().proposed()).isGreaterThan(validatedRawIds.size());
+        assertThat(validatorCalls.get()).isEqualTo(validatedRawIds.size());
+        assertThat(normalizerCalls.get()).isEqualTo(validatorCalls.get());
+    }
+
+    @Test
+    void decimalNormalizationBeyondLastDeclaredIndexKeepsRawIdentity() {
+        // Domain 0..1 step 0.6 declares only 0 and 0.6; a normalizer mapping
+        // "0" onto "1.0" (beyond the last declared index) must keep "1.0" as
+        // its own raw identity instead of clamping it onto the last declared
+        // position: both grid proposals stay distinct.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .decimal("a", 0d, 1d, 0.6d)
+                .candidate((window, parameters) -> 1)
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(1)))
+                .normalize((data, name, value) -> "0".equals(value) ? new ParameterValue(name, "1.0", true, "swapped")
+                        : new ParameterValue(name, "1", true, "swapped"))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.counts().duplicate()).isZero();
     }
 
     @Test
@@ -1672,7 +1697,7 @@ class ParameterResearchTest {
         // contract.
         BarSeries series = series(1d, 2d, 3d, 4d, 5d);
         BarSeries[] captured = new BarSeries[1];
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate(new ParameterResearch.CandidateFactory<Integer>() {
                     @Override
@@ -1702,8 +1727,8 @@ class ParameterResearchTest {
         // candidate and stay within the exact evaluation budget instead of
         // inflating holdout evaluations past maxEvaluations.
         BarSeries series = series(1d, 2d, 3d, 4d, 5d, 6d);
-        ParameterResearch.Builder<Integer>[] captured = new ParameterResearch.Builder[1];
-        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+        ParameterResearch.CandidateStage<?>[] captured = new ParameterResearch.CandidateStage<?>[1];
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 12)
                 .candidate((window, parameters) -> {
                     captured[0].topK(9);

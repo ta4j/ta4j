@@ -311,6 +311,16 @@ final class ParticleSwarmEngine extends SearchEngine {
         Set<String> moveAssigned = new HashSet<>();
         for (Particle particle : particles) {
             int[] resampled = gbestEvaluated == null ? nextUnexploredCell(moveAssigned) : null;
+            // Sweep exhaustion is monotone: once the mixed-radix cursor has
+            // no unseen cell to hand out, no later particle in this move can
+            // receive one either, and the attraction terms stay inert while
+            // no validated best exists. Remaining particles keep their
+            // positions — exactly what the no-cell path does today — so the
+            // break only skips dead per-particle work (random draws and
+            // attraction arithmetic) that cannot change their positions.
+            if (gbestEvaluated == null && resampled == null) {
+                break;
+            }
             for (int d = 0; d < particle.position.length; d++) {
                 DomainSpec spec = specs().get(d);
                 if (gbestEvaluated == null) {
