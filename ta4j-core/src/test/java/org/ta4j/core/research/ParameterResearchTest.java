@@ -1396,6 +1396,35 @@ class ParameterResearchTest {
     }
 
     @Test
+    void geneticEliteReproposalsDoNotTripTheProposalCap() {
+        // A genetic engine re-proposes its elite slots every generation; those
+        // proposals are cache hits and never consume the evaluation budget.
+        // The proposal cap must exclude cache-served duplicates so a healthy
+        // elitist run exhausts its declared evaluation budget instead of
+        // tripping the cap early.
+        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
+        ParameterResearch.MAX_PROPOSALS_PER_RUN = 50;
+        try {
+            BarSeries series = series(1d, 2d, 3d);
+
+            ParameterResearchReport report = ParameterResearch.<Double>builder(series)
+                    .decimal("a", 0d, 1d, 0.01d)
+                    .candidate((window, parameters) -> parameters.decimalValue("a"))
+                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                            .of(window.series().numFactory().numOf(candidate)))
+                    .search(SearchPlan.genetic(32, 7L,
+                            new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
+                    .run();
+            assertThat(report.counts().attempted()).isEqualTo(32);
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.EVALUATION_BUDGET_EXHAUSTED);
+            assertThat(report.counts().proposed()).isGreaterThan(50L);
+            assertThat(report.counts().duplicate()).isGreaterThan(0L);
+        } finally {
+            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
+        }
+    }
+
+    @Test
     void normalizerMutationOfWindowCapacityAbortsTheRun() {
         // Structural changes that SeriesSnapshot tracks must abort the run,
         // including maximum-bar-count changes: a normalizer can mutate the

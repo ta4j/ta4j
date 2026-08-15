@@ -105,8 +105,12 @@ public final class ParameterResearch {
      * Maximum number of proposals a single run processes before terminating.
      * Rejected proposals never consume the evaluation budget, so a rejection-heavy
      * normalizer over a large space would otherwise make genetic or particle-swarm
-     * engines propose (and retain proposal ids) without bound. Non-final so tests
-     * can exercise the bound cheaply.
+     * engines propose (and retain proposal ids) without bound. Cache-served
+     * duplicates are excluded from the bound: they re-propose already evaluated
+     * candidates (for example a genetic engine's elite slots) and their count is
+     * itself bounded by the evaluation budget, so counting them would stop a
+     * healthy elitist run before its declared budget is exhausted. Non-final so
+     * tests can exercise the bound cheaply.
      */
     static int MAX_PROPOSALS_PER_RUN = 1_000_000;
 
@@ -587,7 +591,7 @@ public final class ParameterResearch {
                     break;
                 }
                 verifyUnchanged(snapshot, series);
-                long allowance = MAX_PROPOSALS_PER_RUN - counters.proposed;
+                long allowance = MAX_PROPOSALS_PER_RUN - (counters.proposed - counters.duplicate);
                 if (allowance <= 0) {
                     engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
                     engine.finalizeObserved();
@@ -693,7 +697,7 @@ public final class ParameterResearch {
                     break;
                 }
 
-                if (counters.proposed >= MAX_PROPOSALS_PER_RUN) {
+                if (counters.proposed - counters.duplicate >= MAX_PROPOSALS_PER_RUN) {
                     engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
                     engine.finalizeObserved();
                     reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
@@ -2000,9 +2004,12 @@ public final class ParameterResearch {
         /** The configured iteration limit was reached. */
         ITERATION_LIMIT,
         /**
-         * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals — mostly rejected,
-         * since rejected proposals never consume the evaluation budget — before the
-         * space or budget could end the search.
+         * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals that could
+         * advance the search — rejected or newly evaluated, since rejected
+         * proposals never consume the evaluation budget — before the space or
+         * budget could end the search. Cache-served duplicates are excluded:
+         * they are bounded by the evaluation budget and re-propose already
+         * evaluated candidates.
          */
         PROPOSAL_LIMIT_EXCEEDED,
         /** A valid evaluation reached the configured target score. */
