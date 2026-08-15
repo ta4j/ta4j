@@ -231,6 +231,7 @@
                                         <argument>-B</argument>
                                         <argument>${project.build.directory}/native/cuda</argument>
                                         <argument>-DJAVA_HOME=${java.home}</argument>
+                                        <argument>-DTA4J_EXPECTED_PLATFORM=windows-x86_64</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -330,6 +331,7 @@
                                         <argument>${project.build.directory}/native/cuda</argument>
                                         <argument>-DJAVA_HOME=${java.home}</argument>
                                         <argument>-DCMAKE_BUILD_TYPE=Release</argument>
+                                        <argument>-DTA4J_EXPECTED_PLATFORM=linux-x86_64</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
