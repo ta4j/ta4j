@@ -191,7 +191,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
-  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, and the grid must not expand past 10,000 candidate strategies.
+  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, the grid must not expand past 10,000 candidate strategies, and a key must not appear in both `--param` and `--param-grid`.
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
   - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
@@ -484,14 +484,14 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 To compare two git refs in temporary worktrees, run:
 
 ```bash
-ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
+ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
   --experiment kalman-filter \
   --bar-counts 1000,5000,10000 \
   --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
   --repetitions 5
 ```
 
-When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory and uses one temporary Maven local repository for the whole invocation, so concurrent benchmark runs do not share mutable SNAPSHOT artifacts.
+The base ref is required and must resolve to a commit containing `ta4j-cli/pom.xml`, otherwise the baseline worktree cannot run the ta4j-cli harness. When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory and uses one temporary Maven local repository for the whole invocation, so concurrent benchmark runs do not share mutable SNAPSHOT artifacts.
 
 ## Common Use Cases
 

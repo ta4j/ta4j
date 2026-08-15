@@ -528,11 +528,35 @@ final class CliSupport {
                 throw new IllegalArgumentException(
                         "Unknown sweep parameter '" + key + "'. Supported parameters: fast, slow.");
             }
+            if (gridKeys.contains(key)) {
+                throw new IllegalArgumentException("Sweep parameter '" + key
+                        + "' must not appear in both --param and --param-grid; fix it with --param or sweep it with --param-grid, not both.");
+            }
         }
         for (String key : gridKeys) {
             if (!SWEEP_PARAM_KEYS.contains(key)) {
                 throw new IllegalArgumentException(
                         "Unknown sweep parameter '" + key + "'. Supported parameters: fast, slow.");
+            }
+        }
+    }
+
+    static void requireDistinctOutputPath(Path outputPath, String dataFile) {
+        if (outputPath == null || dataFile == null || dataFile.equals("-")) {
+            return;
+        }
+        Path inputPath = Path.of(dataFile);
+        if (outputPath.toAbsolutePath().normalize().equals(inputPath.toAbsolutePath().normalize())) {
+            throw new IllegalArgumentException("--output and --data-file must not refer to the same file: " + dataFile);
+        }
+        if (Files.exists(outputPath) && Files.exists(inputPath)) {
+            try {
+                if (Files.isSameFile(outputPath, inputPath)) {
+                    throw new IllegalArgumentException(
+                            "--output and --data-file must not refer to the same file: " + dataFile);
+                }
+            } catch (IOException ex) {
+                throw new UncheckedIOException("Could not compare --output and --data-file paths.", ex);
             }
         }
     }

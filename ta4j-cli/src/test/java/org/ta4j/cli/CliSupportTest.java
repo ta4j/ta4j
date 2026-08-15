@@ -360,14 +360,15 @@ class CliSupportTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
-        List<Strategy> strategies = CliSupport.buildSweepStrategies(List.of("slow=40"),
-                List.of("fast=3,5", "slow=20,30"), 9, series);
+        List<Strategy> strategies = CliSupport.buildSweepStrategies(List.of("slow=40"), List.of("fast=3,5"), 9, series);
 
-        assertThat(strategies).hasSize(4);
+        assertThat(strategies).hasSize(2);
         assertThat(strategies).extracting(Strategy::getName)
-                .containsExactly("sma-crossover-fast-3-slow-20", "sma-crossover-fast-3-slow-30",
-                        "sma-crossover-fast-5-slow-20", "sma-crossover-fast-5-slow-30");
+                .containsExactly("sma-crossover-fast-3-slow-40", "sma-crossover-fast-5-slow-40");
         assertThat(strategies).extracting(Strategy::getUnstableBars).containsOnly(9);
+        assertThatThrownBy(() -> CliSupport.buildSweepStrategies(List.of("slow=40"), List.of("fast=3,5", "slow=20,30"),
+                null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Sweep parameter 'slow' must not appear in both --param and --param-grid");
         assertThatThrownBy(() -> CliSupport.buildSweepStrategies(List.of("slow"), List.of("fast=3,5"), null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid --param value 'slow'. Use key=value.");
