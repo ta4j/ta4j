@@ -3,6 +3,7 @@
  */
 package ta4jexamples.research;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -152,7 +153,17 @@ public class RelationshipObjectiveSearchExample {
         if (!Num.isFinite(f1Score)) {
             return ObjectiveEvaluation.failed("no events in the evaluation window");
         }
-        return ObjectiveEvaluation.of(f1Score, Map.of(PRECISION, result.precision(), RECALL, result.recall()));
+        // A one-sided event stream leaves precision or recall non-finite:
+        // publish only finite diagnostics so a zero-F1 candidate stays
+        // rankable without NaN metrics.
+        Map<String, Num> metrics = new LinkedHashMap<>();
+        if (Num.isFinite(result.precision())) {
+            metrics.put(PRECISION, result.precision());
+        }
+        if (Num.isFinite(result.recall())) {
+            metrics.put(RECALL, result.recall());
+        }
+        return ObjectiveEvaluation.of(f1Score, metrics);
     }
 
     static Indicator<Boolean> rallyAheadEvents(BarSeries series) {

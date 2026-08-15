@@ -183,6 +183,44 @@ public class RelationshipObjectiveSearchExampleTest {
     }
 
     @Test
+    public void oneSidedEventStreamPublishesOnlyFiniteMetrics() {
+        BarSeries series = buildMomentumSeries(200);
+        int begin = series.getBeginIndex();
+        int end = series.getEndIndex();
+        BarSeries windowSeries = series.getSubSeries(begin, end + 1);
+        int windowBegin = windowSeries.getBeginIndex();
+        int windowEnd = windowSeries.getEndIndex();
+        Indicator<Boolean> reference = RelationshipObjectiveSearchExample.rallyAheadEvents(windowSeries);
+
+        // At least one labeled rally exists, so a silent predicted stream
+        // scores F1 = 0 with precision undefined (0/0) and recall 0.
+        int rallyIndex = -1;
+        for (int i = windowBegin; i <= windowEnd - RelationshipObjectiveSearchExample.FORECAST_BARS; i++) {
+            if (reference.getValue(i)) {
+                rallyIndex = i;
+                break;
+            }
+        }
+        assertTrue("series has no rally in the evaluable window", rallyIndex >= 0);
+
+        Boolean[] silent = new Boolean[windowSeries.getBarCount()];
+        ObjectiveEvaluation evaluation = RelationshipObjectiveSearchExample.scoreSynchronization(
+                new FixedBooleanIndicator(windowSeries, silent), new ResearchWindow(windowSeries, windowBegin,
+                        windowEnd, ResearchWindow.WindowPhase.TRAINING, "silent"));
+
+        assertEquals(ObjectiveEvaluation.Status.VALID, evaluation.status());
+        assertEquals(0.0, evaluation.score().doubleValue(), 1e-12);
+        assertFalse("zero-F1 candidate still carries finite diagnostics", evaluation.metrics().isEmpty());
+        for (Num metric : evaluation.metrics().values()) {
+            assertTrue(Num.isFinite(metric));
+        }
+        // Precision is undefined and must not be published; recall is 0 and
+        // finite, so the candidate stays rankable without NaN diagnostics.
+        assertFalse(evaluation.metrics().containsKey("Precision"));
+        assertTrue(evaluation.metrics().containsKey("Recall"));
+    }
+
+    @Test
     public void scoreSynchronizationFailsForShortWindows() {
         BarSeries series = buildMomentumSeries(200).getSubSeries(0, 3);
         Indicator<Boolean> predicted = RelationshipObjectiveSearchExample.momentumCrossUpEvents(series, 1);
