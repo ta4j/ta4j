@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.internal.acceleration;
+package org.ta4j.core.acceleration;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,16 +18,18 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
 
 /**
- * Internal execution boundary used to make optional indicator acceleration
- * transparent to backtest callers.
+ * Transparent, opt-in execution boundary for batched indicator acceleration.
  *
  * <p>
  * Applications do not call this type directly. {@code BarSeriesManager} opens a
- * bounded execution scope and explicitly supported indicators ask the current
- * scope for a value. Optional providers are discovered only after
+ * bounded execution scope for every backtest run, and explicitly supported
+ * indicators ask the current scope for an accelerated value before falling back
+ * to scalar {@link Indicator#getValue(int)} evaluation. Optional providers are
+ * discovered through {@link ServiceLoader} only after
  * {@code -Dta4j.acceleration=auto} and an eligible indicator request. Omitting
  * the property, or setting it to {@code off}, retains the ordinary scalar path
  * without provider discovery.
@@ -37,7 +39,14 @@ import org.ta4j.core.Indicator;
  * reject every graph family they do not understand, and scalar
  * {@link Indicator#getValue(int)} evaluation remains the fallback oracle.
  *
- * @since 0.23.1
+ * <p>
+ * Cached accelerated batches are bound to
+ * {@link BarSeries.BarSeriesChangeSnapshot} change snapshots: any revision,
+ * retained-range, capacity, or end-index change invalidates the batch before
+ * the next cached read, and series that do not track revisions are never
+ * accelerated.
+ *
+ * @since 0.24.2
  */
 public final class AccelerationRuntime {
 
@@ -61,7 +70,7 @@ public final class AccelerationRuntime {
      * @param fromInclusive first run index
      * @param toInclusive   last run index
      * @return scope to close after execution
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static Scope open(BarSeries series, int fromInclusive, int toInclusive) {
         Objects.requireNonNull(series, "series must not be null");
@@ -87,7 +96,7 @@ public final class AccelerationRuntime {
      * @param index     requested index
      * @param <T>       value type
      * @return accelerated value, or empty to use scalar evaluation
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static <T> Optional<T> value(Indicator<T> indicator, int index) {
         Context context = CURRENT.get();
@@ -140,7 +149,7 @@ public final class AccelerationRuntime {
     /**
      * Auto-closeable acceleration scope.
      *
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @FunctionalInterface
     public interface Scope extends AutoCloseable {
@@ -148,7 +157,7 @@ public final class AccelerationRuntime {
         /**
          * Closes the scope and restores any enclosing execution scope.
          *
-         * @since 0.23.1
+         * @since 0.24.2
          */
         @Override
         void close();
@@ -160,7 +169,7 @@ public final class AccelerationRuntime {
      * <p>
      * Provider constructors must not probe devices or load native libraries.
      *
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public interface Provider {
 
@@ -170,7 +179,7 @@ public final class AccelerationRuntime {
          * @param request immutable request
          * @param <T>     value type
          * @return provider decision
-         * @since 0.23.1
+         * @since 0.24.2
          */
         <T> Result<T> evaluate(Request<T> request);
     }
@@ -182,14 +191,14 @@ public final class AccelerationRuntime {
      * @param fromInclusive first requested index
      * @param toInclusive   last requested index
      * @param <T>           value type
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public record Request<T>(Indicator<T> indicator, int fromInclusive, int toInclusive) {
 
         /**
          * Validates a request.
          *
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public Request {
             Objects.requireNonNull(indicator, "indicator must not be null");
@@ -205,7 +214,7 @@ public final class AccelerationRuntime {
          * Returns the indicator's read-only series view.
          *
          * @return source series for the request
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public BarSeries series() {
             return indicator.getBarSeries();
@@ -213,7 +222,7 @@ public final class AccelerationRuntime {
 
         /**
          * @return exact number of requested values
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public int size() {
             return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
@@ -230,7 +239,7 @@ public final class AccelerationRuntime {
      * @param elapsedNanos      provider wall time
      * @param diagnostic        typed decision detail
      * @param <T>               value type
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public record Result<T>(Status status, Backend backend, List<T> values, boolean nativeInitialized,
             long elapsedNanos, Diagnostic diagnostic) {
@@ -238,7 +247,7 @@ public final class AccelerationRuntime {
         /**
          * Validates and defensively copies a result.
          *
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public Result {
             Objects.requireNonNull(status, "status must not be null");
@@ -263,7 +272,7 @@ public final class AccelerationRuntime {
          * @param diagnostic        execution detail
          * @param <T>               value type
          * @return executed result
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public static <T> Result<T> executed(Backend backend, List<T> values, boolean nativeInitialized,
                 long elapsedNanos, Diagnostic diagnostic) {
@@ -278,7 +287,7 @@ public final class AccelerationRuntime {
          * @param diagnostic decision detail
          * @param <T>        value type
          * @return non-executed result
-         * @since 0.23.1
+         * @since 0.24.2
          */
         public static <T> Result<T> notExecuted(Status status, Backend backend, Diagnostic diagnostic) {
             if (status == Status.EXECUTED) {
@@ -288,7 +297,7 @@ public final class AccelerationRuntime {
         }
     }
 
-    /** Provider decision status. @since 0.23.1 */
+    /** Provider decision status. @since 0.24.2 */
     public enum Status {
         /** GPU values were produced. */
         EXECUTED,
@@ -300,7 +309,7 @@ public final class AccelerationRuntime {
         FAILED
     }
 
-    /** Effective execution backend. @since 0.23.1 */
+    /** Effective execution backend. @since 0.24.2 */
     public enum Backend {
         /** Canonical scalar CPU fallback. */
         CPU,
@@ -318,11 +327,11 @@ public final class AccelerationRuntime {
      * @param code       stable code
      * @param providerId provider identifier, or {@code none}
      * @param detail     concise detail
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public record Diagnostic(DiagnosticCode code, String providerId, String detail) {
 
-        /** Validates a diagnostic. @since 0.23.1 */
+        /** Validates a diagnostic. @since 0.24.2 */
         public Diagnostic {
             Objects.requireNonNull(code, "code must not be null");
             Objects.requireNonNull(providerId, "providerId must not be null");
@@ -330,7 +339,7 @@ public final class AccelerationRuntime {
         }
     }
 
-    /** Stable diagnostic and fallback codes. @since 0.23.1 */
+    /** Stable diagnostic and fallback codes. @since 0.24.2 */
     public enum DiagnosticCode {
         /** GPU execution completed. */
         ACCELERATED,
@@ -382,6 +391,10 @@ public final class AccelerationRuntime {
                 return Optional.empty();
             }
             CachedBatch cached = batches.get(indicator);
+            if (cached != null && !cached.matchesCurrentSeries(indicatorSeries)) {
+                batches.remove(indicator);
+                cached = null;
+            }
             if (cached == null) {
                 cached = evaluate(indicator, index);
                 if (cached == null) {
@@ -395,6 +408,13 @@ public final class AccelerationRuntime {
         }
 
         private <T> CachedBatch evaluate(Indicator<T> indicator, int index) {
+            BarSeries indicatorSeries = indicator.getBarSeries();
+            long revision = indicatorSeries.getBarHistoryRevision();
+            if (revision < 0L) {
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
+                        "series does not track bar-data revisions; accelerated batches cannot be invalidated");
+                return null;
+            }
             providerAttempted = true;
             List<Provider> providers;
             try {
@@ -410,6 +430,7 @@ public final class AccelerationRuntime {
                 return null;
             }
             Request<T> request = new Request<>(indicator, index, toInclusive);
+            BarSeriesChangeSnapshot before = indicatorSeries.getBarSeriesChangeSnapshot(revision);
             for (Provider provider : providers) {
                 Result<T> result;
                 suspended = true;
@@ -436,8 +457,14 @@ public final class AccelerationRuntime {
                                     request.toInclusive()));
                     continue;
                 }
+                BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(revision);
+                if (!sameSeriesState(before, after)) {
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, result.diagnostic().providerId(),
+                            "series changed while the provider was evaluating");
+                    continue;
+                }
                 effectiveBackend = result.backend();
-                return new CachedBatch(request.fromInclusive(), result.values());
+                return new CachedBatch(request.fromInclusive(), result.values(), after);
             }
             return null;
         }
@@ -462,15 +489,25 @@ public final class AccelerationRuntime {
         }
     }
 
-    private record CachedBatch(int fromInclusive, List<?> values) {
+    private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
+        return left.revision() == right.revision() && left.removedThroughIndex() == right.removedThroughIndex()
+                && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
+    }
+
+    private record CachedBatch(int fromInclusive, List<?> values, BarSeriesChangeSnapshot snapshot) {
 
         private CachedBatch {
             values = List.copyOf(values);
+            Objects.requireNonNull(snapshot, "snapshot must not be null");
         }
 
         private Object value(int index) {
             int offset = index - fromInclusive;
             return offset < 0 || offset >= values.size() ? null : values.get(offset);
+        }
+
+        private boolean matchesCurrentSeries(BarSeries series) {
+            return sameSeriesState(series.getBarSeriesChangeSnapshot(snapshot.revision()), snapshot);
         }
     }
 

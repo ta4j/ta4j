@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.TestUnregisterRule;
@@ -57,6 +58,21 @@ class NamedRuleTest {
                 () -> NamedRule.buildLabel(Underscored_Rule.class, "ABOVE"));
 
         assertThat(exception).hasMessage("Named rule class names cannot contain underscores: Underscored_Rule");
+    }
+
+    @Test
+    void buildLabelRejectsBlankTypeNames() {
+        NamedRule anonymous = new NamedRule("placeholder") {
+            @Override
+            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+                return false;
+            }
+        };
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedRule.buildLabel(anonymous.getClass(), "ABOVE"));
+
+        assertThat(exception).hasMessageContaining("non-blank simple name");
     }
 
     @Test

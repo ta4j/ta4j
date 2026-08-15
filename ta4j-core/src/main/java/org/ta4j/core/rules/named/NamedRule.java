@@ -57,7 +57,7 @@ import java.util.stream.Stream;
  * serialization compatible with the existing rule descriptor format.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.24.2
  */
 public abstract class NamedRule extends AbstractRule {
 
@@ -75,7 +75,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param label compact label produced by {@link #buildLabel(Class, String...)}
      *              and used for lookup and serialization
-     * @since 0.23.1
+     * @since 0.24.2
      */
     protected NamedRule(String label) {
         this.label = label;
@@ -87,7 +87,7 @@ public abstract class NamedRule extends AbstractRule {
      * before returning.
      *
      * @param basePackages optional extra packages to scan
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static void initializeRegistry(String... basePackages) {
         ensureDefaultRegistryInitialized();
@@ -103,7 +103,7 @@ public abstract class NamedRule extends AbstractRule {
      * @param type named rule subtype
      * @throws IllegalArgumentException when the type name cannot form a valid
      *                                  compact label
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static void registerImplementation(Class<? extends NamedRule> type) {
         String key = buildLabel(type);
@@ -122,7 +122,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param type named rule subtype
      * @return {@code true} when the rule was removed
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static boolean unregisterImplementation(Class<? extends NamedRule> type) {
         Objects.requireNonNull(type, "type");
@@ -137,7 +137,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param simpleName simple class name
      * @return optional containing the registered type
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static Optional<Class<? extends NamedRule>> lookup(String simpleName) {
         if (simpleName == null || simpleName.isBlank()) {
@@ -153,13 +153,20 @@ public abstract class NamedRule extends AbstractRule {
      * @param type       concrete named rule type
      * @param parameters constructor parameters encoded as strings
      * @return compact rule label
-     * @throws IllegalArgumentException when the rule type or a parameter contains
-     *                                  the underscore label delimiter
-     * @since 0.23.1
+     * @throws IllegalArgumentException when the rule type is anonymous or has a
+     *                                  blank simple name, or when the rule type or
+     *                                  a parameter contains the underscore label
+     *                                  delimiter
+     * @since 0.24.2
      */
     public static String buildLabel(Class<? extends NamedRule> type, String... parameters) {
         Objects.requireNonNull(type, "type");
         String simpleName = type.getSimpleName();
+        if (simpleName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Named rule types must have a non-blank simple name (anonymous classes are not supported): "
+                            + type);
+        }
         if (simpleName.indexOf('_') >= 0) {
             throw new IllegalArgumentException("Named rule class names cannot contain underscores: " + simpleName);
         }
@@ -181,7 +188,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param label serialized label
      * @return immutable token list
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static List<String> splitLabel(String label) {
         Objects.requireNonNull(label, "label");
@@ -196,7 +203,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param simpleName named rule simple class name
      * @return registered type
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static Class<? extends NamedRule> requireRegistered(String simpleName) {
         ensureDefaultRegistryInitialized();
@@ -208,7 +215,7 @@ public abstract class NamedRule extends AbstractRule {
      * Keeps the reconstruction label fixed by ignoring rename attempts.
      *
      * @param name ignored because named-rule labels are reconstruction-critical
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @Override
     public final void setName(String name) {
@@ -219,7 +226,7 @@ public abstract class NamedRule extends AbstractRule {
      * Returns the compact reconstruction label.
      *
      * @return compact rule label
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @Override
     public final String getName() {
@@ -231,7 +238,7 @@ public abstract class NamedRule extends AbstractRule {
      * name.
      *
      * @return always {@code true}
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @Override
     public boolean hasCustomName() {
@@ -242,7 +249,7 @@ public abstract class NamedRule extends AbstractRule {
      * Returns the compact reconstruction label as the default name.
      *
      * @return compact rule label
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @Override
     protected final String createDefaultName() {

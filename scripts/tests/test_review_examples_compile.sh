@@ -69,6 +69,7 @@ BEGIN {
   }
 }
 END {
+  if (scanning) { print "unclosed assertTrue(readme.contains( at EOF (missing closing parens)"; failed = 1 }
   if (markers < 4) { print "expected at least 4 assertTrue(readme.contains( assertions, found " markers; failed = 1 }
   exit failed
 }

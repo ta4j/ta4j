@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  * @param volatilityUpdateMode  within-path volatility behavior
  * @param volatilityDecayFactor EWMA decay for within-path volatility updates
  * @param quantileProbabilities summarized quantile probabilities
- * @since 0.23.1
+ * @since 0.24.2
  */
 public record MonteCarloPriceForecastSpec(Indicator<Num> priceIndicator,
         ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, int horizon, int iterationCount,
@@ -43,10 +43,16 @@ public record MonteCarloPriceForecastSpec(Indicator<Num> priceIndicator,
      * Version of the deterministic per-path sampling contract used by scalar and
      * native implementations.
      *
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public static final int RNG_VERSION = 1;
 
+    /**
+     * Validates the specification eagerly so that optional acceleration adapters
+     * can rely on a fully validated, read-only snapshot.
+     *
+     * @since 0.24.2
+     */
     public MonteCarloPriceForecastSpec {
         Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
         Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");

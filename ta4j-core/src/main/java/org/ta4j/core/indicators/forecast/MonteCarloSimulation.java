@@ -23,10 +23,10 @@ import org.ta4j.core.num.NumFactory;
 final class MonteCarloSimulation {
 
     /**
-     * Selects the forecast RNG stream. Version {@code 0} restores the historical
-     * shared {@link SplittableRandom} stream seeded per decision (values produced
-     * by releases before 0.23.1); version {@code 1} (default) uses the
-     * deterministic per-path stream required for native parity.
+     * Selects the forecast RNG stream. Version {@code 0} (default) restores the
+     * historical shared {@link SplittableRandom} stream seeded per decision (values
+     * produced by releases before 0.23.1); version {@code 1} uses the deterministic
+     * per-path stream required for native parity and must be requested explicitly.
      */
     static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
@@ -104,9 +104,24 @@ final class MonteCarloSimulation {
     private static boolean legacyStreamRequested() {
         String configured = System.getProperty(RNG_VERSION_PROPERTY);
         if (configured == null || configured.isBlank()) {
-            return false;
+            return true;
         }
-        return "0".equals(configured.trim());
+        return switch (configured.trim()) {
+        case "0" -> true;
+        case "1" -> false;
+        default -> throw new IllegalArgumentException(
+                RNG_VERSION_PROPERTY + " must be '0' or '1', but was '" + configured + "'");
+        };
+    }
+
+    /**
+     * Whether the explicit per-path stream was selected
+     * ({@code -Dta4j.forecast.rngVersion=1}). Accelerated evaluation may only
+     * replace the scalar oracle while this stream is selected, because native
+     * providers reproduce per-path values and not the historical shared stream.
+     */
+    static boolean isPerPathRngSelected() {
+        return !legacyStreamRequested();
     }
 
     private static Num terminalValue(Num cumulativeReturn, TerminalValueMapper mapper) {
@@ -244,8 +259,8 @@ final class MonteCarloSimulation {
 
         @Override
         public double nextGaussian() {
-            double radius = Math.sqrt(-2d * Math.log(1d - nextDouble()));
-            return radius * Math.cos(2d * Math.PI * nextDouble());
+            double radius = StrictMath.sqrt(-2d * StrictMath.log(1d - nextDouble()));
+            return radius * StrictMath.cos(2d * StrictMath.PI * nextDouble());
         }
 
         @Override

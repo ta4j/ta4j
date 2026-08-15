@@ -21,7 +21,7 @@ import java.util.Objects;
  * drops strictly below {@code 30}.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.24.2
  */
 public final class RsiThresholdRule extends NamedRule {
 
@@ -42,7 +42,7 @@ public final class RsiThresholdRule extends NamedRule {
      * @param period              RSI period
      * @param threshold           threshold to compare against
      * @param direction           comparison direction
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
             ThresholdDirection direction) {
@@ -62,7 +62,7 @@ public final class RsiThresholdRule extends NamedRule {
      * @param direction comparison direction
      * @param period    RSI period
      * @param threshold threshold to compare against
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public RsiThresholdRule(BarSeries series, ThresholdDirection direction, int period, double threshold) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), period,
@@ -74,7 +74,7 @@ public final class RsiThresholdRule extends NamedRule {
      *
      * @param series backing bar series
      * @param params compact label parameters
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public RsiThresholdRule(BarSeries series, String... params) {
         this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), parsePeriod(params),
@@ -87,7 +87,7 @@ public final class RsiThresholdRule extends NamedRule {
      * @param index         the bar index
      * @param tradingRecord trading record context
      * @return {@code true} when the threshold condition is satisfied
-     * @since 0.23.1
+     * @since 0.24.2
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
@@ -172,7 +172,7 @@ public final class RsiThresholdRule extends NamedRule {
     /**
      * Direction used for threshold comparison.
      *
-     * @since 0.23.1
+     * @since 0.24.2
      */
     public enum ThresholdDirection {
         ABOVE, BELOW

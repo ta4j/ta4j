@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.internal.acceleration;
+package org.ta4j.core.acceleration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -18,19 +18,21 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Provider;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
+import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
+import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
+import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
+import org.ta4j.core.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -143,6 +145,51 @@ class AccelerationRuntimeTest {
         }
     }
 
+    @Test
+    void replacingTheCurrentBarInvalidatesTheCachedBatch() {
+        CountingProvider provider = new CountingProvider();
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(100), indicator.getValue(0));
+            assertEquals(1, provider.calls.get());
+            series.addBar(series.getBar(series.getEndIndex()), true);
+            assertEquals(series.numFactory().numOf(100), indicator.getValue(0));
+            assertEquals(2, provider.calls.get());
+        }
+    }
+
+    @Test
+    void removingRetainedBarsInvalidatesTheCachedBatch() {
+        CountingProvider provider = new CountingProvider();
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 2, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(100), indicator.getValue(2));
+            assertEquals(1, provider.calls.get());
+            series.setMaximumBarCount(2);
+            assertEquals(series.numFactory().numOf(100), indicator.getValue(2));
+            assertEquals(2, provider.calls.get());
+        }
+    }
+
+    @Test
+    void seriesWithoutRevisionTrackingFallBackToScalarValues() {
+        CountingProvider provider = new CountingProvider();
+        AccelerationRuntime.useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = revisionFreeSeries();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(0), indicator.getValue(0));
+        }
+        assertEquals(0, provider.calls.get());
+    }
+
     private static TradingRecord run(BarSeries series, ScopeAwareIndicator indicator) {
         Strategy strategy = new BaseStrategy(new IndicatorRule(indicator, 1), new IndexRule(2));
         return new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy, TradeType.BUY,
@@ -223,6 +270,27 @@ class AccelerationRuntimeTest {
                 values.add(request.series().numFactory().numOf(100 + i));
             }
             return (Result<T>) Result.executed(Backend.METAL, values, true, 1L, diagnostic(DiagnosticCode.ACCELERATED));
+        }
+    }
+
+    private static BarSeries revisionFreeSeries() {
+        BarSeries built = series();
+        List<Bar> bars = new ArrayList<>();
+        for (int i = 0; i <= built.getEndIndex(); i++) {
+            bars.add(built.getBar(i));
+        }
+        return new RevisionFreeSeries("revision-free", bars);
+    }
+
+    private static final class RevisionFreeSeries extends BaseBarSeries {
+
+        private RevisionFreeSeries(String name, List<Bar> bars) {
+            super(name, bars);
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return -1L;
         }
     }
 }

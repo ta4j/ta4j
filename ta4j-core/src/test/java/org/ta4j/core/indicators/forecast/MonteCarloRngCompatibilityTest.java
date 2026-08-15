@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -30,57 +31,47 @@ import org.ta4j.core.num.DoubleNumFactory;
  * Locks the numeric compatibility contract of the public
  * {@link MonteCarloPriceForecastIndicator}: seeded forecasts that were
  * reproducible with the pre-0.23.1 {@link SplittableRandom} stream must remain
- * reproducible when the legacy RNG version is requested, exactly as they were
- * in earlier releases.
+ * reproducible by default, exactly as they were in earlier releases, while RNG
+ * version {@code 1} selects the deterministic per-path stream used for native
+ * parity.
  */
 public class MonteCarloRngCompatibilityTest {
 
-    /**
-     * System property selecting the forecast RNG stream. Version {@code 0} restores
-     * the historical shared {@link SplittableRandom} stream seeded per decision;
-     * version {@code 1} (default) uses the deterministic per-path stream introduced
-     * for native parity.
-     */
-    static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
-
     @After
     public void clearRngVersion() {
-        System.clearProperty(RNG_VERSION_PROPERTY);
+        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
     }
 
     @Test
     public void legacyRngVersionReproducesPreUpgradeForecastValues() {
-        System.setProperty(RNG_VERSION_PROPERTY, "0");
+        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "0");
 
-        Forecast actual = indicator().getValue(2);
-        Forecast legacy = legacyExpectedForecast();
-
-        assertTrue("legacy fixture must be stable", actual.isStable());
-        assertEquals(legacy.support(), actual.support());
-        assertEquals(legacy.horizon(), actual.horizon());
-        assertEquals(legacy.sampleCount(), actual.sampleCount());
-        assertEquals(legacy.mean().doubleValue(), actual.mean().doubleValue(), 1e-9);
-        assertEquals(legacy.median().doubleValue(), actual.median().doubleValue(), 1e-9);
-        assertEquals(legacy.standardDeviation().doubleValue(), actual.standardDeviation().doubleValue(), 1e-9);
-        for (Double probability : legacy.quantiles().keySet()) {
-            assertEquals(legacy.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 1e-9);
-        }
+        assertForecastMatches(legacyExpectedForecast(), indicator().getValue(2));
     }
 
     @Test
-    public void defaultRngVersionKeepsTheDeterministicStream() {
-        MonteCarloSimulation.DeterministicRandom deterministic = MonteCarloSimulation.DeterministicRandom.forPath(3L, 2,
-                2, 0);
+    public void defaultRngVersionReproducesPreUpgradeForecastValues() {
+        assertForecastMatches(legacyExpectedForecast(), indicator().getValue(2));
+    }
+
+    @Test
+    public void perPathRngVersionSelectsTheDeterministicStream() {
+        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "1");
 
         Forecast actual = indicator().getValue(2);
         Forecast legacy = legacyExpectedForecast();
 
-        // The default stream is the deterministic per-path stream, which is
-        // observably different from the historical shared stream.
+        // Version 1 is the deterministic per-path stream, observably different
+        // from the historical shared stream.
         assertTrue(actual.isStable());
         assertFalse(legacy.median().doubleValue() == actual.median().doubleValue());
-        assertEquals(deterministic.nextInt(2),
-                MonteCarloSimulation.DeterministicRandom.forPath(3L, 2, 2, 0).nextInt(2));
+    }
+
+    @Test
+    public void invalidRngVersionIsRejected() {
+        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "2");
+
+        assertThrows(IllegalArgumentException.class, () -> indicator().getValue(2));
     }
 
     private static MonteCarloPriceForecastIndicator indicator() {
@@ -116,6 +107,19 @@ public class MonteCarloRngCompatibilityTest {
             terminals.add(numOf(100d * Math.exp(cumulative)));
         }
         return Forecast.ofSamples(2, 2, terminals, List.of(0.0, 0.5, 1.0));
+    }
+
+    private static void assertForecastMatches(Forecast legacy, Forecast actual) {
+        assertTrue("legacy fixture must be stable", actual.isStable());
+        assertEquals(legacy.support(), actual.support());
+        assertEquals(legacy.horizon(), actual.horizon());
+        assertEquals(legacy.sampleCount(), actual.sampleCount());
+        assertEquals(legacy.mean().doubleValue(), actual.mean().doubleValue(), 1e-9);
+        assertEquals(legacy.median().doubleValue(), actual.median().doubleValue(), 1e-9);
+        assertEquals(legacy.standardDeviation().doubleValue(), actual.standardDeviation().doubleValue(), 1e-9);
+        for (Double probability : legacy.quantiles().keySet()) {
+            assertEquals(legacy.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 1e-9);
+        }
     }
 
     private static long mixSeed(long seed, int index, int horizon) {

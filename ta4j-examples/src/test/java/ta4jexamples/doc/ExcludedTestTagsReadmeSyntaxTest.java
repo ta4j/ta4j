@@ -35,8 +35,9 @@ public class ExcludedTestTagsReadmeSyntaxTest {
         String source = Files.readString(testSource);
 
         Matcher matcher = DANGLING_ASSERT.matcher(source);
+        boolean matches = matcher.find();
         assertFalse("ReadmeContentManagerTest contains a dangling assertTrue(readme.contains( merge artifact: "
-                + (matcher.find() ? describe(source, matcher.start()) : "<none>"), matcher.find());
+                + (matches ? describe(source, matcher.start()) : "<none>"), matches);
     }
 
     private static String describe(String source, int index) {
