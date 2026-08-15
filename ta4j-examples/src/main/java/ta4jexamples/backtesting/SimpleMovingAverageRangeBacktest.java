@@ -143,11 +143,11 @@ public class SimpleMovingAverageRangeBacktest {
                     .append(" ")
                     .append(NET_PROFIT)
                     .append("=")
-                    .append(metrics.get(NET_PROFIT))
+                    .append(Objects.toString(metrics.get(NET_PROFIT), "n/a"))
                     .append(" ")
                     .append(RETURN_OVER_MAX_DRAWDOWN)
                     .append("=")
-                    .append(metrics.get(RETURN_OVER_MAX_DRAWDOWN))
+                    .append(Objects.toString(metrics.get(RETURN_OVER_MAX_DRAWDOWN), "n/a"))
                     .append(System.lineSeparator());
         }
     }
