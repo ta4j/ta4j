@@ -12,12 +12,12 @@ import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
+import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
+import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
+import org.ta4j.core.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
