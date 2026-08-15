@@ -90,8 +90,11 @@ class GeneticSearchEngineTest {
         assertThat(first).hasSize(2);
         ParameterSet highScorer = first.get(0);
         ParameterSet lowScorer = first.get(1);
-        ParameterSet normalizedHigh = repairedOnto(highScorer, "4");
-        ParameterSet normalizedLow = repairedOnto(lowScorer, "4");
+        String canonical = canonicalDistinctFrom(highScorer, lowScorer);
+        ParameterSet normalizedHigh = repairedOnto(highScorer, canonical);
+        ParameterSet normalizedLow = repairedOnto(lowScorer, canonical);
+        assertThat(normalizedHigh.stableId()).isNotEqualTo(highScorer.stableId());
+        assertThat(normalizedLow.stableId()).isNotEqualTo(lowScorer.stableId());
         engine.observe(highScorer.stableId(), EvaluatedCandidate.valid(normalizedHigh.stableId(), normalizedHigh, 0,
                 DecimalNum.valueOf(5), Map.of()));
         engine.observe(lowScorer.stableId(),
@@ -118,5 +121,20 @@ class GeneticSearchEngineTest {
             values.add(new ParameterValue(value.name(), canonical, true, "clamped"));
         }
         return new ParameterSet(values);
+    }
+
+    private static String canonicalDistinctFrom(ParameterSet a, ParameterSet b) {
+        // The regression test needs a repair whose canonical value collides
+        // with neither raw candidate, or the normalized id would equal the raw
+        // id and the engine lookup would succeed even without the raw-id fix.
+        // The test domain is integer("a", 1, 4), so a distinct value always
+        // exists for two raw candidates.
+        for (int value = 1; value <= 4; value++) {
+            String canonical = String.valueOf(value);
+            if (!a.values().get(0).value().equals(canonical) && !b.values().get(0).value().equals(canonical)) {
+                return canonical;
+            }
+        }
+        throw new IllegalStateException("no canonical value distinct from both raw candidates");
     }
 }

@@ -1131,18 +1131,10 @@ class ParameterResearchTest {
     @Test
     void searchPlansRejectBudgetsBeyondRetentionLimit() {
         // Every evaluated candidate is retained for the report, so a budget
-        // that cannot be retained must fail fast instead of exhausting
-        // memory mid-run.
-        BarSeries series = series(1d, 2d, 3d);
-
+        // that cannot be retained must fail fast at plan construction instead
+        // of exhausting memory mid-run.
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> ParameterResearch.<Integer>builder(series)
-                        .integer("a", 1, 2)
-                        .candidate((window, parameters) -> parameters.intValue("a"))
-                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                                .of(window.series().numFactory().numOf(candidate)))
-                        .search(SearchPlan.grid(ParameterResearch.MAX_RETAINED_EVALUATIONS + 1))
-                        .run());
+                () -> SearchPlan.grid(ParameterResearch.MAX_RETAINED_EVALUATIONS + 1));
         assertThat(exception.getMessage()).contains("retained-evaluation limit");
     }
 

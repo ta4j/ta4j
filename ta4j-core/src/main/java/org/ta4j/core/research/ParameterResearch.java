@@ -535,12 +535,6 @@ public final class ParameterResearch {
             SearchEngine engine = createEngine(specs, ranking, direction);
 
             int budget = searchPlan.maxEvaluations();
-            if (budget > MAX_RETAINED_EVALUATIONS) {
-                throw new IllegalArgumentException("search plan may evaluate up to " + budget
-                        + " candidates, which exceeds the retained-evaluation limit of " + MAX_RETAINED_EVALUATIONS
-                        + "; every evaluated candidate is retained for the report, so split the search into"
-                        + " multiple runs instead of raising the budget");
-            }
             EvaluationCache cache = new EvaluationCache();
             List<EvaluatedCandidate> evaluations = new ArrayList<>();
             List<FailedEvaluation> failures = new ArrayList<>();
@@ -1670,7 +1664,8 @@ public final class ParameterResearch {
          *
          * @throws NullPointerException     if {@code kind} is null, or a required
          *                                  settings record is missing
-         * @throws IllegalArgumentException if {@code maxEvaluations <= 0}
+         * @throws IllegalArgumentException if {@code maxEvaluations <= 0}, or if it
+         *                                  exceeds {@link #MAX_RETAINED_EVALUATIONS}
          * @since 0.24.2
          */
         public SearchPlan {
@@ -1678,11 +1673,11 @@ public final class ParameterResearch {
             if (maxEvaluations <= 0) {
                 throw new IllegalArgumentException("maxEvaluations must be > 0");
             }
-            if (kind == Kind.GENETIC) {
-                Objects.requireNonNull(geneticSettings, "geneticSettings is required for GENETIC");
-            }
-            if (kind == Kind.PARTICLE_SWARM) {
-                Objects.requireNonNull(swarmSettings, "swarmSettings is required for PARTICLE_SWARM");
+            if (maxEvaluations > MAX_RETAINED_EVALUATIONS) {
+                throw new IllegalArgumentException("search plan may evaluate up to " + maxEvaluations
+                        + " candidates, which exceeds the retained-evaluation limit of " + MAX_RETAINED_EVALUATIONS
+                        + "; every evaluated candidate is retained for the report, so split the search into"
+                        + " multiple runs instead of raising the budget");
             }
         }
 
