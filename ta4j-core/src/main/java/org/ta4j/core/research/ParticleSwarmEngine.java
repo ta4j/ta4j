@@ -259,9 +259,15 @@ final class ParticleSwarmEngine extends SearchEngine {
                 // until a valid evaluation establishes a personal best.
                 double cognitivePull = particle.pbestEvaluated == null ? 0d
                         : particle.pbestPosition[d] - particle.position[d];
+                // The same guard applies to the social term: when every
+                // particle in the initial batch fails, gbestPosition falls
+                // back to an arbitrary launch position with no validated
+                // evaluation. Pulling the swarm toward that point would
+                // collapse exploration toward an invalid region, so the
+                // social pull stays zero until a valid global best exists.
+                double socialPull = gbestEvaluated == null ? 0d : gbestPosition[d] - particle.position[d];
                 double velocity = settings.inertiaWeight() * particle.velocity[d]
-                        + settings.cognitiveWeight() * r1 * cognitivePull
-                        + settings.socialWeight() * r2 * (gbestPosition[d] - particle.position[d]);
+                        + settings.cognitiveWeight() * r1 * cognitivePull + settings.socialWeight() * r2 * socialPull;
                 double maxVelocity = settings.velocityClampFactor() * (spec.upperBound() - spec.lowerBound());
                 velocity = clamp(velocity, -maxVelocity, maxVelocity);
                 double position = particle.position[d] + velocity;

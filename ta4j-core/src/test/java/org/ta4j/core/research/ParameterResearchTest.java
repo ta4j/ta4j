@@ -1393,6 +1393,27 @@ class ParameterResearchTest {
     }
 
     @Test
+    void socialPullIsSuppressedUntilAValidGlobalBestExists() {
+        // When every particle in the initial batch fails evaluation, the
+        // fallback gbestPosition is an arbitrary launch position with no
+        // validated evaluation. The social term must stay zero until a valid
+        // global best exists; otherwise the swarm drifts toward the fallback
+        // point and keeps evaluating new grid positions instead of stalling
+        // with only the launch positions attempted.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .decimal("a", 0d, 10d, 1d)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> {
+                    throw new RuntimeException("fail every evaluation");
+                })
+                .search(SearchPlan.particleSwarm(20, 23L, new SwarmSettings(2, 0.5, 0.5, 1.49618, 0.2)))
+                .run();
+
+        assertThat(report.counts().attempted()).isEqualTo(2);
+    }
+
+    @Test
     void interruptedRunFinalizesObservedBatch() {
         // Cancellation exits must finalize pending engine observations, or the
         // report undercounts completed iterations even when the whole batch
