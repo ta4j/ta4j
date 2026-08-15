@@ -491,6 +491,9 @@ class ParameterResearchTest {
                 .orElseThrow();
         assertThat(rebuilt.holdoutScore().intValue()).isEqualTo(2);
         assertThat(rebuilt.scoreDelta().intValue()).isEqualTo(1);
+        assertThat(report.counts().attempted()).isEqualTo(6);
+        assertThat(report.counts().holdoutAttempted()).isEqualTo(3);
+        assertThat(report.counts().budgetRemaining()).isEqualTo(1);
     }
 
     @Test
@@ -503,6 +506,36 @@ class ParameterResearchTest {
                 () -> holdoutConfigBuilder(series).holdoutFraction(0.5d).holdoutBarCount(2));
         assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutBarCount(0));
         assertThrows(IllegalArgumentException.class, () -> holdoutConfigBuilder(series).holdoutBarCount(5).run());
+    }
+
+    @Test
+    void holdoutReservationFailsFastWhenBudgetCannotCoverTopK() {
+        // Default topK(10) exceeds the grid budget: the reservation leaves no
+        // training evaluation, so run() must fail before searching.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        assertThrows(IllegalArgumentException.class,
+                () -> holdoutConfigBuilder(series).holdoutBarCount(2).search(SearchPlan.grid(3)).run());
+        // Exact equality also leaves no training evaluation.
+        assertThrows(IllegalArgumentException.class,
+                () -> holdoutConfigBuilder(series).holdoutBarCount(2).search(SearchPlan.grid(3)).topK(3).run());
+    }
+
+    @Test
+    void holdoutRebuildConsumesReservedBudgetAndReportsIt() {
+        // budget 3 = 2 training attempts (a in 1..2) + 1 reserved holdout
+        // evaluation: total objective calls equal the budget exactly, and the
+        // report separates training attempts from holdout attempts.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        ParameterResearchReport report = holdoutConfigBuilder(series).holdoutBarCount(2)
+                .search(SearchPlan.grid(3))
+                .topK(1)
+                .run();
+
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        assertThat(report.counts().attempted()).isEqualTo(2);
+        assertThat(report.counts().holdoutAttempted()).isEqualTo(1);
+        assertThat(report.counts().budgetRemaining()).isEqualTo(0);
+        assertThat(report.holdoutLeaderboard()).hasSize(1);
     }
 
     @Test
@@ -978,8 +1011,9 @@ class ParameterResearchTest {
                 .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                         .of(window.phase() == ResearchWindow.WindowPhase.TRAINING ? DecimalNum.valueOf(2)
                                 : DoubleNum.valueOf(1)))
-                .search(SearchPlan.grid(1))
+                .search(SearchPlan.grid(3))
                 .holdoutBarCount(2)
+                .topK(1)
                 .run();
 
         assertThat(report.counts().failed()).isZero();

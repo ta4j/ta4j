@@ -58,11 +58,16 @@ import org.ta4j.core.num.Num;
  * consume evaluation budget.
  * </p>
  *
- * <p>
  * <b>Budget semantics.</b> {@code maxEvaluations} is the exact budget of unique
- * objective evaluations: cache hits and duplicate proposals never consume it,
- * and the final generation or swarm batch is truncated rather than allowed to
- * exceed it. A budget-limited grid run reports
+ * objective evaluations across training and holdout: cache hits and duplicate
+ * proposals never consume it, and the final generation or swarm batch is
+ * truncated rather than allowed to exceed it. When a holdout window is
+ * configured, {@code topK} evaluations are reserved for the holdout rebuild, so
+ * the training search may attempt at most {@code maxEvaluations - topK} unique
+ * evaluations and a budget that leaves no training evaluation fails fast with
+ * an {@link IllegalArgumentException}. The report separates training attempts
+ * from holdout attempts in {@link RunCounts#attempted()} and
+ * {@link RunCounts#holdoutAttempted()}. A budget-limited grid run reports
  * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} and never claims
  * exhaustive optimality. Objective or candidate-factory failures that occur
  * after an attempted evaluation do consume budget and are ranked below every
@@ -494,8 +499,9 @@ public final class ParameterResearch {
          *                                  series is empty, or the dataset changed
          *                                  during the run
          * @throws IllegalArgumentException if the holdout window leaves no training
-         *                                  bar, or the selected engine rejects a
-         *                                  declared domain
+         *                                  bar, the topK holdout reservation leaves no
+         *                                  training evaluation budget, or the selected
+         *                                  engine rejects a declared domain
          * @since 0.24.2
          */
         public ParameterResearchReport run() {
@@ -535,6 +541,14 @@ public final class ParameterResearch {
             SearchEngine engine = createEngine(specs, ranking, direction);
 
             int budget = searchPlan.maxEvaluations();
+            // Holdout rebuilds score up to topK retained candidates, so those
+            // evaluations are reserved out of the budget; the training search
+            // never spends them, keeping total objective calls budget-exact.
+            int trainingBudget = holdoutBars > 0 ? budget - topK : budget;
+            if (trainingBudget <= 0) {
+                throw new IllegalArgumentException("search budget of " + budget + " evaluations must exceed the topK "
+                        + topK + " holdout reservation; raise maxEvaluations or lower topK");
+            }
             EvaluationCache cache = new EvaluationCache();
             List<EvaluatedCandidate> evaluations = new ArrayList<>();
             List<FailedEvaluation> failures = new ArrayList<>();
@@ -557,7 +571,7 @@ public final class ParameterResearch {
                     reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
                     break;
                 }
-                int remaining = budget - (int) counters.attempted;
+                int remaining = trainingBudget - (int) counters.attempted;
                 List<ParameterSet> batch = engine.propose(Math.min(remaining, (int) allowance));
                 if (batch.size() > allowance) {
                     // Engines honor the request count, but keep the cap
@@ -568,7 +582,7 @@ public final class ParameterResearch {
                 if (batch.isEmpty()) {
                     reason = engine.terminationReason();
                     if (reason == null) {
-                        reason = counters.attempted >= budget ? TerminationReason.EVALUATION_BUDGET_EXHAUSTED
+                        reason = counters.attempted >= trainingBudget ? TerminationReason.EVALUATION_BUDGET_EXHAUSTED
                                 : TerminationReason.SEARCH_SPACE_EXHAUSTED;
                     }
                     break;
@@ -677,6 +691,7 @@ public final class ParameterResearch {
                 holdoutLeaderboard = holdout.leaderboard();
                 holdoutById = holdout.byId();
                 evaluationNanos += holdout.evaluationNanos();
+                counters.holdoutAttempted += holdout.attempted();
                 if (Thread.currentThread().isInterrupted()) {
                     reason = TerminationReason.CANCELED;
                 }
@@ -699,8 +714,9 @@ public final class ParameterResearch {
                         + " valid evaluations; leaderboard contains " + ranked.size() + " candidates");
             }
             RunCounts counts = new RunCounts(counters.proposed, counters.rejected, counters.repaired,
-                    counters.duplicate, counters.cached, counters.attempted, counters.successful, counters.failed,
-                    budget - (int) counters.attempted, engine.iterationsCompleted());
+                    counters.duplicate, counters.cached, counters.attempted, counters.holdoutAttempted,
+                    counters.successful, counters.failed,
+                    budget - (int) counters.attempted - (int) counters.holdoutAttempted, engine.iterationsCompleted());
             long orchestrationNanos = System.nanoTime() - orchestrationStart - evaluationNanos;
             return new ParameterResearchReport(datasetId, searchPlan, objectiveId, trainingWindow,
                     Optional.ofNullable(holdoutWindow), topK, trainingLeaderboard, holdoutLeaderboard, reason, counts,
@@ -827,6 +843,7 @@ public final class ParameterResearch {
 
             Map<String, HoldoutEvaluation> byId = new LinkedHashMap<>();
             long evaluationNanos = 0L;
+            long attempted = 0L;
             for (int i = 0; i < leaderboardSize; i++) {
                 if (Thread.currentThread().isInterrupted()) {
                     break;
@@ -848,8 +865,8 @@ public final class ParameterResearch {
                     }
                     verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
 
-                    evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
+                    attempted++;
                 }
                 if (!holdout.valid() && cached == null) {
                     failures.add(new FailedEvaluation(holdout.candidateId(), holdout.parameters(),
@@ -873,7 +890,7 @@ public final class ParameterResearch {
                         evaluation.trainingRank(), rank));
                 rank++;
             }
-            return new HoldoutResult(leaderboard, byId, evaluationNanos);
+            return new HoldoutResult(leaderboard, byId, evaluationNanos, attempted);
         }
 
         /**
@@ -1630,10 +1647,12 @@ public final class ParameterResearch {
     /**
      * Search plan: engine kind, exact evaluation budget, seed, and engine settings.
      *
-     * @param kind            engine kind
-     * @param maxEvaluations  exact budget of unique objective evaluations; must not
-     *                        exceed {@link #MAX_RETAINED_EVALUATIONS} because every
-     *                        evaluation is retained for the report
+     * @param maxEvaluations  exact budget of unique objective evaluations across
+     *                        training and holdout; must not exceed
+     *                        {@link #MAX_RETAINED_EVALUATIONS} because every
+     *                        evaluation is retained for the report. A configured
+     *                        holdout window reserves {@code topK} of the budget for
+     *                        the holdout rebuild at run time
      * @param seed            run-local seed for stochastic engines; ignored by grid
      *                        search
      * @param geneticSettings genetic algorithm settings; required for
@@ -1898,17 +1917,20 @@ public final class ParameterResearch {
      * @param repaired            proposals with at least one repaired value
      * @param duplicate           duplicate proposals seen again after evaluation
      * @param cached              evaluation-side cache hits
-     * @param attempted           unique objective evaluations
+     * @param attempted           unique training-window objective evaluations
+     * @param holdoutAttempted    holdout-window objective evaluations; 0 when no
+     *                            holdout window is configured
      * @param successful          evaluations with a valid score
      * @param failed              training evaluations with an invalid score;
      *                            holdout failures are excluded and reported via
      *                            {@link ParameterResearchReport#failedEvaluations()}
-     * @param budgetRemaining     unused evaluation budget
+     * @param budgetRemaining     unused evaluation budget across training and
+     *                            holdout
      * @param iterationsCompleted completed engine iterations (0 for grid search)
      * @since 0.24.2
      */
     public record RunCounts(long proposed, long rejected, long repaired, long duplicate, long cached, long attempted,
-            long successful, long failed, int budgetRemaining, int iterationsCompleted) {
+            long holdoutAttempted, long successful, long failed, int budgetRemaining, int iterationsCompleted) {
     }
 
     /**
@@ -2064,7 +2086,7 @@ public final class ParameterResearch {
      * Holdout rebuild outcome.
      */
     private record HoldoutResult(List<RankedCandidate> leaderboard, Map<String, HoldoutEvaluation> byId,
-            long evaluationNanos) {
+            long evaluationNanos, long attempted) {
     }
 
     /**
@@ -2213,6 +2235,7 @@ public final class ParameterResearch {
         long duplicate;
         long cached;
         long attempted;
+        long holdoutAttempted;
         long successful;
         long failed;
     }

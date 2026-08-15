@@ -40,7 +40,7 @@ public class RelationshipObjectiveSearchExampleTest {
         BarSeries series = buildMomentumSeries(200);
 
         ParameterResearchReport report = RelationshipObjectiveSearchExample.runRelationshipResearch(series,
-                SearchPlan.grid(29), 40);
+                SearchPlan.grid(32), 40);
 
         assertEquals(29, report.counts().proposed());
         assertEquals(29, report.counts().attempted());
@@ -73,7 +73,7 @@ public class RelationshipObjectiveSearchExampleTest {
         BarSeries shifted = full.getSubSeries(40, full.getEndIndex());
 
         ParameterResearchReport report = RelationshipObjectiveSearchExample.runRelationshipResearch(shifted,
-                SearchPlan.grid(29), 40);
+                SearchPlan.grid(32), 40);
 
         assertEquals(29, report.counts().proposed());
         assertEquals(29, report.counts().attempted());
@@ -123,7 +123,7 @@ public class RelationshipObjectiveSearchExampleTest {
     public void narrativeExplainsSpaceHoldoutAndTakeaway() {
         BarSeries series = buildMomentumSeries(200);
         ParameterResearchReport report = RelationshipObjectiveSearchExample.runRelationshipResearch(series,
-                SearchPlan.grid(29), 40);
+                SearchPlan.grid(32), 40);
 
         String narrative = RelationshipObjectiveSearchExample.formatResearchNarrative(report, 2);
 

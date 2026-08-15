@@ -58,6 +58,7 @@ final class GeneticSearchEngine extends SearchEngine {
     private List<GenomeEvaluation> generationEvaluations = new ArrayList<>();
     private ParameterResearch.EvaluatedCandidate bestEver;
     private int noImprovementStreak;
+    private boolean generationPending;
 
     GeneticSearchEngine(List<DomainSpec> specs, ParameterResearch.GeneticSettings settings, Random random,
             Comparator<ParameterResearch.EvaluatedCandidate> ranking, ParameterResearch.Direction direction,
@@ -72,7 +73,6 @@ final class GeneticSearchEngine extends SearchEngine {
         this.noImprovementIterations = noImprovementIterations;
     }
 
-    @Override
     List<ParameterResearch.ParameterSet> propose(int maxNew) {
         if (!initialized) {
             initialized = true;
@@ -80,10 +80,9 @@ final class GeneticSearchEngine extends SearchEngine {
             population = sampleDistinct(size);
             return proposalBatch(population);
         }
-        if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
-            terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
-            return List.of();
-        }
+        // Finalize the pending generation before any limit check so a
+        // rejection-only generation is counted exactly once even when a limit
+        // fires on this request; the limit guards breeding new generations.
         List<GenomeEvaluation> valid = finalizeGeneration();
         if (terminationReason() != null) {
             return List.of();
@@ -107,12 +106,15 @@ final class GeneticSearchEngine extends SearchEngine {
 
     @Override
     void finalizeObserved() {
-        if (!generationEvaluations.isEmpty()) {
+        if (generationPending) {
             finalizeGeneration();
         }
     }
 
     private List<GenomeEvaluation> finalizeGeneration() {
+        if (!generationPending) {
+            return List.of();
+        }
         completeIteration();
         List<GenomeEvaluation> valid = generationEvaluations.stream()
                 .filter(g -> g.evaluated().valid())
@@ -134,6 +136,7 @@ final class GeneticSearchEngine extends SearchEngine {
             terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
         }
         generationEvaluations = new ArrayList<>();
+        generationPending = false;
         return valid;
     }
 
@@ -268,6 +271,9 @@ final class GeneticSearchEngine extends SearchEngine {
             ParameterResearch.ParameterSet set = parameterSet(genome);
             genomesById.put(set.stableId(), genome);
             batch.add(set);
+        }
+        if (!batch.isEmpty()) {
+            generationPending = true;
         }
         return batch;
     }

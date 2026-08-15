@@ -176,10 +176,19 @@ final class ParticleSwarmEngine extends SearchEngine {
                 terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
                 return List.of();
             }
+            // A stall move is an iteration that produced no new evaluation, so
+            // it advances the stagnation streak exactly like an observed
+            // non-improving iteration; a configured noImprovementIterations
+            // limit must not ride out the remaining stall moves.
+            noImprovementStreak++;
+            if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
+                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+                return List.of();
+            }
         }
         // STALL_MOVE_LIMIT full swarm moves without reaching a single unseen
-        // grid point: the swarm is effectively converged, and no batch was
-        // evaluated, so the stagnation streak cannot advance by observation.
+        // grid point: the swarm is effectively converged. With the stagnation
+        // limit disabled, this fallthrough terminates the run.
         terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
         return List.of();
     }

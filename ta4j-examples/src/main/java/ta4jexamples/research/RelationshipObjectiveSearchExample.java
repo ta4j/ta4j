@@ -66,19 +66,19 @@ public class RelationshipObjectiveSearchExample {
 
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
-        ParameterResearchReport report = runRelationshipResearch(series, SearchPlan.grid(29), DEFAULT_VALIDATION_BARS);
+        // 29 lookback candidates + topK(3) holdout reservation.
+        ParameterResearchReport report = runRelationshipResearch(series, SearchPlan.grid(29 + DEFAULT_TOP_CANDIDATES),
+                DEFAULT_VALIDATION_BARS);
 
         LOG.info(System.lineSeparator() + formatResearchNarrative(report, DEFAULT_TOP_CANDIDATES));
     }
 
     /**
-     * Runs the momentum/rally synchronization parameter research workflow.
-     *
-     * <p>
-     * The search plan is the single engine switch: exhaustive
-     * {@code SearchPlan.grid(29)}, seeded {@code SearchPlan.genetic(29, 42L)}, or
-     * seeded {@code SearchPlan.particleSwarm(29, 42L)}.
-     * </p>
+     * Runs the momentum/rally synchronization parameter research workflow. The
+     * search plan is the single engine switch: exhaustive
+     * {@code SearchPlan.grid(32)}, seeded {@code SearchPlan.genetic(29, 42L)}, or
+     * seeded {@code SearchPlan.particleSwarm(29, 42L)}. The grid budget covers the
+     * full 29-lookback space plus the topK(3) holdout reservation.
      *
      * @param series         full series
      * @param plan           search engine and evaluation budget

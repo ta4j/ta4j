@@ -112,7 +112,9 @@ per evaluation window, score it with an objective, and rank the top
 candidates against an untouched holdout window. All engines share one
 contract — the evaluation budget is never exceeded, duplicate proposals and
 cache hits are not charged, seeded engines are deterministic, and training
-scores are computed from the training window only.
+scores are computed from the training window only. With a holdout window
+configured, `topK` evaluations are reserved from the budget for the holdout
+rebuild, so objective calls across training and holdout stay budget-exact.
 
 | Situation | Engine | Notes |
 | --- | --- | --- |
