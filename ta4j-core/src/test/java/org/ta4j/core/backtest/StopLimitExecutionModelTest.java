@@ -226,7 +226,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
-    public void stopLimitExpiryClampsToSeriesEndNearMaxValue() {
+    public void stopLimitExpiryDoesNotWrapNearMaxValue() {
         // When activation happens near Integer.MAX_VALUE, the fillable-bar
         // window must not wrap the expiry index negative: the order stays
         // pending past its activation bar and fills on the terminal bar.
@@ -276,6 +276,47 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
         assertEquals(1, tradingRecord.getTrades().size());
+    }
+
+    @Test
+    public void stopLimitTtlIsNotClampedToConstrainedSeriesEnd() {
+        // Expiry follows the configured time-to-live, clamped only at
+        // Integer.MAX_VALUE: clamping to a constrained series end instead
+        // would expire orders before tail bars beyond that end could fill.
+        Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-01T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar second = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-02T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar third = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-03T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(first, second, third))
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 5,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        model.execute(0, tradingRecord, series, numFactory.one());
+
+        assertEquals(5, model.getPendingOrder(tradingRecord).orElseThrow().expiryIndex());
     }
 
     @Test

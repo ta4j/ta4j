@@ -1262,6 +1262,39 @@ class ParameterResearchTest {
     }
 
     @Test
+    void interruptedRunFinalizesObservedBatch() {
+        // Cancellation exits must finalize pending engine observations, or the
+        // report undercounts completed iterations even when the whole batch
+        // finished and the interrupt arrived before the next loop.
+        BarSeries series = series(1d, 2d, 3d);
+        try {
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .decimal("a", 0, 100, 1)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> {
+                        Thread.currentThread().interrupt();
+                        return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
+                    })
+                    .search(SearchPlan.genetic(1000, 7L, new ParameterResearch.GeneticSettings(4, 1, 2, 0.9, 0.1)))
+                    .run();
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.CANCELED);
+            assertThat(report.counts().iterationsCompleted()).isEqualTo(1);
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    void researchWindowRejectsRangeThatOverflowsIntBarCount() {
+        // An inclusive range spanning all integer indexes wraps int
+        // subtraction to zero; validation must use long arithmetic and reject
+        // it rather than accepting an empty series for a nonempty range.
+        BarSeries empty = new MockBarSeriesBuilder().build();
+        assertThrows(IllegalArgumentException.class, () -> new ParameterResearch.ResearchWindow(empty,
+                Integer.MIN_VALUE, Integer.MAX_VALUE, ParameterResearch.ResearchWindow.WindowPhase.TRAINING, "w"));
+    }
+
+    @Test
     void geneticCrossoverAtFullRateStillExploresBeyondParents() {
         // crossoverRate=1.0 must recombine via uniform parent-allele
         // selection, not clone the first parent: with mutation disabled a

@@ -191,7 +191,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return;
         }
         pendingOrders.put(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
-                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill, barSeries.getEndIndex())));
+                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
     }
 
     @Override
@@ -304,18 +304,19 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
     /**
      * Computes the last bar on which a stop-limit order may be filled, using wider
-     * arithmetic and clamping to the series end. An activation near
-     * {@link Integer#MAX_VALUE} must not wrap the expiry index negative, which
-     * would expire the order on its very first activation bar instead of keeping it
-     * fillable through the terminal bar.
+     * arithmetic and clamping to {@link Integer#MAX_VALUE}. An activation near the
+     * maximum index must not wrap the expiry index negative, which would expire the
+     * order on its very first activation bar instead of keeping its configured
+     * time-to-live. The expiry is deliberately not clamped to the series end:
+     * bar-series managers may process raw bars past a constrained end to close open
+     * positions.
      *
      * @param activationIndex activation bar index
      * @param maxBarsToFill   fillable bar count including the activation bar
-     * @param seriesEndIndex  terminal index of the executed series
      * @return clamped expiry index, never below the activation index
      */
-    private static int expiryIndex(int activationIndex, int maxBarsToFill, int seriesEndIndex) {
-        return (int) Math.min((long) activationIndex + maxBarsToFill - 1L, seriesEndIndex);
+    private static int expiryIndex(int activationIndex, int maxBarsToFill) {
+        return (int) Math.min((long) activationIndex + maxBarsToFill - 1L, Integer.MAX_VALUE);
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {

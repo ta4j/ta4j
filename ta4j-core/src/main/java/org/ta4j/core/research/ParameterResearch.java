@@ -551,6 +551,7 @@ public final class ParameterResearch {
             boolean targetReached = false;
             while (true) {
                 if (Thread.currentThread().isInterrupted()) {
+                    engine.finalizeObserved();
                     reason = TerminationReason.CANCELED;
                     break;
                 }
@@ -637,6 +638,7 @@ public final class ParameterResearch {
 
                 }
                 if (Thread.currentThread().isInterrupted()) {
+                    engine.finalizeObserved();
                     reason = TerminationReason.CANCELED;
                     break;
                 }
@@ -1614,7 +1616,8 @@ public final class ParameterResearch {
             if (startIndex > endIndex) {
                 throw new IllegalArgumentException("startIndex cannot be greater than endIndex");
             }
-            if (series.getBarCount() != endIndex - startIndex + 1) {
+            long range = (long) endIndex - (long) startIndex + 1L;
+            if (series.getBarCount() != range) {
                 throw new IllegalArgumentException("series bar count must match the window index range, but was "
                         + series.getBarCount() + " for [" + startIndex + ", " + endIndex + "]");
             }
@@ -1625,7 +1628,7 @@ public final class ParameterResearch {
          * @since 0.24.2
          */
         public int barCount() {
-            return endIndex - startIndex + 1;
+            return (int) ((long) endIndex - startIndex + 1L);
         }
     }
 

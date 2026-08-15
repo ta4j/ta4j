@@ -7,11 +7,19 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch.ObjectiveEvaluation;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
@@ -72,6 +80,24 @@ public class RelationshipObjectiveSearchExampleTest {
         assertEquals(29, report.counts().successful());
         assertTrue(report.failedEvaluations().isEmpty());
         assertFalse(report.trainingLeaderboard().isEmpty());
+    }
+
+    @Test
+    public void eventLoopsTerminateAtTerminalSeriesIndex() {
+        // A series ending at Integer.MAX_VALUE must not wrap the loop index
+        // negative; both helpers iterate by a bounded local offset.
+        BarSeries series = new BaseBarSeriesBuilder()
+                .withBars(List.of(terminalBar("2024-01-01T00:00:00Z"), terminalBar("2024-01-02T00:00:00Z"),
+                        terminalBar("2024-01-03T00:00:00Z")))
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+
+        Indicator<Boolean> momentum = RelationshipObjectiveSearchExample.momentumCrossUpEvents(series, 1);
+        assertFalse(momentum.getValue(Integer.MAX_VALUE - 1));
+        assertFalse(momentum.getValue(Integer.MAX_VALUE));
+
+        Indicator<Boolean> rally = RelationshipObjectiveSearchExample.rallyAheadEvents(series);
+        assertFalse(rally.getValue(Integer.MAX_VALUE));
     }
 
     @Test
@@ -185,5 +211,16 @@ public class RelationshipObjectiveSearchExampleTest {
             prices[i] = 100 + (i * 0.12) + (Math.sin(i / 3.0) * 8.0) + (Math.cos(i / 7.0) * 3.0);
         }
         return new MockBarSeriesBuilder().withData(prices).build();
+    }
+
+    private static Bar terminalBar(String endTime) {
+        return new TimeBarBuilder(DoubleNumFactory.getInstance()).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse(endTime))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
     }
 }
