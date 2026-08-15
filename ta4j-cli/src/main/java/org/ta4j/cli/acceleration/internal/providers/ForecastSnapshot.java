@@ -138,17 +138,15 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             }
             int sampleOffset = Math.multiplyExact(offset, iterationCount);
             List<Num> samples = new ArrayList<>(iterationCount);
-            boolean valid = true;
             for (int path = 0; path < iterationCount; path++) {
                 float sample = terminalPrices[sampleOffset + path];
                 if (!Float.isFinite(sample) || sample <= 0f) {
-                    valid = false;
-                    break;
+                    throw new MalformedProviderResultException(providerName
+                            + " sample price is non-finite or non-positive at index " + index + " path " + path);
                 }
                 samples.add(numFactory.numOf((double) sample));
             }
-            values.add(valid ? Forecast.ofSamples(index, horizon, samples, quantileProbabilities)
-                    : Forecast.unstable(index, horizon));
+            values.add(Forecast.ofSamples(index, horizon, samples, quantileProbabilities));
         }
         stamp.requireCurrent(series, "while publishing " + providerName + " results");
         return List.copyOf(values);

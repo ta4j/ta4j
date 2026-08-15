@@ -18,7 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Guards {@code --timeframe} against ISO-8601 durations that are not strictly
- * positive.
+ * positive whole seconds.
  *
  * <p>
  * {@link CliSupport#parseTimeframe(String)} accepts arbitrary ISO-8601
@@ -27,7 +27,9 @@ import org.junit.jupiter.api.io.TempDir;
  * non-positive period and spins forever allocating aggregated bars until the
  * CLI hangs or exhausts memory. A hostile or mistyped {@code --timeframe PT0S}
  * (or {@code P0D}/{@code PT-1D}) therefore hangs the CLI instead of failing
- * fast as a usage error.
+ * fast as a usage error. Sub-second precision (for example {@code PT60.5S}) is
+ * rejected outright because the bar series model only expresses whole-second
+ * bar durations.
  *
  * @since 0.23.1
  */
@@ -66,6 +68,16 @@ class TimeframeDurationValidationTest {
     @Test
     void negativeIsoTimeframeIsRejected() throws IOException {
         assertRejected("PT-1D");
+    }
+
+    @Test
+    void fractionalSecondIsoTimeframeIsRejected() throws IOException {
+        assertRejected("PT60.5S");
+    }
+
+    @Test
+    void subSecondIsoTimeframeIsRejected() throws IOException {
+        assertRejected("PT0.5S");
     }
 
     @Test

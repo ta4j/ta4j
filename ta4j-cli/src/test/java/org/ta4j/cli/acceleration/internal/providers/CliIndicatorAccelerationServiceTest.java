@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
@@ -27,10 +28,15 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 class CliIndicatorAccelerationServiceTest {
+    @BeforeEach
+    void selectRngVersionOne() {
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+    }
 
     @AfterEach
     void restoreProperties() {
         CliIndicatorAccelerationService.clearQuarantineForTests();
+        System.clearProperty("ta4j.forecast.rngVersion");
     }
 
     @Test
@@ -210,6 +216,36 @@ class CliIndicatorAccelerationServiceTest {
         } finally {
             System.clearProperty("ta4j.forecast.rngVersion");
         }
+    }
+
+    @Test
+    void unsetRngVersionDisablesAccelerationBecauseNativeLanesRequireVersionOne() {
+        // The scalar lane defaults to the pre-0.23.1 shared SplittableRandom
+        // stream when the property is absent, so acceleration must not engage
+        // unless -Dta4j.forecast.rngVersion=1 selects the versioned stream the
+        // native kernels implement.
+        System.clearProperty("ta4j.forecast.rngVersion");
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        int end = forecast.getBarSeries().getEndIndex();
+
+        Result<Forecast> result = new CliIndicatorAccelerationService().evaluate(new Request<>(forecast, end - 1, end));
+
+        assertThat(result.status()).isEqualTo(Status.SKIPPED);
+        assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.CPU_FASTER);
+        assertThat(result.diagnostic().detail()).contains("ta4j.forecast.rngVersion=unset", "native lanes require");
+    }
+
+    @Test
+    void unknownRngVersionDisablesAccelerationBeforeAnyProviderEngages() {
+        System.setProperty("ta4j.forecast.rngVersion", "2");
+        MonteCarloPriceForecastIndicator forecast = forecast();
+        int end = forecast.getBarSeries().getEndIndex();
+
+        Result<Forecast> result = new CliIndicatorAccelerationService().evaluate(new Request<>(forecast, end - 1, end));
+
+        assertThat(result.status()).isEqualTo(Status.SKIPPED);
+        assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.CPU_FASTER);
+        assertThat(result.diagnostic().detail()).contains("ta4j.forecast.rngVersion=2", "native lanes require");
     }
 
     @Test

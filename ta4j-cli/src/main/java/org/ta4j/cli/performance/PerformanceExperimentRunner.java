@@ -45,6 +45,7 @@ public final class PerformanceExperimentRunner {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final long COMMAND_TIMEOUT_SECONDS = 5;
+    private static final int MAX_REPETITIONS = 1_000_000;
 
     private PerformanceExperimentRunner() {
     }
@@ -317,12 +318,29 @@ public final class PerformanceExperimentRunner {
             if (repetitions <= 0) {
                 throw new IllegalArgumentException("repetitions must be positive");
             }
+            if (repetitions > MAX_REPETITIONS) {
+                throw new IllegalArgumentException("repetitions must not exceed " + MAX_REPETITIONS);
+            }
             if (warmups < 0) {
                 throw new IllegalArgumentException("warmups must be non-negative");
             }
+            if (warmups > MAX_REPETITIONS) {
+                throw new IllegalArgumentException("warmups must not exceed " + MAX_REPETITIONS);
+            }
+
             barCounts = List.copyOf(barCounts.stream().distinct().sorted().toList());
-            scenarioIds = scenarioIds == null ? List.of() : List.copyOf(scenarioIds);
+            scenarioIds = scenarioIds == null ? List.of() : scenarioIds.stream().distinct().toList();
             outputDir = outputDir == null ? Optional.empty() : outputDir;
+        }
+
+        @Override
+        public List<Integer> barCounts() {
+            return List.copyOf(barCounts);
+        }
+
+        @Override
+        public List<String> scenarioIds() {
+            return List.copyOf(scenarioIds);
         }
     }
 

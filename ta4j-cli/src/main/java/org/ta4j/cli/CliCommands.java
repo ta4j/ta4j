@@ -478,7 +478,7 @@ final class CliCommands {
         @Override
         public final Integer call() throws IOException {
             rejectUnsupportedParams("strategy backtest", "strategy", strategyInput.params);
-            Integer unstableBars = CliSupport.parseOptionalInteger(strategyInput.unstableBars, "unstable-bars");
+            Integer unstableBars = CliSupport.parseUnstableBars(strategyInput.unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_BACKTEST_CRITERIA);
 
             BarSeries series = data.loadSeries(in());
@@ -582,7 +582,7 @@ final class CliCommands {
         @Override
         public final Integer call() throws IOException {
             rejectUnsupportedParams("strategy walk-forward", "strategy", strategyInput.params);
-            Integer unstableBars = CliSupport.parseOptionalInteger(strategyInput.unstableBars, "unstable-bars");
+            Integer unstableBars = CliSupport.parseUnstableBars(strategyInput.unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
@@ -718,7 +718,7 @@ final class CliCommands {
 
         @Override
         public final Integer call() throws IOException {
-            Integer parsedUnstableBars = CliSupport.parseOptionalInteger(unstableBars, "unstable-bars");
+            Integer parsedUnstableBars = CliSupport.parseUnstableBars(unstableBars);
             Integer parsedTopK = CliSupport.parseOptionalInteger(topKToken, "top-k");
             if (parsedTopK != null && parsedTopK <= 0) {
                 throw new IllegalArgumentException("--top-k must be greater than zero.");
@@ -745,19 +745,28 @@ final class CliCommands {
                     .stream()
                     .map(statement -> CliSupport.statementToMap(series, statement, resolvedCriteria))
                     .toList();
+            List<Map<String, Object>> failedStrategies = sweepResult.strategyFailures()
+                    .stream()
+                    .map(failure -> failureEntry(failure.strategy().getName(), failure.cause().getMessage()))
+                    .toList();
 
             Map<String, Object> response = CliSupport.buildCommandMetadata("strategy sweep", series, data.dataFile,
                     data.timeframe, data.fromDate, data.toDate, execution.executionModel, positionSizing,
                     execution.commission, execution.borrowRate, execution.borrowSide, resolvedCriteria, outputPath,
                     chartPath, artifacts.reproducible);
+            CliSupport.putRunMetadata(response, "runtime",
+                    CliSupport.backtestRuntimeToMap(sweepResult.runtimeReport()));
             Map<String, Object> payload = CliSupport.result(response);
             payload.put("candidateCount", strategies.size());
             payload.put("topK", topK);
+            payload.put("failedStrategyCount", failedStrategies.size());
+            payload.put("failedStrategies", failedStrategies);
             payload.put("leaderboard", leaderboard);
-            CliSupport.putRunMetadata(response, "runtime",
-                    CliSupport.backtestRuntimeToMap(sweepResult.runtimeReport()));
+            if (!failedStrategies.isEmpty()) {
+                response.put("status", topStatement == null ? "error" : "partial");
+            }
             CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return 0;
+            return topStatement == null ? CommandLine.ExitCode.SOFTWARE : 0;
         }
     }
 
@@ -942,7 +951,7 @@ final class CliCommands {
         @Override
         public final Integer call() throws IOException {
             rejectUnsupportedParams("indicator test", "indicator", params);
-            Integer parsedUnstableBars = CliSupport.parseOptionalInteger(unstableBars, "unstable-bars");
+            Integer parsedUnstableBars = CliSupport.parseUnstableBars(unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_INDICATOR_TEST_CRITERIA);
 
@@ -1019,7 +1028,7 @@ final class CliCommands {
         @Override
         public final Integer call() throws IOException {
             rejectUnsupportedParams("rule test", "rule", params);
-            Integer parsedUnstableBars = CliSupport.parseOptionalInteger(unstableBars, "unstable-bars");
+            Integer parsedUnstableBars = CliSupport.parseUnstableBars(unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_RULE_TEST_CRITERIA);
 
             BarSeries series = data.loadSeries(in());

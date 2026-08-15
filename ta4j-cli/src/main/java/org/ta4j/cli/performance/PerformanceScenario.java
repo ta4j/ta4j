@@ -17,7 +17,7 @@ import java.util.Map;
  *
  * @since 0.23.1
  */
-public interface PerformanceScenario {
+interface PerformanceScenario {
 
     /**
      * Stable identifier used in CLI arguments and benchmark artifacts.

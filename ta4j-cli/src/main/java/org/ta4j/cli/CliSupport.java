@@ -909,6 +909,14 @@ final class CliSupport {
         return parseOptionalInt(token, 0, optionName);
     }
 
+    static Integer parseUnstableBars(String token) {
+        Integer parsed = parseOptionalInteger(token, "unstable-bars");
+        if (parsed != null && parsed < 0) {
+            throw new IllegalArgumentException("--unstable-bars must not be negative: " + parsed + ".");
+        }
+        return parsed;
+    }
+
     static Consumer<Integer> progressCallback(boolean enabled, PrintWriter err, String label) {
         if (!enabled) {
             return null;
@@ -1495,6 +1503,10 @@ final class CliSupport {
                 if (duration.isZero() || duration.isNegative()) {
                     throw new IllegalArgumentException("Unsupported timeframe '" + token
                             + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or a positive ISO-8601 duration.");
+                }
+                if (duration.getNano() != 0) {
+                    throw new IllegalArgumentException("Unsupported timeframe '" + token
+                            + "'. ISO-8601 durations must not contain fractional seconds.");
                 }
                 yield duration;
             } catch (DateTimeParseException ex) {

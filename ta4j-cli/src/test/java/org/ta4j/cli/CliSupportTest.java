@@ -547,6 +547,17 @@ class CliSupportTest {
     }
 
     @Test
+    void parseUnstableBarsRejectsNegativeValues() {
+        assertThat(CliSupport.parseUnstableBars(null)).isNull();
+        assertThat(CliSupport.parseUnstableBars("7")).isEqualTo(7);
+        assertThat(CliSupport.parseUnstableBars("0")).isZero();
+        assertThatThrownBy(() -> CliSupport.parseUnstableBars("-1")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--unstable-bars must not be negative: -1.");
+        assertThatThrownBy(() -> CliSupport.parseUnstableBars("abc")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid integer value for --unstable-bars: abc.");
+    }
+
+    @Test
     void progressAndOutputHelpersWriteExpectedArtifacts() throws Exception {
         StringWriter stderr = new StringWriter();
         PrintWriter err = new PrintWriter(stderr, true);
