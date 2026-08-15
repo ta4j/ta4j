@@ -610,6 +610,7 @@ public final class ParameterResearch {
                         verifyUnchanged(trainingSnapshot, trainingWindow.series());
                         continue;
                     }
+                    verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     String candidateId = normalized.stableId();
                     EvaluatedCandidate cached = cache.get(new CacheKey(candidateId, null));
                     if (cached != null) {

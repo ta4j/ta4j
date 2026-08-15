@@ -1363,6 +1363,36 @@ class ParameterResearchTest {
     }
 
     @Test
+    void validatorMutationOnCachedDuplicateAbortsTheRun() {
+        // A validator can mutate the window through shared callback state and
+        // return normally. When the normalized candidate is served from the
+        // cache, no objective-side check runs; on the final proposal the run
+        // would otherwise complete with a silently corrupted window.
+        BarSeries series = series(1d, 2d, 3d);
+        final BarSeries[] stash = { null };
+        final int[] calls = { 0 };
+
+        assertThrows(IllegalStateException.class,
+                () -> ParameterResearch.<Integer>builder(series)
+                        .integer("a", 1, 2)
+                        .candidate((window, parameters) -> parameters.intValue("a"))
+                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                                .of(window.series().numFactory().numOf(candidate)))
+                        .normalize((data, name, value) -> {
+                            stash[0] = data;
+                            return new ParameterValue(name, "1", true, "canonical");
+                        })
+                        .validate(parameters -> {
+                            calls[0]++;
+                            if (calls[0] == 2) {
+                                stash[0].setMaximumBarCount(100);
+                            }
+                        })
+                        .search(SearchPlan.grid(2))
+                        .run());
+    }
+
+    @Test
     void interruptedRunFinalizesObservedBatch() {
         // Cancellation exits must finalize pending engine observations, or the
         // report undercounts completed iterations even when the whole batch
