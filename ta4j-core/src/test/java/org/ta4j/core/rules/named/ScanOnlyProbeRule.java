@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules.named;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 
@@ -20,6 +22,7 @@ public final class ScanOnlyProbeRule extends NamedRule {
 
     public ScanOnlyProbeRule(BarSeries series, String... params) {
         super(buildLabel(ScanOnlyProbeRule.class, params));
+        Objects.requireNonNull(series, "series");
     }
 
     @Override
