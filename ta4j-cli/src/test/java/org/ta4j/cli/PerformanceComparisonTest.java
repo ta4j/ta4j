@@ -92,6 +92,42 @@ class PerformanceComparisonTest {
     }
 
     @Test
+    void comparisonRejectsArtifactsWithUnknownHostIdOnBothSides() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        setHostId(baseDir, "unknown");
+        setHostId(candidateDir, "unknown");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Cannot compare performance artifacts when the host ID is unknown", exception.getMessage());
+    }
+
+    @Test
+    void comparisonRejectsArtifactWithUnknownHostIdOnOneSide() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        setHostId(candidateDir, "unknown");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Cannot compare performance artifacts when the host ID is unknown", exception.getMessage());
+    }
+
+    private void setHostId(Path artifactDir, String hostId) throws IOException {
+        Path artifact = artifactDir.resolve("performance.json");
+        JsonObject root = JsonParser.parseString(Files.readString(artifact)).getAsJsonObject();
+        root.getAsJsonObject("host").addProperty("hostId", hostId);
+        Files.writeString(artifact, GSON.toJson(root), StandardCharsets.UTF_8);
+    }
+
+    @Test
     void comparisonRejectsDuplicateResultCells() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");

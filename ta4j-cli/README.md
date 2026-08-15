@@ -45,6 +45,7 @@ The Metal provider's approximate fp32 execution lane requires explicit opt-in
 via `-Dta4j.cli.acceleration.metal.approximate=true`. Without it the provider
 reports itself unavailable with a diagnostic naming the property and falls
 back to scalar execution, so approximate results are never silently selected.
+Native probe failures surface the native diagnostic detail (for example `metal_device_unavailable`) instead of a generic metadata-parse error.
 
 Native lanes implement only the versioned per-path RNG stream (RNG version 1),
 so acceleration engages only when `-Dta4j.forecast.rngVersion=1` is set. An
@@ -234,6 +235,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--candidate-dir`: candidate experiment artifact directory.
   - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
   - `--max-regression-pct`: finite, non-negative allowed median runtime regression percentage.
+  - Both artifacts must carry a resolvable host ID and the same host telemetry; artifacts with an unknown host ID or different hosts are rejected.
 
 ## Parameter Coverage Examples
 
