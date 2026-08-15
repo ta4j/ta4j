@@ -14,8 +14,9 @@ import java.util.Set;
  * <p>
  * The pipeline drives each engine strictly in batch cycles: it requests a
  * proposal batch of at most the remaining budget, evaluates every proposal, and
- * reports each outcome back through {@link #observe(EvaluatedCandidate)} before
- * requesting the next batch. Engines terminate by setting a
+ * reports each outcome back through
+ * {@link #observe(String, EvaluatedCandidate)} before requesting the next
+ * batch. Engines terminate by setting a
  * {@link ParameterResearch.TerminationReason}; a {@code null} reason with an
  * empty batch is resolved by the pipeline.
  * </p>
@@ -64,9 +65,21 @@ abstract class SearchEngine {
     /**
      * Reports one evaluated or cached outcome back to the engine.
      *
+     * <p>
+     * {@code rawId} is the identity the engine proposed the candidate under
+     * ({@link ParameterResearch.ParameterSet#stableId()} of the raw proposal),
+     * while {@code evaluated} may carry a different, normalized identity: the
+     * pipeline keeps run-level bookkeeping (cache and leaderboard) in the
+     * normalized identity space, so repaired proposals are deduplicated by their
+     * canonical values, but engines must observe outcomes under the ids they
+     * actually proposed or their internal bookkeeping (genomes, batches) cannot
+     * match the evaluation to the proposal.
+     * </p>
+     *
+     * @param rawId     raw proposal identity used for engine-internal lookups
      * @param evaluated evaluated candidate
      */
-    abstract void observe(ParameterResearch.EvaluatedCandidate evaluated);
+    abstract void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated);
 
     /**
      * Finalizes the engine's most recently observed batch, if one has not been

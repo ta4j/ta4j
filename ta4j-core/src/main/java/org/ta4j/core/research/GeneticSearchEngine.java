@@ -98,8 +98,8 @@ final class GeneticSearchEngine extends SearchEngine {
     }
 
     @Override
-    void observe(ParameterResearch.EvaluatedCandidate evaluated) {
-        int[] genome = genomesById.get(evaluated.candidateId());
+    void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
+        int[] genome = genomesById.get(rawId);
         if (genome != null) {
             generationEvaluations.add(new GenomeEvaluation(genome, evaluated));
         }

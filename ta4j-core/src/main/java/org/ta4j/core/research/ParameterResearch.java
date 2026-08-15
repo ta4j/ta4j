@@ -604,7 +604,7 @@ public final class ParameterResearch {
                     if (cached != null) {
                         counters.duplicate++;
                         counters.cached++;
-                        engine.observe(cached);
+                        engine.observe(proposed.stableId(), cached);
                         continue;
                     }
                     counters.attempted++;
@@ -622,7 +622,7 @@ public final class ParameterResearch {
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
 
                     cache.put(new CacheKey(candidateId, null), evaluated);
-                    engine.observe(evaluated);
+                    engine.observe(proposed.stableId(), evaluated);
                     evaluations.add(evaluated);
                     if (evaluated.valid()) {
                         counters.successful++;
@@ -1098,13 +1098,14 @@ public final class ParameterResearch {
          * {@code name}. Returning a {@link ParameterValue} whose
          * {@link ParameterValue#normalized()} is {@code true} records a repair. Cache
          * identity and the reported {@link RankedCandidate#candidateId()} are derived
-         * from the raw proposed values, while {@link RankedCandidate#parameters()}
-         * carries the repaired values. Identity deliberately tracks the proposal rather
-         * than the repair so every raw proposal stays a distinct experiment: distinct
-         * raw proposals that repair to the same canonical values remain separate
-         * candidates and rank below unrepaired candidates with equal scores, and the
-         * repair itself is reported through {@link ParameterValue#normalized()} and
-         * {@link ParameterSet#repairs()}.
+         * from the normalized values, while {@link RankedCandidate#parameters()}
+         * carries them too; the raw proposal identity is only used internally to attach
+         * the outcome back to the engine that proposed it. Distinct raw proposals that
+         * repair to the same canonical values therefore collapse into a single
+         * candidate: the first evaluation wins and later proposals are served from the
+         * cache. Repaired candidates still rank below unrepaired candidates with equal
+         * scores, and the repair itself is reported through
+         * {@link ParameterValue#normalized()} and {@link ParameterSet#repairs()}.
          * </p>
          *
          * @param series dataset being searched, limited to the training window when

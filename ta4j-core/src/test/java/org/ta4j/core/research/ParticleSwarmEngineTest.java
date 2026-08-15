@@ -40,7 +40,8 @@ class ParticleSwarmEngineTest {
         assertThat(first).hasSize(2);
         for (int i = 0; i < first.size(); i++) {
             ParameterSet set = first.get(i);
-            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
         }
 
         List<ParameterSet> second = engine.propose(2);
@@ -51,7 +52,8 @@ class ParticleSwarmEngineTest {
         for (int i = 0; i < second.size(); i++) {
             ParameterSet set = second.get(i);
             int score = set.stableId().equals("a=2") ? 3 : 2;
-            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(score), Map.of()));
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(score), Map.of()));
         }
 
         assertThat(engine.propose(2)).isEmpty();
@@ -72,7 +74,8 @@ class ParticleSwarmEngineTest {
         assertThat(batch).hasSize(2);
         for (int i = 0; i < batch.size(); i++) {
             ParameterSet set = batch.get(i);
-            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
         }
 
         assertThat(engine.iterationsCompleted()).isZero();
@@ -112,18 +115,20 @@ class ParticleSwarmEngineTest {
 
         List<ParameterSet> first = engine.propose(2);
         assertThat(first).hasSize(2);
-        engine.observe(EvaluatedCandidate.valid("a=3",
-                new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 0, DecimalNum.valueOf(5),
-                Map.of()));
-        engine.observe(
+        engine.observe("a=3",
+                EvaluatedCandidate.valid("a=3",
+                        new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 0,
+                        DecimalNum.valueOf(5), Map.of()));
+        engine.observe("a=7",
                 EvaluatedCandidate.valid("a=7", new ParameterSet(List.of(new ParameterValue("a", "7", false, ""))), 1,
                         DecimalNum.valueOf(4), Map.of()));
 
         List<ParameterSet> second = engine.propose(2);
-        engine.observe(EvaluatedCandidate.valid("a=3",
-                new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 2, DecimalNum.valueOf(5),
-                Map.of()));
-        engine.observe(
+        engine.observe("a=3",
+                EvaluatedCandidate.valid("a=3",
+                        new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 2,
+                        DecimalNum.valueOf(5), Map.of()));
+        engine.observe("a=6",
                 EvaluatedCandidate.valid("a=6", new ParameterSet(List.of(new ParameterValue("a", "6", false, ""))), 3,
                         DecimalNum.valueOf(5), Map.of()));
 
@@ -186,7 +191,8 @@ class ParticleSwarmEngineTest {
         List<ParameterSet> first = engine.propose(2);
         assertThat(first).hasSize(2);
         for (ParameterSet set : first) {
-            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, 0, DecimalNum.valueOf(1), Map.of()));
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, 0, DecimalNum.valueOf(1), Map.of()));
         }
 
         assertThat(engine.propose(2)).isEmpty();
@@ -210,13 +216,13 @@ class ParticleSwarmEngineTest {
 
         List<ParameterSet> first = engine.propose(2);
         assertThat(first.stream().map(ParameterSet::stableId)).containsExactly("a=0", "a=10");
-        engine.observe(EvaluatedCandidate.failed("a=0", first.get(0), 0, "invalid", Map.of()));
-        engine.observe(EvaluatedCandidate.valid("a=10", first.get(1), 1, DecimalNum.valueOf(10), Map.of()));
+        engine.observe("a=0", EvaluatedCandidate.failed("a=0", first.get(0), 0, "invalid", Map.of()));
+        engine.observe("a=10", EvaluatedCandidate.valid("a=10", first.get(1), 1, DecimalNum.valueOf(10), Map.of()));
 
         List<ParameterSet> second = engine.propose(2);
         assertThat(second.stream().map(ParameterSet::stableId)).contains("a=2", "a=10");
-        engine.observe(EvaluatedCandidate.failed("a=2", second.get(0), 2, "invalid", Map.of()));
-        engine.observe(EvaluatedCandidate.valid("a=10", second.get(1), 3, DecimalNum.valueOf(10), Map.of()));
+        engine.observe("a=2", EvaluatedCandidate.failed("a=2", second.get(0), 2, "invalid", Map.of()));
+        engine.observe("a=10", EvaluatedCandidate.valid("a=10", second.get(1), 3, DecimalNum.valueOf(10), Map.of()));
 
         List<ParameterSet> third = engine.propose(2);
         assertThat(third.stream().map(ParameterSet::stableId)).contains("a=4", "a=10");

@@ -43,7 +43,7 @@ class GeneticSearchEngineTest {
             for (int i = 0; i < batch.size(); i++) {
                 ParameterSet set = batch.get(i);
                 int count = repairs.get(Math.min(i, repairs.size() - 1));
-                engine.observe(EvaluatedCandidate.valid(set.stableId(), withRepairs(set, count), i,
+                engine.observe(set.stableId(), EvaluatedCandidate.valid(set.stableId(), withRepairs(set, count), i,
                         DecimalNum.valueOf(5), Map.of()));
             }
         }
@@ -63,7 +63,8 @@ class GeneticSearchEngineTest {
         assertThat(batch).isNotEmpty();
         for (int i = 0; i < batch.size(); i++) {
             ParameterSet set = batch.get(i);
-            engine.observe(EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
         }
 
         assertThat(engine.iterationsCompleted()).isZero();
@@ -73,11 +74,48 @@ class GeneticSearchEngineTest {
         assertThat(engine.iterationsCompleted()).isEqualTo(1);
     }
 
+    @Test
+    void repairedCandidatesObservedUnderRawProposalIdBecomeParents() {
+        // A repaired proposal carries a normalized id that differs from the raw
+        // id the engine proposed it under. Observing it with the raw id must
+        // attach the outcome to the genome; matching on the normalized id would
+        // drop the evaluation, starve the generation, and trigger the
+        // no-improvement termination instead of keeping the elite.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(2, 1, 2, 0.5, 0.5),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, 1);
+
+        List<ParameterSet> first = engine.propose(4);
+        assertThat(first).hasSize(2);
+        ParameterSet highScorer = first.get(0);
+        ParameterSet lowScorer = first.get(1);
+        ParameterSet normalizedHigh = repairedOnto(highScorer, "4");
+        ParameterSet normalizedLow = repairedOnto(lowScorer, "4");
+        engine.observe(highScorer.stableId(), EvaluatedCandidate.valid(normalizedHigh.stableId(), normalizedHigh, 0,
+                DecimalNum.valueOf(5), Map.of()));
+        engine.observe(lowScorer.stableId(),
+                EvaluatedCandidate.valid(normalizedLow.stableId(), normalizedLow, 1, DecimalNum.valueOf(1), Map.of()));
+
+        List<ParameterSet> second = engine.propose(4);
+        assertThat(second.stream().map(ParameterSet::stableId)).contains(highScorer.stableId());
+        assertThat(engine.terminationReason()).isNull();
+        assertThat(engine.iterationsCompleted()).isEqualTo(1);
+    }
+
     private static ParameterSet withRepairs(ParameterSet set, int repairs) {
         List<ParameterValue> values = new ArrayList<>();
         for (int i = 0; i < set.values().size(); i++) {
             ParameterValue value = set.values().get(i);
             values.add(i < repairs ? new ParameterValue(value.name(), value.value(), true, "repaired") : value);
+        }
+        return new ParameterSet(values);
+    }
+
+    private static ParameterSet repairedOnto(ParameterSet set, String canonical) {
+        List<ParameterValue> values = new ArrayList<>();
+        for (ParameterValue value : set.values()) {
+            values.add(new ParameterValue(value.name(), canonical, true, "clamped"));
         }
         return new ParameterSet(values);
     }

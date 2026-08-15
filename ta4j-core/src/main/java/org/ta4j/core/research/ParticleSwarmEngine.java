@@ -121,8 +121,8 @@ final class ParticleSwarmEngine extends SearchEngine {
     }
 
     @Override
-    void observe(ParameterResearch.EvaluatedCandidate evaluated) {
-        batchEvaluations.put(evaluated.candidateId(), evaluated);
+    void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
+        batchEvaluations.put(rawId, evaluated);
     }
 
     @Override
