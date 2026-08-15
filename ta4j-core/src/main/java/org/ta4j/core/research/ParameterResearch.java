@@ -607,6 +607,7 @@ public final class ParameterResearch {
                         validator.validate(normalized);
                     } catch (RuntimeException ex) {
                         counters.rejected++;
+                        verifyUnchanged(trainingSnapshot, trainingWindow.series());
                         continue;
                     }
                     String candidateId = normalized.stableId();

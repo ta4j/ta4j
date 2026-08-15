@@ -1331,6 +1331,38 @@ class ParameterResearchTest {
     }
 
     @Test
+    void validatorMutationOfWindowCapacityAbortsTheRun() {
+        // A validator can capture the window series through shared callback
+        // state, structurally mutate it, and then reject the proposal. When
+        // that lands on the final proposal, no later post-normalizer check
+        // runs, so the rejection path must verify the window itself or the
+        // run would complete with a silently corrupted window.
+        BarSeries series = series(1d, 2d, 3d);
+        final BarSeries[] stash = { null };
+        final int[] calls = { 0 };
+
+        assertThrows(IllegalStateException.class,
+                () -> ParameterResearch.<Integer>builder(series)
+                        .integer("a", 1, 2)
+                        .candidate((window, parameters) -> parameters.intValue("a"))
+                        .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                                .of(window.series().numFactory().numOf(candidate)))
+                        .normalize((data, name, value) -> {
+                            stash[0] = data;
+                            return new ParameterValue(name, value, false, "");
+                        })
+                        .validate(parameters -> {
+                            calls[0]++;
+                            if (calls[0] == 2) {
+                                stash[0].setMaximumBarCount(100);
+                                throw new IllegalArgumentException("rejected after mutating the window");
+                            }
+                        })
+                        .search(SearchPlan.grid(2))
+                        .run());
+    }
+
+    @Test
     void interruptedRunFinalizesObservedBatch() {
         // Cancellation exits must finalize pending engine observations, or the
         // report undercounts completed iterations even when the whole batch
