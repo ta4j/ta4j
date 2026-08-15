@@ -91,6 +91,10 @@ class GeneticSearchEngineTest {
 
         List<ParameterSet> first = engine.propose(2);
         assertThat(first).hasSize(2);
+        Set<String> firstIds = new HashSet<>();
+        for (ParameterSet set : first) {
+            firstIds.add(set.stableId());
+        }
         for (int i = 0; i < first.size(); i++) {
             ParameterSet set = first.get(i);
             engine.observe(set.stableId(), EvaluatedCandidate.failed(set.stableId(), set, i, "invalid", Map.of()));
@@ -98,6 +102,7 @@ class GeneticSearchEngineTest {
 
         List<ParameterSet> second = engine.propose(2);
         assertThat(second).hasSize(2);
+        assertThat(second.stream().map(ParameterSet::stableId).anyMatch(id -> !firstIds.contains(id))).isTrue();
         assertThat(engine.terminationReason()).isNull();
     }
 
