@@ -15,7 +15,7 @@ import java.util.Set;
  * The pipeline drives each engine strictly in batch cycles: it requests a
  * proposal batch of at most the remaining budget, evaluates every proposal, and
  * reports each outcome back through
- * {@link #observe(String, EvaluatedCandidate)} before requesting the next
+ * {@link #observe(int, String, EvaluatedCandidate)} before requesting the next
  * batch. Engines terminate by setting a
  * {@link ParameterResearch.TerminationReason}; a {@code null} reason with an
  * empty batch is resolved by the pipeline.
@@ -73,13 +73,19 @@ abstract class SearchEngine {
      * normalized identity space, so repaired proposals are deduplicated by their
      * canonical values, but engines must observe outcomes under the ids they
      * actually proposed or their internal bookkeeping (genomes, batches) cannot
-     * match the evaluation to the proposal.
+     * match the evaluation to the proposal. {@code occurrence} is the zero-based
+     * position of the proposal within the batch returned by the latest
+     * {@link #propose(int)} call: engines that propose several occurrences of one
+     * raw id in a batch (a particle swarm projecting two particles onto one grid
+     * point) must associate each outcome with its own occurrence, because a
+     * stateful normalizer or validator can reject one occurrence and not the other.
      * </p>
      *
-     * @param rawId     raw proposal identity used for engine-internal lookups
-     * @param evaluated evaluated candidate
+     * @param occurrence zero-based position of the proposal within its batch
+     * @param rawId      raw proposal identity used for engine-internal lookups
+     * @param evaluated  evaluated candidate
      */
-    abstract void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated);
+    abstract void observe(int occurrence, String rawId, ParameterResearch.EvaluatedCandidate evaluated);
 
     /**
      * Finalizes the engine's most recently observed batch, if one has not been

@@ -45,7 +45,14 @@ final class ParticleSwarmEngine extends SearchEngine {
     private boolean initialized;
     private List<Particle> particles;
     private Map<String, List<Integer>> pendingBatch = new LinkedHashMap<>();
-    private Map<String, ParameterResearch.EvaluatedCandidate> batchEvaluations = new LinkedHashMap<>();
+    /**
+     * Observed outcomes keyed by occurrence index, not raw id: two particles can
+     * project onto one grid point in one batch, and a stateful normalizer or
+     * validator can produce (or reject) each occurrence's outcome independently, so
+     * a raw-id key would let the last observation overwrite its siblings and leak
+     * one occurrence's result into another particle's pbest.
+     */
+    private Map<Integer, ParameterResearch.EvaluatedCandidate> batchEvaluations = new LinkedHashMap<>();
     /**
      * Whether the update that generated {@link #pendingBatch} already advanced the
      * iteration tracker: every swarm move counts immediately (so a fully-colliding
@@ -53,7 +60,7 @@ final class ParticleSwarmEngine extends SearchEngine {
      * preceding move and is counted when it is finalized.
      */
     private boolean pendingMoveCounted;
-    private ParameterResearch.EvaluatedCandidate gbestEvaluated;
+    ParameterResearch.EvaluatedCandidate gbestEvaluated;
     private double[] gbestPosition;
     /**
      * Mixed-radix cursor sweeping the declared grid in the no-best phase; each move
@@ -160,8 +167,8 @@ final class ParticleSwarmEngine extends SearchEngine {
     }
 
     @Override
-    void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
-        batchEvaluations.put(rawId, evaluated);
+    void observe(int occurrence, String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
+        batchEvaluations.put(occurrence, evaluated);
     }
 
     @Override
@@ -246,12 +253,17 @@ final class ParticleSwarmEngine extends SearchEngine {
         }
         boolean batchHadValidEvaluation = false;
         for (Map.Entry<String, List<Integer>> entry : pendingBatch.entrySet()) {
-            ParameterResearch.EvaluatedCandidate evaluated = batchEvaluations.get(entry.getKey());
-            if (evaluated == null || !evaluated.valid()) {
-                continue;
-            }
-            batchHadValidEvaluation = true;
             for (Integer particleIndex : entry.getValue()) {
+                // Outcomes are keyed by occurrence: particle p proposes the
+                // batch's p-th entry, so its own outcome — which may be
+                // absent (rejected) or differ from a sibling particle's
+                // outcome under the same raw id — is the one that updates
+                // p's personal best.
+                ParameterResearch.EvaluatedCandidate evaluated = batchEvaluations.get(particleIndex);
+                if (evaluated == null || !evaluated.valid()) {
+                    continue;
+                }
+                batchHadValidEvaluation = true;
                 Particle particle = particles.get(particleIndex);
                 if (particle.pbestEvaluated == null || ranking.compare(evaluated, particle.pbestEvaluated) < 0) {
                     particle.pbestEvaluated = evaluated;

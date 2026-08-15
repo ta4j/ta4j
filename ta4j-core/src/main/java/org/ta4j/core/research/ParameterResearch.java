@@ -109,15 +109,15 @@ public final class ParameterResearch {
      * Maximum number of proposals a single run processes before terminating.
      * Rejected proposals never consume the evaluation budget, so a rejection-heavy
      * normalizer over a large space would otherwise make genetic or particle-swarm
-     * engines propose (and retain proposal ids) without bound. Only re-proposals of
-     * an already-proposed raw id are excluded from the bound: genetic elite slots
-     * and swarm re-projections re-propose evaluated candidates and their count is
-     * itself bounded by the evaluation budget, so counting them would stop a
-     * healthy elitist run before its declared budget is exhausted. A normalized
-     * alias of a new raw id still counts — every such proposal runs the full
-     * normalization and validation work, so an aliasing normalizer cannot hide
-     * unbounded work behind cache hits. Non-final so tests can exercise the bound
-     * cheaply.
+     * engines propose (and retain proposal ids) without bound. Every proposal event
+     * charges the cap, raw re-proposals of an already-proposed raw id (genetic
+     * elite slots, swarm re-projections) included: re-proposals re-invoke the
+     * normalizer and validator, so counting them keeps that callback work bounded
+     * by {@code MAX_PROPOSALS_PER_RUN} instead of by the evaluation budget. A
+     * normalized alias of a new raw id counts as well — every such proposal runs
+     * the full normalization and validation work, so an aliasing normalizer cannot
+     * hide unbounded work behind cache hits. Non-final so tests can exercise the
+     * bound cheaply.
      */
     static int MAX_PROPOSALS_PER_RUN = 1_000_000;
 
@@ -629,7 +629,8 @@ public final class ParameterResearch {
                     break;
                 }
                 boolean batchProcessed = false;
-                for (ParameterSet proposed : batch) {
+                for (int batchIndex = 0; batchIndex < batch.size(); batchIndex++) {
+                    ParameterSet proposed = batch.get(batchIndex);
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
@@ -667,7 +668,7 @@ public final class ParameterResearch {
                     if (cached != null) {
                         counters.duplicate++;
                         counters.cached++;
-                        engine.observe(proposed.stableId(), cached);
+                        engine.observe(batchIndex, proposed.stableId(), cached);
                         continue;
                     }
                     counters.attempted++;
@@ -685,7 +686,7 @@ public final class ParameterResearch {
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
 
                     cache.put(new CacheKey(candidateId, null), evaluated);
-                    engine.observe(proposed.stableId(), evaluated);
+                    engine.observe(batchIndex, proposed.stableId(), evaluated);
                     evaluations.add(evaluated);
                     if (evaluated.valid()) {
                         counters.successful++;
@@ -724,12 +725,6 @@ public final class ParameterResearch {
                     break;
                 }
 
-                if (counters.proposed - counters.rawReproposals >= MAX_PROPOSALS_PER_RUN) {
-                    engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
-                    engine.finalizeObserved();
-                    reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
-                    break;
-                }
             }
             verifyUnchanged(snapshot, series);
             if (counters.successful == 0 && reason != TerminationReason.CANCELED) {
@@ -2319,9 +2314,10 @@ public final class ParameterResearch {
          * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals that could advance
          * the search — rejected, cache-served aliases of new raw ids, or newly
          * evaluated, since rejected proposals never consume the evaluation budget —
-         * before the space or budget could end the search. Only re-proposals of an
-         * already-proposed raw id are excluded: they are bounded by the evaluation
-         * budget and re-propose already evaluated candidates.
+         * before the space or budget could end the search. Every proposal event charges
+         * the cap, raw re-proposals of an already-proposed raw id (genetic elite slots,
+         * swarm re-projections) included, because each re-proposal re-invokes the
+         * normalizer and validator and pays for that callback work.
          */
         PROPOSAL_LIMIT_EXCEEDED,
         /** A valid evaluation reached the configured target score. */
@@ -2672,7 +2668,8 @@ public final class ParameterResearch {
         long holdoutAttempted;
         long successful;
         long failed;
-        // Re-proposals of an already-proposed raw id, exempt from the proposal cap.
+        // Re-proposals of an already-proposed raw id, charged against the proposal cap
+        // like every proposal event.
         long rawReproposals;
     }
 

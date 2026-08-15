@@ -41,7 +41,7 @@ class GeneticSearchEngineTest {
         assertThat(first).hasSize(5);
         for (int i = 0; i < first.size(); i++) {
             ParameterSet set = first.get(i);
-            engine.observe(set.stableId(),
+            engine.observe(0, set.stableId(),
                     EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
         }
 
@@ -69,7 +69,7 @@ class GeneticSearchEngineTest {
             for (int i = 0; i < batch.size(); i++) {
                 ParameterSet set = batch.get(i);
                 int count = repairs.get(Math.min(i, repairs.size() - 1));
-                engine.observe(set.stableId(), EvaluatedCandidate.valid(set.stableId(), withRepairs(set, count), i,
+                engine.observe(0, set.stableId(), EvaluatedCandidate.valid(set.stableId(), withRepairs(set, count), i,
                         DecimalNum.valueOf(5), Map.of()));
             }
         }
@@ -97,7 +97,7 @@ class GeneticSearchEngineTest {
         }
         for (int i = 0; i < first.size(); i++) {
             ParameterSet set = first.get(i);
-            engine.observe(set.stableId(), EvaluatedCandidate.failed(set.stableId(), set, i, "invalid", Map.of()));
+            engine.observe(0, set.stableId(), EvaluatedCandidate.failed(set.stableId(), set, i, "invalid", Map.of()));
         }
 
         List<ParameterSet> second = engine.propose(2);
@@ -117,7 +117,7 @@ class GeneticSearchEngineTest {
         assertThat(batch).isNotEmpty();
         for (int i = 0; i < batch.size(); i++) {
             ParameterSet set = batch.get(i);
-            engine.observe(set.stableId(),
+            engine.observe(0, set.stableId(),
                     EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
         }
 
@@ -149,9 +149,9 @@ class GeneticSearchEngineTest {
         ParameterSet normalizedLow = repairedOnto(lowScorer, canonical);
         assertThat(normalizedHigh.stableId()).isNotEqualTo(highScorer.stableId());
         assertThat(normalizedLow.stableId()).isNotEqualTo(lowScorer.stableId());
-        engine.observe(highScorer.stableId(), EvaluatedCandidate.valid(normalizedHigh.stableId(), normalizedHigh, 0,
+        engine.observe(0, highScorer.stableId(), EvaluatedCandidate.valid(normalizedHigh.stableId(), normalizedHigh, 0,
                 DecimalNum.valueOf(5), Map.of()));
-        engine.observe(lowScorer.stableId(),
+        engine.observe(0, lowScorer.stableId(),
                 EvaluatedCandidate.valid(normalizedLow.stableId(), normalizedLow, 1, DecimalNum.valueOf(1), Map.of()));
 
         List<ParameterSet> second = engine.propose(4);
@@ -199,7 +199,7 @@ class GeneticSearchEngineTest {
             }
             for (int i = 0; i < batch.size(); i++) {
                 ParameterSet set = batch.get(i);
-                engine.observe(set.stableId(),
+                engine.observe(0, set.stableId(),
                         EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
                 seen.add(set.stableId());
             }

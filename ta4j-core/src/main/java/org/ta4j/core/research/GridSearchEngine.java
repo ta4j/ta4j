@@ -50,7 +50,7 @@ final class GridSearchEngine extends SearchEngine {
     }
 
     @Override
-    void observe(String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
+    void observe(int occurrence, String rawId, ParameterResearch.EvaluatedCandidate evaluated) {
         // Grid search is stateless between batches.
     }
 
