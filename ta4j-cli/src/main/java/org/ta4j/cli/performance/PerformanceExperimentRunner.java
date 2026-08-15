@@ -46,6 +46,8 @@ public final class PerformanceExperimentRunner {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final long COMMAND_TIMEOUT_SECONDS = 5;
     private static final int MAX_REPETITIONS = 1_000_000;
+    static final int MAX_BAR_COUNT = 1_000_000;
+    static final long MAX_TOTAL_BAR_WORK = 1_000_000_000L;
 
     private PerformanceExperimentRunner() {
     }
@@ -61,6 +63,7 @@ public final class PerformanceExperimentRunner {
     public static RunArtifacts run(RunRequest request) throws IOException {
         PerformanceExperiment experiment = experiment(request.experimentId());
         List<PerformanceScenario> scenarios = selectScenarios(experiment, request.scenarioIds());
+        requireBoundedExperimentWork(scenarios.size(), request);
         Path outputDir = request.outputDir()
                 .orElseGet(() -> defaultOutputDir(experiment.id()))
                 .toAbsolutePath()
@@ -101,6 +104,26 @@ public final class PerformanceExperimentRunner {
                 StandardCharsets.UTF_8);
         Files.writeString(outputDir.resolve(SUMMARY_FILE), summary(root), StandardCharsets.UTF_8);
         return new RunArtifacts(outputDir, performanceJson);
+    }
+
+    private static void requireBoundedExperimentWork(int scenarioCount, RunRequest request) {
+        long totalWork = 0L;
+        for (Integer barCount : request.barCounts()) {
+            long measurementsPerCell = (long) request.warmups() + (long) request.repetitions();
+            long cellWork;
+            long contribution;
+            try {
+                cellWork = Math.multiplyExact((long) barCount, measurementsPerCell);
+                contribution = Math.multiplyExact(cellWork, (long) scenarioCount);
+                totalWork = Math.addExact(totalWork, contribution);
+            } catch (ArithmeticException ex) {
+                throw new IllegalArgumentException("Performance experiment work is too large.", ex);
+            }
+        }
+        if (totalWork > MAX_TOTAL_BAR_WORK) {
+            throw new IllegalArgumentException("barCounts x scenarios x (warmups + repetitions) must not exceed "
+                    + MAX_TOTAL_BAR_WORK + " (requested " + totalWork + ").");
+        }
     }
 
     private static ScenarioAggregation runScenario(PerformanceScenario scenario, int barCount, int warmups,
@@ -313,6 +336,9 @@ public final class PerformanceExperimentRunner {
             for (Integer barCount : barCounts) {
                 if (barCount == null || barCount <= 0) {
                     throw new IllegalArgumentException("barCounts values must be positive");
+                }
+                if (barCount > MAX_BAR_COUNT) {
+                    throw new IllegalArgumentException("barCounts values must not exceed " + MAX_BAR_COUNT);
                 }
             }
             if (repetitions <= 0) {

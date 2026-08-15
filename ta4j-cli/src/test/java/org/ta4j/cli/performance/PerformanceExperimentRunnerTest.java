@@ -47,6 +47,30 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
+    void cliRejectsOversizedBarCounts() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new PerformanceExperimentRunner.RunRequest("kalman-filter",
+                        List.of(PerformanceExperimentRunner.MAX_BAR_COUNT + 1), List.of(), 1, 0, Optional.empty(),
+                        false));
+
+        assertEquals("barCounts values must not exceed " + PerformanceExperimentRunner.MAX_BAR_COUNT,
+                exception.getMessage());
+    }
+
+    @Test
+    void runRejectsUnboundedTotalWorkBeforeAnyScenarioRuns() {
+        Path outputDir = tempDir.resolve("oversized");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter",
+                        List.of(PerformanceExperimentRunner.MAX_BAR_COUNT), List.of(), 1_000_000, 1_000_000,
+                        Optional.of(outputDir), false)));
+
+        assertTrue(exception.getMessage().contains("must not exceed"), exception.getMessage());
+        assertFalse(Files.exists(outputDir), "No artifacts may be written when the work bound rejects the experiment");
+    }
+
+    @Test
     @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX,
             org.junit.jupiter.api.condition.OS.MAC })
     void commandOutputReturnsEmptyWhenProcessTimesOut() {

@@ -198,8 +198,8 @@ final class CliCommands {
 
         @Override
         public Integer call() throws IOException {
-            if (Double.isNaN(maxRegressionPct) || maxRegressionPct < 0d) {
-                throw new IllegalArgumentException("--max-regression-pct must be non-negative");
+            if (!Double.isFinite(maxRegressionPct) || maxRegressionPct < 0d) {
+                throw new IllegalArgumentException("--max-regression-pct must be finite and non-negative");
             }
             JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, maxRegressionPct);
             Map<String, Object> response = CliSupport.buildResponse("performance compare");
