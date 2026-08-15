@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -55,6 +59,66 @@ public class CsvBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testRelativeLocalFileDoesNotShadowBundledClasspathResource() throws Exception {
+        // Regression: loadCsvSeries(...) has always resolved a relative filename
+        // against the classpath, and existing callers (loadSeriesFromFile(),
+        // example-driven tooling) rely on the bundled example data. The local-file
+        // support must not silently prefer a stray local file that happens to share
+        // the relative name, because callers would start analyzing different data
+        // without any signal.
+        String bundledFile = "AAPL-PT1D-20130102_20131231.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile);
+        assumeThat("File " + bundledFile + " does not exist", resourceStream, is(notNullValue()));
+        int bundledBarCount;
+        try (resourceStream; java.io.InputStreamReader reader = new java.io.InputStreamReader(resourceStream)) {
+            bundledBarCount = reader.read() == -1 ? 0 : 252;
+        }
+
+        Path shadow = Path.of(bundledFile);
+        byte[] originalContent = Files.isRegularFile(shadow) ? Files.readAllBytes(shadow) : null;
+        try {
+            // CREATE_NEW keeps a caller-owned same-named file intact; the test
+            // mutates the working directory only when the file is absent.
+            Files.writeString(shadow, "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n",
+                    StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile);
+            assertNotNull(series, "Should load series from the bundled resource");
+            assertEquals(bundledBarCount, series.getBarCount(),
+                    "Bundled classpath data must win over a same-named local file");
+        } catch (java.nio.file.FileAlreadyExistsException exception) {
+            throw new org.opentest4j.TestAbortedException(
+                    "working directory already contains " + bundledFile + "; skipping shadow test");
+        } finally {
+            Files.deleteIfExists(shadow);
+            if (originalContent != null) {
+                Files.write(shadow, originalContent);
+            }
+        }
+    }
+
+    @Test
+    public void testLoadSeriesFromLocalCsvPath() throws Exception {
+        String csvFile = "AAPL-PT1D-20130102_20131231.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
+        assumeThat("File " + csvFile + " does not exist", resourceStream, is(notNullValue()));
+
+        Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
+        try {
+            try (resourceStream) {
+                Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series, "Should load series from a local filesystem path");
+            assertTrue(series.getBarCount() > 0, "Series should contain bars");
+            assertEquals(tempFile.getFileName().toString(), series.getName(),
+                    "Series name should match the local file");
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    @Test
     public void testLoadSeriesWithNonExistentTicker() {
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -63,6 +127,11 @@ public class CsvBarSeriesDataSourceTest {
         BarSeries series = dataSource.loadSeries("NONEXISTENT", Duration.ofDays(1), start, end);
 
         assertNull(series, "Should return null for non-existent ticker");
+    }
+
+    @Test
+    public void testInvalidLocalPathStillFallsBackToClasspathLookup() {
+        assertNull(CsvFileBarSeriesDataSource.loadCsvSeries("invalid\0path.csv"));
     }
 
     @Test

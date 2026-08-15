@@ -15,6 +15,10 @@ import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -186,18 +190,41 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *         file, or null if the file is not found or empty
      */
     public static BarSeries loadCsvSeries(String filename) {
-
-        var stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        InputStream stream = null;
+        String seriesName = filename;
+        Path localPath = null;
+        try {
+            localPath = Path.of(filename);
+        } catch (InvalidPathException exception) {
+            LOG.debug("CSV filename is not a valid local path; trying the classpath: {}", filename, exception);
+        }
+        // Classpath resources keep precedence so existing callers that load bundled
+        // example data by relative name are not silently redirected to a stray
+        // local file with the same name. Local files (typically absolute paths from
+        // the CLI) are the fallback.
+        stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        if (stream == null && localPath != null && Files.isRegularFile(localPath)) {
+            try {
+                stream = Files.newInputStream(localPath);
+                Path fileName = localPath.getFileName();
+                seriesName = fileName == null ? localPath.toString() : fileName.toString();
+            } catch (IOException e) {
+                LOG.debug("Unable to open CSV file from filesystem: {}", filename, e);
+                return null;
+            }
+        }
 
         if (stream == null) {
-            LOG.debug("CSV file not found in classpath: {}", filename);
+            LOG.debug("CSV file not found in filesystem or classpath: {}", filename);
             return null;
         }
 
-        var series = new BaseBarSeriesBuilder().withName(filename).build();
+        BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withName(seriesName);
+        BarSeries series = seriesBuilder.build();
 
-        try (stream) {
-            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+        InputStream resolvedStream = stream;
+        try (resolvedStream) {
+            try (InputStreamReader reader = new InputStreamReader(resolvedStream, StandardCharsets.UTF_8)) {
                 try (CSVReader csvReader = new CSVReaderBuilder(reader)
                         .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                         .withSkipLines(1)
@@ -228,8 +255,8 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
             }
         } catch (IOException ioe) {
             LOG.error("Unable to load bars from CSV", ioe);
-        } catch (NumberFormatException nfe) {
-            LOG.error("Error while parsing value", nfe);
+        } catch (NumberFormatException | java.time.format.DateTimeParseException | ArrayIndexOutOfBoundsException e) {
+            LOG.error("Error while parsing value", e);
             return null;
         }
         return series.isEmpty() ? null : series;
