@@ -7,16 +7,18 @@ Usage:
   ta4j-cli/scripts/benchmark-performance-experiment.sh [base-ref] [candidate-ref] [output-dir] [-- runner args...]
 
 Defaults:
-  base-ref:      HEAD^
+  base-ref:      required; must resolve to a commit containing ta4j-cli/pom.xml
   candidate-ref: HEAD
   output-dir:    .agents/benchmarks/performance/comparisons/<timestamp>-<unique>
 
+The baseline and candidate refs must both contain the ta4j-cli harness, otherwise
+the baseline worktree cannot run ta4j-cli performance run.
 The script runs ta4j-cli performance run in
 temporary worktrees for both refs, then compares performance.json artifacts with
 ta4j-cli performance compare.
 
 Example:
-  ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
+  ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
     --experiment kalman-filter \
     --bar-counts 1000,5000,10000 \
     --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
@@ -31,7 +33,7 @@ fi
 
 repo_root="$(git rev-parse --show-toplevel)"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-base_ref="HEAD^"
+base_ref=""
 candidate_ref="HEAD"
 output_dir=""
 default_output_parent="$repo_root/.agents/benchmarks/performance/comparisons"
@@ -48,6 +50,21 @@ if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
   output_dir="$1"
   shift
 fi
+if [[ -z "$base_ref" ]]; then
+  echo "error: base-ref is required; it must resolve to a commit containing ta4j-cli/pom.xml" >&2
+  usage >&2
+  exit 2
+fi
+for ref in "$base_ref" "$candidate_ref"; do
+  if ! git -C "$repo_root" cat-file -e "${ref}^{commit}" 2>/dev/null; then
+    echo "error: ref '$ref' does not resolve to a commit in $repo_root" >&2
+    exit 2
+  fi
+  if [[ -z "$(git -C "$repo_root" ls-tree --name-only "${ref}^{commit}" -- ta4j-cli/pom.xml)" ]]; then
+    echo "error: ref '$ref' does not contain ta4j-cli/pom.xml; both refs must contain the ta4j-cli harness" >&2
+    exit 2
+  fi
+done
 if [[ -z "$output_dir" ]]; then
   mkdir -p "$default_output_parent"
   output_dir="$(mktemp -d "$default_output_parent/${timestamp}-XXXXXX")"

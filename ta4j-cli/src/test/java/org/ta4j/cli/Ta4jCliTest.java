@@ -706,6 +706,45 @@ class Ta4jCliTest {
     }
 
     @Test
+    void sweepRejectsOverlappingFixedAndGridKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(), "--param",
+                "fast=5", "--param-grid", "fast=3,5", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Sweep parameter 'fast' must not appear in both --param and --param-grid");
+    }
+
+    @Test
+    void backtestRejectsOutputPathAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", dataFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --data-file must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsSymlinkedOutputAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+        Path symlink = tempDir.resolve("alias-output.json");
+        Files.createSymbolicLink(symlink, dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", symlink.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --data-file must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
     void sweepReportsPartialFailuresWithoutDroppingSurvivors() throws Exception {
         ExplodingOnceCriterion.throwBudget.set(1);
         TraceTestLogger logs = new TraceTestLogger();

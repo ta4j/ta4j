@@ -480,6 +480,7 @@ final class CliCommands {
             rejectUnsupportedParams("strategy backtest", "strategy", strategyInput.params);
             Integer unstableBars = CliSupport.parseUnstableBars(strategyInput.unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_BACKTEST_CRITERIA);
+            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
 
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyInput.strategy,
@@ -586,6 +587,7 @@ final class CliCommands {
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
+            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
             BarSeries series = data.loadSeries(in());
             WalkForwardConfig config = walkForward.build(series);
             CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyInput.strategy,
@@ -726,6 +728,7 @@ final class CliCommands {
             int topK = parsedTopK == null ? 5 : parsedTopK;
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_SWEEP_CRITERIA);
 
+            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
             BarSeries series = data.loadSeries(in());
             List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -850,8 +853,9 @@ final class CliCommands {
         @Override
         public final Integer call() throws IOException {
             validateModelSpecificOptions();
-            BarSeries series = data.loadSeries(in());
             Path outputPath = CliSupport.resolveOutputPath(output);
+            CliSupport.requireDistinctOutputPath(outputPath, data.dataFile);
+            BarSeries series = data.loadSeries(in());
             int resolvedLookbackBars = lookbackBars == null ? Math.max(1, Math.min(252, series.getBarCount() - 1))
                     : lookbackBars;
             int resolvedNeighborCount = optionMatched("--neighbor-count") ? neighborCount
@@ -955,6 +959,7 @@ final class CliCommands {
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_INDICATOR_TEST_CRITERIA);
 
+            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
@@ -1031,6 +1036,7 @@ final class CliCommands {
             Integer parsedUnstableBars = CliSupport.parseUnstableBars(unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_RULE_TEST_CRITERIA);
 
+            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
             BarSeries series = data.loadSeries(in());
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,

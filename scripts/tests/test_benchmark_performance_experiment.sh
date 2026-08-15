@@ -61,6 +61,23 @@ if [[ "${1:-}" == "worktree" && "${2:-}" == "remove" && "${3:-}" == "--force" ]]
   exit 0
 fi
 
+if [[ "${1:-}" == "cat-file" && "${2:-}" == "-e" && "${3:-}" == *"^{commit}" ]]; then
+  ref="${3%^{commit\}}"
+  if [[ "$ref" == "missing-ref" ]]; then
+    exit 128
+  fi
+  exit 0
+fi
+if [[ "${1:-}" == "ls-tree" && "${2:-}" == "--name-only" && "${4:-}" == "--" ]]; then
+  ref="${3%^{commit\}}"
+  if [[ "$ref" == "no-harness" ]]; then
+    exit 0
+  fi
+  printf 'ta4j-cli/pom.xml\n'
+  exit 0
+fi
+
+
 printf 'unexpected fake git invocation:' >&2
 printf ' %q' "$@" >&2
 printf '\n' >&2
@@ -163,5 +180,74 @@ test_concurrent_default_invocations_are_isolated() {
   rm -rf "$TMP"
   pass "test_concurrent_default_invocations_are_isolated"
 }
+
+test_requires_explicit_base_ref() {
+  echo "Running test_requires_explicit_base_ref"
+
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-benchmark-script.XXXXXX")"
+  mkdir -p "$TMP/bin" "$TMP/repo"
+  write_fake_date
+  write_fake_git
+  write_fake_maven
+
+  local err="$TMP/no-arg.err"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" > "$TMP/no-arg.out" 2> "$err"; then
+    fail "invocation without a base ref should fail"
+  fi
+  grep -q "base-ref is required" "$err" || fail "missing base-ref required error: $(cat "$err")"
+  [[ ! -d "$TMP/repo/.agents" ]] || fail "failing invocation must not create output directories"
+
+  rm -rf "$TMP"
+  pass "test_requires_explicit_base_ref"
+}
+
+test_rejects_base_ref_without_harness() {
+  echo "Running test_rejects_base_ref_without_harness"
+
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-benchmark-script.XXXXXX")"
+  mkdir -p "$TMP/bin" "$TMP/repo"
+  write_fake_date
+  write_fake_git
+  write_fake_maven
+
+  local err="$TMP/no-harness.err"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" no-harness candidate-a -- --experiment fixture --bar-counts 1 --scenarios endOnly --repetitions 1 \
+      > "$TMP/no-harness.out" 2> "$err"; then
+    fail "base ref without ta4j-cli/pom.xml should fail"
+  fi
+  grep -q "does not contain ta4j-cli/pom.xml" "$err" || fail "missing harness error: $(cat "$err")"
+  [[ ! -d "$TMP/repo/.agents" ]] || fail "failing invocation must not create output directories"
+
+  rm -rf "$TMP"
+  pass "test_rejects_base_ref_without_harness"
+}
+
+test_rejects_unresolvable_ref() {
+  echo "Running test_rejects_unresolvable_ref"
+
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-benchmark-script.XXXXXX")"
+  mkdir -p "$TMP/bin" "$TMP/repo"
+  write_fake_date
+  write_fake_git
+  write_fake_maven
+
+  local err="$TMP/missing-ref.err"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" missing-ref candidate-a -- --experiment fixture --bar-counts 1 --scenarios endOnly --repetitions 1 \
+      > "$TMP/missing-ref.out" 2> "$err"; then
+    fail "unresolvable ref should fail"
+  fi
+  grep -q "does not resolve to a commit" "$err" || fail "missing unresolvable-ref error: $(cat "$err")"
+  [[ ! -d "$TMP/repo/.agents" ]] || fail "failing invocation must not create output directories"
+
+  rm -rf "$TMP"
+  pass "test_rejects_unresolvable_ref"
+}
+
+test_requires_explicit_base_ref
+test_rejects_base_ref_without_harness
+test_rejects_unresolvable_ref
 
 test_concurrent_default_invocations_are_isolated
