@@ -545,21 +545,16 @@ class ParameterResearchTest {
         // candidate/objective time, elapsedEvaluationNanos stays at the
         // training-only level and this assertion fails.
         BarSeries series = series(1d, 2d, 3d, 4d, 5d);
-        ParameterResearchReport report = holdoutConfigBuilder(series)
-                .maximize((candidate, window) -> {
-                    if (window.series().getBarCount() == 2) {
-                        try {
-                            Thread.sleep(20);
-                        } catch (InterruptedException ex) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                    return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
-                })
-                .holdoutBarCount(2)
-                .search(SearchPlan.grid(3))
-                .topK(1)
-                .run();
+        ParameterResearchReport report = holdoutConfigBuilder(series).maximize((candidate, window) -> {
+            if (window.series().getBarCount() == 2) {
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
+        }).holdoutBarCount(2).search(SearchPlan.grid(3)).topK(1).run();
 
         assertThat(report.counts().holdoutAttempted()).isEqualTo(1);
         assertThat(report.elapsedEvaluationNanos()).isGreaterThanOrEqualTo(10_000_000L);
@@ -1353,6 +1348,30 @@ class ParameterResearchTest {
                     .run();
             assertThat(report.terminationReason()).isEqualTo(TerminationReason.CANCELED);
             assertThat(report.counts().iterationsCompleted()).isEqualTo(1);
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    void canceledRunCountsOnlyProcessedProposals() {
+        // The interrupt flag must be observed before the next proposal is
+        // counted, or a canceled batch overcounts proposals that were never
+        // normalized, validated, or evaluated.
+        BarSeries series = series(1d, 2d, 3d);
+        try {
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .decimal("a", 0, 100, 1)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> {
+                        Thread.currentThread().interrupt();
+                        return ParameterResearch.ObjectiveEvaluation.of(window.series().numFactory().numOf(candidate));
+                    })
+                    .search(SearchPlan.grid(100))
+                    .run();
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.CANCELED);
+            assertThat(report.counts().attempted()).isEqualTo(1);
+            assertThat(report.counts().proposed()).isEqualTo(1);
         } finally {
             Thread.interrupted();
         }

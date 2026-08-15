@@ -51,11 +51,13 @@ import org.ta4j.core.num.Num;
  * <p>
  * <b>Leakage boundaries.</b> Every evaluation receives a {@link ResearchWindow}
  * whose {@link ResearchWindow#series()} is a sub-series restricted to exactly
- * the window's bars, so candidates built or scored on the window cannot read
- * outside it. Training-window results select the top K; those candidates are
- * then rebuilt from scratch on the holdout window. Normalization and
- * cross-parameter validation happen before any objective invocation and do not
- * consume evaluation budget.
+ * the window's bars, so candidate factories and objectives that build and score
+ * exclusively from the supplied window cannot read outside it. The workflow
+ * cannot enforce this for callbacks that capture the original series and ignore
+ * the window argument. Training-window results select the top K; those
+ * candidates are then rebuilt from scratch on the holdout window. Normalization
+ * and cross-parameter validation happen before any objective invocation and do
+ * not consume evaluation budget.
  * </p>
  *
  * <b>Budget semantics.</b> {@code maxEvaluations} is the exact budget of unique
@@ -588,10 +590,10 @@ public final class ParameterResearch {
                     break;
                 }
                 for (ParameterSet proposed : batch) {
-                    counters.proposed++;
                     if (Thread.currentThread().isInterrupted()) {
                         break;
                     }
+                    counters.proposed++;
                     ParameterSet normalized = normalizeProposal(proposed, normalizerData);
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     if (normalized == null) {
