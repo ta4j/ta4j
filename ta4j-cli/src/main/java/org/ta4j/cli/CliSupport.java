@@ -199,17 +199,21 @@ final class CliSupport {
         }
 
         BarSeries effectiveSeries = loadedSeries;
+        Instant fromDate = parseOptionalInstant(fromDateToken, true);
+        Instant toDate = parseOptionalInstant(toDateToken, false);
+        if (fromDate != null || toDate != null) {
+            // Slice first so timeframe buckets never absorb out-of-range source
+            // observations or drop in-range bars from a truncated final bucket.
+            effectiveSeries = sliceSeries(effectiveSeries, fromDate, toDate);
+            if (effectiveSeries == null) {
+                throw new IllegalArgumentException("The selected date/timeframe filter produced an empty series.");
+            }
+        }
         if (timeframeToken != null && !timeframeToken.isBlank()) {
             Duration timeframe = parseTimeframe(timeframeToken);
             String aggregatedName = loadedSeries.getName() + "-" + normalizeToken(timeframeToken);
             effectiveSeries = new BaseBarSeriesAggregator(new DurationBarAggregator(timeframe, true))
-                    .aggregate(loadedSeries, aggregatedName);
-        }
-
-        Instant fromDate = parseOptionalInstant(fromDateToken, true);
-        Instant toDate = parseOptionalInstant(toDateToken, false);
-        if (fromDate != null || toDate != null) {
-            effectiveSeries = sliceSeries(effectiveSeries, fromDate, toDate);
+                    .aggregate(effectiveSeries, aggregatedName);
         }
 
         if (effectiveSeries == null || effectiveSeries.isEmpty()) {
@@ -1388,9 +1392,24 @@ final class CliSupport {
                     "Threshold indicator tests require either --" + phase + "-below or --" + phase + "-above.");
         }
         if (belowToken != null) {
-            return new UnderIndicatorRule(indicator, series.numFactory().numOf(belowToken));
+            return new UnderIndicatorRule(indicator,
+                    series.numFactory().numOf(parseFiniteDouble(belowToken, phase + "-below")));
         }
-        return new OverIndicatorRule(indicator, series.numFactory().numOf(aboveToken));
+        return new OverIndicatorRule(indicator,
+                series.numFactory().numOf(parseFiniteDouble(aboveToken, phase + "-above")));
+    }
+
+    private static double parseFiniteDouble(String token, String optionName) {
+        double parsed;
+        try {
+            parsed = Double.parseDouble(token);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".", ex);
+        }
+        if (!Double.isFinite(parsed)) {
+            throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".");
+        }
+        return parsed;
     }
 
     private static Map<String, String> parseKeyValueOptions(List<String> options, String optionName) {

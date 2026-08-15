@@ -71,7 +71,11 @@ final class PerformanceComparison {
         if (!metadataMatch) {
             throw new IllegalStateException("Cannot compare performance artifacts with different experiment inputs");
         }
-
+        JsonObject baseHost = required(base, "host").getAsJsonObject();
+        JsonObject candidateHost = required(candidate, "host").getAsJsonObject();
+        if (!hostTelemetryMatch(baseHost, candidateHost)) {
+            throw new IllegalStateException("Cannot compare performance artifacts from different hosts");
+        }
         Map<String, JsonObject> baseResults = resultMap(base);
         Map<String, JsonObject> candidateResults = resultMap(candidate);
         if (!baseResults.keySet().equals(candidateResults.keySet())) {
@@ -173,6 +177,15 @@ final class PerformanceComparison {
             throw new IllegalStateException("Performance artifact is missing required field: " + field);
         }
         return value;
+    }
+
+    private static boolean hostTelemetryMatch(JsonObject base, JsonObject candidate) {
+        return base.get("hostId").getAsString().equals(candidate.get("hostId").getAsString())
+                && base.get("osName").getAsString().equals(candidate.get("osName").getAsString())
+                && base.get("osArch").getAsString().equals(candidate.get("osArch").getAsString())
+                && base.get("javaVersion").getAsString().equals(candidate.get("javaVersion").getAsString())
+                && base.get("jvmName").getAsString().equals(candidate.get("jvmName").getAsString())
+                && base.get("availableProcessors").getAsInt() == candidate.get("availableProcessors").getAsInt();
     }
 
     private static double percentDelta(long base, long candidate) {
