@@ -54,6 +54,8 @@ final class GeneticSearchEngine extends SearchEngine {
     private final Map<String, int[]> genomesById = new HashMap<>();
 
     private boolean initialized;
+    private long sweepCursor;
+
     private List<int[]> population;
     private List<GenomeEvaluation> generationEvaluations = new ArrayList<>();
     private ParameterResearch.EvaluatedCandidate bestEver;
@@ -199,9 +201,13 @@ final class GeneticSearchEngine extends SearchEngine {
         // When the space is nearly covered, random draws can collide
         // repeatedly: sweep the remaining space deterministically so
         // exploration stops only when every declared cell has been proposed.
-        if (totalSpace() <= Integer.MAX_VALUE) {
-            for (long index = 0; index < totalSpace(); index++) {
-                int[] candidate = genomeAt(index);
+        // The cursor is retained across calls so a breeding batch does not
+        // rescan already-visited cells from index 0 for every child.
+        long space = totalSpace();
+        if (space <= Integer.MAX_VALUE) {
+            for (long step = 0; step < space; step++) {
+                int[] candidate = genomeAt(sweepCursor);
+                sweepCursor = (sweepCursor + 1L) % space;
                 String id = canonicalId(candidate);
                 if (!proposed(id) && batchIds.add(id)) {
                     return candidate;
@@ -282,6 +288,14 @@ final class GeneticSearchEngine extends SearchEngine {
         return genomes;
     }
 
+    private int[] randomGenome() {
+        int[] genome = new int[specs().size()];
+        for (int d = 0; d < genome.length; d++) {
+            genome[d] = random.nextInt(specs().get(d).cardinality());
+        }
+        return genome;
+    }
+
     private int[] genomeAt(long index) {
         int[] genome = new int[specs().size()];
         long remaining = index;
@@ -293,15 +307,11 @@ final class GeneticSearchEngine extends SearchEngine {
         return genome;
     }
 
-    private int[] randomGenome() {
-        int[] genome = new int[specs().size()];
-        for (int d = 0; d < genome.length; d++) {
-            genome[d] = random.nextInt(specs().get(d).cardinality());
-        }
-        return genome;
-    }
-
     private List<ParameterResearch.ParameterSet> proposalBatch(List<int[]> genomes) {
+        // The pipeline evaluates and observes one batch before requesting the
+        // next: raw-id bindings from older batches can never be looked up
+        // again, so retain only the in-flight batch.
+        genomesById.clear();
         List<ParameterResearch.ParameterSet> batch = new ArrayList<>(genomes.size());
         for (int[] genome : genomes) {
             ParameterResearch.ParameterSet set = parameterSet(genome);

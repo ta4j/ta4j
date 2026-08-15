@@ -377,7 +377,9 @@ class ParticleSwarmEngineTest {
             if (bound <= 0) {
                 throw new IllegalArgumentException("bound must be positive");
             }
-            return (int) Math.floor(nextDouble() * bound);
+            // nextDouble() draws can be exactly 1.0 in the scripted feeds:
+            // clamp so the result stays within Random's [0, bound) contract.
+            return Math.min(bound - 1, (int) Math.floor(nextDouble() * bound));
         }
     }
 }
