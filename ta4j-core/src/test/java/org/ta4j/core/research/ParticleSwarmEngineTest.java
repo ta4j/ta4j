@@ -88,6 +88,30 @@ class ParticleSwarmEngineTest {
     }
 
     @Test
+    void zeroCapacityProposeFinalizesButSkipsMoveAndIteration() {
+        // An exhausted budget still asks the engine for a zero-sized batch:
+        // the pending observations must be finalized, but the swarm must not
+        // move and the iteration tracker must not advance for a request that
+        // cannot contribute any proposal.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 2)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d, 1d), ranking, Direction.MAXIMIZE, -1, 1);
+
+        List<ParameterSet> batch = engine.propose(2);
+        assertThat(batch).hasSize(2);
+        for (int i = 0; i < batch.size(); i++) {
+            ParameterSet set = batch.get(i);
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(i + 1), Map.of()));
+        }
+
+        assertThat(engine.propose(0)).isEmpty();
+        assertThat(engine.iterationsCompleted()).isEqualTo(1);
+        assertThat(engine.terminationReason()).isNull();
+    }
+
+    @Test
     void gbestTracksRankingTieBreakImprovements() {
         // Two particles share the same primary score but one was repaired:
         // the ranking prefers the unrepaired candidate, so the global best

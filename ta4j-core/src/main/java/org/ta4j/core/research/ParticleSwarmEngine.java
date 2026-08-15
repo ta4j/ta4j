@@ -126,6 +126,14 @@ final class ParticleSwarmEngine extends SearchEngine {
             terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
             return List.of();
         }
+        if (maxNew <= 0) {
+            // A zero-capacity request, e.g. from an exactly exhausted
+            // evaluation budget, can never produce an evaluated proposal. The
+            // pending observations were finalized above, so do not move the
+            // swarm or advance the iteration tracker for a request that cannot
+            // contribute anything.
+            return List.of();
+        }
         move();
         // Every swarm update advances the iteration tracker exactly once, so a
         // leading move whose batch fully collides cannot slip a second update

@@ -551,6 +551,17 @@ public final class ParameterResearch {
             // reservation or the plan reported for the running search.
             SearchPlan executedPlan = searchPlan;
             int reservedTopK = topK;
+            // The same fixity applies to every callback the loop executes: one
+            // evaluation must not swap the objective, candidate factory,
+            // validator, normalizer, target, or direction mid-run, or scores
+            // would mix objectives while ranking, engine direction, and the
+            // objective ID stay derived from the original configuration.
+            ObjectiveFunction<T> runObjective = objective;
+            CandidateFactory<T> runCandidateFactory = candidateFactory;
+            CandidateValidator runValidator = validator;
+            ParameterNormalizer runNormalizer = normalizer;
+            Num runTargetScore = targetScore;
+            Direction runDirection = direction;
             // Holdout rebuilds score up to topK retained candidates, so those
             // evaluations are reserved out of the budget; the training search
             // never spends them, keeping total objective calls budget-exact.
@@ -602,7 +613,7 @@ public final class ParameterResearch {
                         break;
                     }
                     counters.proposed++;
-                    ParameterSet normalized = normalizeProposal(proposed, normalizerData);
+                    ParameterSet normalized = normalizeProposal(proposed, normalizerData, runNormalizer);
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
                     if (normalized == null) {
                         counters.rejected++;
@@ -612,7 +623,7 @@ public final class ParameterResearch {
                         counters.repaired++;
                     }
                     try {
-                        validator.validate(normalized);
+                        runValidator.validate(normalized);
                     } catch (RuntimeException ex) {
                         counters.rejected++;
                         verifyUnchanged(trainingSnapshot, trainingWindow.series());
@@ -631,8 +642,8 @@ public final class ParameterResearch {
                     long evaluationStart = System.nanoTime();
                     EvaluatedCandidate evaluated;
                     try {
-                        T candidate = candidateFactory.build(trainingWindow, normalized);
-                        ObjectiveEvaluation outcome = objective.evaluate(candidate, trainingWindow);
+                        T candidate = runCandidateFactory.build(trainingWindow, normalized);
+                        ObjectiveEvaluation outcome = runObjective.evaluate(candidate, trainingWindow);
                         evaluated = classify(candidateId, normalized, (int) counters.attempted, outcome);
                     } catch (RuntimeException ex) {
                         evaluated = EvaluatedCandidate.failed(candidateId, normalized, (int) counters.attempted,
@@ -650,7 +661,8 @@ public final class ParameterResearch {
                         counters.failed++;
                         failures.add(evaluated.toFailedEvaluation());
                     }
-                    if (evaluated.valid() && targetScore != null && reachedTarget(evaluated.score())) {
+                    if (evaluated.valid() && runTargetScore != null
+                            && reachedTarget(runDirection, runTargetScore, evaluated.score())) {
                         targetReached = true;
                         engine.finalizeObserved();
                         break;
@@ -699,7 +711,7 @@ public final class ParameterResearch {
             if (holdoutWindow != null && !ranked.isEmpty()) {
                 verifyUnchanged(snapshot, series);
                 HoldoutResult holdout = rebuildOnHoldout(ranked, leaderboardSize, holdoutWindow, trainingWindow,
-                        ranking, cache, failures);
+                        ranking, runObjective, runCandidateFactory, cache, failures);
                 holdoutLeaderboard = holdout.leaderboard();
                 holdoutById = holdout.byId();
                 evaluationNanos += holdout.evaluationNanos();
@@ -778,15 +790,16 @@ public final class ParameterResearch {
             return new ResearchWindow(window, start, end, phase, windowId);
         }
 
-        private ParameterSet normalizeProposal(ParameterSet proposed, BarSeries normalizerData) {
-            if (normalizer == null) {
+        private ParameterSet normalizeProposal(ParameterSet proposed, BarSeries normalizerData,
+                ParameterNormalizer activeNormalizer) {
+            if (activeNormalizer == null) {
                 return proposed;
             }
             List<ParameterValue> values = new ArrayList<>(proposed.values().size());
             for (ParameterValue value : proposed.values()) {
                 ParameterValue normalized;
                 try {
-                    normalized = normalizer.normalize(normalizerData, value.name(), value.value());
+                    normalized = activeNormalizer.normalize(normalizerData, value.name(), value.value());
                 } catch (RuntimeException ex) {
                     return null;
                 }
@@ -836,19 +849,20 @@ public final class ParameterResearch {
             };
         }
 
-        private boolean reachedTarget(Num score) {
+        private boolean reachedTarget(Direction activeDirection, Num activeTargetScore, Num score) {
             if (!Num.isFinite(score)) {
                 return false;
             }
             // compareScores stays precision-preserving across factories, so a
             // tiny decimal target is never narrowed to zero (or a large one to
             // infinity) by a narrower score factory.
-            int comparison = compareScores(score, targetScore);
-            return direction == Direction.MAXIMIZE ? comparison >= 0 : comparison <= 0;
+            int comparison = compareScores(score, activeTargetScore);
+            return activeDirection == Direction.MAXIMIZE ? comparison >= 0 : comparison <= 0;
         }
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
                 ResearchWindow holdoutWindow, ResearchWindow trainingWindow, Comparator<EvaluatedCandidate> ranking,
+                ObjectiveFunction<T> activeObjective, CandidateFactory<T> activeCandidateFactory,
                 EvaluationCache cache, List<FailedEvaluation> failures) {
             List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
             SeriesSnapshot holdoutSnapshot = new SeriesSnapshot(holdoutWindow.series());
@@ -872,8 +886,8 @@ public final class ParameterResearch {
                 if (cached == null) {
                     long evaluationStart = System.nanoTime();
                     try {
-                        T candidate = candidateFactory.build(holdoutWindow, training.parameters());
-                        ObjectiveEvaluation outcome = objective.evaluate(candidate, holdoutWindow);
+                        T candidate = activeCandidateFactory.build(holdoutWindow, training.parameters());
+                        ObjectiveEvaluation outcome = activeObjective.evaluate(candidate, holdoutWindow);
                         holdout = classify(training.candidateId(), training.parameters(), i + 1, outcome);
                     } catch (RuntimeException ex) {
                         holdout = EvaluatedCandidate.failed(training.candidateId(), training.parameters(), i + 1,
@@ -2298,27 +2312,21 @@ public final class ParameterResearch {
     }
 
     /**
-     * Subtracts {@code subtrahend} from {@code minuend}, tolerating scores produced
-     * by different {@link NumFactory} implementations: a cross-factory subtraction
-     * goes through exact {@link BigDecimal} values instead of coercing one operand
-     * through the other's factory, which could overflow to infinity or round away
-     * the delta. A same-factory subtraction whose native result is non-finite (e.g.
-     * {@code Double.MAX_VALUE - (-Double.MAX_VALUE)}) also falls back to the exact
-     * decimal path, so finite operand scores never produce an infinite delta.
+     * Subtracts {@code subtrahend} from {@code minuend} as an exact decimal.
+     *
+     * <p>
+     * Score deltas always go through {@link BigDecimal} values instead of native
+     * {@link Num} arithmetic: a native same-class fast path could overflow to
+     * infinity, round away the delta, or throw for same-class instances whose
+     * factories reject each other (e.g. {@code DecimalNum.minus} casts its
+     * operand), while {@code bigDecimalValue()} is exact and factory-independent.
+     * </p>
      *
      * @param minuend    score to subtract from
      * @param subtrahend score to subtract
-     * @return {@code minuend - subtrahend}; in the minuend's factory when both
-     *         operands share it and the result stays finite, otherwise as an exact
-     *         decimal
+     * @return {@code minuend - subtrahend} as an exact decimal
      */
     static Num subtractScores(Num minuend, Num subtrahend) {
-        if (minuend.getClass() == subtrahend.getClass()) {
-            Num result = minuend.minus(subtrahend);
-            if (Num.isFinite(result)) {
-                return result;
-            }
-        }
         return DecimalNum.valueOf(minuend.bigDecimalValue().subtract(subtrahend.bigDecimalValue()));
     }
 

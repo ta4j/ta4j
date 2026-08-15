@@ -582,6 +582,33 @@ class ParameterResearchTest {
     }
 
     @Test
+    void callbackMutationOfObjectiveDoesNotAlterRunningSearch() {
+        // A callback that retains the builder and mutates it must not change
+        // the objective of the run already in flight: the first evaluation
+        // (candidate 0) swaps the builder to a different objective and
+        // direction, but the running search keeps the snapshot taken at
+        // run() start, so the leaderboard still reflects the original
+        // maximize objective with candidate 4 on top.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 0, 4)
+                .candidate((window, parameters) -> parameters.intValue("a"));
+        builder.maximize((candidate, window) -> {
+            if (candidate == 0) {
+                builder.candidate((w, p) -> p.intValue("a") + 100)
+                        .minimize((c, w) -> ParameterResearch.ObjectiveEvaluation
+                                .of(series.numFactory().numOf(c)));
+            }
+            return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
+        }).search(SearchPlan.grid(5));
+
+        ParameterResearchReport report = builder.run();
+
+        assertThat(report.trainingLeaderboard().get(0).parameters().intValue("a")).isEqualTo(4);
+        assertThat(report.counts().attempted()).isEqualTo(5);
+    }
+
+    @Test
     void topKWarningWhenFewerValidCandidatesThanRequested() {
         BarSeries series = series(1d, 2d, 3d);
         ParameterResearchReport report = sumGridBuilder(series, 2).topK(5).run();
@@ -1021,6 +1048,21 @@ class ParameterResearchTest {
         assertThat(Num.isFinite(delta)).isTrue();
         assertThat(delta.bigDecimalValue())
                 .isEqualByComparingTo(BigDecimal.valueOf(Double.MAX_VALUE).multiply(BigDecimal.valueOf(2)));
+    }
+
+    @Test
+    void sameClassScoresFromForeignFactoriesSubtractDecimally() {
+        // Two same-class Num instances can still reject each other's native
+        // arithmetic: NonDecimalDelegateNum.minus delegates to DecimalNum,
+        // which casts the subtrahend, so the old class-equality fast path
+        // threw ClassCastException. Score deltas must never take a native
+        // path and must stay an exact decimal across any factories.
+        Num minuend = new NonDecimalDelegateNum(DecimalNum.valueOf("2.5"));
+        Num subtrahend = new NonDecimalDelegateNum(DecimalNum.valueOf(2));
+
+        Num delta = ParameterResearch.subtractScores(minuend, subtrahend);
+
+        assertThat(delta.bigDecimalValue()).isEqualByComparingTo(new BigDecimal("0.5"));
     }
 
     @Test
