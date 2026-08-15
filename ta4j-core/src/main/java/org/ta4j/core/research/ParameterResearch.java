@@ -827,8 +827,11 @@ public final class ParameterResearch {
             }
             Num score = outcome.score();
             if (!Num.isFinite(score)) {
+                // A non-finite score cannot be ranked, but the metrics the
+                // objective reported for this candidate remain diagnostic:
+                // preserve them exactly like the FAILED path does.
                 return EvaluatedCandidate.failed(candidateId, parameters, ordinal, "objective score is not finite",
-                        Map.of());
+                        outcome.metrics());
             }
             return EvaluatedCandidate.valid(candidateId, parameters, ordinal, score, outcome.metrics());
         }

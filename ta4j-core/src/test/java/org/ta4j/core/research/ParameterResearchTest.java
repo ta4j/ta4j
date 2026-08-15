@@ -200,6 +200,25 @@ class ParameterResearchTest {
     }
 
     @Test
+    void nonFiniteObjectiveScoreKeepsReportedMetrics() {
+        // A valid-status outcome whose score is not finite is converted to a
+        // failed evaluation; the metrics the objective reported must stay
+        // attached for diagnostics instead of being dropped on conversion.
+        BarSeries series = series(1d, 2d, 3d);
+        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(NaN.NaN, Map.of("acc", series.numFactory().numOf(0.5))))
+                .search(SearchPlan.grid(2))
+                .run();
+
+        assertThat(report.failedEvaluations()).hasSize(2);
+        assertThat(report.failedEvaluations().get(0).metrics())
+                .containsEntry("acc", series.numFactory().numOf(0.5));
+    }
+
+    @Test
     void validatorRejectionsDoNotConsumeBudget() {
         BarSeries series = series(1d, 2d, 3d);
         CandidateValidator validator = parameters -> {

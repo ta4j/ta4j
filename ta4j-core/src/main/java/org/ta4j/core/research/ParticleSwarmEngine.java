@@ -44,6 +44,13 @@ final class ParticleSwarmEngine extends SearchEngine {
     private List<Particle> particles;
     private Map<String, List<Integer>> pendingBatch = new LinkedHashMap<>();
     private Map<String, ParameterResearch.EvaluatedCandidate> batchEvaluations = new LinkedHashMap<>();
+    /**
+     * Whether the update that generated {@link #pendingBatch} already advanced
+     * the iteration tracker: every swarm move counts immediately (so a
+     * fully-colliding move cannot escape the iteration cap), while the launch
+     * batch has no preceding move and is counted when it is finalized.
+     */
+    private boolean pendingMoveCounted;
     private ParameterResearch.EvaluatedCandidate gbestEvaluated;
     private double[] gbestPosition;
     /**
@@ -112,6 +119,9 @@ final class ParticleSwarmEngine extends SearchEngine {
                 }
                 particles.add(new Particle(position, new double[specs().size()], position.clone()));
             }
+            // The launch batch has no preceding swarm move: its update is
+            // counted when the batch is finalized.
+            pendingMoveCounted = false;
             return proposeBatch(particles.size());
         }
         if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
@@ -137,8 +147,10 @@ final class ParticleSwarmEngine extends SearchEngine {
         move();
         // Every swarm update advances the iteration tracker exactly once, so a
         // leading move whose batch fully collides cannot slip a second update
-        // past the configured iteration cap or the stagnation streak.
+        // past the configured iteration cap or the stagnation streak, and
+        // finalizeIteration() must not count this update a second time.
         completeIteration();
+        pendingMoveCounted = true;
         int count = Math.min(particles.size(), maxNew);
         return proposeBatch(count);
     }
@@ -217,7 +229,17 @@ final class ParticleSwarmEngine extends SearchEngine {
     }
 
     private void finalizeIteration() {
-        completeIteration();
+        if (pendingBatch.isEmpty()) {
+            // Nothing to finalize: the update that produced the next batch
+            // will count itself when the swarm moves.
+            return;
+        }
+        // The launch batch has no preceding move and is counted here; a moved
+        // batch was already counted when the move ran, so every update
+        // advances the tracker exactly once.
+        if (!pendingMoveCounted) {
+            completeIteration();
+        }
         for (Map.Entry<String, List<Integer>> entry : pendingBatch.entrySet()) {
             ParameterResearch.EvaluatedCandidate evaluated = batchEvaluations.get(entry.getKey());
             if (evaluated == null || !evaluated.valid()) {
@@ -263,10 +285,11 @@ final class ParticleSwarmEngine extends SearchEngine {
         }
 
         // Drain the batch so a repeated finalizeObserved() call is a no-op:
-        // re-running the iteration would double-count completeIteration() and
-        // advance the stagnation streak twice for one batch.
+        // re-running the iteration would advance the stagnation streak twice
+        // for one batch.
         pendingBatch = new LinkedHashMap<>();
         batchEvaluations = new LinkedHashMap<>();
+        pendingMoveCounted = false;
     }
 
     private void move() {

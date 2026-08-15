@@ -61,6 +61,43 @@ class ParticleSwarmEngineTest {
     }
 
     @Test
+    void movedBatchesCountOnceAgainstIterationLimit() {
+        // Each swarm update advances the iteration tracker exactly once: the
+        // launch batch is counted when it is finalized and every subsequent
+        // move when it runs, so maxIterations(3) yields the launch batch plus
+        // two moved batches instead of terminating one batch early on a
+        // double-counted update.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 6)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d, 1d), ranking, Direction.MAXIMIZE, 3, -1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first).hasSize(2);
+        observeFailed(engine, first);
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(second).hasSize(2);
+        observeFailed(engine, second);
+
+        List<ParameterSet> third = engine.propose(2);
+        assertThat(third).hasSize(2);
+        observeFailed(engine, third);
+
+        assertThat(engine.propose(2)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.ITERATION_LIMIT);
+        assertThat(engine.iterationsCompleted()).isEqualTo(3);
+    }
+
+    private static void observeFailed(ParticleSwarmEngine engine, List<ParameterSet> batch) {
+        for (int i = 0; i < batch.size(); i++) {
+            ParameterSet set = batch.get(i);
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.failed(set.stableId(), set, i, "always", Map.of()));
+        }
+    }
+
+    @Test
     void finalizeObservedIsIdempotent() {
         // A repeated finalizeObserved() call must be a no-op: re-running the
         // iteration would double-count completeIteration() and advance the
@@ -138,7 +175,7 @@ class ParticleSwarmEngineTest {
                 Direction.MAXIMIZE, -1, -1);
 
         List<ParameterSet> first = engine.propose(2);
-        assertThat(first).hasSize(2);
+        assertThat(first.stream().map(ParameterSet::stableId)).containsExactlyInAnyOrder("a=3", "a=7");
         engine.observe("a=3",
                 EvaluatedCandidate.valid("a=3",
                         new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 0,
@@ -148,6 +185,7 @@ class ParticleSwarmEngineTest {
                         DecimalNum.valueOf(4), Map.of()));
 
         List<ParameterSet> second = engine.propose(2);
+        assertThat(second.stream().map(ParameterSet::stableId)).containsExactlyInAnyOrder("a=3", "a=6");
         engine.observe("a=3",
                 EvaluatedCandidate.valid("a=3",
                         new ParameterSet(List.of(new ParameterValue("a", "3", true, "clamped"))), 2,
