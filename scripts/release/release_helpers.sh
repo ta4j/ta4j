@@ -1437,9 +1437,6 @@ ta4j-core/target/ta4j-core-${version}-tests.jar
 ta4j-examples/target/ta4j-examples-${version}.jar
 ta4j-examples/target/ta4j-examples-${version}-sources.jar
 ta4j-examples/target/ta4j-examples-${version}-javadoc.jar
-ta4j-cli/target/ta4j-cli-${version}.jar
-ta4j-cli/target/ta4j-cli-${version}-sources.jar
-ta4j-cli/target/ta4j-cli-${version}-javadoc.jar
 EOF
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
