@@ -24,7 +24,10 @@ import org.junit.jupiter.api.io.TempDir;
  * few columns throw unchecked {@code DateTimeParseException} /
  * {@code ArrayIndexOutOfBoundsException} instead, which escape the loader and
  * surface as a raw software error instead of the documented usage error.
- *
+ * CSV-structural failures ({@code CsvValidationException}, for example an
+ * unterminated quoted field) are treated like parse failures and also return
+ * {@code null} rather than silently truncating the series at the malformed row.
+ * 
  * @since 0.23.1
  */
 class CsvMalformedRowTest {
@@ -59,6 +62,13 @@ class CsvMalformedRowTest {
     @Test
     void blankLineIsReportedAsDataLoadFailure() throws IOException {
         Path csv = writeCsv("2026-01-01,100,101,99,100.5,1000", "");
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.loadSeries(csv.toString(), null,
+                new ByteArrayInputStream(new byte[0]), null, null, null));
+    }
+
+    @Test
+    void csvValidationRowIsReportedAsDataLoadFailure() throws IOException {
+        Path csv = writeCsv("2026-01-01,100,\"101,99,100.5,1000");
         assertThrows(IllegalArgumentException.class, () -> CliSupport.loadSeries(csv.toString(), null,
                 new ByteArrayInputStream(new byte[0]), null, null, null));
     }

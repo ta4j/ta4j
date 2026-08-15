@@ -100,7 +100,20 @@ public final class CliIndicatorAccelerationService implements Provider {
         } catch (StaleSeriesException exception) {
             return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.STALE_SERIES,
                     capability.providerId(), exception.getMessage());
-        } catch (IllegalArgumentException | ArithmeticException | IllegalStateException exception) {
+        } catch (MalformedProviderResultException exception) {
+            // A provider returned output whose shape or values do not match the
+            // captured request; quarantine it and fall back to scalar execution.
+            QUARANTINED_PROVIDERS.putIfAbsent(selection.providerId(),
+                    "malformed native output: " + exception.getMessage());
+            return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.PROVIDER_FAILURE,
+                    capability.providerId(), "malformed native output: " + exception.getMessage());
+        } catch (IllegalStateException exception) {
+            // Stamps or materialization invariants broke: a broken provider, not
+            // an ineligible request. Quarantine it and fall back to scalar.
+            QUARANTINED_PROVIDERS.putIfAbsent(selection.providerId(), exception.getMessage());
+            return notExecuted(Status.FAILED, capability.backend(), DiagnosticCode.PROVIDER_FAILURE,
+                    capability.providerId(), exception.getMessage());
+        } catch (IllegalArgumentException | ArithmeticException exception) {
             return notExecuted(Status.SKIPPED, capability.backend(), DiagnosticCode.PROVIDER_UNAVAILABLE,
                     capability.providerId(), "provider rejected request: " + exception.getMessage());
         } catch (NativeProviderException exception) {

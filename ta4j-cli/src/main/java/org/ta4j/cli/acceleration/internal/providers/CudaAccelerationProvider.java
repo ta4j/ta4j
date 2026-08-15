@@ -59,8 +59,8 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         long started = System.nanoTime();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        validateMemoryCeiling(ForecastSnapshot.estimatedNativeBytes(decisions, spec.lookbackBarCount(),
-                spec.iterationCount(), spec.quantileProbabilities().size()));
+        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                spec.iterationCount(), spec.quantileProbabilities().size(), false));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "CUDA");
         CudaEvaluationResult nativeResult;

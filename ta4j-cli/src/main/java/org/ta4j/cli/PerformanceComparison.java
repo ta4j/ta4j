@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.cli.performance;
+package org.ta4j.cli;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +19,8 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.ta4j.cli.performance.PerformanceExperimentRunner;
+
 /**
  * Compares two {@link PerformanceExperimentRunner} artifact directories.
  *
@@ -29,7 +31,7 @@ import com.google.gson.JsonParser;
  *
  * @since 0.23.1
  */
-public final class PerformanceComparison {
+final class PerformanceComparison {
 
     static final String COMPARISON_FILE = "comparison.json";
     static final String SUMMARY_FILE = "summary.md";
@@ -145,9 +147,9 @@ public final class PerformanceComparison {
     }
 
     private static JsonObject readPerformanceJson(Path dir) throws IOException {
-        return JsonParser
-                .parseString(Files.readString(dir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE),
-                        StandardCharsets.UTF_8))
+        // Mirrors PerformanceExperimentRunner.PERFORMANCE_FILE (package-private
+        // in org.ta4j.cli.performance); this class moved to org.ta4j.cli.
+        return JsonParser.parseString(Files.readString(dir.resolve("performance.json"), StandardCharsets.UTF_8))
                 .getAsJsonObject();
     }
 

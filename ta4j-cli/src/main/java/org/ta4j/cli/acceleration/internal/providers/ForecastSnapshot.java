@@ -4,7 +4,6 @@
 package org.ta4j.cli.acceleration.internal.providers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,29 +67,42 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
                 spec.iterationCount(), spec.quantileProbabilities(), request);
     }
 
-    long estimatedNativeBytes() {
-        return estimatedNativeBytes(nativeRequest.decisionCount(), nativeRequest.lookbackBarCount(),
-                nativeRequest.iterationCount(), nativeRequest.quantiles().length);
+    /**
+     * Computes the peak native payload estimate from request dimensions alone, so
+     * providers can enforce their memory ceiling before any capture work or
+     * allocation happens. The estimate covers the Java-side staging arrays and
+     * their native copies, the device result buffer, and the materialized sample or
+     * quantile rows produced after the native call, plus a small fixed per-array
+     * overhead.
+     */
+    static long estimatedPeakBytes(long decisionCount, long lookbackBarCount, long iterationCount, long quantileCount,
+            boolean sampleOutput) {
+        long inputDoubles = Math.addExact(Math.multiplyExact(decisionCount, 5L + lookbackBarCount), quantileCount);
+        long inputsBytes = Math.multiplyExact(
+                Math.addExact(Math.multiplyExact(inputDoubles, Double.BYTES), Math.multiplyExact(decisionCount, 4L)),
+                2L);
+        long outputsBytes;
+        long materializationBytes;
+        if (sampleOutput) {
+            outputsBytes = Math.multiplyExact(Math.multiplyExact(decisionCount, iterationCount), Float.BYTES);
+            materializationBytes = Math.multiplyExact(iterationCount, 48L);
+        } else {
+            outputsBytes = Math.multiplyExact(
+                    Math.addExact(iterationCount, Math.multiplyExact(decisionCount, 4L + quantileCount)), Double.BYTES);
+            materializationBytes = Math.multiplyExact(Math.multiplyExact(decisionCount, quantileCount), 48L);
+        }
+        return Math.addExact(Math.addExact(Math.addExact(inputsBytes, outputsBytes), materializationBytes),
+                ARRAY_OVERHEAD_BYTES);
     }
 
-    /**
-     * Computes the native payload estimate from request dimensions alone, so
-     * providers can enforce their memory ceiling before any capture work or
-     * allocation happens.
-     */
-    static long estimatedNativeBytes(long decisionCount, long lookbackBarCount, long iterationCount,
-            long quantileCount) {
-        long inputDoubles = Math.addExact(Math.multiplyExact(decisionCount, 4L),
-                Math.multiplyExact(decisionCount, lookbackBarCount));
-        long outputDoubles = Math.addExact(iterationCount, Math.multiplyExact(decisionCount, 4L + quantileCount));
-        return Math.multiplyExact(Math.addExact(inputDoubles, outputDoubles), Double.BYTES);
-    }
+    private static final long ARRAY_OVERHEAD_BYTES = 16L * 16L;
 
     List<Forecast> materializeRows(double[] rows, String providerName) {
         stamp.requireCurrent(series, "before " + providerName + " result publication");
         int rowLength = 4 + quantileProbabilities.size();
         if (rows.length != Math.multiplyExact(decisionCount, rowLength)) {
-            throw new IllegalStateException(providerName + " result length does not match the immutable request");
+            throw new MalformedProviderResultException(
+                    providerName + " result length does not match the immutable request");
         }
         List<Forecast> values = new ArrayList<>(decisionCount);
         for (int offset = 0; offset < decisionCount; offset++) {
@@ -100,8 +112,8 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             Forecast forecast = switch (status) {
             case 0 -> stableForecast(index, rowOffset, rows, providerName);
             case 1, 2 -> Forecast.unstable(index, horizon);
-            default ->
-                throw new IllegalStateException(providerName + " decision " + index + " failed with status " + status);
+            default -> throw new MalformedProviderResultException(
+                    providerName + " decision " + index + " failed with status " + status);
             };
             values.add(forecast);
         }
@@ -113,7 +125,8 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
         stamp.requireCurrent(series, "before " + providerName + " result publication");
         int expected = Math.multiplyExact(decisionCount, iterationCount);
         if (terminalPrices.length != expected) {
-            throw new IllegalStateException(providerName + " sample count does not match the immutable request");
+            throw new MalformedProviderResultException(
+                    providerName + " sample count does not match the immutable request");
         }
         int[] stable = nativeRequest.stable();
         List<Forecast> values = new ArrayList<>(decisionCount);
@@ -146,7 +159,8 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
         double median = requireFinite(rows[rowOffset + 2], "median", index, providerName);
         double standardDeviation = requireFinite(rows[rowOffset + 3], "standard deviation", index, providerName);
         if (standardDeviation < 0d) {
-            throw new IllegalStateException(providerName + " standard deviation is negative at index " + index);
+            throw new MalformedProviderResultException(
+                    providerName + " standard deviation is negative at index " + index);
         }
         Map<Double, Num> mappedQuantiles = new LinkedHashMap<>();
         double previous = Double.NEGATIVE_INFINITY;
@@ -154,7 +168,8 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             double probability = quantileProbabilities.get(i);
             double value = requireFinite(rows[rowOffset + 4 + i], "quantile", index, providerName);
             if (value < previous) {
-                throw new IllegalStateException(providerName + " quantiles are not monotone at index " + index);
+                throw new MalformedProviderResultException(
+                        providerName + " quantiles are not monotone at index " + index);
             }
             previous = value;
             mappedQuantiles.put(probability, numFactory.numOf(value));
@@ -218,7 +233,7 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
 
     private static double requireFinite(double value, String field, int index, String providerName) {
         if (!Double.isFinite(value)) {
-            throw new IllegalStateException(providerName + " " + field + " is non-finite at index " + index);
+            throw new MalformedProviderResultException(providerName + " " + field + " is non-finite at index " + index);
         }
         return value;
     }
@@ -228,51 +243,6 @@ record NativeForecastRequest(int fromInclusive, int decisionCount, int horizon, 
         int lookbackBarCount, long seed, int shockModel, int volatilityMode, double volatilityDecayFactor,
         double[] quantiles, int[] stable, double[] prices, double[] means, double[] drifts, double[] variances,
         double[] historicalReturns) {
-
-    NativeForecastRequest {
-        quantiles = Arrays.copyOf(quantiles, quantiles.length);
-        stable = Arrays.copyOf(stable, stable.length);
-        prices = Arrays.copyOf(prices, prices.length);
-        means = Arrays.copyOf(means, means.length);
-        drifts = Arrays.copyOf(drifts, drifts.length);
-        variances = Arrays.copyOf(variances, variances.length);
-        historicalReturns = Arrays.copyOf(historicalReturns, historicalReturns.length);
-    }
-
-    @Override
-    public double[] quantiles() {
-        return Arrays.copyOf(quantiles, quantiles.length);
-    }
-
-    @Override
-    public int[] stable() {
-        return Arrays.copyOf(stable, stable.length);
-    }
-
-    @Override
-    public double[] prices() {
-        return Arrays.copyOf(prices, prices.length);
-    }
-
-    @Override
-    public double[] means() {
-        return Arrays.copyOf(means, means.length);
-    }
-
-    @Override
-    public double[] drifts() {
-        return Arrays.copyOf(drifts, drifts.length);
-    }
-
-    @Override
-    public double[] variances() {
-        return Arrays.copyOf(variances, variances.length);
-    }
-
-    @Override
-    public double[] historicalReturns() {
-        return Arrays.copyOf(historicalReturns, historicalReturns.length);
-    }
 }
 
 record SeriesStamp(int beginIndex, int endIndex, int removedBars, int barCount, long historyRevision,
@@ -319,6 +289,18 @@ record SeriesStamp(int beginIndex, int endIndex, int removedBars, int barCount, 
 final class StaleSeriesException extends IllegalStateException {
 
     StaleSeriesException(String message) {
+        super(message);
+    }
+}
+
+/**
+ * Signals that a native provider returned output whose shape or values do not
+ * match the immutable request captured in the snapshot, or that is otherwise
+ * unusable for forecast materialization.
+ */
+final class MalformedProviderResultException extends IllegalStateException {
+
+    MalformedProviderResultException(String message) {
         super(message);
     }
 }

@@ -11,6 +11,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.Request;
 import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastSpec;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -19,16 +20,21 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
 
     static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.metal.maxBytes";
 
+    static final String APPROXIMATE_PROPERTY = "ta4j.cli.acceleration.metal.approximate";
+
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
     private final Capability capability;
     private final MetalNativeBridge nativeBridge;
     private final MetalProbeResult probe;
+    private final boolean approximateEnabled;
 
-    MetalAccelerationProvider(Capability capability, MetalNativeBridge nativeBridge, MetalProbeResult probe) {
+    MetalAccelerationProvider(Capability capability, MetalNativeBridge nativeBridge, MetalProbeResult probe,
+            boolean approximateEnabled) {
         this.capability = capability;
         this.nativeBridge = nativeBridge;
         this.probe = probe;
+        this.approximateEnabled = approximateEnabled;
     }
 
     @Override
@@ -38,6 +44,9 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
 
     @Override
     public double predictedSpeedup(Request<Forecast> request) {
+        if (!approximateEnabled) {
+            return 0d;
+        }
         MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
@@ -52,6 +61,11 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
 
     @Override
     public Result<Forecast> evaluate(Request<Forecast> request) {
+        if (!approximateEnabled) {
+            Diagnostic diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_UNAVAILABLE, capability.providerId(),
+                    "approximate fp32 results require opt-in via -D" + APPROXIMATE_PROPERTY + "=true");
+            return Result.notExecuted(Status.UNAVAILABLE, Backend.METAL, diagnostic);
+        }
         long started = System.nanoTime();
         MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
@@ -84,7 +98,7 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
         }
         requestStamp.requireCurrent(request.series(), "during chunked Metal evaluation");
         Diagnostic timing = new Diagnostic(DiagnosticCode.ACCELERATED, capability.providerId(),
-                "Metal chunks=%d timings total=%.3fms transfer=%.3fms kernel=%.3fms".formatted(chunks,
+                "Metal chunks=%d approx=fp32 timings total=%.3fms transfer=%.3fms kernel=%.3fms".formatted(chunks,
                         totalMicros / 1_000d, transferMicros / 1_000d, kernelMicros / 1_000d));
         return Result.executed(Backend.METAL, List.copyOf(values), true, System.nanoTime() - started, timing);
     }
@@ -99,9 +113,13 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
     }
 
     private static int decisionsPerChunk(MonteCarloPriceForecastSpec spec, long ceiling) {
-        long inputs = Math.addExact(5L * Double.BYTES + Integer.BYTES,
-                Math.multiplyExact((long) spec.lookbackBarCount(), Double.BYTES));
-        long outputs = Math.multiplyExact((long) spec.iterationCount(), Float.BYTES);
+        // Per decision: 5 double parameters + 1 int flag + lookback history
+        // doubles, staged once in Java and copied once to the device (factor
+        // 2), plus the 4-byte terminal-price sample buffer and ~48 bytes per
+        // materialized sample Num (52 bytes per iteration in total).
+        long inputs = Math.multiplyExact(Math.addExact(5L * Double.BYTES + Integer.BYTES,
+                Math.multiplyExact((long) spec.lookbackBarCount(), Double.BYTES)), 2L);
+        long outputs = Math.multiplyExact((long) spec.iterationCount(), 52L);
         long bytesPerDecision = Math.addExact(inputs, outputs);
         long capacity = ceiling / bytesPerDecision;
         long nativeCellCapacity = Integer.MAX_VALUE / (long) spec.iterationCount();

@@ -54,14 +54,17 @@ final class MetalAccelerationProviderFactory {
             return unavailable("Metal native self-test failed: " + exception.getClass().getSimpleName() + ": "
                     + (exception.getMessage() == null ? "no detail" : exception.getMessage()));
         }
-        if (probe == null) {
-            return unavailable("Metal native self-test failed: provider returned no result");
-        }
         if (!probe.available()) {
             return unavailable("Metal native self-test failed: " + probe.detail());
         }
+        if (!Boolean.getBoolean(MetalAccelerationProvider.APPROXIMATE_PROPERTY)) {
+            Capability capability = new Capability("metal", Backend.METAL, false, true, probe.deviceName(),
+                    "approximate fp32 results require opt-in via -D" + MetalAccelerationProvider.APPROXIMATE_PROPERTY
+                            + "=true");
+            return new MetalAccelerationProvider(capability, nativeBridge, probe, false);
+        }
         Capability capability = new Capability("metal", Backend.METAL, true, true, probe.deviceName(), "");
-        return new MetalAccelerationProvider(capability, nativeBridge, probe);
+        return new MetalAccelerationProvider(capability, nativeBridge, probe, true);
     }
 
     private ForecastAccelerationProvider unavailable(String reason) {

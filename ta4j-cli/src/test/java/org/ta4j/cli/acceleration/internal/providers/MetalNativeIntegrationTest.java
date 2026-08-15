@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.assertj.core.data.Offset;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -33,6 +34,11 @@ import org.ta4j.core.num.Num;
 class MetalNativeIntegrationTest {
 
     private static final double RELATIVE_TOLERANCE = 2e-4;
+
+    @BeforeAll
+    static void enableApproximateOptIn() {
+        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
+    }
 
     @Test
     void nativeProbeInitializesTheMetalPipeline() {

@@ -66,8 +66,8 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         // power-of-two boundary can allocate nearly twice its estimate on the
         // device.
         long paddedIterations = nextPowerOfTwo(spec.iterationCount());
-        validateMemoryCeiling(ForecastSnapshot.estimatedNativeBytes(decisions, spec.lookbackBarCount(),
-                paddedIterations, spec.quantileProbabilities().size()));
+        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(), paddedIterations,
+                spec.quantileProbabilities().size(), false));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;

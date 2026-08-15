@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -46,6 +47,11 @@ class MetalBacktestBenchmarkTest {
     private static final int LOOKBACK = 256;
     private static final int TRIALS = 5;
     private static final long SEED = 42L;
+
+    @BeforeAll
+    static void enableApproximateOptIn() {
+        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
+    }
 
     @Test
     void compareTransparentScalarAndMetalBacktests() throws IOException {
