@@ -73,7 +73,10 @@ import org.ta4j.core.num.Num;
  * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} and never claims
  * exhaustive optimality. Objective or candidate-factory failures that occur
  * after an attempted evaluation do consume budget and are ranked below every
- * valid evaluation.
+ * valid evaluation. The run configuration — including {@code topK} and the
+ * search plan — is snapshotted when {@code run()} starts, so callbacks that
+ * retain the builder and mutate it during a run never change the running
+ * search's budget, holdout reservation, or reported plan.
  * </p>
  *
  * <p>
@@ -543,10 +546,15 @@ public final class ParameterResearch {
             SearchEngine engine = createEngine(specs, ranking, direction);
 
             int budget = searchPlan.maxEvaluations();
+            // The run configuration is fixed when the run starts: user callbacks
+            // that retain the builder and mutate it must not change the holdout
+            // reservation or the plan reported for the running search.
+            SearchPlan executedPlan = searchPlan;
+            int reservedTopK = topK;
             // Holdout rebuilds score up to topK retained candidates, so those
             // evaluations are reserved out of the budget; the training search
             // never spends them, keeping total objective calls budget-exact.
-            int trainingBudget = holdoutBars > 0 ? budget - topK : budget;
+            int trainingBudget = holdoutBars > 0 ? budget - reservedTopK : budget;
             if (trainingBudget <= 0) {
                 throw new IllegalArgumentException("search budget of " + budget + " evaluations must exceed the topK "
                         + topK + " holdout reservation; raise maxEvaluations or lower topK");
@@ -685,7 +693,7 @@ public final class ParameterResearch {
                     .filter(EvaluatedCandidate::valid)
                     .sorted(ranking)
                     .toList();
-            int leaderboardSize = Math.min(topK, ranked.size());
+            int leaderboardSize = Math.min(reservedTopK, ranked.size());
             List<RankedCandidate> holdoutLeaderboard = List.of();
             Map<String, HoldoutEvaluation> holdoutById = Map.of();
             if (holdoutWindow != null && !ranked.isEmpty()) {
@@ -713,8 +721,8 @@ public final class ParameterResearch {
                         holdout == null ? Map.of() : holdout.evaluation().metrics()));
             }
             List<String> warnings = new ArrayList<>();
-            if (topK > ranked.size()) {
-                warnings.add("topK " + topK + " exceeds the " + ranked.size()
+            if (reservedTopK > ranked.size()) {
+                warnings.add("topK " + reservedTopK + " exceeds the " + ranked.size()
                         + " valid evaluations; leaderboard contains " + ranked.size() + " candidates");
             }
             RunCounts counts = new RunCounts(counters.proposed, counters.rejected, counters.repaired,
@@ -722,9 +730,9 @@ public final class ParameterResearch {
                     counters.successful, counters.failed,
                     budget - (int) counters.attempted - (int) counters.holdoutAttempted, engine.iterationsCompleted());
             long orchestrationNanos = System.nanoTime() - orchestrationStart - evaluationNanos;
-            return new ParameterResearchReport(datasetId, searchPlan, objectiveId, trainingWindow,
-                    Optional.ofNullable(holdoutWindow), topK, trainingLeaderboard, holdoutLeaderboard, reason, counts,
-                    failures, evaluationNanos, orchestrationNanos, warnings);
+            return new ParameterResearchReport(datasetId, executedPlan, objectiveId, trainingWindow,
+                    Optional.ofNullable(holdoutWindow), reservedTopK, trainingLeaderboard, holdoutLeaderboard, reason,
+                    counts, failures, evaluationNanos, orchestrationNanos, warnings);
 
         }
 
@@ -2258,16 +2266,17 @@ public final class ParameterResearch {
      * different {@link NumFactory} implementations.
      *
      * <p>
-     * {@code Num.compareTo} implementations may reject foreign instances (for
-     * example {@link org.ta4j.core.num.DecimalNum#compareTo} casts to
-     * {@code DecimalNum}); instead of coercing scores at evaluation time — which
-     * would destroy decimal precision — cross-factory scores are compared through
-     * exact {@link BigDecimal} values from both {@code bigDecimalValue()}
-     * conversions, which stay exact even when a custom {@code Num}'s delegate does
-     * not format as a decimal token. The comparison is symmetric and preserves
-     * decimal precision in both operands. Every zero-valued score compares equal to
-     * every other zero-valued score regardless of factory or sign, and NaN scores
-     * are ordered after everything else, so an objective that declares failure for
+     * Scores are compared through exact {@link BigDecimal} values from both
+     * {@code bigDecimalValue()} conversions, which stay exact even when a custom
+     * {@code Num}'s delegate does not format as a decimal token. {@code compareTo}
+     * is never invoked: a {@code Num} implementation may reject foreign instances
+     * even within the same class (for example
+     * {@link org.ta4j.core.num.DecimalNum#compareTo} casts to {@code DecimalNum}),
+     * while {@code bigDecimalValue()} conversion preserves decimal precision and
+     * never aborts ranking. The comparison is symmetric and preserves decimal
+     * precision in both operands. Every zero-valued score compares equal to every
+     * other zero-valued score regardless of factory or sign, and NaN scores are
+     * ordered after everything else, so an objective that declares failure for
      * non-finite scores keeps its ranking behavior.
      * </p>
      *
@@ -2284,9 +2293,6 @@ public final class ParameterResearch {
         }
         if (left.isZero() && right.isZero()) {
             return 0;
-        }
-        if (left.getClass() == right.getClass()) {
-            return left.compareTo(right);
         }
         return left.bigDecimalValue().compareTo(right.bigDecimalValue());
     }

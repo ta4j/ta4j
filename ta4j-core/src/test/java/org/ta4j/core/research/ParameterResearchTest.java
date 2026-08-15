@@ -1493,6 +1493,37 @@ class ParameterResearchTest {
     }
 
     @Test
+    void callbackMutationOfTopKDoesNotAlterHoldoutReservation() {
+        // A candidate factory that retains the builder can raise topK while the
+        // training search is running. The holdout reservation is fixed when the
+        // run starts, so the run must still score only the originally reserved
+        // candidate and stay within the exact evaluation budget instead of
+        // inflating holdout evaluations past maxEvaluations.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d, 6d);
+        ParameterResearch.Builder<Integer>[] captured = new ParameterResearch.Builder[1];
+        ParameterResearch.Builder<Integer> builder = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 12)
+                .candidate((window, parameters) -> {
+                    captured[0].topK(9);
+                    return parameters.intValue("a");
+                })
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .holdoutBarCount(2)
+                .topK(1)
+                .search(SearchPlan.grid(10));
+        captured[0] = builder;
+
+        ParameterResearchReport report = builder.run();
+
+        assertThat(report.counts().attempted()).isEqualTo(9);
+        assertThat(report.counts().holdoutAttempted()).isEqualTo(1);
+        assertThat(report.counts().budgetRemaining()).isZero();
+        assertThat(report.topK()).isEqualTo(1);
+        assertThat(report.holdoutLeaderboard()).hasSize(1);
+    }
+
+    @Test
     void crossFactoryScoresWithNonDecimalDelegateToStringsCompareExactly() {
         // A custom Num implementation is free to expose a Number delegate whose
         // toString() is not BigDecimal-compatible; cross-factory ranking must
@@ -1501,6 +1532,21 @@ class ParameterResearchTest {
         assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf(2))).isPositive();
         assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf(3))).isNegative();
         assertThat(ParameterResearch.compareScores(custom, DecimalNum.valueOf("2.50"))).isZero();
+    }
+
+    @Test
+    void sameClassScoresFromForeignFactoriesCompareDecimally() {
+        // NonDecimalDelegateNum.compareTo delegates to DecimalNum.compareTo,
+        // which casts its argument to DecimalNum — two instances of the same
+        // custom class therefore reject each other with a ClassCastException.
+        // Ranking must compare through bigDecimalValue() instead, so same-class
+        // cross-factory scores never abort a run.
+        Num left = new NonDecimalDelegateNum(DecimalNum.valueOf("2.5"));
+        Num right = new NonDecimalDelegateNum(DecimalNum.valueOf(2));
+        assertThat(ParameterResearch.compareScores(left, right)).isPositive();
+        assertThat(ParameterResearch.compareScores(right, left)).isNegative();
+        assertThat(ParameterResearch.compareScores(left, new NonDecimalDelegateNum(DecimalNum.valueOf("2.50"))))
+                .isZero();
     }
 
     @Test
