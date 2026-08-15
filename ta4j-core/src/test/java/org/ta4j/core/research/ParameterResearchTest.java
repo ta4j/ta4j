@@ -1502,6 +1502,31 @@ class ParameterResearchTest {
     }
 
     @Test
+    void doubleParseableDecimalFormsShareOneCanonicalIdentity() {
+        // A normalizer may emit the same declared value in two spellings that
+        // Double.parseDouble accepts but BigDecimal(String) rejects — here a
+        // hex-float literal and its plain decimal spelling. Both must
+        // canonicalize onto the declared id of 1.0, so the second proposal is
+        // a cache hit instead of a second identity for the same numeric value.
+        BarSeries series = series(1d, 2d, 3d);
+        AtomicInteger proposals = new AtomicInteger();
+        ParameterNormalizer normalizer = (data, name, value) -> proposals.getAndIncrement() == 0
+                ? new ParameterValue(name, "0x1.0p0", true, "hex-float")
+                : new ParameterValue(name, "1.0", true, "plain");
+        ParameterResearchReport report = ParameterResearch.<Double>builder(series)
+                .decimal("a", 0, 1, 1)
+                .candidate((window, parameters) -> parameters.decimalValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize(normalizer)
+                .search(SearchPlan.grid(2))
+                .run();
+        assertThat(report.counts().attempted()).isEqualTo(1);
+        assertThat(report.counts().duplicate()).isEqualTo(1);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+    }
+
+    @Test
     void objectiveIdIgnoresTargetScoreNumFactory() {
         // The objective fingerprint is value-based: a target score of 1 must
         // fingerprint identically whether it was built as DoubleNum (whose

@@ -888,27 +888,31 @@ public final class ParameterResearch {
                     // canonical string of the nearest declared indexes must
                     // equal the parsed value's canonical string. The index
                     // window absorbs division rounding and below-ULP position
-                    // collapses. The raw string is converted through
-                    // BigDecimal so the subtraction and division cannot
-                    // overflow to infinity on wide domains (for example
+                    // collapses. The parsed value is converted through
+                    // BigDecimal.valueOf so the subtraction and division
+                    // cannot overflow to infinity on wide domains (for example
                     // [-Double.MAX_VALUE, Double.MAX_VALUE] stepped by
                     // Double.MAX_VALUE), where a saturated Long.MAX_VALUE
                     // index would wrap the +2 window and silently skip every
-                    // declared position. Indices beyond the engine's
-                    // enumerable range cannot belong to a declared position.
-                    // Declared values match DomainSpec exactly: positions run
-                    // from 0 through lastIndex without any clamping to d.to(),
-                    // so the last declared index is an alias of d.to() and any
-                    // position beyond it is out of range. lastIndex is floored
-                    // division, mirroring DomainSpec.of; longValueExact is safe
-                    // because a domain reaching canonicalization has passed
-                    // DomainSpec.of, which rejects cardinalities beyond
+                    // declared position, and so every syntax
+                    // Double.parseDouble accepts — hex-float literals, padded
+                    // or exponent forms — canonicalizes onto the same declared
+                    // id as its plain decimal spelling. Indices beyond the
+                    // engine's enumerable range cannot belong to a declared
+                    // position. Declared values match DomainSpec exactly:
+                    // positions run from 0 through lastIndex without any
+                    // clamping to d.to(), so the last declared index is an
+                    // alias of d.to() and any position beyond it is out of
+                    // range. lastIndex is floored division, mirroring
+                    // DomainSpec.of; longValueExact is safe because a domain
+                    // reaching canonicalization has passed DomainSpec.of,
+                    // which rejects cardinalities beyond
                     // Integer.MAX_VALUE - 1.
                     long lastIndex = BigDecimal.valueOf(d.to())
                             .subtract(BigDecimal.valueOf(d.from()))
                             .divide(BigDecimal.valueOf(d.step()), 0, RoundingMode.FLOOR)
                             .longValueExact();
-                    BigDecimal rawDecimal = new BigDecimal(raw);
+                    BigDecimal rawDecimal = BigDecimal.valueOf(parsed);
                     BigDecimal indexDecimal = rawDecimal.subtract(BigDecimal.valueOf(d.from()))
                             .divide(BigDecimal.valueOf(d.step()), 0, RoundingMode.HALF_UP);
                     if (indexDecimal.abs().compareTo(BigDecimal.valueOf(Long.MAX_VALUE - 2L)) > 0) {
