@@ -137,6 +137,7 @@ final class CliSupport {
     static final Set<String> SWEEP_PARAM_KEYS = Set.of("fast", "slow");
     static final int MAX_SWEEP_STRATEGIES = 10_000;
     static final long MAX_MONTE_CARLO_WORK = 10_000_000L;
+    static final long MAX_FORECAST_HORIZON = 10_000_000L;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -588,6 +589,9 @@ final class CliSupport {
         }
         if (request.horizon() <= 0) {
             throw new IllegalArgumentException("--horizon must be greater than zero.");
+        }
+        if (request.horizon() > MAX_FORECAST_HORIZON) {
+            throw new IllegalArgumentException("--horizon must not exceed " + MAX_FORECAST_HORIZON + ".");
         }
 
         ReturnIndicator returns = new LogReturnIndicator(series);

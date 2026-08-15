@@ -543,6 +543,17 @@ class Ta4jCliTest {
     }
 
     @Test
+    void forecastRejectsUnboundedHorizonBeforeStateEvaluation() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "return", "--horizon", "10000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--horizon must not exceed 10000000");
+    }
+
+    @Test
     void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("should-not-exist.json");

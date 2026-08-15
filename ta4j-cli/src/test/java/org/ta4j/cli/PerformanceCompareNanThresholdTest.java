@@ -17,15 +17,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Guards the performance comparison regression threshold against {@code NaN}.
+ * Guards the performance comparison regression threshold against non-finite
+ * values.
  *
  * <p>
- * The CLI accepts {@code --max-regression-pct=NaN} (the check is
- * {@code maxRegressionPct < 0d}, which {@code NaN} does not satisfy) and
+ * The CLI accepts {@code --max-regression-pct=NaN} or
+ * {@code --max-regression-pct=Infinity} (the check is
+ * {@code maxRegressionPct < 0d}, which neither satisfies) and
  * {@link PerformanceComparison#compare} then never flags a regression because
- * every {@code medianDeltaPct > NaN} comparison is {@code false}. A hostile or
- * mistyped threshold silently disables the regression gate instead of failing
- * as a usage error.
+ * every {@code medianDeltaPct > NaN} comparison is {@code false} and every
+ * finite {@code medianDeltaPct} compares below infinity. A hostile or mistyped
+ * threshold silently disables the regression gate instead of failing as a usage
+ * error.
  *
  * @since 0.23.1
  */
@@ -105,6 +108,35 @@ class PerformanceCompareNanThresholdTest {
         writeArtifact(candidate, 200L);
         assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(base, candidate, output, Double.NaN));
+    }
+
+    @Test
+    void infinityRegressionThresholdIsRejectedAsUsageError() throws Exception {
+        Path base = tempDir.resolve("base4");
+        Path candidate = tempDir.resolve("candidate4");
+        Path output = tempDir.resolve("out4");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+
+        ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        int code = Ta4jCli.run(
+                new String[] { "performance", "compare", "--base-dir", base.toString(), "--candidate-dir",
+                        candidate.toString(), "--output-dir", output.toString(), "--max-regression-pct=Infinity" },
+                new ByteArrayInputStream(new byte[0]), new PrintWriter(outBytes, true, StandardCharsets.UTF_8),
+                new PrintWriter(errBytes, true, StandardCharsets.UTF_8));
+        assertEquals(2, code, "Infinite regression threshold must be a usage error, not silently disable the gate");
+    }
+
+    @Test
+    void compareRejectsInfiniteThresholdDirectly() throws Exception {
+        Path base = tempDir.resolve("base5");
+        Path candidate = tempDir.resolve("candidate5");
+        Path output = tempDir.resolve("out5");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+        assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(base, candidate, output, Double.POSITIVE_INFINITY));
     }
 
     @Test

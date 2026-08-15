@@ -55,8 +55,8 @@ final class PerformanceComparison {
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
             throws IOException {
-        if (Double.isNaN(maxRegressionPct) || maxRegressionPct < 0d) {
-            throw new IllegalArgumentException("maxRegressionPct must be non-negative");
+        if (!Double.isFinite(maxRegressionPct) || maxRegressionPct < 0d) {
+            throw new IllegalArgumentException("maxRegressionPct must be finite and non-negative");
         }
         JsonObject base = readPerformanceJson(baseDir);
         JsonObject candidate = readPerformanceJson(candidateDir);

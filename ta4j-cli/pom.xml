@@ -429,6 +429,7 @@
                                         <argument>${project.build.directory}/native/opencl-x86_64</argument>
                                         <argument>-DJAVA_HOME=${java.home}</argument>
                                         <argument>-DCMAKE_BUILD_TYPE=Release</argument>
+                                        <argument>-DTA4J_EXPECTED_PLATFORM=linux-x86_64</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -527,6 +528,7 @@
                                         <argument>${project.build.directory}/native/opencl-aarch64</argument>
                                         <argument>-DJAVA_HOME=${java.home}</argument>
                                         <argument>-DCMAKE_BUILD_TYPE=Release</argument>
+                                        <argument>-DTA4J_EXPECTED_PLATFORM=linux-aarch64</argument>
                                     </arguments>
                                 </configuration>
                             </execution>

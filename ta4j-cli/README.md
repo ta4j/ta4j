@@ -211,7 +211,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--projection-model`: `monte-carlo` or `analog`.
   - `--calibration`: `none` or rolling `conformal`.
   - `--price-model`: `auto`, empirical Monte Carlo paths, or a `lognormal` moment-matched adapter.
-  - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon. `--horizon` is rejected for state-only inspection.
+  - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon, at most 10,000,000 bars. `--horizon` is rejected for state-only inspection.
   - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, and `--samples` × `--horizon` must not exceed 10,000,000.
   - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
   - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
@@ -222,17 +222,18 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - Forecast JSON reports the decision bar time and close price, state stability, return representation, moments, model-specific diagnostics, and empirical, analytic, or unavailable support provenance.
 - `performance run`
   - `--experiment`: experiment id, currently `kalman-filter`.
-  - `--bar-counts`: comma-separated positive bar counts, for example `1000,5000,10000`.
+  - `--bar-counts`: comma-separated positive bar counts, each at most 1,000,000, for example `1000,5000,10000`.
   - `--scenarios`: comma-separated scenario ids, or omit for experiment defaults.
-  - `--repetitions`: measured repetitions per scenario/bar-count cell.
-  - `--warmups`: warmup repetitions per scenario/bar-count cell.
+  - `--repetitions`: measured repetitions per scenario/bar-count cell, at most 1,000,000.
+  - `--warmups`: warmup repetitions per scenario/bar-count cell, at most 1,000,000.
+  - Total work is bounded before any scenario runs: `--bar-counts` × scenarios × (`--warmups` + `--repetitions`) must not exceed 1,000,000,000.
   - `--output-dir`: artifact directory for `performance.json` and `summary.md`.
   - `--profile`: include profiler hint metadata in `performance.json`.
 - `performance compare`
   - `--base-dir`: baseline experiment artifact directory.
   - `--candidate-dir`: candidate experiment artifact directory.
   - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
-  - `--max-regression-pct`: non-negative allowed median runtime regression percentage.
+  - `--max-regression-pct`: finite, non-negative allowed median runtime regression percentage.
 
 ## Parameter Coverage Examples
 
