@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.acceleration.AccelerationRuntime.Result;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -179,7 +179,7 @@ class OpenClAccelerationProviderTest {
         OpenClAccelerationProvider provider = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
 
         Result<Forecast> result = provider.evaluate(request);
-        assertThat(result.status()).isEqualTo(org.ta4j.core.internal.acceleration.AccelerationRuntime.Status.EXECUTED);
+        assertThat(result.status()).isEqualTo(org.ta4j.core.acceleration.AccelerationRuntime.Status.EXECUTED);
     }
 
     private static long nextPowerOfTwo(long value) {

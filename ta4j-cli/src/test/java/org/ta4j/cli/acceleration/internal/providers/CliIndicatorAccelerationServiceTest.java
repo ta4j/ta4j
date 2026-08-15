@@ -11,12 +11,12 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Status;
+import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
+import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
+import org.ta4j.core.acceleration.AccelerationRuntime.Request;
+import org.ta4j.core.acceleration.AccelerationRuntime.Result;
+import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -203,7 +203,7 @@ class CliIndicatorAccelerationServiceTest {
 
         Result<Forecast> result = new CliIndicatorAccelerationService().evaluate(new Request<>(forecast, end - 1, end));
 
-        assertThat(result.status()).isEqualTo(org.ta4j.core.internal.acceleration.AccelerationRuntime.Status.SKIPPED);
+        assertThat(result.status()).isEqualTo(org.ta4j.core.acceleration.AccelerationRuntime.Status.SKIPPED);
         assertThat(result.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
         assertThat(result.diagnostic().detail()).contains("fixture memory ceiling");
     }

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.ta4j.core.internal.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 
 final class MetalAccelerationProviderFactory {
 
