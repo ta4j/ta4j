@@ -11,10 +11,13 @@ It is organized as progressive learning tracks so production-minded Java develop
 
 ## Run an example
 
-From the repository root:
+From the repository root, first build and install the upstream modules, then run
+`exec:java` only in `ta4j-examples` (a directly invoked goal would also run on
+upstream reactor modules, and `ta4j-core` has no main class):
 
 ```bash
-mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+mvn -pl ta4j-examples -am install -DskipTests
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
 Replace `ta4jexamples.Quickstart` with any class listed below.
@@ -54,7 +57,7 @@ If chart windows do not appear, you are likely in a headless environment; switch
 Run a fixed throughput matrix and write `matrix_performance.json`:
 
 ```bash
-mvn -pl ta4j-examples -am compile exec:java \
+mvn -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
   -Dexec.args="--throughputControl --throughputOutputDir .agents/benchmarks/backtest-throughput/current --matrixStrategyCounts 250,500,1000 --matrixBarCounts 500,1000 --matrixMaxBarCountHints 0 --executionMode topK --topK 10 --parallelism 1"
 ```

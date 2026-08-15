@@ -55,7 +55,7 @@ import javax.tools.ToolProvider;
  *
  * <p>
  * Typical usage:
- * {@code mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
+ * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
  * </p>
  *
  * <p>
