@@ -865,6 +865,7 @@ public final class ParameterResearch {
                     }
                     verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
 
+                    evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
                     attempted++;
                 }

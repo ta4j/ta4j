@@ -539,6 +539,33 @@ class ParameterResearchTest {
     }
 
     @Test
+    void holdoutRebuildTimeCountsTowardElapsedEvaluationNanos() {
+        // The objective sleeps only on the 2-bar holdout window; training on
+        // the 3-bar window is trivial. If the rebuild path stops accumulating
+        // candidate/objective time, elapsedEvaluationNanos stays at the
+        // training-only level and this assertion fails.
+        BarSeries series = series(1d, 2d, 3d, 4d, 5d);
+        ParameterResearchReport report = holdoutConfigBuilder(series)
+                .maximize((candidate, window) -> {
+                    if (window.series().getBarCount() == 2) {
+                        try {
+                            Thread.sleep(20);
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
+                })
+                .holdoutBarCount(2)
+                .search(SearchPlan.grid(3))
+                .topK(1)
+                .run();
+
+        assertThat(report.counts().holdoutAttempted()).isEqualTo(1);
+        assertThat(report.elapsedEvaluationNanos()).isGreaterThanOrEqualTo(10_000_000L);
+    }
+
+    @Test
     void objectiveMetricsPropagateToLeaderboard() {
         BarSeries series = series(1d, 2d, 3d);
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
