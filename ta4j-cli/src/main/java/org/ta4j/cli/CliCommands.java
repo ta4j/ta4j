@@ -480,7 +480,9 @@ final class CliCommands {
             rejectUnsupportedParams("strategy backtest", "strategy", strategyInput.params);
             Integer unstableBars = CliSupport.parseUnstableBars(strategyInput.unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_BACKTEST_CRITERIA);
-            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(
+                    artifactPathMap(data.dataFile, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile,
+                            null, null, null, criteria.criteriaFiles, artifacts.output, artifacts.chart));
 
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyInput.strategy,
@@ -587,7 +589,9 @@ final class CliCommands {
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
-            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(
+                    artifactPathMap(data.dataFile, strategyInput.strategyJsonFile, strategyInput.strategiesJsonFile,
+                            null, null, null, criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             WalkForwardConfig config = walkForward.build(series);
             CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyInput.strategy,
@@ -630,6 +634,8 @@ final class CliCommands {
                     reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
                     continue;
                 }
+
+                rejectFoldlessGeometry(walkForwardResult, series);
 
                 TradingStatement statement = backtest.tradingStatements().getFirst();
                 Map<String, Object> backtestMap = CliSupport.statementToMap(series, statement, resolvedCriteria);
@@ -728,7 +734,8 @@ final class CliCommands {
             int topK = parsedTopK == null ? 5 : parsedTopK;
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_SWEEP_CRITERIA);
 
-            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(artifactPathMap(data.dataFile, null, null, null, null, null,
+                    criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -854,7 +861,8 @@ final class CliCommands {
         public final Integer call() throws IOException {
             validateModelSpecificOptions();
             Path outputPath = CliSupport.resolveOutputPath(output);
-            CliSupport.requireDistinctOutputPath(outputPath, data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(
+                    artifactPathMap(data.dataFile, null, null, null, null, null, List.of(), output, null));
             BarSeries series = data.loadSeries(in());
             int resolvedLookbackBars = lookbackBars == null ? Math.max(1, Math.min(252, series.getBarCount() - 1))
                     : lookbackBars;
@@ -959,7 +967,8 @@ final class CliCommands {
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria
                     .resolve(CliSupport.DEFAULT_INDICATOR_TEST_CRITERIA);
 
-            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(artifactPathMap(data.dataFile, null, null, indicatorJsonFile, null,
+                    null, criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
@@ -1036,7 +1045,8 @@ final class CliCommands {
             Integer parsedUnstableBars = CliSupport.parseUnstableBars(unstableBars);
             List<CliSupport.CriterionSpec> resolvedCriteria = criteria.resolve(CliSupport.DEFAULT_RULE_TEST_CRITERIA);
 
-            CliSupport.requireDistinctOutputPath(CliSupport.resolveOutputPath(artifacts.output), data.dataFile);
+            CliSupport.requireDistinctArtifactPaths(artifactPathMap(data.dataFile, null, null, null, entryRuleJsonFile,
+                    exitRuleJsonFile, criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
@@ -1049,6 +1059,8 @@ final class CliCommands {
             StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
                     positionSizing.positionSizer(), strategy.getStartingType(), config,
                     CliSupport.progressCallback(artifacts.progress, err(), "rule test"));
+
+            rejectFoldlessGeometry(walkForwardResult, series);
 
             TradingStatement statement = backtest.tradingStatements().getFirst();
             Path chartPath = CliSupport.saveChart(artifacts.chart, series, statement);
@@ -1084,6 +1096,38 @@ final class CliCommands {
         failure.put("name", strategyName);
         failure.put("message", message == null ? "strategy execution failed" : message);
         return failure;
+    }
+
+    private static LinkedHashMap<String, String> artifactPathMap(String dataFile, String strategyJsonFile,
+            String strategiesJsonFile, String indicatorJsonFile, String entryRuleJsonFile, String exitRuleJsonFile,
+            List<String> criteriaFiles, String output, String chart) {
+        LinkedHashMap<String, String> paths = new LinkedHashMap<>();
+        putLabeledPath(paths, "--data-file", dataFile);
+        putLabeledPath(paths, "--strategy-json-file", strategyJsonFile);
+        putLabeledPath(paths, "--strategies-json-file", strategiesJsonFile);
+        putLabeledPath(paths, "--indicator-json-file", indicatorJsonFile);
+        putLabeledPath(paths, "--entry-rule-json-file", entryRuleJsonFile);
+        putLabeledPath(paths, "--exit-rule-json-file", exitRuleJsonFile);
+        for (int index = 0; index < criteriaFiles.size(); index++) {
+            putLabeledPath(paths, "--criteria-file[" + index + "]", criteriaFiles.get(index));
+        }
+        putLabeledPath(paths, "--output", output);
+        putLabeledPath(paths, "--chart", chart);
+        return paths;
+    }
+
+    private static void putLabeledPath(LinkedHashMap<String, String> paths, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            paths.put(label, value);
+        }
+    }
+
+    private static void rejectFoldlessGeometry(StrategyWalkForwardExecutionResult walkForwardResult, BarSeries series) {
+        if (walkForwardResult.folds().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Walk-forward geometry produced no folds for a series of " + series.getBarCount()
+                            + " bars; adjust --test-bars, --step-bars, --holdout-bars, " + "or --min-train-bars.");
+        }
     }
 
     private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {

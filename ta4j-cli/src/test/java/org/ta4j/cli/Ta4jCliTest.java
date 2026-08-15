@@ -554,6 +554,28 @@ class Ta4jCliTest {
     }
 
     @Test
+    void forecastRejectsUnboundedLookbackBars() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "price", "--lookback-bars", "1000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--lookback-bars must not exceed 1000000");
+    }
+
+    @Test
+    void forecastRejectsUnboundedCalibrationWindow() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--calibration", "conformal", "--calibration-window", "1000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--calibration-window must not exceed 1000000");
+    }
+
+    @Test
     void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("should-not-exist.json");
@@ -717,6 +739,30 @@ class Ta4jCliTest {
     }
 
     @Test
+    void sweepRejectsDuplicateFixedParamKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(), "--param",
+                "fast=3", "--param", "fast=5", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("Duplicate --param key 'fast'. Specify each sweep parameter at most once.");
+    }
+
+    @Test
+    void sweepRejectsDuplicateGridParamKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=3,5", "--param-grid", "fast=8,13", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("Duplicate --param-grid key 'fast'. Specify each sweep dimension at most once.");
+    }
+
+    @Test
     void backtestRejectsOutputPathAliasingDataFile() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         byte[] original = Files.readAllBytes(dataFile);
@@ -725,7 +771,7 @@ class Ta4jCliTest {
                 "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", dataFile.toString());
 
         assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.stderr()).contains("--output and --data-file must not refer to the same file");
+        assertThat(result.stderr()).contains("--data-file and --output must not refer to the same file");
         assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
     }
 
@@ -740,8 +786,72 @@ class Ta4jCliTest {
                 "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", symlink.toString());
 
         assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.stderr()).contains("--output and --data-file must not refer to the same file");
+        assertThat(result.stderr()).contains("--data-file and --output must not refer to the same file");
         assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsOutputPathAliasingStrategyJsonFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path strategyJsonFile = tempDir.resolve("strategy.json");
+        Files.copy(dataFile, strategyJsonFile);
+        byte[] original = Files.readAllBytes(strategyJsonFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy-json-file", strategyJsonFile.toString(), "--output", strategyJsonFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--strategy-json-file and --output must not refer to the same file");
+        assertThat(Files.readAllBytes(strategyJsonFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsChartPathAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--chart", dataFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--data-file and --chart must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsChartPathAliasingOutputPath() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path artifactPath = tempDir.resolve("shared-artifact.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", artifactPath.toString(), "--chart",
+                artifactPath.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --chart must not refer to the same file");
+        assertThat(artifactPath).doesNotExist();
+    }
+
+    @Test
+    void walkForwardRejectsGeometryWithoutFolds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "walk-forward", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--holdout-bars", "300");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Walk-forward geometry produced no folds");
+    }
+
+    @Test
+    void ruleTestRejectsGeometryWithoutFolds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70", "--holdout-bars", "300");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Walk-forward geometry produced no folds");
     }
 
     @Test

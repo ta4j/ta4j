@@ -5,6 +5,9 @@ package org.ta4j.cli;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
@@ -27,7 +30,9 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import ta4jexamples.rules.RsiThresholdRule;
@@ -682,6 +687,32 @@ class CliSupportTest {
             Files.copy(inputStream, target);
         }
         return target;
+    }
+
+    @Test
+    void seriesSha256CoversEveryObservableBarField() {
+        Instant endTime = Instant.parse("2020-01-02T00:00:00Z");
+        String baseline = CliSupport.seriesSha256(seriesWithBar(endTime, Duration.ofDays(1), 7, 50));
+
+        assertThat(CliSupport.seriesSha256(seriesWithBar(endTime, Duration.ofDays(1), 7, 51))).as("amount change")
+                .isNotEqualTo(baseline);
+        assertThat(CliSupport.seriesSha256(seriesWithBar(endTime, Duration.ofDays(1), 8, 50))).as("trade count change")
+                .isNotEqualTo(baseline);
+        assertThat(CliSupport.seriesSha256(seriesWithBar(endTime, Duration.ofHours(12), 7, 50)))
+                .as("time period change")
+                .isNotEqualTo(baseline);
+        assertThat(CliSupport.seriesSha256(seriesWithBar(endTime.plusSeconds(3600), Duration.ofDays(1), 7, 50)))
+                .as("begin time change")
+                .isNotEqualTo(baseline);
+    }
+
+    private static BaseBarSeries seriesWithBar(Instant endTime, Duration timePeriod, long trades, double amount) {
+        BaseBarSeries series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        NumFactory numFactory = series.numFactory();
+        series.addBar(new BaseBar(timePeriod, endTime.minus(timePeriod), endTime, numFactory.numOf(10),
+                numFactory.numOf(11), numFactory.numOf(9), numFactory.numOf(10.5), numFactory.numOf(100),
+                numFactory.numOf(amount), trades));
+        return series;
     }
 
     private Strategy sampleSweepStrategy(BarSeries series) {

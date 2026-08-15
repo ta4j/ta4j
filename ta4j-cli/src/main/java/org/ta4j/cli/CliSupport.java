@@ -138,6 +138,7 @@ final class CliSupport {
     static final int MAX_SWEEP_STRATEGIES = 10_000;
     static final long MAX_MONTE_CARLO_WORK = 10_000_000L;
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
+    static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -541,24 +542,42 @@ final class CliSupport {
         }
     }
 
-    static void requireDistinctOutputPath(Path outputPath, String dataFile) {
-        if (outputPath == null || dataFile == null || dataFile.equals("-")) {
-            return;
-        }
-        Path inputPath = Path.of(dataFile);
-        if (outputPath.toAbsolutePath().normalize().equals(inputPath.toAbsolutePath().normalize())) {
-            throw new IllegalArgumentException("--output and --data-file must not refer to the same file: " + dataFile);
-        }
-        if (Files.exists(outputPath) && Files.exists(inputPath)) {
-            try {
-                if (Files.isSameFile(outputPath, inputPath)) {
+    static void requireDistinctArtifactPaths(Map<String, String> labeledPaths) {
+        List<String> labels = new ArrayList<>(labeledPaths.keySet());
+        for (int i = 0; i < labels.size(); i++) {
+            String leftLabel = labels.get(i);
+            String left = labeledPaths.get(leftLabel);
+            if (!isUsablePath(left)) {
+                continue;
+            }
+            for (int j = i + 1; j < labels.size(); j++) {
+                String rightLabel = labels.get(j);
+                String right = labeledPaths.get(rightLabel);
+                if (isUsablePath(right) && sameFile(Path.of(left), Path.of(right))) {
                     throw new IllegalArgumentException(
-                            "--output and --data-file must not refer to the same file: " + dataFile);
+                            leftLabel + " and " + rightLabel + " must not refer to the same file: " + left);
                 }
-            } catch (IOException ex) {
-                throw new UncheckedIOException("Could not compare --output and --data-file paths.", ex);
             }
         }
+    }
+
+    private static boolean isUsablePath(String value) {
+        return value != null && !value.isBlank() && !"-".equals(value);
+    }
+
+    private static boolean sameFile(Path left, Path right) {
+        if (left.toAbsolutePath().normalize().equals(right.toAbsolutePath().normalize())) {
+            return true;
+        }
+        if (Files.exists(left) && Files.exists(right)) {
+            try {
+                return Files.isSameFile(left, right);
+            } catch (IOException ex) {
+                throw new UncheckedIOException(
+                        "Could not compare output artifact paths " + left + " and " + right + ".", ex);
+            }
+        }
+        return false;
     }
 
     static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {
@@ -616,6 +635,12 @@ final class CliSupport {
         }
         if (request.horizon() > MAX_FORECAST_HORIZON) {
             throw new IllegalArgumentException("--horizon must not exceed " + MAX_FORECAST_HORIZON + ".");
+        }
+        if (request.lookbackBars() > MAX_FORECAST_BAR_COUNT) {
+            throw new IllegalArgumentException("--lookback-bars must not exceed " + MAX_FORECAST_BAR_COUNT + ".");
+        }
+        if (request.calibrationWindow() > MAX_FORECAST_BAR_COUNT) {
+            throw new IllegalArgumentException("--calibration-window must not exceed " + MAX_FORECAST_BAR_COUNT + ".");
         }
 
         ReturnIndicator returns = new LogReturnIndicator(series);
@@ -1128,12 +1153,15 @@ final class CliSupport {
         return metadata;
     }
 
-    private static String seriesSha256(BarSeries series) {
+    static String seriesSha256(BarSeries series) {
         MessageDigest digest = sha256Digest();
         for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
             Bar bar = series.getBar(index);
-            String row = bar.getEndTime() + "|" + bar.getOpenPrice() + "|" + bar.getHighPrice() + "|"
-                    + bar.getLowPrice() + "|" + bar.getClosePrice() + "|" + bar.getVolume() + "\n";
+            Duration timePeriod = bar.getTimePeriod();
+            String row = bar.getBeginTime() + "|" + timePeriod.getSeconds() + "|" + timePeriod.getNano() + "|"
+                    + bar.getEndTime() + "|" + bar.getOpenPrice() + "|" + bar.getHighPrice() + "|" + bar.getLowPrice()
+                    + "|" + bar.getClosePrice() + "|" + bar.getVolume() + "|"
+                    + (bar.getAmount() == null ? "null" : bar.getAmount().getDelegate()) + "|" + bar.getTrades() + "\n";
             digest.update(row.getBytes(StandardCharsets.UTF_8));
         }
         return HexFormat.of().formatHex(digest.digest());
@@ -1460,7 +1488,10 @@ final class CliSupport {
             if (value.isEmpty()) {
                 throw new IllegalArgumentException("Invalid " + optionName + " value '" + option + "'. Use key=value.");
             }
-            values.put(key, value);
+            if (values.putIfAbsent(key, value) != null) {
+                throw new IllegalArgumentException(
+                        "Duplicate " + optionName + " key '" + key + "'. Specify each sweep parameter at most once.");
+            }
         }
         return values;
     }
@@ -1485,7 +1516,10 @@ final class CliSupport {
                 throw new IllegalArgumentException(
                         "Invalid --param-grid value '" + option + "'. At least one value is required.");
             }
-            values.put(key, List.copyOf(entries));
+            if (values.putIfAbsent(key, List.copyOf(entries)) != null) {
+                throw new IllegalArgumentException(
+                        "Duplicate --param-grid key '" + key + "'. Specify each sweep dimension at most once.");
+            }
         }
         return values;
     }

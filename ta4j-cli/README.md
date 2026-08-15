@@ -191,7 +191,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
-  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, the grid must not expand past 10,000 candidate strategies, and a key must not appear in both `--param` and `--param-grid`.
+  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, the grid must not expand past 10,000 candidate strategies, a key must not appear in both `--param` and `--param-grid`, and repeated keys within either family are rejected.
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
   - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
@@ -212,11 +212,11 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--calibration`: `none` or rolling `conformal`.
   - `--price-model`: `auto`, empirical Monte Carlo paths, or a `lognormal` moment-matched adapter.
   - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon, at most 10,000,000 bars. `--horizon` is rejected for state-only inspection.
-  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, and `--samples` × `--horizon` must not exceed 10,000,000.
+  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, `--samples` × `--horizon` must not exceed 10,000,000, and `--lookback-bars` must not exceed 1,000,000.
   - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
   - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
   - `--neighbor-count`, `--minimum-neighbor-count`, `--[no-]standardize-features`: analog projection controls.
-  - `--coverage`, `--calibration-window`, `--minimum-calibration-count`: rolling-conformal controls.
+  - `--coverage`, `--calibration-window`, `--minimum-calibration-count`: rolling-conformal controls. `--calibration-window` must not exceed 1,000,000.
   - `--quantiles`: comma-separated probabilities in `[0, 1]`; defaults to `0.05,0.5,0.95`.
   - Projection-only simulation options are rejected with `--target state` instead of being silently ignored.
   - Forecast JSON reports the decision bar time and close price, state stability, return representation, moments, model-specific diagnostics, and empirical, analytic, or unavailable support provenance.
@@ -591,6 +591,9 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 - Compact expressions are the shortest interactive path; canonical JSON, version 2 strategy JSON, named example labels, and fully qualified criterion class names remain supported where documented.
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
+- Output artifacts (`--output`, `--chart`) must not refer to the same file as any input path (`--data-file`, `--strategy-json-file`, `--strategies-json-file`, `--indicator-json-file`, `--entry-rule-json-file`, `--exit-rule-json-file`, `--criteria-file`) or to each other, including symlink aliases; the CLI rejects such collisions before reading inputs or writing outputs.
+- `strategy walk-forward` and `rule test` fail with a usage error when the configured geometry produces zero folds instead of reporting an empty success.
+- The reproducible `input.seriesSha256` fingerprint covers every observable bar field: begin/end time, time period, OHLCV, volume, amount, and trade count.
 - `strategy backtest` and `strategy walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
 - `indicator test` accepts compact expressions or inline serialized numeric indicators, plus serialized JSON files. If you omit threshold options, it defaults to close-price crossovers around the indicator.
 - `rule test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `strategy walk-forward`.
