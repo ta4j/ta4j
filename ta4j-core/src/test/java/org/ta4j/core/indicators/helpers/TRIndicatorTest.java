@@ -31,7 +31,7 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
         series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
         series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(2).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).add();
 
         TRIndicator tr = new TRIndicator(series);
 
@@ -74,7 +74,7 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
         series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
         series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
         series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(2).add();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).add();
 
         TRIndicator tr = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
                 new ClosePriceIndicator(series));

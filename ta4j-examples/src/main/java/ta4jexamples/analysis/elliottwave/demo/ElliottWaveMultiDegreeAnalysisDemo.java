@@ -16,7 +16,6 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
-import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
@@ -42,7 +41,7 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
             return;
         }
 
-        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+        ElliottDegree baseDegree = ElliottWaveDemoSupport.autoSelectDegree(series);
 
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(baseDegree)

@@ -253,6 +253,20 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
 
     /**
      * Generates the cache file path for a given request.
+     * <p>
+     * Cache filenames use the format
+     * {@code {source}-{TICKER}-{INTERVAL}-{START}-{END}[_{NOTES}].json} where
+     * {@code TICKER} is the uppercased symbol with any dashes encoded as
+     * {@code %2D} (see {@link #encodeTickerForCacheFilename(String)}) and
+     * {@code INTERVAL} is the ISO-8601 {@link Duration} string (e.g. {@code PT1H}
+     * for one hour). Both fields can therefore be read back losslessly by
+     * {@code loadSeries(String)} even for dashed symbols such as {@code BTC-USD}.
+     * <p>
+     * Cache files written before 0.24.2 stored the uppercased symbol with raw
+     * dashes. Those files remain loadable for symbols without dashes (their
+     * interval token already used the ISO-8601 format), but files whose symbol
+     * contains dashes cannot be parsed reliably and should be deleted (see
+     * {@link #deleteAllCacheFiles()}) so they are regenerated.
      *
      * @param symbol        the symbol (ticker, product ID, etc.)
      * @param startDateTime the start date/time (will be truncated)
@@ -272,11 +286,37 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
         // Use Duration.toString() for standardized format (e.g., "PT24H" for 1 day,
         // "PT1H" for 1 hour)
         String durationString = interval.toString();
-        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix,
-                symbol.toUpperCase().replaceAll("[^A-Z0-9-]", "_"), durationString, truncatedStart.getEpochSecond(),
-                truncatedEnd.getEpochSecond(), notesSuffix);
+        String filename = String.format("%s%s-%s-%d-%d%s.json", sourcePrefix, encodeTickerForCacheFilename(symbol),
+                durationString, truncatedStart.getEpochSecond(), truncatedEnd.getEpochSecond(), notesSuffix);
 
         return Paths.get(responseCacheDir, filename);
+    }
+
+    /**
+     * Encodes a symbol (ticker, product ID) for safe use as a single cache filename
+     * field. Dashes, which separate the filename fields, are percent-encoded as
+     * {@code %2D} so dashed symbols such as {@code BTC-USD} round-trip exactly
+     * through the cache filename; any other character outside {@code [A-Z0-9]} is
+     * replaced with {@code _}.
+     *
+     * @param symbol the symbol to encode (never null)
+     * @return the symbol safe to embed as a single dash-free filename field
+     * @since 0.24.2
+     */
+    protected static String encodeTickerForCacheFilename(String symbol) {
+        return symbol.toUpperCase().replaceAll("[^A-Z0-9-]", "_").replace("-", "%2D");
+    }
+
+    /**
+     * Decodes a symbol previously encoded by
+     * {@link #encodeTickerForCacheFilename(String)} back to its original form.
+     *
+     * @param token the encoded cache filename field (never null)
+     * @return the original symbol
+     * @since 0.24.2
+     */
+    protected static String decodeTickerFromCacheFilename(String token) {
+        return token.replace("%2D", "-");
     }
 
     /**

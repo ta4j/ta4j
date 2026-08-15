@@ -37,6 +37,7 @@ public final class WyckoffStructureTracker {
     private final ClosePriceIndicator closePriceIndicator;
     private final Num breakoutTolerance;
     private final transient Map<Integer, StructureSnapshot> snapshotCache;
+    private final transient RevisionBoundCache revisionBoundCache;
 
     /**
      * Creates a tracker that extracts trading range information from swing points.
@@ -65,6 +66,7 @@ public final class WyckoffStructureTracker {
             throw new IllegalArgumentException("breakoutTolerance must be a valid number");
         }
         this.snapshotCache = new ConcurrentHashMap<>();
+        this.revisionBoundCache = new RevisionBoundCache(series);
     }
 
     /**
@@ -82,6 +84,7 @@ public final class WyckoffStructureTracker {
         if (index < series.getBeginIndex() || index > series.getEndIndex()) {
             return StructureSnapshot.empty();
         }
+        revisionBoundCache.reconcile(snapshotCache);
         final StructureSnapshot cached = snapshotCache.get(index);
         if (cached != null) {
             return cached;

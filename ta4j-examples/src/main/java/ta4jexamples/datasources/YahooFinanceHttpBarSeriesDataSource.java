@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -566,14 +567,9 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
                         // Notes section is ignored for parsing, so we just need to extract the ticker
                         // and interval
 
-                        String ticker = parts[1];
+                        String ticker = decodeTickerFromCacheFilename(parts[1]);
                         // Try to determine interval from filename
-                        YahooFinanceInterval interval = YahooFinanceInterval.DAY_1; // Default
-                        try {
-                            interval = parseIntervalFromApiValue(parts[2]);
-                        } catch (IllegalArgumentException e) {
-                            LOG.debug("Could not parse interval from filename, using default: {}", e.getMessage());
-                        }
+                        YahooFinanceInterval interval = parseIntervalFromCacheToken(parts[2]);
                         return parseYahooFinanceResponse(cachedResponse, ticker, interval.getDuration());
                     }
                 }
@@ -614,6 +610,37 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
             }
         }
         throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
+    }
+
+    /**
+     * Parses the interval token of a cache filename into a
+     * {@link YahooFinanceInterval}.
+     * <p>
+     * The token written by
+     * {@link #getCacheFilePath(String, Instant, Instant, Duration, String)} is the
+     * ISO-8601 {@link Duration} string (e.g. {@code PT1H}); API values (e.g.
+     * {@code 1h}) are accepted as a fallback for legacy or hand-authored filenames.
+     * Unparseable tokens fall back to {@link YahooFinanceInterval#DAY_1}.
+     *
+     * @param token the interval token from the cache filename
+     * @return the matching interval, or {@link YahooFinanceInterval#DAY_1} when the
+     *         token cannot be parsed or mapped
+     */
+    private YahooFinanceInterval parseIntervalFromCacheToken(String token) {
+        try {
+            YahooFinanceInterval interval = mapDurationToInterval(Duration.parse(token));
+            if (interval != null) {
+                return interval;
+            }
+        } catch (DateTimeParseException e) {
+            LOG.debug("Could not parse duration from cache filename interval '{}': {}", token, e.getMessage());
+        }
+        try {
+            return parseIntervalFromApiValue(token);
+        } catch (IllegalArgumentException e) {
+            LOG.debug("Could not parse interval '{}' from cache filename, using default: {}", token, e.getMessage());
+        }
+        return YahooFinanceInterval.DAY_1;
     }
 
     void pauseBetweenPaginatedRequests() throws InterruptedException {

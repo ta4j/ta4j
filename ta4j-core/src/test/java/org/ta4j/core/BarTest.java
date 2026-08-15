@@ -42,6 +42,41 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testHighBelowLowRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(8),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.zero(), 0));
+    }
+
+    @Test
+    public void testNegativeVolumeRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.numOf(-1), numFactory.zero(), 0));
+    }
+
+    @Test
+    public void testNegativeAmountRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.numOf(-1), 0));
+    }
+
+    @Test
+    public void testNegativeTradesRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),
+                        numFactory.numOf(9), numFactory.numOf(9), numFactory.zero(), numFactory.zero(), -1));
+    }
+
+    @Test
+    public void testNullPricesTolerated() {
+        final Bar nullPriceBar = new BaseBar(Duration.ofHours(1), beginTime, endTime, null, null, null, null, null,
+                null, 0);
+        assertNull(nullPriceBar.getOpenPrice());
+    }
+
+    @Test
     public void createBars() {
         var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .beginTime(this.beginTime)

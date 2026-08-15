@@ -94,4 +94,28 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(0, covar.getValue(3));
         assertNumEquals(0, covar.getValue(8));
     }
+
+    @Test
+    public void anchorsWindowAtBeginIndexAfterRemoval() {
+        // Evict the first four bars so beginIndex = 4; the retained (close, volume)
+        // pairs sit at absolute indices 4..9: (5,10) (6,5) (7,14) (8,7) (9,18) (10,9).
+        int i = 10;
+        var now = Instant.now();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] closes = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        double[] volumes = { 4, 1, 6, 3, 10, 5, 14, 7, 18, 9 };
+        for (int j = 0; j < closes.length; j++) {
+            pruned.barBuilder().endTime(now.minusSeconds(i--)).closePrice(closes[j]).volume(volumes[j]).add();
+        }
+        pruned.setMaximumBarCount(6);
+
+        var covar = new CovarianceIndicator(new ClosePriceIndicator(pruned), new VolumeIndicator(pruned, 1), 6);
+
+        // Window [4..7]: closes {5,6,7,8}, volumes {10,5,14,7}: sum of products = 0
+        assertNumEquals(0, covar.getValue(7));
+        // Window [4..8]: sum of products = 18 over 5 observations
+        assertNumEquals(3.6, covar.getValue(8));
+        // Window [4..9]: sum of products = 13.5 over 6 observations
+        assertNumEquals(2.25, covar.getValue(9));
+    }
 }

@@ -57,7 +57,7 @@ public class PreviousValueIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int previousIndex = index - n;
-        return previousIndex < 0 ? NaN.NaN : indicator.getValue(previousIndex);
+        return previousIndex < getBarSeries().getBeginIndex() ? NaN.NaN : indicator.getValue(previousIndex);
     }
 
     /** @return {@link #n} */

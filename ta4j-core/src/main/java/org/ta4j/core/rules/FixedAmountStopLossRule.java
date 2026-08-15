@@ -86,6 +86,11 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
         Num entryPrice = currentPosition.getEntry().getNetPrice();
         Num currentPrice = priceIndicator.getValue(index);
         boolean buy = currentPosition.getEntry().isBuy();
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "lossAmount",
+                    lossAmount, "priceUnavailable");
+            return false;
+        }
         Num stopPrice = StopLossRule.stopLossPriceFromDistance(entryPrice, lossAmount, buy);
         boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
                 : currentPrice.isGreaterThanOrEqual(stopPrice);

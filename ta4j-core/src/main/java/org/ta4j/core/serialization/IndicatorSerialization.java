@@ -249,6 +249,20 @@ public final class IndicatorSerialization {
 
         // Extract type and parameters first
         String type = indicator.getClass().getSimpleName();
+        // Symmetric gate: fail on write if the read side could never resolve this
+        // type (first-party indicators outside org.ta4j.core.indicators, third-party
+        // or anonymous indicator classes)
+        Class<?> resolvedType = resolveIndicatorClass(type);
+        if (resolvedType == null) {
+            throw new IndicatorSerializationException("Unknown indicator type: " + type);
+        }
+        // A third-party class whose simple name collides with a built-in type
+        // would be written under the built-in name and deserialized as the wrong
+        // indicator: fail on write instead.
+        if (!resolvedType.equals(indicator.getClass())) {
+            throw new IndicatorSerializationException("Indicator type " + indicator.getClass().getName()
+                    + " collides with the built-in simple name: " + type);
+        }
         Map<String, Object> parameters = extractNumericParameters(indicator);
 
         // Create a placeholder descriptor with type and parameters (no children yet)
@@ -752,6 +766,9 @@ public final class IndicatorSerialization {
             return null;
         }
         if (value instanceof Num num) {
+            if (Num.isNaNOrNull(num) || !Num.isFinite(num)) {
+                throw new IndicatorSerializationException("Non-finite numeric parameter cannot be serialized: " + num);
+            }
             return trimDecimal(num.getDelegate().toString());
         }
         if (value instanceof BigDecimal decimal) {

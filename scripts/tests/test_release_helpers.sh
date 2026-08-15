@@ -576,6 +576,112 @@ test_build_ai_request_compacts_oversized_dossier() {
   pass "test_build_ai_request_compacts_oversized_dossier"
 }
 
+test_build_ai_request_includes_release_cadence() {
+  echo "Running test_build_ai_request_includes_release_cadence"
+  run_test
+
+  {
+    echo "# ta4j Release Dossier"
+    echo
+    echo "## Metadata"
+    echo
+    echo "- generated_at: 2026-08-10T00:00:00+00:00"
+    echo "- last_reachable_tag: 1.0.0"
+    echo
+    echo "## Unreleased Changelog Context"
+    echo
+    echo "- change"
+  } > release-dossier.md
+
+  bash "$SCRIPT" build-ai-request \
+    --model gpt-5.6-luna \
+    --dossier release-dossier.md \
+    --last-release-url https://github.com/ta4j/ta4j/releases \
+    --last-release-tag 1.0.0 \
+    --last-release-date 2026-08-03 \
+    --output request.json \
+    --metadata-output release-ai-request-metadata.json
+
+  expect_file_contains request.json "Release cadence:" \
+    "request should include the release cadence section when a last release tag is known"
+  expect_file_contains request.json "Base every conclusion on the release dossier and any supplied release-cadence context" \
+    "system contract should admit cadence facts supplied outside the dossier"
+  expect_file_contains request.json "https://github.com/ta4j/ta4j/releases" \
+    "request should include the last release URL"
+  expect_file_contains request.json "last release: 1.0.0, created 2026-08-03" \
+    "request should include the last release tag and creation date"
+  expect_file_contains request.json "judgment call" \
+    "request should frame release recency as a judgment call"
+  expect_file_contains request.json "0.24.1 shipped too soon after 0.24.0" \
+    "request should carry the too-soon calibration example"
+  expect_file_contains request.json "0.24.0 two days after 0.23.0" \
+    "request should carry the justified-gap calibration example"
+  expect_json_value release-ai-request-metadata.json lastReleaseTag 1.0.0
+  expect_json_value release-ai-request-metadata.json lastReleaseDate 2026-08-03
+  expect_json_value release-ai-request-metadata.json lastReleaseUrl https://github.com/ta4j/ta4j/releases
+  if grep -Fq "6 days" request.json || grep -Fq "5-7 day" request.json; then
+    fail "release cadence must stay a judgment call, not a day-based cooldown"
+  fi
+
+  bash "$SCRIPT" build-ai-request \
+    --model gpt-5.6-luna \
+    --dossier release-dossier.md \
+    --last-release-url https://github.com/ta4j/ta4j/releases \
+    --last-release-tag none \
+    --last-release-date none \
+    --output request-none.json \
+    --metadata-output release-ai-request-metadata-none.json
+  if grep -Fq "Release cadence:" request-none.json; then
+    fail "request should omit the release cadence section when there is no last release tag"
+  fi
+
+  finish_test
+  pass "test_build_ai_request_includes_release_cadence"
+}
+
+test_last_release_date_uses_annotated_tag_date() {
+  echo "Running test_last_release_date_uses_annotated_tag_date"
+  run_test
+
+  git init -q -b master release-repo
+  (
+    cd release-repo
+    git config user.name "Release Test"
+    git config user.email "release-test@example.com"
+    GIT_AUTHOR_DATE=2026-07-01T00:00:00Z GIT_COMMITTER_DATE=2026-07-01T00:00:00Z git commit -q --allow-empty -m "base commit"
+    GIT_COMMITTER_DATE=2026-08-03T00:00:00Z git tag -a 1.0.0 -m "Release 1.0.0"
+  )
+
+  local date_out
+  date_out="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 1.0.0)"
+  if [[ "$date_out" != "2026-08-03" ]]; then
+    fail "last-release-date should report the annotated tag date, not the tagged commit date (got '${date_out}')"
+  fi
+
+  local none_out
+  none_out="$(cd release-repo && bash "$SCRIPT" last-release-date --tag none)"
+  if [[ "$none_out" != "none" ]]; then
+    fail "last-release-date should pass through 'none' when there is no prior release (got '${none_out}')"
+  fi
+
+  local unresolved_output
+  if unresolved_output="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 9.9.9 2>&1)"; then
+    fail "last-release-date should fail for a known-but-unresolvable tag (got: ${unresolved_output})"
+  fi
+
+  (
+    cd release-repo
+    git tag 2.0.0
+  )
+  local lightweight_output
+  if lightweight_output="$(cd release-repo && bash "$SCRIPT" last-release-date --tag 2.0.0 2>&1)"; then
+    fail "last-release-date should reject a lightweight tag whose creatordate is the commit date (got: ${lightweight_output})"
+  fi
+
+  finish_test
+  pass "test_last_release_date_uses_annotated_tag_date"
+}
+
 test_ai_transport_diagnostics_records_curl_exit_18() {
   echo "Running test_ai_transport_diagnostics_records_curl_exit_18"
   run_test
@@ -718,6 +824,8 @@ test_release_pr_review_plan_uses_non_author_fallback_reviewers
 test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
 test_build_ai_request_compacts_oversized_dossier
+test_build_ai_request_includes_release_cadence
+test_last_release_date_uses_annotated_tag_date
 test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings

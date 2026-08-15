@@ -112,6 +112,37 @@ jobs:
           echo "audit:last_tag=$last_reachable_tag default_branch=$default_branch first_parent_tag=$last_first_parent_tag prefer_no_v_tags=true"
           echo "audit:latest_tag=$latest_tag latest_tag_reachable=$latest_tag_reachable"
 
+      - name: Resolve last release date
+        id: last_release
+        env:
+          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+        run: |
+          set -euo pipefail
+          encode_tag() {
+            local s="$1" out="" c hex
+            while [ -n "$s" ]; do
+              c="${s%"${s#?}"}"
+              case "$c" in
+                [-_.~A-Za-z0-9]) out="${out}${c}" ;;
+                *) printf -v hex '%%%02X' "'${c}"; out="${out}${hex}" ;;
+              esac
+              s="${s#?}"
+            done
+            printf '%s' "$out"
+          }
+          if [ "${LAST_TAG:-none}" = "none" ]; then
+            release_date="none"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases"
+          else
+            release_date="$(bash scripts/release/release_helpers.sh last-release-date --tag "${LAST_TAG}")"
+            encoded_tag="$(encode_tag "${LAST_TAG}")"
+            release_url="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${encoded_tag}"
+          fi
+          echo "date=$release_date" >> "$GITHUB_OUTPUT"
+          echo "url=$release_url" >> "$GITHUB_OUTPUT"
+          echo "audit:last_release_date=$release_date tag=${LAST_TAG:-none}"
+          echo "audit:last_release_url=$release_url"
+
       - name: Capture event and normalize dry run flag
         id: run_meta
         env:
@@ -474,6 +505,9 @@ jobs:
         env:
           AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           RELEASE_AI_MAX_REQUEST_BYTES: ${{ vars.RELEASE_AI_MAX_REQUEST_BYTES }}
+          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
+          LAST_RELEASE_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
         run: |
           set -euo pipefail
           echo "::group::Build AI request"
@@ -507,6 +541,9 @@ jobs:
               --arg reasoning_effort "${{ steps.model_config.outputs.reasoning_effort }}" \
               --arg request_size "$request_size" \
               --arg max_request_bytes "$max_request_bytes" \
+              --arg lastReleaseTag "$LAST_RELEASE_TAG" \
+              --arg lastReleaseDate "$LAST_RELEASE_DATE" \
+              --arg lastReleaseUrl "$LAST_RELEASE_URL" \
               '{
                 schemaVersion: 2,
                 provider: "openai",
@@ -514,6 +551,9 @@ jobs:
                 model: $model,
                 reasoningEffort: $reasoning_effort,
                 promptProfile: "probe",
+                lastReleaseTag: $lastReleaseTag,
+                lastReleaseDate: $lastReleaseDate,
+                lastReleaseUrl: $lastReleaseUrl,
                 artifactBackedContext: false,
                 fullDossierChars: 0,
                 promptDossierChars: 0,
@@ -532,6 +572,9 @@ jobs:
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
+              --last-release-url "${LAST_RELEASE_URL}" \
+              --last-release-tag "${LAST_RELEASE_TAG}" \
+              --last-release-date "${LAST_RELEASE_DATE}" \
               --max-request-bytes "$max_request_bytes" \
               --metadata-output release-ai-request-metadata.json \
               --output request.json
@@ -919,6 +962,8 @@ jobs:
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
           POM_BASE: ${{ steps.pom_version.outputs.base }}
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
+          LAST_RELEASE_DATE: ${{ steps.last_release.outputs.date }}
+          LAST_RELEASE_URL: ${{ steps.last_release.outputs.url }}
         run: |
           if [ "${SCHEDULER_DUE:-true}" != "true" ]; then
             mutation_plan="no release mutation; scheduled run is outside the biweekly release window"
@@ -946,6 +991,7 @@ jobs:
           requestMaxBytes=${REQUEST_MAX_BYTES:-}
           computedVersion=${VERSION:-}
           bump=${BUMP:-}
+          lastReleaseUrl=${LAST_RELEASE_URL:-}
           mutationPlan=${mutation_plan}
           rerunGuidance=${rerun_guidance}
           EOF
@@ -975,6 +1021,8 @@ jobs:
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
+          echo "decision:last_release_date=${LAST_RELEASE_DATE:-unknown}"
+          echo "decision:last_release_url=${LAST_RELEASE_URL:-unknown}"
           echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
           {
             echo "## Release Scheduler Decision"
@@ -997,6 +1045,8 @@ jobs:
             echo "- confidence: ${CONFIDENCE:-unknown}"
             echo "- computed version: ${VERSION:-none}"
             echo "- last reachable tag: ${LAST_TAG:-unknown}"
+            echo "- last release date: ${LAST_RELEASE_DATE:-unknown}"
+            echo "- last release url: ${LAST_RELEASE_URL:-unknown}"
             echo "- reason: ${REASON:-none}"
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
