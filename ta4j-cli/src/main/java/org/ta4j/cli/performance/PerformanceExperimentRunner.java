@@ -480,6 +480,8 @@ public final class PerformanceExperimentRunner {
                 }
                 return builder.toString();
             } catch (IOException | NoSuchAlgorithmException e) {
+                // Must stay in sync with PerformanceComparison.UNKNOWN_HOST_ID,
+                // which treats artifacts carrying this sentinel as incomparable.
                 return "unknown";
             }
         }

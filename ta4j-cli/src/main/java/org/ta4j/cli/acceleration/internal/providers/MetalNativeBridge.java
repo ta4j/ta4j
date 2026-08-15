@@ -43,8 +43,15 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
         if (fields.length != 4) {
             return new MetalProbeResult(false, "", 0L, "Malformed Metal probe metadata");
         }
+        if (!"OK".equals(fields[0])) {
+            // Native failure payloads leave the numeric fields empty; the
+            // last field carries the actionable detail (for example
+            // ERROR|||metal_device_unavailable) and must be surfaced as-is
+            // instead of being replaced by a number-parse error.
+            return new MetalProbeResult(false, "", 0L, fields[3]);
+        }
         try {
-            return new MetalProbeResult("OK".equals(fields[0]), fields[1], Long.parseLong(fields[2]), fields[3]);
+            return new MetalProbeResult(true, fields[1], Long.parseLong(fields[2]), fields[3]);
         } catch (NumberFormatException exception) {
             return new MetalProbeResult(false, "", 0L, "Malformed Metal probe number: " + exception.getMessage());
         }

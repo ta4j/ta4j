@@ -38,6 +38,9 @@ final class PerformanceComparison {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final double UNBOUNDED_DELTA_PCT = Double.MAX_VALUE;
+    // Must stay in sync with PerformanceExperimentRunner.HostTelemetry, which
+    // records this literal when local hostname resolution fails.
+    private static final String UNKNOWN_HOST_ID = "unknown";
 
     private PerformanceComparison() {
     }
@@ -73,6 +76,14 @@ final class PerformanceComparison {
         }
         JsonObject baseHost = required(base, "host").getAsJsonObject();
         JsonObject candidateHost = required(candidate, "host").getAsJsonObject();
+        // HostTelemetry.capture() hashes the local hostname; when resolution
+        // fails the artifact records the literal "unknown". Comparing raw
+        // timings across such artifacts would silently pass the host gate for
+        // unrelated machines, so an unresolvable host ID is incomparable.
+        if (UNKNOWN_HOST_ID.equals(baseHost.get("hostId").getAsString())
+                || UNKNOWN_HOST_ID.equals(candidateHost.get("hostId").getAsString())) {
+            throw new IllegalStateException("Cannot compare performance artifacts when the host ID is unknown");
+        }
         if (!hostTelemetryMatch(baseHost, candidateHost)) {
             throw new IllegalStateException("Cannot compare performance artifacts from different hosts");
         }
