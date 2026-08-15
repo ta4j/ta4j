@@ -1139,6 +1139,23 @@ class ParameterResearchTest {
     }
 
     @Test
+    void searchPlansRejectMissingGeneticSettings() {
+        // Kind-specific settings must fail fast at plan construction instead
+        // of materializing research windows and dereferencing null settings
+        // inside the engine mid-run.
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> new SearchPlan(SearchPlan.Kind.GENETIC, 10, 0L, null, null));
+        assertThat(exception.getMessage()).contains("geneticSettings");
+    }
+
+    @Test
+    void searchPlansRejectMissingSwarmSettings() {
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> new SearchPlan(SearchPlan.Kind.PARTICLE_SWARM, 10, 0L, null, null));
+        assertThat(exception.getMessage()).contains("swarmSettings");
+    }
+
+    @Test
     void candidateRebindingIsRejected() {
         // Re-binding the candidate factory through a retained typed alias
         // would leave both Builder<A> and Builder<B> usable while run()

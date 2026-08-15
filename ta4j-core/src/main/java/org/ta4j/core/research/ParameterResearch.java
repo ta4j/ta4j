@@ -1670,6 +1670,11 @@ public final class ParameterResearch {
          */
         public SearchPlan {
             Objects.requireNonNull(kind, "kind");
+            if (kind == Kind.GENETIC) {
+                Objects.requireNonNull(geneticSettings, "geneticSettings are required for a genetic search plan");
+            } else if (kind == Kind.PARTICLE_SWARM) {
+                Objects.requireNonNull(swarmSettings, "swarmSettings are required for a particle-swarm search plan");
+            }
             if (maxEvaluations <= 0) {
                 throw new IllegalArgumentException("maxEvaluations must be > 0");
             }
