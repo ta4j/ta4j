@@ -53,6 +53,30 @@ class GeneticSearchEngineTest {
     }
 
     @Test
+    void allInvalidGenerationsDoNotAdvanceTheStagnationStreak() {
+        // A generation whose candidates are all invalid carries no ranking
+        // evidence, so it must not advance the stagnation streak and
+        // terminate the search with NO_IMPROVEMENT while unseen genomes
+        // remain: random exploration continues past invalid generations.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 100)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(2, 1, 2, 0.9, 0.1),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, 1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first).hasSize(2);
+        for (int i = 0; i < first.size(); i++) {
+            ParameterSet set = first.get(i);
+            engine.observe(set.stableId(), EvaluatedCandidate.failed(set.stableId(), set, i, "invalid", Map.of()));
+        }
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(second).hasSize(2);
+        assertThat(engine.terminationReason()).isNull();
+    }
+
+
+    @Test
     void finalizedObservationCountsFinalGeneration() {
         List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
         Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());

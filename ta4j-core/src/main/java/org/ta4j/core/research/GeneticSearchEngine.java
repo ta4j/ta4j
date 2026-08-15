@@ -120,9 +120,12 @@ final class GeneticSearchEngine extends SearchEngine {
                 .filter(g -> g.evaluated().valid())
                 .sorted((a, b) -> ranking.compare(a.evaluated(), b.evaluated()))
                 .toList();
-        if (valid.isEmpty()) {
-            noImprovementStreak++;
-        } else {
+        // An all-invalid generation carries no ranking evidence: the best
+        // valid score neither improved nor declined, so the stagnation streak
+        // stays put and NO_IMPROVEMENT cannot fire while unseen genomes
+        // remain. The streak only ever mutates for generations that produced
+        // a valid evaluation.
+        if (!valid.isEmpty()) {
             ParameterResearch.EvaluatedCandidate generationBest = valid.get(0).evaluated();
             if (bestEver == null
                     || ParameterResearch.scoreIsBetter(direction, generationBest.score(), bestEver.score())) {
@@ -131,9 +134,9 @@ final class GeneticSearchEngine extends SearchEngine {
             } else {
                 noImprovementStreak++;
             }
-        }
-        if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
-            terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+            if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
+                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+            }
         }
         generationEvaluations = new ArrayList<>();
         generationPending = false;

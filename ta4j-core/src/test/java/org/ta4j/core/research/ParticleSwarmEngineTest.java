@@ -125,6 +125,62 @@ class ParticleSwarmEngineTest {
     }
 
     @Test
+    void finalBatchIsFinalizedBeforeTheIterationCapFires() {
+        // When the last move exhausts the iteration cap, the pending batch
+        // must still be finalized: its evaluations are the run's final
+        // observations, and skipping the finalize would drop them from
+        // pbest/gbest and the stagnation streak. A final batch that fails to
+        // improve therefore reports NO_IMPROVEMENT (not ITERATION_LIMIT)
+        // when the no-improvement limit is configured.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d, 1d, 0d, 0d, 0d, 1d / 3d), ranking, Direction.MAXIMIZE, 2, 1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first.stream().map(ParameterSet::stableId)).containsExactlyInAnyOrder("a=1", "a=4");
+        engine.observe("a=1", EvaluatedCandidate.valid("a=1", first.get(0), 0, DecimalNum.valueOf(5), Map.of()));
+        engine.observe("a=4", EvaluatedCandidate.valid("a=4", first.get(1), 1, DecimalNum.valueOf(4), Map.of()));
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(second.stream().map(ParameterSet::stableId)).contains("a=3");
+        engine.observe("a=1", EvaluatedCandidate.valid("a=1", second.get(0), 2, DecimalNum.valueOf(5), Map.of()));
+        engine.observe("a=3", EvaluatedCandidate.valid("a=3", second.get(1), 3, DecimalNum.valueOf(0), Map.of()));
+
+        assertThat(engine.propose(2)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.NO_IMPROVEMENT);
+        assertThat(engine.iterationsCompleted()).isEqualTo(2);
+    }
+
+    @Test
+    void invalidEvaluationsDoNotAdvanceTheStagnationStreak() {
+        // A batch whose candidates are all invalid carries no ranking
+        // evidence: it neither improves nor declines the best valid score,
+        // so it must not advance the stagnation streak and terminate the run
+        // with NO_IMPROVEMENT while unseen candidates remain. The sweep keeps
+        // exploring the declared space, ending with SEARCH_SPACE_EXHAUSTED
+        // only when every cell has been proposed.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 4)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        ParticleSwarmEngine engine = new ParticleSwarmEngine(specs, new SwarmSettings(2, 0.0, 1.0, 1.0, 1.0),
+                new ScriptedRandom(0d, 1d), ranking, Direction.MAXIMIZE, -1, 1);
+
+        List<ParameterSet> first = engine.propose(2);
+        assertThat(first.stream().map(ParameterSet::stableId)).containsExactlyInAnyOrder("a=1", "a=4");
+        observeFailed(engine, first);
+
+        List<ParameterSet> second = engine.propose(2);
+        assertThat(second).hasSize(2);
+        assertThat(engine.terminationReason()).isNull();
+        observeFailed(engine, second);
+        assertThat(engine.propose(2)).isEmpty();
+        assertThat(engine.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+        // Launch + the two sweep moves that explored the remaining cells; the
+        // final move that proposed nothing new still counts as one update.
+        assertThat(engine.iterationsCompleted()).isEqualTo(3);
+    }
+
+    @Test
     void zeroCapacityProposeFinalizesButSkipsMoveAndIteration() {
         // An exhausted budget still asks the engine for a zero-sized batch:
         // the pending observations must be finalized, but the swarm must not

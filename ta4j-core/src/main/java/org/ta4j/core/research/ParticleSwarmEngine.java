@@ -124,10 +124,12 @@ final class ParticleSwarmEngine extends SearchEngine {
             pendingMoveCounted = false;
             return proposeBatch(particles.size());
         }
-        if (maxIterations > 0 && iterationsCompleted() >= maxIterations) {
-            terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
-            return List.of();
-        }
+        // Finalize before checking the iteration cap: when the previous move
+        // exhausted the cap, the pending batch holds the run's final
+        // observations, which must still be folded into pbest/gbest and the
+        // stagnation streak (matching the genetic engine's finalize-first
+        // order). The cap check below still fires for every request that
+        // follows a finalized iteration at or past the limit.
         finalizeIteration();
         if (terminationReason() != null) {
             return List.of();
@@ -240,11 +242,13 @@ final class ParticleSwarmEngine extends SearchEngine {
         if (!pendingMoveCounted) {
             completeIteration();
         }
+        boolean batchHadValidEvaluation = false;
         for (Map.Entry<String, List<Integer>> entry : pendingBatch.entrySet()) {
             ParameterResearch.EvaluatedCandidate evaluated = batchEvaluations.get(entry.getKey());
             if (evaluated == null || !evaluated.valid()) {
                 continue;
             }
+            batchHadValidEvaluation = true;
             for (Integer particleIndex : entry.getValue()) {
                 Particle particle = particles.get(particleIndex);
                 if (particle.pbestEvaluated == null || ranking.compare(evaluated, particle.pbestEvaluated) < 0) {
@@ -279,9 +283,14 @@ final class ParticleSwarmEngine extends SearchEngine {
                 gbestPosition = gbestParticle.pbestPosition.clone();
             }
         }
-        noImprovementStreak = improved ? 0 : noImprovementStreak + 1;
-        if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
-            terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+        // An all-invalid batch carries no ranking evidence: the best valid
+        // score neither improved nor declined, so the stagnation streak stays
+        // put and NO_IMPROVEMENT cannot fire while unseen candidates remain.
+        if (batchHadValidEvaluation) {
+            noImprovementStreak = improved ? 0 : noImprovementStreak + 1;
+            if (noImprovementIterations > 0 && noImprovementStreak >= noImprovementIterations) {
+                terminate(ParameterResearch.TerminationReason.NO_IMPROVEMENT);
+            }
         }
 
         // Drain the batch so a repeated finalizeObserved() call is a no-op:
