@@ -208,14 +208,13 @@ class ParameterResearchTest {
         ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> parameters.intValue("a"))
-                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
-                        .of(NaN.NaN, Map.of("acc", series.numFactory().numOf(0.5))))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation.of(NaN.NaN,
+                        Map.of("acc", series.numFactory().numOf(0.5))))
                 .search(SearchPlan.grid(2))
                 .run();
 
         assertThat(report.failedEvaluations()).hasSize(2);
-        assertThat(report.failedEvaluations().get(0).metrics())
-                .containsEntry("acc", series.numFactory().numOf(0.5));
+        assertThat(report.failedEvaluations().get(0).metrics()).containsEntry("acc", series.numFactory().numOf(0.5));
     }
 
     @Test
@@ -643,8 +642,7 @@ class ParameterResearchTest {
         builder.maximize((candidate, window) -> {
             if (candidate == 0) {
                 builder.candidate((w, p) -> p.intValue("a") + 100)
-                        .minimize((c, w) -> ParameterResearch.ObjectiveEvaluation
-                                .of(series.numFactory().numOf(c)));
+                        .minimize((c, w) -> ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(c)));
             }
             return ParameterResearch.ObjectiveEvaluation.of(series.numFactory().numOf(candidate));
         }).search(SearchPlan.grid(5));
@@ -1412,8 +1410,7 @@ class ParameterResearchTest {
                     .candidate((window, parameters) -> parameters.decimalValue("a"))
                     .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
                             .of(window.series().numFactory().numOf(candidate)))
-                    .search(SearchPlan.genetic(32, 7L,
-                            new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
+                    .search(SearchPlan.genetic(32, 7L, new ParameterResearch.GeneticSettings(10, 8, 2, 0.9, 0.1)))
                     .run();
             assertThat(report.counts().attempted()).isEqualTo(32);
             assertThat(report.terminationReason()).isEqualTo(TerminationReason.EVALUATION_BUDGET_EXHAUSTED);
@@ -1422,6 +1419,93 @@ class ParameterResearchTest {
         } finally {
             ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
         }
+    }
+
+    @Test
+    void normalizedAliasCollisionsCountTowardTheProposalCap() {
+        // A normalizer that aliases every declared value onto one canonical
+        // value turns each new raw proposal into a cache hit. Cache hits do
+        // not consume the evaluation budget, so exempting them from the
+        // proposal cap would let the grid walk the whole space — paying full
+        // normalization and validation work per aliased raw id — while the
+        // cap is supposed to bound that proposal work. Aliased new raw ids
+        // must still charge the cap; only re-proposals of an already-proposed
+        // raw id (genetic elites, swarm re-projections) are exempt.
+        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
+        ParameterResearch.MAX_PROPOSALS_PER_RUN = 50;
+        try {
+            BarSeries series = series(1d, 2d, 3d);
+            ParameterNormalizer normalizer = (data, name, value) -> new ParameterValue(name, "1", true, "aliased");
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .integer("a", 1, 100)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                            .of(window.series().numFactory().numOf(candidate)))
+                    .normalize(normalizer)
+                    .search(SearchPlan.grid(100))
+                    .run();
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
+            assertThat(report.counts().proposed()).isEqualTo(50);
+            assertThat(report.counts().attempted()).isEqualTo(1);
+            assertThat(report.counts().duplicate()).isEqualTo(49);
+        } finally {
+            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
+        }
+    }
+
+    @Test
+    void wideDecimalDomainCanonicalizesScientificAndExactStringForms() {
+        // A normalizer may emit the same declared value once in scientific
+        // notation and once as an exact plain string. On a domain wide enough
+        // to overflow double subtraction ([-Double.MAX_VALUE, Double.MAX_VALUE]
+        // stepped by Double.MAX_VALUE), the position lookup must still resolve
+        // both forms onto one canonical id: index arithmetic that overflows to
+        // Long.MAX_VALUE wraps the position window and leaves the raw string
+        // verbatim, evaluating the same declared position twice.
+        BarSeries series = series(1d, 2d, 3d);
+        String exactMax = BigDecimal.valueOf(Double.MAX_VALUE).toPlainString();
+        ParameterNormalizer normalizer = (data, name, value) -> value.startsWith("-")
+                ? new ParameterValue(name, "1.7976931348623157E308", true, "scientific")
+                : new ParameterValue(name, exactMax, true, "exact");
+        ParameterResearchReport report = ParameterResearch.<Double>builder(series)
+                .decimal("a", -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE)
+                .candidate((window, parameters) -> parameters.decimalValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .normalize(normalizer)
+                .search(SearchPlan.grid(3))
+                .run();
+        assertThat(report.counts().attempted()).isEqualTo(1);
+        assertThat(report.counts().duplicate()).isEqualTo(2);
+        assertThat(report.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
+    }
+
+    @Test
+    void objectiveIdIgnoresTargetScoreNumFactory() {
+        // The objective fingerprint is value-based: a target score of 1 must
+        // fingerprint identically whether it was built as DoubleNum (whose
+        // toString is "1.0") or DecimalNum ("1"), so runs that differ only in
+        // the target score's num factory share one objective id.
+        BarSeries series = series(1d, 2d, 3d);
+        String doubleNumId = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .targetScore(DoubleNum.valueOf(1))
+                .search(SearchPlan.grid(2))
+                .run()
+                .objectiveId();
+        String decimalNumId = ParameterResearch.<Integer>builder(series)
+                .integer("a", 1, 2)
+                .candidate((window, parameters) -> parameters.intValue("a"))
+                .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                        .of(window.series().numFactory().numOf(candidate)))
+                .targetScore(DecimalNum.valueOf(1))
+                .search(SearchPlan.grid(2))
+                .run()
+                .objectiveId();
+        assertThat(decimalNumId).isEqualTo(doubleNumId);
     }
 
     @Test

@@ -255,11 +255,11 @@ public class RelationshipObjectiveSearchExample {
                     .append(" ")
                     .append(PRECISION)
                     .append("=")
-                    .append(metrics.get(PRECISION))
+                    .append(Objects.toString(metrics.get(PRECISION), "undefined"))
                     .append(" ")
                     .append(RECALL)
                     .append("=")
-                    .append(metrics.get(RECALL))
+                    .append(Objects.toString(metrics.get(RECALL), "undefined"))
                     .append(System.lineSeparator());
         }
     }

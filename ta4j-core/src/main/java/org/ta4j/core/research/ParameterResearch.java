@@ -4,6 +4,7 @@
 package org.ta4j.core.research;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -11,6 +12,7 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -71,11 +73,13 @@ import org.ta4j.core.num.Num;
  * from holdout attempts in {@link RunCounts#attempted()} and
  * {@link RunCounts#holdoutAttempted()}. A budget-limited grid run reports
  * {@link TerminationReason#EVALUATION_BUDGET_EXHAUSTED} and never claims
- * exhaustive optimality. Objective or candidate-factory failures that occur
- * after an attempted evaluation do consume budget and are ranked below every
- * valid evaluation. The run configuration — including {@code topK} and the
- * search plan — is snapshotted when {@code run()} starts, so callbacks that
- * retain the builder and mutate it during a run never change the running
+ * exhaustive optimality; when fewer than {@code topK} valid training candidates
+ * exist, holdout reservation points that can no longer run stay visible as
+ * {@link RunCounts#budgetRemaining()}. Objective or candidate-factory failures
+ * that occur after an attempted evaluation do consume budget and are ranked
+ * below every valid evaluation. The run configuration — including {@code topK}
+ * and the search plan — is snapshotted when {@code run()} starts, so callbacks
+ * that retain the builder and mutate it during a run never change the running
  * search's budget, holdout reservation, or reported plan.
  * </p>
  *
@@ -105,12 +109,15 @@ public final class ParameterResearch {
      * Maximum number of proposals a single run processes before terminating.
      * Rejected proposals never consume the evaluation budget, so a rejection-heavy
      * normalizer over a large space would otherwise make genetic or particle-swarm
-     * engines propose (and retain proposal ids) without bound. Cache-served
-     * duplicates are excluded from the bound: they re-propose already evaluated
-     * candidates (for example a genetic engine's elite slots) and their count is
+     * engines propose (and retain proposal ids) without bound. Only re-proposals of
+     * an already-proposed raw id are excluded from the bound: genetic elite slots
+     * and swarm re-projections re-propose evaluated candidates and their count is
      * itself bounded by the evaluation budget, so counting them would stop a
-     * healthy elitist run before its declared budget is exhausted. Non-final so
-     * tests can exercise the bound cheaply.
+     * healthy elitist run before its declared budget is exhausted. A normalized
+     * alias of a new raw id still counts — every such proposal runs the full
+     * normalization and validation work, so an aliasing normalizer cannot hide
+     * unbounded work behind cache hits. Non-final so tests can exercise the bound
+     * cheaply.
      */
     static int MAX_PROPOSALS_PER_RUN = 1_000_000;
 
@@ -531,6 +538,23 @@ public final class ParameterResearch {
                 throw new IllegalStateException("series has no bars");
             }
             int holdoutBars = resolveHoldoutBars(snapshot.barCount());
+            // Holdout rebuilds score up to topK retained candidates, so those
+            // evaluations are reserved out of the budget; the training search
+            // never spends them, keeping total objective calls budget-exact.
+            // Validate the reservation before any window copies bars or the
+            // engine materializes, so an invalid plan fails fast instead of
+            // after potentially large allocations.
+            int budget = searchPlan.maxEvaluations();
+            int trainingBudget = holdoutBars > 0 ? budget - topK : budget;
+            if (trainingBudget <= 0) {
+                throw new IllegalArgumentException("search budget of " + budget + " evaluations must exceed the topK "
+                        + topK + " holdout reservation; raise maxEvaluations or lower topK");
+            }
+            // Orchestration timing covers everything the run does outside the
+            // objective callbacks: window construction, domain specs, engine
+            // setup, normalization, validation, integrity checks, and holdout
+            // rebuild bookkeeping.
+            long orchestrationStart = System.nanoTime();
             String datasetId = resolveDatasetId(series);
             ResearchWindow trainingWindow = buildWindow(datasetId, ResearchWindow.WindowPhase.TRAINING,
                     snapshot.beginIndex(), snapshot.endIndex() - holdoutBars);
@@ -551,7 +575,6 @@ public final class ParameterResearch {
             }
             SearchEngine engine = createEngine(specs, ranking, direction);
 
-            int budget = searchPlan.maxEvaluations();
             // The run configuration is fixed when the run starts: user callbacks
             // that retain the builder and mutate it must not change the holdout
             // reservation or the plan reported for the running search.
@@ -568,22 +591,14 @@ public final class ParameterResearch {
             ParameterNormalizer runNormalizer = normalizer;
             Num runTargetScore = targetScore;
             Direction runDirection = direction;
-            // Holdout rebuilds score up to topK retained candidates, so those
-            // evaluations are reserved out of the budget; the training search
-            // never spends them, keeping total objective calls budget-exact.
-            int trainingBudget = holdoutBars > 0 ? budget - reservedTopK : budget;
-            if (trainingBudget <= 0) {
-                throw new IllegalArgumentException("search budget of " + budget + " evaluations must exceed the topK "
-                        + topK + " holdout reservation; raise maxEvaluations or lower topK");
-            }
             EvaluationCache cache = new EvaluationCache();
             List<EvaluatedCandidate> evaluations = new ArrayList<>();
             List<FailedEvaluation> failures = new ArrayList<>();
             RunCounters counters = new RunCounters();
-            long orchestrationStart = System.nanoTime();
             long evaluationNanos = 0L;
             TerminationReason reason = null;
             boolean targetReached = false;
+            Set<String> proposedRawIds = new HashSet<>();
             while (true) {
                 if (Thread.currentThread().isInterrupted()) {
                     engine.finalizeObserved();
@@ -591,7 +606,7 @@ public final class ParameterResearch {
                     break;
                 }
                 verifyUnchanged(snapshot, series);
-                long allowance = MAX_PROPOSALS_PER_RUN - (counters.proposed - counters.duplicate);
+                long allowance = MAX_PROPOSALS_PER_RUN - (counters.proposed - counters.rawReproposals);
                 if (allowance <= 0) {
                     engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
                     engine.finalizeObserved();
@@ -619,6 +634,15 @@ public final class ParameterResearch {
                         break;
                     }
                     counters.proposed++;
+                    // A re-proposal of an already-proposed raw id (genetic
+                    // elite slots, swarm re-projections) is bounded by the
+                    // evaluation budget and excluded from the proposal cap;
+                    // every other proposal, including a normalized alias of a
+                    // new raw id, still counts because it performs the full
+                    // normalization and validation work.
+                    if (!proposedRawIds.add(proposed.stableId())) {
+                        counters.rawReproposals++;
+                    }
                     ParameterSet normalized = normalizeProposal(proposed, normalizerData, runNormalizer,
                             runDomainsByName);
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
@@ -697,7 +721,7 @@ public final class ParameterResearch {
                     break;
                 }
 
-                if (counters.proposed - counters.duplicate >= MAX_PROPOSALS_PER_RUN) {
+                if (counters.proposed - counters.rawReproposals >= MAX_PROPOSALS_PER_RUN) {
                     engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
                     engine.finalizeObserved();
                     reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
@@ -860,13 +884,26 @@ public final class ParameterResearch {
                     // Mirror DomainSpec's declared-position arithmetic: the
                     // canonical string of the nearest declared indexes must
                     // equal the parsed value's canonical string. The index
-                    // window absorbs double-division rounding and below-ULP
-                    // position collapses.
-                    long index = Math.round((parsed - d.from()) / d.step());
+                    // window absorbs division rounding and below-ULP position
+                    // collapses. The raw string is converted through
+                    // BigDecimal so the subtraction and division cannot
+                    // overflow to infinity on wide domains (for example
+                    // [-Double.MAX_VALUE, Double.MAX_VALUE] stepped by
+                    // Double.MAX_VALUE), where a saturated Long.MAX_VALUE
+                    // index would wrap the +2 window and silently skip every
+                    // declared position. Indices beyond the engine's
+                    // enumerable range cannot belong to a declared position.
+                    BigDecimal rawDecimal = new BigDecimal(raw);
+                    BigDecimal indexDecimal = rawDecimal.subtract(BigDecimal.valueOf(d.from()))
+                            .divide(BigDecimal.valueOf(d.step()), 0, RoundingMode.HALF_UP);
+                    if (indexDecimal.abs().compareTo(BigDecimal.valueOf(Long.MAX_VALUE - 2L)) > 0) {
+                        return null;
+                    }
+                    long index = indexDecimal.longValue();
                     for (long i = Math.max(0L, index - 2); i <= index + 2; i++) {
                         double declared = Math.min(BigDecimal.valueOf(d.from())
-                                .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(i))).doubleValue(),
-                                d.to());
+                                .add(BigDecimal.valueOf(d.step()).multiply(BigDecimal.valueOf(i)))
+                                .doubleValue(), d.to());
                         if (canonicalDecimal(declared).equals(canonical)) {
                             return canonical;
                         }
@@ -932,8 +969,8 @@ public final class ParameterResearch {
 
         private HoldoutResult rebuildOnHoldout(List<EvaluatedCandidate> ranked, int leaderboardSize,
                 ResearchWindow holdoutWindow, ResearchWindow trainingWindow, Comparator<EvaluatedCandidate> ranking,
-                ObjectiveFunction<T> activeObjective, CandidateFactory<T> activeCandidateFactory,
-                EvaluationCache cache, List<FailedEvaluation> failures) {
+                ObjectiveFunction<T> activeObjective, CandidateFactory<T> activeCandidateFactory, EvaluationCache cache,
+                List<FailedEvaluation> failures) {
             List<HoldoutEvaluation> holdoutEvaluations = new ArrayList<>(leaderboardSize);
             SeriesSnapshot holdoutSnapshot = new SeriesSnapshot(holdoutWindow.series());
             // A stateful candidate factory may have captured the training
@@ -962,12 +999,14 @@ public final class ParameterResearch {
                     } catch (RuntimeException ex) {
                         holdout = EvaluatedCandidate.failed(training.candidateId(), training.parameters(), i + 1,
                                 "holdout evaluation threw " + ex.getClass().getSimpleName() + message(ex), Map.of());
-
                     }
+                    // Close the evaluation window before the integrity
+                    // checks: verifyUnchanged time is orchestration, not
+                    // objective-evaluation time.
+                    evaluationNanos += System.nanoTime() - evaluationStart;
                     verifyUnchanged(holdoutSnapshot, holdoutWindow.series());
                     verifyUnchanged(trainingSnapshot, trainingWindow.series());
 
-                    evaluationNanos += System.nanoTime() - evaluationStart;
                     cache.put(key, holdout);
                     attempted++;
                 }
@@ -1017,7 +1056,10 @@ public final class ParameterResearch {
                     .add(String.valueOf(searchPlan.seed()))
                     .add(String.valueOf(topK))
                     .add(String.valueOf(holdoutBars))
-                    .add(String.valueOf(targetScore))
+                    // bigDecimalValue() is exact and factory-independent; the
+                    // stripped string ignores scale, so DoubleNum 1.0 and
+                    // DecimalNum 1 share one fingerprint for one target value.
+                    .add(targetScore == null ? "null" : targetScore.bigDecimalValue().stripTrailingZeros().toString())
                     .add(String.valueOf(maxIterations))
                     .add(String.valueOf(noImprovementIterations));
             if (searchPlan.kind() == SearchPlan.Kind.GENETIC) {
@@ -1221,18 +1263,18 @@ public final class ParameterResearch {
          * scores, and the repair itself is reported through
          * {@link ParameterValue#normalized()} and {@link ParameterSet#repairs()}.
          * </p>
-
+         *
          * <p>
          * A returned value that parses to a declared position of the parameter's
          * {@link ParameterDomain} is re-canonicalized onto that position's canonical
          * string before caching or reporting (for example {@code "05"} becomes
          * {@code "5"} on an integer domain): the returned value's {@code normalized}
-         * flag is additionally forced to {@code true} and the {@link
-         * ParameterValue#note()} is set to {@code "canonicalized"} when absent. This
-         * keeps equal logical values under one cache identity even when a normalizer
-         * emits a parseable non-canonical form. Values that do not parse to a declared
-         * position (out-of-domain repairs) are kept verbatim; their raw-string identity
-         * cannot collide with any engine proposal.
+         * flag is additionally forced to {@code true} and the
+         * {@link ParameterValue#note()} is set to {@code "canonicalized"} when absent.
+         * This keeps equal logical values under one cache identity even when a
+         * normalizer emits a parseable non-canonical form. Values that do not parse to
+         * a declared position (out-of-domain repairs) are kept verbatim; their
+         * raw-string identity cannot collide with any engine proposal.
          * </p>
          *
          * @param series dataset being searched, limited to the training window when
@@ -1999,17 +2041,23 @@ public final class ParameterResearch {
     public enum TerminationReason {
         /** Grid search iterated the entire declared space. */
         SEARCH_SPACE_EXHAUSTED,
-        /** The exact evaluation budget was consumed before the space was exhausted. */
+        /**
+         * The training search consumed its evaluation slice — the exact budget minus
+         * the holdout reservation — before the space was exhausted. With holdout
+         * validation enabled and fewer than {@code topK} valid training candidates,
+         * reserved holdout points that cannot run remain reported in
+         * {@link RunCounts#budgetRemaining()}.
+         */
         EVALUATION_BUDGET_EXHAUSTED,
         /** The configured iteration limit was reached. */
         ITERATION_LIMIT,
         /**
-         * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals that could
-         * advance the search — rejected or newly evaluated, since rejected
-         * proposals never consume the evaluation budget — before the space or
-         * budget could end the search. Cache-served duplicates are excluded:
-         * they are bounded by the evaluation budget and re-propose already
-         * evaluated candidates.
+         * The run processed {@code MAX_PROPOSALS_PER_RUN} proposals that could advance
+         * the search — rejected, cache-served aliases of new raw ids, or newly
+         * evaluated, since rejected proposals never consume the evaluation budget —
+         * before the space or budget could end the search. Only re-proposals of an
+         * already-proposed raw id are excluded: they are bounded by the evaluation
+         * budget and re-propose already evaluated candidates.
          */
         PROPOSAL_LIMIT_EXCEEDED,
         /** A valid evaluation reached the configured target score. */
@@ -2046,7 +2094,9 @@ public final class ParameterResearch {
      *                            holdout failures are excluded and reported via
      *                            {@link ParameterResearchReport#failedEvaluations()}
      * @param budgetRemaining     unused evaluation budget across training and
-     *                            holdout
+     *                            holdout, including reserved holdout points that
+     *                            could not run when fewer than {@code topK} valid
+     *                            training candidates existed
      * @param iterationsCompleted completed engine iterations (0 for grid search)
      * @since 0.24.2
      */
@@ -2339,7 +2389,6 @@ public final class ParameterResearch {
      */
     private record SeriesSnapshot(String name, int beginIndex, int endIndex, int barCount, long barHistoryRevision,
             int maxBarCount) {
-
         private SeriesSnapshot(BarSeries series) {
             this(series.getName(), series.getBeginIndex(), series.getEndIndex(), series.getBarCount(),
                     series.getBarHistoryRevision(), series.getMaximumBarCount());
@@ -2359,6 +2408,8 @@ public final class ParameterResearch {
         long holdoutAttempted;
         long successful;
         long failed;
+        // Re-proposals of an already-proposed raw id, exempt from the proposal cap.
+        long rawReproposals;
     }
 
     /**

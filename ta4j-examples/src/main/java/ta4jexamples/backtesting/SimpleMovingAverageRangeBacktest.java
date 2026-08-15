@@ -220,7 +220,7 @@ public class SimpleMovingAverageRangeBacktest {
                     + "run.";
         }
         if (report.holdoutLeaderboard().isEmpty()) {
-            return "No holdout scores were produced; increase validationBarCount before trusting the selection.";
+            return "No holdout scores were produced; increase validationBars before trusting the selection.";
         }
 
         RankedCandidate selected = report.trainingLeaderboard().getFirst();

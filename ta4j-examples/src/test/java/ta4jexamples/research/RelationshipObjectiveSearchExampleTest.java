@@ -204,9 +204,9 @@ public class RelationshipObjectiveSearchExampleTest {
         assertTrue("series has no rally in the evaluable window", rallyIndex >= 0);
 
         Boolean[] silent = new Boolean[windowSeries.getBarCount()];
-        ObjectiveEvaluation evaluation = RelationshipObjectiveSearchExample.scoreSynchronization(
-                new FixedBooleanIndicator(windowSeries, silent), new ResearchWindow(windowSeries, windowBegin,
-                        windowEnd, ResearchWindow.WindowPhase.TRAINING, "silent"));
+        ObjectiveEvaluation evaluation = RelationshipObjectiveSearchExample
+                .scoreSynchronization(new FixedBooleanIndicator(windowSeries, silent), new ResearchWindow(windowSeries,
+                        windowBegin, windowEnd, ResearchWindow.WindowPhase.TRAINING, "silent"));
 
         assertEquals(ObjectiveEvaluation.Status.VALID, evaluation.status());
         assertEquals(0.0, evaluation.score().doubleValue(), 1e-12);

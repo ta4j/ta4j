@@ -54,8 +54,9 @@ import javax.tools.ToolProvider;
  * automation.
  *
  * <p>
- * Typical usage:
- * {@code mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
+ * Typical usage (build the module and its dependencies first, then run the
+ * compiled scanner class):
+ * {@code mvn -q -pl ta4j-examples -am install -DskipTests && mvn -q -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
  * </p>
  *
  * <p>

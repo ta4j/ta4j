@@ -6,10 +6,12 @@ package org.ta4j.core.research;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Particle-swarm search over ordered numeric dimensions.
@@ -45,10 +47,10 @@ final class ParticleSwarmEngine extends SearchEngine {
     private Map<String, List<Integer>> pendingBatch = new LinkedHashMap<>();
     private Map<String, ParameterResearch.EvaluatedCandidate> batchEvaluations = new LinkedHashMap<>();
     /**
-     * Whether the update that generated {@link #pendingBatch} already advanced
-     * the iteration tracker: every swarm move counts immediately (so a
-     * fully-colliding move cannot escape the iteration cap), while the launch
-     * batch has no preceding move and is counted when it is finalized.
+     * Whether the update that generated {@link #pendingBatch} already advanced the
+     * iteration tracker: every swarm move counts immediately (so a fully-colliding
+     * move cannot escape the iteration cap), while the launch batch has no
+     * preceding move and is counted when it is finalized.
      */
     private boolean pendingMoveCounted;
     private ParameterResearch.EvaluatedCandidate gbestEvaluated;
@@ -302,8 +304,13 @@ final class ParticleSwarmEngine extends SearchEngine {
     }
 
     private void move() {
+        // Cells handed out earlier in this same move are not committed to the
+        // proposed set yet (the batch is only served afterwards), so track
+        // them here: without it the sweep cursor can wrap around within one
+        // move and hand the same unseen cell to two particles.
+        Set<String> moveAssigned = new HashSet<>();
         for (Particle particle : particles) {
-            int[] resampled = gbestEvaluated == null ? nextUnexploredCell() : null;
+            int[] resampled = gbestEvaluated == null ? nextUnexploredCell(moveAssigned) : null;
             for (int d = 0; d < particle.position.length; d++) {
                 DomainSpec spec = specs().get(d);
                 if (gbestEvaluated == null) {
@@ -356,13 +363,15 @@ final class ParticleSwarmEngine extends SearchEngine {
 
     /**
      * Returns the next cell of the mixed-radix sweep that has not been proposed yet
-     * and advances the cursor past it; {@code null} when every declared cell has
-     * been proposed. The cursor starts at a uniformly drawn cell, so the sweep
-     * order varies across seeds.
+     * nor assigned earlier in the current move, and advances the cursor past it;
+     * {@code null} when every declared cell has been proposed or assigned. The
+     * cursor starts at a uniformly drawn cell, so the sweep order varies across
+     * seeds.
      *
+     * @param batchIds canonical ids already assigned during the current move
      * @return unseen cell indices, or {@code null} when the sweep is exhausted
      */
-    private int[] nextUnexploredCell() {
+    private int[] nextUnexploredCell(Set<String> batchIds) {
         if (noBestCursor == null) {
             noBestCursor = new int[specs().size()];
             for (int d = 0; d < noBestCursor.length; d++) {
@@ -371,7 +380,8 @@ final class ParticleSwarmEngine extends SearchEngine {
         }
         int[] start = noBestCursor.clone();
         do {
-            if (!proposed(canonicalId(noBestCursor))) {
+            String id = canonicalId(noBestCursor);
+            if (!proposed(id) && batchIds.add(id)) {
                 int[] cell = noBestCursor.clone();
                 advanceCursor();
                 return cell;

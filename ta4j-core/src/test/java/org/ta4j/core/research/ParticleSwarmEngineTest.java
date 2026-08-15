@@ -92,8 +92,7 @@ class ParticleSwarmEngineTest {
     private static void observeFailed(ParticleSwarmEngine engine, List<ParameterSet> batch) {
         for (int i = 0; i < batch.size(); i++) {
             ParameterSet set = batch.get(i);
-            engine.observe(set.stableId(),
-                    EvaluatedCandidate.failed(set.stableId(), set, i, "always", Map.of()));
+            engine.observe(set.stableId(), EvaluatedCandidate.failed(set.stableId(), set, i, "always", Map.of()));
         }
     }
 

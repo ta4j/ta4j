@@ -93,7 +93,14 @@ final class GeneticSearchEngine extends SearchEngine {
             terminate(ParameterResearch.TerminationReason.ITERATION_LIMIT);
             return List.of();
         }
-        int count = Math.min(population.size(), maxNew);
+        if (maxNew <= 0) {
+            // No capacity was granted: finalization above still runs so
+            // rejection-only generations are counted exactly once, but a
+            // zero-capacity request must not breed a zero-sized population
+            // and thereby shrink the search to nothing.
+            return List.of();
+        }
+        int count = Math.min(settings.populationSize(), maxNew);
         population = breed(count, valid);
         return proposalBatch(population);
     }
@@ -169,11 +176,16 @@ final class GeneticSearchEngine extends SearchEngine {
                 // limit fires, instead of stopping with an NO_IMPROVEMENT streak
                 // that was never configured.
                 child = unseenGenome(batchIds);
+                if (child == null) {
+                    // The deterministic sweep just visited every declared cell
+                    // without finding an unproposed one: no later slot in this
+                    // batch can succeed, so stop instead of re-running the
+                    // whole sweep for every remaining slot.
+                    break;
+                }
             }
-            if (child != null) {
-                next.add(child);
-                childrenFound++;
-            }
+            next.add(child);
+            childrenFound++;
         }
         if (childrenFound == 0 && count > 0) {
             // No unseen genome was bred and no unseen cell remained for random

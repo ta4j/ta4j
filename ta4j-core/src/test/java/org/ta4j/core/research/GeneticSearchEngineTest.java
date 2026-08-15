@@ -26,6 +26,30 @@ import org.ta4j.core.research.ParameterResearch.TerminationReason;
 class GeneticSearchEngineTest {
 
     @Test
+    void zeroCapacityProposeDoesNotWipeThePopulation() {
+        // A zero-capacity propose request (the pipeline sends one when the
+        // evaluation budget is exactly exhausted) must not breed a zero-sized
+        // population: a later propose call with capacity again must keep
+        // producing candidates instead of returning an empty batch forever.
+        List<DomainSpec> specs = List.of(DomainSpec.of(ParameterDomain.integer("a", 1, 10)),
+                DomainSpec.of(ParameterDomain.integer("b", 1, 10)));
+        Comparator<EvaluatedCandidate> ranking = (a, b) -> b.score().compareTo(a.score());
+        GeneticSearchEngine engine = new GeneticSearchEngine(specs, new GeneticSettings(5, 1, 2, 0.9, 0.1),
+                new Random(0), ranking, Direction.MAXIMIZE, -1, -1);
+
+        List<ParameterSet> first = engine.propose(5);
+        assertThat(first).hasSize(5);
+        for (int i = 0; i < first.size(); i++) {
+            ParameterSet set = first.get(i);
+            engine.observe(set.stableId(),
+                    EvaluatedCandidate.valid(set.stableId(), set, i, DecimalNum.valueOf(1), Map.of()));
+        }
+
+        assertThat(engine.propose(0)).isEmpty();
+        assertThat(engine.propose(5)).hasSize(5);
+    }
+
+    @Test
     void geneticStagnationIgnoresTieBreakerImprovements() {
         // The no-improvement streak must track primary scores only: repair-count
         // tie-breakers improving generation over generation must not reset it.
@@ -76,7 +100,6 @@ class GeneticSearchEngineTest {
         assertThat(second).hasSize(2);
         assertThat(engine.terminationReason()).isNull();
     }
-
 
     @Test
     void finalizedObservationCountsFinalGeneration() {
@@ -149,7 +172,6 @@ class GeneticSearchEngineTest {
         return new ParameterSet(values);
     }
 
-
     @Test
     void zeroMutationStallKeepsExploringUntilSpaceIsExhausted() {
         // mutationRate 0 is legal and leaves breeding unable to reach an unseen
@@ -181,6 +203,7 @@ class GeneticSearchEngineTest {
         assertThat(engine.terminationReason()).isEqualTo(TerminationReason.SEARCH_SPACE_EXHAUSTED);
         assertThat(seen).hasSize(25);
     }
+
     private static String canonicalDistinctFrom(ParameterSet a, ParameterSet b) {
         // The regression test needs a repair whose canonical value collides
         // with neither raw candidate, or the normalized id would equal the raw
