@@ -1208,6 +1208,34 @@ class ParameterResearchTest {
     }
 
     @Test
+    void proposalCapBoundsBatchGranularityOvershoot() {
+        // A genetic population larger than the remaining proposal allowance
+        // must not push the run past MAX_PROPOSALS_PER_RUN: the propose
+        // request is bounded by the allowance, so a rejection-only run never
+        // processes or retains more proposals than the configured cap.
+        int originalLimit = ParameterResearch.MAX_PROPOSALS_PER_RUN;
+        ParameterResearch.MAX_PROPOSALS_PER_RUN = 500;
+        try {
+            BarSeries series = series(1d, 2d, 3d);
+
+            ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+                    .decimal("a", 0, 1_000_000_000, 1)
+                    .candidate((window, parameters) -> parameters.intValue("a"))
+                    .maximize((candidate, window) -> ParameterResearch.ObjectiveEvaluation
+                            .of(window.series().numFactory().numOf(candidate)))
+                    .normalize((data, name, value) -> null)
+                    .search(SearchPlan.genetic(1_000_000, 7L,
+                            new ParameterResearch.GeneticSettings(1000, 2, 5, 0.9, 0.1)))
+                    .run();
+            assertThat(report.counts().attempted()).isZero();
+            assertThat(report.counts().proposed()).isEqualTo(500L);
+            assertThat(report.terminationReason()).isEqualTo(TerminationReason.NO_VALID_CANDIDATES);
+        } finally {
+            ParameterResearch.MAX_PROPOSALS_PER_RUN = originalLimit;
+        }
+    }
+
+    @Test
     void normalizerMutationOfWindowCapacityAbortsTheRun() {
         // Structural changes that SeriesSnapshot tracks must abort the run,
         // including maximum-bar-count changes: a normalizer can mutate the

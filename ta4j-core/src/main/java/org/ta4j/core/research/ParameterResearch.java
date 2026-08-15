@@ -555,8 +555,21 @@ public final class ParameterResearch {
                     break;
                 }
                 verifyUnchanged(snapshot, series);
+                long allowance = MAX_PROPOSALS_PER_RUN - counters.proposed;
+                if (allowance <= 0) {
+                    engine.terminate(TerminationReason.PROPOSAL_LIMIT_EXCEEDED);
+                    engine.finalizeObserved();
+                    reason = TerminationReason.PROPOSAL_LIMIT_EXCEEDED;
+                    break;
+                }
                 int remaining = budget - (int) counters.attempted;
-                List<ParameterSet> batch = engine.propose(remaining);
+                List<ParameterSet> batch = engine.propose(Math.min(remaining, (int) allowance));
+                if (batch.size() > allowance) {
+                    // Engines honor the request count, but keep the cap
+                    // airtight against batch-size granularity: never process
+                    // or retain proposals beyond the run-wide allowance.
+                    batch = batch.subList(0, (int) allowance);
+                }
                 if (batch.isEmpty()) {
                     reason = engine.terminationReason();
                     if (reason == null) {

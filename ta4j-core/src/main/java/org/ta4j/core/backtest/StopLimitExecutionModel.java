@@ -191,7 +191,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return;
         }
         pendingOrders.put(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
-                stopPrice, limitPrice, activation.index() + maxBarsToFill - 1));
+                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill, barSeries.getEndIndex())));
     }
 
     @Override
@@ -300,6 +300,22 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return null;
         }
         return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+    }
+
+    /**
+     * Computes the last bar on which a stop-limit order may be filled, using wider
+     * arithmetic and clamping to the series end. An activation near
+     * {@link Integer#MAX_VALUE} must not wrap the expiry index negative, which
+     * would expire the order on its very first activation bar instead of keeping it
+     * fillable through the terminal bar.
+     *
+     * @param activationIndex activation bar index
+     * @param maxBarsToFill   fillable bar count including the activation bar
+     * @param seriesEndIndex  terminal index of the executed series
+     * @return clamped expiry index, never below the activation index
+     */
+    private static int expiryIndex(int activationIndex, int maxBarsToFill, int seriesEndIndex) {
+        return (int) Math.min((long) activationIndex + maxBarsToFill - 1L, seriesEndIndex);
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {
