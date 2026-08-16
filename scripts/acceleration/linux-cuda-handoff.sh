@@ -22,7 +22,7 @@ cat <<'COMMANDS'
   cmake --version
   java -version
   ./mvnw -B -pl ta4j-cli -am -Pcuda-linux-x86_64 -DskipTests package
-  ./mvnw -B -pl ta4j-cli -am -Dtest=CudaNativeIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.acceleration.cuda.library="$PWD/ta4j-cli/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
+  ./mvnw -B -pl ta4j-cli -am -Dtest=CudaNativeIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.forecast.rngVersion=1 -Dta4j.acceleration.cuda.library="$PWD/ta4j-cli/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
   scripts/run-full-build-quiet.sh
 COMMANDS
 

@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.assertj.core.data.Offset;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,28 @@ class MetalNativeIntegrationTest {
     @BeforeAll
     static void enableApproximateOptIn() {
         System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
+    }
+
+    // Native kernels implement RNG version 1 (the deterministic per-path
+    // stream). The scalar oracle defaults to the legacy shared stream when
+    // ta4j.forecast.rngVersion is unset, so parity would compare two
+    // different streams. Select version 1 before any forecast is evaluated
+    // and restore the prior value afterwards.
+    private static String rngVersionBefore;
+
+    @BeforeAll
+    static void selectRngVersionOne() {
+        rngVersionBefore = System.getProperty("ta4j.forecast.rngVersion");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+    }
+
+    @AfterAll
+    static void restoreRngVersion() {
+        if (rngVersionBefore == null) {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        } else {
+            System.setProperty("ta4j.forecast.rngVersion", rngVersionBefore);
+        }
     }
 
     @Test
