@@ -619,6 +619,42 @@ class Ta4jCliTest {
     }
 
     @Test
+    void forecastRejectsUnboundedAnalogWork() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--projection-model", "analog", "--horizon", "100000", "--lookback-bars", "100000");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--horizon x --lookback-bars must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsConformalMonteCarloWorkBeyondCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--calibration", "conformal", "--samples", "100000", "--horizon", "100");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("--samples x --horizon with --calibration conformal (window 252) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsConformalAnalogWorkBeyondCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--projection-model", "analog", "--calibration", "conformal", "--horizon", "200",
+                "--lookback-bars", "250");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "--horizon x --lookback-bars with --calibration conformal (window 252) must not exceed 10000000");
+    }
+
+    @Test
     void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("should-not-exist.json");

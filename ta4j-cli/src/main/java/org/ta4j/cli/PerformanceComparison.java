@@ -210,6 +210,7 @@ final class PerformanceComparison {
         return base.get("hostId").getAsString().equals(candidate.get("hostId").getAsString())
                 && base.get("osName").getAsString().equals(candidate.get("osName").getAsString())
                 && base.get("osArch").getAsString().equals(candidate.get("osArch").getAsString())
+                && base.get("osVersion").getAsString().equals(candidate.get("osVersion").getAsString())
                 && base.get("javaVersion").getAsString().equals(candidate.get("javaVersion").getAsString())
                 && base.get("jvmName").getAsString().equals(candidate.get("jvmName").getAsString())
                 && base.get("availableProcessors").getAsInt() == candidate.get("availableProcessors").getAsInt();

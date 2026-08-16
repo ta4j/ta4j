@@ -10,6 +10,15 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -44,6 +53,8 @@ public final class Ta4jCli implements Runnable {
     }
 
     private static final int IO_ERROR_EXIT_CODE = 74;
+
+    private static final AtomicBoolean QUIET_LOGGING_CONFIGURED = new AtomicBoolean();
 
     private final InputStream input;
 
@@ -95,6 +106,7 @@ public final class Ta4jCli implements Runnable {
     }
 
     static int run(String[] args, InputStream input, PrintWriter out, PrintWriter err) {
+        configureQuietLogging();
         CommandLine commandLine = new CommandLine(new Ta4jCli(input));
         commandLine.setCaseInsensitiveEnumValuesAllowed(true);
         commandLine.setOut(out);
@@ -102,6 +114,37 @@ public final class Ta4jCli implements Runnable {
         commandLine.setParameterExceptionHandler(Ta4jCli::handleParameterException);
         commandLine.setExecutionExceptionHandler(Ta4jCli::handleExecutionException);
         return commandLine.execute(args);
+    }
+
+    /**
+     * Installs a quiet Log4j configuration so operational diagnostics are written
+     * to stderr and stdout stays reserved for command output.
+     * <p>
+     * Log4j initializes lazily from whichever classpath resource a library first
+     * observes, so a bundled {@code log4j2.xml} cannot guarantee quiet settings
+     * inside the shaded CLI artifact. The configuration is therefore built in code
+     * and installed directly on the Log4j context used by {@code Ta4jCli}'s class
+     * loader, the same context library loggers resolve, before any CLI work runs.
+     * Installing it there replaces any auto-loaded configuration and keeps the
+     * routing deterministic.
+     * </p>
+     */
+    private static void configureQuietLogging() {
+        if (!QUIET_LOGGING_CONFIGURED.compareAndSet(false, true)) {
+            return;
+        }
+        ConfigurationBuilder<BuiltConfiguration> configurationBuilder = ConfigurationBuilderFactory
+                .newConfigurationBuilder();
+        configurationBuilder.setStatusLevel(Level.WARN);
+        AppenderComponentBuilder stderrAppender = configurationBuilder.newAppender("stderr", "CONSOLE")
+                .addAttribute("target", "SYSTEM_ERR")
+                .add(configurationBuilder.newLayout("PatternLayout")
+                        .addAttribute("pattern", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n%throwable"));
+        configurationBuilder.add(stderrAppender);
+        configurationBuilder
+                .add(configurationBuilder.newRootLogger(Level.WARN).add(configurationBuilder.newAppenderRef("stderr")));
+        LoggerContext context = (LoggerContext) LogManager.getContext(Ta4jCli.class.getClassLoader(), false);
+        context.setConfiguration(configurationBuilder.build());
     }
 
     InputStream input() {

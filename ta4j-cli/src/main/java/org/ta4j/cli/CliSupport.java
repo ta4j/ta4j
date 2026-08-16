@@ -137,7 +137,7 @@ final class CliSupport {
     private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
     static final Set<String> SWEEP_PARAM_KEYS = Set.of("fast", "slow");
     static final int MAX_SWEEP_STRATEGIES = 10_000;
-    static final long MAX_MONTE_CARLO_WORK = 10_000_000L;
+    static final long MAX_FORECAST_WORK = 10_000_000L;
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
     static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
 
@@ -794,6 +794,7 @@ final class CliSupport {
 
         String calibration = normalizeToken(request.calibration());
         if ("conformal".equals(calibration)) {
+            requireBoundedConformalWork(request, projectionModel);
             returnProjection = RollingConformalForecastProjectionIndicator
                     .cumulativeLogReturnBuilder(returnProjection, returns)
                     .targetCoverage(request.coverage())
@@ -888,14 +889,77 @@ final class CliSupport {
         if (work <= 0L) {
             return; // positivity is validated by the individual builders
         }
-        if (work > MAX_MONTE_CARLO_WORK) {
+        if (work > MAX_FORECAST_WORK) {
             throw new IllegalArgumentException(
-                    "--samples x --horizon must not exceed " + MAX_MONTE_CARLO_WORK + " (requested " + work + ").");
+                    "--samples x --horizon must not exceed " + MAX_FORECAST_WORK + " (requested " + work + ").");
+        }
+    }
+
+    /**
+     * Rejects conformal calibration whose total work exceeds the shared forecast
+     * ceiling. Rolling calibration evaluates the base projection at up to
+     * {@code calibrationWindow} matured decisions before the current one, so the
+     * per-forecast work estimate is multiplied by the window plus one.
+     */
+    private static void requireBoundedConformalWork(ForecastRequest request, String projectionModel) {
+        long baseWork;
+        String description;
+        if ("monte-carlo".equals(projectionModel)) {
+            description = "--samples x --horizon";
+            try {
+                baseWork = Math.multiplyExact(request.samples(), (long) request.horizon());
+            } catch (ArithmeticException ex) {
+                throw new IllegalArgumentException("--samples x --horizon is too large.", ex);
+            }
+        } else {
+            description = "--horizon x --lookback-bars";
+            try {
+                baseWork = Math.multiplyExact((long) request.horizon(), (long) request.lookbackBars());
+            } catch (ArithmeticException ex) {
+                throw new IllegalArgumentException("--horizon x --lookback-bars is too large.", ex);
+            }
+        }
+        if (baseWork <= 0L) {
+            return; // positivity is validated by the individual builders
+        }
+        long total;
+        try {
+            total = Math.multiplyExact(baseWork, (long) request.calibrationWindow() + 1L);
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException(description + " with --calibration conformal is too large.", ex);
+        }
+        if (total > MAX_FORECAST_WORK) {
+            throw new IllegalArgumentException(
+                    description + " with --calibration conformal (window " + request.calibrationWindow()
+                            + ") must not exceed " + MAX_FORECAST_WORK + " (requested " + total + ").");
+        }
+    }
+
+    /**
+     * Rejects analog projections whose horizon-by-lookback work estimate exceeds
+     * the shared forecast ceiling. Each candidate costs up to {@code horizon}
+     * return reads, so an unbounded product silently implies billions of
+     * evaluations for a single forecast.
+     */
+    private static void requireBoundedAnalogWork(ForecastRequest request) {
+        long work;
+        try {
+            work = Math.multiplyExact((long) request.horizon(), (long) request.lookbackBars());
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("--horizon x --lookback-bars is too large.", ex);
+        }
+        if (work <= 0L) {
+            return; // positivity is validated by the individual builders
+        }
+        if (work > MAX_FORECAST_WORK) {
+            throw new IllegalArgumentException(
+                    "--horizon x --lookback-bars must not exceed " + MAX_FORECAST_WORK + " (requested " + work + ").");
         }
     }
 
     private static ReturnForecastProjectionIndicator buildAnalogReturnForecast(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
+        requireBoundedAnalogWork(request);
         if (request.lookbackBars() <= 0) {
             throw new IllegalArgumentException("--lookback-bars must be greater than zero.");
         }

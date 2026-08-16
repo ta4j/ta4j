@@ -175,6 +175,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 - `--output`: JSON file path. When omitted, JSON is written to stdout.
 - `--chart`: optional JPEG output path for a trading chart artifact.
 - `--progress`: emit bounded progress messages to stderr during longer runs.
+- Logging: operational diagnostics are written to stderr; stdout carries only the JSON command response.
 - `--reproducible`: omit volatile `run` metadata.
 - `--unstable-bars`: override the strategy unstable-bar count.
 
@@ -215,11 +216,11 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--calibration`: `none` or rolling `conformal`.
   - `--price-model`: `auto`, empirical Monte Carlo paths, or a `lognormal` moment-matched adapter.
   - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon, at most 10,000,000 bars. `--horizon` is rejected for state-only inspection.
-  - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, `--samples` × `--horizon` must not exceed 10,000,000, and `--lookback-bars` must not exceed 1,000,000.
+- `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, `--samples` × `--horizon` must not exceed 10,000,000, `--horizon` × `--lookback-bars` must not exceed 10,000,000 for analog projections, and `--lookback-bars` must not exceed 1,000,000.
   - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
   - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
   - `--neighbor-count`, `--minimum-neighbor-count`, `--[no-]standardize-features`: analog projection controls.
-  - `--coverage`, `--calibration-window`, `--minimum-calibration-count`: rolling-conformal controls. `--calibration-window` must not exceed 1,000,000.
+- `--coverage`, `--calibration-window`, `--minimum-calibration-count`: rolling-conformal controls. `--calibration-window` must not exceed 1,000,000. Conformal calibration multiplies the projection work ceiling by the calibration window plus one, because each forecast re-evaluates the base projection across its rolling history.
   - `--quantiles`: comma-separated probabilities in `[0, 1]`; defaults to `0.05,0.5,0.95`.
   - Projection-only simulation options are rejected with `--target state` instead of being silently ignored.
   - Forecast JSON reports the decision bar time and close price, state stability, return representation, moments, model-specific diagnostics, and empirical, analytic, or unavailable support provenance.

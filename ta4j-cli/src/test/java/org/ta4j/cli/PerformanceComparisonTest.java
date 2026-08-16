@@ -92,6 +92,23 @@ class PerformanceComparisonTest {
     }
 
     @Test
+    void comparisonRejectsArtifactsWithDifferentOsVersions() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        JsonObject candidate = JsonParser.parseString(Files.readString(candidateArtifact)).getAsJsonObject();
+        candidate.getAsJsonObject("host").addProperty("osVersion", "fixture-version-upgraded");
+        Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Cannot compare performance artifacts from different hosts", exception.getMessage());
+    }
+
+    @Test
     void comparisonRejectsArtifactsWithUnknownHostIdOnBothSides() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
