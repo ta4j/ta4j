@@ -228,6 +228,49 @@ class Ta4jCliTest {
     }
 
     @Test
+    void ruleTestAllowsTheSameRuleJsonFileForEntryAndExit() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String ruleJson = sampleSweepStrategy(series).getEntryRule().toJson();
+        Path ruleFile = tempDir.resolve("rule.json");
+        Files.writeString(ruleFile, ruleJson);
+        Path outputFile = tempDir.resolve("rule-test.json");
+
+        int exitCode = runCli("rule", "test", "--data-file", dataFile.toString(), "--entry-rule-json-file",
+                ruleFile.toString(), "--exit-rule-json-file", ruleFile.toString(), "--output", outputFile.toString());
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("backtest")).isNotNull();
+        assertThat(result.get("walkForward")).isNotNull();
+    }
+
+    @Test
+    void unreadableStructuredInputFilesExitWithIoErrorCategory() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path missing = tempDir.resolve("missing.json");
+
+        CliRunResult strategyJson = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy-json-file", missing.toString());
+        assertThat(strategyJson.exitCode()).isEqualTo(74);
+        assertThat(strategyJson.stderr()).contains("Unable to read strategy JSON from " + missing);
+
+        CliRunResult entryRule = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(),
+                "--entry-rule-json-file", missing.toString(), "--exit-rule", "RsiThresholdRule_ABOVE_14_70");
+        assertThat(entryRule.exitCode()).isEqualTo(74);
+        assertThat(entryRule.stderr()).contains("Unable to read rule JSON from " + missing);
+
+        CliRunResult indicator = runCliAllowingError("indicator", "test", "--data-file", dataFile.toString(),
+                "--indicator-json-file", missing.toString(), "--entry-below", "30", "--exit-above", "70");
+        assertThat(indicator.exitCode()).isEqualTo(74);
+        assertThat(indicator.stderr()).contains("Unable to read serialized input from " + missing);
+
+        CliRunResult criteria = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--criteria-file", missing.toString());
+        assertThat(criteria.exitCode()).isEqualTo(74);
+        assertThat(criteria.stderr()).contains("Unable to read --criteria-file " + missing);
+    }
+
+    @Test
     void performanceExperimentWritesArtifacts() throws Exception {
         Path outputDir = tempDir.resolve("performance-experiment");
 
@@ -1031,7 +1074,8 @@ class Ta4jCliTest {
 
     private Path copyResource(String resourceName) throws IOException {
         Path target = tempDir.resolve(resourceName);
-        try (var inputStream = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(resourceName))) {
+        try (InputStream inputStream = Objects
+                .requireNonNull(getClass().getClassLoader().getResourceAsStream(resourceName))) {
             Files.copy(inputStream, target);
         }
         return target;

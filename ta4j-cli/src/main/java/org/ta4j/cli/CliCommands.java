@@ -15,6 +15,7 @@ import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -636,7 +637,14 @@ final class CliCommands {
                 }
 
                 rejectFoldlessGeometry(walkForwardResult, series);
-
+                if (allFoldsFailed(walkForwardResult)) {
+                    WalkForwardRunResult.FoldFailure firstFailure = walkForwardResult.foldFailures().getFirst();
+                    failedStrategies
+                            .add(failureEntry(strategy.getName(), "all " + walkForwardResult.foldFailures().size()
+                                    + " walk-forward folds failed: " + firstFailure.message()));
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    continue;
+                }
                 TradingStatement statement = backtest.tradingStatements().getFirst();
                 Map<String, Object> backtestMap = CliSupport.statementToMap(series, statement, resolvedCriteria);
                 Map<String, Object> backtestRuntimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
@@ -1123,11 +1131,17 @@ final class CliCommands {
     }
 
     private static void rejectFoldlessGeometry(StrategyWalkForwardExecutionResult walkForwardResult, BarSeries series) {
-        if (walkForwardResult.folds().isEmpty()) {
+        // Folds that exist but all failed is a strategy-quality problem
+        // (reported per strategy), not an invalid walk-forward geometry.
+        if (walkForwardResult.folds().isEmpty() && walkForwardResult.foldFailures().isEmpty()) {
             throw new IllegalArgumentException(
                     "Walk-forward geometry produced no folds for a series of " + series.getBarCount()
                             + " bars; adjust --test-bars, --step-bars, --holdout-bars, " + "or --min-train-bars.");
         }
+    }
+
+    private static boolean allFoldsFailed(StrategyWalkForwardExecutionResult walkForwardResult) {
+        return walkForwardResult.folds().isEmpty() && !walkForwardResult.foldFailures().isEmpty();
     }
 
     private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {

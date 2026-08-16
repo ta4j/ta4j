@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -104,7 +105,7 @@ class OpenClProbePayloadTest {
                 Files.deleteIfExists(library);
             }
         } finally {
-            try (var paths = Files.walk(fakeJdk)) {
+            try (Stream<Path> paths = Files.walk(fakeJdk)) {
                 paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
                     try {
                         Files.deleteIfExists(path);

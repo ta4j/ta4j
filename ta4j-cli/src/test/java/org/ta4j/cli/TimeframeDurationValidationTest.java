@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -39,7 +40,7 @@ class TimeframeDurationValidationTest {
     Path tempDir;
 
     private Path copyCsv() throws IOException {
-        try (var input = getClass().getResourceAsStream("/AAPL-PT1D-20130102_20131231.csv")) {
+        try (InputStream input = getClass().getResourceAsStream("/AAPL-PT1D-20130102_20131231.csv")) {
             Path file = tempDir.resolve("data.csv");
             Files.copy(input, file, StandardCopyOption.REPLACE_EXISTING);
             return file;

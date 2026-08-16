@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.google.gson.JsonObject;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -146,7 +148,7 @@ class PerformanceCompareNanThresholdTest {
         Path output = tempDir.resolve("out3");
         writeArtifact(base, 100L);
         writeArtifact(candidate, 200L);
-        var comparison = PerformanceComparison.compare(base, candidate, output, 5d);
+        JsonObject comparison = PerformanceComparison.compare(base, candidate, output, 5d);
         assertEquals(false, comparison.get("regressionWithinThreshold").getAsBoolean());
     }
 }

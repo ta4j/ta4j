@@ -285,6 +285,51 @@ class PerformanceComparisonTest {
                 StandardCharsets.UTF_8);
     }
 
+    @Test
+    void comparisonRejectsOutputDirAliasingBaseDir() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, baseDir, 5d));
+
+        assertEquals("--output-dir must not refer to the --base-dir directory", exception.getMessage());
+        assertFalse(Files.exists(baseDir.resolve(PerformanceComparison.SUMMARY_FILE)));
+    }
+
+    @Test
+    void comparisonRejectsOutputDirSymlinkAliasOfCandidateDir() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path alias = tempDir.resolve("candidate-alias");
+        Files.createSymbolicLink(alias, candidateDir);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, alias, 5d));
+
+        assertEquals("--output-dir must not refer to the --candidate-dir directory", exception.getMessage());
+        assertFalse(Files.exists(alias.resolve(PerformanceComparison.SUMMARY_FILE)));
+    }
+
+    @Test
+    void comparisonAllowsOutputDirNestedInsideBaseDir() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path outputDir = baseDir.resolve("comparison");
+
+        JsonObject comparison = PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d);
+
+        assertFalse(comparison.isJsonNull());
+        assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
+        assertFalse(Files.exists(baseDir.resolve(PerformanceComparison.SUMMARY_FILE)));
+    }
+
     private record ResultFixture(int barCount, long medianNanos) {
     }
 }
