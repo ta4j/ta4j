@@ -287,4 +287,23 @@ public class CsvBarSeriesDataSourceTest {
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
         assertEquals(expectedFile, series.getName(), "Series name should match the found filename");
     }
+
+    @Test
+    public void testLoadSeriesDiscardsPartialBarsOnReadFailure() throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-truncated-", ".csv");
+        try {
+            Files.writeString(tempFile, """
+                    date,open,high,low,close,volume
+                    2013-01-02,553.82,555.00,541.63,549.03,20018500
+                    2013-01-03,547.88,549.67,541.00,541.21,12605900
+                    """);
+            Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
+
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNull(series, "Partial series must be discarded when the CSV cannot be fully read");
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
 }

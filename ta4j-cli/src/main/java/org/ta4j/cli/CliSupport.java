@@ -616,6 +616,18 @@ final class CliSupport {
 
     private static Path resolveAliasedTarget(Path path) {
         Path existing = path;
+        // A dangling symlink leaf still redirects a future write to its target
+        // path, so resolve link leaves even when the target does not exist yet.
+        while (existing != null && !Files.exists(existing) && Files.isSymbolicLink(existing)) {
+            Path target;
+            try {
+                target = Files.readSymbolicLink(existing);
+            } catch (IOException ex) {
+                throw new UncheckedIOException("Could not resolve output artifact path " + path + ".", ex);
+            }
+            Path parent = existing.getParent();
+            existing = target.isAbsolute() || parent == null ? target : parent.resolve(target);
+        }
         ArrayDeque<Path> missing = new ArrayDeque<>();
         while (existing != null && !Files.exists(existing)) {
             Path name = existing.getFileName();
@@ -709,7 +721,12 @@ final class CliSupport {
         case "ewma" -> new EwmaReturnForecastStateIndicator(returns);
         case "rough-volatility" ->
             RoughVolatilityForecastStateIndicator.builder(returns).horizon(request.horizon()).build();
-        case "change-point" -> new OnlineChangePointForecastStateIndicator(returns);
+        case "change-point" -> {
+            OnlineChangePointForecastStateIndicator changePointIndicator = new OnlineChangePointForecastStateIndicator(
+                    returns);
+            requireBoundedChangePointWork(index, series.getBeginIndex(), changePointIndicator.getMaximumRunLength());
+            yield changePointIndicator;
+        }
         default -> throw new IllegalArgumentException("Unsupported --state-model '" + request.stateModel()
                 + "'. Use ewma, rough-volatility, or change-point.");
         };
@@ -932,6 +949,23 @@ final class CliSupport {
             throw new IllegalArgumentException(
                     description + " with --calibration conformal (window " + request.calibrationWindow()
                             + ") must not exceed " + MAX_FORECAST_WORK + " (requested " + total + ").");
+        }
+    }
+
+    /**
+     * Rejects change-point state evaluation whose history-by-maximum-run-length
+     * work estimate exceeds the shared forecast ceiling. Evaluating the state at an
+     * index prefills every preceding posterior frame, each allocating up to
+     * {@code maximumRunLength} run-length arrays, so unbounded history implies
+     * gigabytes of cached state before any projection ceiling runs.
+     */
+    private static void requireBoundedChangePointWork(int index, int beginIndex, int maximumRunLength) {
+        // Both operands are non-negative ints and the run length is at least one,
+        // so the long product is always positive and cannot overflow.
+        long work = ((long) index - beginIndex + 1L) * maximumRunLength;
+        if (work > MAX_FORECAST_WORK) {
+            throw new IllegalArgumentException("--state-model change-point state work (history x maximum run length) "
+                    + "must not exceed " + MAX_FORECAST_WORK + " (requested " + work + ").");
         }
     }
 

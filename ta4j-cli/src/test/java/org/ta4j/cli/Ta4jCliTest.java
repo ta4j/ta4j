@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
@@ -655,6 +656,32 @@ class Ta4jCliTest {
     }
 
     @Test
+    void forecastRejectsUnboundedChangePointStateWork() throws Exception {
+        Path dataFile = writeLongSeriesCsv(39_700);
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "change-point", "--target", "state");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "--state-model change-point state work (history x maximum run length) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastEvaluatesChangePointStateWithinCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("change-point-state.json");
+
+        int exitCode = runCli("forecast", "run", "--data-file", dataFile.toString(), "--state-model", "change-point",
+                "--target", "state", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("command").getAsString()).isEqualTo("forecast run");
+        assertThat(result(payload).getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
+    }
+
+    @Test
     void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("should-not-exist.json");
@@ -884,6 +911,22 @@ class Ta4jCliTest {
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("--output and --chart must not refer to the same file");
         assertThat(Files.exists(realDir.resolve("result.json"))).isFalse();
+    }
+
+    @Test
+    void backtestRejectsDanglingSymlinkLeafAliasingOutput() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path chartPath = tempDir.resolve("chart.jpg");
+        Path outputPath = tempDir.resolve("result.json");
+        Files.createSymbolicLink(chartPath, outputPath);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--chart", chartPath.toString(), "--output",
+                outputPath.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("must not refer to the same file");
+        assertThat(outputPath).doesNotExist();
     }
 
     @Test
@@ -1133,6 +1176,17 @@ class Ta4jCliTest {
         Path strategyJsonFile = tempDir.resolve(fileName);
         Files.writeString(strategyJsonFile, strategy.toJson());
         return strategyJsonFile;
+    }
+
+    private Path writeLongSeriesCsv(int barCount) throws IOException {
+        StringBuilder csv = new StringBuilder("date,open,high,low,close,volume\n");
+        LocalDate date = LocalDate.of(1900, 1, 1);
+        for (int i = 0; i < barCount; i++) {
+            csv.append(date.plusDays(i)).append(",10,11,9,10.5,100\n");
+        }
+        Path file = tempDir.resolve("long-series.csv");
+        Files.writeString(file, csv);
+        return file;
     }
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {
