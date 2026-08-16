@@ -18,15 +18,14 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p>
  * {@code CsvFileBarSeriesDataSource.loadCsvSeries} treats a row that fails
- * numeric parsing as "no data" ({@code NumberFormatException} is caught and the
- * loader returns {@code null}), which the CLI turns into a clean usage error
- * ("Unable to load bar data from ..."). Rows with an unparseable date or too
- * few columns throw unchecked {@code DateTimeParseException} /
- * {@code ArrayIndexOutOfBoundsException} instead, which escape the loader and
- * surface as a raw software error instead of the documented usage error.
- * CSV-structural failures ({@code CsvValidationException}, for example an
- * unterminated quoted field) are treated like parse failures and also return
- * {@code null} rather than silently truncating the series at the malformed row.
+ * numeric or date parsing, or that has too few columns, as "no data"
+ * ({@code NumberFormatException}, {@code DateTimeParseException}, and
+ * {@code ArrayIndexOutOfBoundsException} are caught and the loader returns
+ * {@code null}), which the CLI turns into a clean usage error ("Unable to load
+ * bar data from ..."). CSV-structural failures (for example an unterminated
+ * quoted field, which throws {@code CsvMalformedLineException}) are treated
+ * like parse failures and also return {@code null} rather than silently
+ * truncating the series at the malformed row.
  * 
  * @since 0.23.1
  */

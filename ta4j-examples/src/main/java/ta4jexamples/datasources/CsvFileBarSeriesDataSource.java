@@ -6,7 +6,8 @@ package ta4jexamples.datasources;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
-import com.opencsv.exceptions.CsvValidationException;
+import com.opencsv.exceptions.CsvException;
+import com.opencsv.exceptions.CsvMalformedLineException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
@@ -14,12 +15,15 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -187,7 +191,9 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *
      * @param filename the name of the CSV file to load
      * @return the bar series containing stock data loaded from the specified CSV
-     *         file, or null if the file is not found or empty
+     *         file, or null if the file is not found, empty, or unparseable
+     * @throws UncheckedIOException if the file exists but cannot be read or decoded
+     *                              to completion
      */
     public static BarSeries loadCsvSeries(String filename) {
         InputStream stream = null;
@@ -209,8 +215,7 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                 Path fileName = localPath.getFileName();
                 seriesName = fileName == null ? localPath.toString() : fileName.toString();
             } catch (IOException e) {
-                LOG.debug("Unable to open CSV file from filesystem: {}", filename, e);
-                return null;
+                throw new UncheckedIOException("Unable to open CSV file " + filename + ".", e);
             }
         }
 
@@ -223,8 +228,11 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
         BarSeries series = seriesBuilder.build();
 
         InputStream resolvedStream = stream;
+        CharsetDecoder utf8Decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
         try (resolvedStream) {
-            try (InputStreamReader reader = new InputStreamReader(resolvedStream, StandardCharsets.UTF_8)) {
+            try (InputStreamReader reader = new InputStreamReader(resolvedStream, utf8Decoder)) {
                 try (CSVReader csvReader = new CSVReaderBuilder(reader)
                         .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                         .withSkipLines(1)
@@ -249,14 +257,14 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                                 .amount(0)
                                 .add();
                     }
-                } catch (CsvValidationException e) {
+                } catch (CsvException | CsvMalformedLineException e) {
                     LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
                     return null;
                 }
             }
         } catch (IOException ioe) {
             LOG.error("Unable to load bars from CSV", ioe);
-            return null;
+            throw new UncheckedIOException("Unable to read CSV data from " + filename + ".", ioe);
         } catch (NumberFormatException | java.time.format.DateTimeParseException | ArrayIndexOutOfBoundsException e) {
             LOG.error("Error while parsing value", e);
             return null;

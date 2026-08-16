@@ -86,6 +86,7 @@ class MetalBacktestBenchmarkTest {
             Files.writeString(output, new GsonBuilder().setPrettyPrinting().create().toJson(report) + "\n",
                     StandardCharsets.UTF_8);
         } finally {
+            logs.close();
             System.clearProperty(AccelerationRuntime.PROPERTY);
             System.clearProperty("ta4j.forecast.rngVersion");
             CliIndicatorAccelerationService.clearQuarantineForTests();

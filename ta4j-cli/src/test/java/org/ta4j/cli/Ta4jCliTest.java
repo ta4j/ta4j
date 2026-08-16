@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -586,6 +587,46 @@ class Ta4jCliTest {
         JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
         assertThat(ioError.get("category").getAsString()).isEqualTo("io");
         assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from " + missing + ".");
+    }
+
+    @Test
+    void backtestRejectsMidReadDataFileFailuresWithIoError() throws Exception {
+        Path corrupt = tempDir.resolve("corrupt.csv");
+        Files.writeString(corrupt, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                """);
+        Files.write(corrupt, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
+
+        CliRunResult result = runCliAllowingError("--error-format", "json", "strategy", "backtest", "--data-file",
+                corrupt.toString(), "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(result.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(result.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read CSV data from " + corrupt + ".");
+    }
+
+    @Test
+    void sweepRejectsUnboundedWorkFromGridTimesSeriesLength() throws Exception {
+        Path dataFile = writeLongSeriesCsv(39_700);
+        StringBuilder fastValues = new StringBuilder();
+        StringBuilder slowValues = new StringBuilder();
+        for (int i = 3; i <= 102; i++) {
+            if (i > 3) {
+                fastValues.append(',');
+                slowValues.append(',');
+            }
+            fastValues.append(i);
+            slowValues.append(i);
+        }
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=" + fastValues, "--param-grid", "slow=" + slowValues, "--top-k", "2",
+                "--criteria", NetProfitCriterion.class.getName());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("bar-strategy evaluations");
     }
 
     @Test
