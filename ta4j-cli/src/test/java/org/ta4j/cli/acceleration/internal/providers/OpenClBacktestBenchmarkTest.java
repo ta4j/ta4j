@@ -81,6 +81,7 @@ class OpenClBacktestBenchmarkTest {
                     new Spec(BAR_COUNT, DECISIONS, PATHS, HORIZON, LOOKBACK, TRIALS, SEED), scalarMedian, openClMedian,
                     speedup, scalar, openCl);
             Path output = outputPath();
+            Files.createDirectories(output.getParent());
             Files.writeString(output, new GsonBuilder().setPrettyPrinting().create().toJson(report) + "\n",
                     StandardCharsets.UTF_8);
         } finally {
