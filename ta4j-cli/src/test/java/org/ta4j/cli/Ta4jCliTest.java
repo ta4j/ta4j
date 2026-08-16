@@ -576,6 +576,19 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestRejectsMissingDataFileWithIoError() {
+        String missing = tempDir.resolve("missing.csv").toString();
+
+        CliRunResult ioFailure = runCliAllowingError("--error-format", "json", "strategy", "backtest", "--data-file",
+                missing, "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(ioFailure.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from " + missing + ".");
+    }
+
+    @Test
     void forecastStateRejectsProjectionOnlyOptions() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 

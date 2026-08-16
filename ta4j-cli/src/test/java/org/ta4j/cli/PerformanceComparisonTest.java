@@ -75,6 +75,21 @@ class PerformanceComparisonTest {
     }
 
     @Test
+    void comparisonRejectsMalformedPerformanceArtifact() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        Files.createDirectories(candidateDir);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        Files.writeString(candidateArtifact, "{\"results\": [truncated", StandardCharsets.UTF_8);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+        assertTrue(exception.getMessage().startsWith("Invalid performance artifact "));
+        assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
+    }
+
+    @Test
     void comparisonRejectsCrossHostArtifacts() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");

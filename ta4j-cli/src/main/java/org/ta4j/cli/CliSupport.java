@@ -198,6 +198,14 @@ final class CliSupport {
         }
 
         if (loadedSeries == null || loadedSeries.isEmpty()) {
+            Path localPath = Path.of(normalizedPath);
+            if (!Files.isRegularFile(localPath) || !Files.isReadable(localPath)) {
+                // Missing or unreadable market data is an I/O failure, not a
+                // usage error; automation relies on the io category and exit
+                // code 74 to distinguish it from invalid arguments.
+                throw new UncheckedIOException("Unable to read bar data from " + dataFile + ".",
+                        new IOException("Data file does not exist or is not readable."));
+            }
             throw new IllegalArgumentException("Unable to load bar data from " + dataFile + ".");
         }
         requireFiniteBars(loadedSeries, dataFile);

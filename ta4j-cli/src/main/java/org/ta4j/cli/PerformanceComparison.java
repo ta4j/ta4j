@@ -17,6 +17,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import org.ta4j.cli.performance.PerformanceExperimentRunner;
@@ -180,8 +181,21 @@ final class PerformanceComparison {
     private static JsonObject readPerformanceJson(Path dir) throws IOException {
         // Mirrors PerformanceExperimentRunner.PERFORMANCE_FILE (package-private
         // in org.ta4j.cli.performance); this class moved to org.ta4j.cli.
-        return JsonParser.parseString(Files.readString(dir.resolve("performance.json"), StandardCharsets.UTF_8))
-                .getAsJsonObject();
+        Path file = dir.resolve("performance.json");
+        JsonElement root;
+        try {
+            root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8));
+        } catch (JsonParseException ex) {
+            // A truncated or syntactically invalid artifact is operator-supplied
+            // input, not a software failure: report it as a usage error.
+            String detail = ex.getMessage() == null ? "malformed JSON" : ex.getMessage();
+            throw new IllegalArgumentException("Invalid performance artifact " + file + ": " + detail, ex);
+        }
+        if (!root.isJsonObject()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": expected a JSON object at the top level.");
+        }
+        return root.getAsJsonObject();
     }
 
     private static Map<String, JsonObject> resultMap(JsonObject root) {
