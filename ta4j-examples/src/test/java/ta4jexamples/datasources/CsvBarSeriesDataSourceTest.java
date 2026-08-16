@@ -75,12 +75,13 @@ public class CsvBarSeriesDataSourceTest {
         }
 
         Path shadow = Path.of(bundledFile);
-        byte[] originalContent = Files.isRegularFile(shadow) ? Files.readAllBytes(shadow) : null;
+        boolean created = false;
         try {
             // CREATE_NEW keeps a caller-owned same-named file intact; the test
             // mutates the working directory only when the file is absent.
             Files.writeString(shadow, "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n",
                     StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+            created = true;
             BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile);
             assertNotNull(series, "Should load series from the bundled resource");
             assertEquals(bundledBarCount, series.getBarCount(),
@@ -89,9 +90,8 @@ public class CsvBarSeriesDataSourceTest {
             throw new org.opentest4j.TestAbortedException(
                     "working directory already contains " + bundledFile + "; skipping shadow test");
         } finally {
-            Files.deleteIfExists(shadow);
-            if (originalContent != null) {
-                Files.write(shadow, originalContent);
+            if (created) {
+                Files.deleteIfExists(shadow);
             }
         }
     }

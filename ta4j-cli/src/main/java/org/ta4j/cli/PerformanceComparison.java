@@ -53,7 +53,12 @@ final class PerformanceComparison {
      * @param outputDir        comparison artifact directory
      * @param maxRegressionPct maximum allowed median regression percentage
      * @return comparison JSON
-     * @throws IOException when artifacts cannot be read or written
+     * @throws IOException              when artifacts cannot be read or written
+     * @throws IllegalArgumentException when {@code maxRegressionPct} is non-finite
+     *                                  or negative, or when {@code outputDir}
+     *                                  refers to {@code baseDir} or
+     *                                  {@code candidateDir} (including symlink
+     *                                  aliases)
      * @since 0.23.1
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
@@ -61,6 +66,11 @@ final class PerformanceComparison {
         if (!Double.isFinite(maxRegressionPct) || maxRegressionPct < 0d) {
             throw new IllegalArgumentException("maxRegressionPct must be finite and non-negative");
         }
+        // The comparison artifacts are written at the output directory root,
+        // so an output directory aliasing an input directory would overwrite
+        // the very artifacts being compared.
+        requireDistinctOutputDir(baseDir, "--base-dir", outputDir);
+        requireDistinctOutputDir(candidateDir, "--candidate-dir", outputDir);
         JsonObject base = readPerformanceJson(baseDir);
         JsonObject candidate = readPerformanceJson(candidateDir);
         Files.createDirectories(outputDir);
@@ -159,6 +169,12 @@ final class PerformanceComparison {
         // and the command response; throwing here would discard the written
         // artifacts and hide which cell regressed from the caller.
         return comparison;
+    }
+
+    private static void requireDistinctOutputDir(Path inputDir, String inputLabel, Path outputDir) {
+        if (CliSupport.sameFile(inputDir, outputDir)) {
+            throw new IllegalArgumentException("--output-dir must not refer to the " + inputLabel + " directory");
+        }
     }
 
     private static JsonObject readPerformanceJson(Path dir) throws IOException {

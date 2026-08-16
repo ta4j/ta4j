@@ -563,6 +563,11 @@ final class CliSupport {
         }
     }
 
+    // Artifacts the CLI writes; input artifacts never need protection from
+    // each other, so same-file checks only apply when at least one of the two
+    // labeled paths is writable.
+    private static final Set<String> WRITABLE_ARTIFACT_LABELS = Set.of("--output", "--chart");
+
     static void requireDistinctArtifactPaths(Map<String, String> labeledPaths) {
         List<String> labels = new ArrayList<>(labeledPaths.keySet());
         for (int i = 0; i < labels.size(); i++) {
@@ -573,6 +578,9 @@ final class CliSupport {
             }
             for (int j = i + 1; j < labels.size(); j++) {
                 String rightLabel = labels.get(j);
+                if (!WRITABLE_ARTIFACT_LABELS.contains(leftLabel) && !WRITABLE_ARTIFACT_LABELS.contains(rightLabel)) {
+                    continue;
+                }
                 String right = labeledPaths.get(rightLabel);
                 if (isUsablePath(right) && sameFile(Path.of(left), Path.of(right))) {
                     throw new IllegalArgumentException(
@@ -586,7 +594,7 @@ final class CliSupport {
         return value != null && !value.isBlank() && !"-".equals(value);
     }
 
-    private static boolean sameFile(Path left, Path right) {
+    static boolean sameFile(Path left, Path right) {
         Path leftNormalized = left.toAbsolutePath().normalize();
         Path rightNormalized = right.toAbsolutePath().normalize();
         if (leftNormalized.equals(rightNormalized)) {
@@ -1704,7 +1712,7 @@ final class CliSupport {
             }
             throw new IllegalArgumentException("--criteria-file " + file + " must contain a JSON object or array.");
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Unable to read --criteria-file " + file + ".", exception);
+            throw new UncheckedIOException("Unable to read --criteria-file " + file + ".", exception);
         } catch (RuntimeException exception) {
             if (exception instanceof IllegalArgumentException) {
                 throw exception;
@@ -1793,7 +1801,7 @@ final class CliSupport {
             String json = Files.readString(Path.of(ruleJsonPath));
             return buildRuleFromJsonString(json, ruleJsonPath, series);
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Unable to read rule JSON from " + ruleJsonPath + ".", ex);
+            throw new UncheckedIOException("Unable to read rule JSON from " + ruleJsonPath + ".", ex);
         }
     }
 
@@ -1810,7 +1818,7 @@ final class CliSupport {
             String json = Files.readString(Path.of(strategyJsonPath));
             return buildStrategyFromJsonString(json, strategyJsonPath, unstableBars, series);
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
+            throw new UncheckedIOException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
         }
     }
 
@@ -1923,7 +1931,7 @@ final class CliSupport {
         try {
             return Files.readString(Path.of(fileValue));
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Unable to read serialized input from " + fileValue + ".", ex);
+            throw new UncheckedIOException("Unable to read serialized input from " + fileValue + ".", ex);
         }
     }
 

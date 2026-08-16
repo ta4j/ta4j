@@ -22,6 +22,7 @@ import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.Annualization;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
@@ -36,10 +37,14 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
+import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import ta4jexamples.rules.RsiThresholdRule;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -47,6 +52,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -703,7 +709,8 @@ class CliSupportTest {
 
     private Path copyResource(String resourceName) throws IOException {
         Path target = tempDir.resolve(resourceName);
-        try (var inputStream = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(resourceName))) {
+        try (InputStream inputStream = Objects
+                .requireNonNull(getClass().getClassLoader().getResourceAsStream(resourceName))) {
             Files.copy(inputStream, target);
         }
         return target;
@@ -737,6 +744,52 @@ class CliSupportTest {
 
     private Strategy sampleSweepStrategy(BarSeries series) {
         return CliSupport.buildSweepStrategies(List.of(), List.of("fast=5", "slow=20"), null, series).getFirst();
+    }
+
+    @Test
+    void requireDistinctArtifactPathsIgnoresInputOnlyCollisions() {
+        String shared = tempDir.resolve("shared.csv").toString();
+        Map<String, String> paths = new LinkedHashMap<>();
+        paths.put("--data-file", shared);
+        paths.put("--entry-rule-json-file", shared);
+        paths.put("--exit-rule-json-file", shared);
+
+        CliSupport.requireDistinctArtifactPaths(paths);
+    }
+
+    @Test
+    void requireDistinctArtifactPathsStillRejectsWritableCollisions() {
+        String shared = tempDir.resolve("shared.csv").toString();
+        Map<String, String> paths = new LinkedHashMap<>();
+        paths.put("--data-file", shared);
+        paths.put("--output", shared);
+
+        assertThatThrownBy(() -> CliSupport.requireDistinctArtifactPaths(paths))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--data-file and --output must not refer to the same file");
+    }
+
+    @Test
+    void walkForwardToMapRecordsFailuresWhenEveryFoldFails() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d, 4d, 5d, 6d).build();
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        WalkForwardConfig config = new WalkForwardConfig(2, 1, 1, 0, 0, 0, 1, List.of(1), 1, List.of(1), 7L);
+        WalkForwardRuntimeReport runtimeReport = new WalkForwardRuntimeReport(Duration.ZERO, Duration.ZERO,
+                Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of());
+        WalkForwardRunResult.FoldFailure failure = new WalkForwardRunResult.FoldFailure("fold-1", 0,
+                "rule threw during fold", new IllegalStateException("boom"));
+        StrategyWalkForwardExecutionResult result = new StrategyWalkForwardExecutionResult(series, strategy, config,
+                List.of(), runtimeReport, List.of(failure));
+
+        Map<String, Object> walkForward = CliSupport.walkForwardToMap(series, result, List.of(), false, null, null);
+
+        assertThat(((Number) walkForward.get("failedFoldCount")).intValue()).isEqualTo(1);
+        assertThat((List<?>) walkForward.get("folds")).isEmpty();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> failures = (List<Map<String, Object>>) walkForward.get("foldFailures");
+        assertThat(failures).hasSize(1);
+        assertThat(failures.get(0).get("foldId")).isEqualTo("fold-1");
+        assertThat(failures.get(0).get("message")).isEqualTo("rule threw during fold");
     }
 
     private static final class InitializerProbe {
