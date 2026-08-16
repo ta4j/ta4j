@@ -68,10 +68,43 @@ class PerformanceComparisonTest {
         base.remove("warmups");
         Files.writeString(baseArtifact, GSON.toJson(base), StandardCharsets.UTF_8);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Performance artifact is missing required field: warmups", exception.getMessage());
+        assertTrue(exception.getMessage().contains("missing required field 'warmups'"));
+        assertTrue(exception.getMessage().contains(baseArtifact.toString()));
+    }
+
+    @Test
+    void comparisonRejectsEmptyArtifactShape() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        Files.createDirectories(candidateDir);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        Files.writeString(candidateArtifact, "{}", StandardCharsets.UTF_8);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+        assertTrue(exception.getMessage().contains("missing required field 'experimentId'"));
+        assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
+    }
+
+    @Test
+    void comparisonRejectsMistypedArtifactField() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        JsonObject candidate = JsonParser.parseString(Files.readString(candidateArtifact)).getAsJsonObject();
+        candidate.addProperty("repetitions", "not-a-number");
+        Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+        assertTrue(exception.getMessage().contains("field 'repetitions' must be a number"));
+        assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
     }
 
     @Test

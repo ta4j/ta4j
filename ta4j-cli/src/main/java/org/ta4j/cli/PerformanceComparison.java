@@ -195,7 +195,99 @@ final class PerformanceComparison {
             throw new IllegalArgumentException(
                     "Invalid performance artifact " + file + ": expected a JSON object at the top level.");
         }
-        return root.getAsJsonObject();
+        JsonObject artifact = root.getAsJsonObject();
+        validateArtifactShape(artifact, file);
+        return artifact;
+    }
+
+    /**
+     * Validates that an artifact contains every field the comparison reads, with
+     * the expected JSON kinds, so malformed operator input surfaces as a usage
+     * error naming the offending file instead of a software failure from a
+     * downstream field access.
+     */
+    private static void validateArtifactShape(JsonObject artifact, Path file) {
+        requireString(artifact, file, "experimentId");
+        requireString(artifact, file, "gitRef");
+        requireNumber(artifact, file, "repetitions");
+        requireNumber(artifact, file, "warmups");
+        requireArray(artifact, file, "barCounts");
+        requireArray(artifact, file, "scenarioIds");
+        JsonObject host = requireObject(artifact, file, "host");
+        requireString(host, file, "hostId");
+        requireString(host, file, "osName");
+        requireString(host, file, "osArch");
+        requireString(host, file, "osVersion");
+        requireString(host, file, "javaVersion");
+        requireString(host, file, "jvmName");
+        requireNumber(host, file, "availableProcessors");
+        JsonArray results = requireArray(artifact, file, "results");
+        for (int i = 0; i < results.size(); i++) {
+            JsonElement element = results.get(i);
+            if (!element.isJsonObject()) {
+                throw new IllegalArgumentException(
+                        "Invalid performance artifact " + file + ": results[" + i + "] must be a JSON object.");
+            }
+            JsonObject result = element.getAsJsonObject();
+            requireString(result, file, "scenarioId");
+            requireNumber(result, file, "barCount");
+            requireNumber(result, file, "checksum");
+            requireBoolean(result, file, "checksumStable");
+            JsonObject stats = requireObject(result, file, "stats");
+            requireNumber(stats, file, "medianNanos");
+            requireNumber(stats, file, "operationsPerSecond");
+        }
+    }
+
+    private static JsonElement requireField(JsonObject object, Path file, String field) {
+        JsonElement value = object.get(field);
+        if (value == null || value.isJsonNull()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": missing required field '" + field + "'.");
+        }
+        return value;
+    }
+
+    private static void requireString(JsonObject object, Path file, String field) {
+        JsonElement value = requireField(object, file, field);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must be a string.");
+        }
+    }
+
+    private static void requireNumber(JsonObject object, Path file, String field) {
+        JsonElement value = requireField(object, file, field);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must be a number.");
+        }
+    }
+
+    private static void requireBoolean(JsonObject object, Path file, String field) {
+        JsonElement value = requireField(object, file, field);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must be a boolean.");
+        }
+    }
+
+    private static JsonArray requireArray(JsonObject object, Path file, String field) {
+        JsonElement value = requireField(object, file, field);
+        if (!value.isJsonArray()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must be an array.");
+        }
+        return value.getAsJsonArray();
+    }
+
+    private static JsonObject requireObject(JsonObject object, Path file, String field) {
+        JsonElement value = requireField(object, file, field);
+        if (!value.isJsonObject()) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must be a JSON object.");
+        }
+        return value.getAsJsonObject();
     }
 
     private static Map<String, JsonObject> resultMap(JsonObject root) {

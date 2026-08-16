@@ -137,6 +137,12 @@ final class CliSupport {
     private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
     static final Set<String> SWEEP_PARAM_KEYS = Set.of("fast", "slow");
     static final int MAX_SWEEP_STRATEGIES = 10_000;
+    /**
+     * Upper bound on total bar-strategy evaluations for one sweep: the widest grid
+     * ({@link #MAX_SWEEP_STRATEGIES} candidates) may cover at most 10,000 bars so a
+     * single sweep request stays within practical execution time.
+     */
+    static final long MAX_SWEEP_WORK = 100_000_000L;
     static final long MAX_FORECAST_WORK = 10_000_000L;
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
     static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
@@ -206,6 +212,10 @@ final class CliSupport {
                 throw new UncheckedIOException("Unable to read bar data from " + dataFile + ".",
                         new IOException("Data file does not exist or is not readable."));
             }
+            // The file datasources signal mid-read I/O failures with
+            // UncheckedIOException and return null only for missing, empty, or
+            // unparseable files; a readable file that produced null therefore
+            // has unusable content, which is a usage error.
             throw new IllegalArgumentException("Unable to load bar data from " + dataFile + ".");
         }
         requireFiniteBars(loadedSeries, dataFile);
@@ -535,6 +545,18 @@ final class CliSupport {
         if (candidateCount > MAX_SWEEP_STRATEGIES) {
             throw new IllegalArgumentException("Sweep parameter grid expands to " + candidateCount
                     + " candidate strategies; at most " + MAX_SWEEP_STRATEGIES + " are supported.");
+        }
+        // Executing every candidate over the full series costs candidateCount x
+        // barCount bar-strategy evaluations; bound the product before expanding
+        // the grid so a wide grid over a large dataset cannot run away. Both
+        // factors are bounded (candidateCount <= MAX_SWEEP_STRATEGIES and the
+        // bar span fits in a signed 32-bit range), so the long product cannot
+        // overflow.
+        long sweepWork = candidateCount * ((long) series.getEndIndex() - series.getBeginIndex() + 1L);
+        if (sweepWork > MAX_SWEEP_WORK) {
+            throw new IllegalArgumentException("Sweep parameter grid expands to " + candidateCount
+                    + " candidate strategies over " + series.getBarCount() + " bars (" + sweepWork
+                    + " bar-strategy evaluations); at most " + MAX_SWEEP_WORK + " are supported.");
         }
 
         List<Map<String, String>> combinations = new ArrayList<>();

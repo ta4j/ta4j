@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -289,7 +290,7 @@ public class CsvBarSeriesDataSourceTest {
     }
 
     @Test
-    public void testLoadSeriesDiscardsPartialBarsOnReadFailure() throws Exception {
+    public void testLoadSeriesPropagatesIoFailureOnReadError() throws Exception {
         Path tempFile = Files.createTempFile("ta4j-truncated-", ".csv");
         try {
             Files.writeString(tempFile, """
@@ -299,9 +300,10 @@ public class CsvBarSeriesDataSourceTest {
                     """);
             Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
 
-            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+            UncheckedIOException failure = assertThrows(UncheckedIOException.class,
+                    () -> CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString()));
 
-            assertNull(series, "Partial series must be discarded when the CSV cannot be fully read");
+            assertNotNull(failure.getMessage(), "I/O failure must explain what could not be read");
         } finally {
             Files.deleteIfExists(tempFile);
         }

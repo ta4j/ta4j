@@ -97,7 +97,7 @@ validate_module() {
 }
 
 echo "Validating Maven Central metadata prerequisites..."
-for module in ta4j-parent ta4j-core ta4j-examples; do
+for module in ta4j-parent ta4j-core ta4j-examples ta4j-cli; do
   validate_module "$module"
 done
 
@@ -106,4 +106,4 @@ if [[ ${#ERRORS[@]} -gt 0 ]]; then
   exit 1
 fi
 
-echo "Maven Central metadata validation passed for ta4j-parent, ta4j-core, ta4j-examples."
+echo "Maven Central metadata validation passed for ta4j-parent, ta4j-core, ta4j-examples, ta4j-cli."

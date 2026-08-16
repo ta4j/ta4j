@@ -42,7 +42,7 @@ expect_file_contains() {
 create_fixture() {
   local include_developers="$1"
 
-  mkdir -p ta4j-core ta4j-examples scripts bin
+  mkdir -p ta4j-core ta4j-examples ta4j-cli scripts bin
   cp "$SCRIPT" scripts/validate-central-metadata.sh
   chmod +x scripts/validate-central-metadata.sh
   write_fake_maven
@@ -85,11 +85,12 @@ EOF
   <modules>
     <module>ta4j-core</module>
     <module>ta4j-examples</module>
+    <module>ta4j-cli</module>
   </modules>
 </project>
 EOF
 
-  for module in ta4j-core ta4j-examples; do
+  for module in ta4j-core ta4j-examples ta4j-cli; do
     cat > "${module}/pom.xml" <<EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -189,8 +190,8 @@ EOF
 assert_maven_evaluation_contract() {
   local invocation_count
   invocation_count="$(wc -l < "$FAKE_MAVEN_INVOCATIONS" | tr -d '[:space:]')"
-  if [[ "$invocation_count" != "24" ]]; then
-    fail "validator should evaluate 8 required fields across 3 modules, got ${invocation_count}"
+  if [[ "$invocation_count" != "32" ]]; then
+    fail "validator should evaluate 8 required fields across 4 modules, got ${invocation_count}"
   fi
 
   expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -N help:evaluate -Dexpression=project.name -DforceStdout" \
@@ -199,6 +200,8 @@ assert_maven_evaluation_contract() {
     "core metadata should be evaluated through Maven effective model"
   expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl ta4j-examples help:evaluate -Dexpression=project.scm.url -DforceStdout" \
     "examples metadata should be evaluated through Maven effective model"
+  expect_file_contains "$FAKE_MAVEN_INVOCATIONS" "-q -pl ta4j-cli help:evaluate -Dexpression=project.scm.url -DforceStdout" \
+    "cli metadata should be evaluated through Maven effective model"
 }
 
 run_test() {
