@@ -140,20 +140,21 @@ for node in root.iter():
         continue
     values = {local_name(child.tag): (child.text or "").strip() for child in node}
     artifact = values.get("artifactId", "")
-    if artifact in {"ta4j-parent", "ta4j-core", "ta4j-examples"}:
+    if artifact in {"ta4j-parent", "ta4j-core", "ta4j-examples", "ta4j-cli"}:
         dependencies[artifact] = (values.get("version", ""), values.get("type", ""))
 
 expected = {
     "ta4j-parent": (os.environ["STUB_PARENT_RESOLVED_VERSION"], "pom"),
     "ta4j-core": (os.environ["STUB_CORE_RESOLVED_VERSION"], ""),
     "ta4j-examples": (os.environ["STUB_EXAMPLES_RESOLVED_VERSION"], ""),
+    "ta4j-cli": (os.environ["STUB_CLI_RESOLVED_VERSION"], ""),
 }
 if dependencies != expected:
     raise SystemExit(f"unexpected consumer coordinates: {dependencies!r} != {expected!r}")
 PY
 echo "consumer coordinates validated" >&2
 
-for artifact in ta4j-parent ta4j-core ta4j-examples; do
+for artifact in ta4j-parent ta4j-core ta4j-examples ta4j-cli; do
   directory="$local_repo/org/ta4j/$artifact/$STUB_VERSION"
   mkdir -p "$directory"
   extension=jar
@@ -164,9 +165,12 @@ for artifact in ta4j-parent ta4j-core ta4j-examples; do
   elif [[ "$artifact" == "ta4j-core" ]]; then
     resolved_version="$STUB_CORE_RESOLVED_VERSION"
     cp "$STUB_CORE_SOURCE" "$directory/$artifact-$resolved_version.jar"
-  else
+  elif [[ "$artifact" == "ta4j-examples" ]]; then
     resolved_version="$STUB_EXAMPLES_RESOLVED_VERSION"
     cp "$STUB_EXAMPLES_SOURCE" "$directory/$artifact-$resolved_version.jar"
+  else
+    resolved_version="$STUB_CLI_RESOLVED_VERSION"
+    cp "$STUB_CLI_SOURCE" "$directory/$artifact-$resolved_version.jar"
   fi
   if [[ "${STUB_SKIP_METADATA_ARTIFACT:-}" == "$artifact" ]]; then
     continue
@@ -201,7 +205,7 @@ for argument in "$@"; do
 done
 printf '%s\n' "$url" >> "$STUB_CURL_LOG"
 artifact=""
-for candidate in ta4j-parent ta4j-core ta4j-examples; do
+for candidate in ta4j-parent ta4j-core ta4j-examples ta4j-cli; do
   if [[ "$url" == *"/org/ta4j/$candidate/"* ]]; then
     artifact="$candidate"
     break
@@ -227,6 +231,7 @@ write_consumption_metadata_fixture() {
   local parent_resolved="$3"
   local core_resolved="$4"
   local examples_resolved="$5"
+  local cli_resolved="$6"
   mkdir -p "$directory"
   cat > "$directory/ta4j-parent.xml" <<EOF
 <metadata>
@@ -258,14 +263,25 @@ EOF
   </versioning>
 </metadata>
 EOF
+  cat > "$directory/ta4j-cli.xml" <<EOF
+<metadata>
+  <version>${version}</version>
+  <versioning>
+    <snapshotVersions>
+      <snapshotVersion><extension>jar</extension><value>${cli_resolved}</value></snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>
+EOF
 }
 
 prepare_consumption_fixture() {
   local root="$1"
   local version="$2"
-  mkdir -p "$root/ta4j-core/target" "$root/ta4j-examples/target"
+  mkdir -p "$root/ta4j-core/target" "$root/ta4j-examples/target" "$root/ta4j-cli/target"
   printf 'published core\n' > "$root/ta4j-core/target/ta4j-core-${version}.jar"
   printf 'published examples\n' > "$root/ta4j-examples/target/ta4j-examples-${version}.jar"
+  printf 'published cli\n' > "$root/ta4j-cli/target/ta4j-cli-${version}.jar"
 }
 
 run_consumption_fixture() {
@@ -285,17 +301,20 @@ run_consumption_fixture() {
   local parent_resolved="${STUB_METADATA_PARENT_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-2}"
   local core_resolved="${STUB_METADATA_CORE_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-1}"
   local examples_resolved="${STUB_METADATA_EXAMPLES_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-3}"
+  local cli_resolved="${STUB_METADATA_CLI_RESOLVED_VERSION:-${version%-SNAPSHOT}-20260714.120000-4}"
   write_metadata_curl_stub "$curl_stub"
-  write_consumption_metadata_fixture "$metadata_dir" "$version" "$parent_resolved" "$core_resolved" "$examples_resolved"
+  write_consumption_metadata_fixture "$metadata_dir" "$version" "$parent_resolved" "$core_resolved" "$examples_resolved" "$cli_resolved"
 
   STUB_VERSION="$version" \
   STUB_PARENT_RESOLVED_VERSION="$parent_resolved" \
   STUB_CORE_RESOLVED_VERSION="$core_resolved" \
   STUB_EXAMPLES_RESOLVED_VERSION="$examples_resolved" \
+  STUB_CLI_RESOLVED_VERSION="$cli_resolved" \
   STUB_SUCCESS_ATTEMPT="$success_attempt" \
   STUB_ATTEMPT_FILE="$TMP/maven-attempts.txt" \
   STUB_CORE_SOURCE="$core_source" \
   STUB_EXAMPLES_SOURCE="$examples_source" \
+  STUB_CLI_SOURCE="${STUB_CLI_SOURCE:-$publisher_root/ta4j-cli/target/ta4j-cli-${version}.jar}" \
   STUB_METADATA_DIR="$metadata_dir" \
   STUB_CURL_LOG="$TMP/curl.log" \
   STUB_POM_CAPTURE="$TMP/consumer.pom" \
@@ -578,9 +597,10 @@ test_snapshot_consumption_immediate_success() {
   expect_output_value "$github_output" "snapshot_consumption_attempts" "1"
   expect_output_value "$github_output" "resolved_core_version" "0.23.1-20260714.120000-1"
   expect_output_value "$github_output" "resolved_examples_version" "0.23.1-20260714.120000-3"
+  expect_output_value "$github_output" "resolved_cli_version" "0.23.1-20260714.120000-4"
   expect_file_contains "$output_file" '"mavenConsumable": true'
   expect_file_contains "$log" "consumer coordinates validated"
-  for artifact in ta4j-parent ta4j-core ta4j-examples; do
+  for artifact in ta4j-parent ta4j-core ta4j-examples ta4j-cli; do
     expect_file_contains "$TMP/curl.log" "/org/ta4j/${artifact}/${version}/maven-metadata.xml?cacheBust="
   done
 
@@ -698,6 +718,7 @@ test_snapshot_consumption_clears_checksums_after_later_failure() {
   expect_output_value "$github_output" "maven_consumable" "false"
   expect_output_value "$github_output" "resolved_core_sha256" ""
   expect_output_value "$github_output" "resolved_examples_sha256" ""
+  expect_output_value "$github_output" "resolved_cli_sha256" ""
 
   rm -rf "$TMP"
   pass "test_snapshot_consumption_clears_checksums_after_later_failure"

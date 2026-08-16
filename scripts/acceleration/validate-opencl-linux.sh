@@ -49,6 +49,7 @@ echo "==> Running OpenClNativeIntegrationTest (probe self-test + scalar parity)"
     -Dsurefire.failIfNoSpecifiedTests=false \
     -Dgroups=requires-opencl \
     -Dta4j.excludedTestTags="$EXCLUDED" \
+    -Dta4j.forecast.rngVersion=1 \
     -Dta4j.acceleration.opencl.library="$LIBRARY" \
     test
 

@@ -18,6 +18,8 @@
 #define GOLDEN_GAMMA 0x9E3779B97F4A7C15ULL
 #define DOUBLE_UNIT 0x1.0p-53
 #define STATE_ERROR_BUFFER 512
+// Mirrors OpenClCrossoverModel.QUALIFIED_MINIMUM_DEVICE_BYTES.
+#define QUALIFIED_MINIMUM_DEVICE_BYTES 2147483648ULL
 
 static const char KERNEL_SOURCE[] =
         "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n"
@@ -631,6 +633,8 @@ static cl_int initialize_state(char* error, size_t error_size) {
     cl_platform_id* platforms = NULL;
     cl_uint platform_count = 0;
     cl_device_id selected = NULL;
+    cl_platform_id first_fp64_platform = NULL;
+    cl_device_id first_fp64_gpu = NULL;
     int selected_gpu = 0;
     char version[128];
 
@@ -660,6 +664,16 @@ static cl_int initialize_state(char* error, size_t error_size) {
     // pass across every platform, so a CPU ICD listed before a vendor GPU ICD
     // can never hide a usable FP64 GPU.
     for (cl_uint pass = 0; pass < 2 && selected == NULL; ++pass) {
+        if (pass == 1 && first_fp64_gpu != NULL) {
+            // The GPU pass found FP64 GPUs but none met the 2 GiB qualification
+            // floor; fall back to the first FP64 GPU so single-device or
+            // all-small hosts keep the previous behavior (the Java model then
+            // declines it with a zero predicted speedup).
+            selected = first_fp64_gpu;
+            selected_gpu = 1;
+            STATE.platform = first_fp64_platform;
+            break;
+        }
         for (cl_uint platform_index = 0; platform_index < platform_count && selected == NULL; ++platform_index) {
             cl_uint device_count = 0;
             cl_device_id* devices = NULL;
@@ -680,15 +694,29 @@ static cl_int initialize_state(char* error, size_t error_size) {
             for (cl_uint index = 0; index < device_count; ++index) {
                 cl_device_type device_type = 0;
                 cl_ulong double_config = 0;
+                cl_ulong global_memory = 0;
                 clGetDeviceInfo(devices[index], CL_DEVICE_TYPE, sizeof(device_type), &device_type, NULL);
                 clGetDeviceInfo(devices[index], CL_DEVICE_DOUBLE_FP_CONFIG, sizeof(double_config), &double_config, NULL);
                 if (double_config == 0) {
                     continue;
                 }
                 int is_gpu = (device_type & CL_DEVICE_TYPE_GPU) != 0;
-                if ((pass == 0 && is_gpu) || (pass == 1 && !is_gpu)) {
+                if (pass == 0 && is_gpu) {
+                    if (first_fp64_gpu == NULL) {
+                        first_fp64_gpu = devices[index];
+                        first_fp64_platform = platforms[platform_index];
+                    }
+                    clGetDeviceInfo(devices[index], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(global_memory), &global_memory,
+                            NULL);
+                    if (global_memory >= QUALIFIED_MINIMUM_DEVICE_BYTES) {
+                        selected = devices[index];
+                        selected_gpu = 1;
+                        STATE.platform = platforms[platform_index];
+                        break;
+                    }
+                } else if (pass == 1 && !is_gpu) {
                     selected = devices[index];
-                    selected_gpu = is_gpu;
+                    selected_gpu = 0;
                     STATE.platform = platforms[platform_index];
                     break;
                 }
