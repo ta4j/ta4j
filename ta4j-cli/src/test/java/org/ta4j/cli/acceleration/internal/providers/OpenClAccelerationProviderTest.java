@@ -121,14 +121,12 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
-    void memoryCeilingAccountsForThePaddedNativeSampleBuffer() {
-        // The OpenCL kernels sort padded samples: the device samples buffer is
-        // nextPowerOfTwo(iterationCount) doubles (ta4j_opencl_jni.c), which for
-        // an iteration count just above a power of two is almost twice the raw
-        // count. The provider ceiling estimate counts iterationCount directly,
-        // so a request whose estimate passes the ceiling can still allocate
-        // nearly twice the ceiling on the device. The estimate must cover the
-        // padded buffer, mirroring the native layout.
+    void memoryCeilingCountsHostAndDeviceSortBuffers() {
+        // The OpenCL kernels hold the padded samples twice at once: the host
+        // staging array (padded_host) and the device sort buffer
+        // (device_samples), each at nextPowerOfTwo(iterationCount) doubles. A
+        // ceiling that counts only one buffer accepts requests whose two padded
+        // buffers alone exceed it, before inputs and result storage.
         int iterationCount = (1 << 20) + 1; // just above a power of two
         BarSeries series = doubleSeries();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -143,9 +141,10 @@ class OpenClAccelerationProviderTest {
                 .build();
         int end = forecast.getBarSeries().getEndIndex();
         Request<Forecast> request = new Request<>(forecast, end, end);
-        long estimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, iterationCount, 1L, false);
-        long paddedSamples = (long) nextPowerOfTwo(iterationCount) * Double.BYTES;
-        long ceiling = estimate + (paddedSamples - estimate) / 2L; // between raw estimate and padded allocation
+        long singleBufferEstimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, iterationCount, 1L, false);
+        long bothBuffersEstimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, 2L * nextPowerOfTwo(iterationCount), 1L,
+                false);
+        long ceiling = singleBufferEstimate + (bothBuffersEstimate - singleBufferEstimate) / 2L;
 
         System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(ceiling));
         OpenClAccelerationProvider provider = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));

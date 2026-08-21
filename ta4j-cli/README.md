@@ -187,10 +187,12 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--strategy-json-file`: path to one serialized ta4j strategy payload.
   - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
   - `--invalid-input`: `fail` (default) or explicit partial-execution `skip`.
+  - total evaluation work is bounded before execution: strategies × bars × passes must not exceed 100,000,000 bar-strategy evaluations.
   - strategy inputs are self-contained, so `strategy backtest` does not accept `--param`.
 - `strategy walk-forward`
   - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
+  - total evaluation work is bounded before execution: strategies × bars × (folds + 1) must not exceed 100,000,000 bar-strategy evaluations, counting the full backtest plus one pass per fold.
   - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
@@ -199,7 +201,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
   - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
-  - `--indicator-json-file`: path to one serialized indicator payload.
+  - `--indicator-json-file`: path to one serialized indicator payload, resolved once before validation and execution.
   - `--entry-below`, `--entry-above`, `--exit-below`, `--exit-above`: optional threshold rules. If none are supplied, the command defaults to close-price crossovers around the selected indicator.
   - indicator inputs are self-contained, so `indicator test` does not accept `--param`.
 - `rule test`

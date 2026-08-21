@@ -84,6 +84,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -145,6 +146,13 @@ final class CliSupport {
      * single sweep request stays within practical execution time.
      */
     static final long MAX_SWEEP_WORK = 100_000_000L;
+    /**
+     * Upper bound on total bar-strategy evaluations for one strategy batch: a
+     * backtest evaluates every strategy over the full series and a walk-forward
+     * repeats that per fold, so wide strategy lists over long series must be
+     * bounded before execution just like sweep grids.
+     */
+    static final long MAX_BATCH_STRATEGY_WORK = 100_000_000L;
     static final long MAX_FORECAST_WORK = 10_000_000L;
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
     static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
@@ -494,6 +502,25 @@ final class CliSupport {
         return new ResolvedStrategies(List.copyOf(validStrategies), List.copyOf(invalidStrategies));
     }
 
+    /**
+     * Rejects a strategy batch whose total bar-strategy evaluations exceed
+     * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts. A backtest
+     * evaluates each strategy over the full series (one pass); a walk-forward
+     * repeats that for every fold, so {@code evaluationPasses} must cover the
+     * backtest plus the fold count. The product is computed exactly so a wide batch
+     * over a long series can never overflow into an accepted estimate.
+     */
+    static void requireBoundedStrategyBatch(List<Strategy> strategies, BarSeries series, long evaluationPasses) {
+        BigInteger work = BigInteger.valueOf(strategies.size())
+                .multiply(BigInteger.valueOf(series.getBarCount()))
+                .multiply(BigInteger.valueOf(evaluationPasses));
+        if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
+            throw new IllegalArgumentException("Strategy batch of " + strategies.size() + " strategies over "
+                    + series.getBarCount() + " bars (" + evaluationPasses + " evaluation passes) requires " + work
+                    + " bar-strategy evaluations; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
+        }
+    }
+
     static void reportInvalidStrategies(List<String> invalidStrategies, PrintWriter err) {
         if (invalidStrategies == null || invalidStrategies.isEmpty()) {
             return;
@@ -737,12 +764,9 @@ final class CliSupport {
         return new ResolvedIndicator(indicator, indicator.toJson(), indicator.getClass().getName());
     }
 
-    static Strategy buildIndicatorTestStrategy(String indicatorJson, String indicatorJsonFile, Integer unstableBars,
-            String entryBelowToken, String entryAboveToken, String exitBelowToken, String exitAboveToken,
-            BarSeries series) {
-        ResolvedIndicator resolvedIndicator = resolveIndicator(indicatorJson, indicatorJsonFile, series);
+    static Strategy buildIndicatorTestStrategy(Indicator<Num> indicator, Integer unstableBars, String entryBelowToken,
+            String entryAboveToken, String exitBelowToken, String exitAboveToken, BarSeries series) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        Indicator<Num> indicator = resolvedIndicator.indicator();
 
         Rule entryRule;
         Rule exitRule;

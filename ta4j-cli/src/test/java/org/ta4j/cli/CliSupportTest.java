@@ -32,6 +32,7 @@ import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -52,6 +53,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -376,6 +378,56 @@ class CliSupportTest {
     }
 
     @Test
+    void requireBoundedStrategyBatchRejectsOverBudgetBacktests() {
+        BarSeries series = syntheticSeries(10_000);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        List<Strategy> batch = new ArrayList<>(10_001);
+        for (int i = 0; i < 10_001; i++) {
+            batch.add(strategy);
+        }
+
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(batch, series, 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Strategy batch of 10001 strategies over 10000 bars (1 evaluation passes) requires "
+                        + "100010000 bar-strategy evaluations; at most 100000000 are supported.");
+    }
+
+    @Test
+    void requireBoundedStrategyBatchAcceptsAtMostBudgetBatches() {
+        BarSeries series = syntheticSeries(10_000);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        List<Strategy> batch = new ArrayList<>(10_000);
+        for (int i = 0; i < 10_000; i++) {
+            batch.add(strategy);
+        }
+
+        CliSupport.requireBoundedStrategyBatch(batch, series, 1);
+    }
+
+    @Test
+    void requireBoundedStrategyBatchCountsWalkForwardFoldPasses() {
+        BarSeries series = syntheticSeries(10_000);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        List<Strategy> batch = new ArrayList<>(5_001);
+        for (int i = 0; i < 5_001; i++) {
+            batch.add(strategy);
+        }
+
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(batch, series, 2))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Strategy batch of 5001 strategies over 10000 bars (2 evaluation passes) requires "
+                        + "100020000 bar-strategy evaluations; at most 100000000 are supported.");
+    }
+
+    private static BarSeries syntheticSeries(int barCount) {
+        List<Double> data = new ArrayList<>(barCount);
+        for (int i = 0; i < barCount; i++) {
+            data.add(1d);
+        }
+        return new MockBarSeriesBuilder().withData(data).build();
+    }
+
+    @Test
     void buildStrategyRejectsUnknownLabels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
@@ -433,16 +485,40 @@ class CliSupportTest {
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
         String defaultIndicatorJson = new EMAIndicator(new ClosePriceIndicator(series), 5).toJson();
         String thresholdIndicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
+        Indicator<Num> defaultIndicator = CliSupport.resolveIndicator(defaultIndicatorJson, null, series).indicator();
+        Indicator<Num> thresholdIndicator = CliSupport.resolveIndicator(thresholdIndicatorJson, null, series)
+                .indicator();
 
-        Strategy defaultStrategy = CliSupport.buildIndicatorTestStrategy(defaultIndicatorJson, null, null, null, null,
-                null, null, series);
-        Strategy thresholdStrategy = CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, 20, "30", null,
-                null, "70", series);
+        Strategy defaultStrategy = CliSupport.buildIndicatorTestStrategy(defaultIndicator, null, null, null, null, null,
+                series);
+        Strategy thresholdStrategy = CliSupport.buildIndicatorTestStrategy(thresholdIndicator, 20, "30", null, null,
+                "70", series);
 
         assertThat(defaultStrategy.getName()).isEqualTo("EMAIndicator-indicator-test");
         assertThat(defaultStrategy.getUnstableBars()).isEqualTo(5);
         assertThat(thresholdStrategy.getName()).isEqualTo("RSIIndicator-indicator-test");
         assertThat(thresholdStrategy.getUnstableBars()).isEqualTo(20);
+    }
+
+    @Test
+    void buildIndicatorTestStrategyUsesResolvedIndicatorWithoutReReadingInput() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path indicatorJsonFile = Files.createTempFile("resolved-indicator", ".json");
+        try {
+            String indicatorJson = new EMAIndicator(new ClosePriceIndicator(series), 5).toJson();
+            Files.writeString(indicatorJsonFile, indicatorJson);
+
+            CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(null,
+                    indicatorJsonFile.toString(), series);
+            Files.writeString(indicatorJsonFile, "not-json-anymore");
+
+            Strategy strategy = CliSupport.buildIndicatorTestStrategy(resolvedIndicator.indicator(), null, null, null,
+                    null, null, series);
+            assertThat(strategy.getName()).isEqualTo("EMAIndicator-indicator-test");
+        } finally {
+            Files.deleteIfExists(indicatorJsonFile);
+        }
     }
 
     @Test
@@ -454,18 +530,21 @@ class CliSupportTest {
         java.util.Arrays.fill(booleanValues, Boolean.TRUE);
         String booleanIndicatorJson = new FixedBooleanIndicator(series, booleanValues).toJson();
 
-        assertThatThrownBy(
-                () -> CliSupport.buildIndicatorTestStrategy("not-json", null, null, null, null, null, null, series))
+        assertThatThrownBy(() -> CliSupport.resolveIndicator("not-json", null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid indicator shorthand or serialized JSON input.");
         assertThatThrownBy(() -> CliSupport.resolveIndicator(booleanIndicatorJson, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("--indicator must deserialize to an Indicator<Num>.");
-        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", "40",
-                null, null, series)).isInstanceOf(IllegalArgumentException.class)
+        Indicator<Num> thresholdIndicator = CliSupport.resolveIndicator(thresholdIndicatorJson, null, series)
+                .indicator();
+        assertThatThrownBy(
+                () -> CliSupport.buildIndicatorTestStrategy(thresholdIndicator, null, "30", "40", null, null, series))
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Use only one of --entry-below or --entry-above.");
-        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", null,
-                null, null, series)).isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(
+                () -> CliSupport.buildIndicatorTestStrategy(thresholdIndicator, null, "30", null, null, null, series))
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Threshold indicator tests require either --exit-below or --exit-above.");
     }
 
@@ -474,12 +553,15 @@ class CliSupportTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
         String thresholdIndicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
+        Indicator<Num> thresholdIndicator = CliSupport.resolveIndicator(thresholdIndicatorJson, null, series)
+                .indicator();
 
-        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "NaN", null,
-                "70", null, series)).isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(
+                () -> CliSupport.buildIndicatorTestStrategy(thresholdIndicator, null, "NaN", null, "70", null, series))
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid numeric value for --entry-below: NaN.");
-        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, null,
-                "Infinity", null, "70", series)).isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicator, null, null, "Infinity", null,
+                "70", series)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid numeric value for --entry-above: Infinity.");
     }
 
