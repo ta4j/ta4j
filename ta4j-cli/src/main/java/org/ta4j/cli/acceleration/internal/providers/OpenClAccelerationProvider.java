@@ -60,14 +60,15 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
         // The native kernels sort samples padded to the next power of two
-        // (bitonic sort), so the device samples buffer holds
-        // nextPowerOfTwo(iterationCount) doubles, not iterationCount. The
-        // ceiling must cover the padded allocation or a request just above a
-        // power-of-two boundary can allocate nearly twice its estimate on the
-        // device.
+        // (bitonic sort) and hold both the host staging array (padded_host) and
+        // the device sort buffer (device_samples) at paddedIterations doubles,
+        // so the ceiling must count two padded sample buffers — otherwise a
+        // request just above a power-of-two boundary allocates nearly four
+        // times its raw iteration estimate on host and device.
         long paddedIterations = nextPowerOfTwo(spec.iterationCount());
-        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(), paddedIterations,
-                spec.quantileProbabilities().size(), false));
+        long sampleBufferIterations = Math.multiplyExact(paddedIterations, 2L);
+        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                sampleBufferIterations, spec.quantileProbabilities().size(), false));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;

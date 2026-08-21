@@ -490,6 +490,7 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
+            CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series, 1);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
@@ -599,6 +600,9 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
+            long foldCount = Math.max(1L,
+                    (series.getBarCount() - config.minTrainBars() + config.stepBars() - 1L) / config.stepBars());
+            CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series, foldCount + 1);
 
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
@@ -980,8 +984,8 @@ final class CliCommands {
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
-            Strategy strategy = CliSupport.buildIndicatorTestStrategy(indicatorJson, indicatorJsonFile,
-                    parsedUnstableBars, entryBelow, entryAbove, exitBelow, exitAbove, series);
+            Strategy strategy = CliSupport.buildIndicatorTestStrategy(resolvedIndicator.indicator(), parsedUnstableBars,
+                    entryBelow, entryAbove, exitBelow, exitAbove, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
