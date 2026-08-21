@@ -805,6 +805,21 @@ final class CliSupport {
             throw new IllegalArgumentException(
                     "Unsupported --target '" + request.target() + "'. Use state, return, or price.");
         }
+        String projectionModel = null;
+        String calibration = null;
+        if (!"state".equals(target)) {
+            projectionModel = normalizeToken(request.projectionModel());
+            calibration = normalizeToken(request.calibration());
+            if (!Set.of("monte-carlo", "analog").contains(projectionModel)) {
+                throw new IllegalArgumentException("Unsupported --projection-model '" + request.projectionModel()
+                        + "'. Use monte-carlo or analog.");
+            }
+            if (!"none".equals(calibration) && !"conformal".equals(calibration)) {
+                throw new IllegalArgumentException(
+                        "Unsupported --calibration '" + request.calibration() + "'. Use none or conformal.");
+            }
+            requireBoundedProjectionWork(projectionModel, calibration, request);
+        }
         ReturnMomentState state = stateIndicator.getValue(index);
 
         Map<String, Object> response = buildResponse("forecast run");
@@ -817,8 +832,6 @@ final class CliSupport {
         configuration.put("target", target);
         configuration.put("index", index);
         if (!"state".equals(target)) {
-            String projectionModel = normalizeToken(request.projectionModel());
-            String calibration = normalizeToken(request.calibration());
             configuration.put("projectionModel", projectionModel);
             configuration.put("calibration", calibration);
             configuration.put("horizon", request.horizon());
@@ -830,21 +843,15 @@ final class CliSupport {
                 configuration.put("shockModel", normalizeToken(request.shockModel()));
                 configuration.put("volatilityMode", normalizeToken(request.volatilityMode()));
                 configuration.put("volatilityDecay", request.volatilityDecay());
-            } else if ("analog".equals(projectionModel)) {
+            } else {
                 configuration.put("neighborCount", request.neighborCount());
                 configuration.put("minimumNeighborCount", request.minimumNeighborCount());
                 configuration.put("standardizeFeatures", request.standardizeFeatures());
-            } else {
-                throw new IllegalArgumentException("Unsupported --projection-model '" + request.projectionModel()
-                        + "'. Use monte-carlo or analog.");
             }
             if ("conformal".equals(calibration)) {
                 configuration.put("coverage", request.coverage());
                 configuration.put("calibrationWindow", request.calibrationWindow());
                 configuration.put("minimumCalibrationCount", request.minimumCalibrationCount());
-            } else if (!"none".equals(calibration)) {
-                throw new IllegalArgumentException(
-                        "Unsupported --calibration '" + request.calibration() + "'. Use none or conformal.");
             }
         }
         result.put("configuration", configuration);
@@ -857,7 +864,8 @@ final class CliSupport {
         result.put("state", forecastStateToMap(stateIndicator, state));
 
         if (!"state".equals(target)) {
-            ProjectionSelection projection = buildForecastProjection(series, returns, stateIndicator, request, target);
+            ProjectionSelection projection = buildForecastProjection(series, returns, stateIndicator, request, target,
+                    projectionModel, calibration);
             configuration.put("resolvedPriceModel", projection.priceModel());
             Forecast forecast = projection.indicator().getValue(index);
             result.put("forecast", forecastToMap(forecast));
@@ -869,27 +877,19 @@ final class CliSupport {
 
     private static ProjectionSelection buildForecastProjection(BarSeries series, ReturnIndicator returns,
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request,
-            String target) {
-        String projectionModel = normalizeToken(request.projectionModel());
+            String target, String projectionModel, String calibration) {
         ReturnForecastProjectionIndicator returnProjection = switch (projectionModel) {
         case "monte-carlo" -> buildMonteCarloReturnForecast(stateIndicator, request);
-        case "analog" -> buildAnalogReturnForecast(stateIndicator, request);
-        default -> throw new IllegalArgumentException(
-                "Unsupported --projection-model '" + request.projectionModel() + "'. Use monte-carlo or analog.");
+        default -> buildAnalogReturnForecast(stateIndicator, request);
         };
 
-        String calibration = normalizeToken(request.calibration());
         if ("conformal".equals(calibration)) {
-            requireBoundedConformalWork(request, projectionModel);
             returnProjection = RollingConformalForecastProjectionIndicator
                     .cumulativeLogReturnBuilder(returnProjection, returns)
                     .targetCoverage(request.coverage())
                     .calibrationWindow(request.calibrationWindow())
                     .minimumCalibrationCount(request.minimumCalibrationCount())
                     .build();
-        } else if (!"none".equals(calibration)) {
-            throw new IllegalArgumentException(
-                    "Unsupported --calibration '" + request.calibration() + "'. Use none or conformal.");
         }
 
         if ("return".equals(target)) {
@@ -922,7 +922,6 @@ final class CliSupport {
 
     private static ReturnForecastProjectionIndicator buildMonteCarloReturnForecast(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
-        requireBoundedMonteCarloWork(request);
         if (request.samples() <= 0) {
             throw new IllegalArgumentException("--samples must be greater than zero.");
         }
@@ -951,7 +950,6 @@ final class CliSupport {
 
     private static ForecastProjectionIndicator buildMonteCarloPriceForecast(BarSeries series,
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
-        requireBoundedMonteCarloWork(request);
         double[] quantiles = request.quantiles().stream().mapToDouble(Double::doubleValue).toArray();
         return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), stateIndicator)
                 .horizon(request.horizon())
@@ -1060,9 +1058,25 @@ final class CliSupport {
         }
     }
 
+    /**
+     * Rejects projection configurations whose total work exceeds the shared
+     * forecast ceiling before the state indicator is evaluated, so an expensive
+     * state never allocates for a projection that cannot run.
+     */
+    private static void requireBoundedProjectionWork(String projectionModel, String calibration,
+            ForecastRequest request) {
+        if ("monte-carlo".equals(projectionModel)) {
+            requireBoundedMonteCarloWork(request);
+        } else {
+            requireBoundedAnalogWork(request);
+        }
+        if ("conformal".equals(calibration)) {
+            requireBoundedConformalWork(request, projectionModel);
+        }
+    }
+
     private static ReturnForecastProjectionIndicator buildAnalogReturnForecast(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, ForecastRequest request) {
-        requireBoundedAnalogWork(request);
         if (request.lookbackBars() <= 0) {
             throw new IllegalArgumentException("--lookback-bars must be greater than zero.");
         }

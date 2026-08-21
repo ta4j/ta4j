@@ -54,7 +54,8 @@ import org.ta4j.core.num.NumFactory;
  * to the regression and fractional-exponent boundaries. State remains unstable
  * until every configured window is complete and finite. A non-finite return
  * makes each affected rolling window unavailable; later clean windows recover
- * automatically.
+ * automatically. The emitted horizon variance term structure is bounded at
+ * {@value #MAX_HORIZON_VARIANCE_STEPS} steps per state.
  *
  * @since 0.23.1
  */
@@ -64,6 +65,12 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
     private static final double PROXY_EPSILON = 1e-8d;
     private static final double MIN_HURST = 0.01d;
     private static final double MAX_HURST = 0.49d;
+    /**
+     * Memory-aware bound for the per-state horizon variance term structure. Every
+     * entry is a heap-allocated Num, so an unbounded horizon would allocate one
+     * entry per step before any projection work validation can run.
+     */
+    static final int MAX_HORIZON_VARIANCE_STEPS = 100_000;
 
     private final ReturnIndicator returnIndicator;
     private final int initializationBarCount;
@@ -334,7 +341,8 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         /**
          * Sets the number of cumulative variance horizons emitted by each state.
          *
-         * @param value positive horizon count
+         * @param value positive horizon count of at most
+         *              {@link #MAX_HORIZON_VARIANCE_STEPS}
          * @return this builder
          * @since 0.23.1
          */
@@ -372,6 +380,9 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
             }
             if (horizon < 1) {
                 throw new IllegalArgumentException("horizon must be >= 1");
+            }
+            if (horizon > MAX_HORIZON_VARIANCE_STEPS) {
+                throw new IllegalArgumentException("horizon must be <= " + MAX_HORIZON_VARIANCE_STEPS);
             }
         }
     }

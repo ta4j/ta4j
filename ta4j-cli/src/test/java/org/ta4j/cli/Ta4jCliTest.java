@@ -698,6 +698,28 @@ class Ta4jCliTest {
     }
 
     @Test
+    void forecastRejectsRoughVolatilityHorizonBeyondMemoryBound() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "return", "--horizon", "100001", "--samples", "1");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("horizon must be <= 100000");
+    }
+
+    @Test
+    void forecastRejectsMonteCarloWorkBeyondCeilingBeforeStateEvaluation() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "price", "--horizon", "100000", "--samples", "101");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--samples x --horizon must not exceed 10000000");
+    }
+
+    @Test
     void forecastRejectsUnboundedLookbackBars() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 

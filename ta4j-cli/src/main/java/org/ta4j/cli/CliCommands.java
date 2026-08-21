@@ -817,7 +817,7 @@ final class CliCommands {
         @Option(names = "--index", paramLabel = "<index>", description = "Decision index; defaults to the series end.")
         Integer index;
 
-        @Option(names = "--horizon", defaultValue = "1", paramLabel = "<bars>", description = "Positive forecast horizon in bars.")
+        @Option(names = "--horizon", defaultValue = "1", paramLabel = "<bars>", description = "Positive forecast horizon in bars (at most 100,000 with --state-model rough-volatility).")
         int horizon;
 
         @Option(names = "--samples", defaultValue = "1000", paramLabel = "<count>", description = "Monte Carlo terminal path count.")
