@@ -6,6 +6,7 @@ package org.ta4j.core.rules.named;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.rules.AbstractRule;
 
 import java.io.IOException;
@@ -254,6 +255,35 @@ public abstract class NamedRule extends AbstractRule {
     @Override
     protected final String createDefaultName() {
         return label;
+    }
+
+    /**
+     * Returns the compact reconstruction label as the trace display name so
+     * named-rule evaluations are logged under their label rather than the concrete
+     * implementation class.
+     *
+     * @return compact rule label used in trace logs
+     * @since 0.24.2
+     */
+    @Override
+    protected final String getTraceDisplayName() {
+        return label;
+    }
+
+    /**
+     * Evaluates the delegate rule as a trace child and traces the outer named-rule
+     * result under the compact label.
+     *
+     * @param delegateRule  delegate rule performing the actual condition check
+     * @param index         the bar index
+     * @param tradingRecord trading history
+     * @return true if the delegate rule is satisfied
+     * @since 0.24.2
+     */
+    protected final boolean evaluateDelegate(Rule delegateRule, int index, TradingRecord tradingRecord) {
+        boolean satisfied = evaluateChildRule(delegateRule, "delegate", index, tradingRecord);
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     private static void ensureDefaultRegistryInitialized() {
