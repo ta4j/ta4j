@@ -215,7 +215,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--projection-model`: `monte-carlo` or `analog`.
   - `--calibration`: `none` or rolling `conformal`.
   - `--price-model`: `auto`, empirical Monte Carlo paths, or a `lognormal` moment-matched adapter.
-  - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon, at most 10,000,000 bars. `--horizon` is rejected for state-only inspection.
+  - `--index`, `--horizon`: decision index (series end by default) and positive projection horizon, at most 10,000,000 bars, and at most 100,000 bars with `--state-model rough-volatility` (bound on the per-state variance term structure). `--horizon` is rejected for state-only inspection.
 - `--samples`, `--lookback-bars`, `--seed`: Monte Carlo sample count, shock history, and deterministic seed. Lookback defaults to the smaller of 252 or the available return history, `--samples` × `--horizon` must not exceed 10,000,000, `--horizon` × `--lookback-bars` must not exceed 10,000,000 for analog projections, and `--lookback-bars` must not exceed 1,000,000.
   - `--shock-model`: `historical-bootstrap`, `standardized-empirical`, or `normal`.
   - `--volatility-mode`, `--volatility-decay`: constant or EWMA within-path volatility behavior.
