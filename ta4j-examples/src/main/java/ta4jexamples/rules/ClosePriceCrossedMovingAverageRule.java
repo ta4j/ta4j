@@ -94,7 +94,7 @@ public final class ClosePriceCrossedMovingAverageRule extends NamedRule {
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        return getDelegateRule().isSatisfied(index, tradingRecord);
+        return evaluateDelegate(getDelegateRule(), index, tradingRecord);
     }
 
     private Rule getDelegateRule() {

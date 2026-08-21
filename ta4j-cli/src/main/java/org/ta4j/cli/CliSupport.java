@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
@@ -81,6 +82,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -219,6 +221,9 @@ final class CliSupport {
             throw new IllegalArgumentException("Unable to load bar data from " + dataFile + ".");
         }
         requireFiniteBars(loadedSeries, dataFile);
+        if (lowerCasePath.endsWith(".json")) {
+            requireCompleteJsonDecode(dataFile, loadedSeries);
+        }
 
         BarSeries effectiveSeries = loadedSeries;
         Instant fromDate = parseOptionalInstant(fromDateToken, true);
@@ -232,6 +237,7 @@ final class CliSupport {
             }
         }
         if (timeframeToken != null && !timeframeToken.isBlank()) {
+            requireUniformBarPeriods(effectiveSeries, dataFile);
             Duration timeframe = parseTimeframe(timeframeToken);
             String aggregatedName = loadedSeries.getName() + "-" + normalizeToken(timeframeToken);
             effectiveSeries = new BaseBarSeriesAggregator(new DurationBarAggregator(timeframe, true))
@@ -260,6 +266,39 @@ final class CliSupport {
         if (value != null && !Num.isFinite(value)) {
             throw new IllegalArgumentException(
                     "Non-finite " + field + " value in " + dataFile + " at bar " + index + ".");
+        }
+    }
+
+    private static void requireUniformBarPeriods(BarSeries series, String dataFile) {
+        Duration expectedPeriod = null;
+        for (long index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            Duration barPeriod = series.getBar(Math.toIntExact(index)).getTimePeriod();
+            if (expectedPeriod == null) {
+                expectedPeriod = barPeriod;
+            } else if (!expectedPeriod.equals(barPeriod)) {
+                throw new IllegalArgumentException("Cannot aggregate " + dataFile + " with --timeframe: source bars "
+                        + "have non-uniform periods (" + expectedPeriod + " and " + barPeriod
+                        + "). Use uniform-interval bar data.");
+            }
+        }
+    }
+
+    private static void requireCompleteJsonDecode(String dataFile, BarSeries series) {
+        JsonObject root;
+        try (Reader reader = Files.newBufferedReader(Path.of(dataFile))) {
+            root = JsonParser.parseReader(reader).getAsJsonObject();
+        } catch (IOException ex) {
+            // The datasource already read this file successfully, so a second
+            // read failure means the file changed between reads; surface it as
+            // an I/O failure like any other unreadable data file.
+            throw new UncheckedIOException("Unable to read bar data from " + dataFile + ".", ex);
+        }
+        String barArrayMember = root.has("candles") ? "candles" : "ohlc";
+        int sourceBarCount = root.getAsJsonArray(barArrayMember).size();
+        if (sourceBarCount != series.getBarCount()) {
+            throw new IllegalArgumentException("Bar data file " + dataFile + " contains " + sourceBarCount + " "
+                    + barArrayMember + " but only " + series.getBarCount()
+                    + " could be decoded; refusing to analyze incomplete data. Fix or remove the malformed bars.");
         }
     }
 

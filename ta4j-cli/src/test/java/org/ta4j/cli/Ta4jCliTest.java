@@ -273,6 +273,52 @@ class Ta4jCliTest {
     }
 
     @Test
+    void jsonDataFileRejectsPartiallyDecodedCandles() throws Exception {
+        Path dataFile = tempDir.resolve("partial-coinbase.json");
+        Files.writeString(dataFile, """
+                {"candles": [
+                  {"start": "1700000000", "open": "100", "high": "110", "low": "90", "close": "105", "volume": "1000"},
+                  {"start": "1700000060", "open": "106"}
+                ]}
+                """);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("contains 2 candles but only 1 could be decoded");
+    }
+
+    @Test
+    void jsonDataFileRejectsNonUniformPeriodsWhenAggregating() throws Exception {
+        Path dataFile = tempDir.resolve("irregular-coinbase.json");
+        Files.writeString(dataFile, """
+                {"candles": [
+                  {"start": "1700000000", "open": "100", "high": "110", "low": "90", "close": "105", "volume": "1000"},
+                  {"start": "1700000060", "open": "105", "high": "115", "low": "95", "close": "110", "volume": "1000"},
+                  {"start": "1700000180", "open": "110", "high": "120", "low": "100", "close": "115", "volume": "1000"}
+                ]}
+                """);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--timeframe", "PT1M");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("non-uniform periods");
+    }
+
+    @Test
+    void ruleTestRejectsNonFiniteRsiThreshold() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_NaN", "--exit-rule", "RsiThresholdRule_ABOVE_14_70");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("RsiThresholdRule threshold must be a finite value");
+    }
+
+    @Test
     void performanceExperimentWritesArtifacts() throws Exception {
         Path outputDir = tempDir.resolve("performance-experiment");
 

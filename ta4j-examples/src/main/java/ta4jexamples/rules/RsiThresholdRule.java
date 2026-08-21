@@ -40,8 +40,10 @@ public final class RsiThresholdRule extends NamedRule {
      *
      * @param closePriceIndicator close-price indicator
      * @param period              RSI period
-     * @param threshold           threshold to compare against
+     * @param threshold           threshold to compare against; must be a finite
+     *                            value
      * @param direction           comparison direction
+     * @throws IllegalArgumentException if {@code threshold} is not a finite value
      * @since 0.24.2
      */
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
@@ -118,7 +120,11 @@ public final class RsiThresholdRule extends NamedRule {
     }
 
     private static Num validateThreshold(Num threshold) {
-        return Objects.requireNonNull(threshold, "threshold");
+        Objects.requireNonNull(threshold, "threshold");
+        if (!Num.isFinite(threshold)) {
+            throw new IllegalArgumentException("RsiThresholdRule threshold must be a finite value");
+        }
+        return threshold;
     }
 
     private static ThresholdDirection parseDirection(String... params) {
@@ -142,7 +148,11 @@ public final class RsiThresholdRule extends NamedRule {
 
     private static Num parseThreshold(BarSeries series, String... params) {
         validateParams(params);
-        return series.numFactory().numOf(params[2]);
+        try {
+            return validateThreshold(series.numFactory().numOf(params[2]));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("RsiThresholdRule threshold must be a finite value", ex);
+        }
     }
 
     private static String formatThreshold(Num threshold) {
