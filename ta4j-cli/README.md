@@ -53,6 +53,33 @@ unset property or any other version keeps the scalar lane, which serves the
 pre-0.23.1 shared `SplittableRandom` stream, so accelerated values can never
 silently diverge from the values the property promises.
 
+### End-to-End Backtest Benchmarks
+
+Each provider ships an end-to-end benchmark that mirrors the same transparent
+backtest methodology on one shared synthetic workload (4,096 bars, 256 forecast
+decisions, 2,048 Monte Carlo paths, horizon 32): `MetalBacktestBenchmarkTest`,
+`OpenClBacktestBenchmarkTest`, and `CudaBacktestBenchmarkTest`. Each runs the
+backtest in `off` and `auto` modes for several trials, asserts exact trade and
+equity parity between lanes, verifies the acceleration diagnostics selected the
+native backend, and writes median plus per-trial timings as JSON under
+`.agents/benchmarks/cf-336-validation/`.
+
+Run the CUDA variant on a qualified Windows/CUDA host after building the
+classifier (`./mvnw -pl ta4j-cli -am -Pcuda-windows-x86_64 -DskipTests package`):
+
+```bash
+./mvnw -pl ta4j-cli -am -Dtest=CudaBacktestBenchmarkTest \
+  -Dgroups=benchmark,requires-cuda -Dta4j.excludedTestTags=requires-metal \
+  -Dta4j.runBenchmarks=true \
+  -Dta4j.acceleration.cuda.library=ta4j-cli/target/native/cuda/package/META-INF/native/windows-x86_64/ta4j-cuda-accelerator.dll \
+  test
+```
+
+For provider-level sweeps across decision/path/horizon shapes,
+`scripts/acceleration/benchmark-cuda-provider.ps1` drives `CudaBenchmarkTest`
+across isolated JVM processes and writes an aggregate JSON report under
+`.agents/reports/cuda/`.
+
 ## Canonical Local Input
 
 The canonical MVP input is a local OHLCV file. CSV input should include a header row and these columns in order:

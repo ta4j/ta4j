@@ -24,19 +24,21 @@ static jstring payload(JNIEnv* environment) {
 }
 
 JNIEXPORT jstring JNICALL
-Java_org_ta4j_cli_acceleration_internal_providers_JniMetalNativeBridge_nativeProbe(JNIEnv* environment, jclass,
+Java_org_ta4j_cli_acceleration_internal_providers_JniMetalNativeBridge_nativeProbe(JNIEnv* environment, jclass klass,
                                                                                    jint abi_version) {
     (void)abi_version;
+    (void)klass;
     return payload(environment);
 }
 
 JNIEXPORT jfloatArray JNICALL
 Java_org_ta4j_cli_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluate(
-        JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
+        JNIEnv* environment, jclass klass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
         jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array, jdoubleArray drifts_array,
         jdoubleArray variances_array, jdoubleArray historical_returns_array, jlongArray timings_array) {
     (void)environment;
+    (void)klass;
     (void)abi_version;
     (void)from_inclusive;
     (void)decision_count;
