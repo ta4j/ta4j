@@ -71,6 +71,7 @@ import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.rules.named.NamedRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
+import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
@@ -504,21 +505,35 @@ final class CliSupport {
 
     /**
      * Rejects a strategy batch whose total bar-strategy evaluations exceed
-     * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts. A backtest
-     * evaluates each strategy over the full series (one pass); a walk-forward
-     * repeats that for every fold, so {@code evaluationPasses} must cover the
-     * backtest plus the fold count. The product is computed exactly so a wide batch
-     * over a long series can never overflow into an accepted estimate.
+     * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts.
+     * {@code barEvaluations} is the number of series bars each strategy is
+     * evaluated over: a full backtest pass for backtests, or the full pass plus the
+     * summed test-bar counts of every fold and holdout for walk-forwards. The
+     * product is computed exactly so a wide batch over a long series can never
+     * overflow into an accepted estimate.
      */
-    static void requireBoundedStrategyBatch(List<Strategy> strategies, BarSeries series, long evaluationPasses) {
-        BigInteger work = BigInteger.valueOf(strategies.size())
-                .multiply(BigInteger.valueOf(series.getBarCount()))
-                .multiply(BigInteger.valueOf(evaluationPasses));
+    static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations) {
+        BigInteger work = BigInteger.valueOf(strategies.size()).multiply(BigInteger.valueOf(barEvaluations));
         if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
             throw new IllegalArgumentException("Strategy batch of " + strategies.size() + " strategies over "
-                    + series.getBarCount() + " bars (" + evaluationPasses + " evaluation passes) requires " + work
-                    + " bar-strategy evaluations; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
+                    + barEvaluations + " bars requires " + work + " bar-strategy evaluations; at most "
+                    + MAX_BATCH_STRATEGY_WORK + " are supported.");
         }
+    }
+
+    /**
+     * Rejects a walk-forward strategy batch whose total bar-strategy evaluations
+     * exceed {@link #MAX_BATCH_STRATEGY_WORK}. A walk-forward evaluates each
+     * strategy once over the full series (the backtest pass) and then once over
+     * each fold's and holdout's test range, so the actual split geometry is derived
+     * from {@code config} instead of estimated from the fold count.
+     */
+    static void requireBoundedWalkForwardBatch(List<Strategy> strategies, BarSeries series, WalkForwardConfig config) {
+        long foldBars = 0L;
+        for (WalkForwardSplit split : new AnchoredExpandingWalkForwardSplitter().split(series, config)) {
+            foldBars = Math.addExact(foldBars, split.testBarCount());
+        }
+        requireBoundedStrategyBatch(strategies, Math.addExact(series.getBarCount(), foldBars));
     }
 
     static void reportInvalidStrategies(List<String> invalidStrategies, PrintWriter err) {
@@ -1513,6 +1528,11 @@ final class CliSupport {
             failureMap.put("foldOrder", failure.foldOrder());
             failureMap.put("message",
                     sanitizeFailureMessage(failure.message(), reproducible, strategyJsonFile, strategiesJsonFile));
+            Throwable cause = failure.cause();
+            if (cause != null) {
+                failureMap.put("cause",
+                        sanitizeFailureMessage(cause.getMessage(), reproducible, strategyJsonFile, strategiesJsonFile));
+            }
             foldFailures.add(failureMap);
         }
         walkForward.put("failedFoldCount", foldFailures.size());
@@ -2030,6 +2050,7 @@ final class CliSupport {
     private static Strategy buildStrategyFromJsonString(String json, String sourceDescription, Integer unstableBars,
             BarSeries series) {
         try {
+            NamedStrategy.initializeRegistry("ta4jexamples.strategies");
             Strategy strategy = Strategy.fromJson(series, json);
             if (unstableBars != null) {
                 strategy.setUnstableBars(unstableBars);
@@ -2068,8 +2089,7 @@ final class CliSupport {
         try {
             json = Files.readString(Path.of(strategiesJsonFile));
         } catch (IOException ex) {
-            invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + ": Unable to read JSON array file.");
-            return List.of();
+            throw new UncheckedIOException("Unable to read strategies JSON from " + strategiesJsonFile + ".", ex);
         }
 
         JsonElement parsed;

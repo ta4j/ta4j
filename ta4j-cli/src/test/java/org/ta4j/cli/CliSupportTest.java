@@ -39,15 +39,19 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import ta4jexamples.rules.RsiThresholdRule;
+import ta4jexamples.strategies.DayOfWeekStrategy;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -342,6 +346,23 @@ class CliSupportTest {
     }
 
     @Test
+    void buildStrategyInitializesNamedStrategyRegistryBeforeJsonDeserialization() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path strategyJsonFile = tempDir.resolve("named-strategy.json");
+        Files.writeString(strategyJsonFile,
+                "{\"type\":\"NamedStrategy\",\"label\":\"DayOfWeekStrategy_MONDAY_FRIDAY\"}");
+
+        NamedStrategy.unregisterImplementation(DayOfWeekStrategy.class);
+        resetNamedStrategyRegistryForTests();
+
+        Strategy strategy = CliSupport.buildStrategy(null, strategyJsonFile.toString(), null, series);
+
+        assertThat(strategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+        NamedStrategy.initializeRegistry("ta4jexamples.strategies");
+    }
+
+    @Test
     void resolveStrategiesSupportsMixedInputsAndCollectsInvalidEntries() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
@@ -378,6 +399,17 @@ class CliSupportTest {
     }
 
     @Test
+    void resolveStrategiesPropagatesIoErrorsFromStrategiesJsonFiles() {
+        BarSeries series = syntheticSeries(10);
+        Path missingJsonFile = tempDir.resolve("missing-strategies.json");
+
+        assertThatThrownBy(
+                () -> CliSupport.resolveStrategies(null, null, List.of(), missingJsonFile.toString(), null, series))
+                .isInstanceOf(UncheckedIOException.class)
+                .hasMessage("Unable to read strategies JSON from " + missingJsonFile + ".");
+    }
+
+    @Test
     void requireBoundedStrategyBatchRejectsOverBudgetBacktests() {
         BarSeries series = syntheticSeries(10_000);
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
@@ -386,9 +418,9 @@ class CliSupportTest {
             batch.add(strategy);
         }
 
-        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(batch, series, 1))
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(batch, series.getBarCount()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Strategy batch of 10001 strategies over 10000 bars (1 evaluation passes) requires "
+                .hasMessage("Strategy batch of 10001 strategies over 10000 bars requires "
                         + "100010000 bar-strategy evaluations; at most 100000000 are supported.");
     }
 
@@ -401,22 +433,47 @@ class CliSupportTest {
             batch.add(strategy);
         }
 
-        CliSupport.requireBoundedStrategyBatch(batch, series, 1);
+        CliSupport.requireBoundedStrategyBatch(batch, series.getBarCount());
     }
 
     @Test
-    void requireBoundedStrategyBatchCountsWalkForwardFoldPasses() {
-        BarSeries series = syntheticSeries(10_000);
+    void requireBoundedWalkForwardBatchCountsFoldAndHoldoutTestBars() {
+        BarSeries series = syntheticSeries(10_100);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "1", "1", "0", "0", "9999", null,
+                null, null);
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
-        List<Strategy> batch = new ArrayList<>(5_001);
-        for (int i = 0; i < 5_001; i++) {
+        List<Strategy> batch = new ArrayList<>(4_976);
+        for (int i = 0; i < 4_976; i++) {
             batch.add(strategy);
         }
 
-        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(batch, series, 2))
+        CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForwardBatch(batch, series, config))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Strategy batch of 5001 strategies over 10000 bars (2 evaluation passes) requires "
-                        + "100020000 bar-strategy evaluations; at most 100000000 are supported.");
+                .hasMessage("Strategy batch of 4976 strategies over 20100 bars requires "
+                        + "100017600 bar-strategy evaluations; at most 100000000 are supported.");
+    }
+
+    @Test
+    void requireBoundedWalkForwardBatchBoundsActualSplitWork() {
+        BarSeries series = syntheticSeries(10_000);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0", null,
+                null, null);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        List<Strategy> within = new ArrayList<>(5_025);
+        for (int i = 0; i < 5_025; i++) {
+            within.add(strategy);
+        }
+        List<Strategy> over = new ArrayList<>(5_026);
+        for (int i = 0; i < 5_026; i++) {
+            over.add(strategy);
+        }
+
+        CliSupport.requireBoundedWalkForwardBatch(within, series, config);
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForwardBatch(over, series, config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Strategy batch of 5026 strategies over 19900 bars requires "
+                        + "100017400 bar-strategy evaluations; at most 100000000 are supported.");
     }
 
     private static BarSeries syntheticSeries(int barCount) {
@@ -425,6 +482,16 @@ class CliSupportTest {
             data.add(1d);
         }
         return new MockBarSeriesBuilder().withData(data).build();
+    }
+
+    private static void resetNamedStrategyRegistryForTests() {
+        try {
+            Method reset = NamedStrategy.class.getDeclaredMethod("resetRegistryStateForTests");
+            reset.setAccessible(true);
+            reset.invoke(null);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("NamedStrategy test reset seam unavailable", ex);
+        }
     }
 
     @Test
@@ -872,6 +939,7 @@ class CliSupportTest {
         assertThat(failures).hasSize(1);
         assertThat(failures.get(0).get("foldId")).isEqualTo("fold-1");
         assertThat(failures.get(0).get("message")).isEqualTo("rule threw during fold");
+        assertThat(failures.get(0).get("cause")).isEqualTo("boom");
     }
 
     private static final class InitializerProbe {

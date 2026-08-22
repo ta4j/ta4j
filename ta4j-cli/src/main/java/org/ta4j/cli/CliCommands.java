@@ -490,7 +490,7 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
-            CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series, 1);
+            CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series.getBarCount());
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
@@ -600,9 +600,7 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
-            long foldCount = Math.max(1L,
-                    (series.getBarCount() - config.minTrainBars() + config.stepBars() - 1L) / config.stepBars());
-            CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series, foldCount + 1);
+            CliSupport.requireBoundedWalkForwardBatch(resolvedStrategies.strategies(), series, config);
 
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
@@ -643,9 +641,13 @@ final class CliCommands {
                 rejectFoldlessGeometry(walkForwardResult, series);
                 if (allFoldsFailed(walkForwardResult)) {
                     WalkForwardRunResult.FoldFailure firstFailure = walkForwardResult.foldFailures().getFirst();
-                    failedStrategies
-                            .add(failureEntry(strategy.getName(), "all " + walkForwardResult.foldFailures().size()
-                                    + " walk-forward folds failed: " + firstFailure.message()));
+                    String summary = "all " + walkForwardResult.foldFailures().size() + " walk-forward folds failed: "
+                            + firstFailure.message();
+                    Throwable cause = firstFailure.cause();
+                    if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+                        summary += " (cause: " + cause.getMessage() + ")";
+                    }
+                    failedStrategies.add(failureEntry(strategy.getName(), summary));
                     reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
                     continue;
                 }
