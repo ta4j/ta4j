@@ -19,6 +19,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Result;
 import org.ta4j.core.acceleration.AccelerationRuntime.Status;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastSpec;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
@@ -80,7 +81,7 @@ class MetalAccelerationProviderTest {
                 return super.evaluate(request);
             }
         };
-        long bytesPerDecision = 2L * (5L * Double.BYTES + Integer.BYTES + 16L * Double.BYTES) + 52L * 64L;
+        long bytesPerDecision = 2L * (5L * Double.BYTES + Integer.BYTES + 16L * Double.BYTES) + 68L * 64L;
         System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(bytesPerDecision));
 
         Result<Forecast> result = provider(bridge).evaluate(request(forecast));
@@ -88,6 +89,19 @@ class MetalAccelerationProviderTest {
         assertThat(evaluations).hasValue(3);
         assertThat(result.values()).hasSize(3);
         assertThat(result.diagnostic().detail()).contains("chunks=3");
+    }
+
+    @Test
+    void decisionsPerChunkAccountsForNormalizationAndSortCopies() {
+        MonteCarloPriceForecastSpec spec = forecast(series(), 1).accelerationSpec();
+        long inputs = 2L * (5L * Double.BYTES + Integer.BYTES + (long) spec.lookbackBarCount() * Double.BYTES);
+        long bytesPerDecision = inputs + 68L;
+
+        IllegalArgumentException overCeiling = assertThrows(IllegalArgumentException.class,
+                () -> MetalAccelerationProvider.decisionsPerChunk(spec, inputs + 67L));
+
+        assertThat(overCeiling).hasMessage("Metal needs 412 bytes per decision, above the 411-byte provider ceiling");
+        assertThat(MetalAccelerationProvider.decisionsPerChunk(spec, bytesPerDecision)).isEqualTo(1);
     }
 
     @Test

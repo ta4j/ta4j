@@ -1205,14 +1205,25 @@ class Ta4jCliTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
         CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
-                "--strategies", "MissingStrategy_VALUE", "--strategies-json-file",
-                tempDir.resolve("missing.json").toString());
+                "--strategies", "MissingStrategy_VALUE,AlsoMissing_VALUE");
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("No valid strategies to run.")
                 .contains("--strategies MissingStrategy_VALUE")
-                .contains("--strategies-json-file " + tempDir.resolve("missing.json"))
+                .contains("--strategies AlsoMissing_VALUE")
                 .contains("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
+    }
+
+    @Test
+    void backtestReportsUnreadableStrategiesJsonFileAsIoError() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path missing = tempDir.resolve("missing.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies", "MissingStrategy_VALUE", "--strategies-json-file", missing.toString());
+
+        assertThat(result.exitCode()).isEqualTo(74);
+        assertThat(result.stderr()).contains("Unable to read strategies JSON from " + missing);
     }
 
     public static final class ExplodingOnceCriterion implements AnalysisCriterion {

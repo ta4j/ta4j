@@ -192,7 +192,7 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 - `strategy walk-forward`
   - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
-  - total evaluation work is bounded before execution: strategies × bars × (folds + 1) must not exceed 100,000,000 bar-strategy evaluations, counting the full backtest plus one pass per fold.
+  - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations, counting the full-series backtest pass plus every fold's and holdout's test-bar range.
   - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.

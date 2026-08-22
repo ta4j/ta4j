@@ -112,14 +112,17 @@ final class MetalAccelerationProvider implements ForecastAccelerationProvider {
         return Math.min(configured, deviceCeiling);
     }
 
-    private static int decisionsPerChunk(MonteCarloPriceForecastSpec spec, long ceiling) {
+    static int decisionsPerChunk(MonteCarloPriceForecastSpec spec, long ceiling) {
         // Per decision: 5 double parameters + 1 int flag + lookback history
         // doubles, staged once in Java and copied once to the device (factor
-        // 2), plus the 4-byte terminal-price sample buffer and ~48 bytes per
-        // materialized sample Num (52 bytes per iteration in total).
+        // 2), plus 68 bytes per sample while Forecast.ofSamples normalizes and
+        // sorts: the two defensive terminal-price float-array copies (8 bytes),
+        // the original DoubleNum and its normalized copy (2 x 24 bytes), and
+        // the three live reference arrays (input, normalized, sorted samples:
+        // 3 x 4 bytes).
         long inputs = Math.multiplyExact(Math.addExact(5L * Double.BYTES + Integer.BYTES,
                 Math.multiplyExact((long) spec.lookbackBarCount(), Double.BYTES)), 2L);
-        long outputs = Math.multiplyExact((long) spec.iterationCount(), 52L);
+        long outputs = Math.multiplyExact((long) spec.iterationCount(), 68L);
         long bytesPerDecision = Math.addExact(inputs, outputs);
         long capacity = ceiling / bytesPerDecision;
         long nativeCellCapacity = Integer.MAX_VALUE / (long) spec.iterationCount();
