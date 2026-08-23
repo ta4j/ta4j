@@ -985,6 +985,10 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
                 if (sourceReads.incrementAndGet() == 3) {
                     rolling.clear();
                 }
+                // A bar-backed source reads the live series after the clear,
+                // which must surface as an unavailable window rather than a
+                // propagated scan exception.
+                rolling.getBar(index);
                 return false;
             }
 
