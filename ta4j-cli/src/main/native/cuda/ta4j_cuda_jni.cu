@@ -178,21 +178,26 @@ __global__ void path_kernel(double price, double mean, double drift, double vari
  * request and every run of the same seed produces identical summaries.
  * Phase one reduces strided per-thread partials through a shared-memory
  * tree; phase two folds the per-block partials in a second fixed tree.
+ * Both phases accumulate around the first sample so the squared terms stay
+ * at dispersion scale: the naive E[x^2] - E[x]^2 form catastrophically
+ * cancels for tight dispersions at double precision.
  */
 __global__ void moments_partial_kernel(const double* samples, int count, double* partial_sums,
                                        double* partial_sqsums, int* status) {
     __shared__ double block_sum[THREADS_PER_BLOCK];
     __shared__ double block_sqsum[THREADS_PER_BLOCK];
+    double shift = samples[0];
     double local_sum = 0.0;
     double local_sqsum = 0.0;
     for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < count; index += gridDim.x * blockDim.x) {
         double value = samples[index];
         if (!isfinite(value)) {
             atomicExch(status, 2);
-            value = 0.0;
+            value = shift;
         }
-        local_sum += value;
-        local_sqsum += value * value;
+        double centered = value - shift;
+        local_sum += centered;
+        local_sqsum += centered * centered;
     }
     block_sum[threadIdx.x] = local_sum;
     block_sqsum[threadIdx.x] = local_sqsum;
@@ -211,7 +216,7 @@ __global__ void moments_partial_kernel(const double* samples, int count, double*
 }
 
 __global__ void moments_finalize_kernel(const double* partial_sums, const double* partial_sqsums, int block_count,
-                                        int count, double* summary, int* status) {
+                                        int count, const double* samples, double* summary, int* status) {
     __shared__ double sum_shared[THREADS_PER_BLOCK];
     __shared__ double sqsum_shared[THREADS_PER_BLOCK];
     double local_sum = 0.0;
@@ -231,13 +236,19 @@ __global__ void moments_finalize_kernel(const double* partial_sums, const double
         __syncthreads();
     }
     if (threadIdx.x == 0 && *status == 0) {
+        double shift = samples[0];
         double total_sum = sum_shared[0];
         double total_sqsum = sqsum_shared[0];
         double observations = static_cast<double>(count);
-        double mean = total_sum / observations;
-        double variance = (total_sqsum - total_sum * total_sum / observations) / observations;
-        if (variance <= 0.0) {
-            variance = 0.0;
+        double centered_mean = total_sum / observations;
+        double mean = shift + centered_mean;
+        double variance = total_sqsum / observations - centered_mean * centered_mean;
+        if (variance < 0.0) {
+            // Shifted accumulation keeps both terms at dispersion scale, so a
+            // strictly negative result means the reduction lost precision
+            // rather than a legitimate zero-variance forecast.
+            *status = 2;
+            return;
         }
         double standard_deviation = sqrt(variance);
         if (!isfinite(mean) || !isfinite(standard_deviation)) {
@@ -391,6 +402,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeProb
         check_cuda(cudaGetLastError(), "forecast self-test moments partial launch");
         moments_finalize_kernel<<<1, THREADS_PER_BLOCK, 0, stream.get()>>>(self_test_partials.get(),
                                                                           self_test_sqsums.get(), 1, 2,
+                                                                          self_test_samples.get(),
                                                                           self_test_summary.get(),
                                                                           self_test_status.get());
         check_cuda(cudaGetLastError(), "forecast self-test moments finalize launch");
@@ -471,6 +483,10 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
                 pinned_payload[4U + static_cast<std::size_t>(decision) * row_length] = 1.0;
             }
         }
+        int* pinned_status = nullptr;
+        check_cuda(cudaMallocHost(&pinned_status, static_cast<std::size_t>(decision_count) * sizeof(int)),
+                   "pinned status");
+        std::unique_ptr<int, decltype(&cudaFreeHost)> pinned_status_guard(pinned_status, &cudaFreeHost);
 
         int path_blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
         device_buffer<double> device_samples(sample_stride * static_cast<std::size_t>(decision_count));
@@ -482,6 +498,15 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         device_buffer<double> device_partial_sums(static_cast<std::size_t>(path_blocks));
         device_buffer<double> device_partial_sqsums(static_cast<std::size_t>(path_blocks));
         cuda_stream stream;
+
+        // Zero the summary rows up front so a decision whose kernels fail
+        // deterministically reports zeroed statistics instead of whatever the
+        // device memory happened to hold.
+        check_cuda(cudaMemsetAsync(device_summary.get(), 0,
+                                   static_cast<std::size_t>(decision_count)
+                                           * (3U + static_cast<std::size_t>(quantile_count)) * sizeof(double),
+                                   stream.get()),
+                   "summary reset");
 
         cuda_event transfer_start;
         cuda_event transfer_finish;
@@ -531,8 +556,8 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
                     device_partial_sqsums.get(), status_row);
             check_cuda(cudaGetLastError(), "moments partial kernel launch");
             moments_finalize_kernel<<<1, THREADS_PER_BLOCK, 0, stream.get()>>>(
-                    device_partial_sums.get(), device_partial_sqsums.get(), path_blocks, iteration_count, summary_row,
-                    status_row);
+                    device_partial_sums.get(), device_partial_sqsums.get(), path_blocks, iteration_count,
+                    device_samples.get() + sample_offset, summary_row, status_row);
             check_cuda(cudaGetLastError(), "moments finalize kernel launch");
             thrust::device_ptr<double> begin(device_samples.get() + sample_offset);
             thrust::sort(thrust::cuda::par.on(stream.get()), begin, begin + iteration_count);
@@ -551,7 +576,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
             std::size_t row = 4U + static_cast<std::size_t>(decision) * row_length;
             std::size_t summary_offset = static_cast<std::size_t>(decision)
                     * (3U + static_cast<std::size_t>(quantile_count));
-            check_cuda(cudaMemcpyAsync(pinned_payload + row, device_status.get() + decision, sizeof(int),
+            check_cuda(cudaMemcpyAsync(pinned_status + decision, device_status.get() + decision, sizeof(int),
                                        cudaMemcpyDeviceToHost, stream.get()), "status transfer");
             check_cuda(cudaMemcpyAsync(pinned_payload + row + 1U, device_summary.get() + summary_offset,
                                        (3U + static_cast<std::size_t>(quantile_count)) * sizeof(double),
@@ -560,7 +585,19 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         check_cuda(cudaEventRecord(output_finish.get(), stream.get()), "output finish event");
         check_cuda(cudaStreamSynchronize(stream.get()), "batch synchronization");
 
-        pinned_payload[1] = elapsed_micros(transfer_start, transfer_finish);
+        // Status codes arrive as raw 32-bit ints; widen them into the double
+        // payload after synchronization so a small status such as 2 never
+        // lands in a double slot as a denormal that Java would read as zero.
+        for (int decision = 0; decision < decision_count; ++decision) {
+            if (stable[decision] == 0) {
+                continue;
+            }
+            std::size_t row = 4U + static_cast<std::size_t>(decision) * row_length;
+            pinned_payload[row] = static_cast<double>(pinned_status[decision]);
+        }
+
+        pinned_payload[1] = elapsed_micros(transfer_start, transfer_finish)
+                + elapsed_micros(output_start, output_finish);
         pinned_payload[2] = elapsed_micros(kernel_start, kernel_finish);
         pinned_payload[3] = elapsed_micros(reduction_start, reduction_finish);
         pinned_payload[0] = std::chrono::duration<double, std::micro>(

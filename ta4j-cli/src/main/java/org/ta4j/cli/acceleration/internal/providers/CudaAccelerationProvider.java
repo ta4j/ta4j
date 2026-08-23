@@ -59,8 +59,14 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         long started = System.nanoTime();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                spec.iterationCount(), spec.quantileProbabilities().size(), false, decisions));
+        // estimatedPeakBytes counts one host snapshot plus one device staging
+        // copy of the per-decision inputs. The batched pipeline additionally
+        // uploads the full decision x lookback return matrix as its own
+        // contiguous device buffer, so account for that third copy here.
+        validateMemoryCeiling(Math.addExact(
+                ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(), spec.iterationCount(),
+                        spec.quantileProbabilities().size(), false, decisions),
+                Math.multiplyExact(Math.multiplyExact(decisions, (long) spec.lookbackBarCount()), Double.BYTES)));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "CUDA");
         CudaEvaluationResult nativeResult;
