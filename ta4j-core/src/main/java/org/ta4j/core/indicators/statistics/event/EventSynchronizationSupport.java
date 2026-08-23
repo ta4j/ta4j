@@ -268,9 +268,9 @@ final class EventSynchronizationSupport {
         for (int i = startIndex;; i++) {
             if (signal.isEvent(i)) {
                 if (size == events.length) {
-                    if ((long) size + 1 > MAX_MATCHING_CELLS) {
+                    if ((long) size + 2 > MAX_MATCHING_CELLS) {
                         // A one-sided alignment needs count + 1 cells, so a
-                        // single stream may hold up to the cap minus one events;
+                        // single stream must stay at or below the cap minus one events;
                         // fail only past that, and clamp growth to the cap
                         // because doubling would overshoot it.
                         throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
