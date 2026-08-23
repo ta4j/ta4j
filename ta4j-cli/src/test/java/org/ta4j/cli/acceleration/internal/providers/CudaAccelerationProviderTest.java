@@ -113,8 +113,8 @@ class CudaAccelerationProviderTest {
         MonteCarloPriceForecastIndicator forecast = forecast(doubleSeries());
         assertThat(provider(new FakeBridge(CudaAccelerationProviderTest::constantResult))
                 .predictedSpeedup(request(forecast))).isZero();
-        assertThat(CudaCrossoverModel.predictedSpeedup(qualifiedProbe(), 16_777_216L)).isEqualTo(0.25d);
-        assertThat(CudaCrossoverModel.predictedSpeedup(qualifiedProbe(), 16_777_215L)).isZero();
+        assertThat(CudaCrossoverModel.predictedSpeedup(qualifiedProbe(), 262_144L)).isEqualTo(0.25d);
+        assertThat(CudaCrossoverModel.predictedSpeedup(qualifiedProbe(), 262_143L)).isZero();
         assertThat(CudaCrossoverModel.predictedSpeedup(new CudaProbeResult(true, "RTX 4090", 8, 9,
                 16L * 1024 * 1024 * 1024, 24L * 1024 * 1024 * 1024, 12_800, 12_800, "self-test passed"),
                 Long.MAX_VALUE)).isZero();

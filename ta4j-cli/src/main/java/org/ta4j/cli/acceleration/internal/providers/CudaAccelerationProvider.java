@@ -60,7 +60,7 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
         validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                spec.iterationCount(), spec.quantileProbabilities().size(), false));
+                spec.iterationCount(), spec.quantileProbabilities().size(), false, decisions));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "CUDA");
         CudaEvaluationResult nativeResult;
@@ -97,10 +97,11 @@ final class CudaCrossoverModel {
     /**
      * Minimum total Monte Carlo samples before the CUDA lane is predicted to win.
      * Windows x86_64 qualification on an RTX 5090 (compute capability 12.0, CUDA
-     * 13.3) measured scalar wins below this workload and CUDA wins up to
-     * {@code 2.28x} above it.
+     * 13.3) measured scalar parity below this workload and CUDA wins from
+     * {@code 3.4x} up to {@code 68.9x} at or above it once decision batches execute
+     * as a single enqueued pipeline.
      */
-    private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
+    private static final long QUALIFIED_MINIMUM_WORK = 262_144L;
 
     private CudaCrossoverModel() {
     }
