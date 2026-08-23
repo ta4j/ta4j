@@ -291,11 +291,14 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 // snapshot as the cache reconciliation: a rolling series that
                 // drops its head between the outer availability check and this
                 // snapshot must not scan (or report as available) a window that
-                // now reaches below the retained begin index. The max with the
+                // now reaches below the retained begin index or below the
+                // sources' retained-head warm-up boundary. The max with the
                 // series' virtual begin index covers series that publish a
                 // different begin domain than their retained-bar snapshots.
                 int beginIndex = Math.max(snapshot.removedThroughIndex() + 1, series.getBeginIndex());
-                if (windowStart < beginIndex) {
+                long snapshotStableBoundary = (long) beginIndex
+                        + Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
+                if (windowStart < beginIndex || windowStart < snapshotStableBoundary) {
                     return undefinedResult(windowStart, index);
                 }
                 predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
