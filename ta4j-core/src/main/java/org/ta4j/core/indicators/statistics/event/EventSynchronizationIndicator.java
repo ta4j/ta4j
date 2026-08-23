@@ -132,6 +132,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * @throws IllegalArgumentException if the indicators use different series,
      *                                  {@code barCount < 1}, or
      *                                  {@code toleranceBars < 0}
+     * @since 0.24.2
      */
     public EventSynchronizationIndicator(Indicator<Boolean> predicted, Indicator<Boolean> reference, int barCount,
             int toleranceBars) {
@@ -152,6 +153,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * @throws IllegalArgumentException if the indicators use different series,
      *                                  {@code barCount < 1}, or a tolerance is
      *                                  negative
+     * @since 0.24.2
      */
     public EventSynchronizationIndicator(Indicator<Boolean> predicted, Indicator<Boolean> reference, int barCount,
             int maxLeadBars, int maxLagBars) {
@@ -193,10 +195,15 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return the first index at which both sources are stable
+     * @return the first absolute index at which both sources are stable. Source
+     *         instability counts bars from the series' retained head (the
+     *         anchoring convention shared across rolling statistics), so the
+     *         boundary sits at {@code beginIndex + unstableBars}; computed in
+     *         long because unstable counts saturate near {@link Integer#MAX_VALUE}.
      */
     private long firstStableIndex() {
-        return Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
+        return (long) getBarSeries().getBeginIndex()
+                + Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
     }
 
     /**
@@ -258,15 +265,18 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * @since 0.24.2
      */
     public Result getResult(int index) {
-        int windowStart = index - barCount + 1;
-        // Availability is decided on the window's first bar against the sources'
-        // unstable boundary computed in long: when that boundary overflows the
-        // int domain, no representable index has a complete stable window.
-        if (windowStart < firstStableIndex() || windowStart < getBarSeries().getBeginIndex()
-                || index > getBarSeries().getEndIndex()) {
-            return undefinedResult(windowStart, index);
-        }
         BarSeries series = getBarSeries();
+        long windowStartIndex = (long) index - barCount + 1L;
+        // Availability is decided on the window's first bar against the sources'
+        // anchored unstable boundary, all in long: far-out-of-domain requests
+        // (for example Integer.MIN_VALUE) must wrap neither the window start into
+        // a bogus in-range index nor the comparison itself before the gate
+        // rejects them.
+        if (index < series.getBeginIndex() || index > series.getEndIndex()
+                || windowStartIndex < firstStableIndex()) {
+            return undefinedResult((int) Math.max(windowStartIndex, Integer.MIN_VALUE), index);
+        }
+        int windowStart = (int) windowStartIndex;
         int[] predictedWindowEvents;
         int[] referenceWindowEvents;
         synchronized (cacheLock) {
@@ -598,7 +608,12 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     }
                     return;
                 }
-                int scanFrom = Math.max(Math.max(scannedThrough + 1, beginIndex), signal.getCountOfUnstableBars());
+                // Instability counts bars from the series' retained head, so the
+                // source's own warm-up boundary sits at beginIndex + unstable
+                // (saturated in long): scanning below it would read the source's
+                // unavailable lookback or cache its deterministic warm-up values.
+                int scanFrom = (int) Math.max(Math.max(scannedThrough + 1L, beginIndex),
+                        Math.min((long) beginIndex + signal.getCountOfUnstableBars(), Integer.MAX_VALUE));
                 int frontier = endIndex - windowSize + 1;
                 long evictionThreshold = Math.min(Math.max((long) windowSize * 2, 16L),
                         EventSynchronizationSupport.MAX_MATCHING_CELLS / 2);

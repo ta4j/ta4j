@@ -864,4 +864,46 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(0, result.matches().get(0).offsetBars());
         assertNumEquals(1.0, result.f1Score());
     }
+    @Test
+    public void farOutOfRangeIndexesReportUnavailableWithoutWrapping() {
+        BarSeries bars = series();
+        EventSynchronizationIndicator indicator = indicator(events(bars, 0, 5), events(bars, 0, 7), 4, 1, 1);
+
+        // Integer.MIN_VALUE used to wrap the window start into a large positive
+        // index that passed every availability check and threw from the event
+        // slice instead of reporting an unavailable window.
+        assertFalse(indicator.getResult(Integer.MIN_VALUE).windowAvailable());
+        assertFalse(indicator.getResult(-1).windowAvailable());
+        assertFalse(indicator.getResult(bars.getEndIndex() + 1).windowAvailable());
+    }
+
+    @Test
+    public void rollingSeriesScansSourcesOnlyAfterRetainedHeadWarmUp() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(6)
+                .build();
+        Indicator<Boolean> reference = events(rolling, 0);
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index < rolling.getBeginIndex() + 2) {
+                    throw new IllegalStateException("lookback below the retained-head warm-up");
+                }
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 3, 0, 0);
+
+        // The scan must start at beginIndex + unstableBars = 8; treating the
+        // unstable count as an absolute index would read bars 6-7 and throw.
+        assertTrue(indicator.getResult(11).windowAvailable());
+        assertFalse(indicator.getResult(9).windowAvailable());
+    }
 }
