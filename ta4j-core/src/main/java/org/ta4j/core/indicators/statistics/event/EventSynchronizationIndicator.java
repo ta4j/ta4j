@@ -306,8 +306,22 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     // scanning would then read out-of-domain indexes.
                     return undefinedResult(windowStart, index);
                 }
-                predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
-                referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
+                                                try {
+                    predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
+                    referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
+                } catch (RuntimeException scanFailure) {
+                    // A bar-backed signal source can observe the series mid-
+                    // mutation (for example a concurrent clear()) and throw
+                    // before the post-scan snapshot comparison below. Retry the
+                    // whole iteration when the series actually moved; rethrow
+                    // otherwise, because a failure on an unchanged revision is
+                    // a genuine defect rather than a lost race.
+                                        BarSeriesChangeSnapshot afterFailure = series.getBarSeriesChangeSnapshot(observedRevision);
+                                        if (afterFailure.revision() == snapshot.revision()
+                            && afterFailure.removedThroughIndex() == snapshot.removedThroughIndex()) {
+                        throw scanFailure;
+                    }
+                }
                 BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(observedRevision);
                 if (after.revision() == snapshot.revision()
                         && after.removedThroughIndex() == snapshot.removedThroughIndex()) {
