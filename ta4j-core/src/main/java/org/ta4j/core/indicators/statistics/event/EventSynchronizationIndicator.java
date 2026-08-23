@@ -306,7 +306,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     // scanning would then read out-of-domain indexes.
                     return undefinedResult(windowStart, index);
                 }
-                                                try {
+                try {
                     predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
                     referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
                 } catch (RuntimeException scanFailure) {
@@ -316,8 +316,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     // whole iteration when the series actually moved; rethrow
                     // otherwise, because a failure on an unchanged revision is
                     // a genuine defect rather than a lost race.
-                                        BarSeriesChangeSnapshot afterFailure = series.getBarSeriesChangeSnapshot(observedRevision);
-                                        if (afterFailure.revision() == snapshot.revision()
+                    BarSeriesChangeSnapshot afterFailure = series.getBarSeriesChangeSnapshot(observedRevision);
+                    if (afterFailure.revision() == snapshot.revision()
                             && afterFailure.removedThroughIndex() == snapshot.removedThroughIndex()) {
                         throw scanFailure;
                     }
