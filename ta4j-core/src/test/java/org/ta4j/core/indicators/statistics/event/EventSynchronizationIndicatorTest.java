@@ -1059,7 +1059,10 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void boundedRetriesReportUnavailableWhenTheSeriesMutatesOnEveryRead() {
-        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(8).build();
+        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
         AtomicInteger reads = new AtomicInteger();
         Indicator<Boolean> mutating = new AbstractIndicator<Boolean>(rolling) {
             @Override
@@ -1081,6 +1084,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
         EventSynchronizationIndicator indicator = indicator(mutating, events(rolling, 0), 4, 0, 0);
         assertFalse(indicator.getResult(11).windowAvailable());
+        // The window must actually have been scanned (the stub mutated on
+        // every read); a vacuous outer-domain rejection would leave reads 0.
+        assertTrue(reads.get() > 2);
     }
 
 }
