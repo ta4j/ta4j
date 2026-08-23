@@ -34,6 +34,7 @@ public final class WyckoffEventDetector {
     private final Num retestTolerance;
     private final transient Map<Integer, Num> lowestLowCache;
     private final transient Map<Integer, Num> highestHighCache;
+    private final transient RevisionBoundCache revisionBoundCache;
 
     /**
      * Creates a detector for the provided series.
@@ -54,6 +55,7 @@ public final class WyckoffEventDetector {
         }
         this.lowestLowCache = new ConcurrentHashMap<>();
         this.highestHighCache = new ConcurrentHashMap<>();
+        this.revisionBoundCache = new RevisionBoundCache(series);
     }
 
     /**
@@ -69,6 +71,7 @@ public final class WyckoffEventDetector {
     public EnumSet<WyckoffEvent> detect(int index, WyckoffStructureTracker.StructureSnapshot structure,
             WyckoffVolumeProfile.VolumeSnapshot volume, WyckoffPhase previousPhase) {
         final EnumSet<WyckoffEvent> events = EnumSet.noneOf(WyckoffEvent.class);
+        revisionBoundCache.reconcile(lowestLowCache, highestHighCache);
         if (structure == null || volume == null) {
             return events;
         }

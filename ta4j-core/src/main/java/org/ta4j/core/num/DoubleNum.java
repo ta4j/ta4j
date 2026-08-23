@@ -294,7 +294,7 @@ public class DoubleNum implements Num {
             return false;
         }
 
-        return Math.abs(this.delegate - doubleNumObj.delegate) < EPS;
+        return Double.doubleToLongBits(this.delegate) == Double.doubleToLongBits(doubleNumObj.delegate);
     }
 
     @Override

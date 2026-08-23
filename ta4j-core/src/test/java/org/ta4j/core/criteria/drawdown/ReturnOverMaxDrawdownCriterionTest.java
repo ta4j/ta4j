@@ -93,8 +93,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var resultMultiplicative = ratioCriterionMultiplicative.calculate(series, position);
         // Rate of return = -0.05 (0-based), drawdown = 0.05
         // Result = -0.05 / 0.05 = -1.0
-        // For MULTIPLICATIVE, return the ratio as-is (ratios can be negative)
-        assertNumEquals(-1.0, resultMultiplicative);
+        // MULTIPLICATIVE is a 1-based growth factor: 1 + (-1.0) = 0.0
+        assertNumEquals(0.0, resultMultiplicative);
 
         var ratioCriterionPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
         var resultPercentage = ratioCriterionPercentage.calculate(series, position);
@@ -267,8 +267,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
-        // For negative ratio: return as-is = -1.0
-        assertNumEquals(-1.0, multiplicativeResult);
+        // For negative ratio: 1 + (-1.0) = 0.0 (MULTIPLICATIVE is 1-based)
+        assertNumEquals(0.0, multiplicativeResult);
 
         var percentageCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
         var percentageResult = percentageCriterion.calculate(series, position);
@@ -312,12 +312,12 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         // If using 1-based return (buggy): 0.95 / 0.05 = 19.0
         // If using 0-based return (correct): -0.05 / 0.05 = -1.0
-        // For MULTIPLICATIVE with negative ratio: return as-is = -1.0
+        // MULTIPLICATIVE with negative ratio: 1 + (-1.0) = 0.0
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var result = multiplicativeCriterion.calculate(series, position);
-        // Should be -1.0, not 19.0 (which would be the buggy result)
-        assertNumEquals(-1.0, result);
+        // Should be 0.0 (1 + -1.0), not 19.0 (which would be the buggy result)
+        assertNumEquals(0.0, result);
         // Explicitly verify it's NOT the buggy value
         assertFalse(result.isEqual(numFactory.numOf(19.0)));
     }
@@ -451,8 +451,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
-        // For negative ratio: return as-is = -1.0
-        assertNumEquals(-1.0, multiplicativeResult);
+        // For negative ratio: 1 + (-1.0) = 0.0 (MULTIPLICATIVE is 1-based)
+        assertNumEquals(0.0, multiplicativeResult);
 
         var percentageCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
         var percentageResult = percentageCriterion.calculate(series, position);
@@ -486,6 +486,38 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // Ratio * 100
         var expectedPercentage = decimalResult.multipliedBy(numFactory.numOf(100));
         assertNumEquals(expectedPercentage, percentageResult);
+    }
+
+    @Test
+    public void testNegativeRatioMultiplicativeUsesSharedConversion() {
+        // Position: buy at 100, sell at 90 (10% loss), drawdown = 10%
+        // Rate of return = (90/100) - 1 = -0.10, drawdown = 0.10, ratio = -1.0
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 95, 100).build();
+        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
+
+        var rawRatio = numFactory.numOf(-0.10).dividedBy(numFactory.numOf(0.10));
+        var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
+
+        // MULTIPLICATIVE is a 1-based growth factor: 1 + ratio, also for negative
+        // ratios, and matches the shared conversion used by other criteria
+        assertNumEquals(numFactory.one().plus(rawRatio), multiplicativeResult);
+        assertNumEquals(ReturnRepresentation.MULTIPLICATIVE.toRepresentationFromRateOfReturn(rawRatio),
+                multiplicativeResult);
+
+        // PERCENTAGE, DECIMAL, and LOG keep their existing mappings
+        var decimalResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series,
+                position);
+        assertNumEquals(ReturnRepresentation.DECIMAL.toRepresentationFromRateOfReturn(rawRatio), decimalResult);
+        assertNumEquals(-1.0, decimalResult);
+
+        var percentageResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE).calculate(series,
+                position);
+        assertNumEquals(ReturnRepresentation.PERCENTAGE.toRepresentationFromRateOfReturn(rawRatio), percentageResult);
+        assertNumEquals(-100.0, percentageResult);
+
+        var logResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.LOG).calculate(series, position);
+        assertNumEquals(ReturnRepresentation.LOG.toRepresentationFromRateOfReturn(rawRatio), logResult);
     }
 
 }

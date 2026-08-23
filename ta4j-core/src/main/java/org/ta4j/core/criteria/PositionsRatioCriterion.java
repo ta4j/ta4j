@@ -120,7 +120,11 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return numberOfPositionsCriterion.calculate(series, position);
+        Num count = numberOfPositionsCriterion.calculate(series, position);
+        // The per-position count is the rate of return over the single-position
+        // denominator; convert it so position-level and record-level results are
+        // consistent with the configured representation.
+        return returnRepresentation.toRepresentationFromRateOfReturn(count);
     }
 
     @Override
