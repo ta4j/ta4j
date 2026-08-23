@@ -95,10 +95,12 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
 final class CudaCrossoverModel {
 
     /**
-     * Intentionally disables AUTO until Linux x86_64 hardware qualification
-     * completes.
+     * Minimum total Monte Carlo samples before the CUDA lane is predicted to win.
+     * Windows x86_64 qualification on an RTX 5090 (compute capability 12.0, CUDA
+     * 13.3) measured scalar wins below this workload and CUDA wins up to
+     * {@code 2.28x} above it.
      */
-    private static final long QUALIFIED_MINIMUM_WORK = Long.MAX_VALUE;
+    private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
 
     private CudaCrossoverModel() {
     }

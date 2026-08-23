@@ -153,8 +153,11 @@ class MetalAccelerationProviderTest {
 
         assertThat(provider.predictedSpeedup(request(forecast))).isZero();
         assertThat(MetalCrossoverModel.predictedSpeedup(qualifiedProbe(), 16_777_216L)).isEqualTo(0.25d);
-        assertThat(MetalCrossoverModel.predictedSpeedup(new MetalProbeResult(true, "Other GPU", Long.MAX_VALUE, ""),
-                Long.MAX_VALUE)).isZero();
+        assertThat(MetalCrossoverModel
+                .predictedSpeedup(new MetalProbeResult(true, "Apple M1", 16L * 1024 * 1024 * 1024, ""), 16_777_216L))
+                .isEqualTo(0.25d);
+        assertThat(MetalCrossoverModel.predictedSpeedup(
+                new MetalProbeResult(true, "AMD Radeon Pro W6800X", Long.MAX_VALUE, ""), Long.MAX_VALUE)).isZero();
     }
 
     @Test

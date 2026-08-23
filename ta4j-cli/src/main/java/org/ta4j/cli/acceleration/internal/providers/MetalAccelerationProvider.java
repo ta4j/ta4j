@@ -143,8 +143,18 @@ final class MetalCrossoverModel {
     private MetalCrossoverModel() {
     }
 
+    /**
+     * Qualifies Apple unified-memory GPUs by family rather than a specific SKU.
+     * Speedup evidence was recorded on an M5 Max; other Apple GPUs share the same
+     * unified-memory architecture and remain subject to the same workload
+     * threshold.
+     *
+     * @param probe probe result carrying the Metal device name
+     * @param work  total Monte Carlo samples in the request
+     * @return predicted speedup fraction, or {@code 0d} when unqualified
+     */
     static double predictedSpeedup(MetalProbeResult probe, long work) {
-        if (!probe.deviceName().contains("M5 Max") || work < QUALIFIED_MINIMUM_WORK) {
+        if (!probe.deviceName().startsWith("Apple") || work < QUALIFIED_MINIMUM_WORK) {
             return 0d;
         }
         return 0.25d;
