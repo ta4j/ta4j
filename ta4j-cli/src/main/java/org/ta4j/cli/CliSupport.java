@@ -126,6 +126,8 @@ final class CliSupport {
 
     static final int SCHEMA_VERSION = 1;
 
+    private static final int MAX_SYMBOLIC_LINK_HOPS = 64;
+
     static final List<String> DEFAULT_BACKTEST_CRITERIA = List.of(NetProfitCriterion.class.getName(),
             ReturnOverMaxDrawdownCriterion.class.getName(), TotalFeesCriterion.class.getName());
     static final List<String> DEFAULT_WALK_FORWARD_CRITERIA = List.of(GrossReturnCriterion.class.getName());
@@ -726,21 +728,31 @@ final class CliSupport {
     }
 
     private static Path resolveAliasedTarget(Path path) {
-        Path existing = path;
-        // A dangling symlink leaf still redirects a future write to its target
-        // path, so resolve link leaves even when the target does not exist yet.
-        while (existing != null && !Files.exists(existing) && Files.isSymbolicLink(existing)) {
-            Path target;
-            try {
-                target = Files.readSymbolicLink(existing);
-            } catch (IOException ex) {
-                throw new UncheckedIOException("Could not resolve output artifact path " + path + ".", ex);
-            }
-            Path parent = existing.getParent();
-            existing = target.isAbsolute() || parent == null ? target : parent.resolve(target);
-        }
         ArrayDeque<Path> missing = new ArrayDeque<>();
+        int linkHops = 0;
+        Path existing = path;
+        // A dangling symlink redirects a future write to its target, at any
+        // depth: the leaf itself or a missing ancestor directory. Follow every
+        // symbolic link encountered while ascending instead of recording its
+        // name as an ordinary missing component, which would compare the alias
+        // and the target as unrelated paths and let one artifact overwrite the
+        // other once the missing directories are created.
         while (existing != null && !Files.exists(existing)) {
+            if (Files.isSymbolicLink(existing)) {
+                Path target;
+                try {
+                    target = Files.readSymbolicLink(existing);
+                } catch (IOException ex) {
+                    throw new UncheckedIOException("Could not resolve output artifact path " + path + ".", ex);
+                }
+                if (++linkHops > MAX_SYMBOLIC_LINK_HOPS) {
+                    throw new UncheckedIOException("Symbolic link chain too deep at output artifact path " + path + ".",
+                            null);
+                }
+                Path parent = existing.getParent();
+                existing = target.isAbsolute() || parent == null ? target : parent.resolve(target);
+                continue;
+            }
             Path name = existing.getFileName();
             if (name == null) {
                 return path;

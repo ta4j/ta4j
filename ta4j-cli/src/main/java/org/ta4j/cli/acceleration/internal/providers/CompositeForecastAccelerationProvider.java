@@ -82,6 +82,7 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
     public Result<Forecast> evaluate(Request<Forecast> request) {
         Result<Forecast> lastResult = null;
         NativeProviderException lastFailure = null;
+        IllegalArgumentException lastRejection = null;
         for (ForecastAccelerationProvider member : members) {
             if (!member.capability().available()) {
                 continue;
@@ -116,6 +117,13 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
                 // last failure still propagates so the service quarantines the
                 // composite under its own provider id.
                 lastFailure = exception;
+            } catch (IllegalArgumentException exception) {
+                // A provider-local rejection such as a memory-ceiling decline
+                // only disqualifies this member: a sibling may target different
+                // device memory and still run. Keep the original exception so
+                // an all-members-rejected request surfaces as the service's
+                // non-quarantining skip instead of a native failure.
+                lastRejection = exception;
             }
         }
         if (lastFailure != null) {
@@ -124,12 +132,14 @@ final class CompositeForecastAccelerationProvider implements ForecastAcceleratio
             // accepting a member that merely declined to run.
             throw lastFailure;
         }
+        if (lastRejection != null) {
+            throw lastRejection;
+        }
         if (lastResult != null) {
-            // Non-executed results must still carry the composite's own
-            // identity: the service keys diagnostics and quarantine on the
-            // selection provider id, and advertising "opencl" from capability()
-            // while results carry a member's id ("cuda") re-introduces the
-            // identity split this composite exists to prevent.
+            // Return the member-attributed non-executed result unchanged:
+            // advertising "opencl" from capability() while results carry a
+            // member's id ("cuda") re-introduces the identity split this
+            // composite exists to prevent.
             return underOwnIdentity(lastResult);
         }
         ForecastAccelerationProvider first = members.get(0);

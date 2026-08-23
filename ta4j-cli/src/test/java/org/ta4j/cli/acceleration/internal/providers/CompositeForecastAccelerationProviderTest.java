@@ -49,6 +49,41 @@ class CompositeForecastAccelerationProviderTest {
     }
 
     @Test
+    void capacityRejectionFallsThroughToTheNextAvailableMember() {
+        AtomicInteger cudaAttempts = new AtomicInteger();
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> {
+            cudaAttempts.incrementAndGet();
+            throw new IllegalArgumentException(
+                    "CUDA forecast requires 17179869184 bytes, above the 8589934592-byte provider ceiling");
+        });
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d,
+                CompositeForecastAccelerationProviderTest::executedResult);
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        Result<Forecast> result = composite.evaluate(request());
+
+        assertThat(result.status()).isEqualTo(Status.EXECUTED);
+        assertThat(result.backend()).isEqualTo(Backend.OPENCL);
+        assertThat(cudaAttempts).hasValue(1);
+    }
+
+    @Test
+    void allMembersRejectingCapacityStaysANonQuarantiningRejection() {
+        ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> {
+            throw new IllegalArgumentException("CUDA forecast requires more memory than the provider ceiling allows");
+        });
+        ForecastAccelerationProvider opencl = member("opencl", Backend.OPENCL, 0.25d, request -> {
+            throw new IllegalArgumentException("OpenCL forecast requires more memory than the provider ceiling allows");
+        });
+        CompositeForecastAccelerationProvider composite = new CompositeForecastAccelerationProvider(
+                List.of(() -> cuda, () -> opencl));
+
+        assertThatThrownBy(() -> composite.evaluate(request())).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("provider ceiling");
+    }
+
+    @Test
     void allMembersFailingStillPropagatesSoTheServiceCanQuarantine() {
         ForecastAccelerationProvider cuda = member("cuda", Backend.CUDA, 0.25d, request -> {
             throw new NativeProviderException("CUDA", new IllegalStateException("device lost"));

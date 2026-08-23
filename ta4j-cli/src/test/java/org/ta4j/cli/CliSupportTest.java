@@ -66,6 +66,7 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Unit tests for {@link CliSupport}.
@@ -940,6 +941,24 @@ class CliSupportTest {
         assertThat(failures.get(0).get("foldId")).isEqualTo("fold-1");
         assertThat(failures.get(0).get("message")).isEqualTo("rule threw during fold");
         assertThat(failures.get(0).get("cause")).isEqualTo("boom");
+    }
+
+    @Test
+    void sameFileDetectsAliasesThroughDanglingSymbolicLinkAncestors(@TempDir Path tempDir) throws IOException {
+        boolean linkCreated = true;
+        Path target = tempDir.resolve("missing-target");
+        Path alias = tempDir.resolve("alias-dir");
+        try {
+            Files.createSymbolicLink(alias, target);
+        } catch (UnsupportedOperationException | IOException unsupported) {
+            // Symbolic links require privileges on some platforms (Windows
+            // without developer mode); the ancestor-following logic itself is
+            // platform independent and is exercised wherever links are legal.
+            linkCreated = false;
+        }
+        assumeTrue(linkCreated, "symbolic links unavailable on this platform");
+
+        assertThat(CliSupport.sameFile(alias.resolve("result.json"), target.resolve("result.json"))).isTrue();
     }
 
     private static final class InitializerProbe {
