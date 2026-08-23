@@ -60,6 +60,20 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         return investedIntervals[index];
     }
 
+    /**
+     * Returns the precomputed invested flag directly, bypassing the indicator cache
+     * ring. The flag array is an immutable snapshot computed from the trading
+     * record at construction time, so no cache synchronization is needed for
+     * in-range reads; all other indexes keep the inherited cached-path behavior.
+     */
+    @Override
+    public Boolean getValue(int index) {
+        if (index >= 0 && index < investedIntervals.length) {
+            return investedIntervals[index];
+        }
+        return super.getValue(index);
+    }
+
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         BarSeries series = getBarSeries();
         int size = Math.max(series.getEndIndex() + 1, 0);

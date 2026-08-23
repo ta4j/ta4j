@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -66,6 +67,11 @@ public class Returns implements PerformanceIndicator {
 
     /**
      * Constructor.
+     *
+     * <p>
+     * Takes a single defensive snapshot of the given bar series so the calculated
+     * values stay isolated from later mutations of the caller's series;
+     * {@link #getBarSeries()} returns that same snapshot for every call.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -263,9 +269,17 @@ public class Returns implements PerformanceIndicator {
         return 0;
     }
 
+    /**
+     * Returns the defensive series snapshot taken at construction time. The same
+     * instance is returned for every call; later mutations of the original series
+     * are not visible through it.
+     */
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the single "
+            + "construction-time defensive snapshot; the indicator is the sole owner of this instance and the "
+            + "stable-identity contract is documented on this class and pinned by tests")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     /**
@@ -405,4 +419,5 @@ public class Returns implements PerformanceIndicator {
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }
+
 }

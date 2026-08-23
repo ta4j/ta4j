@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -50,19 +51,17 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsDefensiveSnapshot() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
         int originalSize = cashFlow.getSize();
-        BarSeries firstReturnedSeries = cashFlow.getBarSeries();
 
         appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
 
         assertEquals(originalSize, cashFlow.getSize());
         assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
         assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
-        assertNotSame(firstReturnedSeries, cashFlow.getBarSeries());
+        assertSame(cashFlow.getBarSeries(), cashFlow.getBarSeries());
     }
 
     @Test
@@ -86,6 +85,34 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));
         assertNumEquals(3, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void cashFlowTwoPositionsWithEmptyHeldRangeOnSecondPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2, cashFlow.getValue(1));
+        assertNumEquals(3, cashFlow.getValue(2));
+        assertNumEquals(6, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowRealizedTwoPositionsWithAdjacentExits() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.REALIZED);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(3, cashFlow.getValue(2));
+        assertNumEquals(6, cashFlow.getValue(3));
     }
 
     @Test

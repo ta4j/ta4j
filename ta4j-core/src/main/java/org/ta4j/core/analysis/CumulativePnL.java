@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +34,10 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final EquityCurveMode equityCurveMode;
 
     /**
-     * Constructor for a trading record with a specified final index.
+     * Constructor for a trading record with a specified final index. Takes a single
+     * defensive snapshot of the given bar series so the calculated values stay
+     * isolated from later mutations of the caller's series; {@link #getBarSeries()}
+     * returns that same snapshot for every call.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -154,6 +158,108 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
+     * Calculates the cumulative PnL for all positions of the trading record in a
+     * single forward sweep over the series.
+     *
+     * <p>
+     * Positions are processed in analysis order while a running sum
+     * {@code realized} carries each closed position's exit delta forward. This
+     * reproduces, per bar index, the exact addition sequence of per-position
+     * processing (held-bar deltas followed by exit deltas), but avoids re-adding
+     * the flat tail after every position: complexity is O(series + held bars)
+     * instead of O(positions &times; series).
+     *
+     * @param tradingRecord        the trading record
+     * @param finalIndex           index up until values of open positions are
+     *                             considered
+     * @param openPositionHandling how to handle open positions
+     */
+    @Override
+    public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
+        Objects.requireNonNull(tradingRecord);
+        Objects.requireNonNull(openPositionHandling);
+        if (values.isEmpty()) {
+            return;
+        }
+        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
+                ? OpenPositionHandling.IGNORE
+                : openPositionHandling;
+        List<Position> positions = AnalysisPositionSupport.positionsForAnalysis(tradingRecord, finalIndex,
+                effectiveOpenPositionHandling, equityCurveMode);
+        int seriesBegin = barSeries.getBeginIndex();
+        int seriesEnd = barSeries.getEndIndex();
+        NumFactory numFactory = barSeries.numFactory();
+        Num realized = numFactory.zero();
+        int cursor = Math.max(seriesBegin, 0);
+
+        for (int p = 0; p < positions.size(); p++) {
+            Position position = positions.get(p);
+            Trade entry = position == null ? null : position.getEntry();
+            if (entry == null) {
+                continue;
+            }
+            int entryIndex = entry.getIndex();
+            if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+                continue;
+            }
+            int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
+            if (endIndex < seriesBegin) {
+                continue;
+            }
+            boolean isLongTrade = entry.isBuy();
+            Num netEntryPrice = entry.getNetPrice();
+
+            if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+                Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+                int start = Math.max(entryIndex + 1, seriesBegin + 1);
+                for (int i = start; i < endIndex; i++) {
+                    cursor = fillRange(cursor, i, realized);
+                    Num close = barSeries.getBar(i).getClosePrice();
+                    Num netIntermediate = addCost(close, averageCostPerPeriod, isLongTrade);
+                    Num delta = isLongTrade ? netIntermediate.minus(netEntryPrice)
+                            : netEntryPrice.minus(netIntermediate);
+                    addValue(i, delta);
+                }
+                Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
+                Num netExit = addCost(exitRaw, averageCostPerPeriod, isLongTrade);
+                Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+                cursor = fillRange(cursor, endIndex, realized);
+                addValue(endIndex, deltaExit);
+                realized = realized.plus(deltaExit);
+                cursor = endIndex + 1;
+                continue;
+            }
+
+            Trade exit = position.getExit();
+            if (exit != null && endIndex >= exit.getIndex()) {
+                Num holdingCost = position.getHoldingCost(endIndex);
+                Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+                Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+                cursor = fillRange(cursor, exit.getIndex(), realized);
+                addValue(exit.getIndex(), deltaExit);
+                realized = realized.plus(deltaExit);
+                cursor = exit.getIndex() + 1;
+            }
+        }
+        fillRange(cursor, seriesEnd, realized);
+    }
+
+    /**
+     * Replaces the inclusive range {@code [from, to]} with {@code value} and
+     * returns the next unmaterialized index ({@code max(from, to) + 1}).
+     */
+    private int fillRange(int from, int to, Num value) {
+        if (from > to || to < 0 || from >= values.size()) {
+            return from;
+        }
+        int end = Math.min(to, values.size() - 1);
+        for (int i = Math.max(from, 0); i <= end; i++) {
+            values.set(i, value);
+        }
+        return to + 1;
+    }
+
+    /**
      * Calculates the cumulative PnL for a single position.
      *
      * @param position   the position
@@ -227,13 +333,27 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the defensive series snapshot taken at construction time. The same
+     * instance is returned for every call; later mutations of the original series
+     * are not visible through it.
      *
      * @since 0.19
      */
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the single "
+            + "construction-time defensive snapshot; the indicator is the sole owner of this instance and the "
+            + "stable-identity contract is documented on this class and pinned by tests")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(series.getBarData())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 
     /**
@@ -274,15 +394,6 @@ public final class CumulativePnL implements PerformanceIndicator {
         for (int i = start; i <= end; i++) {
             values.set(i, values.get(i).plus(delta));
         }
-    }
-
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries);
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
 }

@@ -72,6 +72,10 @@ public class BaseTradingRecord implements TradingRecord {
     private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
+    private transient List<Position> closedPositionsCache;
+    private transient long closedPositionsCacheVersion;
+    private transient List<Position> openPositionsCache;
+    private transient long openPositionsCacheVersion;
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
@@ -583,6 +587,8 @@ public class BaseTradingRecord implements TradingRecord {
             totalFees = totalFees.plus(fee);
             modificationCount++;
             tradesCache = null;
+            closedPositionsCache = null;
+            openPositionsCache = null;
         } finally {
             lock.writeLock().unlock();
         }
@@ -606,12 +612,28 @@ public class BaseTradingRecord implements TradingRecord {
         return sideOf(net.getEntry().getType());
     }
 
+    /**
+     * Returns the cached open positions list, rebuilding it when the record has
+     * been modified since the last snapshot.
+     */
     private List<Position> openPositionsSnapshot() {
         lock.readLock().lock();
         try {
-            return List.copyOf(positionBook.openPositions());
+            if (openPositionsCache != null && openPositionsCacheVersion == modificationCount) {
+                return openPositionsCache;
+            }
         } finally {
             lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (openPositionsCache == null || openPositionsCacheVersion != modificationCount) {
+                openPositionsCache = List.copyOf(positionBook.openPositions());
+                openPositionsCacheVersion = modificationCount;
+            }
+            return openPositionsCache;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -627,9 +649,21 @@ public class BaseTradingRecord implements TradingRecord {
     private List<Position> closedPositionsSnapshot() {
         lock.readLock().lock();
         try {
-            return List.copyOf(positionBook.closedPositions());
+            if (closedPositionsCache != null && closedPositionsCacheVersion == modificationCount) {
+                return closedPositionsCache;
+            }
         } finally {
             lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (closedPositionsCache == null || closedPositionsCacheVersion != modificationCount) {
+                closedPositionsCache = List.copyOf(positionBook.closedPositions());
+                closedPositionsCacheVersion = modificationCount;
+            }
+            return closedPositionsCache;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -770,6 +804,10 @@ public class BaseTradingRecord implements TradingRecord {
         positionBook.rehydrateCostModels(transactionCostModel, holdingCostModel);
         tradesCache = null;
         tradesCacheVersion = -1L;
+        closedPositionsCache = null;
+        closedPositionsCacheVersion = -1L;
+        openPositionsCache = null;
+        openPositionsCacheVersion = -1L;
         modificationCount = 0L;
         numFactory = null;
     }

@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -42,19 +43,17 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsDefensiveSnapshot() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
         int originalSize = pnl.getSize();
-        BarSeries firstReturnedSeries = pnl.getBarSeries();
 
         appendOneBar(series, 115);
-        appendOneBar(firstReturnedSeries, 120);
 
         assertEquals(originalSize, pnl.getSize());
         assertEquals(originalSize, pnl.getBarSeries().getBarCount());
         assertNotSame(series, pnl.getBarSeries());
-        assertNotSame(firstReturnedSeries, pnl.getBarSeries());
+        assertSame(pnl.getBarSeries(), pnl.getBarSeries());
     }
 
     @Test
@@ -101,6 +100,34 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(0, pnl.getValue(0));
         assertNumEquals(0, pnl.getValue(1));
         assertNumEquals(0, pnl.getValue(2));
+    }
+
+    @Test
+    public void cumulativePnLTwoPositionsPinsExitDeltaOnExitBar() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series));
+
+        var pnl = new CumulativePnL(series, record);
+
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(1, pnl.getValue(1));
+        assertNumEquals(2, pnl.getValue(2));
+        assertNumEquals(3, pnl.getValue(3));
+    }
+
+    @Test
+    public void cumulativePnLRealizedTwoPositionsWithAdjacentExits() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series));
+
+        var pnl = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(0, pnl.getValue(1));
+        assertNumEquals(2, pnl.getValue(2));
+        assertNumEquals(3, pnl.getValue(3));
     }
 
     @Test
