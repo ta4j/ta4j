@@ -407,7 +407,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeProb
                                                                           self_test_status.get());
         check_cuda(cudaGetLastError(), "forecast self-test moments finalize launch");
         thrust::device_ptr<double> self_test_begin(self_test_samples.get());
-        thrust::sort(thrust::cuda::par.on(stream.get()), self_test_begin, self_test_begin + 2);
+        thrust::sort(thrust::cuda::par_nosync.on(stream.get()), self_test_begin, self_test_begin + 2);
         quantile_kernel<<<1, 1, 0, stream.get()>>>(self_test_samples.get(), 2, self_test_quantiles.get(), 1,
                                                    self_test_summary.get(), self_test_status.get());
         check_cuda(cudaGetLastError(), "forecast self-test quantile launch");
@@ -560,7 +560,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
                     device_samples.get() + sample_offset, summary_row, status_row);
             check_cuda(cudaGetLastError(), "moments finalize kernel launch");
             thrust::device_ptr<double> begin(device_samples.get() + sample_offset);
-            thrust::sort(thrust::cuda::par.on(stream.get()), begin, begin + iteration_count);
+            thrust::sort(thrust::cuda::par_nosync.on(stream.get()), begin, begin + iteration_count);
             quantile_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get() + sample_offset, iteration_count,
                                                        device_quantiles.get(), quantile_count, summary_row,
                                                        status_row);

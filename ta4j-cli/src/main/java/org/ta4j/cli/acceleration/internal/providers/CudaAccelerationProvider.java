@@ -35,11 +35,21 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         return capability;
     }
 
+    /** Smallest per-decision path count measured in the RTX 5090 crossover matrix. */
+    private static final long MIN_QUALIFIED_ITERATION_COUNT = 64L;
+
     @Override
     public double predictedSpeedup(Request<Forecast> request) {
         MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
         MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
         long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
+        // The measured RTX 5090 crossover matrix never qualified shapes with
+        // fewer paths than this: below it a decision exposes too few path
+        // threads to amortize transfer, launch, reduction, and sort overhead,
+        // even when decisions x paths x horizon clears the work floor.
+        if (spec.iterationCount() < MIN_QUALIFIED_ITERATION_COUNT) {
+            return 0d;
+        }
         long work;
         try {
             work = Math.multiplyExact(Math.multiplyExact(decisions, spec.iterationCount()), spec.horizon());

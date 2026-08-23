@@ -121,6 +121,16 @@ class CudaAccelerationProviderTest {
     }
 
     @Test
+    void automaticSelectionRequiresMeasuredPathCountMinimum() {
+        // 3 x 3 x 87,382 clears the 262,144-step work floor but exposes only
+        // three path threads per decision; selection must stay scalar.
+        assertThat(provider(new FakeBridge(CudaAccelerationProviderTest::constantResult))
+                .predictedSpeedup(request(forecast(doubleSeries(), 3, 87_382)))).isZero();
+        // The same product with qualified path count still selects CUDA.
+        assertThat(provider(new FakeBridge(CudaAccelerationProviderTest::constantResult))
+                .predictedSpeedup(request(forecast(doubleSeries(), 64, 4_096)))).isPositive();
+    }
+    @Test
     void productionProbeCachesSuccessAndRejectsWrongArchitecture() {
         AtomicInteger loads = new AtomicInteger();
         AtomicInteger probes = new AtomicInteger();
@@ -201,12 +211,16 @@ class CudaAccelerationProviderTest {
     }
 
     private static MonteCarloPriceForecastIndicator forecast(BarSeries series) {
+        return forecast(series, 64, 3);
+    }
+
+    private static MonteCarloPriceForecastIndicator forecast(BarSeries series, int iterationCount, int horizon) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         LogReturnIndicator returns = new LogReturnIndicator(close);
         EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
         return MonteCarloPriceForecastIndicator.builder(close, state)
-                .horizon(3)
-                .iterationCount(64)
+                .horizon(horizon)
+                .iterationCount(iterationCount)
                 .lookbackBarCount(16)
                 .seed(17L)
                 .build();
