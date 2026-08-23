@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,6 +43,7 @@ import org.ta4j.core.research.ParameterResearch.ParameterSet;
 import org.ta4j.core.research.ParameterResearch.ParameterValue;
 import org.ta4j.core.research.ParameterResearch.RankedCandidate;
 import org.ta4j.core.research.ParameterResearch.ResearchWindow;
+import org.ta4j.core.research.ParameterResearch.RunCounts;
 import org.ta4j.core.research.ParameterResearch.SearchPlan;
 import org.ta4j.core.research.ParameterResearch.SwarmSettings;
 import org.ta4j.core.research.ParameterResearch.TerminationReason;
@@ -124,6 +126,95 @@ class ParameterResearchTest {
         assertThrows(IllegalArgumentException.class, () -> SearchPlan.grid(0));
         assertThrows(IllegalArgumentException.class, () -> SearchPlan.genetic(-1, 42L));
         assertThrows(IllegalArgumentException.class, () -> SearchPlan.particleSwarm(0, 42L));
+    }
+
+    @Test
+    void searchPlanRejectsSettingsItsEngineNeverReads() {
+        GeneticSettings genetic = GeneticSettings.defaults();
+        SwarmSettings swarm = SwarmSettings.defaults();
+        assertThrows(IllegalArgumentException.class, () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 7L, null, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, genetic, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, null, swarm));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SearchPlan(SearchPlan.Kind.GENETIC, 4, 1L, genetic, swarm));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SearchPlan(SearchPlan.Kind.PARTICLE_SWARM, 4, 1L, genetic, swarm));
+    }
+
+    @Test
+    void runCountsRejectNegativeAccounting() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunCounts(-1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunCounts(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, -1, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RunCounts(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1, -1));
+    }
+
+    @Test
+    void rankedCandidateRejectsImpossibleStates() {
+        ParameterSet set = new ParameterSet(List.of(new ParameterValue("x", "5", false, "")));
+        Num score = DecimalNum.valueOf(1);
+        assertThat(new RankedCandidate(set.stableId(), set, 1, null, score, null, null, Map.of(), Map.of())
+                .trainingRank()).isEqualTo(1);
+        assertThrows(IllegalArgumentException.class, () -> new RankedCandidate("other", set, 1, null, score, null,
+                null, Map.of(), Map.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedCandidate(set.stableId(), set, 0, null, score, null, null, Map.of(), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> new RankedCandidate(set.stableId(), set, 1, 0, score,
+                score, score.minus(score), Map.of(), Map.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedCandidate(set.stableId(), set, 1, 1, score, null, null, Map.of(), Map.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedCandidate(set.stableId(), set, 1, 1, score, score, null, Map.of(), Map.of()));
+    }
+
+    private static RankedCandidate rankedRow(int trainingRank) {
+        ParameterSet set = new ParameterSet(List.of(new ParameterValue("x", "5", false, "")));
+        return new RankedCandidate(set.stableId(), set, trainingRank, null, DecimalNum.valueOf(1), null, null,
+                Map.of(), Map.of());
+    }
+
+    @Test
+    void reportRejectsFactuallyInconsistentCarriers() {
+        BarSeries series = series(1d, 2d, 3d);
+        ResearchWindow window = new ResearchWindow(series, 0, 2, ResearchWindow.WindowPhase.TRAINING, "train");
+        assertThrows(IllegalArgumentException.class, () -> report(window, Optional.empty(), 0, List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> report(window, Optional.empty(), 1, List.of(rankedRow(1), rankedRow(2))));
+        assertThrows(IllegalArgumentException.class, () -> report(window, Optional.empty(), 2, List.of(rankedRow(2),
+                rankedRow(1))));
+        RankedCandidate holdoutRow = new RankedCandidate(new ParameterSet(
+                List.of(new ParameterValue("x", "5", false, ""))).stableId(),
+                new ParameterSet(List.of(new ParameterValue("x", "5", false, ""))), 1, 1, DecimalNum.valueOf(1),
+                DecimalNum.valueOf(2), DecimalNum.valueOf(1), Map.of(), Map.of());
+        ResearchWindow holdout = new ResearchWindow(series(1d), 0, 0, ResearchWindow.WindowPhase.HOLDOUT, "holdout");
+        assertThrows(IllegalArgumentException.class,
+                () -> report(window, Optional.empty(), 1, List.of(rankedRow(1)), List.of(holdoutRow)));
+        assertThrows(IllegalArgumentException.class,
+                () -> report(window, Optional.of(holdout), 1, List.of(rankedRow(1)), List.of(rankedRow(1))));
+        assertThrows(IllegalArgumentException.class,
+                () -> report(window, Optional.of(holdout), 1, List.of(rankedRow(1)), List.of(holdoutRow), -1L));
+    }
+
+    private static ParameterResearchReport report(ResearchWindow window, Optional<ResearchWindow> holdout, int topK,
+            List<RankedCandidate> trainingLeaderboard) {
+        return report(window, holdout, topK, trainingLeaderboard, List.of());
+    }
+    private static ParameterResearchReport report(ResearchWindow window, Optional<ResearchWindow> holdout, int topK,
+            List<RankedCandidate> trainingLeaderboard, List<RankedCandidate> holdoutLeaderboard) {
+        return report(window, holdout, topK, trainingLeaderboard, holdoutLeaderboard, 1L);
+    }
+
+    private static ParameterResearchReport report(ResearchWindow window, Optional<ResearchWindow> holdout, int topK,
+            List<RankedCandidate> trainingLeaderboard, List<RankedCandidate> holdoutLeaderboard,
+            long elapsedEvaluationNanos) {
+        return new ParameterResearchReport("dataset", SearchPlan.grid(topK == 0 ? 1 : topK), "objective", window,
+                holdout, topK, trainingLeaderboard, holdoutLeaderboard, TerminationReason.SEARCH_SPACE_EXHAUSTED,
+                new RunCounts(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0), List.of(), elapsedEvaluationNanos, 0L,
+                List.of());
     }
 
     @Test

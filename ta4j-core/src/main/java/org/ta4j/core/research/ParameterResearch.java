@@ -2100,16 +2100,34 @@ public final class ParameterResearch {
          *
          * @throws NullPointerException     if {@code kind} is null, or a required
          *                                  settings record is missing
-         * @throws IllegalArgumentException if {@code maxEvaluations <= 0}, or if it
-         *                                  exceeds {@link #MAX_RETAINED_EVALUATIONS}
+         * @throws IllegalArgumentException if {@code maxEvaluations <= 0}, if it
+         *                                  exceeds {@link #MAX_RETAINED_EVALUATIONS},
+         *                                  or if a seed or settings value that the
+         *                                  selected engine never reads is present
          * @since 0.24.2
          */
         public SearchPlan {
             Objects.requireNonNull(kind, "kind");
-            if (kind == Kind.GENETIC) {
+            if (kind == Kind.GRID) {
+                if (seed != 0L) {
+                    throw new IllegalArgumentException("seed is not used by a grid search plan");
+                }
+                if (geneticSettings != null) {
+                    throw new IllegalArgumentException("geneticSettings are not used by a grid search plan");
+                }
+                if (swarmSettings != null) {
+                    throw new IllegalArgumentException("swarmSettings are not used by a grid search plan");
+                }
+            } else if (kind == Kind.GENETIC) {
                 Objects.requireNonNull(geneticSettings, "geneticSettings are required for a genetic search plan");
-            } else if (kind == Kind.PARTICLE_SWARM) {
+                if (swarmSettings != null) {
+                    throw new IllegalArgumentException("swarmSettings are not used by a genetic search plan");
+                }
+            } else {
                 Objects.requireNonNull(swarmSettings, "swarmSettings are required for a particle-swarm search plan");
+                if (geneticSettings != null) {
+                    throw new IllegalArgumentException("geneticSettings are not used by a particle-swarm search plan");
+                }
             }
             if (maxEvaluations <= 0) {
                 throw new IllegalArgumentException("maxEvaluations must be > 0");
@@ -2362,6 +2380,20 @@ public final class ParameterResearch {
      */
     public record RunCounts(long proposed, long rejected, long repaired, long duplicate, long cached, long attempted,
             long holdoutAttempted, long successful, long failed, int budgetRemaining, int iterationsCompleted) {
+
+        /**
+         * Creates validated run counts.
+         *
+         * @throws IllegalArgumentException if any count is negative
+         * @since 0.24.2
+         */
+        public RunCounts {
+            if (proposed < 0 || rejected < 0 || repaired < 0 || duplicate < 0 || cached < 0 || attempted < 0
+                    || holdoutAttempted < 0 || successful < 0 || failed < 0 || budgetRemaining < 0
+                    || iterationsCompleted < 0) {
+                throw new IllegalArgumentException("run counts cannot be negative");
+            }
+        }
     }
 
     /**
@@ -2393,6 +2425,21 @@ public final class ParameterResearch {
             Objects.requireNonNull(candidateId, "candidateId");
             Objects.requireNonNull(parameters, "parameters");
             Objects.requireNonNull(trainingScore, "trainingScore");
+            if (trainingRank < 1) {
+                throw new IllegalArgumentException("trainingRank must be >= 1");
+            }
+            if (holdoutRank != null && holdoutRank < 1) {
+                throw new IllegalArgumentException("holdoutRank must be >= 1 when present");
+            }
+            if ((holdoutRank == null) != (holdoutScore == null)) {
+                throw new IllegalArgumentException("holdoutRank and holdoutScore must be present together");
+            }
+            if (holdoutScore != null && scoreDelta == null) {
+                throw new IllegalArgumentException("scoreDelta is required when a holdout score is present");
+            }
+            if (!candidateId.equals(parameters.stableId())) {
+                throw new IllegalArgumentException("candidateId must match parameters.stableId()");
+            }
             trainingMetrics = trainingMetrics == null ? Map.of() : Map.copyOf(trainingMetrics);
             holdoutMetrics = holdoutMetrics == null ? Map.of() : Map.copyOf(holdoutMetrics);
         }
@@ -2477,10 +2524,36 @@ public final class ParameterResearch {
             holdoutWindow = holdoutWindow == null ? Optional.empty() : holdoutWindow;
             Objects.requireNonNull(terminationReason, "terminationReason");
             Objects.requireNonNull(counts, "counts");
+            if (topK < 1) {
+                throw new IllegalArgumentException("topK must be >= 1");
+            }
             trainingLeaderboard = List.copyOf(trainingLeaderboard);
             holdoutLeaderboard = List.copyOf(holdoutLeaderboard);
             failedEvaluations = List.copyOf(failedEvaluations);
             warnings = List.copyOf(warnings);
+            if (trainingLeaderboard.size() > topK) {
+                throw new IllegalArgumentException("training leaderboard cannot exceed topK");
+            }
+            for (int i = 0; i < trainingLeaderboard.size(); i++) {
+                if (trainingLeaderboard.get(i).trainingRank() != i + 1) {
+                    throw new IllegalArgumentException("training leaderboard ranks must be sequential starting at 1");
+                }
+            }
+            if (holdoutLeaderboard.size() > topK) {
+                throw new IllegalArgumentException("holdout leaderboard cannot exceed topK");
+            }
+            for (int i = 0; i < holdoutLeaderboard.size(); i++) {
+                if (holdoutLeaderboard.get(i).holdoutRank() == null
+                        || holdoutLeaderboard.get(i).holdoutRank() != i + 1) {
+                    throw new IllegalArgumentException("holdout leaderboard ranks must be sequential starting at 1");
+                }
+            }
+            if (!holdoutLeaderboard.isEmpty() && holdoutWindow.isEmpty()) {
+                throw new IllegalArgumentException("a holdout leaderboard requires a holdout window");
+            }
+            if (elapsedEvaluationNanos < 0 || elapsedOrchestrationNanos < 0) {
+                throw new IllegalArgumentException("elapsed times cannot be negative");
+            }
         }
     }
 
