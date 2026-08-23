@@ -128,7 +128,8 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
 
         // Window [4..4] = {5}: single observation -> zero sample variance
         assertNumEquals(0, variance.getValue(4));
-        // Window [4..7] = {5,6,7,8}: sample variance = (2.25 + 0.25 + 0.25 + 2.25) / 3 = 5/3
+        // Window [4..7] = {5,6,7,8}: sample variance = (2.25 + 0.25 + 0.25 + 2.25) / 3
+        // = 5/3
         assertNumEquals(numFactory.numOf(5).dividedBy(numFactory.numOf(3)), variance.getValue(7));
         // Window [4..8] = {5,6,7,8,9}: sample variance = (4 + 1 + 0 + 1 + 4) / 4
         assertNumEquals(2.5, variance.getValue(8));

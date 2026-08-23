@@ -182,7 +182,12 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
 
         ((BaseBarSeries) series).replaceBar(2,
-                series.barBuilder().openPrice(10.4).highPrice(10.6).lowPrice(10.1).closePrice(10.3).volume(1000)
+                series.barBuilder()
+                        .openPrice(10.4)
+                        .highPrice(10.6)
+                        .lowPrice(10.1)
+                        .closePrice(10.3)
+                        .volume(1000)
                         .build());
 
         // The replacement bar keeps a valid OHLC shape (low 10.1 <= open/close) while

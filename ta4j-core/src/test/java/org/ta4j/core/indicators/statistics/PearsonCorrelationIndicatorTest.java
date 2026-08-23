@@ -97,8 +97,8 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
                 .withMaxBarCount(4)
                 .build();
         var x = new ClosePriceIndicator(pruned);
-        var y = new FixedIndicator<Num>(pruned, numOf(7), numOf(7), numOf(7), numOf(7), numOf(7), numOf(7),
-                numOf(1), numOf(2), numOf(1), numOf(2));
+        var y = new FixedIndicator<Num>(pruned, numOf(7), numOf(7), numOf(7), numOf(7), numOf(7), numOf(7), numOf(1),
+                numOf(2), numOf(1), numOf(2));
 
         var coef = new PearsonCorrelationIndicator(x, y, 6);
 
