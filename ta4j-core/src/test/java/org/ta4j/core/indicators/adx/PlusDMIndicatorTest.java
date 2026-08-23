@@ -33,7 +33,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void zeroDirectionalMovement2() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(12).build();
+        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(8).build();
         var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
@@ -45,7 +45,7 @@ public class PlusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void zeroDirectionalMovement3() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(20).build();
+        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(20).lowPrice(20).build();
         var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);

@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.candles;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -18,6 +19,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.trend.UpTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -130,6 +132,12 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
         return List.of(serializationFixture(series, new ThreeInsideDownIndicator(series), stableIndexes(series)));
+    }
+
+    @Test
+    public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
+        var tid = new ThreeInsideDownIndicator(series);
+        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()), tid.getCountOfUnstableBars());
     }
 
 }
