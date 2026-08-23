@@ -8,6 +8,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityBundle;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
@@ -54,7 +55,7 @@ import java.util.Optional;
  *      "https://www.investopedia.com/terms/c/calmarratio.asp">https://www.investopedia.com/terms/c/calmarratio.asp</a>
  * @since 0.22.5
  */
-public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
+public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion implements EquityBundleAware {
 
     private final MaximumDrawdownCriterion maximumDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
@@ -172,24 +173,56 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     }
 
     @Override
-    public Optional<ReturnRepresentation> getReturnRepresentation() {
-        return Optional.of(returnRepresentation);
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        if (tradingRecord == null || series.isEmpty()) {
+            return zero;
+        }
+
+        int beginIndex = tradingRecord.getStartIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
+        if (endIndex <= beginIndex) {
+            return zero;
+        }
+
+        CashFlow cashFlow = equityBundle.cashFlow(equityCurveMode, openPositionHandling);
+        Num annualizedReturn = annualizedReturn(series, cashFlow, beginIndex, endIndex);
+
+        Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord, equityBundle);
+        if (maximumDrawdown.isZero()) {
+            return toRepresentation(annualizedReturn);
+        }
+        Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
+        return toRepresentation(calmarRatio);
     }
 
+    /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
+    }
+
     private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+        return annualizedReturn(series,
+                new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling), beginIndex,
+                endIndex);
+    }
+
+    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         Num one = numFactory.one();
+
         Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
         if (years.isZero()) {
             return zero;
         }
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
         Num startValue = cashFlow.getValue(beginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;

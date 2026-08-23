@@ -12,6 +12,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.criteria.EquityBundleAware;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -42,7 +44,8 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.19
  */
-public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
+public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion
+        implements EquityBundleAware {
 
     private final int iterations;
     private final Integer pathBlocks;
@@ -205,6 +208,17 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         List<List<Num>> blocks = buildBlocks(series, tradingRecord);
+        return simulate(series, tradingRecord, blocks);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord,
+                equityBundle.cashFlow(equityCurveMode, openPositionHandling));
+        return simulate(series, tradingRecord, blocks);
+    }
+
+    private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks) {
         if (blocks.size() < 3) {
             return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
@@ -237,8 +251,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
+        return buildBlocks(series, record, new CashFlow(series, record, equityCurveMode, openPositionHandling));
+    }
+
+    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
-        CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {

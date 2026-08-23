@@ -122,6 +122,28 @@ public final class ExcessReturns {
     }
 
     /**
+     * Creates an excess return calculator that shares already-computed equity
+     * curves instead of constructing its own. The supplied indicators are used
+     * exactly as-is; no defensive copy or recomputation happens.
+     *
+     * @param series             the bar series providing time deltas and num
+     *                           factory
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy   the policy for flat equity intervals
+     * @param investedInterval   the invested interval indicator to use, not null
+     * @param cashFlow           the cash flow indicator to use, not null
+     * @since 0.24.2
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+            InvestedInterval investedInterval, CashFlow cashFlow) {
+        this.series = Objects.requireNonNull(series, "series cannot be null");
+        this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
+        this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
+        this.investedInterval = Objects.requireNonNull(investedInterval, "investedInterval cannot be null");
+        this.cashFlow = Objects.requireNonNull(cashFlow, "cashFlow cannot be null");
+    }
+
+    /**
      * Computes the compounded excess return using the configured cash flow.
      *
      * @param previousIndex the start index

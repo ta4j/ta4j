@@ -12,6 +12,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityBundle;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
@@ -103,7 +104,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.2
  *
  */
-public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
+public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements EquityBundleAware {
 
     private final SamplingFrequency samplingFrequency;
     private final Annualization annualization;
@@ -236,6 +237,37 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 equityCurveMode, effectiveOpenPositionHandling);
+        Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
+                excessReturns, effectiveOpenPositionHandling);
+        SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);
+
+        if (summary.count() < 2) {
+            return zero;
+        }
+
+        Num stdev = summary.sampleVariance(numFactory).sqrt();
+        if (stdev.isZero()) {
+            return zero;
+        }
+
+        Num sharpePerPeriod = summary.mean().dividedBy(stdev);
+
+        return annualization.apply(sharpePerPeriod, summary, numFactory);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        if (tradingRecord == null) {
+            return zero;
+        }
+
+        OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
+        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy,
+                equityBundle.investedInterval(effectiveOpenPositionHandling),
+                equityBundle.cashFlow(equityCurveMode, effectiveOpenPositionHandling));
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
                 excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);

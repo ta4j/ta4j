@@ -12,6 +12,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -102,7 +104,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.2
  *
  */
-public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
+public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements EquityBundleAware {
 
     private final SamplingFrequency samplingFrequency;
     private final Annualization annualization;
@@ -253,6 +255,34 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num a, Num b) {
         return a.isGreaterThan(b);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        if (tradingRecord == null) {
+            return zero;
+        }
+        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy,
+                equityBundle.investedInterval(openPositionHandling),
+                equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, openPositionHandling));
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
+                .toList();
+        SampleSummary summary = SampleSummary.fromSamples(samples.stream(), numFactory);
+
+        if (summary.count() < 2) {
+            return zero;
+        }
+        Num downsideDeviation = downsideDeviation(samples, numFactory);
+        if (downsideDeviation.isNaN()) {
+            return downsideDeviation;
+        }
+
+        Num sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
+        return annualization.apply(sortinoPerPeriod, summary, numFactory);
     }
 
 }
