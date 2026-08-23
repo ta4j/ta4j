@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.DoubleStream;
 
 import org.junit.Test;
@@ -906,5 +907,44 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // unstable count as an absolute index would read bars 6-7 and throw.
         assertTrue(indicator.getResult(11).windowAvailable());
         assertFalse(indicator.getResult(9).windowAvailable());
+    }
+
+    @Test
+    public void snapshotGateRechecksAnchoredBoundaryAfterMidEvaluationHeadAdvance() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(6)
+                .build();
+        AtomicInteger sourceReads = new AtomicInteger();
+        Indicator<Boolean> reference = events(rolling, 0);
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                if (index < rolling.getBeginIndex() + 2) {
+                    throw new IllegalStateException("lookback below the retained-head warm-up");
+                }
+                // Advance the retained head mid-evaluation by shrinking the
+                // maximum bar count: the first retained bar is removed and the
+                // series revision moves while this very result is computed.
+                if (sourceReads.incrementAndGet() == 3) {
+                    rolling.setMaximumBarCount(5);
+                }
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
+
+        // Window [8..11] passes the outer availability gate at head 6 where
+        // the anchored boundary is 8. The scan itself then advances the head
+        // to 7, moving the stable boundary to 9, so the coordinated snapshot
+        // recheck must censor the window instead of reporting counts that
+        // include the now-warm-up bar 8.
+        assertFalse(indicator.getResult(11).windowAvailable());
     }
 }
