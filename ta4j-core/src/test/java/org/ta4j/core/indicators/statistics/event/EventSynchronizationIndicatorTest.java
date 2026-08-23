@@ -1005,4 +1005,83 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // window instead of scanning sources for out-of-domain indexes.
         assertFalse(indicator.getResult(11).windowAvailable());
     }
+    @Test
+    public void oneSidedWindowMayHoldEventsUpToTheMatcherCellCap() {
+        // A one-sided alignment needs (predictedCount + 1) * (referenceCount + 1)
+        // cells, so a stream whose events are the only ones in the window may
+        // legally hold up to the 8,000,000-cell cap minus one events. The cache
+        // growth must clamp to that cap instead of throwing at the previous
+        // power-of-two doubling ceiling of 4,194,304 entries.
+        int endIndex = 5_000_000;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return endIndex;
+            }
+        };
+        Indicator<Boolean> predictedEverywhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        Indicator<Boolean> referenceNowhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(predictedEverywhere, referenceNowhere, endIndex, 0, 0);
+        var r = indicator.getResult(endIndex);
+        assertTrue(r.windowAvailable());
+        assertEquals(endIndex, r.predictedCount());
+        assertEquals(0, r.referenceCount());
+        assertEquals(0, r.matchedCount());
+    }
+
+    @Test
+    public void boundedRetriesReportUnavailableWhenTheSeriesMutatesOnEveryRead() {
+        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withMaxBarCount(8)
+                .build();
+        AtomicInteger reads = new AtomicInteger();
+        Indicator<Boolean> mutating = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                if (reads.incrementAndGet() > 1) {
+                    // Bump the revision on every read after the first so every
+                    // coordinated iteration observes a moved series; without a
+                    // retry budget this evaluation would never terminate.
+                    rolling.replaceBar(rolling.getEndIndex(), rolling.getBar(rolling.getEndIndex()));
+                }
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(mutating, events(rolling, 0), 4, 0, 0);
+        assertFalse(indicator.getResult(11).windowAvailable());
+    }
+
 }
