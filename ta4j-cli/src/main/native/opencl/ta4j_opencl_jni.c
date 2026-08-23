@@ -67,9 +67,10 @@ static const char KERNEL_SOURCE[] =
         "}\n"
         "\n"
         "__kernel void path_kernel(double price, double mean, double drift, double variance,\n"
-        "                          __global const double* historical_returns, int lookback, int decision_index,\n"
-        "                          int horizon, int iteration_count, long seed, int shock_model,\n"
-        "                          int volatility_mode, double decay, __global double* samples, __global int* status) {\n"
+        "                          __global const double* historical_returns, int lookback, int history_row,\n"
+        "                          int decision_index, int horizon, int iteration_count, long seed,\n"
+        "                          int shock_model, int volatility_mode, double decay, __global double* samples,\n"
+        "                          __global int* status) {\n"
         "    int path_index = get_global_id(0);\n"
         "    if (path_index >= iteration_count) {\n"
         "        return;\n"
@@ -85,12 +86,12 @@ static const char KERNEL_SOURCE[] =
         "    for (int step = 0; step < horizon; ++step) {\n"
         "        double shock;\n"
         "        if (shock_model == 0) {\n"
-        "            shock = historical_returns[next_int(&random, lookback)];\n"
+        "            shock = historical_returns[history_row * lookback + next_int(&random, lookback)];\n"
         "        } else if (shock_model == 1) {\n"
         "            shock = standardized_volatility == 0.0\n"
         "                    ? 0.0\n"
-        "                    : (historical_returns[next_int(&random, lookback)] - standardized_mean)\n"
-        "                            / standardized_volatility;\n"
+        "                    : (historical_returns[history_row * lookback + next_int(&random, lookback)]\n"
+        "                            - standardized_mean) / standardized_volatility;\n"
         "        } else {\n"
         "            shock = next_gaussian(&random);\n"
         "        }\n"
@@ -114,31 +115,83 @@ static const char KERNEL_SOURCE[] =
         "    samples[path_index] = terminal;\n"
         "}\n"
         "\n"
-        "__kernel void moments_kernel(__global const double* samples, int count, __global double* summary,\n"
-        "                            __global int* status) {\n"
-        "    if (get_global_id(0) != 0 || *status != 0) {\n"
-        "        return;\n"
-        "    }\n"
-        "    double mean = 0.0;\n"
-        "    double m2 = 0.0;\n"
-        "    for (int i = 0; i < count; ++i) {\n"
-        "        double value = samples[i];\n"
+        "#define MOMENT_THREADS 256\n"
+        "\n"
+        "__kernel void moments_partial_kernel(__global const double* samples, int count,\n"
+        "                                     __global double* partial_sums, __global double* partial_sqsums,\n"
+        "                                     __global int* status) {\n"
+        "    __local double block_sum[MOMENT_THREADS];\n"
+        "    __local double block_sqsum[MOMENT_THREADS];\n"
+        "    size_t lid = get_local_id(0);\n"
+        "    size_t lsize = get_local_size(0);\n"
+        "    double local_sum = 0.0;\n"
+        "    double local_sqsum = 0.0;\n"
+        "    for (int index = get_group_id(0) * (int)lsize + (int)lid; index < count;\n"
+        "            index += get_num_groups(0) * (int)lsize) {\n"
+        "        double value = samples[index];\n"
         "        if (!isfinite(value)) {\n"
+        "            atomic_xchg(status, 2);\n"
+        "            value = 0.0;\n"
+        "        }\n"
+        "        local_sum += value;\n"
+        "        local_sqsum += value * value;\n"
+        "    }\n"
+        "    block_sum[lid] = local_sum;\n"
+        "    block_sqsum[lid] = local_sqsum;\n"
+        "    barrier(CLK_LOCAL_MEM_FENCE);\n"
+        "    for (size_t offset = lsize / 2; offset > 0; offset >>= 1) {\n"
+        "        if (lid < offset) {\n"
+        "            block_sum[lid] += block_sum[lid + offset];\n"
+        "            block_sqsum[lid] += block_sqsum[lid + offset];\n"
+        "        }\n"
+        "        barrier(CLK_LOCAL_MEM_FENCE);\n"
+        "    }\n"
+        "    if (lid == 0) {\n"
+        "        partial_sums[get_group_id(0)] = block_sum[0];\n"
+        "        partial_sqsums[get_group_id(0)] = block_sqsum[0];\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "__kernel void moments_finalize_kernel(__global const double* partial_sums,\n"
+        "                                      __global const double* partial_sqsums, int block_count, int count,\n"
+        "                                      __global double* summary, __global int* status) {\n"
+        "    __local double sum_shared[MOMENT_THREADS];\n"
+        "    __local double sqsum_shared[MOMENT_THREADS];\n"
+        "    size_t lid = get_local_id(0);\n"
+        "    size_t lsize = get_local_size(0);\n"
+        "    double local_sum = 0.0;\n"
+        "    double local_sqsum = 0.0;\n"
+        "    for (int index = (int)lid; index < block_count; index += (int)lsize) {\n"
+        "        local_sum += partial_sums[index];\n"
+        "        local_sqsum += partial_sqsums[index];\n"
+        "    }\n"
+        "    sum_shared[lid] = local_sum;\n"
+        "    sqsum_shared[lid] = local_sqsum;\n"
+        "    barrier(CLK_LOCAL_MEM_FENCE);\n"
+        "    for (size_t offset = lsize / 2; offset > 0; offset >>= 1) {\n"
+        "        if (lid < offset) {\n"
+        "            sum_shared[lid] += sum_shared[lid + offset];\n"
+        "            sqsum_shared[lid] += sqsum_shared[lid + offset];\n"
+        "        }\n"
+        "        barrier(CLK_LOCAL_MEM_FENCE);\n"
+        "    }\n"
+        "    if (lid == 0 && *status == 0) {\n"
+        "        double total_sum = sum_shared[0];\n"
+        "        double total_sqsum = sqsum_shared[0];\n"
+        "        double observations = (double)count;\n"
+        "        double mean = total_sum / observations;\n"
+        "        double variance = (total_sqsum - total_sum * total_sum / observations) / observations;\n"
+        "        if (variance <= 0.0) {\n"
+        "            variance = 0.0;\n"
+        "        }\n"
+        "        double standard_deviation = sqrt(variance);\n"
+        "        if (!isfinite(mean) || !isfinite(standard_deviation)) {\n"
         "            *status = 2;\n"
         "            return;\n"
         "        }\n"
-        "        double delta = value - mean;\n"
-        "        mean += delta / (double)(i + 1);\n"
-        "        m2 += delta * (value - mean);\n"
+        "        summary[0] = mean;\n"
+        "        summary[2] = standard_deviation;\n"
         "    }\n"
-        "    double variance = m2 / (double)count;\n"
-        "    double standard_deviation = variance <= 0.0 ? 0.0 : sqrt(variance);\n"
-        "    if (!isfinite(mean) || !isfinite(standard_deviation)) {\n"
-        "        *status = 2;\n"
-        "        return;\n"
-        "    }\n"
-        "    summary[0] = mean;\n"
-        "    summary[2] = standard_deviation;\n"
         "}\n"
         "\n"
         "double percentile(__global const double* sorted_samples, int count, double probability) {\n"
@@ -241,7 +294,8 @@ typedef struct {
     cl_command_queue queue;
     cl_program program;
     cl_kernel path_kernel;
-    cl_kernel moments_kernel;
+    cl_kernel moments_partial_kernel;
+    cl_kernel moments_finalize_kernel;
     cl_kernel quantile_kernel;
     cl_kernel bitonic_parallel;
     cl_kernel bitonic_serial;
@@ -482,6 +536,8 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
     cl_mem quantiles = NULL;
     cl_mem summary = NULL;
     cl_mem status_buffer = NULL;
+    cl_mem moments_partials = NULL;
+    cl_mem moments_sqpartials = NULL;
     cl_int bounded_value = -1;
     double gaussian_value = 0.0;
     int forecast_status = -1;
@@ -549,6 +605,16 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
         error_status = CL_INVALID_VALUE;
         goto cleanup;
     }
+    if (make_buffer(&moments_partials, sizeof(double), "self-test moments partial buffer", error, error_size)
+            != CL_SUCCESS) {
+        error_status = CL_INVALID_VALUE;
+        goto cleanup;
+    }
+    if (make_buffer(&moments_sqpartials, sizeof(double), "self-test moments sqpartial buffer", error, error_size)
+            != CL_SUCCESS) {
+        error_status = CL_INVALID_VALUE;
+        goto cleanup;
+    }
     CHECK_OPENCL(clEnqueueWriteBuffer(STATE.queue, status_buffer, CL_TRUE, 0, sizeof(int), &zero_int, 0, NULL, NULL),
                  "self-test status reset");
     CHECK_OPENCL(clEnqueueWriteBuffer(STATE.queue, history, CL_TRUE, 0, sizeof(double), &zero, 0, NULL, NULL),
@@ -561,26 +627,53 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
     CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 2, sizeof(double), &zero_arg), "self-test arg drift");
     CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 3, sizeof(double), &zero_arg), "self-test arg variance");
     CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 4, sizeof(cl_mem), &history), "self-test arg history");
+    cl_int history_row_arg = 0;
     CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &lookback_arg), "self-test arg lookback");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &decision_arg), "self-test arg decision");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &horizon_arg), "self-test arg horizon");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &iteration_arg), "self-test arg iterations");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_long), &seed_arg), "self-test arg seed");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &shock_arg), "self-test arg shock");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &volatility_arg), "self-test arg volatility");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 12, sizeof(double), &decay_arg), "self-test arg decay");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 13, sizeof(cl_mem), &samples), "self-test arg samples");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &status_buffer), "self-test arg status");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &history_row_arg), "self-test arg history row");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &decision_arg), "self-test arg decision");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &horizon_arg), "self-test arg horizon");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_int), &iteration_arg), "self-test arg iterations");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_long), &seed_arg), "self-test arg seed");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &shock_arg), "self-test arg shock");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 12, sizeof(cl_int), &volatility_arg), "self-test arg volatility");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 13, sizeof(double), &decay_arg), "self-test arg decay");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &samples), "self-test arg samples");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 15, sizeof(cl_mem), &status_buffer), "self-test arg status");
     CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.path_kernel, 1, NULL, &two, NULL, 0, NULL, NULL),
                  "self-test path kernel launch");
 
-    CHECK_OPENCL(clSetKernelArg(STATE.moments_kernel, 0, sizeof(cl_mem), &samples), "self-test arg moments samples");
-    CHECK_OPENCL(clSetKernelArg(STATE.moments_kernel, 1, sizeof(cl_int), &count_arg), "self-test arg moments count");
-    CHECK_OPENCL(clSetKernelArg(STATE.moments_kernel, 2, sizeof(cl_mem), &summary), "self-test arg moments summary");
-    CHECK_OPENCL(clSetKernelArg(STATE.moments_kernel, 3, sizeof(cl_mem), &status_buffer),
-                 "self-test arg moments status");
-    CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.moments_kernel, 1, NULL, &one, NULL, 0, NULL, NULL),
-                 "self-test moments kernel launch");
+    size_t moment_global = use_parallel ? two : one;
+    size_t* moment_local = use_parallel ? &two : NULL;
+    CHECK_OPENCL(clSetKernelArg(STATE.moments_partial_kernel, 0, sizeof(cl_mem), &samples),
+                 "self-test arg moments partial samples");
+    CHECK_OPENCL(clSetKernelArg(STATE.moments_partial_kernel, 1, sizeof(cl_int), &count_arg),
+                 "self-test arg moments partial count");
+    CHECK_OPENCL(clSetKernelArg(STATE.moments_partial_kernel, 2, sizeof(cl_mem), &moments_partials),
+                 "self-test arg moments partial sums");
+    CHECK_OPENCL(clSetKernelArg(STATE.moments_partial_kernel, 3, sizeof(cl_mem), &moments_sqpartials),
+                 "self-test arg moments partial sqsums");
+    CHECK_OPENCL(clSetKernelArg(STATE.moments_partial_kernel, 4, sizeof(cl_mem), &status_buffer),
+                 "self-test arg moments partial status");
+    CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.moments_partial_kernel, 1, NULL, &moment_global,
+                                       moment_local, 0, NULL, NULL), "self-test moments partial kernel launch");
+    {
+        cl_int block_count_arg = 1;
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 0, sizeof(cl_mem), &moments_partials),
+                     "self-test arg moments finalize sums");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 1, sizeof(cl_mem), &moments_sqpartials),
+                     "self-test arg moments finalize sqsums");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 2, sizeof(cl_int), &block_count_arg),
+                     "self-test arg moments finalize blocks");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 3, sizeof(cl_int), &count_arg),
+                     "self-test arg moments finalize count");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &summary),
+                     "self-test arg moments finalize summary");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &status_buffer),
+                     "self-test arg moments finalize status");
+        CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.moments_finalize_kernel, 1, NULL, &moment_global,
+                                          moment_local, 0, NULL, NULL),
+                     "self-test moments finalize kernel launch");
+    }
 
     if (use_parallel) {
         CHECK_OPENCL(clSetKernelArg(STATE.bitonic_parallel, 0, sizeof(cl_mem), &samples), "self-test arg sort samples");
@@ -625,7 +718,9 @@ cleanup:
     release_mem(&samples);
     release_mem(&quantiles);
     release_mem(&summary);
-    return error_status;
+    release_mem(&moments_partials);
+    release_mem(&moments_sqpartials);
+    release_mem(&rng_bounded);
 }
 
 static cl_int initialize_state(char* error, size_t error_size) {
@@ -740,7 +835,7 @@ static cl_int initialize_state(char* error, size_t error_size) {
             goto cleanup;
         }
     }
-    STATE.queue = clCreateCommandQueue(STATE.context, STATE.device, 0, &error_status);
+    STATE.queue = clCreateCommandQueue(STATE.context, STATE.device, CL_QUEUE_PROFILING_ENABLE, &error_status);
     if (error_status != CL_SUCCESS || STATE.queue == NULL) {
         fail(error, error_size, "command queue creation failed");
         goto cleanup;
@@ -776,9 +871,14 @@ static cl_int initialize_state(char* error, size_t error_size) {
         fail(error, error_size, "path kernel creation failed");
         goto cleanup;
     }
-    STATE.moments_kernel = clCreateKernel(STATE.program, "moments_kernel", &error_status);
-    if (error_status != CL_SUCCESS || STATE.moments_kernel == NULL) {
-        fail(error, error_size, "moments kernel creation failed");
+    STATE.moments_partial_kernel = clCreateKernel(STATE.program, "moments_partial_kernel", &error_status);
+    if (error_status != CL_SUCCESS || STATE.moments_partial_kernel == NULL) {
+        fail(error, error_size, "moments partial kernel creation failed");
+        goto cleanup;
+    }
+    STATE.moments_finalize_kernel = clCreateKernel(STATE.program, "moments_finalize_kernel", &error_status);
+    if (error_status != CL_SUCCESS || STATE.moments_finalize_kernel == NULL) {
+        fail(error, error_size, "moments finalize kernel creation failed");
         goto cleanup;
     }
     STATE.quantile_kernel = clCreateKernel(STATE.program, "quantile_kernel", &error_status);
@@ -851,9 +951,13 @@ cleanup:
             clReleaseKernel(STATE.quantile_kernel);
             STATE.quantile_kernel = NULL;
         }
-        if (STATE.moments_kernel != NULL) {
-            clReleaseKernel(STATE.moments_kernel);
-            STATE.moments_kernel = NULL;
+        if (STATE.moments_finalize_kernel != NULL) {
+            clReleaseKernel(STATE.moments_finalize_kernel);
+            STATE.moments_finalize_kernel = NULL;
+        }
+        if (STATE.moments_partial_kernel != NULL) {
+            clReleaseKernel(STATE.moments_partial_kernel);
+            STATE.moments_partial_kernel = NULL;
         }
         if (STATE.path_kernel != NULL) {
             clReleaseKernel(STATE.path_kernel);
@@ -941,12 +1045,14 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     double* historical_returns = NULL;
     double* payload = NULL;
     double* padded_host = NULL;
-    double* summary = NULL;
+    int* status_host = NULL;
     cl_mem device_samples = NULL;
     cl_mem device_history = NULL;
     cl_mem device_quantiles = NULL;
     cl_mem device_summary = NULL;
     cl_mem device_status = NULL;
+    cl_mem device_partials = NULL;
+    cl_mem device_partial_sqsums = NULL;
     jsize quantile_count = 0;
     size_t history_count = 0;
     size_t row_length = 0;
@@ -956,7 +1062,11 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     size_t one = 1;
     cl_int padded_int = 0;
     int use_parallel = 0;
-    int status = -1;
+    size_t moment_threads = 1;
+    size_t path_blocks = 1;
+    cl_event* events = NULL;
+    int* event_kinds = NULL;
+    int event_count = 0;
 
     if (pthread_mutex_lock(&STATE_MUTEX) != 0) {
         throw_java(environment, "unable to lock native state");
@@ -998,6 +1108,11 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     }
     padded_int = (cl_int)padded;
     use_parallel = padded <= STATE.max_work_group_size;
+    moment_threads = STATE.max_work_group_size < 256 ? STATE.max_work_group_size : 256;
+    while ((moment_threads & (moment_threads - 1)) != 0) {
+        --moment_threads;
+    }
+    path_blocks = ((size_t)iteration_count + moment_threads - 1) / moment_threads;
 
     if (!copy_doubles(environment, quantiles_array, quantile_count, "quantiles", &quantiles, error, sizeof(error))
             || !copy_ints(environment, stable_array, decision_count, "stable", &stable, error, sizeof(error))
@@ -1016,8 +1131,8 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
 
     payload = (double*)calloc(payload_size, sizeof(double));
     padded_host = (double*)malloc(padded * sizeof(double));
-    summary = (double*)calloc(summary_size, sizeof(double));
-    if (payload == NULL || padded_host == NULL || summary == NULL) {
+    status_host = (int*)calloc((size_t)decision_count, sizeof(int));
+    if (payload == NULL || padded_host == NULL || status_host == NULL) {
         throw_java(environment, "out of host memory");
         goto cleanup;
     }
@@ -1034,7 +1149,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
             throw_java(environment, error);
             goto cleanup;
         }
-        device_history = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, (size_t)lookback * sizeof(double), NULL,
+        device_history = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, history_count * sizeof(double), NULL,
                                         &create_status);
         if (create_status != CL_SUCCESS || device_history == NULL) {
             snprintf(error, sizeof(error), "history buffer creation: %s", cl_error_string(create_status));
@@ -1061,24 +1176,57 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
             throw_java(environment, error);
             goto cleanup;
         }
+        device_partials = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, path_blocks * sizeof(double), NULL,
+                                         &create_status);
+        if (create_status != CL_SUCCESS || device_partials == NULL) {
+            snprintf(error, sizeof(error), "moments partial buffer creation: %s", cl_error_string(create_status));
+            throw_java(environment, error);
+            goto cleanup;
+        }
+        device_partial_sqsums = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, path_blocks * sizeof(double), NULL,
+                                               &create_status);
+        if (create_status != CL_SUCCESS || device_partial_sqsums == NULL) {
+            snprintf(error, sizeof(error), "moments sqpartial buffer creation: %s", cl_error_string(create_status));
+            throw_java(environment, error);
+            goto cleanup;
+        }
     }
 
+    // Event kinds: 0 = transfer, 1 = path sampling, 2 = reduction/sort/quantile.
+    events = (cl_event*)calloc(5 * (size_t)decision_count + 3, sizeof(cl_event));
+    event_kinds = (int*)calloc(5 * (size_t)decision_count + 3, sizeof(int));
+    if (events == NULL || event_kinds == NULL) {
+        throw_java(environment, "out of host memory for profiling events");
+        goto cleanup;
+    }
     {
-        cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_quantiles, CL_TRUE, 0,
-                                                   (size_t)quantile_count * sizeof(double), quantiles, 0, NULL, NULL);
+        cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_quantiles, CL_FALSE, 0,
+                                                   (size_t)quantile_count * sizeof(double), quantiles, 0, NULL,
+                                                   &events[event_count]);
         if (write_status != CL_SUCCESS) {
             snprintf(error, sizeof(error), "quantile transfer: %s", cl_error_string(write_status));
             throw_java(environment, error);
             goto cleanup;
         }
-        write_status = clEnqueueWriteBuffer(STATE.queue, device_samples, CL_TRUE, 0, padded * sizeof(double),
-                                            padded_host, 0, NULL, NULL);
+        event_kinds[event_count++] = 0;
+        write_status = clEnqueueWriteBuffer(STATE.queue, device_samples, CL_FALSE, 0, padded * sizeof(double),
+                                            padded_host, 0, NULL, &events[event_count]);
         if (write_status != CL_SUCCESS) {
             snprintf(error, sizeof(error), "sample padding transfer: %s", cl_error_string(write_status));
             throw_java(environment, error);
             goto cleanup;
         }
+        event_kinds[event_count++] = 0;
+        write_status = clEnqueueWriteBuffer(STATE.queue, device_history, CL_FALSE, 0, history_count * sizeof(double),
+                                            historical_returns, 0, NULL, &events[event_count]);
+        if (write_status != CL_SUCCESS) {
+            snprintf(error, sizeof(error), "historical return transfer: %s", cl_error_string(write_status));
+            throw_java(environment, error);
+            goto cleanup;
+        }
+        event_kinds[event_count++] = 0;
     }
+    static const int zero_status = 0;
 
     for (int decision = 0; decision < decision_count; ++decision) {
         size_t row = 4U + (size_t)decision * row_length;
@@ -1087,34 +1235,23 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
             continue;
         }
         {
-            double transfer_start = now_micros();
-            const double* history = historical_returns + (size_t)decision * (size_t)lookback;
-            cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_history, CL_TRUE, 0,
-                                                       (size_t)lookback * sizeof(double), history, 0, NULL, NULL);
-            if (write_status != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "historical return transfer: %s", cl_error_string(write_status));
-                throw_java(environment, error);
-                goto cleanup;
-            }
-            int zero = 0;
-            write_status = clEnqueueWriteBuffer(STATE.queue, device_status, CL_TRUE, 0, sizeof(int), &zero, 0, NULL,
-                                                NULL);
+            cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_status, CL_FALSE, 0, sizeof(int),
+                                                       &zero_status, 0, NULL, NULL);
             if (write_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "status reset: %s", cl_error_string(write_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
-            transfer_micros += now_micros() - transfer_start;
         }
 
         {
-            double kernel_start = now_micros();
             double price = prices[decision];
             double mean = means[decision];
             double drift = drifts[decision];
             double variance = variances[decision];
             cl_int lookback_arg = lookback;
             cl_int decision_arg = from_inclusive + decision;
+            cl_int history_row_arg = (cl_int)decision;
             cl_int horizon_arg = horizon;
             cl_int iteration_arg = iteration_count;
             cl_long seed_arg = (cl_long)seed;
@@ -1143,31 +1280,34 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                 argument_error = clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &lookback_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &decision_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &history_row_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &horizon_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &decision_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &iteration_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &horizon_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_long), &seed_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_int), &iteration_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &shock_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_long), &seed_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &volatility_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &shock_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 12, sizeof(double), &decay_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 12, sizeof(cl_int), &volatility_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 13, sizeof(cl_mem), &device_samples);
+                argument_error = clSetKernelArg(STATE.path_kernel, 13, sizeof(double), &decay_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &device_status);
+                argument_error = clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &device_samples);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.path_kernel, 15, sizeof(cl_mem), &device_status);
             }
             if (argument_error != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "path kernel arguments: %s", cl_error_string(argument_error));
@@ -1176,53 +1316,84 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
             }
             {
                 cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.path_kernel, 1, NULL, &global_paths,
-                                                              NULL, 0, NULL, NULL);
+                                                              NULL, 0, NULL, &events[event_count]);
                 if (launch_status != CL_SUCCESS) {
                     snprintf(error, sizeof(error), "path kernel launch: %s", cl_error_string(launch_status));
                     throw_java(environment, error);
                     goto cleanup;
                 }
-            }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "path kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
+                event_kinds[event_count++] = 1;
             }
 
-            argument_error = clSetKernelArg(STATE.moments_kernel, 0, sizeof(cl_mem), &device_samples);
+            cl_int blocks_arg = (cl_int)path_blocks;
+            argument_error = clSetKernelArg(STATE.moments_partial_kernel, 0, sizeof(cl_mem), &device_samples);
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 1, sizeof(cl_int), &iteration_arg);
+                argument_error = clSetKernelArg(STATE.moments_partial_kernel, 1, sizeof(cl_int), &iteration_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 2, sizeof(cl_mem), &device_summary);
+                argument_error =
+                        clSetKernelArg(STATE.moments_partial_kernel, 2, sizeof(cl_mem), &device_partials);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 3, sizeof(cl_mem), &device_status);
+                argument_error = clSetKernelArg(STATE.moments_partial_kernel, 3, sizeof(cl_mem),
+                                                &device_partial_sqsums);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_partial_kernel, 4, sizeof(cl_mem), &device_status);
             }
             if (argument_error != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "moments kernel arguments: %s", cl_error_string(argument_error));
+                snprintf(error, sizeof(error), "moments partial kernel arguments: %s",
+                         cl_error_string(argument_error));
                 throw_java(environment, error);
                 goto cleanup;
             }
             {
-                cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.moments_kernel, 1, NULL, &one, NULL,
-                                                              0, NULL, NULL);
+                size_t global_moment = path_blocks * moment_threads;
+                cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.moments_partial_kernel, 1, NULL,
+                                                              &global_moment, &moment_threads, 0, NULL,
+                                                              &events[event_count]);
                 if (launch_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "moments kernel launch: %s", cl_error_string(launch_status));
+                    snprintf(error, sizeof(error), "moments partial kernel launch: %s",
+                             cl_error_string(launch_status));
                     throw_java(environment, error);
                     goto cleanup;
                 }
+                event_kinds[event_count++] = 2;
+            }
+            argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 0, sizeof(cl_mem), &device_partials);
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 1, sizeof(cl_mem),
+                                                &device_partial_sqsums);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 2, sizeof(cl_int), &blocks_arg);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 3, sizeof(cl_int), &iteration_arg);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &device_summary);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &device_status);
+            }
+            if (argument_error != CL_SUCCESS) {
+                snprintf(error, sizeof(error), "moments finalize kernel arguments: %s",
+                         cl_error_string(argument_error));
+                throw_java(environment, error);
+                goto cleanup;
             }
             {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "moments kernel finish: %s", cl_error_string(finish_status));
+                cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.moments_finalize_kernel, 1, NULL,
+                                                              &moment_threads, &moment_threads, 0, NULL,
+                                                              &events[event_count]);
+                if (launch_status != CL_SUCCESS) {
+                    snprintf(error, sizeof(error), "moments finalize kernel launch: %s",
+                             cl_error_string(launch_status));
                     throw_java(environment, error);
                     goto cleanup;
                 }
+                event_kinds[event_count++] = 2;
             }
 
             if (use_parallel) {
@@ -1237,7 +1408,8 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                 }
                 {
                     cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.bitonic_parallel, 1, NULL,
-                                                                  &local_sort, &local_sort, 0, NULL, NULL);
+                                                                  &local_sort, &local_sort, 0, NULL,
+                                                                  &events[event_count]);
                     if (launch_status != CL_SUCCESS) {
                         snprintf(error, sizeof(error), "bitonic kernel launch: %s", cl_error_string(launch_status));
                         throw_java(environment, error);
@@ -1257,7 +1429,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                 }
                 {
                     cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.bitonic_serial, 1, NULL, &one,
-                                                                  NULL, 0, NULL, NULL);
+                                                                  NULL, 0, NULL, &events[event_count]);
                     if (launch_status != CL_SUCCESS) {
                         snprintf(error, sizeof(error), "bitonic serial kernel launch: %s",
                                  cl_error_string(launch_status));
@@ -1266,19 +1438,10 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                     }
                 }
             }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "sort kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-            kernel_micros += now_micros() - kernel_start;
+            event_kinds[event_count++] = 2;
         }
 
         {
-            double reduction_start = now_micros();
             cl_int count_arg = iteration_count;
             cl_int probability_arg = quantile_count;
             cl_int argument_error = clSetKernelArg(STATE.quantile_kernel, 0, sizeof(cl_mem), &device_samples);
@@ -1304,48 +1467,80 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
             }
             {
                 cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.quantile_kernel, 1, NULL, &one, NULL,
-                                                              0, NULL, NULL);
+                                                              0, NULL, &events[event_count]);
                 if (launch_status != CL_SUCCESS) {
                     snprintf(error, sizeof(error), "quantile kernel launch: %s", cl_error_string(launch_status));
                     throw_java(environment, error);
                     goto cleanup;
                 }
+                event_kinds[event_count++] = 2;
             }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "quantile kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-            reduction_micros += now_micros() - reduction_start;
         }
 
         {
-            double output_start = now_micros();
-            cl_int read_status = clEnqueueReadBuffer(STATE.queue, device_status, CL_TRUE, 0, sizeof(int), &status, 0,
-                                                     NULL, NULL);
+            cl_int read_status = clEnqueueReadBuffer(STATE.queue, device_status, CL_FALSE, 0, sizeof(int),
+                                                     &status_host[decision], 0, NULL, NULL);
             if (read_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "status transfer: %s", cl_error_string(read_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
-            read_status = clEnqueueReadBuffer(STATE.queue, device_summary, CL_TRUE, 0, summary_size * sizeof(double),
-                                              summary, 0, NULL, NULL);
+            read_status = clEnqueueReadBuffer(STATE.queue, device_summary, CL_FALSE, 0, summary_size * sizeof(double),
+                                              payload + row + 1, 0, NULL, NULL);
             if (read_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "summary transfer: %s", cl_error_string(read_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
-            transfer_micros += now_micros() - output_start;
-            payload[row] = (double)status;
-            if (status == 0) {
-                memcpy(payload + row + 1, summary, summary_size * sizeof(double));
-            }
         }
     }
 
+    {
+        cl_int finish_status = clFinish(STATE.queue);
+        if (finish_status != CL_SUCCESS) {
+            snprintf(error, sizeof(error), "forecast pipeline finish: %s", cl_error_string(finish_status));
+            throw_java(environment, error);
+            goto cleanup;
+        }
+    }
+    transfer_micros = 0.0;
+    kernel_micros = 0.0;
+    reduction_micros = 0.0;
+    while (event_count > 0) {
+        --event_count;
+        cl_ulong start_ns = 0;
+        cl_ulong end_ns = 0;
+        if (clGetEventProfilingInfo(events[event_count], CL_PROFILING_COMMAND_START, sizeof(start_ns), &start_ns,
+                                    NULL)
+                == CL_SUCCESS
+            && clGetEventProfilingInfo(events[event_count], CL_PROFILING_COMMAND_END, sizeof(end_ns), &end_ns, NULL)
+                == CL_SUCCESS) {
+            double span = (double)(end_ns - start_ns) / 1000.0;
+            if (event_kinds[event_count] == 1) {
+                kernel_micros += span;
+            } else if (event_kinds[event_count] == 2) {
+                reduction_micros += span;
+            } else {
+                transfer_micros += span;
+            }
+        }
+        clReleaseEvent(events[event_count]);
+        events[event_count] = NULL;
+    }
+    free(events);
+    events = NULL;
+    free(event_kinds);
+    event_kinds = NULL;
+    for (int decision = 0; decision < decision_count; ++decision) {
+        if (stable[decision] == 0) {
+            continue;
+        }
+        size_t row = 4U + (size_t)decision * row_length;
+        payload[row] = (double)status_host[decision];
+        if (status_host[decision] != 0) {
+            memset(payload + row + 1, 0, summary_size * sizeof(double));
+        }
+    }
     payload[1] = transfer_micros;
     payload[2] = kernel_micros;
     payload[3] = reduction_micros;
@@ -1358,12 +1553,23 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     (*environment)->SetDoubleArrayRegion(environment, result, 0, (jsize)payload_size, payload);
 
 cleanup:
+    while (events != NULL && event_count > 0) {
+        --event_count;
+        if (events[event_count] != NULL) {
+            clReleaseEvent(events[event_count]);
+            events[event_count] = NULL;
+        }
+    }
+    free(events);
+    free(event_kinds);
     release_mem(&device_status);
     release_mem(&device_summary);
     release_mem(&device_quantiles);
     release_mem(&device_history);
     release_mem(&device_samples);
-    free(summary);
+    release_mem(&device_partial_sqsums);
+    release_mem(&device_partials);
+    free(status_host);
     free(padded_host);
     free(payload);
     free(historical_returns);
