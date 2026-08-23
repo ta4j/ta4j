@@ -1005,6 +1005,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // window instead of scanning sources for out-of-domain indexes.
         assertFalse(indicator.getResult(11).windowAvailable());
     }
+
     @Test
     public void oneSidedWindowMayHoldEventsUpToTheMatcherCellCap() {
         // A one-sided alignment needs (predictedCount + 1) * (referenceCount + 1)
@@ -1058,9 +1059,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void boundedRetriesReportUnavailableWhenTheSeriesMutatesOnEveryRead() {
-        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withMaxBarCount(8)
-                .build();
+        BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(8).build();
         AtomicInteger reads = new AtomicInteger();
         Indicator<Boolean> mutating = new AbstractIndicator<Boolean>(rolling) {
             @Override
