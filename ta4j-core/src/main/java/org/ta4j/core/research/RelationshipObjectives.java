@@ -98,8 +98,6 @@ final class RelationshipObjectives {
      * correlation is reported in the {@code selectedCorrelation} metric.
      * </p>
      *
-     * 
-     *
      * @param referenceBuilder builds the reference indicator from a window
      *                         sub-series
      * @param barCount         aligned-sample window size in bars
