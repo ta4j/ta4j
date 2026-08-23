@@ -947,4 +947,29 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // include the now-warm-up bar 8.
         assertFalse(indicator.getResult(11).windowAvailable());
     }
+
+    @Test
+    public void cachedScalarRejectsWindowsBelowAdvancedStabilityBoundary() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
+        EventSynchronizationIndicator indicator = indicator(events(rolling, 2, 10), events(rolling, 2, 10), 3, 0, 0);
+        // Head 4: stability boundary 6; window [9..11] is fully available and
+        // the F1 scalar for index 11 caches a defined value.
+        assertTrue(indicator.getResult(11).windowAvailable());
+        assertFalse(indicator.getValue(11).isNaN());
+
+        // Shrinking the maximum bar count advances the retained head to 8
+        // without pruning index 11: the stability boundary rises to 10 while
+        // the window start stays 9. Both the diagnostics and the cached scalar
+        // must report the window as unavailable instead of serving the stale
+        // score cached at the smaller boundary.
+        for (int maxBarCount = 7; maxBarCount >= 4; maxBarCount--) {
+            rolling.setMaximumBarCount(maxBarCount);
+        }
+        assertEquals(8, rolling.getBeginIndex());
+        assertFalse(indicator.getResult(11).windowAvailable());
+        assertTrue(indicator.getValue(11).isNaN());
+    }
 }
