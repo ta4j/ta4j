@@ -43,6 +43,8 @@ run_test() {
   git init -q -b master
   git config user.name "Test User"
   git config user.email "test@example.com"
+  git config commit.gpgsign false
+  git config tag.gpgsign false
 }
 
 finish_test() {

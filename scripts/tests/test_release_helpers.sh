@@ -433,6 +433,8 @@ test_build_dossier_groups_and_truncates_diff() {
   run_test
 
   git init -q -b master
+  git config commit.gpgsign false
+  git config tag.gpgsign false
   git config user.name "Test User"
   git config user.email "test@example.com"
   mkdir -p ta4j-core/src/main/java/org/ta4j/core scripts
@@ -648,6 +650,8 @@ test_last_release_date_uses_annotated_tag_date() {
     cd release-repo
     git config user.name "Release Test"
     git config user.email "release-test@example.com"
+    git config commit.gpgsign false
+    git config tag.gpgsign false
     GIT_AUTHOR_DATE=2026-07-01T00:00:00Z GIT_COMMITTER_DATE=2026-07-01T00:00:00Z git commit -q --allow-empty -m "base commit"
     GIT_COMMITTER_DATE=2026-08-03T00:00:00Z git tag -a 1.0.0 -m "Release 1.0.0"
   )
