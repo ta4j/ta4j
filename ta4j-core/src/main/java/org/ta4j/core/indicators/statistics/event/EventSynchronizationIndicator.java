@@ -299,7 +299,11 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 int beginIndex = Math.max(snapshot.removedThroughIndex() + 1, series.getBeginIndex());
                 long snapshotStableBoundary = (long) beginIndex
                         + Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
-                if (windowStart < beginIndex || windowStart < snapshotStableBoundary) {
+                if (index > Math.max(snapshot.endIndex(), series.getEndIndex()) || windowStart < beginIndex
+                        || windowStart < snapshotStableBoundary) {
+                    // A cleared or truncated series can move the end index
+                    // below the requested bar after the outer domain check;
+                    // scanning would then read out-of-domain indexes.
                     return undefinedResult(windowStart, index);
                 }
                 predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);

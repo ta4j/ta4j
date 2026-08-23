@@ -659,13 +659,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
     @Test
     public void windowWiderThanHalfTheMatcherCapacityStillBoundsTheCache() {
-        // The cache mechanics under test are factory-independent (int arrays
-        // and Boolean signals), so the heavy ~6.3M-index catch-up scan runs
-        // once instead of once per numeric factory; the small-scale eviction
-        // tests above already cover both factories.
-        if (!(numFactory instanceof DoubleNumFactory)) {
-            return;
-        }
+        // The eviction cap keeps this scenario cheap (the catch-up scan is
+        // bounded well below the array ceiling), so it runs for both numeric
+        // factories instead of silently skipping one parameterized leg.
         // A window wider than half the matcher capacity (8,000,000 cells) makes
         // the rolling eviction threshold exceed the events array's growth
         // ceiling: without capping the threshold, a catch-up over more than
@@ -971,5 +967,38 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(8, rolling.getBeginIndex());
         assertFalse(indicator.getResult(11).windowAvailable());
         assertTrue(indicator.getValue(11).isNaN());
+    }
+
+    @Test
+    public void snapshotGateCensorsWindowWhenSeriesIsClearedDuringEvaluation() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
+        AtomicInteger sourceReads = new AtomicInteger();
+        Indicator<Boolean> reference = events(rolling, 0);
+        Indicator<Boolean> predicted = new AbstractIndicator<Boolean>(rolling) {
+            @Override
+            public Boolean getValue(int index) {
+                // Clear the series mid-evaluation: the end index drops below
+                // the requested bar while this very result is being computed.
+                if (sourceReads.incrementAndGet() == 3) {
+                    rolling.clear();
+                }
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(predicted, reference, 4, 0, 0);
+
+        // Window [8..11] passes the outer domain check, but the scan itself
+        // clears the series; the coordinated snapshot recheck must censor the
+        // window instead of scanning sources for out-of-domain indexes.
+        assertFalse(indicator.getResult(11).windowAvailable());
     }
 }
