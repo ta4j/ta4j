@@ -196,10 +196,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
 
     /**
      * @return the first absolute index at which both sources are stable. Source
-     *         instability counts bars from the series' retained head (the
-     *         anchoring convention shared across rolling statistics), so the
-     *         boundary sits at {@code beginIndex + unstableBars}; computed in
-     *         long because unstable counts saturate near {@link Integer#MAX_VALUE}.
+     *         instability counts bars from the series' retained head (the anchoring
+     *         convention shared across rolling statistics), so the boundary sits at
+     *         {@code beginIndex + unstableBars}; computed in long because unstable
+     *         counts saturate near {@link Integer#MAX_VALUE}.
      */
     private long firstStableIndex() {
         return (long) getBarSeries().getBeginIndex()
@@ -272,8 +272,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         // (for example Integer.MIN_VALUE) must wrap neither the window start into
         // a bogus in-range index nor the comparison itself before the gate
         // rejects them.
-        if (index < series.getBeginIndex() || index > series.getEndIndex()
-                || windowStartIndex < firstStableIndex()) {
+        if (index < series.getBeginIndex() || index > series.getEndIndex() || windowStartIndex < firstStableIndex()) {
             return undefinedResult((int) Math.max(windowStartIndex, Integer.MIN_VALUE), index);
         }
         int windowStart = (int) windowStartIndex;
