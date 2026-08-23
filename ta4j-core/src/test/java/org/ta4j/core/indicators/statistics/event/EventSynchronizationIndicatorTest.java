@@ -864,6 +864,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(0, result.matches().get(0).offsetBars());
         assertNumEquals(1.0, result.f1Score());
     }
+
     @Test
     public void farOutOfRangeIndexesReportUnavailableWithoutWrapping() {
         BarSeries bars = series();
