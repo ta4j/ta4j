@@ -12,6 +12,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -349,6 +350,23 @@ public class DecimalNumTest {
         final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
 
         assertNotEquals(decimalNum, doubleNum);
+    }
+
+    @Test
+    public void testEqualsHashCodeContractAcrossScales() {
+        final DecimalNum num1 = DecimalNum.valueOf("1.0");
+        final DecimalNum num2 = DecimalNum.valueOf("1.00");
+
+        assertEquals(num1, num2);
+        assertEquals(num1.hashCode(), num2.hashCode());
+    }
+
+    @Test
+    public void testHashSetLookupAcrossScales() {
+        final HashSet<DecimalNum> nums = new HashSet<>();
+        nums.add(DecimalNum.valueOf("1.0"));
+
+        assertTrue(nums.contains(DecimalNum.valueOf("1.00")));
     }
 
     @Test

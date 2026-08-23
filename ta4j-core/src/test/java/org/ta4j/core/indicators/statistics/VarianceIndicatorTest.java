@@ -115,6 +115,25 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
                 source.readCount() <= 6);
     }
 
+    @Test
+    public void anchorsWindowAtBeginIndexAfterRemoval() {
+        // Evict the first four closes (1..4) so beginIndex = 4; the retained closes
+        // [5,6,7,8,9,10] live at absolute indices 4..9. The indicator is constructed
+        // after the removal, so its window must anchor at beginIndex rather than 0.
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .withMaxBarCount(6)
+                .build();
+        var variance = new VarianceIndicator(new ClosePriceIndicator(pruned), 6);
+
+        // Window [4..4] = {5}: single observation -> zero sample variance
+        assertNumEquals(0, variance.getValue(4));
+        // Window [4..7] = {5,6,7,8}: sample variance = (2.25 + 0.25 + 0.25 + 2.25) / 3
+        assertNumEquals(1.6667, variance.getValue(7));
+        // Window [4..8] = {5,6,7,8,9}: sample variance = (4 + 1 + 0 + 1 + 4) / 4
+        assertNumEquals(2.5, variance.getValue(8));
+    }
+
     private static final class CountingIndicator extends FixedIndicator<Num> {
 
         private int readCount;

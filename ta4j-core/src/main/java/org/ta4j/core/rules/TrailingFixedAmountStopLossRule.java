@@ -117,21 +117,17 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
             return false;
         }
         boolean buy = currentPosition.getEntry().isBuy();
-        Num extremePrice;
-        Num stopPrice;
-        boolean satisfied;
-        String extremeField;
-        if (buy) {
-            extremePrice = new HighestValueIndicator(priceIndicator, lookback).getValue(index);
-            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, true);
-            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
-            extremeField = "highestPrice";
-        } else {
-            extremePrice = new LowestValueIndicator(priceIndicator, lookback).getValue(index);
-            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, false);
-            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
-            extremeField = "lowestPrice";
+        Num extremePrice = buy ? new HighestValueIndicator(priceIndicator, lookback).getValue(index)
+                : new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(extremePrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "lossAmount",
+                    lossAmount, "priceUnavailable");
+            return false;
         }
+        Num stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, buy);
+        boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
+                : currentPrice.isGreaterThanOrEqual(stopPrice);
+        String extremeField = buy ? "highestPrice" : "lowestPrice";
         String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
         StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
                 extremeField, extremePrice, lookback, "lossAmount", lossAmount, reason);
@@ -154,14 +150,13 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         int entryIndex = position.getEntry().getIndex();
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
-        if (position.getEntry().isBuy()) {
-            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
-            Num highestCloseNum = highest.getValue(entryIndex);
-            return StopLossRule.stopLossPriceFromDistance(highestCloseNum, lossAmount, true);
+        Num extremePrice = position.getEntry().isBuy()
+                ? new HighestValueIndicator(priceIndicator, lookback).getValue(entryIndex)
+                : new LowestValueIndicator(priceIndicator, lookback).getValue(entryIndex);
+        if (Num.isNaNOrNull(extremePrice)) {
+            return null;
         }
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
-        Num lowestCloseNum = lowest.getValue(entryIndex);
-        return StopLossRule.stopLossPriceFromDistance(lowestCloseNum, lossAmount, false);
+        return StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, position.getEntry().isBuy());
     }
 
     private int getValueIndicatorBarCount(int index, int positionIndex) {

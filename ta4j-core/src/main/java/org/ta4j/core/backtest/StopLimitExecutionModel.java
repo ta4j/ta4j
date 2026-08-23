@@ -32,6 +32,16 @@ import org.ta4j.core.num.Num;
  * timestamps so backtest fills match live-fill metadata shape.
  * </p>
  *
+ * <p>
+ * This model is safe for concurrent use with distinct trading records: all
+ * access to the internal pending/rejected order maps is synchronized, so
+ * parallel strategy batches (e.g. {@link BacktestExecutor}) can share one model
+ * instance without losing or corrupting orders. Weak-key semantics are
+ * preserved: orders are removed on fill or expiry and stale keys are reclaimed
+ * once their trading records become unreachable. A single trading record must
+ * still be driven from one thread at a time.
+ * </p>
+ *
  * @since 0.22.4
  */
 public class StopLimitExecutionModel implements TradeExecutionModel {
@@ -41,6 +51,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     private final Num maxBarParticipationRate;
     private final int maxBarsToFill;
     private final PriceSource priceSource;
+
+    /**
+     * Guards {@link #pendingOrders} and {@link #rejectedOrders}:
+     * {@link WeakHashMap} is not thread-safe, so every structural map access is
+     * synchronized on this lock.
+     */
+    private final Object stateLock = new Object();
 
     private final Map<TradingRecord, PendingOrder> pendingOrders = new WeakHashMap<>();
     private final Map<TradingRecord, List<RejectedOrder>> rejectedOrders = new WeakHashMap<>();
@@ -122,8 +139,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public List<RejectedOrder> getRejectedOrders(TradingRecord tradingRecord) {
-        List<RejectedOrder> rejected = rejectedOrders.get(tradingRecord);
-        return rejected == null ? List.of() : List.copyOf(rejected);
+        synchronized (stateLock) {
+            List<RejectedOrder> rejected = rejectedOrders.get(tradingRecord);
+            return rejected == null ? List.of() : List.copyOf(rejected);
+        }
     }
 
     /**
@@ -134,11 +153,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public Optional<PendingOrderSnapshot> getPendingOrder(TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
-        if (order == null) {
-            return Optional.empty();
+        synchronized (stateLock) {
+            PendingOrder order = pendingOrders.get(tradingRecord);
+            if (order == null) {
+                return Optional.empty();
+            }
+            return Optional.of(order.snapshot());
         }
-        return Optional.of(order.snapshot());
     }
 
     @Override
@@ -164,7 +185,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return;
         }
         Num requestedAmount = resolveRequestedAmount(tradingRecord, amount);
-        PendingOrder pendingOrder = pendingOrders.get(tradingRecord);
+        PendingOrder pendingOrder = pendingOrderOf(tradingRecord);
         if (pendingOrder != null) {
             addRejectedOrder(tradingRecord,
                     new RejectedOrder(index, index, pendingOrder.tradeType, requestedAmount,
@@ -190,13 +211,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
-        pendingOrders.put(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
+        putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
                 stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
     }
 
     @Override
     public void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null || index < order.activationIndex) {
             return;
         }
@@ -215,7 +236,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         if (order.isCompletelyFilled()) {
             tradingRecord.operate(order.toTrade(tradingRecord));
-            pendingOrders.remove(tradingRecord);
+            removePendingOrder(tradingRecord);
             return;
         }
 
@@ -226,7 +247,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
     @Override
     public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null) {
             return;
         }
@@ -234,7 +255,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private void expireIfStale(int index, TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null || index <= order.expiryIndex) {
             return;
         }
@@ -246,7 +267,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             tradingRecord.operate(order.toTrade(tradingRecord));
         }
         addRejectedOrder(tradingRecord, order.toExpiryRejection(index));
-        pendingOrders.remove(tradingRecord);
+        removePendingOrder(tradingRecord);
     }
 
     private static boolean shouldCommitPartial(PendingOrder order, TradingRecord tradingRecord) {
@@ -386,7 +407,27 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private void addRejectedOrder(TradingRecord tradingRecord, RejectedOrder rejection) {
-        rejectedOrders.computeIfAbsent(tradingRecord, ignored -> new ArrayList<>()).add(rejection);
+        synchronized (stateLock) {
+            rejectedOrders.computeIfAbsent(tradingRecord, ignored -> new ArrayList<>()).add(rejection);
+        }
+    }
+
+    private PendingOrder pendingOrderOf(TradingRecord tradingRecord) {
+        synchronized (stateLock) {
+            return pendingOrders.get(tradingRecord);
+        }
+    }
+
+    private void putPendingOrder(TradingRecord tradingRecord, PendingOrder order) {
+        synchronized (stateLock) {
+            pendingOrders.put(tradingRecord, order);
+        }
+    }
+
+    private void removePendingOrder(TradingRecord tradingRecord) {
+        synchronized (stateLock) {
+            pendingOrders.remove(tradingRecord);
+        }
     }
 
     private record Config(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation, int maxBarsToFill,

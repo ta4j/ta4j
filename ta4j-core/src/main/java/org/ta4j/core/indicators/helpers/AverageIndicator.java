@@ -5,10 +5,12 @@ package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Indicator to calculate the average of a list of other indicators.
@@ -48,12 +50,21 @@ public class AverageIndicator extends CachedIndicator<Num> {
     }
 
     private static Config validatedConfig(Indicator<Num>[] indicators) {
+        if (indicators == null) {
+            throw new IllegalArgumentException("At least one indicator must be provided");
+        }
         return validatedConfig(Arrays.asList(indicators));
     }
 
     private static Config validatedConfig(List<Indicator<Num>> indicators) {
         Indicator<Num> firstIndicator = validateAndGetFirst(indicators);
+        if (indicators.stream().anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("indicator must not be null");
+        }
         List<Indicator<Num>> indicatorSnapshot = List.copyOf(indicators);
+        for (int i = 1; i < indicatorSnapshot.size(); i++) {
+            IndicatorUtils.requireSameSeries(indicatorSnapshot.get(0), indicatorSnapshot.get(i));
+        }
         int unstableBars = indicatorSnapshot.stream().mapToInt(Indicator::getCountOfUnstableBars).max().orElse(0);
         return new Config(firstIndicator, indicatorSnapshot, unstableBars);
     }

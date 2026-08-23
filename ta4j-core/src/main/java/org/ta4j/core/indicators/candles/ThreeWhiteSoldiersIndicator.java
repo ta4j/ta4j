@@ -47,6 +47,9 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return false;
+        }
         if (getBarSeries().getBeginIndex() > (index - 3)) {
             // We need 4 candles: 1 black, 3 white
             return false;
@@ -58,7 +61,7 @@ public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 4;
+        return Math.max(4, barCount + 2);
     }
 
     /**

@@ -8,6 +8,7 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -59,6 +60,56 @@ public class ThreeBlackCrowsIndicatorTest extends AbstractIndicatorTest<Indicato
         BarSeries series = serializationSeries(numFactory);
         return List
                 .of(serializationFixture(series, new ThreeBlackCrowsIndicator(series, 5, 1.0), stableIndexes(series)));
+    }
+
+    @Test
+    public void unstableBarsCoverSmaBaselineWindow() {
+        for (int barCount : new int[] { 2, 4, 8 }) {
+            BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+            // Bullish pre-bars with a large lower shadow (shadow 2, average 2)
+            for (int i = 0; i < barCount - 1; ++i) {
+                boundarySeries.barBuilder()
+                        .openPrice(20 + i)
+                        .closePrice(21 + i)
+                        .highPrice(22 + i)
+                        .lowPrice(18 + i)
+                        .add();
+            }
+            // White candle at index barCount - 1
+            boundarySeries.barBuilder()
+                    .openPrice(20 + barCount)
+                    .closePrice(22 + barCount)
+                    .highPrice(23.5 + barCount)
+                    .lowPrice(18 + barCount)
+                    .add();
+            // Three black crows with very short lower shadows (0.1 < 2 * 0.1)
+            boundarySeries.barBuilder()
+                    .openPrice(23 + barCount)
+                    .closePrice(20 + barCount)
+                    .highPrice(23 + barCount)
+                    .lowPrice(19.9 + barCount)
+                    .add();
+            boundarySeries.barBuilder()
+                    .openPrice(22.5 + barCount)
+                    .closePrice(19 + barCount)
+                    .highPrice(22.5 + barCount)
+                    .lowPrice(18.9 + barCount)
+                    .add();
+            boundarySeries.barBuilder()
+                    .openPrice(22 + barCount)
+                    .closePrice(18 + barCount)
+                    .highPrice(22 + barCount)
+                    .lowPrice(17.9 + barCount)
+                    .add();
+
+            var tbc = new ThreeBlackCrowsIndicator(boundarySeries, barCount, 0.1);
+            int boundary = barCount + 2;
+            assertEquals(Math.max(4, boundary), tbc.getCountOfUnstableBars());
+            for (int i = 0; i < boundary; ++i) {
+                assertFalse(tbc.getValue(i));
+            }
+            assertTrue(tbc.getValue(boundary));
+        }
     }
 
 }

@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.candles;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -18,6 +19,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -178,6 +180,38 @@ public class MorningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
         return List.of(serializationFixture(series, new MorningStarIndicator(series), stableIndexes(series)));
+    }
+
+    @Test
+    public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
+        var ms = new MorningStarIndicator(series);
+        assertEquals(Math.max(2, new DownTrendIndicator(series).getCountOfUnstableBars()), ms.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void firstStableSignalAppearsAtDeclaredBoundary() {
+        BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 9; ++i) {
+            boundarySeries.barBuilder()
+                    .openPrice(46 - 2 * i)
+                    .closePrice(40 - 2 * i)
+                    .highPrice(46 - 2 * i)
+                    .lowPrice(38 - 2 * i)
+                    .add();
+        }
+        // Big bearish first bar at index 9
+        boundarySeries.barBuilder().openPrice(28).closePrice(22).highPrice(28).lowPrice(20).add();
+        // Small-body star gapping down at index 10
+        boundarySeries.barBuilder().openPrice(20).closePrice(19.8).highPrice(20).lowPrice(19).add();
+        // Bullish third bar closing above the first-bar midpoint at index 11
+        boundarySeries.barBuilder().openPrice(22).closePrice(25.5).highPrice(26).lowPrice(22).add();
+
+        var ms = new MorningStarIndicator(boundarySeries);
+        int boundary = ms.getCountOfUnstableBars();
+        for (int i = 0; i < boundary; ++i) {
+            assertFalse(ms.getValue(i));
+        }
+        assertTrue(ms.getValue(boundary));
     }
 
 }

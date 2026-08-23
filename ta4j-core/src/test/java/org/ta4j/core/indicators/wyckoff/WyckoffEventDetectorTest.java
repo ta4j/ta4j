@@ -10,6 +10,7 @@ import java.util.EnumSet;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -165,6 +166,32 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
                 WyckoffPhase.UNKNOWN);
 
         assertThat(events).contains(WyckoffEvent.SELLING_CLIMAX);
+    }
+
+    /**
+     * Verifies that cached extreme scans refresh after a mid-series bar is
+     * replaced.
+     */
+    @Test
+    public void shouldMatchFreshDetectorAfterBarReplacement() {
+        var detector = new WyckoffEventDetector(series, numOf(0.05));
+        var structure = new WyckoffStructureTracker.StructureSnapshot(NaN, NaN, -1, -1, NaN, false, false, false);
+        var volume = new WyckoffVolumeProfile.VolumeSnapshot(numOf(9000), numOf(2.0), true, false);
+
+        // Prime the extreme caches with the original bars.
+        detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+
+        ((BaseBarSeries) series).replaceBar(2,
+                series.barBuilder().openPrice(9.8).highPrice(10.2).lowPrice(10.0).closePrice(9.4).volume(1000).build());
+
+        // The replacement bar (low 10.0 vs cached low 9.0) must force a cache
+        // refresh; a cached detector and a fresh detector must agree.
+        var fresh = new WyckoffEventDetector(series, numOf(0.05));
+        EnumSet<WyckoffEvent> cached = detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+        EnumSet<WyckoffEvent> expected = fresh.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
+
+        assertThat(cached).isEqualTo(expected);
+        assertThat(cached).contains(WyckoffEvent.SELLING_CLIMAX);
     }
 
     /**
