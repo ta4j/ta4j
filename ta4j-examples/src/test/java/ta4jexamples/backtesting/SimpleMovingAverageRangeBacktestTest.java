@@ -78,7 +78,7 @@ public class SimpleMovingAverageRangeBacktestTest {
         ParameterSet parameters = new ParameterSet(List.of(new ParameterValue("fastBarCount", "5", false, ""),
                 new ParameterValue("slowBarCount", "10", false, ""),
                 new ParameterValue("stopLossPercentage", "3", false, "")));
-        RankedCandidate candidate = new RankedCandidate("fastBarCount=5 slowBarCount=10 stopLossPercentage=3",
+        RankedCandidate candidate = new RankedCandidate(parameters.stableId(),
                 parameters, 1, 1, trainingScore, holdoutScore, holdoutScore.minus(trainingScore),
                 Map.of("Net Profit", series.numFactory().numOf(120), "Return Over Max Drawdown",
                         series.numFactory().numOf(4)),
