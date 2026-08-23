@@ -133,10 +133,8 @@ class ParameterResearchTest {
         GeneticSettings genetic = GeneticSettings.defaults();
         SwarmSettings swarm = SwarmSettings.defaults();
         assertThrows(IllegalArgumentException.class, () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 7L, null, null));
-        assertThrows(IllegalArgumentException.class,
-                () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, genetic, null));
-        assertThrows(IllegalArgumentException.class,
-                () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, null, swarm));
+        assertThrows(IllegalArgumentException.class, () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, genetic, null));
+        assertThrows(IllegalArgumentException.class, () -> new SearchPlan(SearchPlan.Kind.GRID, 4, 0L, null, swarm));
         assertThrows(IllegalArgumentException.class,
                 () -> new SearchPlan(SearchPlan.Kind.GENETIC, 4, 1L, genetic, swarm));
         assertThrows(IllegalArgumentException.class,
@@ -145,26 +143,24 @@ class ParameterResearchTest {
 
     @Test
     void runCountsRejectNegativeAccounting() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new RunCounts(-1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0));
-        assertThrows(IllegalArgumentException.class,
-                () -> new RunCounts(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, -1, 0));
-        assertThrows(IllegalArgumentException.class,
-                () -> new RunCounts(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1, -1));
+        assertThrows(IllegalArgumentException.class, () -> new RunCounts(-1L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RunCounts(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, -1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RunCounts(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1, -1));
     }
 
     @Test
     void rankedCandidateRejectsImpossibleStates() {
         ParameterSet set = new ParameterSet(List.of(new ParameterValue("x", "5", false, "")));
         Num score = DecimalNum.valueOf(1);
-        assertThat(new RankedCandidate(set.stableId(), set, 1, null, score, null, null, Map.of(), Map.of())
-                .trainingRank()).isEqualTo(1);
-        assertThrows(IllegalArgumentException.class, () -> new RankedCandidate("other", set, 1, null, score, null,
-                null, Map.of(), Map.of()));
+        assertThat(
+                new RankedCandidate(set.stableId(), set, 1, null, score, null, null, Map.of(), Map.of()).trainingRank())
+                .isEqualTo(1);
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedCandidate("other", set, 1, null, score, null, null, Map.of(), Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> new RankedCandidate(set.stableId(), set, 0, null, score, null, null, Map.of(), Map.of()));
-        assertThrows(IllegalArgumentException.class, () -> new RankedCandidate(set.stableId(), set, 1, 0, score,
-                score, score.minus(score), Map.of(), Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> new RankedCandidate(set.stableId(), set, 1, 0, score, score,
+                score.minus(score), Map.of(), Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> new RankedCandidate(set.stableId(), set, 1, 1, score, null, null, Map.of(), Map.of()));
         assertThrows(IllegalArgumentException.class,
@@ -173,8 +169,8 @@ class ParameterResearchTest {
 
     private static RankedCandidate rankedRow(int trainingRank) {
         ParameterSet set = new ParameterSet(List.of(new ParameterValue("x", "5", false, "")));
-        return new RankedCandidate(set.stableId(), set, trainingRank, null, DecimalNum.valueOf(1), null, null,
-                Map.of(), Map.of());
+        return new RankedCandidate(set.stableId(), set, trainingRank, null, DecimalNum.valueOf(1), null, null, Map.of(),
+                Map.of());
     }
 
     @Test
@@ -184,10 +180,10 @@ class ParameterResearchTest {
         assertThrows(IllegalArgumentException.class, () -> report(window, Optional.empty(), 0, List.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> report(window, Optional.empty(), 1, List.of(rankedRow(1), rankedRow(2))));
-        assertThrows(IllegalArgumentException.class, () -> report(window, Optional.empty(), 2, List.of(rankedRow(2),
-                rankedRow(1))));
-        RankedCandidate holdoutRow = new RankedCandidate(new ParameterSet(
-                List.of(new ParameterValue("x", "5", false, ""))).stableId(),
+        assertThrows(IllegalArgumentException.class,
+                () -> report(window, Optional.empty(), 2, List.of(rankedRow(2), rankedRow(1))));
+        RankedCandidate holdoutRow = new RankedCandidate(
+                new ParameterSet(List.of(new ParameterValue("x", "5", false, ""))).stableId(),
                 new ParameterSet(List.of(new ParameterValue("x", "5", false, ""))), 1, 1, DecimalNum.valueOf(1),
                 DecimalNum.valueOf(2), DecimalNum.valueOf(1), Map.of(), Map.of());
         ResearchWindow holdout = new ResearchWindow(series(1d), 0, 0, ResearchWindow.WindowPhase.HOLDOUT, "holdout");
@@ -203,6 +199,7 @@ class ParameterResearchTest {
             List<RankedCandidate> trainingLeaderboard) {
         return report(window, holdout, topK, trainingLeaderboard, List.of());
     }
+
     private static ParameterResearchReport report(ResearchWindow window, Optional<ResearchWindow> holdout, int topK,
             List<RankedCandidate> trainingLeaderboard, List<RankedCandidate> holdoutLeaderboard) {
         return report(window, holdout, topK, trainingLeaderboard, holdoutLeaderboard, 1L);

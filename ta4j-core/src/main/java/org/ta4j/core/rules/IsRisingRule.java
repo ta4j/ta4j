@@ -52,7 +52,8 @@ public class IsRisingRule extends AbstractRule {
     /** This rule does not use the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        int beginIndex = Math.max(0, ref.getBarSeries().getBeginIndex());
+        var series = ref.getBarSeries();
+        int beginIndex = Math.max(0, series == null ? 0 : series.getBeginIndex());
         int start = Math.max(beginIndex, index - barCount + 1);
         int count = 0;
         for (int i = start; i <= index; i++) {

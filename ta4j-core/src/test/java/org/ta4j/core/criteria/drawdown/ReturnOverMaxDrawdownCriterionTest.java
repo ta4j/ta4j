@@ -174,6 +174,21 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void testNeutralValueForOpenPositionFollowsRepresentation() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 95, 100, 90, 95, 80, 120)
+                .build();
+        var position = new Position();
+        position.operate(0, numFactory.hundred(), numFactory.one());
+
+        // A still open position has no completed equity path; MULTIPLICATIVE is a
+        // 1-based growth factor, so its neutral value is one rather than zero.
+        var multiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+
+        assertNumEquals(numFactory.one(), multiplicative.calculate(series, position));
+    }
+
+    @Test
     public void includesOpenPositionWhenMarkToMarket() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
         var tradingRecord = new BaseTradingRecord();

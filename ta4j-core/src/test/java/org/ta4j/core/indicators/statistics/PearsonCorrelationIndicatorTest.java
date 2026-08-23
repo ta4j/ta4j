@@ -13,6 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -81,5 +82,27 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         assertNumEquals(0.1713, coef.getValue(17));
         assertNumEquals(0.9841, coef.getValue(18));
         assertNumEquals(0.9799, coef.getValue(19));
+    }
+
+    /**
+     * Verifies that the correlation normalizes by the number of values actually
+     * iterated when bar eviction leaves fewer retained bars than the requested
+     * window. The four retained pairs (1,1), (2,2), (3,1), (4,2) have the known
+     * exact correlation 1/&radic;5 &asymp; 0.447214.
+     */
+    @Test
+    public void normalizesByRetainedWindowSizeAfterEviction() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(9, 9, 9, 9, 9, 9, 1, 2, 3, 4)
+                .withMaxBarCount(4)
+                .build();
+        var x = new ClosePriceIndicator(pruned);
+        var y = new FixedIndicator<Num>(pruned, numOf(7), numOf(7), numOf(7), numOf(7), numOf(7), numOf(7),
+                numOf(1), numOf(2), numOf(1), numOf(2));
+
+        var coef = new PearsonCorrelationIndicator(x, y, 6);
+
+        // Retained pairs at indices 6..9: (1,1), (2,2), (3,1), (4,2) -> r = 1/sqrt(5)
+        assertNumEquals(numFactory.numOf(1).dividedBy(numFactory.numOf(5).sqrt()), coef.getValue(9));
     }
 }
