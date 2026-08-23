@@ -329,6 +329,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                         // unavailable instead of spinning forever.
                         return undefinedResult(windowStart, index);
                     }
+                    // The mutation is accounted for; retry the iteration now
+                    // so a single transient mutation still gets its full retry
+                    // instead of double-consuming the budget below.
+                    continue;
                 }
                 BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(observedRevision);
                 if (after.revision() == snapshot.revision()
@@ -802,9 +806,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             if (signal.isEvent(index)) {
                 if (size == events.length) {
                     // A one-sided alignment needs count + 1 cells, so a single
-                    // stream may hold up to the cap minus one events; growth is
+                    // stream must stay at or below the cap minus one events; growth is
                     // clamped to the cap because doubling would overshoot it.
-                    if ((long) size + 1 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
+                    if ((long) size + 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
                         throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
                                 + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
                                 + " million cells (~128 MB of alignment arrays)");
