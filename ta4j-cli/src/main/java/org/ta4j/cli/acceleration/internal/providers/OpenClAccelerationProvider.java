@@ -71,8 +71,14 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         // staging only.
         long deviceHistoryBytes = Math.multiplyExact(Math.multiplyExact(decisions, spec.lookbackBarCount()),
                 Double.BYTES);
-        validateMemoryCeiling(Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L), deviceHistoryBytes));
+        // Profiling keeps up to eight retained events per stable decision
+        // (cl_event handle plus kind marker) until the single final clFinish,
+        // an O(decisions) host-side cost the per-decision estimate cannot see.
+        long profilingBytes = Math.multiplyExact(decisions, 128L);
+        validateMemoryCeiling(Math.addExact(
+                Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                        sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L), deviceHistoryBytes),
+                profilingBytes));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;
