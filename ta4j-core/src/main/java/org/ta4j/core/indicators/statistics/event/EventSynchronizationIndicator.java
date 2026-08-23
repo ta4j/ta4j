@@ -280,6 +280,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         int[] predictedWindowEvents;
         int[] referenceWindowEvents;
         synchronized (cacheLock) {
+            int revisionChangeRetries = 0;
             predictedEvents.retainWindowStart(windowStart);
             referenceEvents.retainWindowStart(windowStart);
             while (true) {
@@ -306,7 +307,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     // scanning would then read out-of-domain indexes.
                     return undefinedResult(windowStart, index);
                 }
-                                                try {
+                try {
                     predictedEvents.ensureScannedThrough(index, predictedSignal, beginIndex);
                     referenceEvents.ensureScannedThrough(index, referenceSignal, beginIndex);
                 } catch (RuntimeException scanFailure) {
@@ -316,16 +317,26 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     // whole iteration when the series actually moved; rethrow
                     // otherwise, because a failure on an unchanged revision is
                     // a genuine defect rather than a lost race.
-                                        BarSeriesChangeSnapshot afterFailure = series.getBarSeriesChangeSnapshot(observedRevision);
-                                        if (afterFailure.revision() == snapshot.revision()
+                    BarSeriesChangeSnapshot afterFailure = series.getBarSeriesChangeSnapshot(observedRevision);
+                    if (afterFailure.revision() == snapshot.revision()
                             && afterFailure.removedThroughIndex() == snapshot.removedThroughIndex()) {
                         throw scanFailure;
+                    }
+                    if (++revisionChangeRetries > 1) {
+                        // A source that mutates the series on every read can
+                        // otherwise livelock this loop (and the cache lock with
+                        // it); after one full retry, report the window as
+                        // unavailable instead of spinning forever.
+                        return undefinedResult(windowStart, index);
                     }
                 }
                 BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(observedRevision);
                 if (after.revision() == snapshot.revision()
                         && after.removedThroughIndex() == snapshot.removedThroughIndex()) {
                     break;
+                }
+                if (++revisionChangeRetries > 1) {
+                    return undefinedResult(windowStart, index);
                 }
             }
             // Capture both event windows before leaving the coordinated critical
@@ -786,16 +797,20 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                 }
             }
         }
-
         private void appendEvent(int index, EventSignal signal) {
             if (signal.isEvent(index)) {
                 if (size == events.length) {
-                    if ((long) events.length * 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
-                        throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                                + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
-                                + " million cells (~128 MB of alignment arrays)");
+                    // A one-sided alignment needs count + 1 cells, so a single
+                    // stream may hold up to the cap minus one events; growth is
+                    // clamped to the cap because doubling would overshoot it.
+                    if ((long) size + 1 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
+                        throw new IllegalArgumentException(
+                                "event count exceeds the baseline matcher capacity of "
+                                        + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
+                                        + " million cells (~128 MB of alignment arrays)");
                     }
-                    events = Arrays.copyOf(events, events.length * 2);
+                    events = Arrays.copyOf(events,
+                            (int) Math.min((long) events.length * 2, EventSynchronizationSupport.MAX_MATCHING_CELLS));
                 }
                 events[size++] = index;
             }
