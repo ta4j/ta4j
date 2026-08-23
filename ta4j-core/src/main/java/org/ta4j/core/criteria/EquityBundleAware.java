@@ -34,6 +34,7 @@ public interface EquityBundleAware {
      * @param equityBundle  the shared equity bundle, not null
      * @return the criterion value, identical to
      *         {@code calculate(series, tradingRecord)}
+     * @since 0.24.2
      */
     Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle);
 }

@@ -46,6 +46,7 @@ public final class CriteriaEvaluation {
      * @param criteria      the criteria to evaluate, not null
      * @return an insertion-ordered map from criterion to value; duplicate criterion
      *         instances collapse onto their first entry
+     * @since 0.24.2
      */
     public static Map<AnalysisCriterion, Num> evaluateAll(BarSeries series, TradingRecord tradingRecord,
             Collection<? extends AnalysisCriterion> criteria) {
@@ -74,6 +75,7 @@ public final class CriteriaEvaluation {
      * @param criteria      the criteria to evaluate, not null
      * @return an insertion-ordered map from criterion to value; duplicate criterion
      *         instances collapse onto their first entry
+     * @since 0.24.2
      */
     public static Map<AnalysisCriterion, Num> evaluateAll(BarSeries series, TradingRecord tradingRecord,
             AnalysisCriterion... criteria) {

@@ -51,6 +51,7 @@ public final class EquityBundle {
      *
      * @param series        the bar series to analyze, not null
      * @param tradingRecord the trading record to analyze, not null
+     * @since 0.24.2
      */
     public EquityBundle(BarSeries series, TradingRecord tradingRecord) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
@@ -64,6 +65,7 @@ public final class EquityBundle {
      * @param equityCurveMode      the equity curve calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
      * @return the shared cash flow instance for this key
+     * @since 0.24.2
      */
     public CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
@@ -80,6 +82,7 @@ public final class EquityBundle {
      * @param equityCurveMode      the equity curve calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
      * @return the shared cumulative PnL instance for this key
+     * @since 0.24.2
      */
     public CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
@@ -94,6 +97,7 @@ public final class EquityBundle {
      *
      * @param openPositionHandling how open positions should be handled, not null
      * @return the shared invested interval instance for this key
+     * @since 0.24.2
      */
     public InvestedInterval investedInterval(OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
