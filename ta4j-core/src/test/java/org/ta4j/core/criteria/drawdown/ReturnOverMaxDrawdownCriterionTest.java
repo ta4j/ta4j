@@ -508,13 +508,13 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                 multiplicativeResult);
 
         // PERCENTAGE, DECIMAL, and LOG keep their existing mappings
-        Num decimalResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL)
-                .calculate(series, position);
+        Num decimalResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series,
+                position);
         assertNumEquals(ReturnRepresentation.DECIMAL.toRepresentationFromRateOfReturn(rawRatio), decimalResult);
         assertNumEquals(-1.0, decimalResult);
 
-        Num percentageResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE)
-                .calculate(series, position);
+        Num percentageResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE).calculate(series,
+                position);
         assertNumEquals(ReturnRepresentation.PERCENTAGE.toRepresentationFromRateOfReturn(rawRatio), percentageResult);
         assertNumEquals(-100.0, percentageResult);
 

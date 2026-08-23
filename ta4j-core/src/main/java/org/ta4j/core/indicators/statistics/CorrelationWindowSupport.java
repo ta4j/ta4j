@@ -18,13 +18,14 @@ final class CorrelationWindowSupport {
 
     /**
      * Rolling windows back the paired samples in {@code Num} arrays of the window
-     * length. HotSpot refuses object arrays within a few words of
-     * {@link Integer#MAX_VALUE} with {@code OutOfMemoryError} ("Requested array
-     * size exceeds VM limit"), so a bar count above the ceiling (the same bound
-     * {@link java.util.ArrayList} uses) is unconstructible and is rejected up
-     * front.
+     * length, so every evaluation allocates at least two {@code Num[barCount]}
+     * scratch arrays. The VM array limit alone would admit counts whose scratch
+     * runs to hundreds of megabytes (or gigabytes) before the first evaluation,
+     * so a practical shared ceiling rejects them up front. Indicators with
+     * heavier per-bar working sets impose stricter bounds of their own (for
+     * example {@link DynamicTimeWarpingDistanceIndicator}).
      */
-    private static final int MAX_BAR_COUNT = Integer.MAX_VALUE - 8;
+    private static final int MAX_BAR_COUNT = 10_000_000;
 
     static int validateBarCount(int barCount) {
         if (barCount < 2) {
