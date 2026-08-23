@@ -30,14 +30,6 @@
             <version>${gson.version}</version>
         </dependency>
 
-        <!-- Design-level SpotBugs suppressions (compile-only, never required at runtime) -->
-        <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs-annotations</artifactId>
-            <version>4.9.8</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
