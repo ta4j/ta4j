@@ -33,20 +33,36 @@ $sourceTree = & git -C $root write-tree 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "git write-tree failed with exit code $LASTEXITCODE`: $($sourceTree -join [Environment]::NewLine)"
 }
-$gpu = & nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader 2>&1 |
+function Get-NativeText([string]$CommandLine) {
+    # Windows PowerShell 5.1 turns native stderr lines into terminating
+    # errors when $ErrorActionPreference is Stop; route through cmd and
+    # relax the preference locally so stderr text stays plain data.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & cmd /c "$CommandLine 2>&1"
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+        return @($output | ForEach-Object { $_.ToString() })
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+}
+
+$gpu = Get-NativeText "nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader" |
     Select-Object -First 1
-if ($LASTEXITCODE -ne 0) {
-    throw "nvidia-smi failed with exit code $LASTEXITCODE"
+if ($null -eq $gpu) {
+    throw "nvidia-smi failed"
 }
-$nvcc = & nvcc --version 2>&1 | Select-Object -Last 1
-if ($LASTEXITCODE -ne 0) {
-    throw "nvcc failed with exit code $LASTEXITCODE"
+$nvcc = Get-NativeText "nvcc --version" | Select-Object -Last 1
+if ($null -eq $nvcc) {
+    throw "nvcc failed"
 }
-$javaOutput = & java -version 2>&1
-if ($LASTEXITCODE -ne 0) {
-    throw "java -version failed with exit code $LASTEXITCODE"
+$javaVersion = Get-NativeText "java -version" | Select-Object -First 1
+if ($null -eq $javaVersion) {
+    throw "java -version failed"
 }
-$javaVersion = ($javaOutput | Select-Object -First 1).ToString()
 
 $workloads = @(
     @{ decisions = 1; paths = 1024; horizon = 8 },
@@ -67,7 +83,14 @@ foreach ($workload in $workloads) {
             "-Dta4j.cuda.benchmark.horizon=$($workload.horizon)",
             "-Dta4j.cuda.benchmark.repetitions=3", "test"
         )
-        $lines = & (Join-Path $root "mvnw.cmd") @arguments 2>&1
+        $previousPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        try {
+            $lines = @( & (Join-Path $root "mvnw.cmd") @arguments 2>&1 |
+                ForEach-Object { $_.ToString() } )
+        } finally {
+            $ErrorActionPreference = $previousPreference
+        }
         if ($LASTEXITCODE -ne 0) {
             $lines | ForEach-Object { Write-Host $_ }
             throw "CUDA benchmark Maven process failed with exit code $LASTEXITCODE"
@@ -84,6 +107,14 @@ foreach ($workload in $workloads) {
     }
 }
 
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+try {
+    $hashBytes = $sha256.ComputeHash([System.IO.File]::ReadAllBytes($library))
+} finally {
+    $sha256.Dispose()
+}
+$librarySha256 = (($hashBytes | ForEach-Object { $_.ToString("x2") }) -join "")
+
 $report = [ordered]@{
     schemaVersion = 1
     generatedAt = (Get-Date).ToUniversalTime().ToString("o")
@@ -93,7 +124,7 @@ $report = [ordered]@{
     java = $javaVersion
     gpu = $gpu
     cudaCompiler = $nvcc
-    librarySha256 = (Get-FileHash -Algorithm SHA256 $library).Hash.ToLowerInvariant()
+    librarySha256 = $librarySha256
     processesPerWorkload = 5
     repetitionsPerProcess = 3
     measurements = $measurements
