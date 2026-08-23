@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
@@ -171,30 +172,81 @@ __global__ void path_kernel(double price, double mean, double drift, double vari
     samples[path_index] = terminal;
 }
 
-__global__ void moments_kernel(const double* samples, int count, double* summary, int* status) {
-    if (blockIdx.x != 0 || threadIdx.x != 0 || *status != 0) {
-        return;
-    }
-    double mean = 0.0;
-    double m2 = 0.0;
-    for (int i = 0; i < count; ++i) {
-        double value = samples[i];
+/*
+ * Deterministic two-phase moments reduction. Block counts derive from the
+ * sample count, so the floating-point reduction order is fixed for a given
+ * request and every run of the same seed produces identical summaries.
+ * Phase one reduces strided per-thread partials through a shared-memory
+ * tree; phase two folds the per-block partials in a second fixed tree.
+ */
+__global__ void moments_partial_kernel(const double* samples, int count, double* partial_sums,
+                                       double* partial_sqsums, int* status) {
+    __shared__ double block_sum[THREADS_PER_BLOCK];
+    __shared__ double block_sqsum[THREADS_PER_BLOCK];
+    double local_sum = 0.0;
+    double local_sqsum = 0.0;
+    for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < count; index += gridDim.x * blockDim.x) {
+        double value = samples[index];
         if (!isfinite(value)) {
+            atomicExch(status, 2);
+            value = 0.0;
+        }
+        local_sum += value;
+        local_sqsum += value * value;
+    }
+    block_sum[threadIdx.x] = local_sum;
+    block_sqsum[threadIdx.x] = local_sqsum;
+    __syncthreads();
+    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
+        if (threadIdx.x < offset) {
+            block_sum[threadIdx.x] += block_sum[threadIdx.x + offset];
+            block_sqsum[threadIdx.x] += block_sqsum[threadIdx.x + offset];
+        }
+        __syncthreads();
+    }
+    if (threadIdx.x == 0) {
+        partial_sums[blockIdx.x] = block_sum[0];
+        partial_sqsums[blockIdx.x] = block_sqsum[0];
+    }
+}
+
+__global__ void moments_finalize_kernel(const double* partial_sums, const double* partial_sqsums, int block_count,
+                                        int count, double* summary, int* status) {
+    __shared__ double sum_shared[THREADS_PER_BLOCK];
+    __shared__ double sqsum_shared[THREADS_PER_BLOCK];
+    double local_sum = 0.0;
+    double local_sqsum = 0.0;
+    for (int index = threadIdx.x; index < block_count; index += blockDim.x) {
+        local_sum += partial_sums[index];
+        local_sqsum += partial_sqsums[index];
+    }
+    sum_shared[threadIdx.x] = local_sum;
+    sqsum_shared[threadIdx.x] = local_sqsum;
+    __syncthreads();
+    for (int offset = blockDim.x / 2; offset > 0; offset >>= 1) {
+        if (threadIdx.x < offset) {
+            sum_shared[threadIdx.x] += sum_shared[threadIdx.x + offset];
+            sqsum_shared[threadIdx.x] += sqsum_shared[threadIdx.x + offset];
+        }
+        __syncthreads();
+    }
+    if (threadIdx.x == 0 && *status == 0) {
+        double total_sum = sum_shared[0];
+        double total_sqsum = sqsum_shared[0];
+        double observations = static_cast<double>(count);
+        double mean = total_sum / observations;
+        double variance = (total_sqsum - total_sum * total_sum / observations) / observations;
+        if (variance <= 0.0) {
+            variance = 0.0;
+        }
+        double standard_deviation = sqrt(variance);
+        if (!isfinite(mean) || !isfinite(standard_deviation)) {
             *status = 2;
             return;
         }
-        double delta = value - mean;
-        mean += delta / static_cast<double>(i + 1);
-        m2 += delta * (value - mean);
+        summary[0] = mean;
+        summary[2] = standard_deviation;
     }
-    double variance = m2 / static_cast<double>(count);
-    double standard_deviation = variance <= 0.0 ? 0.0 : sqrt(variance);
-    if (!isfinite(mean) || !isfinite(standard_deviation)) {
-        *status = 2;
-        return;
-    }
-    summary[0] = mean;
-    summary[2] = standard_deviation;
 }
 
 __device__ double percentile(const double* sorted_samples, int count, double probability) {
@@ -315,6 +367,8 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeProb
         }
 
         device_buffer<double> self_test_history(1);
+        device_buffer<double> self_test_partials(1);
+        device_buffer<double> self_test_sqsums(1);
         device_buffer<double> self_test_samples(2);
         device_buffer<double> self_test_quantiles(1);
         device_buffer<double> self_test_summary(4);
@@ -330,9 +384,16 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeProb
         path_kernel<<<1, 2, 0, stream.get()>>>(100.0, 0.0, 0.0, 0.0, self_test_history.get(), 1, 0, 1, 2,
                                                42, 2, 0, 0.94, self_test_samples.get(), self_test_status.get());
         check_cuda(cudaGetLastError(), "forecast self-test path launch");
-        moments_kernel<<<1, 1, 0, stream.get()>>>(self_test_samples.get(), 2, self_test_summary.get(),
-                                                  self_test_status.get());
-        check_cuda(cudaGetLastError(), "forecast self-test moments launch");
+        moments_partial_kernel<<<1, THREADS_PER_BLOCK, 0, stream.get()>>>(self_test_samples.get(), 2,
+                                                                          self_test_partials.get(),
+                                                                          self_test_sqsums.get(),
+                                                                          self_test_status.get());
+        check_cuda(cudaGetLastError(), "forecast self-test moments partial launch");
+        moments_finalize_kernel<<<1, THREADS_PER_BLOCK, 0, stream.get()>>>(self_test_partials.get(),
+                                                                          self_test_sqsums.get(), 1, 2,
+                                                                          self_test_summary.get(),
+                                                                          self_test_status.get());
+        check_cuda(cudaGetLastError(), "forecast self-test moments finalize launch");
         thrust::device_ptr<double> self_test_begin(self_test_samples.get());
         thrust::sort(thrust::cuda::par.on(stream.get()), self_test_begin, self_test_begin + 2);
         quantile_kernel<<<1, 1, 0, stream.get()>>>(self_test_samples.get(), 2, self_test_quantiles.get(), 1,
@@ -400,87 +461,115 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         if (payload_size > static_cast<std::size_t>(std::numeric_limits<jsize>::max())) {
             throw std::invalid_argument("forecast payload exceeds JNI limits");
         }
-        std::vector<double> payload(payload_size, 0.0);
-        device_buffer<double> device_samples(static_cast<std::size_t>(iteration_count));
-        device_buffer<double> device_history(static_cast<std::size_t>(lookback));
-        device_buffer<double> device_quantiles(static_cast<std::size_t>(quantile_count));
-        device_buffer<double> device_summary(static_cast<std::size_t>(3 + quantile_count));
-        device_buffer<int> device_status(1);
-        cuda_stream stream;
-        check_cuda(cudaMemcpyAsync(device_quantiles.get(), quantiles.data(), quantile_count * sizeof(double),
-                                   cudaMemcpyHostToDevice, stream.get()), "quantile transfer");
-        check_cuda(cudaStreamSynchronize(stream.get()), "quantile synchronization");
-
-        double transfer_micros = 0.0;
-        double kernel_micros = 0.0;
-        double reduction_micros = 0.0;
-        std::vector<double> summary(static_cast<std::size_t>(3 + quantile_count));
+        std::size_t sample_stride = static_cast<std::size_t>(iteration_count);
+        double* pinned_payload = nullptr;
+        check_cuda(cudaMallocHost(&pinned_payload, payload_size * sizeof(double)), "pinned payload");
+        std::unique_ptr<double, decltype(&cudaFreeHost)> pinned_guard(pinned_payload, &cudaFreeHost);
+        std::fill(pinned_payload, pinned_payload + payload_size, 0.0);
         for (int decision = 0; decision < decision_count; ++decision) {
-            std::size_t row = 4 + static_cast<std::size_t>(decision) * row_length;
             if (stable[decision] == 0) {
-                payload[row] = 1.0;
-                continue;
-            }
-            auto transfer_start = std::chrono::steady_clock::now();
-            const double* history = historical_returns.data() + static_cast<std::size_t>(decision) * lookback;
-            check_cuda(cudaMemcpyAsync(device_history.get(), history, lookback * sizeof(double), cudaMemcpyHostToDevice,
-                                       stream.get()), "historical return transfer");
-            check_cuda(cudaMemsetAsync(device_status.get(), 0, sizeof(int), stream.get()), "status reset");
-            check_cuda(cudaStreamSynchronize(stream.get()), "input synchronization");
-            transfer_micros += std::chrono::duration<double, std::micro>(
-                    std::chrono::steady_clock::now() - transfer_start).count();
-
-            cuda_event kernel_start;
-            cuda_event kernel_finish;
-            check_cuda(cudaEventRecord(kernel_start.get(), stream.get()), "kernel start event");
-            int blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-            path_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream.get()>>>(
-                    prices[decision], means[decision], drifts[decision], variances[decision], device_history.get(),
-                    lookback, from_inclusive + decision, horizon, iteration_count, static_cast<std::int64_t>(seed),
-                    shock_model, volatility_mode, decay, device_samples.get(), device_status.get());
-            check_cuda(cudaGetLastError(), "forecast kernel launch");
-            check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
-            kernel_micros += elapsed_micros(kernel_start, kernel_finish);
-
-            cuda_event reduction_start;
-            cuda_event reduction_finish;
-            check_cuda(cudaEventRecord(reduction_start.get(), stream.get()), "reduction start event");
-            moments_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get(), iteration_count, device_summary.get(),
-                                                     device_status.get());
-            check_cuda(cudaGetLastError(), "moments kernel launch");
-            check_cuda(cudaStreamSynchronize(stream.get()), "moments synchronization");
-            thrust::device_ptr<double> begin(device_samples.get());
-            thrust::sort(thrust::cuda::par.on(stream.get()), begin, begin + iteration_count);
-            quantile_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get(), iteration_count, device_quantiles.get(),
-                                                      quantile_count, device_summary.get(), device_status.get());
-            check_cuda(cudaGetLastError(), "quantile kernel launch");
-            check_cuda(cudaEventRecord(reduction_finish.get(), stream.get()), "reduction finish event");
-            reduction_micros += elapsed_micros(reduction_start, reduction_finish);
-
-            int status = 0;
-            auto output_start = std::chrono::steady_clock::now();
-            check_cuda(cudaMemcpyAsync(&status, device_status.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()),
-                       "status transfer");
-            check_cuda(cudaMemcpyAsync(summary.data(), device_summary.get(), summary.size() * sizeof(double),
-                                       cudaMemcpyDeviceToHost, stream.get()), "summary transfer");
-            check_cuda(cudaStreamSynchronize(stream.get()), "output synchronization");
-            transfer_micros += std::chrono::duration<double, std::micro>(
-                    std::chrono::steady_clock::now() - output_start).count();
-            payload[row] = static_cast<double>(status);
-            if (status == 0) {
-                std::copy(summary.begin(), summary.end(), payload.begin() + static_cast<std::ptrdiff_t>(row + 1));
+                pinned_payload[4U + static_cast<std::size_t>(decision) * row_length] = 1.0;
             }
         }
-        payload[1] = transfer_micros;
-        payload[2] = kernel_micros;
-        payload[3] = reduction_micros;
-        payload[0] = std::chrono::duration<double, std::micro>(
+
+        int path_blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+        device_buffer<double> device_samples(sample_stride * static_cast<std::size_t>(decision_count));
+        device_buffer<double> device_history(history_count);
+        device_buffer<double> device_quantiles(static_cast<std::size_t>(quantile_count));
+        device_buffer<int> device_status(static_cast<std::size_t>(decision_count));
+        device_buffer<double> device_summary(
+                static_cast<std::size_t>(decision_count) * (3U + static_cast<std::size_t>(quantile_count)));
+        device_buffer<double> device_partial_sums(static_cast<std::size_t>(path_blocks));
+        device_buffer<double> device_partial_sqsums(static_cast<std::size_t>(path_blocks));
+        cuda_stream stream;
+
+        cuda_event transfer_start;
+        cuda_event transfer_finish;
+        cuda_event kernel_start;
+        cuda_event kernel_finish;
+        cuda_event reduction_start;
+        cuda_event reduction_finish;
+        cuda_event output_start;
+        cuda_event output_finish;
+
+        check_cuda(cudaEventRecord(transfer_start.get(), stream.get()), "transfer start event");
+        check_cuda(cudaMemcpyAsync(device_quantiles.get(), quantiles.data(), quantile_count * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "quantile transfer");
+        check_cuda(cudaMemsetAsync(device_status.get(), 0, static_cast<std::size_t>(decision_count) * sizeof(int),
+                                   stream.get()), "status reset");
+        check_cuda(cudaMemcpyAsync(device_history.get(), historical_returns.data(), history_count * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "historical return transfer");
+        check_cuda(cudaEventRecord(transfer_finish.get(), stream.get()), "transfer finish event");
+
+        check_cuda(cudaEventRecord(kernel_start.get(), stream.get()), "kernel start event");
+        for (int decision = 0; decision < decision_count; ++decision) {
+            if (stable[decision] == 0) {
+                continue;
+            }
+            std::size_t sample_offset = sample_stride * static_cast<std::size_t>(decision);
+            path_kernel<<<path_blocks, THREADS_PER_BLOCK, 0, stream.get()>>>(
+                    prices[decision], means[decision], drifts[decision], variances[decision],
+                    device_history.get() + static_cast<std::size_t>(decision) * static_cast<std::size_t>(lookback),
+                    lookback, from_inclusive + decision, horizon, iteration_count, static_cast<std::int64_t>(seed),
+                    shock_model, volatility_mode, decay, device_samples.get() + sample_offset,
+                    device_status.get() + decision);
+            check_cuda(cudaGetLastError(), "forecast kernel launch");
+        }
+        check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
+
+        check_cuda(cudaEventRecord(reduction_start.get(), stream.get()), "reduction start event");
+        for (int decision = 0; decision < decision_count; ++decision) {
+            if (stable[decision] == 0) {
+                continue;
+            }
+            std::size_t sample_offset = sample_stride * static_cast<std::size_t>(decision);
+            double* summary_row = device_summary.get()
+                    + static_cast<std::size_t>(decision) * (3U + static_cast<std::size_t>(quantile_count));
+            int* status_row = device_status.get() + decision;
+            moments_partial_kernel<<<path_blocks, THREADS_PER_BLOCK, 0, stream.get()>>>(
+                    device_samples.get() + sample_offset, iteration_count, device_partial_sums.get(),
+                    device_partial_sqsums.get(), status_row);
+            check_cuda(cudaGetLastError(), "moments partial kernel launch");
+            moments_finalize_kernel<<<1, THREADS_PER_BLOCK, 0, stream.get()>>>(
+                    device_partial_sums.get(), device_partial_sqsums.get(), path_blocks, iteration_count, summary_row,
+                    status_row);
+            check_cuda(cudaGetLastError(), "moments finalize kernel launch");
+            thrust::device_ptr<double> begin(device_samples.get() + sample_offset);
+            thrust::sort(thrust::cuda::par.on(stream.get()), begin, begin + iteration_count);
+            quantile_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get() + sample_offset, iteration_count,
+                                                       device_quantiles.get(), quantile_count, summary_row,
+                                                       status_row);
+            check_cuda(cudaGetLastError(), "quantile kernel launch");
+        }
+        check_cuda(cudaEventRecord(reduction_finish.get(), stream.get()), "reduction finish event");
+
+        check_cuda(cudaEventRecord(output_start.get(), stream.get()), "output start event");
+        for (int decision = 0; decision < decision_count; ++decision) {
+            if (stable[decision] == 0) {
+                continue;
+            }
+            std::size_t row = 4U + static_cast<std::size_t>(decision) * row_length;
+            std::size_t summary_offset = static_cast<std::size_t>(decision)
+                    * (3U + static_cast<std::size_t>(quantile_count));
+            check_cuda(cudaMemcpyAsync(pinned_payload + row, device_status.get() + decision, sizeof(int),
+                                       cudaMemcpyDeviceToHost, stream.get()), "status transfer");
+            check_cuda(cudaMemcpyAsync(pinned_payload + row + 1U, device_summary.get() + summary_offset,
+                                       (3U + static_cast<std::size_t>(quantile_count)) * sizeof(double),
+                                       cudaMemcpyDeviceToHost, stream.get()), "summary transfer");
+        }
+        check_cuda(cudaEventRecord(output_finish.get(), stream.get()), "output finish event");
+        check_cuda(cudaStreamSynchronize(stream.get()), "batch synchronization");
+
+        pinned_payload[1] = elapsed_micros(transfer_start, transfer_finish);
+        pinned_payload[2] = elapsed_micros(kernel_start, kernel_finish);
+        pinned_payload[3] = elapsed_micros(reduction_start, reduction_finish);
+        pinned_payload[0] = std::chrono::duration<double, std::micro>(
                 std::chrono::steady_clock::now() - total_start).count();
-        jdoubleArray result = environment->NewDoubleArray(static_cast<jsize>(payload.size()));
+        jdoubleArray result = environment->NewDoubleArray(static_cast<jsize>(payload_size));
         if (result == nullptr) {
             throw std::runtime_error("unable to allocate JNI result array");
         }
-        environment->SetDoubleArrayRegion(result, 0, static_cast<jsize>(payload.size()), payload.data());
+        environment->SetDoubleArrayRegion(result, 0, static_cast<jsize>(payload_size), pinned_payload);
         return result;
     } catch (const std::exception& exception) {
         throw_java(environment, exception.what());

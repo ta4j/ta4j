@@ -141,9 +141,9 @@ class OpenClAccelerationProviderTest {
                 .build();
         int end = forecast.getBarSeries().getEndIndex();
         Request<Forecast> request = new Request<>(forecast, end, end);
-        long singleBufferEstimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, iterationCount, 1L, false);
+        long singleBufferEstimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, iterationCount, 1L, false, 1L);
         long bothBuffersEstimate = ForecastSnapshot.estimatedPeakBytes(1L, 16L, 2L * nextPowerOfTwo(iterationCount), 1L,
-                false);
+                false, 1L);
         long ceiling = singleBufferEstimate + (bothBuffersEstimate - singleBufferEstimate) / 2L;
 
         System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(ceiling));

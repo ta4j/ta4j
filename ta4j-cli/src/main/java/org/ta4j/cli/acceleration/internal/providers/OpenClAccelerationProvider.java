@@ -66,7 +66,7 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         long paddedIterations = nextPowerOfTwo(spec.iterationCount());
         long sampleBufferIterations = Math.multiplyExact(paddedIterations, 2L);
         validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                sampleBufferIterations, spec.quantileProbabilities().size(), false));
+                sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;

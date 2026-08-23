@@ -71,12 +71,15 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
      * Computes the peak native payload estimate from request dimensions alone, so
      * providers can enforce their memory ceiling before any capture work or
      * allocation happens. The estimate covers the Java-side staging arrays and
-     * their native copies, the device result buffer, and the materialized sample or
+     * their native copies, the device result buffer, the materialized sample or
      * quantile rows produced after the native call, plus a small fixed per-array
-     * overhead.
+     * overhead. {@code deviceSampleBuffers} counts how many iteration-sized
+     * terminal-sample buffers the backend holds simultaneously: one for lanes that
+     * reuse a single device buffer per decision, {@code decisionCount} for lanes
+     * that keep every decision's samples resident.
      */
     static long estimatedPeakBytes(long decisionCount, long lookbackBarCount, long iterationCount, long quantileCount,
-            boolean sampleOutput) {
+            boolean sampleOutput, long deviceSampleBuffers) {
         long inputDoubles = Math.addExact(Math.multiplyExact(decisionCount, 5L + lookbackBarCount), quantileCount);
         long inputsBytes = Math.multiplyExact(
                 Math.addExact(Math.multiplyExact(inputDoubles, Double.BYTES), Math.multiplyExact(decisionCount, 4L)),
@@ -87,8 +90,8 @@ record ForecastSnapshot(BarSeries series, SeriesStamp stamp, NumFactory numFacto
             outputsBytes = Math.multiplyExact(Math.multiplyExact(decisionCount, iterationCount), Float.BYTES);
             materializationBytes = Math.multiplyExact(iterationCount, 48L);
         } else {
-            outputsBytes = Math.multiplyExact(
-                    Math.addExact(iterationCount, Math.multiplyExact(decisionCount, 4L + quantileCount)), Double.BYTES);
+            outputsBytes = Math.multiplyExact(Math.addExact(Math.multiplyExact(deviceSampleBuffers, iterationCount),
+                    Math.multiplyExact(decisionCount, 4L + quantileCount)), Double.BYTES);
             materializationBytes = Math.multiplyExact(Math.multiplyExact(decisionCount, quantileCount), 48L);
         }
         return Math.addExact(Math.addExact(Math.addExact(inputsBytes, outputsBytes), materializationBytes),
