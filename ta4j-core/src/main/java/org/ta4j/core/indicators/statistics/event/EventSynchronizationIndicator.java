@@ -222,8 +222,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      * @return the cached F1 score of the closed trailing window
      *         {@code [index - barCount + 1, index]}, {@code NaN} when the index
      *         lies outside the series' current {@code [getBeginIndex(),
-     *         getEndIndex()]} domain or the window reaches below the retained begin
-     *         index
+     *         getEndIndex()]} domain or the window reaches below the sources'
+     *         anchored stability boundary
      */
     @Override
     public Num getValue(int index) {
@@ -235,12 +235,13 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             // getResult's availability gate.
             return NaN.NaN;
         }
-        if ((long) index - barCount + 1L < series.getBeginIndex()) {
+        long windowStartIndex = (long) index - barCount + 1L;
+        if (windowStartIndex < firstStableIndex()) {
             // A cached F1 can outlive the window it was computed from: when the
-            // rolling series advances its head past the window start, the cached
-            // score is stale even though the index itself stays in-domain.
-            // getResult already reports this window as unavailable, so the cached
-            // scalar must not contradict it.
+            // rolling series advances its head, the sources' stability boundary
+            // rises above the window start even though the index itself stays
+            // in-domain. getResult already reports such windows as unavailable,
+            // so the cached scalar must not contradict it.
             return NaN.NaN;
         }
         return super.getValue(index);
