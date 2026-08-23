@@ -65,8 +65,14 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         // times its raw iteration estimate on host and device.
         long paddedIterations = nextPowerOfTwo(spec.iterationCount());
         long sampleBufferIterations = Math.multiplyExact(paddedIterations, 2L);
-        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L));
+        // The batched pipeline also keeps one contiguous device-side copy of
+        // every decision's lookback history (device_history), which
+        // estimatedPeakBytes does not model because it assumes per-decision
+        // staging only.
+        long deviceHistoryBytes = Math.multiplyExact(Math.multiplyExact(decisions, spec.lookbackBarCount()),
+                Double.BYTES);
+        validateMemoryCeiling(Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L), deviceHistoryBytes));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;

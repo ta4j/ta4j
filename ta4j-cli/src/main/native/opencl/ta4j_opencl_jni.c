@@ -124,6 +124,7 @@ static const char KERNEL_SOURCE[] =
         "    __local double block_sqsum[MOMENT_THREADS];\n"
         "    size_t lid = get_local_id(0);\n"
         "    size_t lsize = get_local_size(0);\n"
+        "    double shift = samples[0];\n"
         "    double local_sum = 0.0;\n"
         "    double local_sqsum = 0.0;\n"
         "    for (int index = get_group_id(0) * (int)lsize + (int)lid; index < count;\n"
@@ -131,10 +132,11 @@ static const char KERNEL_SOURCE[] =
         "        double value = samples[index];\n"
         "        if (!isfinite(value)) {\n"
         "            atomic_xchg(status, 2);\n"
-        "            value = 0.0;\n"
+        "            value = shift;\n"
         "        }\n"
-        "        local_sum += value;\n"
-        "        local_sqsum += value * value;\n"
+        "        double centered = value - shift;\n"
+        "        local_sum += centered;\n"
+        "        local_sqsum += centered * centered;\n"
         "    }\n"
         "    block_sum[lid] = local_sum;\n"
         "    block_sqsum[lid] = local_sqsum;\n"
@@ -154,7 +156,8 @@ static const char KERNEL_SOURCE[] =
         "\n"
         "__kernel void moments_finalize_kernel(__global const double* partial_sums,\n"
         "                                      __global const double* partial_sqsums, int block_count, int count,\n"
-        "                                      __global double* summary, __global int* status) {\n"
+        "                                      __global const double* samples, __global double* summary,\n"
+        "                                      __global int* status) {\n"
         "    __local double sum_shared[MOMENT_THREADS];\n"
         "    __local double sqsum_shared[MOMENT_THREADS];\n"
         "    size_t lid = get_local_id(0);\n"
@@ -176,13 +179,16 @@ static const char KERNEL_SOURCE[] =
         "        barrier(CLK_LOCAL_MEM_FENCE);\n"
         "    }\n"
         "    if (lid == 0 && *status == 0) {\n"
+        "        double shift = samples[0];\n"
         "        double total_sum = sum_shared[0];\n"
         "        double total_sqsum = sqsum_shared[0];\n"
         "        double observations = (double)count;\n"
-        "        double mean = total_sum / observations;\n"
-        "        double variance = (total_sqsum - total_sum * total_sum / observations) / observations;\n"
-        "        if (variance <= 0.0) {\n"
-        "            variance = 0.0;\n"
+        "        double centered_mean = total_sum / observations;\n"
+        "        double mean = shift + centered_mean;\n"
+        "        double variance = total_sqsum / observations - centered_mean * centered_mean;\n"
+        "        if (variance < 0.0) {\n"
+        "            *status = 2;\n"
+        "            return;\n"
         "        }\n"
         "        double standard_deviation = sqrt(variance);\n"
         "        if (!isfinite(mean) || !isfinite(standard_deviation)) {\n"
@@ -666,9 +672,11 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
                      "self-test arg moments finalize blocks");
         CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 3, sizeof(cl_int), &count_arg),
                      "self-test arg moments finalize count");
-        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &summary),
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &samples),
+                     "self-test arg moments finalize samples");
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &summary),
                      "self-test arg moments finalize summary");
-        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &status_buffer),
+        CHECK_OPENCL(clSetKernelArg(STATE.moments_finalize_kernel, 6, sizeof(cl_mem), &status_buffer),
                      "self-test arg moments finalize status");
         CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.moments_finalize_kernel, 1, NULL, &moment_global,
                                           moment_local, 0, NULL, NULL),
@@ -720,7 +728,7 @@ cleanup:
     release_mem(&summary);
     release_mem(&moments_partials);
     release_mem(&moments_sqpartials);
-    release_mem(&rng_bounded);
+    return error_status;
 }
 
 static cl_int initialize_state(char* error, size_t error_size) {
@@ -1109,6 +1117,17 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     padded_int = (cl_int)padded;
     use_parallel = padded <= STATE.max_work_group_size;
     moment_threads = STATE.max_work_group_size < 256 ? STATE.max_work_group_size : 256;
+    size_t kernel_limit = 0;
+    if (clGetKernelWorkGroupInfo(STATE.moments_partial_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
+                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
+            && kernel_limit > 0 && kernel_limit < moment_threads) {
+        moment_threads = kernel_limit;
+    }
+    if (clGetKernelWorkGroupInfo(STATE.moments_finalize_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
+                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
+            && kernel_limit > 0 && kernel_limit < moment_threads) {
+        moment_threads = kernel_limit;
+    }
     while ((moment_threads & (moment_threads - 1)) != 0) {
         --moment_threads;
     }
@@ -1193,8 +1212,8 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     }
 
     // Event kinds: 0 = transfer, 1 = path sampling, 2 = reduction/sort/quantile.
-    events = (cl_event*)calloc(5 * (size_t)decision_count + 3, sizeof(cl_event));
-    event_kinds = (int*)calloc(5 * (size_t)decision_count + 3, sizeof(int));
+    events = (cl_event*)calloc(8 * (size_t)decision_count + 3, sizeof(cl_event));
+    event_kinds = (int*)calloc(8 * (size_t)decision_count + 3, sizeof(int));
     if (events == NULL || event_kinds == NULL) {
         throw_java(environment, "out of host memory for profiling events");
         goto cleanup;
@@ -1236,12 +1255,13 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
         }
         {
             cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_status, CL_FALSE, 0, sizeof(int),
-                                                       &zero_status, 0, NULL, NULL);
+                                                       &zero_status, 0, NULL, &events[event_count]);
             if (write_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "status reset: %s", cl_error_string(write_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
+            event_kinds[event_count++] = 0;
         }
 
         {
@@ -1372,10 +1392,13 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
                 argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 3, sizeof(cl_int), &iteration_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &device_summary);
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 4, sizeof(cl_mem), &device_samples);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &device_status);
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 5, sizeof(cl_mem), &device_summary);
+            }
+            if (argument_error == CL_SUCCESS) {
+                argument_error = clSetKernelArg(STATE.moments_finalize_kernel, 6, sizeof(cl_mem), &device_status);
             }
             if (argument_error != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "moments finalize kernel arguments: %s",
@@ -1479,19 +1502,21 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
 
         {
             cl_int read_status = clEnqueueReadBuffer(STATE.queue, device_status, CL_FALSE, 0, sizeof(int),
-                                                     &status_host[decision], 0, NULL, NULL);
+                                                     &status_host[decision], 0, NULL, &events[event_count]);
             if (read_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "status transfer: %s", cl_error_string(read_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
+            event_kinds[event_count++] = 0;
             read_status = clEnqueueReadBuffer(STATE.queue, device_summary, CL_FALSE, 0, summary_size * sizeof(double),
-                                              payload + row + 1, 0, NULL, NULL);
+                                              payload + row + 1, 0, NULL, &events[event_count]);
             if (read_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "summary transfer: %s", cl_error_string(read_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
+            event_kinds[event_count++] = 0;
         }
     }
 
@@ -1553,6 +1578,10 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     (*environment)->SetDoubleArrayRegion(environment, result, 0, (jsize)payload_size, payload);
 
 cleanup:
+    /* Best-effort drain so in-flight transfers no longer reference host staging buffers. */
+    if (STATE.queue != NULL) {
+        clFinish(STATE.queue);
+    }
     while (events != NULL && event_count > 0) {
         --event_count;
         if (events[event_count] != NULL) {
