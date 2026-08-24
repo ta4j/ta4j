@@ -80,6 +80,20 @@ public class EquityBundleTest {
     }
 
     @Test
+    public void bundleNormalizesRealizedModeCacheKeys() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        // REALIZED curves ignore open positions regardless of the requested
+        // handling, so different handlings must share one cache entry.
+        assertSame(equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
+                equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
+        assertSame(equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
+                equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
+    }
+
+    @Test
     public void concurrentAccessReturnsSingleInstancePerKey() throws Exception {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);

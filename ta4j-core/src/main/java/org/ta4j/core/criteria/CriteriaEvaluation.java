@@ -54,16 +54,23 @@ public final class CriteriaEvaluation {
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(criteria, "criteria cannot be null");
 
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityBundle equityBundle = null;
         Map<AnalysisCriterion, Num> results = new LinkedHashMap<>();
         for (AnalysisCriterion criterion : criteria) {
             Objects.requireNonNull(criterion, "criteria must not contain null");
             if (results.containsKey(criterion)) {
                 continue;
             }
-            Num value = criterion instanceof EquityBundleAware bundleAware
-                    ? bundleAware.calculate(series, tradingRecord, equityBundle)
-                    : criterion.calculate(series, tradingRecord);
+            Num value;
+            if (criterion instanceof EquityBundleAware bundleAware) {
+                // Built on first use so fallback-only batches keep their normal cost.
+                if (equityBundle == null) {
+                    equityBundle = new EquityBundle(series, tradingRecord);
+                }
+                value = bundleAware.calculate(series, tradingRecord, equityBundle);
+            } else {
+                value = criterion.calculate(series, tradingRecord);
+            }
             results.put(criterion, value);
         }
         return Collections.unmodifiableMap(results);

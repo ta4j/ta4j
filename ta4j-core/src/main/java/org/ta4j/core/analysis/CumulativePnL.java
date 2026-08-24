@@ -34,6 +34,14 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final List<Num> values;
     private final AtomicBoolean frozen = new AtomicBoolean();
 
+    /**
+     * Whether a sweep already composed positions into {@link #values}. Once data is
+     * present, further public calculations fall back to per-position application so
+     * the addition order (and therefore the finite-precision results) matches the
+     * legacy recipe exactly.
+     */
+    private volatile boolean materialized;
+
     private final EquityCurveMode equityCurveMode;
 
     /**
@@ -185,6 +193,13 @@ public final class CumulativePnL implements PerformanceIndicator {
         }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
+        if (materialized) {
+            // Composing a combined sum onto already-materialized cells would
+            // reassociate the per-position addition order, which changes
+            // finite-precision results; apply each position separately instead.
+            PerformanceIndicator.super.calculate(tradingRecord, finalIndex, openPositionHandling);
+            return;
+        }
         sweep(tradingRecord, finalIndex, openPositionHandling);
     }
 
@@ -270,6 +285,9 @@ public final class CumulativePnL implements PerformanceIndicator {
             }
         }
         fillRange(cursor, seriesEnd, realized);
+        if (!positions.isEmpty()) {
+            materialized = true;
+        }
     }
 
     /**

@@ -42,6 +42,15 @@ import org.ta4j.core.analysis.cost.CostModel;
 public final class EquityBundle {
 
     private record CurveKey(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+
+        private CurveKey {
+            // CashFlow and CumulativePnL compute every REALIZED curve as if open
+            // positions were ignored, so different handlings must not produce
+            // duplicate cache entries for identical curves.
+            if (equityCurveMode == EquityCurveMode.REALIZED) {
+                openPositionHandling = OpenPositionHandling.IGNORE;
+            }
+        }
     }
 
     private final BarSeries series;

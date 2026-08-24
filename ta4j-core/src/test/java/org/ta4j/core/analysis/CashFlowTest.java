@@ -28,6 +28,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -687,6 +688,37 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void repeatedCalculatePreservesPerPositionArithmeticOrder() {
+        // These prices produce ratios with long decimal expansions, which exposes
+        // multiplication-order differences: composing the combined exit factor of a
+        // multi-position record onto an already-materialized curve in one step can
+        // round to a different last digit than applying each position successively.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(31.12345678901234d, 37.98765432109876d, 41.13579111357911d, 43.2468101224681d,
+                        47.36912151836912d, 53.4851620485162d, 59.61723429617234d, 61.73935654739356d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = multiPositionRecord(series, 3, 5, 6, 7);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow reference = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CashFlow reused = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
         NumFactory numFactory = series.numFactory();
         BaseTradingRecord record = new BaseTradingRecord();
@@ -694,6 +726,20 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 numFactory.one(), null, ExecutionSide.BUY, null, null));
         record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
                 numFactory.one(), null, ExecutionSide.SELL, null, null));
+        return record;
+    }
+
+    private static TradingRecord multiPositionRecord(BarSeries series, int... entryExitIndexes) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        for (int i = 0; i < entryExitIndexes.length; i += 2) {
+            int entryIndex = entryExitIndexes[i];
+            int exitIndex = entryExitIndexes[i + 1];
+            record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.BUY, null, null));
+            record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.SELL, null, null));
+        }
         return record;
     }
 
