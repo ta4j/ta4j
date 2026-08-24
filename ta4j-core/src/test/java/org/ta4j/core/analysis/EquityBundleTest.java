@@ -7,7 +7,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -17,12 +19,14 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -93,8 +97,8 @@ public class EquityBundleTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(threads);
         try {
-            for (Future<Object> future : executor.invokeAll(tasks)) {
-                future.get();
+            for (Future<Object> future : executor.invokeAll(tasks, 10, TimeUnit.SECONDS)) {
+                future.get(10, TimeUnit.SECONDS);
             }
         } finally {
             executor.shutdownNow();
@@ -104,6 +108,52 @@ public class EquityBundleTest {
         assertEquals(1, new HashSet<>(investedIntervalResults).size());
         assertSame(cashFlowResults.getFirst(),
                 equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+    }
+
+    @Test
+    public void bundleRebuildsCurvesAfterSeriesAppend() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        CashFlow cachedCurve = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        Duration period = series.getLastBar().getTimePeriod();
+        series.barBuilder()
+                .timePeriod(period)
+                .endTime(series.getLastBar().getEndTime().plus(period))
+                .openPrice(8d)
+                .highPrice(8d)
+                .lowPrice(8d)
+                .closePrice(8d)
+                .volume(1)
+                .add();
+
+        CashFlow rebuiltCurve = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNotSame(cachedCurve, rebuiltCurve);
+        assertNumEquals(new EquityBundle(series, tradingRecord)
+                .cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)
+                .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
+    }
+
+    @Test
+    public void bundleRebuildsCurvesAfterNewTrades() {
+        BarSeries series = series();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        CumulativePnL cachedCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        tradingRecord.operate(Trade.buyAt(3, series));
+        tradingRecord.operate(Trade.sellAt(5, series));
+
+        CumulativePnL rebuiltCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        assertNotSame(cachedCurve, rebuiltCurve);
+        assertNumEquals(new EquityBundle(series, tradingRecord)
+                .cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
+                .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
     }
 
     @Test

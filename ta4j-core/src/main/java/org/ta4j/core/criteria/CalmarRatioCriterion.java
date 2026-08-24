@@ -172,6 +172,11 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion i
         return toRepresentation(calmarRatio);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.24.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
         equityBundle.requireInputsFor(series, tradingRecord);

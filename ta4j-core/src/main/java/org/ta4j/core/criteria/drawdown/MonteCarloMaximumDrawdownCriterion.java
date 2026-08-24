@@ -211,6 +211,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         return simulate(series, tradingRecord, blocks);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.24.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
         equityBundle.requireInputsFor(series, tradingRecord);

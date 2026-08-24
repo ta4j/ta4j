@@ -93,6 +93,11 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettin
         return Drawdown.length(series, tradingRecord, cashFlow);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.24.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
         equityBundle.requireInputsFor(series, tradingRecord);

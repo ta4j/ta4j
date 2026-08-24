@@ -255,6 +255,11 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
         return annualization.apply(sharpePerPeriod, summary, numFactory);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.24.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
         equityBundle.requireInputsFor(series, tradingRecord);
@@ -266,7 +271,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
 
         OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy,
+        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy,
                 equityBundle.investedInterval(effectiveOpenPositionHandling),
                 equityBundle.cashFlow(equityCurveMode, effectiveOpenPositionHandling));
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,

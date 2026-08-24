@@ -257,6 +257,11 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
         return a.isGreaterThan(b);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.24.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
         equityBundle.requireInputsFor(series, tradingRecord);
@@ -266,7 +271,7 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
             return zero;
         }
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy,
+        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy,
                 equityBundle.investedInterval(openPositionHandling),
                 equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, openPositionHandling));
         List<Sample> samples = RatioSampleSupport

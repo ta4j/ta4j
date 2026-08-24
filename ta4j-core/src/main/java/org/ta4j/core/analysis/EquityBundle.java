@@ -28,6 +28,10 @@ import org.ta4j.core.TradingRecord;
  * Typical use is indirect, through batch evaluation entry points that create
  * and distribute a bundle internally. The curves are memoized by their
  * configuration key; pulling the same key twice returns the identical instance.
+ * The bundle captures its inputs by reference: when bars are appended to or
+ * removed from the series or new trades are recorded, every memoized curve is
+ * dropped and rebuilt on the next request so consumers never observe stale
+ * values.
  * </p>
  *
  * @since 0.24.2
@@ -44,6 +48,12 @@ public final class EquityBundle {
     private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new ConcurrentHashMap<>();
 
     /**
+     * Fingerprint of the captured inputs at the time the cached curves were built;
+     * a change rebuilds every memoized curve on the next request.
+     */
+    private long inputRevision;
+
+    /**
      * Creates a bundle for the given series and trading record. Neither the series
      * nor the record is copied: the curves computed on demand are constructed from
      * these exact inputs, mirroring direct indicator construction.
@@ -55,6 +65,30 @@ public final class EquityBundle {
     public EquityBundle(BarSeries series, TradingRecord tradingRecord) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        this.inputRevision = currentInputRevision();
+    }
+
+    /**
+     * Drops every memoized curve when the captured inputs changed since the cached
+     * curves were built (bars appended or removed, trades recorded), so subsequent
+     * requests observe up-to-date values instead of stale ones.
+     */
+    private void invalidateIfInputsChanged() {
+        long revision = currentInputRevision();
+        if (revision != inputRevision) {
+            inputRevision = revision;
+            cashFlows.clear();
+            cumulativePnLs.clear();
+            investedIntervals.clear();
+        }
+    }
+
+    private long currentInputRevision() {
+        long revision = series.getBarHistoryRevision();
+        revision = revision * 1_000_003L + series.getEndIndex();
+        revision = revision * 1_000_003L + series.getRemovedBarsCount();
+        revision = revision * 1_000_003L + tradingRecord.getTrades().size();
+        return revision;
     }
 
     /**
@@ -69,6 +103,7 @@ public final class EquityBundle {
     public CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        invalidateIfInputsChanged();
         return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
                 key -> new CashFlow(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
     }
@@ -86,6 +121,7 @@ public final class EquityBundle {
     public CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        invalidateIfInputsChanged();
         return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
                 key -> new CumulativePnL(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
     }
@@ -100,6 +136,7 @@ public final class EquityBundle {
      */
     public InvestedInterval investedInterval(OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        invalidateIfInputsChanged();
         return investedIntervals.computeIfAbsent(openPositionHandling,
                 handling -> new InvestedInterval(series, tradingRecord, handling));
     }
