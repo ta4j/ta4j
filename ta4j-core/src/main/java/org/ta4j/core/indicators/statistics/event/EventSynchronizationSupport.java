@@ -291,14 +291,17 @@ final class EventSynchronizationSupport {
             int maxLeadBars, int maxLagBars) {
         int n = predicted.length;
         int m = reference.length;
-        if (n == 0 || m == 0) {
-            return List.of();
-        }
+        // Validate the documented cell budget before any fast path: even a
+        // one-sided window needs (count + 1) * 1 cells, so an oversized stream
+        // must fail here rather than flow through the empty-side shortcuts.
         long cells = (long) (n + 1) * (m + 1);
         if (cells > MAX_MATCHING_CELLS) {
             throw new IllegalArgumentException(
                     "event counts " + n + " x " + m + " exceed the baseline matcher " + "capacity of "
                             + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment " + "arrays)");
+        }
+        if (n == 0 || m == 0) {
+            return List.of();
         }
         int stride = m + 1;
         int[] bestPairs = new int[(int) cells];
