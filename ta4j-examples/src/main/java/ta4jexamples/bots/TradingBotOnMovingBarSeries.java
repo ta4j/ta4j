@@ -122,6 +122,10 @@ public class TradingBotOnMovingBarSeries {
             endTime = LAST_BAR_END_TIME.plusNanos(1);
         }
         LAST_BAR_END_TIME = endTime;
+        // Each generated bar must open at the previous generated close so the
+        // simulated series stays connected instead of producing one-step
+        // samples with artificial gaps.
+        LAST_BAR_CLOSE_PRICE = closePrice;
         return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))

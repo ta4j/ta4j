@@ -63,6 +63,7 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -327,13 +328,13 @@ final class CliSupport {
     }
 
     static Num resolveAmount(BarSeries series, String capitalToken, String stakeAmountToken) {
-        Double capital = null;
+        Num capital = null;
         if (capitalToken != null && !capitalToken.isBlank()) {
-            capital = parsePositiveDouble(capitalToken, "capital");
+            capital = parsePositiveAmount(series.numFactory(), capitalToken, "capital");
         }
-        Double stake = null;
+        Num stake = null;
         if (stakeAmountToken != null && !stakeAmountToken.isBlank()) {
-            stake = parsePositiveDouble(stakeAmountToken, "stake-amount");
+            stake = parsePositiveAmount(series.numFactory(), stakeAmountToken, "stake-amount");
         }
 
         String resolved = stakeAmountToken;
@@ -343,12 +344,29 @@ final class CliSupport {
         if (resolved == null || resolved.isBlank()) {
             resolved = "1";
         }
-        if (capital != null && stake != null) {
-            if (stake > capital) {
-                throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
-            }
+        if (capital != null && stake != null && stake.isGreaterThan(capital)) {
+            throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
         }
         return series.numFactory().numOf(resolved);
+    }
+
+    /**
+     * Parses a positive amount in the series' {@link Num} representation so
+     * comparisons keep the exact operator-supplied precision instead of
+     * collapsing distinct tokens to the same double.
+     */
+    private static Num parsePositiveAmount(NumFactory factory, String token, String optionName) {
+        final Num value;
+        try {
+            value = factory.numOf(token);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".",
+                    exception);
+        }
+        if (!value.isPositive()) {
+            throw new IllegalArgumentException("--" + optionName + " must be greater than zero.");
+        }
+        return value;
     }
 
     static PositionSizingSpec resolvePositionSizing(BarSeries series, String modeToken, String capitalToken,
@@ -1896,18 +1914,64 @@ final class CliSupport {
         return series.getSubSeries(startIndex, endIndexExclusive);
     }
 
+    /**
+     * Upper bound for operator-supplied Monte Carlo criterion iterations. The
+     * default configuration runs 10,000 simulations; anything above this cap
+     * cannot finish in bounded time per statement and fold evaluation and is
+     * rejected as invalid input before any command work starts.
+     */
+    static final int MAX_CRITERION_ITERATIONS = 100_000;
+
+    /**
+     * Upper bound for operator-supplied Monte Carlo path-block counts, which
+     * control how many trades each simulated path re-stitches.
+     */
+    static final int MAX_CRITERION_PATH_BLOCKS = 1_000_000;
+
+    private static void requireBoundedCriterionResources(String requestedType) {
+        if (!requestedType.stripLeading().startsWith("{")) {
+            return;
+        }
+        JsonElement root;
+        try {
+            root = JsonParser.parseString(requestedType);
+        } catch (RuntimeException exception) {
+            return;
+        }
+        if (!root.isJsonObject()) {
+            return;
+        }
+        requireBoundedCriterionField(root.getAsJsonObject(), "iterations", MAX_CRITERION_ITERATIONS);
+        requireBoundedCriterionField(root.getAsJsonObject(), "pathBlocks", MAX_CRITERION_PATH_BLOCKS);
+    }
+
+    private static void requireBoundedCriterionField(JsonObject root, String field, int maximum) {
+        JsonElement value = root.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            return;
+        }
+        int parsed = value.getAsInt();
+        if (parsed < 1 || parsed > maximum) {
+            throw new IllegalArgumentException("Invalid analysis criterion: field '" + field
+                    + "' must be between 1 and " + maximum + ", got " + parsed + ".");
+        }
+    }
+
     private static CriterionSpec resolveCriterion(String requestedType) {
         if (requestedType == null || requestedType.isBlank()) {
             throw new IllegalArgumentException("Criterion inputs must not be blank.");
         }
 
+        // Resource caps reject unbounded operator input with a precise
+        // message; keep them outside the generic JSON/expression wrap below.
+        requireBoundedCriterionResources(requestedType);
+        String inputKind = requestedType.stripLeading().startsWith("{") ? "JSON"
+                : requestedType.contains(".") ? "input" : "shorthand";
         AnalysisCriterion criterion;
         try {
             criterion = requestedType.stripLeading().startsWith("{") ? AnalysisCriterion.fromJson(requestedType)
                     : AnalysisCriterion.fromExpression(requestedType);
-        } catch (RuntimeException ex) {
-            String inputKind = requestedType.stripLeading().startsWith("{") ? "JSON"
-                    : requestedType.contains(".") ? "input" : "shorthand";
+        } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("Invalid analysis criterion " + inputKind + ": " + requestedType + ".",
                     ex);
         }

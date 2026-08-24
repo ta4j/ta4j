@@ -199,10 +199,11 @@ class PerformanceComparisonTest {
         writePerformanceJson(baseDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
         writePerformanceJson(candidateDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Duplicate result cell: endOnly:16", exception.getMessage());
+        assertEquals("Invalid performance artifact " + baseDir.resolve("performance.json")
+                + ": duplicate result cell: endOnly:16", exception.getMessage());
     }
 
     @Test

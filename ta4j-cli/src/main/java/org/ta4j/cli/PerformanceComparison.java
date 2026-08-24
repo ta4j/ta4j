@@ -98,8 +98,8 @@ final class PerformanceComparison {
         if (!hostTelemetryMatch(baseHost, candidateHost)) {
             throw new IllegalStateException("Cannot compare performance artifacts from different hosts");
         }
-        Map<String, JsonObject> baseResults = resultMap(base);
-        Map<String, JsonObject> candidateResults = resultMap(candidate);
+        Map<String, JsonObject> baseResults = resultMap(baseDir.resolve("performance.json"), base);
+        Map<String, JsonObject> candidateResults = resultMap(candidateDir.resolve("performance.json"), candidate);
         if (!baseResults.keySet().equals(candidateResults.keySet())) {
             throw new IllegalStateException("Cannot compare performance artifacts with different result cells");
         }
@@ -290,7 +290,7 @@ final class PerformanceComparison {
         return value.getAsJsonObject();
     }
 
-    private static Map<String, JsonObject> resultMap(JsonObject root) {
+    private static Map<String, JsonObject> resultMap(Path file, JsonObject root) {
         Map<String, JsonObject> byCell = new LinkedHashMap<>();
         JsonArray results = root.getAsJsonArray("results");
         for (int i = 0; i < results.size(); i++) {
@@ -298,7 +298,11 @@ final class PerformanceComparison {
             String key = result.get("scenarioId").getAsString() + ":" + result.get("barCount").getAsInt();
             JsonObject previous = byCell.putIfAbsent(key, result);
             if (previous != null) {
-                throw new IllegalStateException("Duplicate result cell: " + key);
+                // Repeated cells are malformed operator input, not a software
+                // fault: the usage classification keeps --exit-code semantics
+                // consistent with the other artifact-shape validators.
+                throw new IllegalArgumentException(
+                        "Invalid performance artifact " + file + ": duplicate result cell: " + key);
             }
         }
         return byCell;

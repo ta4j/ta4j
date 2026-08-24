@@ -10,26 +10,34 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.criteria.Annualization;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
+import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -37,6 +45,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class Ta4jCliTest {
 
@@ -1320,6 +1329,28 @@ class Ta4jCliTest {
         Path file = tempDir.resolve("long-series.csv");
         Files.writeString(file, csv);
         return file;
+    }
+
+    @Test
+    void ruleTestFailsLoudlyWhenEveryFoldFails() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1d, 2d, 3d, 4d, 5d, 6d).build();
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        WalkForwardConfig config = new WalkForwardConfig(2, 1, 1, 0, 0, 0, 1, List.of(1), 1, List.of(1), 7L);
+        WalkForwardRuntimeReport runtimeReport = new WalkForwardRuntimeReport(Duration.ZERO, Duration.ZERO,
+                Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of());
+        WalkForwardRunResult.FoldFailure failure = new WalkForwardRunResult.FoldFailure("fold-1", 0,
+                "rule threw during fold", new IllegalStateException("boom"));
+        StrategyWalkForwardExecutionResult allFailed = new StrategyWalkForwardExecutionResult(series, strategy,
+                config, List.of(), runtimeReport, List.of(failure));
+
+        assertThatThrownBy(() -> CliCommands.requireSuccessfulFoldResults(allFailed))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("all 1 walk-forward folds failed: rule threw during fold (cause: boom)")
+                .hasCauseInstanceOf(IllegalStateException.class);
+
+        StrategyWalkForwardExecutionResult empty = new StrategyWalkForwardExecutionResult(series, strategy, config,
+                List.of(), runtimeReport, List.of());
+        CliCommands.requireSuccessfulFoldResults(empty);
     }
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {

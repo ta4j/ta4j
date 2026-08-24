@@ -37,16 +37,14 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
 
     @Override
     public double predictedSpeedup(Request<Forecast> request) {
-        MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
-        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        long work;
-        try {
-            work = Math.multiplyExact(Math.multiplyExact(decisions, spec.iterationCount()), spec.horizon());
-        } catch (ArithmeticException exception) {
-            return 0d;
-        }
-        return OpenClCrossoverModel.predictedSpeedup(probe, work);
+        // No measured device-specific qualification exists for the OpenCL lane:
+        // unlike CUDA (whose crossover model is fit to RTX 5090 measurements),
+        // any predicted speedup here would be fabricated and could select
+        // devices that are substantially slower than the JIT scalar path.
+        // Automatic selection therefore keeps eligible-but-unqualified devices
+        // on scalar execution; forcing this provider through the qualification
+        // property still bypasses the speedup gate for measurement runs.
+        return 0d;
     }
 
     @Override
@@ -112,32 +110,3 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
 
 }
 
-final class OpenClCrossoverModel {
-
-    /**
-     * Conservative workload floor mirroring the Metal provider's qualified minimum;
-     * placeholder pending real-GPU speedup measurement.
-     */
-    private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
-
-    /**
-     * Minimum device global memory for auto-selection. The FP64 forecast kernels
-     * run on padded sample buffers whose size grows with the path count; devices
-     * below this floor (for example small integrated GPUs) cannot beat the JIT
-     * scalar lane and must stay on scalar execution until real-GPU measurement
-     * qualifies them.
-     */
-    private static final long QUALIFIED_MINIMUM_DEVICE_BYTES = 2L * 1024L * 1024L * 1024L;
-
-    private OpenClCrossoverModel() {
-    }
-
-    static double predictedSpeedup(OpenClProbeResult probe, long work) {
-        if (!probe.gpuDevice() || work < QUALIFIED_MINIMUM_WORK
-                || probe.freeMemoryBytes() < QUALIFIED_MINIMUM_DEVICE_BYTES) {
-            return 0d;
-        }
-        return 0.25d;
-    }
-
-}

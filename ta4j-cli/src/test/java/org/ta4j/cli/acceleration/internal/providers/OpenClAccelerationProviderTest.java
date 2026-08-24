@@ -251,7 +251,7 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
-    void crossoverRequiresGpuDeviceAndQualifiedWorkload() {
+    void unqualifiedOpenClDevicesStayOnScalarExecution() {
         MonteCarloPriceForecastIndicator small = forecast(doubleSeries());
         Request<Forecast> smallRequest = request(small);
         assertThat(
@@ -264,9 +264,12 @@ class OpenClAccelerationProviderTest {
                 new FakeBridge(OpenClAccelerationProviderTest::constantResult), cpuProbe());
         assertThat(cpuProvider.predictedSpeedup(largeRequest)).isZero();
 
+        // Even a qualified-looking GPU predicts no speedup until real-GPU
+        // measurement qualifies the OpenCL lane, mirroring the CUDA model's
+        // measured-only approach.
         OpenClAccelerationProvider gpuProvider = provider(
                 new FakeBridge(OpenClAccelerationProviderTest::constantResult), qualifiedProbe());
-        assertThat(gpuProvider.predictedSpeedup(largeRequest)).isEqualTo(0.25d);
+        assertThat(gpuProvider.predictedSpeedup(largeRequest)).isZero();
     }
 
     @Test

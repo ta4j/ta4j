@@ -234,6 +234,38 @@ class CliSupportTest {
     }
 
     @Test
+    void resolveAmountComparesExactNumValuesBeyondDoublePrecision() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        series.barBuilder().closePrice(1d).add();
+
+        // 2^53 and 2^53 + 1 collapse to the same double; only an exact Num
+        // comparison detects that the stake exceeds the capital.
+        assertThatThrownBy(() -> CliSupport.resolveAmount(series, "9007199254740992", "9007199254740993"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--stake-amount must not exceed --capital.");
+        assertThat(CliSupport.resolveAmount(series, "9007199254740993", "9007199254740992"))
+                .hasToString("9007199254740992");
+    }
+
+    @Test
+    void resolveCriteriaRejectsUnboundedMonteCarloIterations() {
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(),
+                List.of("{\"type\":\"MonteCarloMaximumDrawdownCriterion\",\"iterations\":100001}"), List.of(),
+                List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'iterations' must be between 1 and 100000");
+    }
+
+    @Test
+    void resolveCriteriaRejectsUnboundedMonteCarloPathBlocks() {
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(), List.of(
+                "{\"type\":\"MonteCarloMaximumDrawdownCriterion\",\"iterations\":10000,\"pathBlocks\":1000001}"),
+                List.of(), List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("'pathBlocks' must be between 1 and 1000000");
+    }
+
+    @Test
     void resolvePositionSizingSupportsFixedBalanceAndKellyModes() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);

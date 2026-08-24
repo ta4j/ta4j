@@ -76,6 +76,7 @@ foreach ($workload in $workloads) {
             "-B", "-pl", "ta4j-cli", "-am",
             "-Dtest=CudaBenchmarkTest", "-Dsurefire.failIfNoSpecifiedTests=false",
             "-Dgroups=requires-cuda", "-Dta4j.excludedTestTags=requires-metal",
+            "-Dta4j.forecast.rngVersion=1",
             "-Dta4j.runBenchmarks=true",
             "-Dta4j.acceleration.cuda.library=$library",
             "-Dta4j.cuda.benchmark.decisions=$($workload.decisions)",

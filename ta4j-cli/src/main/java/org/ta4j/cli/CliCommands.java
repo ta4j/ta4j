@@ -1065,6 +1065,10 @@ final class CliCommands {
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
+            // Overlapping fold geometry can multiply one backtest into billions
+            // of bar-rule evaluations; apply the same advertised work ceiling as
+            // strategy walk-forward before anything executes.
+            CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
@@ -1075,6 +1079,7 @@ final class CliCommands {
                     CliSupport.progressCallback(artifacts.progress, err(), "rule test"));
 
             rejectFoldlessGeometry(walkForwardResult, series);
+            requireSuccessfulFoldResults(walkForwardResult);
 
             TradingStatement statement = backtest.tradingStatements().getFirst();
             Path chartPath = CliSupport.saveChart(artifacts.chart, series, statement);
@@ -1148,6 +1153,25 @@ final class CliCommands {
 
     private static boolean allFoldsFailed(StrategyWalkForwardExecutionResult walkForwardResult) {
         return walkForwardResult.folds().isEmpty() && !walkForwardResult.foldFailures().isEmpty();
+    }
+
+    /**
+     * A single-strategy rule test cannot report per-strategy partial results,
+     * so when every fold execution failed the command must fail loudly instead
+     * of silently returning an empty analysis.
+     */
+    static void requireSuccessfulFoldResults(StrategyWalkForwardExecutionResult walkForwardResult) {
+        if (!allFoldsFailed(walkForwardResult)) {
+            return;
+        }
+        WalkForwardRunResult.FoldFailure firstFailure = walkForwardResult.foldFailures().getFirst();
+        String summary = "all " + walkForwardResult.foldFailures().size() + " walk-forward folds failed: "
+                + firstFailure.message();
+        Throwable cause = firstFailure.cause();
+        if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+            summary += " (cause: " + cause.getMessage() + ")";
+        }
+        throw new IllegalArgumentException(summary, cause);
     }
 
     private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {
