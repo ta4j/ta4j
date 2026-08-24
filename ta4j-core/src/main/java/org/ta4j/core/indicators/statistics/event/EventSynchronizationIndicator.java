@@ -187,6 +187,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     /**
      * @return {@code max(predicted, reference unstable bars) + barCount - 1},
      *         saturated at {@link Integer#MAX_VALUE}
+     * @since 0.24.2
      */
     @Override
     public int getCountOfUnstableBars() {

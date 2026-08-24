@@ -141,6 +141,11 @@ final class EventSynchronizationSupport {
     static EventSynchronizationResult synchronize(int[] predictedEvents, int[] referenceEvents, int requestedStart,
             int requestedEnd, int effectiveStart, int effectiveEnd, int maxLeadBars, int maxLagBars,
             NumFactory numFactory) {
+        // Callers own these arrays: copy up front so every downstream view
+        // (including the zero-copy unmatched-index views) wraps buffers that
+        // only this call can mutate, preserving the immutable result contract.
+        predictedEvents = predictedEvents.clone();
+        referenceEvents = referenceEvents.clone();
         Objects.requireNonNull(predictedEvents, "predictedEvents");
         Objects.requireNonNull(referenceEvents, "referenceEvents");
         Objects.requireNonNull(numFactory, "numFactory");
