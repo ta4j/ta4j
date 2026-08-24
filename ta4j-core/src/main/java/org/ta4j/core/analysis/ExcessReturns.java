@@ -123,32 +123,33 @@ public final class ExcessReturns {
 
     /**
      * Creates an excess return calculator that shares already-computed equity
-     * curves instead of constructing its own. The bar series providing time deltas
-     * and the num factory is taken from {@code cashFlow}'s captured series
-     * snapshot, so all inputs come from one shared source; pass curves that were
-     * built from the same series (as guaranteed when both come from one
-     * {@link EquityBundle}). The supplied indicators are used exactly as-is; no
-     * defensive copy or recomputation happens.
+     * curves from one {@link EquityBundle} instead of constructing its own. Both
+     * curves are derived from the same captured series and record, so invested
+     * intervals and equity values are consistent by construction; no defensive copy
+     * or recomputation happens. The bar series providing time deltas and the num
+     * factory is taken from the bundle's captured series.
      *
-     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param cashReturnPolicy   the policy for flat equity intervals
-     * @param investedInterval   the invested interval indicator to use, not null
-     * @param cashFlow           the cash flow indicator to use, not null
+     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param equityBundle         the bundle supplying both shared curves, not null
+     * @param equityCurveMode      the cash flow calculation mode, not null
+     * @param openPositionHandling how open positions should be handled, not null
      * @since 0.24.2
      */
-    public ExcessReturns(Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, InvestedInterval investedInterval,
-            CashFlow cashFlow) {
-        CashFlow requiredCashFlow = Objects.requireNonNull(cashFlow, "cashFlow cannot be null");
-        InvestedInterval requiredInterval = Objects.requireNonNull(investedInterval, "investedInterval cannot be null");
-        if (requiredInterval.getBarSeries().numFactory() != requiredCashFlow.getBarSeries().numFactory()) {
-            throw new IllegalArgumentException(
-                    "investedInterval and cashFlow must provide curves over the same num factory");
-        }
-        this.series = requiredCashFlow.getBarSeries();
+    public ExcessReturns(Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, EquityBundle equityBundle,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        Objects.requireNonNull(equityBundle, "equityBundle cannot be null");
+        this.series = equityBundle.getBarSeries();
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
-        this.investedInterval = requiredInterval;
-        this.cashFlow = requiredCashFlow;
+        Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+
+        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
+                ? OpenPositionHandling.IGNORE
+                : openPositionHandling;
+        this.investedInterval = equityBundle.investedInterval(effectiveOpenPositionHandling);
+        this.cashFlow = equityBundle.cashFlow(equityCurveMode, effectiveOpenPositionHandling);
     }
 
     /**

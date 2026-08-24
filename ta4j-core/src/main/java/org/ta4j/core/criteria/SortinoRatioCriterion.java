@@ -271,9 +271,8 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
             return zero;
         }
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy,
-                equityBundle.investedInterval(openPositionHandling),
-                equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, openPositionHandling));
+        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, equityBundle,
+                EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
         List<Sample> samples = RatioSampleSupport
                 .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
                 .toList();

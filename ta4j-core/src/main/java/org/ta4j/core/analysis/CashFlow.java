@@ -353,15 +353,20 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Replaces the inclusive range {@code [from, to]} with {@code value} and
-     * returns the next unmaterialized index ({@code max(from, to) + 1}).
+     * Composes {@code value} multiplicatively into every cell of the inclusive
+     * range {@code [from, to]} and returns the next unmaterialized index
+     * ({@code max(from, to) + 1}). Untouched cells hold the identity element, so
+     * composition equals replacement on a freshly constructed curve, while a
+     * repeated {@link #calculate} invocation accumulates on top of the data already
+     * present instead of discarding it.
      */
     private int fillRange(int from, int to, Num value) {
         if (from > to) {
             return from;
         }
         for (int i = from; i <= to; i++) {
-            values.set(toValueIndex(i), value);
+            int valueIndex = toValueIndex(i);
+            values.set(valueIndex, values.get(valueIndex).multipliedBy(value));
         }
         return to + 1;
     }

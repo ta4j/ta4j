@@ -271,9 +271,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
 
         OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy,
-                equityBundle.investedInterval(effectiveOpenPositionHandling),
-                equityBundle.cashFlow(equityCurveMode, effectiveOpenPositionHandling));
+        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, equityBundle,
+                equityCurveMode, effectiveOpenPositionHandling);
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
                 excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);

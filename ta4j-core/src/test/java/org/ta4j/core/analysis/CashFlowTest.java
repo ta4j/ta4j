@@ -15,6 +15,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -650,6 +651,50 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 assertNumEquals(expected.getValue(i), actual.getValue(i));
             }
         }
+    }
+
+    @Test
+    public void repeatedCalculateComposesOntoPriorCurveData() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = closedPositionRecord(series, 3, 5);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            // Reference: every position composed through the per-position
+            // recipe onto one shared curve.
+            CashFlow reference = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CashFlow reused = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            Num valueAfterFirst = reused.getValue(4);
+
+            // Calculating an empty record must not reset prior curve data.
+            reused.calculate(new BaseTradingRecord(), series.getEndIndex(), OpenPositionHandling.IGNORE);
+            assertNumEquals(valueAfterFirst, reused.getValue(4));
+
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.SELL, null, null));
+        return record;
     }
 
     private static BaseTradingRecord decreasingExitLifoRecord(BarSeries series) {

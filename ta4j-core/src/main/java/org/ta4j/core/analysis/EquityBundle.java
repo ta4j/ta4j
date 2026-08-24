@@ -118,9 +118,11 @@ public final class EquityBundle {
     public CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        invalidateIfInputsChanged();
-        return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
-                key -> new CashFlow(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+        synchronized (this) {
+            invalidateIfInputsChanged();
+            return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
+                    key -> new CashFlow(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+        }
     }
 
     /**
@@ -136,9 +138,11 @@ public final class EquityBundle {
     public CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        invalidateIfInputsChanged();
-        return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
-                key -> new CumulativePnL(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+        synchronized (this) {
+            invalidateIfInputsChanged();
+            return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
+                    key -> new CumulativePnL(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+        }
     }
 
     /**
@@ -151,9 +155,11 @@ public final class EquityBundle {
      */
     public InvestedInterval investedInterval(OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        invalidateIfInputsChanged();
-        return investedIntervals.computeIfAbsent(openPositionHandling,
-                handling -> new InvestedInterval(series, tradingRecord, handling));
+        synchronized (this) {
+            invalidateIfInputsChanged();
+            return investedIntervals.computeIfAbsent(openPositionHandling,
+                    handling -> new InvestedInterval(series, tradingRecord, handling));
+        }
     }
 
     /**

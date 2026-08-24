@@ -262,8 +262,11 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Replaces the inclusive range {@code [from, to]} with {@code value} and
-     * returns the next unmaterialized index ({@code max(from, to) + 1}).
+     * Adds {@code value} to every cell of the inclusive range {@code [from, to]}
+     * and returns the next unmaterialized index ({@code max(from, to) + 1}).
+     * Untouched cells hold zero, so composition equals replacement on a freshly
+     * constructed curve, while a repeated {@link #calculate} invocation accumulates
+     * on top of the data already present instead of discarding it.
      */
     private int fillRange(int from, int to, Num value) {
         if (from > to || to < 0 || from >= values.size()) {
@@ -271,7 +274,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         }
         int end = Math.min(to, values.size() - 1);
         for (int i = Math.max(from, 0); i <= end; i++) {
-            values.set(i, value);
+            values.set(i, values.get(i).plus(value));
         }
         return to + 1;
     }
