@@ -1,0 +1,732 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.analysis.elliott;
+
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+
+/**
+ * Package-private, protocol-agnostic Phase 3 study engine.
+ *
+ * <p>The caller supplies the detector, grammars, and relationship rules. The
+ * runner only evaluates bars inside the supplied locked partitions and never
+ * consults truth anchors or a runtime registry. The confirmation-aware kernel
+ * is always evaluated through an as-of view.</p>
+ *
+ * <p>Real-data execution is intentionally caller-owned: load a classpath or
+ * file-backed {@link BarSeries} in the examples/test data plane, then invoke
+ * {@link #evaluateAndWrite(String, BarSeries, int, int, Path)}. This core test
+ * scope does not download or fabricate market data.</p>
+ */
+final class StudyRunner {
+
+    private static final String DEFAULT_FINGERPRINT =
+            "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100";
+
+    private final Supplier<SwingDetector> detectorFactory;
+    private final List<TopologyGrammar> grammars;
+    private final List<RelationshipRule> rules;
+    private final Configuration configuration;
+
+    StudyRunner(final Supplier<SwingDetector> detectorFactory, final List<TopologyGrammar> grammars,
+            final List<RelationshipRule> rules) {
+        this(detectorFactory, grammars, rules, Configuration.lockedDefault());
+    }
+
+    StudyRunner(final Supplier<SwingDetector> detectorFactory, final List<TopologyGrammar> grammars,
+            final List<RelationshipRule> rules, final Configuration configuration) {
+        this.detectorFactory = Objects.requireNonNull(detectorFactory, "detectorFactory");
+        this.grammars = validateGrammars(grammars);
+        this.rules = validateRules(rules);
+        this.configuration = Objects.requireNonNull(configuration, "configuration");
+    }
+
+    /**
+     * Evaluates the locked study over the supplied index range.
+     *
+     * @param series source bars
+     * @param fromIndex first requested index, inclusive
+     * @param toIndex last requested index, inclusive
+     * @return immutable study report
+     */
+    StudyReport evaluate(final BarSeries series, final int fromIndex, final int toIndex) {
+        return evaluate("series", series, fromIndex, toIndex);
+    }
+    /**
+     * Evaluates and persists one named asset as one deterministic JSON report.
+     *
+     * @param assetId report asset identifier
+     * @param series source bars
+     * @param fromIndex first requested index, inclusive
+     * @param toIndex last requested index, inclusive
+     * @param path caller-selected output path
+     * @return the report written to {@code path}
+     */
+    StudyReport evaluateAndWrite(final String assetId, final BarSeries series, final int fromIndex,
+            final int toIndex, final Path path) {
+        final StudyReport report = evaluate(assetId, series, fromIndex, toIndex);
+        report.write(path);
+        return report;
+    }
+
+    /**
+     * Evaluates one named asset. The name is carried into the report so transfer
+     * assets remain separately identifiable and are never merged with BTC.
+     *
+     * @param assetId report asset identifier
+     * @param series source bars
+     * @param fromIndex first requested index, inclusive
+     * @param toIndex last requested index, inclusive
+     * @return immutable study report
+     */
+    StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
+        Objects.requireNonNull(series, "series");
+        validateRange(series, fromIndex, toIndex);
+        configuration.partitions().assertCalibrationConfiguration();
+
+        final int start = Math.max(fromIndex, series.getBeginIndex());
+        final int end = Math.min(toIndex, series.getEndIndex());
+        final List<StudyReport.ModeReport> h1Modes = new ArrayList<>();
+        final Set<TopologyGrammar> h1Grammars = new LinkedHashSet<>(grammars);
+        h1Grammars.add(TopologyGrammar.MOTIVE_5);
+        h1Grammars.add(TopologyGrammar.CORRECTIVE_3);
+        h1Grammars.add(TopologyGrammar.CYCLE_5_3);
+        for (final TopologyGrammar grammar : h1Grammars) {
+            h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory, grammar,
+                    "topology-only"));
+        }
+        final StudyReport.ModeReport h2Topology = evaluateMode(series, start, end, configuration.partitions(),
+                detectorFactory, TopologyGrammar.CYCLE_5_3, "topology-only", List.of());
+
+        final List<StudyReport.ModeReport> ablations = new ArrayList<>();
+        for (final RuleAblation.Mode mode : RuleAblation.modes(rules)) {
+            ablations.add(evaluateMode(series, start, end, configuration.partitions(), detectorFactory,
+                    TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules()));
+        }
+
+        final List<StudyReport.ModeReport> competing = new ArrayList<>();
+        final Set<String> competingNames = new LinkedHashSet<>();
+        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+            competingNames.add(grammar.name());
+        }
+        for (final TopologyGrammar grammar : grammars) {
+            competingNames.add(grammar.name());
+        }
+        competingNames.add("3+3");
+        competingNames.add("5+5");
+        competingNames.add("7+3");
+        competingNames.add("change-point-baseline");
+        for (final String grammarName : competingNames) {
+            final StudyReport.ModeReport mode;
+            if ("change-point-baseline".equals(grammarName)) {
+                mode = evaluateChangePointBaseline(series, start, end, configuration.partitions());
+            } else {
+                final TopologyGrammar grammar = parseKernelGrammar(grammarName);
+                if (grammar != null) {
+                    mode = evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
+                            grammar, "competing-" + grammarName);
+                } else {
+                    mode = evaluateAlternativeGrammar(series, start, end, configuration.partitions(), detectorFactory,
+                            grammarName);
+                }
+            }
+            competing.add(mode);
+        }
+
+        final StudyReport.RobustnessReport robustness = DetectorRobustnessMatrix.evaluate(series, start, end,
+                configuration.partitions(), configuration.robustnessDetectors());
+        final List<StudyReport.NullReport> nullReports = evaluateNulls(series, start, end);
+        final StudyReport.HypothesisReport h1 = new StudyReport.HypothesisReport("H1", TopologyGrammar.MOTIVE_5.name(),
+                h1Modes);
+        final List<StudyReport.ModeReport> h2Modes = new ArrayList<>();
+        h2Modes.add(h2Topology);
+        h2Modes.addAll(ablations);
+        final StudyReport.HypothesisReport h2 = new StudyReport.HypothesisReport("H2",
+                TopologyGrammar.CYCLE_5_3.name(), h2Modes);
+        final List<StudyReport.PartitionSpec> partitionSpecs = configuration.partitions().entries().stream()
+                .map(entry -> new StudyReport.PartitionSpec(entry.name(), entry.start(), entry.end())).toList();
+        return new StudyReport(assetId, configuration.protocolFingerprint(), configuration.seed(), partitionSpecs,
+                configuration.partitions().forbiddenCalibrationStart(), h1, h2, competing, ablations, robustness,
+                nullReports);
+    }
+
+    private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
+        final List<StudyReport.NullReport> reports = new ArrayList<>();
+        final boolean hasEvaluationWindow = start <= end;
+        final int sourceBegin = source.getBeginIndex();
+        final BarSeries causalSource = hasEvaluationWindow ? source.getSubSeries(sourceBegin, end + 1) : source;
+        final int causalStart = hasEvaluationWindow ? start - sourceBegin : 0;
+        final int causalEnd = hasEvaluationWindow ? end - sourceBegin : -1;
+        for (final int blockLength : configuration.nullBlockLengths()) {
+            final List<MetricAccumulator> accumulators = newAccumulators(List.of());
+            final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(causalSource, blockLength,
+                    configuration.nullEnsembleSize(), configuration.seed());
+            for (final BarSeries member : nullSeries) {
+                final PivotHistory history = observe(member);
+                recordTopology(member, causalStart, causalEnd, configuration.partitions(), history,
+                        TopologyGrammar.MOTIVE_5, List.of(), accumulators);
+            }
+            reports.add(new StudyReport.NullReport(blockLength, configuration.nullEnsembleSize(), configuration.seed(),
+                    metrics(accumulators, configuration.partitions())));
+        }
+        return List.copyOf(reports);
+    }
+
+    private StudyReport.ModeReport evaluateMode(final BarSeries series, final int start, final int end,
+            final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
+            final String mode, final List<RelationshipRule> activeRules) {
+        final List<MetricAccumulator> accumulators = newAccumulators(activeRules);
+        final PivotHistory history = observe(series, factory);
+        recordTopology(series, start, end, partitions, history, grammar, activeRules, accumulators);
+        return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
+                metrics(accumulators, partitions));
+    }
+
+    static StudyReport.ModeReport evaluateTopologyMode(final BarSeries series, final int start, final int end,
+            final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
+            final String mode) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(partitions, "partitions");
+        Objects.requireNonNull(factory, "factory");
+        final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
+        final PivotHistory history = observe(series, factory);
+        recordTopology(series, start, end, partitions, history, grammar, List.of(), accumulators);
+        return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
+    }
+
+    private static void recordTopology(final BarSeries series, final int start, final int end,
+            final Partitions partitions, final PivotHistory history, final TopologyGrammar grammar,
+            final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators) {
+        if (start > end) {
+            return;
+        }
+        for (int index = start; index <= end; index++) {
+            final int partitionIndex = partitionIndex(series, index, partitions);
+            if (partitionIndex < 0) {
+                continue;
+            }
+            final LocalDate date = barDate(series, index);
+            partitions.assertCalibrationDateAllowed(date);
+            final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, history, index);
+            accumulators.get(partitionIndex).record(analysis, index, activeRules);
+        }
+    }
+
+    private static StudyReport.ModeReport evaluateAlternativeGrammar(final BarSeries series, final int start,
+            final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name) {
+        final AlternativeGrammar grammar = AlternativeGrammar.of(name);
+        final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
+        final PivotHistory history = observe(series, factory);
+        if (start <= end) {
+            for (int index = start; index <= end; index++) {
+                final int partitionIndex = partitionIndex(series, index, partitions);
+                if (partitionIndex < 0) {
+                    continue;
+                }
+                final LocalDate date = barDate(series, index);
+                partitions.assertCalibrationDateAllowed(date);
+                final List<ConfirmedPivot> visible = history.asOf(index);
+                final List<String> matches = grammar.matches(visible);
+                final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                if (visible.size() < 2) {
+                    accumulator.recordAlternative(false, false, false, "insufficient-history");
+                } else if (matches.size() == 1) {
+                    accumulator.recordAlternative(true, false, false, matches.get(0));
+                } else if (matches.size() > 1) {
+                    accumulator.recordAlternative(false, true, false, "ambiguous");
+                } else if (grammar.hasPartial(visible)) {
+                    accumulator.recordAlternative(false, false, true, "forming");
+                } else {
+                    accumulator.recordAlternative(false, false, false, "no-match");
+                }
+            }
+        }
+        return new StudyReport.ModeReport("competing-" + name, name, List.of(),
+                metrics(accumulators, partitions));
+    }
+
+    private static StudyReport.ModeReport evaluateChangePointBaseline(final BarSeries series, final int start,
+            final int end, final Partitions partitions) {
+        final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
+        if (start <= end) {
+            for (int index = start; index <= end; index++) {
+                final int partitionIndex = partitionIndex(series, index, partitions);
+                if (partitionIndex < 0) {
+                    continue;
+                }
+                final LocalDate date = barDate(series, index);
+                partitions.assertCalibrationDateAllowed(date);
+                final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                if (index - 2 < series.getBeginIndex()) {
+                    accumulator.recordAlternative(false, false, false, "insufficient-history");
+                } else {
+                    final double first = close(series, index - 1) - close(series, index - 2);
+                    final double second = close(series, index) - close(series, index - 1);
+                    final boolean change = first != 0.0d && second != 0.0d && Math.copySign(1.0d, first) != Math
+                            .copySign(1.0d, second);
+                    accumulator.recordAlternative(change, false, false, change ? "change" : "stable");
+                }
+            }
+        }
+        return new StudyReport.ModeReport("competing-change-point-baseline", "change-point-baseline", List.of(),
+                metrics(accumulators, partitions));
+    }
+
+    private static double close(final BarSeries series, final int index) {
+        return series.getBar(index).getClosePrice().doubleValue();
+    }
+
+    private PivotHistory observe(final BarSeries series) {
+        return observe(series, detectorFactory);
+    }
+
+    private static PivotHistory observe(final BarSeries series, final Supplier<SwingDetector> factory) {
+        final SwingDetector detector = Objects.requireNonNull(factory, "detectorFactory").get();
+        final SwingDetector nonNullDetector = Objects.requireNonNull(detector, "detectorFactory returned null");
+        return new ConfirmationTracker(nonNullDetector).observe(series);
+    }
+
+    private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules) {
+        return newAccumulators(activeRules, configuration.partitions());
+    }
+
+    private static List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules,
+            final Partitions partitions) {
+        final List<MetricAccumulator> accumulators = new ArrayList<>(partitions.entries().size());
+        for (int index = 0; index < partitions.entries().size(); index++) {
+            accumulators.add(new MetricAccumulator(activeRules));
+        }
+        return accumulators;
+    }
+
+    private static List<StudyReport.PartitionMetrics> metrics(final List<MetricAccumulator> accumulators,
+            final Partitions partitions) {
+        final List<StudyReport.PartitionMetrics> metrics = new ArrayList<>(accumulators.size());
+        for (int index = 0; index < accumulators.size(); index++) {
+            metrics.add(accumulators.get(index).toMetrics(partitions.entries().get(index).name()));
+        }
+        return List.copyOf(metrics);
+    }
+
+    private static int partitionIndex(final BarSeries series, final int index, final Partitions partitions) {
+        final LocalDate date = barDate(series, index);
+        for (int partitionIndex = 0; partitionIndex < partitions.entries().size(); partitionIndex++) {
+            if (partitions.entries().get(partitionIndex).contains(date)) {
+                return partitionIndex;
+            }
+        }
+        return -1;
+    }
+
+    private static LocalDate barDate(final BarSeries series, final int index) {
+        return series.getBar(index).getEndTime().atZone(ZoneOffset.UTC).toLocalDate();
+    }
+
+    private static List<String> activeRuleIds(final List<RelationshipRule> activeRules) {
+        return activeRules.stream().map(RelationshipRule::id).toList();
+    }
+
+    private static TopologyGrammar parseKernelGrammar(final String name) {
+        try {
+            return TopologyGrammar.valueOf(name);
+        } catch (final IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private static List<TopologyGrammar> validateGrammars(final List<TopologyGrammar> supplied) {
+        Objects.requireNonNull(supplied, "grammars");
+        if (supplied.isEmpty()) {
+            throw new IllegalArgumentException("grammars must not be empty");
+        }
+        return List.copyOf(supplied);
+    }
+
+    private static List<RelationshipRule> validateRules(final List<RelationshipRule> supplied) {
+        Objects.requireNonNull(supplied, "rules");
+        final List<RelationshipRule> copy = List.copyOf(supplied);
+        final Set<String> identifiers = new HashSet<>();
+        for (final RelationshipRule rule : copy) {
+            Objects.requireNonNull(rule, "rules contains null");
+            if (!identifiers.add(rule.id())) {
+                throw new IllegalArgumentException("duplicate relationship rule id: " + rule.id());
+            }
+        }
+        return copy;
+    }
+
+    private static void validateRange(final BarSeries series, final int fromIndex, final int toIndex) {
+        if (fromIndex > toIndex) {
+            throw new IllegalArgumentException("fromIndex must not exceed toIndex");
+        }
+        if (series.getBarCount() == 0) {
+            throw new IllegalArgumentException("series must contain at least one bar");
+        }
+    }
+
+    private static final class MetricAccumulator {
+        private final List<RuleCounter> ruleCounters;
+        private long evaluationCount;
+        private long completeCount;
+        private long formingCount;
+        private long ambiguousCount;
+        private long noMatchCount;
+        private long invalidatedCount;
+        private long insufficientHistoryCount;
+        private long evidenceEvaluationCount;
+        private long evidencePassCount;
+        private long evidenceFailCount;
+        private long evidencePendingCount;
+        private long evidenceUnavailableCount;
+        private long evidenceNotApplicableCount;
+        private double confirmationLagSum;
+        private long confirmationLagCount;
+        private double stabilitySum;
+        private long stabilityCount;
+        private Set<String> previousLabels;
+        private boolean hasPreviousLabels;
+        private int firstIndex = Integer.MAX_VALUE;
+        private int lastIndex = Integer.MIN_VALUE;
+
+        private MetricAccumulator(final List<RelationshipRule> activeRules) {
+            this.ruleCounters = activeRules.stream().map(rule -> new RuleCounter(rule.id())).toList();
+        }
+
+        private void record(final TopologyAnalysis analysis, final int index,
+                final List<RelationshipRule> activeRules) {
+            evaluationCount++;
+            firstIndex = Math.min(firstIndex, index);
+            lastIndex = Math.max(lastIndex, index);
+            switch (analysis.status()) {
+            case COMPLETE -> {
+                completeCount++;
+                final TopologyCandidate candidate = analysis.candidates().get(0);
+                final Set<String> labels = Set.of(candidate.direction() + ":" + candidate.startBarIndex() + "-"
+                        + candidate.endBarIndex());
+                updateStability(labels);
+                double lag = 0.0d;
+                for (final ConfirmedPivot pivot : candidate.pivots()) {
+                    lag += Math.max(0, pivot.confirmationIndex() - pivot.pivotIndex());
+                }
+                confirmationLagSum += lag / candidate.pivots().size();
+                confirmationLagCount++;
+                evaluateRules(candidate, activeRules);
+            }
+            case FORMING -> {
+                formingCount++;
+                updateStability(Set.of("forming:" + analysis.direction()));
+            }
+            case AMBIGUOUS -> {
+                ambiguousCount++;
+                final Set<String> labels = new HashSet<>();
+                for (final TopologyCandidate candidate : analysis.candidates()) {
+                    labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-"
+                            + candidate.endBarIndex());
+                }
+                updateStability(labels);
+            }
+            case NO_MATCH -> {
+                noMatchCount++;
+                updateStability(Set.of());
+            }
+            case INVALIDATED -> {
+                invalidatedCount++;
+                updateStability(Set.of("invalidated"));
+            }
+            case INSUFFICIENT_HISTORY -> {
+                insufficientHistoryCount++;
+                updateStability(Set.of("insufficient-history"));
+            }
+            default -> throw new IllegalStateException("unhandled topology status " + analysis.status());
+            }
+        }
+
+        private void recordAlternative(final boolean complete, final boolean ambiguous, final boolean forming,
+                final String label) {
+            evaluationCount++;
+            if (complete) {
+                completeCount++;
+            } else if (ambiguous) {
+                ambiguousCount++;
+            } else if (forming) {
+                formingCount++;
+            } else if ("insufficient-history".equals(label)) {
+                insufficientHistoryCount++;
+            } else {
+                noMatchCount++;
+            }
+            updateStability(Set.of(label));
+        }
+
+        private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules) {
+            for (int index = 0; index < activeRules.size(); index++) {
+                final RuleEvidence evidence = activeRules.get(index).evaluate(candidate);
+                evidenceEvaluationCount++;
+                final RuleCounter counter = ruleCounters.get(index);
+                switch (evidence.state()) {
+                case PASS -> {
+                    evidencePassCount++;
+                    counter.passCount++;
+                }
+                case FAIL -> {
+                    evidenceFailCount++;
+                    counter.failCount++;
+                }
+                case PENDING -> {
+                    evidencePendingCount++;
+                    counter.pendingCount++;
+                }
+                case UNAVAILABLE -> {
+                    evidenceUnavailableCount++;
+                    counter.unavailableCount++;
+                }
+                case NOT_APPLICABLE -> {
+                    evidenceNotApplicableCount++;
+                    counter.notApplicableCount++;
+                }
+                default -> throw new IllegalStateException("unhandled evidence state " + evidence.state());
+                }
+                counter.evaluationCount++;
+            }
+        }
+
+        private void updateStability(final Set<String> labels) {
+            final Set<String> current = Set.copyOf(labels);
+            if (hasPreviousLabels) {
+                final Set<String> union = new HashSet<>(previousLabels);
+                union.addAll(current);
+                final Set<String> intersection = new HashSet<>(previousLabels);
+                intersection.retainAll(current);
+                stabilitySum += union.isEmpty() ? 1.0d : (double) intersection.size() / union.size();
+                stabilityCount++;
+            }
+            previousLabels = current;
+            hasPreviousLabels = true;
+        }
+
+        private StudyReport.PartitionMetrics toMetrics(final String partition) {
+            final long denominator = evaluationCount;
+            final long evidenceDenominator = evidenceEvaluationCount;
+            final List<StudyReport.RuleMetrics> rules = ruleCounters.stream().map(RuleCounter::toMetrics).toList();
+            return new StudyReport.PartitionMetrics(partition, firstIndex == Integer.MAX_VALUE ? -1 : firstIndex,
+                    lastIndex == Integer.MIN_VALUE ? -1 : lastIndex, evaluationCount, completeCount, formingCount,
+                    ambiguousCount, noMatchCount, invalidatedCount, insufficientHistoryCount,
+                    ratio(completeCount, denominator), ratio(ambiguousCount, denominator),
+                    ratio(noMatchCount, denominator),
+                    ratio(confirmationLagSum, confirmationLagCount), ratio(stabilitySum, stabilityCount),
+                    evidenceEvaluationCount, evidencePassCount, evidenceFailCount, evidencePendingCount,
+                    evidenceUnavailableCount, evidenceNotApplicableCount, ratio(evidencePassCount, evidenceDenominator),
+                    rules);
+        }
+
+        private static double ratio(final long numerator, final long denominator) {
+            return denominator == 0 ? 0.0d : (double) numerator / denominator;
+        }
+
+        private static double ratio(final double numerator, final long denominator) {
+            return denominator == 0 ? 0.0d : numerator / denominator;
+        }
+    }
+
+    private static final class RuleCounter {
+        private final String id;
+        private long evaluationCount;
+        private long passCount;
+        private long failCount;
+        private long pendingCount;
+        private long unavailableCount;
+        private long notApplicableCount;
+
+        private RuleCounter(final String id) {
+            this.id = id;
+        }
+
+        private StudyReport.RuleMetrics toMetrics() {
+            return new StudyReport.RuleMetrics(id, evaluationCount, passCount, failCount, pendingCount,
+                    unavailableCount, notApplicableCount,
+                    evaluationCount == 0 ? 0.0d : (double) passCount / evaluationCount);
+        }
+    }
+
+    private record AlternativeGrammar(String name, int[] segmentLegs) {
+        private static AlternativeGrammar of(final String name) {
+            return switch (name) {
+            case "3+3" -> new AlternativeGrammar(name, new int[] { 3, 3 });
+            case "5+5" -> new AlternativeGrammar(name, new int[] { 5, 5 });
+            case "7+3" -> new AlternativeGrammar(name, new int[] { 7, 3 });
+            default -> throw new IllegalArgumentException("unknown alternative grammar: " + name);
+            };
+        }
+
+        private List<String> matches(final List<ConfirmedPivot> pivots) {
+            final int legCount = segmentLegs[0] + segmentLegs[1];
+            final int required = legCount + 1;
+            final List<String> matches = new ArrayList<>();
+            for (int start = 0; start + required <= pivots.size(); start++) {
+                final List<ConfirmedPivot> window = pivots.subList(start, start + required);
+                if (matchesWindow(window)) {
+                    matches.add(window.get(0).pivotIndex() + "-" + window.get(window.size() - 1).pivotIndex());
+                }
+            }
+            return matches;
+        }
+
+        private boolean hasPartial(final List<ConfirmedPivot> pivots) {
+            final int required = segmentLegs[0] + segmentLegs[1] + 1;
+            return pivots.size() < required && pivots.size() >= 2;
+        }
+
+        private boolean matchesWindow(final List<ConfirmedPivot> window) {
+            for (WaveDirection direction : WaveDirection.values()) {
+                boolean valid = true;
+                for (int leg = 0; leg < window.size() - 1; leg++) {
+                    if (window.get(leg).type() == window.get(leg + 1).type()) {
+                        valid = false;
+                        break;
+                    }
+                    final double delta = window.get(leg + 1).price().doubleValue()
+                            - window.get(leg).price().doubleValue();
+                    final double signed = direction == WaveDirection.BULLISH ? delta : -delta;
+                    final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0
+                            : (leg - segmentLegs[0]) % 2 != 0;
+                    if (positive ? !(signed > 1e-12) : !(signed < -1e-12)) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /** One inclusive date partition. */
+    record Partition(String name, LocalDate start, LocalDate end) {
+        Partition {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("partition name must not be blank");
+            }
+            Objects.requireNonNull(start, "partition.start");
+            Objects.requireNonNull(end, "partition.end");
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("partition start must not exceed end");
+            }
+        }
+
+        boolean contains(final LocalDate date) {
+            return !date.isBefore(start) && !date.isAfter(end);
+        }
+    }
+
+    /** Immutable locked partition set and calibration embargo. */
+    record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
+        Partitions {
+            entries = entries == null ? List.of() : List.copyOf(entries);
+            Objects.requireNonNull(forbiddenCalibrationStart, "forbiddenCalibrationStart");
+            if (entries.isEmpty()) {
+                throw new IllegalArgumentException("at least one locked partition is required");
+            }
+            final Set<String> names = new HashSet<>();
+            for (int index = 0; index < entries.size(); index++) {
+                final Partition entry = Objects.requireNonNull(entries.get(index), "partition entry");
+                if (!names.add(entry.name())) {
+                    throw new IllegalArgumentException("duplicate partition name: " + entry.name());
+                }
+                if (index > 0 && !entries.get(index - 1).end().isBefore(entry.start())) {
+                    throw new IllegalArgumentException("partitions must be ordered and non-overlapping");
+                }
+            }
+        }
+
+        static Partitions lockedDefault() {
+            return new Partitions(List.of(new Partition("calibration", LocalDate.of(2010, 1, 1),
+                    LocalDate.of(2019, 12, 31)), new Partition("validation", LocalDate.of(2020, 1, 1),
+                    LocalDate.of(2023, 6, 15)), new Partition("holdout", LocalDate.of(2023, 6, 16),
+                    LocalDate.of(2026, 3, 6))), LocalDate.of(2024, 1, 1));
+        }
+
+        Partition calibration() {
+            return byName("calibration");
+        }
+
+        Partition validation() {
+            return byName("validation");
+        }
+
+        Partition holdout() {
+            return byName("holdout");
+        }
+
+        void assertCalibrationConfiguration() {
+            final Partition calibration = calibration();
+            if (!calibration.end().isBefore(forbiddenCalibrationStart)) {
+                throw new IllegalStateException("calibration partition reaches forbidden date "
+                        + forbiddenCalibrationStart);
+            }
+        }
+
+        /**
+         * Hard post-2024 calibration guard. A calibration observation on or after
+         * the embargo date is an error, never a silently skipped sample.
+         */
+        void assertCalibrationDateAllowed(final LocalDate date) {
+            if ("calibration".equals(partitionName(date)) && !date.isBefore(forbiddenCalibrationStart)) {
+                throw new IllegalStateException("calibration touched forbidden date " + date + " (start "
+                        + forbiddenCalibrationStart + ")");
+            }
+        }
+
+        private String partitionName(final LocalDate date) {
+            for (final Partition entry : entries) {
+                if (entry.contains(date)) {
+                    return entry.name();
+                }
+            }
+            return "";
+        }
+
+        private Partition byName(final String name) {
+            return entries.stream().filter(entry -> name.equals(entry.name())).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("missing locked partition " + name));
+        }
+    }
+
+    /** Complete protocol-independent study configuration. */
+    record Configuration(Partitions partitions, String protocolFingerprint, long seed, List<Integer> nullBlockLengths,
+            int nullEnsembleSize, List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors) {
+        Configuration {
+            Objects.requireNonNull(partitions, "partitions");
+            if (protocolFingerprint == null || protocolFingerprint.isBlank()) {
+                throw new IllegalArgumentException("protocolFingerprint must not be blank");
+            }
+            nullBlockLengths = nullBlockLengths == null ? List.of() : List.copyOf(nullBlockLengths);
+            if (nullBlockLengths.isEmpty()
+                    || nullBlockLengths.stream().anyMatch(length -> length == null || length <= 0)) {
+                throw new IllegalArgumentException("nullBlockLengths must contain positive values");
+            }
+            if (nullEnsembleSize <= 0) {
+                throw new IllegalArgumentException("nullEnsembleSize must be positive");
+            }
+            robustnessDetectors = robustnessDetectors == null ? List.of() : List.copyOf(robustnessDetectors);
+        }
+
+        static Configuration lockedDefault() {
+            return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60),
+                    200, DetectorRobustnessMatrix.defaults());
+        }
+    }
+}
