@@ -149,4 +149,60 @@ class EventSynchronizationBenchmarkTest {
                 () -> indicator.getResult(endIndex));
         assertTrue(thrown.getMessage().startsWith("event count exceeds"));
     }
+    @Test
+    void oneSidedWindowMayHoldEventsUpToTheMatcherCellCap() {
+        // A one-sided alignment needs (predictedCount + 1) * (referenceCount + 1)
+        // cells, so a stream whose events are the only ones in the window may
+        // legally hold up to the 8,000,000-cell cap minus one events. The cache
+        // growth must clamp to that cap instead of throwing at the previous
+        // power-of-two doubling ceiling of 4,194,304 entries. Runs in this
+        // benchmark-tagged owner because it scans eight million indexes.
+        // Exactly the legal maximum for a one-sided window:
+        // MAX_MATCHING_CELLS - 1 events need (count + 1) * 1 = 8,000,000 cells.
+        int endIndex = 7_999_999;
+        BarSeries base = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1d)
+                .build();
+        BaseBarSeries proxy = new BaseBarSeries(base.getName(), base.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return endIndex;
+            }
+        };
+        Indicator<Boolean> predictedEverywhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        Indicator<Boolean> referenceNowhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = new EventSynchronizationIndicator(predictedEverywhere,
+                referenceNowhere, endIndex, 0, 0);
+        EventSynchronizationIndicator.Result r = indicator.getResult(endIndex);
+        assertTrue(r.windowAvailable());
+        assertEquals(endIndex, r.predictedCount());
+        assertEquals(0, r.referenceCount());
+        assertEquals(0, r.matchedCount());
+    }
 }

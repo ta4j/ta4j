@@ -471,9 +471,10 @@ final class EventSynchronizationSupport {
         private final int[] indexes;
 
         UnmatchedIndexesView(int[] indexes) {
-            // indexes is freshly allocated by extractEvents within the same
-            // synchronize call and never aliased to caller state, so wrapping
-            // it by reference retains only this call's own buffer.
+            // indexes is produced within the same synchronize call (extracted
+            // events or the freshly filtered remainder) and never aliased to
+            // caller state, so wrapping it by reference retains only this
+            // call's own buffer.
             this.indexes = indexes;
         }
 
@@ -498,26 +499,33 @@ final class EventSynchronizationSupport {
 
     private static List<Integer> unmatchedIndexes(int[] events,
             List<EventSynchronizationIndicator.Result.Match> matches, boolean predictedSide) {
-        if (matches.isEmpty()) {
-            // No match consumes an event on either side, so every event of this
-            // stream is unmatched: serve the whole ascending array as a
-            // zero-copy view rather than boxing up to the matcher-capacity
-            // minus one indexes into an ArrayList.
+        int[] matched = new int[matches.size()];
+        for (int i = 0; i < matched.length; i++) {
+            matched[i] = predictedSide ? matches.get(i).predictedIndex() : matches.get(i).referenceIndex();
+        }
+        if (matched.length == 0) {
+            // No match consumes an event on either side, so every event of
+            // this stream is unmatched: serve the whole ascending array as a
+            // zero-copy view instead of materializing a second buffer.
             return new UnmatchedIndexesView(events);
         }
-        List<Integer> unmatched = new ArrayList<>();
+        Arrays.sort(matched);
+        // Even with matches present, serve the unmatched remainder as a
+        // primitive-backed view: a nearly one-sided window can still leave
+        // millions of unmatched events, and boxing each into an ArrayList
+        // (copied again by the record constructor) would multiply heap pressure
+        // on top of the matcher's own alignment cells.
+        int[] unmatched = new int[events.length - matched.length];
+        int cursor = 0;
         int matchIndex = 0;
         for (int event : events) {
-            while (matchIndex < matches.size() && (predictedSide ? matches.get(matchIndex).predictedIndex()
-                    : matches.get(matchIndex).referenceIndex()) < event) {
+            while (matchIndex < matched.length && matched[matchIndex] < event) {
                 matchIndex++;
             }
-            boolean matched = matchIndex < matches.size() && (predictedSide ? matches.get(matchIndex).predictedIndex()
-                    : matches.get(matchIndex).referenceIndex()) == event;
-            if (!matched) {
-                unmatched.add(event);
+            if (matchIndex >= matched.length || matched[matchIndex] != event) {
+                unmatched[cursor++] = event;
             }
         }
-        return unmatched;
+        return new UnmatchedIndexesView(unmatched);
     }
 }
