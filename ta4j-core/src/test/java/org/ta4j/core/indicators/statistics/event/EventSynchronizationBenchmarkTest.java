@@ -108,12 +108,14 @@ class EventSynchronizationBenchmarkTest {
         // itself rather than letting the matcher's own bound fire later.
         int endIndex = 8_000_000;
         BarSeries base = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1d, 2d, 3d).build();
+                .withData(1d, 2d, 3d)
+                .build();
         BaseBarSeries proxy = new BaseBarSeries(base.getName(), base.getBarData()) {
             @Override
             public int getBeginIndex() {
                 return 0;
             }
+
             @Override
             public int getEndIndex() {
                 return endIndex;
@@ -124,6 +126,7 @@ class EventSynchronizationBenchmarkTest {
             public Boolean getValue(int index) {
                 return true;
             }
+
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
@@ -134,6 +137,7 @@ class EventSynchronizationBenchmarkTest {
             public Boolean getValue(int index) {
                 return false;
             }
+
             @Override
             public int getCountOfUnstableBars() {
                 return 0;
