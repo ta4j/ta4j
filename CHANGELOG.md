@@ -3,18 +3,20 @@
 - **Criteria equity curves compute in one pass and reuse cached state**: `CashFlow`, `CumulativePnL`, and
   `InvestedInterval` now build their curves in a single forward pass and reuse previously computed state, so
   repeated criterion evaluation no longer redoes the same work. Measured over eight criteria on a ~1,100-bar
-  daily series, individual evaluation runs about 1.2x faster on a typically traded record and roughly
-  2-3.5x faster once the record holds dozens of positions; the win grows with trade count because curve cost
-  no longer scales with positions times window length. These indicators snapshot the bar series at construction
-  time; later mutations of the original series are not reflected in already-built indicators.
+  daily series with seven closed positions, individual evaluation runs about 1.4x faster (DoubleNum) and
+  1.15x faster (DecimalNum); the win grows with trade count because curve cost no longer scales with
+  positions times window length.
+- **Analysis curves are isolated from later bar edits**: `CashFlow`, `CumulativePnL`, and the shared bundle
+  behind `CriteriaEvaluation.evaluateAll(...)` compute from a private copy of the series' bar data, so
+  in-place edits of retained bar references can neither alter nor mix already-produced curves. Appending or
+  removing bars and recording new trades still rebuilds the shared curves from current contents.
 - **Batch criterion evaluation shares one equity bundle**: the new opt-in facade
   `CriteriaEvaluation.evaluateAll(...)` evaluates several criteria against one shared set of equity curves
   instead of every criterion building its own, cutting redundant curve construction when scanning many criteria
-  at once. On the same eight-criterion workload, `evaluateAll` finishes about 1.3x (decimal) to 2.4x (double)
-  faster than the previous per-criterion evaluation on a typical record, and roughly 3x (decimal) to 6.5x
-  (double) faster on position-dense records. Criteria participate through the `EquityBundleAware` interface,
-  non-participating criteria still evaluate normally, and curves handed out from the shared bundle are read-only
-  snapshots.
+  at once. On the same eight-criterion workload, `evaluateAll` finishes about 1.3x (DoubleNum) to 1.05x
+  (DecimalNum) faster than evaluating each criterion separately on a typical record. Criteria participate
+  through the `EquityBundleAware` interface, non-participating criteria still evaluate normally, and curves
+  handed out from the shared bundle are read-only snapshots.
 - **AI release scheduling now weighs release recency against pending changes**: `release-scheduler.yml` passes the last release's tag, creation date, and release link into the AI decision prompt. Recency is a judgment call instead of a fixed cooldown: the model defers (`should_release=false`) when the unreleased delta does not justify another release this soon, and the cadence input is omitted entirely when no prior release exists.
 - **Backtests isolate per-strategy failures instead of aborting the batch**: `BacktestExecutor` records each strategy's runtime failure during evaluation and top-K ranking, keeps evaluating the remaining strategies, and throws only when every strategy fails, so one broken strategy no longer voids a whole scan. `StopLimitExecutionModel` synchronizes its pending/rejected order maps for safe sharing across parallel strategy batches.
 - **Walk-forward runs isolate per-fold failures and report them**: `WalkForwardEngine` and `StrategyWalkForwardExecutor` record failed folds as `FoldFailure` entries and continue the remaining folds, while `WalkForwardTuner` skips failed candidates and `WalkForwardLeaderboard` reports a `failedCount` alongside kept and evaluated counts. `WalkForwardConfig.configHash()` now returns a collision-safe 64-character SHA-256 key instead of a truncated 32-bit hash, so persisted manifest keys from the old format must be regenerated. Undefined `WalkForwardMetric` values (`clamp01`, `binaryF1`) pass NaN through instead of coercing to zero.
