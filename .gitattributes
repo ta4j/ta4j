@@ -1,1 +1,4 @@
 /mvnw.cmd text eol=crlf
+ta4j-examples/src/main/resources/TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json -text
+ta4j-examples/src/main/resources/Coinbase-ETH-USD-PT1D-20160517_20251028.json -text
+ta4j-examples/src/main/resources/ta4jexamples/analysis/elliottwave/study/cf525-study-protocol-v1.json -text

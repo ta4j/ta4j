@@ -22,7 +22,7 @@
       "role": "primary",
       "asset": "BTC-USD",
       "barSize": "PT1D",
-      "sha256": "5e7fcf8e34b9b3ce87be56c1ed3670c7200e747305c14f676199791f43459c99"
+      "sha256": "19621e98cb310fce9bf013d4963da0f6c7ab7f26f89a42af16a1a2408254e2fe"
     },
     {
       "id": "transfer-portability",
@@ -30,7 +30,7 @@
       "role": "transfer-portability",
       "asset": "ETH-USD",
       "barSize": "PT1D",
-      "sha256": "3e6f1e60d5378ccb6fcd999baa57c4d928e3ba8e83bc7a4a0e26551309c2fc23"
+      "sha256": "11f81500ef33b08fb6fe8d03c75b4afa343668521448afe345611ee83171a384"
     }
   ],
   "partitions": {
