@@ -233,7 +233,9 @@ final class StudyRunner {
                 continue;
             }
             final LocalDate date = barDate(series, index);
+            partitions.assertCalibrationDateAllowed(date);
             final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
+            accumulators.get(partitionIndex).record(analysis, index, activeRules);
         }
     }
 
@@ -343,7 +345,7 @@ final class StudyRunner {
     }
 
     private static LocalDate barDate(final BarSeries series, final int index) {
-        return series.getBar(index).getEndTime().atZone(ZoneOffset.UTC).toLocalDate();
+        return series.getBar(index).getBeginTime().atZone(ZoneOffset.UTC).toLocalDate();
     }
 
     private static List<String> activeRuleIds(final List<RelationshipRule> activeRules) {
@@ -492,13 +494,13 @@ final class StudyRunner {
                 case PASS -> {
                     evidencePassCount++;
                     counter.passCount++;
-                    counter.scoredCount++;
-                    final double score = evidence.score()
-                            .orElseThrow(() -> new IllegalStateException(
-                                    "PASS evidence without score: " + evidence.ruleId()));
-                    counter.scoreSum += score;
-                    counter.scoreMin = Math.min(counter.scoreMin, score);
-                    counter.scoreMax = Math.max(counter.scoreMax, score);
+                    if (evidence.score().isPresent()) {
+                        final double score = evidence.score().orElseThrow();
+                        counter.scoredCount++;
+                        counter.scoreSum += score;
+                        counter.scoreMin = Math.min(counter.scoreMin, score);
+                        counter.scoreMax = Math.max(counter.scoreMax, score);
+                    }
                 }
                 case FAIL -> {
                     evidenceFailCount++;
@@ -605,7 +607,7 @@ final class StudyRunner {
             return new StudyReport.RuleMetrics(id, evaluationCount, passCount, failCount, pendingCount,
                     unavailableCount, notApplicableCount,
                     evaluationCount == 0 ? 0.0d : (double) passCount / evaluationCount, scoredCount, scoreMean(),
-                    scoreMin, scoreMax);
+                    scoredCount == 0 ? 0.0d : scoreMin, scoredCount == 0 ? 0.0d : scoreMax);
         }
 
         private double scoreMean() {

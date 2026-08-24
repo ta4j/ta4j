@@ -80,7 +80,7 @@ final class ConfirmationTracker {
         for (int asOf = begin; asOf <= end; asOf++) {
             final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf);
             if (changed) {
-                versions.add(List.copyOf(order));
+                versions.add(List.copyOf(PivotHistory.of(order).pivots()));
                 versionAsOf.add(asOf);
             }
         }

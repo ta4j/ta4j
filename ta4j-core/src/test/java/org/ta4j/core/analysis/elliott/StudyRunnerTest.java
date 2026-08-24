@@ -135,6 +135,33 @@ class StudyRunnerTest {
     }
 
     @Test
+    void topologyModesRecordPerBarEvaluationsAndFiniteBounds() {
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+        final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
+
+        // Regression: the topology recording loop once computed analyses without
+        // accumulating them, leaving every H1/H2 partition at zero evaluations
+        // while the competing baselines still counted observations.
+        final StudyReport.ModeReport motive = report.h1()
+                .modes()
+                .stream()
+                .filter(mode -> "MOTIVE_5".equals(mode.grammar()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(motive.partitions().stream().anyMatch(p -> p.evaluationCount() > 0));
+        assertTrue(report.h2()
+                .modes()
+                .stream()
+                .flatMap(mode -> mode.partitions().stream())
+                .anyMatch(p -> p.evaluationCount() > 0));
+        // Hard structural rules pass without soft scores; serialized bounds stay
+        // finite.
+        assertFalse(report.toJson().contains("Infinity"));
+    }
+
+    @Test
     void competingAlternativeGrammarReportsFormingSuffixes() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
