@@ -203,8 +203,8 @@ final class StudyRunner {
                         // transitions never leak across ensemble members.
                         final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
                         final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                        recordTopology(member, member.getBeginIndex(), member.getEndIndex(), partitions, replay,
-                                grammar, List.of(), memberAccumulators);
+                        recordTopology(member, Math.max(member.getBeginIndex(), start), member.getEndIndex(),
+                                partitions, replay, grammar, List.of(), memberAccumulators);
                         totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
                     }
                 }
@@ -670,10 +670,18 @@ final class StudyRunner {
         List<String> matches(final List<ConfirmedPivot> pivots) {
             final int legCount = segmentLegs[0] + segmentLegs[1];
             final int required = legCount + 1;
+            if (pivots.size() < required) {
+                return List.of();
+            }
             final List<String> matches = new ArrayList<>();
+            // Only placements ending at the newest visible pivot compete for
+            // the current label; earlier completed patterns are retired so a
+            // second historical match cannot freeze every later bar into
+            // permanent ambiguity.
+            final int newestIndex = pivots.get(pivots.size() - 1).pivotIndex();
             for (int start = 0; start + required <= pivots.size(); start++) {
                 final List<ConfirmedPivot> window = pivots.subList(start, start + required);
-                if (matchesWindow(window)) {
+                if (matchesWindow(window) && window.get(window.size() - 1).pivotIndex() == newestIndex) {
                     matches.add(window.get(0).pivotIndex() + "-" + window.get(window.size() - 1).pivotIndex());
                 }
             }

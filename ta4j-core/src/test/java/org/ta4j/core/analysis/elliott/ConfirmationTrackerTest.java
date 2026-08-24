@@ -117,6 +117,30 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void repeatedlyReportedDominatedPivotStaysCollapsed() {
+        final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final SwingPivot high5 = new SwingPivot(5, DoubleNum.valueOf(25), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of(low1));
+        script.put(3, List.of(low1, high3));
+        script.put(5, List.of(low1, high3, high5));
+        script.put(6, List.of(low1, high3, high5));
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script))
+                .observeReplay(seriesWithBars(7));
+
+        // asOf=5 collapses the dominated HIGH at index 3 into the more extreme
+        // HIGH at index 5. The detector keeps reporting it cumulatively; the
+        // collapsed pivot must never re-enter the tracked order (which would
+        // append an older index behind a newer one and break PivotHistory).
+        assertThat(replay.at(4)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1, 3);
+        assertThat(replay.at(5)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1, 5);
+        assertThat(replay.at(6)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1, 5);
+    }
+
+    @Test
     void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 2; asOf++) {

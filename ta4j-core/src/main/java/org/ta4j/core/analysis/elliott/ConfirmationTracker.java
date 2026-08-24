@@ -74,13 +74,16 @@ final class ConfirmationTracker {
     CausalReplay observeReplay(final BarSeries series) {
         Objects.requireNonNull(series, "series");
         final Map<Integer, ConfirmedPivot> known = new HashMap<>();
+        // Indices normalized away by snapshot collapse. Cumulative detectors
+        // keep reporting them; they must never re-enter the tracked order.
+        final Set<Integer> collapsed = new HashSet<>();
         final List<ConfirmedPivot> order = new ArrayList<>();
         final int begin = Math.max(series.getBeginIndex(), 0);
         final int end = series.getEndIndex();
         final List<Integer> versionAsOf = new ArrayList<>();
         final List<List<ConfirmedPivot>> versions = new ArrayList<>();
         for (int asOf = begin; asOf <= end; asOf++) {
-            final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf);
+            final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf, collapsed);
             if (changed) {
                 versions.add(List.copyOf(PivotHistory.of(order).pivots()));
                 versionAsOf.add(asOf);
@@ -91,7 +94,7 @@ final class ConfirmationTracker {
     }
 
     private boolean reconcile(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
-            final List<SwingPivot> reported, final int asOf) {
+            final List<SwingPivot> reported, final int asOf, final Set<Integer> collapsed) {
         boolean changed = false;
         while (!order.isEmpty() && !containsIndex(reported, order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
@@ -112,12 +115,15 @@ final class ConfirmationTracker {
                 }
                 throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
             }
+            if (collapsed.contains(pivot.index())) {
+                continue;
+            }
             final ConfirmedPivot confirmed = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
             known.put(pivot.index(), confirmed);
             order.add(confirmed);
             changed = true;
         }
-        if (normalizeOrder(order, known)) {
+        if (normalizeOrder(order, known, collapsed)) {
             changed = true;
         }
         for (int i = 0; i < order.size(); i++) {
@@ -136,9 +142,12 @@ final class ConfirmationTracker {
      * normalization would be misread as a frozen-history violation even though no
      * emitted view ever contained it.
      *
+     * @param collapsedSink sink recording indices removed by collapse so later
+     *                      reports of those dominated pivots are ignored
      * @return true if the order changed through normalization
      */
-    private static boolean normalizeOrder(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known) {
+    private static boolean normalizeOrder(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
+            final Set<Integer> collapsedSink) {
         if (order.size() < 2) {
             return false;
         }
@@ -149,6 +158,11 @@ final class ConfirmationTracker {
         final Set<Integer> kept = new HashSet<>();
         for (final ConfirmedPivot pivot : collapsed) {
             kept.add(pivot.pivotIndex());
+        }
+        for (final Integer index : known.keySet()) {
+            if (!kept.contains(index)) {
+                collapsedSink.add(index);
+            }
         }
         known.keySet().removeIf(index -> !kept.contains(index));
         order.clear();

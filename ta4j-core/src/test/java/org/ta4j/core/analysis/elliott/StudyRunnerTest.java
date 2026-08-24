@@ -217,7 +217,7 @@ class StudyRunnerTest {
     @Test
     void competingAlternativeGrammarSeparatesFormingFromNoMatch() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
-        final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::fallingDetector, grammars(), rules(),
+        final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
                 configuration);
         final StudyReport fallingReport = fallingRunner.evaluate("BTC", buildFallingSeries(24), 0, 23);
 
@@ -236,7 +236,7 @@ class StudyRunnerTest {
         assertTrue(fivePlusFive.partitions().get(0).noMatchCount() > 0);
 
         // A directional run whose junction stays the window extreme forms.
-        final StudyRunner trendingRunner = new StudyRunner(StudyRunnerTest::trendDetector, grammars(), rules(),
+        final StudyRunner trendingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
                 configuration);
         final StudyReport trendingReport = trendingRunner.evaluate("BTC", buildTrendingSeries(24), 0, 23);
         final StudyReport.ModeReport threePlusThree = trendingReport.competingGrammars()
@@ -388,6 +388,33 @@ class StudyRunnerTest {
     }
 
     @Test
+    void alternativeGrammarRetiresHistoricalMatches() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 2, 15))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner.Configuration configuration = configuration(partitions, 1);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
+                configuration);
+
+        // Two sequential complete "3+3" windows: once the first pattern is
+        // followed by a second placement, every later bar must not stay frozen
+        // in AMBIGUOUS just because an older match remains in the history.
+        final StudyReport report = runner.evaluate("BTC", buildDoublePatternSeries(30), 0, 29);
+        final StudyReport.ModeReport threePlusThree = report.competingGrammars()
+                .stream()
+                .filter(mode -> "competing-3+3".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.PartitionMetrics calibration = threePlusThree.partitions().get(0);
+        assertTrue(calibration.completeCount() > 0);
+        // Before frontier retirement, the two completed placements kept every
+        // later bar in permanent AMBIGUOUS; now only the second placement is a
+        // live candidate and the in-between bars report no-match instead.
+        assertEquals(0, calibration.ambiguousCount());
+        assertTrue(calibration.noMatchCount() > 0);
+    }
+
+    @Test
     void bootstrapMemberShapeTravelsWithSampledReturns() {
         final BarSeries source = buildWickSeries();
         final List<BarSeries> members = BlockBootstrapNulls.generate(source, 3, 1, 7L);
@@ -428,34 +455,78 @@ class StudyRunnerTest {
         assertTrue(sawRelocatedShape, "sampling never relocated a wick shape; test lost discriminating power");
     }
 
-    /** Detector scripting six alternating pivots whose junction stays extreme. */
-    private static SwingDetector trendDetector() {
+    /**
+     * Detector scripting alternating LOW/HIGH pivots at every odd bar index, priced
+     * by that bar's close; the series data alone shapes the pattern.
+     */
+    private static SwingDetector scriptedDetector() {
         return (series, index, degree) -> {
-            final int[] pivotIndices = { 1, 3, 5, 7, 9, 11 };
             final List<SwingPivot> pivots = new ArrayList<>();
-            for (final int pivotIndex : pivotIndices) {
-                if (pivotIndex <= index && pivotIndex < series.getBarCount()) {
-                    final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
-                    pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
-                }
+            for (int pivotIndex = 1; pivotIndex <= index && pivotIndex < series.getBarCount(); pivotIndex += 2) {
+                final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+                pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
             }
             return new SwingDetectorResult(pivots, List.of());
         };
     }
 
-    /** Detector scripting six pivots whose peaks strictly fall. */
-    private static SwingDetector fallingDetector() {
-        return (series, index, degree) -> {
-            final int[] pivotIndices = { 1, 3, 5, 7, 9, 11 };
-            final List<SwingPivot> pivots = new ArrayList<>();
-            for (final int pivotIndex : pivotIndices) {
-                if (pivotIndex <= index && pivotIndex < series.getBarCount()) {
-                    final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
-                    pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
-                }
-            }
-            return new SwingDetectorResult(pivots, List.of());
-        };
+    @Test
+    void nullBaselineRestrictsToRequestedRange() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 12)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2018, 1, 13), LocalDate.of(2018, 1, 20)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2018, 1, 21), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner.Configuration configuration = configuration(partitions, 1);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+
+        // Requesting bars 6..11 must keep null members on the same recording
+        // window as the real modes; they used to record from their first bar,
+        // populating partitions the real report never observed.
+        final BarSeries series = buildWickSeries();
+        final StudyReport report = runner.evaluate("BTC", series, 6, 11);
+        final StudyReport.NullReport nulls = report.nulls()
+                .stream()
+                .filter(nullReport -> "MOTIVE_5".equals(nullReport.grammar()))
+                .findFirst()
+                .orElseThrow();
+        final long calibrationBars = nulls.partitions()
+                .stream()
+                .mapToLong(StudyReport.PartitionMetrics::evaluationCount)
+                .sum();
+        assertEquals(6L, calibrationBars);
+    }
+
+    /**
+     * Two sequential rising zigzags whose per-window junctions stay extreme, so
+     * both halves complete as disjoint "3+3" placements.
+     */
+    private static BarSeries buildDoublePatternSeries(final int count) {
+        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 108, 116, 110, 120, 112, 118, 114 };
+        final double[] prices = new double[count];
+        int pivotCursor = 0;
+        for (int index = 0; index < count; index++) {
+            prices[index] = index % 2 == 1 && pivotCursor < pivotCloses.length ? pivotCloses[pivotCursor++]
+                    : 90 + index;
+        }
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-double").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < count; index++) {
+            final double close = prices[index];
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(Math.max(0.01d, close - 1))
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
     }
 
     /**
