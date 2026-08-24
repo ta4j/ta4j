@@ -326,8 +326,8 @@ final class EventSynchronizationSupport {
      * Enforces the baseline matcher's reserved-cell budget for a window holding
      * {@code predictedCount} by {@code referenceCount} events.
      *
-     * @param predictedCount  the number of predicted events in the window
-     * @param referenceCount  the number of reference events in the window
+     * @param predictedCount the number of predicted events in the window
+     * @param referenceCount the number of reference events in the window
      * @throws IllegalArgumentException if the alignment matrix would exceed the
      *                                  matcher capacity
      */
