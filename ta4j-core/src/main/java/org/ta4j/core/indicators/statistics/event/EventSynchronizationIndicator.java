@@ -264,10 +264,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *                                  exceeds the baseline matcher capacity (see
      *                                  the class documentation)
      * @throws IllegalStateException    when the series changes so often during
-     *                                  evaluation that the coordinated retry
-     *                                  budget is exhausted; the condition is
-     *                                  deliberately not cached, so the next call
-     *                                  re-evaluates the window
+     *                                  evaluation that the coordinated retry budget
+     *                                  is exhausted; the condition is deliberately
+     *                                  not cached, so the next call re-evaluates
+     *                                  the window
      * @since 0.24.2
      */
     public Result getResult(int index) {
@@ -334,9 +334,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                         // scalar cache: a cached NaN would survive revisions that
                         // never touch this window, permanently masking a window
                         // whose next evaluation could succeed.
-                        throw new IllegalStateException(
-                                "event synchronization retry budget exhausted at index " + index
-                                        + " after repeated series revisions");
+                        throw new IllegalStateException("event synchronization retry budget exhausted at index " + index
+                                + " after repeated series revisions");
                     }
                     // The mutation is accounted for; retry the iteration now
                     // so a single transient mutation still gets its full retry
@@ -349,9 +348,8 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
                     break;
                 }
                 if (++revisionChangeRetries > 1) {
-                    throw new IllegalStateException(
-                            "event synchronization retry budget exhausted at index " + index
-                                    + " after repeated series revisions");
+                    throw new IllegalStateException("event synchronization retry budget exhausted at index " + index
+                            + " after repeated series revisions");
                 }
             }
             // Capture both event windows before leaving the coordinated critical
