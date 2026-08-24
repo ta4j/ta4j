@@ -168,6 +168,51 @@ class StudyRunnerTest {
     }
 
     @Test
+    void calibrationNullBaselineIgnoresFutureReturns() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 12)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2018, 1, 13), LocalDate.of(2018, 1, 20)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2018, 1, 21), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner.Configuration configuration = configuration(partitions, 2);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+
+        // Identical through the calibration window; radically different after.
+        final BarSeries baseSeries = buildSeries(24);
+        final BarSeries mutatedTail = buildMutatedSeries(24, 12, 3.0d);
+
+        final StudyReport baseReport = runner.evaluate("BTC", baseSeries, 0, 23);
+        final StudyReport mutatedReport = runner.evaluate("BTC", mutatedTail, 0, 23);
+
+        // Regression: null ensembles were once drawn from the full causal
+        // window and split by date afterwards, so calibration baselines
+        // incorporated validation and holdout returns.
+        final StudyReport.NullReport baseNulls = baseReport.nulls()
+                .stream()
+                .filter(report -> "MOTIVE_5".equals(report.grammar()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.NullReport mutatedNulls = mutatedReport.nulls()
+                .stream()
+                .filter(report -> "MOTIVE_5".equals(report.grammar()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.PartitionMetrics baseCalibration = baseNulls.partitions()
+                .stream()
+                .filter(metrics -> "calibration".equals(metrics.partition()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.PartitionMetrics mutatedCalibration = mutatedNulls.partitions()
+                .stream()
+                .filter(metrics -> "calibration".equals(metrics.partition()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(baseCalibration.evaluationCount() > 0);
+        assertEquals(baseCalibration, mutatedCalibration);
+    }
+
+    @Test
     void competingAlternativeGrammarReportsFormingSuffixes() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
@@ -263,6 +308,30 @@ class StudyRunnerTest {
             }
             return new SwingDetectorResult(pivots, List.of());
         };
+    }
+
+    /**
+     * Like {@link #buildSeries(int)} but scales every close from {@code fromIndex}
+     * on by {@code factor}.
+     */
+    private static BarSeries buildMutatedSeries(final int count, final int fromIndex, final double factor) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-mutated").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < count; index++) {
+            final double close = syntheticClose(index) * (index >= fromIndex ? factor : 1.0d);
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(Math.max(0.01d, close - 1))
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
     }
 
     private static BarSeries buildSeries(final int count) {

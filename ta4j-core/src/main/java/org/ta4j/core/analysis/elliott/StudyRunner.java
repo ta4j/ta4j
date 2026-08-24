@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -178,39 +177,61 @@ final class StudyRunner {
         final boolean hasEvaluationWindow = start <= end;
         final int sourceBegin = source.getBeginIndex();
         final BarSeries causalSource = hasEvaluationWindow ? source.getSubSeries(sourceBegin, end + 1) : source;
-        final int causalStart = hasEvaluationWindow ? start - sourceBegin : 0;
-        final int causalEnd = hasEvaluationWindow ? end - sourceBegin : -1;
         // Both preregistered hypotheses need a null baseline: H1 claims about
         // MOTIVE_5 and the frozen H2 claim about complete CYCLE_5_3 cycles.
         final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
+        final Partitions partitions = configuration.partitions();
         for (final int blockLength : configuration.nullBlockLengths()) {
-            final Map<TopologyGrammar, List<MetricAccumulator>> totals = new LinkedHashMap<>();
             for (final TopologyGrammar grammar : nullGrammars) {
-                totals.put(grammar, newAccumulators(List.of()));
-            }
-            final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(causalSource, blockLength,
-                    configuration.nullEnsembleSize(), configuration.seed());
-            for (final BarSeries member : nullSeries) {
-                // One causal replay per member; fresh accumulators per member
-                // and grammar so label-stability transitions never leak across
-                // independent ensemble members.
-                final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                for (final TopologyGrammar grammar : nullGrammars) {
-                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
-                    recordTopology(member, causalStart, causalEnd, configuration.partitions(), replay, grammar,
-                            List.of(), memberAccumulators);
-                    final List<MetricAccumulator> grammarTotals = totals.get(grammar);
-                    for (int index = 0; index < grammarTotals.size(); index++) {
-                        grammarTotals.get(index).mergeFrom(memberAccumulators.get(index));
+                final List<MetricAccumulator> totals = newAccumulators(List.of());
+                // Look-ahead-free sampling: every partition's ensemble is drawn
+                // only from returns available at that partition's last bar, so a
+                // calibration partition's null baseline can never incorporate
+                // validation or holdout returns. The shared seed keeps the RNG
+                // stream comparable across partitions over different tapes.
+                for (int partitionIndex = 0; partitionIndex < totals.size(); partitionIndex++) {
+                    final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
+                    if (partitionLastBar - causalSource.getBeginIndex() < 1) {
+                        continue;
+                    }
+                    final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
+                            partitionLastBar + 1);
+                    final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
+                            configuration.nullEnsembleSize(), configuration.seed());
+                    for (final BarSeries member : nullSeries) {
+                        // Fresh accumulators per member so label-stability
+                        // transitions never leak across ensemble members.
+                        final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                        final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+                        recordTopology(member, member.getBeginIndex(), member.getEndIndex(), partitions, replay,
+                                grammar, List.of(), memberAccumulators);
+                        totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
                     }
                 }
-            }
-            for (final TopologyGrammar grammar : nullGrammars) {
                 reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),
-                        configuration.seed(), metrics(totals.get(grammar), configuration.partitions())));
+                        configuration.seed(), metrics(totals, partitions)));
             }
         }
         return List.copyOf(reports);
+    }
+
+    /**
+     * Returns the last bar of {@code series} whose date belongs to the given
+     * partition, or -1 when the partition has no bars in the series.
+     */
+    private static int lastBarInPartition(final BarSeries series, final Partitions partitions,
+            final int partitionIndex) {
+        int last = -1;
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            if (partitionIndex(series, index, partitions) == partitionIndex) {
+                last = index;
+            }
+        }
+        return last;
+    }
+
+    private ConfirmationTracker.CausalReplay observeReplay(final BarSeries series) {
+        return observeReplay(series, detectorFactory);
     }
 
     private StudyReport.ModeReport evaluateMode(final BarSeries series, final int start, final int end,
@@ -298,25 +319,18 @@ final class StudyRunner {
                 final MetricAccumulator accumulator = accumulators.get(partitionIndex);
                 if (index - 2 < series.getBeginIndex()) {
                     accumulator.recordAlternative(index, false, false, false, "insufficient-history");
-                } else {
-                    final double first = close(series, index - 1) - close(series, index - 2);
-                    final double second = close(series, index) - close(series, index - 1);
-                    final boolean change = first != 0.0d && second != 0.0d
-                            && Math.copySign(1.0d, first) != Math.copySign(1.0d, second);
-                    accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable");
+                    continue;
                 }
+                final Num first = series.getBar(index - 1)
+                        .getClosePrice()
+                        .minus(series.getBar(index - 2).getClosePrice());
+                final Num second = series.getBar(index).getClosePrice().minus(series.getBar(index - 1).getClosePrice());
+                final boolean change = !first.isZero() && !second.isZero() && first.isPositive() != second.isPositive();
+                accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable");
             }
         }
         return new StudyReport.ModeReport("competing-change-point-baseline", "change-point-baseline", List.of(),
                 metrics(accumulators, partitions));
-    }
-
-    private static double close(final BarSeries series, final int index) {
-        return series.getBar(index).getClosePrice().doubleValue();
-    }
-
-    private ConfirmationTracker.CausalReplay observeReplay(final BarSeries series) {
-        return observeReplay(series, detectorFactory);
     }
 
     private static ConfirmationTracker.CausalReplay observeReplay(final BarSeries series,

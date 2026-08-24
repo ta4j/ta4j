@@ -5,9 +5,11 @@ package org.ta4j.core.analysis.elliott;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
@@ -115,6 +117,9 @@ final class ConfirmationTracker {
             order.add(confirmed);
             changed = true;
         }
+        if (normalizeOrder(order, known)) {
+            changed = true;
+        }
         for (int i = 0; i < order.size(); i++) {
             if (!containsIndex(reported, order.get(i).pivotIndex())) {
                 throw new IllegalStateException("detector withdrew non-trailing pivot " + order.get(i).pivotIndex()
@@ -122,6 +127,33 @@ final class ConfirmationTracker {
             }
         }
         return changed;
+    }
+
+    /**
+     * Collapses consecutive same-type pivots in the tracked order to the more
+     * extreme one, mirroring the normalization applied to emitted snapshots.
+     * Without this, a detector withdrawing a pivot that is dominated under snapshot
+     * normalization would be misread as a frozen-history violation even though no
+     * emitted view ever contained it.
+     *
+     * @return true if the order changed through normalization
+     */
+    private static boolean normalizeOrder(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known) {
+        if (order.size() < 2) {
+            return false;
+        }
+        final List<ConfirmedPivot> collapsed = PivotHistory.of(order).pivots();
+        if (collapsed.size() == order.size()) {
+            return false;
+        }
+        final Set<Integer> kept = new HashSet<>();
+        for (final ConfirmedPivot pivot : collapsed) {
+            kept.add(pivot.pivotIndex());
+        }
+        known.keySet().removeIf(index -> !kept.contains(index));
+        order.clear();
+        order.addAll(collapsed);
+        return true;
     }
 
     private boolean containsIndex(final List<SwingPivot> reported, final int pivotIndex) {

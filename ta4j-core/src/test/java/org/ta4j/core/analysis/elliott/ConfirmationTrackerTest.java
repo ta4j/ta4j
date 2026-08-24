@@ -88,12 +88,12 @@ class ConfirmationTrackerTest {
     @Test
     void failsClosedWhenAFrozenNonTrailingPivotIsContradicted() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
-        for (int asOf = 0; asOf <= 2; asOf++) {
-            script.put(asOf, asOf < 2 ? List.of() : List.of(pivot(0, 10), pivot(2, 14)));
+        for (int asOf = 0; asOf <= 3; asOf++) {
+            script.put(asOf, asOf < 3 ? List.of() : List.of(pivot(0, 10), pivot(3, 14)));
         }
         // Non-trailing pivot 0 revised after a successor exists: contradiction.
-        script.put(3, List.of(pivot(0, 9.5), pivot(2, 14)));
-        final BarSeries series = seriesWithBars(4);
+        script.put(4, List.of(pivot(0, 9.5), pivot(3, 14)));
+        final BarSeries series = seriesWithBars(5);
 
         assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
                 .isInstanceOf(IllegalStateException.class)
@@ -103,17 +103,44 @@ class ConfirmationTrackerTest {
     @Test
     void failsClosedWhenAFrozenNonTrailingPivotIsWithdrawn() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
-        for (int asOf = 0; asOf <= 2; asOf++) {
-            script.put(asOf, asOf < 2 ? List.of() : List.of(pivot(0, 10), pivot(2, 14)));
+        for (int asOf = 0; asOf <= 3; asOf++) {
+            script.put(asOf, asOf < 3 ? List.of() : List.of(pivot(0, 10), pivot(3, 14)));
         }
-        // Interior pivot 0 vanishes entirely once pivot 2 exists: withdrawal,
+        // Interior pivot 0 vanishes entirely once pivot 3 exists: withdrawal,
         // not contradiction. Strict causality must fail closed.
-        script.put(3, List.of(pivot(2, 14)));
-        final BarSeries series = seriesWithBars(4);
+        script.put(4, List.of(pivot(3, 14)));
+        final BarSeries series = seriesWithBars(5);
 
         assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("withdrew non-trailing pivot");
+    }
+
+    @Test
+    void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        for (int asOf = 0; asOf <= 2; asOf++) {
+            script.put(asOf, List.of());
+        }
+        for (int asOf = 3; asOf <= 4; asOf++) {
+            script.put(asOf, List.of(pivot(0, 10), pivot(3, 20)));
+        }
+        // Two consecutive same-type highs appear at once: snapshot
+        // normalization keeps only the more extreme high, so the dominated
+        // pivot at index 3 is never visible in any emitted version.
+        script.put(5, List.of(pivot(0, 10), pivot(3, 20), pivot(5, 25)));
+        // The detector withdraws the dominated interior high while keeping its
+        // normalized winner: every emitted view stays [L0, H25] and no frozen
+        // history violation may fire.
+        script.put(6, List.of(pivot(0, 10), pivot(5, 25)));
+        final BarSeries series = seriesWithBars(7);
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script)).observeReplay(series);
+
+        assertThat(replay.at(4).stream().map(ConfirmedPivot::pivotIndex).toList()).containsExactly(0, 3);
+        assertThat(replay.at(5).stream().map(ConfirmedPivot::pivotIndex).toList()).containsExactly(0, 5);
+        assertThat(replay.at(6).stream().map(ConfirmedPivot::pivotIndex).toList()).containsExactly(0, 5);
+        assertThat(replay.history().pivots().stream().map(ConfirmedPivot::pivotIndex).toList()).containsExactly(0, 5);
     }
 
     @Test
