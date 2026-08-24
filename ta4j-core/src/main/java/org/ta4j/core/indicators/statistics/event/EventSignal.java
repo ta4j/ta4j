@@ -23,10 +23,11 @@ import org.ta4j.core.BarSeries;
  *
  * <p>
  * {@link #getCountOfUnstableBars()} follows the ta4j indicator convention: it
- * is the first index at which events are trustworthy. Evaluators never read
- * events below that index (the event at {@code getCountOfUnstableBars()} is the
- * first one evaluated and must be valid), so implementations may return
- * arbitrary values for indexes strictly below it.
+ * is the number of leading bars, counted from the series' retained head, whose
+ * event values are not trustworthy. Evaluators never read events below
+ * {@code getBarSeries().getBeginIndex() + getCountOfUnstableBars()}, so
+ * implementations may return arbitrary values for indexes strictly below that
+ * boundary.
  *
  * @see EventSignals
  */
