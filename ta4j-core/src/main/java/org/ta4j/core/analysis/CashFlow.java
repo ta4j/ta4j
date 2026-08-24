@@ -219,6 +219,7 @@ public class CashFlow implements PerformanceIndicator {
      * @param finalIndex           index up until values of open positions are
      *                             considered
      * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
