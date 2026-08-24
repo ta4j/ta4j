@@ -552,7 +552,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // Crossings at 10 (predicted) and 12 (reference) match within the
         // tolerance window; both copies must agree with the original on
         // unavailable (pre-stability and empty-window) and available indexes.
-        for (int index : new int[] {3, 9, 14, 20, 21, 25}) {
+        for (int index : new int[] { 3, 9, 14, 20, 21, 25 }) {
             assertNumEquals(indicator.getValue(index), restored.getValue(index));
             assertEquals(indicator.getResult(index), restored.getResult(index));
         }
