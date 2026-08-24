@@ -1175,8 +1175,8 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
             }
         };
 
-        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(strict, strict,
-                Integer.MAX_VALUE, Integer.MAX_VALUE, 0, 0);
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(strict, strict, Integer.MAX_VALUE,
+                Integer.MAX_VALUE, 0, 0);
         assertFalse(result.windowAvailable());
         assertEquals(0, reads.get());
     }
