@@ -31,6 +31,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -375,6 +376,44 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .iterationCount(4)
                 .lookbackBarCount(2)
                 .monteCarloMethod(context -> List.of(context.numFactory().zero(), context.numFactory().zero()))
+                .build();
+
+        assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());
+    }
+
+    @Test
+    public void undefinedForeignFactorySampleDegradesToUnstable() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .iterationCount(4)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(context.numFactory().zero());
+                    }
+                    samples.set(0, NaN.NaN);
+                    return samples;
+                })
+                .build();
+
+        assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());
+    }
+
+    @Test
+    public void nullSampleElementDegradesToUnstable() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .iterationCount(4)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(context.numFactory().zero());
+                    }
+                    samples.set(0, null);
+                    return samples;
+                })
                 .build();
 
         assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());

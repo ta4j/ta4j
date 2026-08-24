@@ -74,11 +74,11 @@ final class MonteCarloSimulation {
         }
         List<Num> terminalValues = new ArrayList<>(terminalSamples.size());
         for (Num cumulativeReturn : terminalSamples) {
-            if (!cumulativeReturn.getNumFactory().equals(numFactory)) {
-                cumulativeReturn = numFactory.numOf(cumulativeReturn.getDelegate());
-            }
             if (!Num.isFinite(cumulativeReturn)) {
                 return Forecast.unstable(index, settings.horizon());
+            }
+            if (!cumulativeReturn.getNumFactory().equals(numFactory)) {
+                cumulativeReturn = numFactory.numOf(cumulativeReturn.getDelegate());
             }
             Num terminalValue;
             try {
