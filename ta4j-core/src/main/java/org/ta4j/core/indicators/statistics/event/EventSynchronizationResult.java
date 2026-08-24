@@ -33,9 +33,13 @@ import org.ta4j.core.num.Num;
  *                                  index
  * @param requestedEndIndex         the requested inclusive evaluation end index
  * @param effectiveStartIndex       the resolved inclusive start index actually
- *                                  evaluated
+ *                                  evaluated; for an unavailable window this
+ *                                  repeats the requested bounds and
+ *                                  {@code windowAvailable} is {@code false}
+ *                                  rather than encoding emptiness as an
+ *                                  inverted (overflow-prone) index pair
  * @param effectiveEndIndex         the resolved inclusive end index actually
- *                                  evaluated
+ *                                  evaluated; see {@code effectiveStartIndex}
  * @param predictedCount            the number of predicted events inside the
  *                                  effective range
  * @param referenceCount            the number of reference events inside the

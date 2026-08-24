@@ -95,13 +95,16 @@ final class EventSynchronizationSupport {
         // (for example an extreme warm-up) back into a readable index.
         long candidateStart = Math.max(Math.max(startIndex, availableStart), anchoredStart);
         int effectiveEnd = Math.min(endIndex, availableEnd);
-        int effectiveStart;
         if (candidateStart > effectiveEnd) {
-            // Canonical empty inclusive range: start == end + 1.
-            effectiveStart = effectiveEnd + 1;
-        } else {
-            effectiveStart = (int) candidateStart;
+            // Canonical empty range: no signal bar is read. Encoding the empty
+            // range as end + 1 would wrap for an end of Integer.MAX_VALUE and
+            // turn it into a full-domain scan, so the unavailable window is
+            // materialized directly instead.
+            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0,
+                    NaN.NaN, NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN,
+                    NaN.NaN, NaN.NaN, false);
         }
+        int effectiveStart = (int) candidateStart;
 
         int[] predictedEvents = extractEvents(predicted, effectiveStart, effectiveEnd);
         int[] referenceEvents = extractEvents(reference, effectiveStart, effectiveEnd);
