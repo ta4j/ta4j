@@ -522,7 +522,11 @@ final class EventSynchronizationSupport {
             while (matchIndex < matched.length && matched[matchIndex] < event) {
                 matchIndex++;
             }
-            if (matchIndex >= matched.length || matched[matchIndex] != event) {
+            if (matchIndex < matched.length && matched[matchIndex] == event) {
+                // Consume the match exactly once so a repeated equal event
+                // index stays in the unmatched remainder.
+                matchIndex++;
+            } else {
                 unmatched[cursor++] = event;
             }
         }
