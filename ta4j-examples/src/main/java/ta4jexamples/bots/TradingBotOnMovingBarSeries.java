@@ -101,9 +101,8 @@ public class TradingBotOnMovingBarSeries {
     }
 
     /**
-     * @param endTime
-     *            the end time of the generated bar; must be strictly after the
-     *            current series end time
+     * @param endTime the end time of the generated bar; must be strictly after the
+     *                current series end time
      * @return a random bar
      */
     private static Bar generateRandomBar(final Instant endTime) {
@@ -156,8 +155,7 @@ public class TradingBotOnMovingBarSeries {
             if (!tickDelay.isZero()) {
                 Thread.sleep(tickDelay.toMillis());
             }
-            Bar newBar = generateRandomBar(
-                    series.getBar(series.getEndIndex()).getEndTime().plus(Duration.ofDays(1)));
+            Bar newBar = generateRandomBar(series.getBar(series.getEndIndex()).getEndTime().plus(Duration.ofDays(1)));
             LOG.debug("------------------------------------------------------\nBar {} added, close price = {}", i,
                     newBar.getClosePrice().doubleValue());
             series.addBar(newBar);

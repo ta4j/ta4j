@@ -233,8 +233,7 @@ public final class ElliottStudyProtocol {
 
         return new ElliottStudyProtocol(raw.schemaVersion, raw.protocolId, raw.protocolVersion,
                 parseDate(raw.frozenAt, "frozenAt"), fingerprint, List.of(h1, h2), datasets, partitions,
-                detectorConfigurations, nullEnsemble, raw.competingGrammars,
-                raw.metrics, raw.ablationSet);
+                detectorConfigurations, nullEnsemble, raw.competingGrammars, raw.metrics, raw.ablationSet);
     }
 
     private static Hypothesis toHypothesis(RawHypothesis raw, String expectedId) {

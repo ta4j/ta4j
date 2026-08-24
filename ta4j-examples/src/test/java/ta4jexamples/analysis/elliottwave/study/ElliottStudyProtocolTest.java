@@ -17,8 +17,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class ElliottStudyProtocolTest {
-    private static final String PINNED_PROTOCOL_FINGERPRINT =
-            "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729108";
+    private static final String PINNED_PROTOCOL_FINGERPRINT = "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729108";
 
     @Test
     void loadsFrozenProtocolAndPinnedFingerprint() {
