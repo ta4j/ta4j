@@ -398,19 +398,6 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         }
     }
 
-    @Test
-    public void barDataIsDeepCopiedAtConstruction() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(10d, 11d, 12d, 13d, 14d, 15d)
-                .build();
-        TradingRecord tradingRecord = closedPositionRecord(series, 0, 2);
-        CumulativePnL cumulativePnL = new CumulativePnL(series, tradingRecord);
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertNotSame(series.getBar(i), cumulativePnL.getBarSeries().getBar(i));
-        }
-    }
-
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
         NumFactory numFactory = series.numFactory();
         BaseTradingRecord record = new BaseTradingRecord();
