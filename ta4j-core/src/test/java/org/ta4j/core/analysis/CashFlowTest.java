@@ -730,6 +730,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     private static TradingRecord multiPositionRecord(BarSeries series, int... entryExitIndexes) {
+        if (entryExitIndexes.length % 2 != 0) {
+            throw new IllegalArgumentException("entryExitIndexes must contain complete (entry, exit) pairs");
+        }
         NumFactory numFactory = series.numFactory();
         BaseTradingRecord record = new BaseTradingRecord();
         for (int i = 0; i < entryExitIndexes.length; i += 2) {
