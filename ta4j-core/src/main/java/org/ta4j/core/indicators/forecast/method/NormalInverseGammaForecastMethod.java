@@ -163,6 +163,9 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
             for (int step = 0; step < context.horizon(); step++) {
                 cumulativeReturn += muDraw + sigma * random.nextGaussian();
             }
+            if (!Double.isFinite(cumulativeReturn)) {
+                return null;
+            }
             Num converted = numFactory.numOf(BigDecimal.valueOf(cumulativeReturn));
             if (!Num.isFinite(converted)) {
                 return null;
