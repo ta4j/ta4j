@@ -6,9 +6,16 @@ package org.ta4j.core.analysis.elliott;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.num.Num;
+
 /**
  * One bounded, deterministic topology candidate: a contiguous window of
  * confirmed pivots evaluated against a grammar and direction.
+ *
+ * <p>
+ * All leg arithmetic stays in the series' own {@link Num} domain so
+ * {@code DecimalNum} precision survives every decision comparison; callers that
+ * render observations may still narrow to {@code double} for display.
  *
  * @param grammar   grammar the window was evaluated against
  * @param direction declared trend direction of the hypothesis
@@ -41,23 +48,23 @@ record TopologyCandidate(TopologyGrammar grammar, WaveDirection direction, List<
     /**
      * @return price of the pivot at the start of leg {@code legIndex}
      */
-    double legStartPrice(final int legIndex) {
-        return pivots.get(legIndex).price().doubleValue();
+    Num legStartPrice(final int legIndex) {
+        return pivots.get(legIndex).price();
     }
 
     /**
      * @return price of the pivot at the end of leg {@code legIndex}
      */
-    double legEndPrice(final int legIndex) {
-        return pivots.get(legIndex + 1).price().doubleValue();
+    Num legEndPrice(final int legIndex) {
+        return pivots.get(legIndex + 1).price();
     }
 
     /**
      * @return signed size of leg {@code legIndex}; positive in trend direction
      */
-    double legSize(final int legIndex) {
-        final double size = legEndPrice(legIndex) - legStartPrice(legIndex);
-        return direction == WaveDirection.BULLISH ? size : -size;
+    Num legSize(final int legIndex) {
+        final Num size = legEndPrice(legIndex).minus(legStartPrice(legIndex));
+        return direction == WaveDirection.BULLISH ? size : size.negate();
     }
 
     /**

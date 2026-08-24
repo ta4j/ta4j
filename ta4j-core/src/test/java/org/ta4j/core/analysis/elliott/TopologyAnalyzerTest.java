@@ -58,11 +58,14 @@ class TopologyAnalyzerTest {
     }
 
     @Test
-    void rejectsForcedCountsWhenNoGrammarFits() {
+    void reportsFormingTrailingSuffixWhenFullWindowDoesNotFit() {
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
                 pivots(10, 20, 15, 16, 17, 18));
 
-        assertThat(analysis.status()).isEqualTo(TopologyStatus.NO_MATCH);
+        // The full six-pivot window breaks the motive shape mid-sequence, but
+        // the trailing suffix (rising final leg) still matches a forming
+        // bullish motive, so the analyzer reports FORMING without candidates.
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
         assertThat(analysis.candidates()).isEmpty();
     }
 

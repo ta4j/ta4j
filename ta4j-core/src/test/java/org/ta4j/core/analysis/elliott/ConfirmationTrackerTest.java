@@ -101,6 +101,42 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void failsClosedWhenAFrozenNonTrailingPivotIsWithdrawn() {
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        for (int asOf = 0; asOf <= 2; asOf++) {
+            script.put(asOf, asOf < 2 ? List.of() : List.of(pivot(0, 10), pivot(2, 14)));
+        }
+        // Interior pivot 0 vanishes entirely once pivot 2 exists: withdrawal,
+        // not contradiction. Strict causality must fail closed.
+        script.put(3, List.of(pivot(2, 14)));
+        final BarSeries series = seriesWithBars(4);
+
+        assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("withdrew non-trailing pivot");
+    }
+
+    @Test
+    void replayViewsPreserveEarlierCausalState() {
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        for (int asOf = 0; asOf <= 4; asOf++) {
+            script.put(asOf, asOf < 3 ? List.of() : List.of(pivot(1, 20), pivot(2, 12)));
+        }
+        // Trailing revision at asOf=4 moves pivot 2's price; earlier views
+        // must keep showing the pre-revision state.
+        script.put(4, List.of(pivot(1, 20), pivot(2, 13)));
+        final BarSeries series = seriesWithBars(5);
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script)).observeReplay(series);
+
+        assertThat(replay.at(2)).isEmpty();
+        assertThat(replay.at(3).stream().map(ConfirmedPivot::pivotIndex).toList()).containsExactly(1, 2);
+        // The final history reflects the last reconciled state (revised price).
+        assertThat(replay.history().pivots().get(1).price().doubleValue()).isEqualTo(13.0d);
+        assertThat(replay.versionAsOf()).isSortedAccordingTo(Integer::compareTo);
+    }
+
+    @Test
     void producesIdenticalHistoriesForIdenticalScripts() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 4; asOf++) {

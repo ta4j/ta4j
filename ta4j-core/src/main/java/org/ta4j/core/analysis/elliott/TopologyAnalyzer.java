@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Bounded, deterministic wave-grammar matcher over contiguous confirmed pivots.
  *
@@ -23,14 +25,19 @@ import java.util.Objects;
  *
  * <p>
  * Bounds: only the trailing {@code maxHistoryPivots} confirmed pivots are
- * considered, and at most {@code 64} tied candidates are retained (the most
- * recent ones, in ascending start order), so rolling evaluation cannot grow
- * without limit.
+ * considered, and at most {@value #MAX_RETAINED_CANDIDATES} tied candidates are
+ * retained (the most recent ones, in ascending start order), so rolling
+ * evaluation cannot grow without limit.
+ *
+ * <p>
+ * All leg and origin comparisons stay in the series' own {@link Num} domain so
+ * {@code DecimalNum} precision survives every decision.
  */
 final class TopologyAnalyzer {
 
     private static final int DEFAULT_MAX_HISTORY_PIVOTS = 200;
-    private static final double EPSILON = 1e-12;
+
+    private static final int MAX_RETAINED_CANDIDATES = 64;
 
     private final int maxHistoryPivots;
 
@@ -90,6 +97,10 @@ final class TopologyAnalyzer {
                 }
             }
         }
+        // Chronological order makes every downstream selection and truncation
+        // deterministic and keeps "most recent" semantics honest.
+        live.sort(TopologyAnalyzer::chronological);
+        breached.sort(TopologyAnalyzer::chronological);
         // Report the kill moment: when the newest confirmed pivot breaches
         // the origin of the most recently completed prior candidate, that
         // hypothesis died even if fresh overlapping mirrors may form later.
@@ -122,10 +133,17 @@ final class TopologyAnalyzer {
                     bounded.size() + " of " + live.size() + " tied " + grammar + " candidates remain");
         }
 
+        // No live complete candidate survived; the freshest partial pattern may
+        // still be forming in the newest pivots. Scan trailing suffixes of every
+        // allowed length so a fresh prefix can form even when the retained
+        // history already exceeds the grammar length.
+        final int maxSuffixPivots = Math.min(window.size(), grammar.requiredPivots() - 1);
         for (final WaveDirection direction : WaveDirection.values()) {
-            if (matchesPartialShape(grammar, direction, window)) {
-                return TopologyAnalysis.forming(direction,
-                        "partial " + grammar + " prefix present in " + direction + " orientation");
+            for (int suffix = maxSuffixPivots; suffix >= 2; suffix--) {
+                if (matchesPartialShape(grammar, direction, window.subList(window.size() - suffix, window.size()))) {
+                    return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in " + direction
+                            + " orientation over the " + suffix + " newest pivots");
+                }
             }
         }
         if (window.size() < grammar.requiredPivots()) {
@@ -145,20 +163,26 @@ final class TopologyAnalyzer {
     }
 
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
-        final double originPrice = candidate.legStartPrice(0);
+        final Num originPrice = candidate.legStartPrice(0);
         return switch (candidate.direction()) {
         case BULLISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.LOW
-                && pivot.price().doubleValue() < originPrice - EPSILON;
+                && pivot.price().isLessThan(originPrice);
         case BEARISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.HIGH
-                && pivot.price().doubleValue() > originPrice + EPSILON;
+                && pivot.price().isGreaterThan(originPrice);
         };
     }
 
+    private static int chronological(final TopologyCandidate first, final TopologyCandidate second) {
+        int order = Integer.compare(first.endBarIndex(), second.endBarIndex());
+        order = order != 0 ? order : Integer.compare(first.startBarIndex(), second.startBarIndex());
+        return order != 0 ? order : first.direction().compareTo(second.direction());
+    }
+
     private List<TopologyCandidate> boundedMostRecent(final List<TopologyCandidate> complete) {
-        if (complete.size() <= 64) {
+        if (complete.size() <= MAX_RETAINED_CANDIDATES) {
             return complete;
         }
-        return complete.subList(complete.size() - 64, complete.size());
+        return List.copyOf(complete.subList(complete.size() - MAX_RETAINED_CANDIDATES, complete.size()));
     }
 
     private TopologyCandidate buildCandidate(final TopologyGrammar grammar, final WaveDirection direction,
@@ -173,11 +197,9 @@ final class TopologyAnalyzer {
 
     private boolean matchesShape(final TopologyCandidate candidate) {
         for (int leg = 0; leg < candidate.pivots().size() - 1; leg++) {
-            final double size = candidate.legSize(leg);
+            final Num size = candidate.legSize(leg);
             final boolean positiveExpected = expectedLegPositive(candidate.grammar(), leg);
-            final boolean positive = size > EPSILON;
-            final boolean negative = size < -EPSILON;
-            if (positiveExpected ? !positive : !negative) {
+            if (positiveExpected ? !size.isPositive() : !size.isNegative()) {
                 return false;
             }
         }
@@ -185,16 +207,17 @@ final class TopologyAnalyzer {
     }
 
     private boolean matchesPartialShape(final TopologyGrammar grammar, final WaveDirection direction,
-            final List<ConfirmedPivot> window) {
-        final int legs = window.size() - 1;
+            final List<ConfirmedPivot> segment) {
+        final int legs = segment.size() - 1;
         if (legs < 1 || legs >= grammar.legCount()) {
             return false;
         }
         for (int leg = 0; leg < legs; leg++) {
-            final double startPrice = window.get(leg).price().doubleValue();
-            final double endPrice = window.get(leg + 1).price().doubleValue();
-            final double signed = direction == WaveDirection.BULLISH ? endPrice - startPrice : startPrice - endPrice;
-            if (expectedLegPositive(grammar, leg) ? !(signed > EPSILON) : !(signed < -EPSILON)) {
+            final Num startPrice = segment.get(leg).price();
+            final Num endPrice = segment.get(leg + 1).price();
+            final Num signed = direction == WaveDirection.BULLISH ? endPrice.minus(startPrice)
+                    : startPrice.minus(endPrice);
+            if (expectedLegPositive(grammar, leg) ? !signed.isPositive() : !signed.isNegative()) {
                 return false;
             }
         }

@@ -5,6 +5,8 @@ package org.ta4j.core.analysis.elliott;
 
 import java.util.List;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Validates that wave 2 does not retrace through the origin of wave 1.
  */
@@ -21,11 +23,12 @@ final class Wave2OriginRule implements RelationshipRule {
             return RuleEvidence.notApplicable(id(), "wave 2 origin protection applies only to five-wave grammars");
         }
 
-        final double originPrice = candidate.pivots().get(0).price().doubleValue();
-        final double wave2EndPrice = candidate.pivots().get(2).price().doubleValue();
+        final Num originPrice = candidate.pivots().get(0).price();
+        final Num wave2EndPrice = candidate.pivots().get(2).price();
         final List<String> observations = List.of("origin price=" + originPrice, "wave 2 end price=" + wave2EndPrice);
-        final boolean holdsOrigin = candidate.direction() == WaveDirection.BULLISH ? wave2EndPrice > originPrice
-                : wave2EndPrice < originPrice;
+        final boolean holdsOrigin = candidate.direction() == WaveDirection.BULLISH
+                ? wave2EndPrice.isGreaterThan(originPrice)
+                : wave2EndPrice.isLessThan(originPrice);
         if (holdsOrigin) {
             return RuleEvidence.pass(id(), observations, "wave 2 holds the wave 1 origin");
         }

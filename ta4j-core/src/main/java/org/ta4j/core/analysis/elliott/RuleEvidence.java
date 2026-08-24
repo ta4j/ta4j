@@ -28,7 +28,7 @@ record RuleEvidence(String ruleId, EvidenceState state, Optional<Double> score, 
         Objects.requireNonNull(state, "state");
         score = score == null ? Optional.empty() : score;
         score.ifPresent(value -> {
-            if (value < -EPSILON || value > 1 + EPSILON) {
+            if (!Double.isFinite(value) || value < -EPSILON || value > 1 + EPSILON) {
                 throw new IllegalArgumentException("score must be within [0, 1]: " + value);
             }
         });

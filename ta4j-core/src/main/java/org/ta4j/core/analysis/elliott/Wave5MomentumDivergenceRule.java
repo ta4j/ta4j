@@ -33,8 +33,9 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
             return RuleEvidence.notApplicable(id(), "wave 5 divergence applies only to five-wave grammars");
         }
 
+        // Pivot 5 is the wave-5 ENDPOINT; pivot 4 is the wave-4 trough/peak.
         final int wave3Index = candidate.pivots().get(3).pivotIndex();
-        final int wave5Index = candidate.pivots().get(4).pivotIndex();
+        final int wave5Index = candidate.pivots().get(5).pivotIndex();
         if (!isAvailableIndex(wave3Index) || !isAvailableIndex(wave5Index)) {
             return RuleEvidence.unavailable(id(), "momentum is unavailable at one or more wave endpoints");
         }
@@ -50,29 +51,35 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
             return RuleEvidence.unavailable(id(), "momentum is missing or NaN at one or more wave endpoints");
         }
 
-        final double wave3MomentumValue = wave3Momentum.doubleValue();
-        final double wave5MomentumValue = wave5Momentum.doubleValue();
-        final double wave3Price = candidate.pivots().get(3).price().doubleValue();
-        final double wave5Price = candidate.pivots().get(4).price().doubleValue();
+        final Num wave3MomentumValue = wave3Momentum;
+        final Num wave5MomentumValue = wave5Momentum;
+        final Num wave3Price = candidate.pivots().get(3).price();
+        final Num wave5Price = candidate.pivots().get(5).price();
         final List<String> observations = new ArrayList<>(
                 List.of("wave 3 momentum=" + wave3MomentumValue, "wave 5 momentum=" + wave5MomentumValue,
                         "wave 3 end price=" + wave3Price, "wave 5 end price=" + wave5Price));
+        // Divergence predicate in Num domain; the soft score below stays
+        // double because it feeds report math only.
         final boolean divergence = candidate.direction() == WaveDirection.BULLISH
-                ? wave5Price > wave3Price && wave5MomentumValue < wave3MomentumValue
-                : wave5Price < wave3Price && wave5MomentumValue > wave3MomentumValue;
+                ? wave5Price.isGreaterThan(wave3Price) && wave5MomentumValue.isLessThan(wave3MomentumValue)
+                : wave5Price.isLessThan(wave3Price) && wave5MomentumValue.isGreaterThan(wave3MomentumValue);
         if (!divergence) {
             observations.add("aligned");
             return RuleEvidence.pass(id(), observations, "price and momentum are aligned");
         }
 
-        final double momentumMagnitude = Math.abs(wave3MomentumValue);
-        final double magnitudeDifference = Math.abs(wave3MomentumValue - wave5MomentumValue);
+        final double wave3MomentumDouble = wave3MomentumValue.doubleValue();
+        final double momentumMagnitude = Math.abs(wave3MomentumDouble);
+        final double magnitudeDifference = Math.abs(wave3MomentumDouble - wave5MomentumValue.doubleValue());
         final double score = momentumMagnitude == 0.0d ? 1.0d : Math.min(1.0d, magnitudeDifference / momentumMagnitude);
         return RuleEvidence.scored(id(), score, observations, "price and momentum diverge at wave 5");
     }
 
     private boolean isAvailableIndex(final int index) {
-        return index >= momentum.getCountOfUnstableBars() && index >= momentum.getBarSeries().getBeginIndex()
+        // Indicator unstable bars count from the series begin; translate into
+        // absolute bar indices so sub-series windows are handled correctly.
+        final int unstableFloor = momentum.getBarSeries().getBeginIndex() + momentum.getCountOfUnstableBars();
+        return index >= unstableFloor && index >= momentum.getBarSeries().getBeginIndex()
                 && index <= momentum.getBarSeries().getEndIndex();
     }
 

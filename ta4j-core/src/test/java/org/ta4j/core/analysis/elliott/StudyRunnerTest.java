@@ -23,7 +23,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
-class ElliottStudyRunnerTest {
+class StudyRunnerTest {
 
     private static final long SEED = 5_252_026L;
 
@@ -34,8 +34,8 @@ class ElliottStudyRunnerTest {
                         new StudyRunner.Partition("validation", LocalDate.of(2024, 1, 3), LocalDate.of(2024, 1, 4)),
                         new StudyRunner.Partition("holdout", LocalDate.of(2024, 1, 5), LocalDate.of(2024, 1, 6))),
                 LocalDate.of(2024, 1, 1));
-        final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory,
-                List.of(TopologyGrammar.MOTIVE_5), List.of(), configuration(invalid, 1));
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.MOTIVE_5),
+                List.of(), configuration(invalid, 1));
 
         assertThrows(IllegalStateException.class, () -> runner.evaluate(buildSeries(20), 0, 19));
     }
@@ -43,9 +43,9 @@ class ElliottStudyRunnerTest {
     @Test
     void sameSeedProducesIdenticalReport() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
-        final StudyRunner firstRunner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner firstRunner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
-        final StudyRunner secondRunner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner secondRunner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
 
         final String first = firstRunner.evaluate("BTC", buildSeries(24), 0, 23).toJson();
@@ -57,7 +57,7 @@ class ElliottStudyRunnerTest {
     @Test
     void futureBarsDoNotChangeEarlierEvaluation() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
-        final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
 
         final String prefix = runner.evaluate("BTC", buildSeries(24), 0, 19).toJson();
@@ -83,7 +83,7 @@ class ElliottStudyRunnerTest {
     @Test
     void ablationModesContainExactlyTheirSelectedRule() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
-        final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
         final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
 
@@ -106,12 +106,18 @@ class ElliottStudyRunnerTest {
     @Test
     void syntheticIntegrationProducesAllStudyModesAndSeparatedHypotheses() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
-        final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
         final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
 
-        assertFalse(report.h1().modes().isEmpty());
-        assertFalse(report.h2().modes().isEmpty());
+        // H1 is exactly the caller-declared grammar set; H2 is exactly the
+        // ablation ladder (topology-only, one rung per rule, classical-all).
+        assertEquals(3, report.h1().modes().size());
+        assertEquals(List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3"),
+                report.h1().modes().stream().map(StudyReport.ModeReport::grammar).toList());
+        assertEquals(4, report.h2().modes().size());
+        assertEquals(List.of("topology-only", "+first", "+second", "classical-all"),
+                report.h2().modes().stream().map(StudyReport.ModeReport::mode).toList());
         assertEquals("H1", report.h1().id());
         assertEquals("H2", report.h2().id());
         assertEquals(7, report.competingGrammars().size());
@@ -120,9 +126,42 @@ class ElliottStudyRunnerTest {
                 .anyMatch(mode -> "competing-change-point-baseline".equals(mode.mode())));
         assertFalse(report.ablations().isEmpty());
         assertEquals(1, report.robustness().detectors().size());
+        // Robustness serialization must carry detector results, not an empty
+        // array (regression: detectors were dropped from the JSON payload).
+        assertTrue(report.toJson().contains("\"name\":\"synthetic\""));
         assertEquals(List.of(2), report.nulls().stream().map(StudyReport.NullReport::blockLength).toList());
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
+    }
+
+    @Test
+    void competingAlternativeGrammarReportsFormingSuffixes() {
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+        final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
+
+        // The scripted series yields nine alternating pivots, so "5+5" (11
+        // pivots) can never complete but its trailing suffixes keep matching:
+        // forming detection must come from shape, not merely short history.
+        final StudyReport.ModeReport fivePlusFive = report.competingGrammars()
+                .stream()
+                .filter(mode -> "competing-5+5".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, fivePlusFive.partitions().get(0).completeCount());
+        assertTrue(fivePlusFive.partitions().get(0).formingCount() > 0);
+    }
+
+    @Test
+    void defaultFingerprintIsAnHonestUnpinnedToken() {
+        assertEquals("in-kernel-default-unpinned", StudyRunner.Configuration.lockedDefault().protocolFingerprint());
+    }
+
+    @Test
+    void robustnessDefaultsMatchTheFrozenProtocolMatrix() {
+        assertEquals(List.of("fractal-w3", "fractal-w5", "prominence-default", "slope-change-w5"),
+                DetectorRobustnessMatrix.defaults().stream().map(DetectorRobustnessMatrix.DetectorSpec::name).toList());
     }
 
     private static List<TopologyGrammar> grammars() {
@@ -151,8 +190,7 @@ class ElliottStudyRunnerTest {
             final int ensembleSize) {
         return new StudyRunner.Configuration(partitions,
                 "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2), ensembleSize,
-                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic",
-                        ElliottStudyRunnerTest::detectorFactory)));
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", StudyRunnerTest::detectorFactory)));
     }
 
     private static SwingDetector detectorFactory() {

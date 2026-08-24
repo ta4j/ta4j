@@ -221,6 +221,10 @@ final class StudyReport {
             ruleJson.addProperty("unavailableCount", rule.unavailableCount());
             ruleJson.addProperty("notApplicableCount", rule.notApplicableCount());
             ruleJson.addProperty("passRate", rule.passRate());
+            ruleJson.addProperty("scoredCount", rule.scoredCount());
+            ruleJson.addProperty("scoreMean", rule.scoreMean());
+            ruleJson.addProperty("scoreMin", rule.scoreMin());
+            ruleJson.addProperty("scoreMax", rule.scoreMax());
             rules.add(ruleJson);
         }
         json.add("rules", rules);
@@ -240,6 +244,7 @@ final class StudyReport {
                 partitions.add(partitionJson(metrics));
             }
             detectorJson.add("partitions", partitions);
+            detectors.add(detectorJson);
         }
         json.add("detectors", detectors);
         return json;
@@ -330,13 +335,21 @@ final class StudyReport {
         }
     }
 
-    /** Immutable counts for one relationship rule in one partition. */
+    /**
+     * Immutable counts for one relationship rule in one partition.
+     *
+     * @param scoredCount number of PASS evaluations carrying a soft score
+     * @param scoreMean   mean of the carried scores; {@code 0} when unscored
+     * @param scoreMin    minimum carried score; {@code 0} when unscored
+     * @param scoreMax    maximum carried score; {@code 0} when unscored
+     */
     record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
-            long unavailableCount, long notApplicableCount, double passRate) {
+            long unavailableCount, long notApplicableCount, double passRate, long scoredCount, double scoreMean,
+            double scoreMin, double scoreMax) {
         RuleMetrics {
             ruleId = requireText(ruleId, "ruleId");
             if (evaluationCount < 0 || passCount < 0 || failCount < 0 || pendingCount < 0 || unavailableCount < 0
-                    || notApplicableCount < 0) {
+                    || notApplicableCount < 0 || scoredCount < 0) {
                 throw new IllegalArgumentException("rule metric counts must be non-negative");
             }
         }

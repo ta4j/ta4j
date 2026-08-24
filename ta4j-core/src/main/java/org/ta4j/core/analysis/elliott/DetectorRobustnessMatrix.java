@@ -26,8 +26,10 @@ final class DetectorRobustnessMatrix {
      * @return detector configurations in deterministic order
      */
     static List<DetectorSpec> defaults() {
-        return List.of(new DetectorSpec("fractal-w2", () -> SwingDetectors.fractal(2)),
-                new DetectorSpec("fractal-w3", () -> SwingDetectors.fractal(3)),
+        // Must stay aligned with the frozen CF-525 protocol's registered
+        // detector matrix (fractal-w3, fractal-w5, prominence-default,
+        // slope-change-w5).
+        return List.of(new DetectorSpec("fractal-w3", () -> SwingDetectors.fractal(3)),
                 new DetectorSpec("fractal-w5", () -> SwingDetectors.fractal(5)),
                 new DetectorSpec("prominence-default", SwingDetectors::prominence),
                 new DetectorSpec("slope-change-w5", () -> SwingDetectors.slopeChange(5)));

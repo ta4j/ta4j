@@ -24,28 +24,31 @@ import org.ta4j.core.num.Num;
 class Wave5MomentumDivergenceRuleTest {
 
     @Test
-    void scoresBullishDivergence() {
+    void scoresBullishDivergenceAtTheWave5Endpoint() {
+        // Momentum index 5 is the wave-5 endpoint (pivot 5), not pivot 4.
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
-        assertThat(evidence.score()).hasValue(0.2d);
-        assertThat(evidence.observations()).contains("wave 3 momentum=10.0", "wave 5 momentum=8.0",
-                "wave 3 end price=120.0", "wave 5 end price=125.0");
+        assertThat(evidence.score()).hasValue(1.0d);
+        assertThat(evidence.observations()).contains("wave 3 momentum=10.0", "wave 5 momentum=0.0",
+                "wave 3 end price=120.0", "wave 5 end price=130.0");
     }
 
     @Test
     void scoresBearishDivergenceWithTheSameStrength() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 12, 0));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 14));
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 90, 95, 80, 75, 70));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
-        assertThat(evidence.score()).hasValue(0.2d);
+        assertThat(evidence.score()).hasValue(0.4d);
     }
 
     @Test
     void passesWithoutScoreWhenPriceAndMomentumAreAligned() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 12, 0));
+        // Wave-5 momentum (index 5) above wave-3 momentum keeps the bullish
+        // move aligned even though the unused pivot-4 slot dips.
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 0, 11));
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
@@ -55,9 +58,20 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     @Test
+    void readsMomentumAtPivotFiveNotPivotFour() {
+        // If momentum were read at pivot 4 (value 0), the bullish case would
+        // diverge; at the true wave-5 endpoint (pivot 5) it stays aligned.
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 0, 10));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+
+        assertThat(evidence.observations()).contains("wave 5 momentum=10.0");
+        assertThat(evidence.observations()).contains("aligned");
+    }
+
+    @Test
     void returnsUnavailableForMissingMomentum() {
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(DoubleNum.valueOf(0),
-                DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(10), NaN.NaN, DoubleNum.valueOf(0)));
+                DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(10), DoubleNum.valueOf(9), NaN.NaN));
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
@@ -88,6 +102,13 @@ class Wave5MomentumDivergenceRuleTest {
     @Test
     void requiresCallerProvidedMomentum() {
         assertThatThrownBy(() -> new Wave5MomentumDivergenceRule(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void rejectsNaNScoredEvidence() {
+        assertThatThrownBy(() -> RuleEvidence.scored("wave5-divergence", Double.NaN, List.of(), "explanation"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("score");
     }
 
     private static Indicator<Num> momentum(final double... values) {

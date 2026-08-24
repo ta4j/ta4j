@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 
 /**
@@ -36,7 +37,12 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
  */
 final class StudyRunner {
 
-    private static final String DEFAULT_FINGERPRINT = "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100";
+    /**
+     * Provenance token for the in-kernel default configuration. This is NOT a
+     * content hash: the frozen protocol resource lives in ta4j-examples and pins
+     * its own fingerprint there. Reports must never fake a digest.
+     */
+    private static final String DEFAULT_FINGERPRINT = "in-kernel-default-unpinned";
 
     private final Supplier<SwingDetector> detectorFactory;
     private final List<TopologyGrammar> grammars;
@@ -103,16 +109,13 @@ final class StudyRunner {
         final int start = Math.max(fromIndex, series.getBeginIndex());
         final int end = Math.min(toIndex, series.getEndIndex());
         final List<StudyReport.ModeReport> h1Modes = new ArrayList<>();
-        final Set<TopologyGrammar> h1Grammars = new LinkedHashSet<>(grammars);
-        h1Grammars.add(TopologyGrammar.MOTIVE_5);
-        h1Grammars.add(TopologyGrammar.CORRECTIVE_3);
-        h1Grammars.add(TopologyGrammar.CYCLE_5_3);
-        for (final TopologyGrammar grammar : h1Grammars) {
+        // H1 is topology-only classification over the caller-declared grammar
+        // set; the full kernel grammar spread is covered by the competing
+        // section, so no forced additions here.
+        for (final TopologyGrammar grammar : grammars) {
             h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory, grammar,
                     "topology-only"));
         }
-        final StudyReport.ModeReport h2Topology = evaluateMode(series, start, end, configuration.partitions(),
-                detectorFactory, TopologyGrammar.CYCLE_5_3, "topology-only", List.of());
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
         for (final RuleAblation.Mode mode : RuleAblation.modes(rules)) {
@@ -154,11 +157,10 @@ final class StudyRunner {
         final List<StudyReport.NullReport> nullReports = evaluateNulls(series, start, end);
         final StudyReport.HypothesisReport h1 = new StudyReport.HypothesisReport("H1", TopologyGrammar.MOTIVE_5.name(),
                 h1Modes);
-        final List<StudyReport.ModeReport> h2Modes = new ArrayList<>();
-        h2Modes.add(h2Topology);
-        h2Modes.addAll(ablations);
+        // H2 modes are exactly the preregistered ablation ladder, whose first
+        // rung is already the topology-only baseline.
         final StudyReport.HypothesisReport h2 = new StudyReport.HypothesisReport("H2", TopologyGrammar.CYCLE_5_3.name(),
-                h2Modes);
+                ablations);
         final List<StudyReport.PartitionSpec> partitionSpecs = configuration.partitions()
                 .entries()
                 .stream()
@@ -177,16 +179,22 @@ final class StudyRunner {
         final int causalStart = hasEvaluationWindow ? start - sourceBegin : 0;
         final int causalEnd = hasEvaluationWindow ? end - sourceBegin : -1;
         for (final int blockLength : configuration.nullBlockLengths()) {
-            final List<MetricAccumulator> accumulators = newAccumulators(List.of());
+            final List<MetricAccumulator> totals = newAccumulators(List.of());
             final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(causalSource, blockLength,
                     configuration.nullEnsembleSize(), configuration.seed());
             for (final BarSeries member : nullSeries) {
-                final PivotHistory history = observe(member);
-                recordTopology(member, causalStart, causalEnd, configuration.partitions(), history,
-                        TopologyGrammar.MOTIVE_5, List.of(), accumulators);
+                // Fresh accumulators per member: label-stability transitions
+                // must never leak across independent ensemble members.
+                final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+                recordTopology(member, causalStart, causalEnd, configuration.partitions(), replay,
+                        TopologyGrammar.MOTIVE_5, List.of(), memberAccumulators);
+                for (int index = 0; index < totals.size(); index++) {
+                    totals.get(index).mergeFrom(memberAccumulators.get(index));
+                }
             }
             reports.add(new StudyReport.NullReport(blockLength, configuration.nullEnsembleSize(), configuration.seed(),
-                    metrics(accumulators, configuration.partitions())));
+                    metrics(totals, configuration.partitions())));
         }
         return List.copyOf(reports);
     }
@@ -195,8 +203,8 @@ final class StudyRunner {
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
             final String mode, final List<RelationshipRule> activeRules) {
         final List<MetricAccumulator> accumulators = newAccumulators(activeRules);
-        final PivotHistory history = observe(series, factory);
-        recordTopology(series, start, end, partitions, history, grammar, activeRules, accumulators);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
+        recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
                 metrics(accumulators, partitions));
     }
@@ -208,13 +216,13 @@ final class StudyRunner {
         Objects.requireNonNull(partitions, "partitions");
         Objects.requireNonNull(factory, "factory");
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final PivotHistory history = observe(series, factory);
-        recordTopology(series, start, end, partitions, history, grammar, List.of(), accumulators);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
+        recordTopology(series, start, end, partitions, replay, grammar, List.of(), accumulators);
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
     }
 
     private static void recordTopology(final BarSeries series, final int start, final int end,
-            final Partitions partitions, final PivotHistory history, final TopologyGrammar grammar,
+            final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
             final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators) {
         if (start > end) {
             return;
@@ -225,9 +233,7 @@ final class StudyRunner {
                 continue;
             }
             final LocalDate date = barDate(series, index);
-            partitions.assertCalibrationDateAllowed(date);
-            final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, history, index);
-            accumulators.get(partitionIndex).record(analysis, index, activeRules);
+            final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
         }
     }
 
@@ -235,7 +241,7 @@ final class StudyRunner {
             final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name) {
         final AlternativeGrammar grammar = AlternativeGrammar.of(name);
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final PivotHistory history = observe(series, factory);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
         if (start <= end) {
             for (int index = start; index <= end; index++) {
                 final int partitionIndex = partitionIndex(series, index, partitions);
@@ -243,20 +249,19 @@ final class StudyRunner {
                     continue;
                 }
                 final LocalDate date = barDate(series, index);
-                partitions.assertCalibrationDateAllowed(date);
-                final List<ConfirmedPivot> visible = history.asOf(index);
+                final List<ConfirmedPivot> visible = replay.at(index);
                 final List<String> matches = grammar.matches(visible);
                 final MetricAccumulator accumulator = accumulators.get(partitionIndex);
                 if (visible.size() < 2) {
-                    accumulator.recordAlternative(false, false, false, "insufficient-history");
+                    accumulator.recordAlternative(index, false, false, false, "insufficient-history");
                 } else if (matches.size() == 1) {
-                    accumulator.recordAlternative(true, false, false, matches.get(0));
+                    accumulator.recordAlternative(index, true, false, false, matches.get(0));
                 } else if (matches.size() > 1) {
-                    accumulator.recordAlternative(false, true, false, "ambiguous");
+                    accumulator.recordAlternative(index, false, true, false, "ambiguous");
                 } else if (grammar.hasPartial(visible)) {
-                    accumulator.recordAlternative(false, false, true, "forming");
+                    accumulator.recordAlternative(index, false, false, true, "forming");
                 } else {
-                    accumulator.recordAlternative(false, false, false, "no-match");
+                    accumulator.recordAlternative(index, false, false, false, "no-match");
                 }
             }
         }
@@ -276,13 +281,13 @@ final class StudyRunner {
                 partitions.assertCalibrationDateAllowed(date);
                 final MetricAccumulator accumulator = accumulators.get(partitionIndex);
                 if (index - 2 < series.getBeginIndex()) {
-                    accumulator.recordAlternative(false, false, false, "insufficient-history");
+                    accumulator.recordAlternative(index, false, false, false, "insufficient-history");
                 } else {
                     final double first = close(series, index - 1) - close(series, index - 2);
                     final double second = close(series, index) - close(series, index - 1);
                     final boolean change = first != 0.0d && second != 0.0d
                             && Math.copySign(1.0d, first) != Math.copySign(1.0d, second);
-                    accumulator.recordAlternative(change, false, false, change ? "change" : "stable");
+                    accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable");
                 }
             }
         }
@@ -294,14 +299,15 @@ final class StudyRunner {
         return series.getBar(index).getClosePrice().doubleValue();
     }
 
-    private PivotHistory observe(final BarSeries series) {
-        return observe(series, detectorFactory);
+    private ConfirmationTracker.CausalReplay observeReplay(final BarSeries series) {
+        return observeReplay(series, detectorFactory);
     }
 
-    private static PivotHistory observe(final BarSeries series, final Supplier<SwingDetector> factory) {
+    private static ConfirmationTracker.CausalReplay observeReplay(final BarSeries series,
+            final Supplier<SwingDetector> factory) {
         final SwingDetector detector = Objects.requireNonNull(factory, "detectorFactory").get();
         final SwingDetector nonNullDetector = Objects.requireNonNull(detector, "detectorFactory returned null");
-        return new ConfirmationTracker(nonNullDetector).observe(series);
+        return new ConfirmationTracker(nonNullDetector).observeReplay(series);
     }
 
     private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules) {
@@ -458,9 +464,11 @@ final class StudyRunner {
             }
         }
 
-        private void recordAlternative(final boolean complete, final boolean ambiguous, final boolean forming,
-                final String label) {
+        private void recordAlternative(final int index, final boolean complete, final boolean ambiguous,
+                final boolean forming, final String label) {
             evaluationCount++;
+            firstIndex = Math.min(firstIndex, index);
+            lastIndex = Math.max(lastIndex, index);
             if (complete) {
                 completeCount++;
             } else if (ambiguous) {
@@ -484,6 +492,13 @@ final class StudyRunner {
                 case PASS -> {
                     evidencePassCount++;
                     counter.passCount++;
+                    counter.scoredCount++;
+                    final double score = evidence.score()
+                            .orElseThrow(() -> new IllegalStateException(
+                                    "PASS evidence without score: " + evidence.ruleId()));
+                    counter.scoreSum += score;
+                    counter.scoreMin = Math.min(counter.scoreMin, score);
+                    counter.scoreMax = Math.max(counter.scoreMax, score);
                 }
                 case FAIL -> {
                     evidenceFailCount++;
@@ -521,6 +536,31 @@ final class StudyRunner {
             hasPreviousLabels = true;
         }
 
+        private void mergeFrom(final MetricAccumulator other) {
+            evaluationCount += other.evaluationCount;
+            firstIndex = Math.min(firstIndex, other.firstIndex);
+            lastIndex = Math.max(lastIndex, other.lastIndex);
+            completeCount += other.completeCount;
+            ambiguousCount += other.ambiguousCount;
+            formingCount += other.formingCount;
+            noMatchCount += other.noMatchCount;
+            invalidatedCount += other.invalidatedCount;
+            insufficientHistoryCount += other.insufficientHistoryCount;
+            confirmationLagSum += other.confirmationLagSum;
+            confirmationLagCount += other.confirmationLagCount;
+            stabilitySum += other.stabilitySum;
+            stabilityCount += other.stabilityCount;
+            evidenceEvaluationCount += other.evidenceEvaluationCount;
+            evidencePassCount += other.evidencePassCount;
+            evidenceFailCount += other.evidenceFailCount;
+            evidencePendingCount += other.evidencePendingCount;
+            evidenceUnavailableCount += other.evidenceUnavailableCount;
+            evidenceNotApplicableCount += other.evidenceNotApplicableCount;
+            for (int index = 0; index < ruleCounters.size() && index < other.ruleCounters.size(); index++) {
+                ruleCounters.get(index).mergeFrom(other.ruleCounters.get(index));
+            }
+        }
+
         private StudyReport.PartitionMetrics toMetrics(final String partition) {
             final long denominator = evaluationCount;
             final long evidenceDenominator = evidenceEvaluationCount;
@@ -552,6 +592,10 @@ final class StudyRunner {
         private long pendingCount;
         private long unavailableCount;
         private long notApplicableCount;
+        private long scoredCount;
+        private double scoreSum;
+        private double scoreMin = Double.POSITIVE_INFINITY;
+        private double scoreMax = Double.NEGATIVE_INFINITY;
 
         private RuleCounter(final String id) {
             this.id = id;
@@ -560,7 +604,25 @@ final class StudyRunner {
         private StudyReport.RuleMetrics toMetrics() {
             return new StudyReport.RuleMetrics(id, evaluationCount, passCount, failCount, pendingCount,
                     unavailableCount, notApplicableCount,
-                    evaluationCount == 0 ? 0.0d : (double) passCount / evaluationCount);
+                    evaluationCount == 0 ? 0.0d : (double) passCount / evaluationCount, scoredCount, scoreMean(),
+                    scoreMin, scoreMax);
+        }
+
+        private double scoreMean() {
+            return scoredCount == 0 ? 0.0d : scoreSum / scoredCount;
+        }
+
+        private void mergeFrom(final RuleCounter other) {
+            evaluationCount += other.evaluationCount;
+            passCount += other.passCount;
+            failCount += other.failCount;
+            pendingCount += other.pendingCount;
+            unavailableCount += other.unavailableCount;
+            notApplicableCount += other.notApplicableCount;
+            scoredCount += other.scoredCount;
+            scoreSum += other.scoreSum;
+            scoreMin = Math.min(scoreMin, other.scoreMin);
+            scoreMax = Math.max(scoreMax, other.scoreMax);
         }
     }
 
@@ -589,31 +651,57 @@ final class StudyRunner {
 
         private boolean hasPartial(final List<ConfirmedPivot> pivots) {
             final int required = segmentLegs[0] + segmentLegs[1] + 1;
-            return pivots.size() < required && pivots.size() >= 2;
-        }
-
-        private boolean matchesWindow(final List<ConfirmedPivot> window) {
-            for (WaveDirection direction : WaveDirection.values()) {
-                boolean valid = true;
-                for (int leg = 0; leg < window.size() - 1; leg++) {
-                    if (window.get(leg).type() == window.get(leg + 1).type()) {
-                        valid = false;
-                        break;
-                    }
-                    final double delta = window.get(leg + 1).price().doubleValue()
-                            - window.get(leg).price().doubleValue();
-                    final double signed = direction == WaveDirection.BULLISH ? delta : -delta;
-                    final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0 : (leg - segmentLegs[0]) % 2 != 0;
-                    if (positive ? !(signed > 1e-12) : !(signed < -1e-12)) {
-                        valid = false;
-                        break;
-                    }
-                }
-                if (valid) {
+            final int maxSuffix = Math.min(pivots.size(), required - 1);
+            for (int suffix = maxSuffix; suffix >= 2; suffix--) {
+                final List<ConfirmedPivot> window = pivots.subList(pivots.size() - suffix, pivots.size());
+                if (matchesPartialWindow(window)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        private boolean matchesWindow(final List<ConfirmedPivot> window) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                if (matchesLegSequence(window, direction, true)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean matchesPartialWindow(final List<ConfirmedPivot> window) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                if (matchesLegSequence(window, direction, false)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Num-domain leg validation. Complete windows require every leg to move
+         * decisively in its assigned direction; partial windows tolerate an uncommitted
+         * trailing leg so a pattern mid-swing is not rejected.
+         */
+        private boolean matchesLegSequence(final List<ConfirmedPivot> window, final WaveDirection direction,
+                final boolean complete) {
+            for (int leg = 0; leg < window.size() - 1; leg++) {
+                if (window.get(leg).type() == window.get(leg + 1).type()) {
+                    return false;
+                }
+                final Num delta = window.get(leg + 1).price().minus(window.get(leg).price());
+                final Num signed = direction == WaveDirection.BULLISH ? delta : delta.negate();
+                final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0 : (leg - segmentLegs[0]) % 2 != 0;
+                if (signed.isZero()) {
+                    if (complete) {
+                        return false;
+                    }
+                } else if (positive ? !signed.isPositive() : !signed.isNegative()) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
