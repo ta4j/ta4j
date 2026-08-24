@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -459,9 +460,13 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
         EventSynchronizationResult clamped = evaluate(predicted, reference, 0, 0, 0, 19);
         assertEquals(10, clamped.effectiveStartIndex());
         assertEquals(1, clamped.matchedCount());
-        // A request fully below the boundary resolves to the canonical empty range.
+        // A request fully below the boundary resolves to an unavailable window
+        // that reports the requested bounds unchanged (never an inverted or
+        // wrapped range).
         EventSynchronizationResult empty = evaluate(predicted, reference, 0, 0, 0, 9);
-        assertEquals(empty.effectiveEndIndex() + 1, empty.effectiveStartIndex());
+        assertFalse(empty.windowAvailable());
+        assertEquals(0, empty.effectiveStartIndex());
+        assertEquals(9, empty.effectiveEndIndex());
         assertEquals(0, empty.predictedCount());
         assertEquals(0, empty.matchedCount());
         // A request at or after the boundary is evaluated unchanged.
@@ -471,23 +476,29 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
-    public void unavailableRangesResolveToCanonicalEmptyRange() {
+    public void unavailableRangesReportRequestedBoundsAsUnavailable() {
         BarSeries series = series(40);
         series.setMaximumBarCount(30);
         Indicator<Boolean> predicted = events(series, 0, 12);
         Indicator<Boolean> reference = events(series, 0, 12);
-        // A request fully before the available history clamps to the canonical
-        // empty inclusive range (start == end + 1), never an inverted one.
+        // An unavailable window reports its requested bounds unchanged: never
+        // an inverted pair and never a wrapped marker at Integer.MAX_VALUE.
         EventSynchronizationResult beforeHistory = evaluate(predicted, reference, 0, 0, 0, 8);
-        assertEquals(beforeHistory.effectiveEndIndex() + 1, beforeHistory.effectiveStartIndex());
+        assertFalse(beforeHistory.windowAvailable());
+        assertEquals(0, beforeHistory.effectiveStartIndex());
+        assertEquals(8, beforeHistory.effectiveEndIndex());
         assertEquals(0, beforeHistory.predictedCount());
 
         EventSynchronizationResult afterEnd = evaluate(predicted, reference, 0, 0, 45, 50);
-        assertEquals(afterEnd.effectiveEndIndex() + 1, afterEnd.effectiveStartIndex());
+        assertFalse(afterEnd.windowAvailable());
+        assertEquals(45, afterEnd.effectiveStartIndex());
+        assertEquals(50, afterEnd.effectiveEndIndex());
         assertEquals(0, afterEnd.predictedCount());
 
         EventSynchronizationResult unstableGap = evaluate(events(series, 40), events(series, 0, 12), 0, 0, 0, 30);
-        assertEquals(unstableGap.effectiveEndIndex() + 1, unstableGap.effectiveStartIndex());
+        assertFalse(unstableGap.windowAvailable());
+        assertEquals(0, unstableGap.effectiveStartIndex());
+        assertEquals(30, unstableGap.effectiveEndIndex());
         assertEquals(0, unstableGap.predictedCount());
     }
 
@@ -583,7 +594,9 @@ public class EventSynchronizationSupportTest extends AbstractIndicatorTest<Indic
         EventSynchronizationResult clamped = evaluate(signal, signal, 1, 1, 0, 9);
         assertEquals(0, clamped.predictedCount());
         assertEquals(0, clamped.referenceCount());
-        assertEquals(clamped.effectiveEndIndex() + 1, clamped.effectiveStartIndex());
+        assertFalse(clamped.windowAvailable());
+        assertEquals(0, clamped.effectiveStartIndex());
+        assertEquals(9, clamped.effectiveEndIndex());
         assertNumEquals(Double.NaN, clamped.f1Score());
     }
 
