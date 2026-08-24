@@ -1085,10 +1085,56 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         };
 
         EventSynchronizationIndicator indicator = indicator(mutating, events(rolling, 0), 4, 0, 0);
-        assertFalse(indicator.getResult(11).windowAvailable());
+        // Exhaustion must surface as an exception rather than a cached
+        // unavailable result: a cached NaN would survive later revisions that
+        // never touch this window.
+        IllegalStateException exhausted = assertThrows(IllegalStateException.class, () -> indicator.getResult(11));
+        assertTrue(exhausted.getMessage().contains("retry budget exhausted"));
         // The window must actually have been scanned (the stub mutated on
         // every read); a vacuous outer-domain rejection would leave reads 0.
         assertTrue(reads.get() > 2);
+    }
+
+    @Test
+    public void rawSignalSyncKeepsExtremeWarmUpOutOfTheIntDomain() {
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 1;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        AtomicInteger reads = new AtomicInteger();
+        EventSignal extreme = new EventSignal() {
+            @Override
+            public boolean isEvent(int index) {
+                reads.incrementAndGet();
+                return false;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return proxy;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Integer.MAX_VALUE;
+            }
+        };
+
+        // begin 1 + unstable MAX_VALUE overflows the int domain; no signal bar
+        // may be read and the effective range must resolve empty.
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(extreme, extreme, 1,
+                Integer.MAX_VALUE, 0, 0);
+        assertEquals(0, reads.get());
+        assertEquals(0, result.predictedCount());
+        assertEquals(0, result.referenceCount());
     }
 
     @Test
