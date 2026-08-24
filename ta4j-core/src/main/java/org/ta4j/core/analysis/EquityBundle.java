@@ -3,12 +3,17 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.cost.CostModel;
 
 /**
@@ -35,6 +40,13 @@ import org.ta4j.core.analysis.cost.CostModel;
  * are appended to or removed from the series or new trades are recorded, every
  * memoized curve is dropped and rebuilt on the next request so consumers never
  * observe stale values.
+ * </p>
+ *
+ * <p>
+ * All curves are computed from a private copy of the series' bar data taken at
+ * bundle construction (and refreshed whenever structural input changes drop the
+ * cache), so in-place edits of retained {@link Bar} references can neither
+ * alter nor mix already-produced curves.
  * </p>
  *
  * @since 0.24.2
@@ -73,9 +85,16 @@ public final class EquityBundle {
     private CostModel holdingCostModel;
 
     /**
-     * Creates a bundle for the given series and trading record. Neither the series
-     * nor the record is copied: the curves computed on demand are constructed from
-     * these exact inputs, mirroring direct indicator construction.
+     * Private copy of the captured series' bar data backing every computed curve;
+     * refreshed whenever structural input changes drop the cache.
+     */
+    private BarSeries curveSeries;
+
+    /**
+     * Creates a bundle for the given series and trading record. The record and the
+     * series reference are captured for identity checks, while a private copy of
+     * the bar data backs every curve this bundle computes, mirroring direct
+     * indicator construction at creation time.
      *
      * @param series        the bar series to analyze, not null
      * @param tradingRecord the trading record to analyze, not null
@@ -85,6 +104,7 @@ public final class EquityBundle {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();
+        this.curveSeries = snapshotSeries(this.series);
         this.transactionCostModel = tradingRecord.getTransactionCostModel();
         this.holdingCostModel = tradingRecord.getHoldingCostModel();
     }
@@ -104,6 +124,7 @@ public final class EquityBundle {
             inputRevision = revision;
             transactionCostModel = recordTransactionCostModel;
             holdingCostModel = recordHoldingCostModel;
+            curveSeries = snapshotSeries(series);
             cashFlows.clear();
             cumulativePnLs.clear();
             investedIntervals.clear();
@@ -116,6 +137,26 @@ public final class EquityBundle {
         revision = revision * 1_000_003L + series.getRemovedBarsCount();
         revision = revision * 1_000_003L + tradingRecord.getTrades().size();
         return revision;
+    }
+
+    /**
+     * Creates a series mirroring the given one, but owning deep copies of its bar
+     * data so later in-place edits of the original bars cannot reach the curves
+     * computed from the copy.
+     */
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(barSeries.getBarData().size());
+        for (Bar bar : barSeries.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
+        return new BaseBarSeriesBuilder().withName(barSeries.getName())
+                .withNumFactory(barSeries.numFactory())
+                .withBars(copiedBars)
+                .withMaxBarCount(barSeries.getMaximumBarCount())
+                .build();
     }
 
     /**
@@ -135,7 +176,7 @@ public final class EquityBundle {
         synchronized (this) {
             invalidateIfInputsChanged();
             return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CashFlow cashFlow = new CashFlow(series, tradingRecord, key.equityCurveMode(),
+                CashFlow cashFlow = new CashFlow(curveSeries, tradingRecord, key.equityCurveMode(),
                         key.openPositionHandling());
                 cashFlow.freeze();
                 return cashFlow;
@@ -161,7 +202,7 @@ public final class EquityBundle {
         synchronized (this) {
             invalidateIfInputsChanged();
             return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CumulativePnL cumulativePnL = new CumulativePnL(series, tradingRecord, key.equityCurveMode(),
+                CumulativePnL cumulativePnL = new CumulativePnL(curveSeries, tradingRecord, key.equityCurveMode(),
                         key.openPositionHandling());
                 cumulativePnL.freeze();
                 return cumulativePnL;
@@ -182,7 +223,7 @@ public final class EquityBundle {
         synchronized (this) {
             invalidateIfInputsChanged();
             return investedIntervals.computeIfAbsent(openPositionHandling,
-                    handling -> new InvestedInterval(series, tradingRecord, handling));
+                    handling -> new InvestedInterval(curveSeries, tradingRecord, handling));
         }
     }
 

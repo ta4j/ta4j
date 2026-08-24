@@ -163,6 +163,18 @@ public class EquityBundleTest {
     }
 
     @Test
+    public void bundledCurvesUsePrivateBarCopies() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNotSame(series.getBar(i), cashFlow.getBarSeries().getBar(i));
+        }
+    }
+
+    @Test
     public void bundleRebuildsCurvesAfterSeriesAppend() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
