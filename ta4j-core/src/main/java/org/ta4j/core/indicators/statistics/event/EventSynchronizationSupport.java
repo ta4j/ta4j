@@ -281,14 +281,11 @@ final class EventSynchronizationSupport {
                 // count + 1 cells, so a single stream must stay at or below the
                 // cap minus one events.
                 if ((long) size + 2 > MAX_MATCHING_CELLS) {
-                    throw new IllegalArgumentException(
-                            "event count exceeds the baseline matcher capacity of "
-                                    + (MAX_MATCHING_CELLS / 1_000_000L)
-                                    + " million cells (~128 MB of alignment arrays)");
+                    throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
+                            + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment arrays)");
                 }
                 if (size == events.length) {
-                    events = Arrays.copyOf(events,
-                            (int) Math.min((long) events.length * 2, MAX_MATCHING_CELLS));
+                    events = Arrays.copyOf(events, (int) Math.min((long) events.length * 2, MAX_MATCHING_CELLS));
                 }
                 events[size++] = i;
             }
