@@ -13,8 +13,8 @@ import java.util.random.RandomGenerator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.indicators.forecast.method.MonteCarloContext;
-import org.ta4j.core.indicators.forecast.method.MonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
@@ -74,6 +74,9 @@ final class MonteCarloSimulation {
         }
         List<Num> terminalValues = new ArrayList<>(terminalSamples.size());
         for (Num cumulativeReturn : terminalSamples) {
+            if (!cumulativeReturn.getNumFactory().equals(numFactory)) {
+                cumulativeReturn = numFactory.numOf(cumulativeReturn.getDelegate());
+            }
             if (!Num.isFinite(cumulativeReturn)) {
                 return Forecast.unstable(index, settings.horizon());
             }

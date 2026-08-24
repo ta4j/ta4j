@@ -8,8 +8,8 @@ import java.util.Objects;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.forecast.method.MonteCarloMethod;
-import org.ta4j.core.indicators.forecast.method.ShockPathMonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;

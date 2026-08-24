@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast.method;
+package org.ta4j.core.analysis.montecarlo;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -119,21 +119,23 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         if (observationCount == 0) {
             return null;
         }
-        double sum = 0d;
+        NumFactory numFactory = context.numFactory();
+        Num sum = numFactory.zero();
         for (Num value : window) {
-            double draw = value.bigDecimalValue().doubleValue();
-            if (!Double.isFinite(draw)) {
+            if (!Num.isFinite(value)) {
                 return null;
             }
-            sum += draw;
+            sum = sum.plus(value);
         }
-        double windowMean = sum / observationCount;
-        double squaredDeviationSum = 0d;
+        Num meanValue = sum.dividedBy(numFactory.numOf(observationCount));
+        Num squaredDeviations = numFactory.zero();
         for (Num value : window) {
-            double deviation = value.bigDecimalValue().doubleValue() - windowMean;
-            squaredDeviationSum += deviation * deviation;
+            Num deviation = value.minus(meanValue);
+            squaredDeviations = squaredDeviations.plus(deviation.multipliedBy(deviation));
         }
-        if (!Double.isFinite(squaredDeviationSum)) {
+        double windowMean = meanValue.doubleValue();
+        double squaredDeviationSum = squaredDeviations.doubleValue();
+        if (!Double.isFinite(windowMean) || !Double.isFinite(squaredDeviationSum)) {
             return null;
         }
         double sampleVariance = observationCount > 1 ? squaredDeviationSum / (observationCount - 1) : 0d;
@@ -153,7 +155,6 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         }
 
         RandomGenerator random = context.random();
-        NumFactory numFactory = context.numFactory();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
             double sigmaSquared = posteriorScale == 0d ? 0d : nextInverseGamma(random, posteriorShape, posteriorScale);

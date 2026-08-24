@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast.method;
+package org.ta4j.core.analysis.montecarlo;
 
 import java.util.List;
 import java.util.Objects;

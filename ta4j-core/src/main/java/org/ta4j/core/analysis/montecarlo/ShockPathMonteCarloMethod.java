@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators.forecast.method;
+package org.ta4j.core.analysis.montecarlo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -153,7 +153,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
 
         private static ShockSampler standardizedEmpirical(List<Num> historicalReturns, ProjectionState state,
                 NumFactory numFactory) {
-            List<Num> shocks = standardize(historicalReturns, state, numFactory);
+            List<Num> shocks = standardize(historicalReturns, state);
             if (shocks == null) {
                 return random -> numFactory.zero();
             }
@@ -162,7 +162,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
 
         private static ShockSampler smoothedEmpirical(List<Num> historicalReturns, ProjectionState state,
                 NumFactory numFactory) {
-            List<Num> shocks = standardize(historicalReturns, state, numFactory);
+            List<Num> shocks = standardize(historicalReturns, state);
             if (shocks == null) {
                 return random -> numFactory.zero();
             }
@@ -180,8 +180,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
          * @return standardized residuals, or {@code null} when the current volatility
          *         estimate collapses to zero
          */
-        private static List<Num> standardize(List<Num> historicalReturns, ProjectionState state,
-                NumFactory numFactory) {
+        private static List<Num> standardize(List<Num> historicalReturns, ProjectionState state) {
             if (state.volatility().isZero()) {
                 return null;
             }

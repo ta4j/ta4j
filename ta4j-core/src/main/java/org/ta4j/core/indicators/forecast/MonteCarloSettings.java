@@ -12,8 +12,8 @@ import java.util.TreeSet;
  *
  * <p>
  * Method-specific configuration lives on the
- * {@link org.ta4j.core.indicators.forecast.method.MonteCarloMethod
- * MonteCarloMethod} implementation chosen by the caller.
+ * {@link org.ta4j.core.analysis.montecarlo.MonteCarloMethod MonteCarloMethod}
+ * implementation chosen by the caller.
  */
 record MonteCarloSettings(int horizon, int iterationCount, int lookbackBarCount, long seed,
         List<Double> quantileProbabilities) {
