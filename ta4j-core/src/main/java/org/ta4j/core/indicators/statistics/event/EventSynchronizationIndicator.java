@@ -225,11 +225,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
      *         anchored stability boundary
-     * @throws IllegalStateException when an uncached value is evaluated while
-     *                               the sources change repeatedly during event
-     *                               scanning and the bounded retry budget is
-     *                               exhausted (the same contract as
-     *                               {@link #getResult(int)})
+     * @throws IllegalStateException when an uncached value is evaluated while the
+     *                               sources change repeatedly during event scanning
+     *                               and the bounded retry budget is exhausted (the
+     *                               same contract as {@link #getResult(int)})
      * @since 0.24.2
      */
     @Override
