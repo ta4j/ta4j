@@ -257,6 +257,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {

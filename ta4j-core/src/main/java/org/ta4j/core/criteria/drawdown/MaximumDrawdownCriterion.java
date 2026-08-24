@@ -100,6 +100,7 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         return Drawdown.amount(series, tradingRecord, equityBundle.cashFlow(equityCurveMode, openPositionHandling));
     }
 

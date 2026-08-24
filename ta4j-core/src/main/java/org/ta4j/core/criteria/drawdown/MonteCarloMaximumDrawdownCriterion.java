@@ -213,6 +213,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         CashFlow cashFlow = equityBundle.cashFlow(equityCurveMode, openPositionHandling);
         List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
         return simulate(series, tradingRecord, blocks, cashFlow);

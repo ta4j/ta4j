@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 
@@ -39,10 +39,9 @@ public final class EquityBundle {
 
     private final BarSeries series;
     private final TradingRecord tradingRecord;
-    private final Map<CurveKey, CashFlow> cashFlows = new HashMap<>();
-    private final Map<CurveKey, CumulativePnL> cumulativePnLs = new HashMap<>();
-    private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new EnumMap<>(
-            OpenPositionHandling.class);
+    private final Map<CurveKey, CashFlow> cashFlows = new ConcurrentHashMap<>();
+    private final Map<CurveKey, CumulativePnL> cumulativePnLs = new ConcurrentHashMap<>();
+    private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new ConcurrentHashMap<>();
 
     /**
      * Creates a bundle for the given series and trading record. Neither the series
@@ -103,5 +102,47 @@ public final class EquityBundle {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         return investedIntervals.computeIfAbsent(openPositionHandling,
                 handling -> new InvestedInterval(series, tradingRecord, handling));
+    }
+
+    /**
+     * Returns the series this bundle was created for.
+     *
+     * @return the captured bar series reference
+     * @since 0.24.2
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the captured series reference; the bundle "
+            + "documents that it captures its inputs by reference and requireInputsFor pins callers "
+            + "to those exact instances")
+    public BarSeries getBarSeries() {
+        return series;
+    }
+
+    /**
+     * Returns the trading record this bundle was created for.
+     *
+     * @return the captured trading record reference
+     * @since 0.24.2
+     */
+    public TradingRecord getTradingRecord() {
+        return tradingRecord;
+    }
+
+    /**
+     * Ensures that this bundle was created for exactly the given inputs. The bundle
+     * captures its inputs by reference, so curve consumers must pass the same
+     * instances; a mismatch would otherwise mix datasets between the shared curves
+     * and the caller's arguments.
+     *
+     * @param series        the bar series the curves will be read against
+     * @param tradingRecord the trading record the curves were computed from
+     * @throws IllegalArgumentException if either input differs from the references
+     *                                  this bundle was created with
+     * @since 0.24.2
+     */
+    public void requireInputsFor(BarSeries series, TradingRecord tradingRecord) {
+        if (this.series != series || this.tradingRecord != tradingRecord) {
+            throw new IllegalArgumentException(
+                    "EquityBundle was created for a different BarSeries/TradingRecord combination");
+        }
     }
 }

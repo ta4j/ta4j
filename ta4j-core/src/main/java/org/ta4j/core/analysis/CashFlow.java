@@ -305,6 +305,12 @@ public class CashFlow implements PerformanceIndicator {
                         cursor = ratioIndex + 1;
                     }
                 } else if (ratioIndex <= windowEndIndex) {
+                    // The window-start cell already received this ratio through
+                    // the seed above, but any later cells materialized by other
+                    // positions still need this position's realized ratio.
+                    if (cursor > ratioIndex + 1) {
+                        multiplyRange(ratioIndex + 1, cursor - 1, ratio);
+                    }
                     cursor = Math.max(cursor, ratioIndex + 1);
                 }
                 realized = realized.multipliedBy(ratio);

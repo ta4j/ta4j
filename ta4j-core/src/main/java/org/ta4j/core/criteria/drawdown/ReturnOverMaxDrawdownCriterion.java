@@ -171,6 +171,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord, equityBundle);
         Num netReturn = netReturn(series, tradingRecord, equityBundle.cashFlow(equityCurveMode, openPositionHandling));
         return toRepresentation(netReturn, maxDrawdown);

@@ -259,6 +259,7 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {

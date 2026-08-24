@@ -634,6 +634,39 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void cashFlowMatchesFullWindowWithinBoundedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        BaseTradingRecord record = decreasingExitLifoRecord(series);
+        int windowStartIndex = 3;
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow actual = new CashFlow(series, record, windowStartIndex, series.getEndIndex(), mode,
+                    OpenPositionHandling.IGNORE);
+            CashFlow expected = new CashFlow(series, record, mode, OpenPositionHandling.IGNORE);
+            for (int i = windowStartIndex; i <= series.getEndIndex(); i++) {
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+            }
+        }
+    }
+
+    private static BaseTradingRecord decreasingExitLifoRecord(BarSeries series) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        return record;
+    }
+
     private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
         Duration period = targetSeries.getLastBar().getTimePeriod();
         targetSeries.barBuilder()

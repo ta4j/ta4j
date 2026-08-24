@@ -80,6 +80,7 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveS
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
+        equityBundle.requireInputsFor(series, tradingRecord);
         return Drawdown.amount(series, tradingRecord, equityBundle.cumulativePnL(equityCurveMode, openPositionHandling),
                 false);
     }
