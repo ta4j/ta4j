@@ -26,8 +26,10 @@ class Wave5MomentumDivergenceRuleTest {
     @Test
     void scoresBullishDivergenceAtTheWave5Endpoint() {
         // Momentum index 5 is the wave-5 endpoint (pivot 5), not pivot 4.
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 8, 0);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).hasValue(1.0d);
@@ -37,8 +39,10 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void scoresBearishDivergenceWithTheSameStrength() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 14));
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 90, 95, 80, 75, 70));
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 8, 14);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 90, 95, 80, 75, 70),
+                momentum.getBarSeries());
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).hasValue(0.4d);
@@ -48,8 +52,10 @@ class Wave5MomentumDivergenceRuleTest {
     void passesWithoutScoreWhenPriceAndMomentumAreAligned() {
         // Wave-5 momentum (index 5) above wave-3 momentum keeps the bullish
         // move aligned even though the unused pivot-4 slot dips.
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 0, 11));
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 0, 11);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).isEmpty();
@@ -61,8 +67,10 @@ class Wave5MomentumDivergenceRuleTest {
     void readsMomentumAtPivotFiveNotPivotFour() {
         // If momentum were read at pivot 4 (value 0), the bullish case would
         // diverge; at the true wave-5 endpoint (pivot 5) it stays aligned.
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 0, 10));
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 0, 10);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
 
         assertThat(evidence.observations()).contains("wave 5 momentum=10.0");
         assertThat(evidence.observations()).contains("aligned");
@@ -70,9 +78,11 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void returnsUnavailableForMissingMomentum() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(DoubleNum.valueOf(0),
-                DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(10), DoubleNum.valueOf(9), NaN.NaN));
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Indicator<Num> momentum = momentum(DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(0),
+                DoubleNum.valueOf(10), DoubleNum.valueOf(9), NaN.NaN);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
         assertThat(evidence.score()).isEmpty();
@@ -84,24 +94,51 @@ class Wave5MomentumDivergenceRuleTest {
         final Indicator<Num> momentum = new SMAIndicator(new ClosePriceIndicator(series), 5);
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
 
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
 
         assertThat(momentum.getCountOfUnstableBars()).isGreaterThan(3);
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
     }
 
     @Test
-    void doesNotApplyToCorrectiveGrammar() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
+    void bindsMomentumPerEvaluatedSeries() {
+        final Indicator<Num> diverging = momentum(0, 0, 0, 10, 8, 0);
+        final Indicator<Num> aligned = momentum(0, 0, 0, 10, 0, 11);
+        final BarSeries divergingSeries = diverging.getBarSeries();
+        final BarSeries alignedSeries = aligned.getBarSeries();
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
+                series -> series == divergingSeries ? diverging : aligned);
 
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 115));
+        // One runner instance studies several series: each evaluated series
+        // must observe its own bound momentum, never another series' values.
+        final RuleEvidence divergingEvidence = rule
+                .evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), divergingSeries);
+        final RuleEvidence alignedEvidence = rule
+                .evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), alignedSeries);
+
+        assertThat(divergingEvidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(divergingEvidence.score()).hasValue(1.0d);
+        assertThat(divergingEvidence.observations()).contains("wave 5 momentum=0.0");
+        assertThat(alignedEvidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(alignedEvidence.score()).isEmpty();
+        assertThat(alignedEvidence.observations()).contains("aligned");
+    }
+
+    @Test
+    void doesNotApplyToCorrectiveGrammar() {
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 8, 0);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 115),
+                momentum.getBarSeries());
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.NOT_APPLICABLE);
     }
 
     @Test
     void requiresCallerProvidedMomentum() {
-        assertThatThrownBy(() -> new Wave5MomentumDivergenceRule(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> new Wave5MomentumDivergenceRule((Indicator<Num>) null))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @Test

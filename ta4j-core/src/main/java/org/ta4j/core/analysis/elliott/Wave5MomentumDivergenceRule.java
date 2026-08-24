@@ -4,9 +4,13 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -16,10 +20,21 @@ import org.ta4j.core.num.Num;
  */
 final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
-    private final Indicator<Num> momentum;
+    /**
+     * Momentum indicators are series-scoped; the factory is keyed by the evaluated
+     * series so one runner instance can study several series without silently
+     * reading one series' momentum values against another's pivots.
+     */
+    private final Function<BarSeries, Indicator<Num>> momentumFactory;
+    private final Map<BarSeries, Indicator<Num>> boundMomentum = new HashMap<>();
 
     Wave5MomentumDivergenceRule(final Indicator<Num> momentum) {
-        this.momentum = Objects.requireNonNull(momentum, "momentum");
+        Objects.requireNonNull(momentum, "momentum");
+        this.momentumFactory = series -> momentum;
+    }
+
+    Wave5MomentumDivergenceRule(final Function<BarSeries, Indicator<Num>> momentumFactory) {
+        this.momentumFactory = Objects.requireNonNull(momentumFactory, "momentumFactory");
     }
 
     @Override
@@ -29,6 +44,15 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
     @Override
     public RuleEvidence evaluate(final TopologyCandidate candidate) {
+        return RuleEvidence.unavailable(id(), "momentum rule requires the evaluated series binding");
+    }
+
+    @Override
+    public RuleEvidence evaluate(final TopologyCandidate candidate, final BarSeries series) {
+        if (series == null) {
+            return RuleEvidence.unavailable(id(), "momentum rule requires the evaluated series binding");
+        }
+        final Indicator<Num> momentum = boundMomentum.computeIfAbsent(series, momentumFactory);
         if (!isApplicable(candidate)) {
             return RuleEvidence.notApplicable(id(), "wave 5 divergence applies only to five-wave grammars");
         }
@@ -36,7 +60,7 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         // Pivot 5 is the wave-5 ENDPOINT; pivot 4 is the wave-4 trough/peak.
         final int wave3Index = candidate.pivots().get(3).pivotIndex();
         final int wave5Index = candidate.pivots().get(5).pivotIndex();
-        if (!isAvailableIndex(wave3Index) || !isAvailableIndex(wave5Index)) {
+        if (!isAvailableIndex(momentum, wave3Index) || !isAvailableIndex(momentum, wave5Index)) {
             return RuleEvidence.unavailable(id(), "momentum is unavailable at one or more wave endpoints");
         }
         final Num wave3Momentum;
@@ -75,7 +99,7 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         return RuleEvidence.scored(id(), score, observations, "price and momentum diverge at wave 5");
     }
 
-    private boolean isAvailableIndex(final int index) {
+    private boolean isAvailableIndex(final Indicator<Num> momentum, final int index) {
         // Indicator unstable bars count from the series begin; translate into
         // absolute bar indices so sub-series windows are handled correctly.
         final int unstableFloor = momentum.getBarSeries().getBeginIndex() + momentum.getCountOfUnstableBars();

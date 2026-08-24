@@ -80,33 +80,42 @@ final class BlockBootstrapNulls {
         final SplittableRandom random = new SplittableRandom(seed);
         final double[] closes = new double[count];
         closes[0] = source.getBar(source.getBeginIndex()).getClosePrice().doubleValue();
-        int tapePosition = random.nextInt(logReturns.length);
-        for (int offset = 1; offset < count; offset++) {
-            if (offset > 1 && random.nextInt(blockLength) == 0) {
-                tapePosition = random.nextInt(logReturns.length);
-            }
-            final double sampledReturn = logReturns[tapePosition];
-            closes[offset] = closes[offset - 1] * Math.exp(sampledReturn);
-            tapePosition = (tapePosition + 1) % logReturns.length;
-        }
 
         final NumFactory numFactory = source.numFactory();
         final BarSeries result = new BaseBarSeriesBuilder().withName(source.getName() + "-null-" + ensembleIndex)
                 .withNumFactory(numFactory)
                 .build();
+        // Intrabar shape travels WITH its resampled return: bar k of a member
+        // carries the OHLC ratios of the source bar whose close-to-close return
+        // was drawn for k, never the ratios at the same chronological position.
+        // Otherwise every member would inherit the real series' wick sequence.
+        final int[] shapePositions = new int[count];
+        int tapePosition = random.nextInt(logReturns.length);
+        for (int offset = 1; offset < count; offset++) {
+            if (offset > 1 && random.nextInt(blockLength) == 0) {
+                tapePosition = random.nextInt(logReturns.length);
+            }
+            closes[offset] = closes[offset - 1] * Math.exp(logReturns[tapePosition]);
+            shapePositions[offset] = tapePosition + 1;
+            tapePosition = (tapePosition + 1) % logReturns.length;
+        }
         for (int offset = 0; offset < count; offset++) {
-            final Bar sourceBar = source.getBar(source.getBeginIndex() + offset);
+            // Timeline stays chronological; only the intrabar shape follows the
+            // sampled return's source bar.
+            final Bar timelineBar = source.getBar(source.getBeginIndex() + offset);
+            final Bar shapeBar = offset == 0 ? timelineBar
+                    : source.getBar(source.getBeginIndex() + shapePositions[offset]);
             final double close = closes[offset];
-            final double sourceClose = sourceBar.getClosePrice().doubleValue();
-            final double open = scaled(sourceBar.getOpenPrice(), sourceClose, close);
-            final double high = scaled(sourceBar.getHighPrice(), sourceClose, close);
-            final double low = scaled(sourceBar.getLowPrice(), sourceClose, close);
-            final Num volume = sourceBar.getVolume() == null ? numFactory.zero() : sourceBar.getVolume();
-            final Num amount = sourceBar.getAmount() == null ? numFactory.zero() : sourceBar.getAmount();
-            final BaseBar nullBar = new BaseBar(sourceBar.getTimePeriod(), sourceBar.getBeginTime(),
-                    sourceBar.getEndTime(), numFactory.numOf(open), numFactory.numOf(Math.max(high, close)),
+            final double sourceClose = shapeBar.getClosePrice().doubleValue();
+            final double open = scaled(shapeBar.getOpenPrice(), sourceClose, close);
+            final double high = scaled(shapeBar.getHighPrice(), sourceClose, close);
+            final double low = scaled(shapeBar.getLowPrice(), sourceClose, close);
+            final Num volume = timelineBar.getVolume() == null ? numFactory.zero() : timelineBar.getVolume();
+            final Num amount = timelineBar.getAmount() == null ? numFactory.zero() : timelineBar.getAmount();
+            final BaseBar nullBar = new BaseBar(timelineBar.getTimePeriod(), timelineBar.getBeginTime(),
+                    timelineBar.getEndTime(), numFactory.numOf(open), numFactory.numOf(Math.max(high, close)),
                     numFactory.numOf(Math.min(low, close)), numFactory.numOf(close), volume, amount,
-                    sourceBar.getTrades());
+                    timelineBar.getTrades());
             result.addBar(nullBar);
         }
         return result;

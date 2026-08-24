@@ -4,6 +4,9 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.util.List;
+import java.util.function.Function;
+
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -29,5 +32,19 @@ final class ClassicalRelationshipRules {
     static List<RelationshipRule> classicalRelationships(final Indicator<Num> momentum) {
         return List.of(new Wave2OriginRule(), new Wave3NotShortestRule(), new Wave4NonOverlapRule(),
                 new Wave5MomentumDivergenceRule(momentum));
+    }
+
+    /**
+     * The "classical-all" preset with per-series momentum binding: the wave-5
+     * divergence rule builds one indicator per evaluated series via the supplied
+     * factory, so a single runner instance can study several series without
+     * cross-series indicator reads.
+     *
+     * @param momentumFactory factory creating the momentum indicator for a series
+     * @return immutable list of all four classical rules
+     */
+    static List<RelationshipRule> classicalRelationships(final Function<BarSeries, Indicator<Num>> momentumFactory) {
+        return List.of(new Wave2OriginRule(), new Wave3NotShortestRule(), new Wave4NonOverlapRule(),
+                new Wave5MomentumDivergenceRule(momentumFactory));
     }
 }

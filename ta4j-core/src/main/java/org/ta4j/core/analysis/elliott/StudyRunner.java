@@ -167,9 +167,9 @@ final class StudyRunner {
                 .stream()
                 .map(entry -> new StudyReport.PartitionSpec(entry.name(), entry.start(), entry.end()))
                 .toList();
-        return new StudyReport(assetId, configuration.protocolFingerprint(), configuration.seed(), partitionSpecs,
-                configuration.partitions().forbiddenCalibrationStart(), h1, h2, competing, ablations, robustness,
-                nullReports);
+        return new StudyReport(assetId, configuration.protocolFingerprint(), configuration.seed(),
+                configuration.primaryDetector(), partitionSpecs, configuration.partitions().forbiddenCalibrationStart(),
+                h1, h2, competing, ablations, robustness, nullReports);
     }
 
     private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
@@ -270,7 +270,7 @@ final class StudyRunner {
             final LocalDate date = barDate(series, index);
             partitions.assertCalibrationDateAllowed(date);
             final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
-            accumulators.get(partitionIndex).record(analysis, index, activeRules);
+            accumulators.get(partitionIndex).record(analysis, index, activeRules, series);
         }
     }
 
@@ -446,8 +446,8 @@ final class StudyRunner {
             this.ruleCounters = activeRules.stream().map(rule -> new RuleCounter(rule.id())).toList();
         }
 
-        private void record(final TopologyAnalysis analysis, final int index,
-                final List<RelationshipRule> activeRules) {
+        private void record(final TopologyAnalysis analysis, final int index, final List<RelationshipRule> activeRules,
+                final BarSeries series) {
             evaluationCount++;
             firstIndex = Math.min(firstIndex, index);
             lastIndex = Math.max(lastIndex, index);
@@ -464,7 +464,7 @@ final class StudyRunner {
                 }
                 confirmationLagSum += lag / candidate.pivots().size();
                 confirmationLagCount++;
-                evaluateRules(candidate, activeRules);
+                evaluateRules(candidate, activeRules, series);
             }
             case FORMING -> {
                 formingCount++;
@@ -513,9 +513,10 @@ final class StudyRunner {
             updateStability(Set.of(label));
         }
 
-        private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules) {
+        private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
+                final BarSeries series) {
             for (int index = 0; index < activeRules.size(); index++) {
-                final RuleEvidence evidence = activeRules.get(index).evaluate(candidate);
+                final RuleEvidence evidence = activeRules.get(index).evaluate(candidate, series);
                 evidenceEvaluationCount++;
                 final RuleCounter counter = ruleCounters.get(index);
                 switch (evidence.state()) {
@@ -682,7 +683,17 @@ final class StudyRunner {
         private boolean hasPartial(final List<ConfirmedPivot> pivots) {
             final int required = segmentLegs[0] + segmentLegs[1] + 1;
             final int maxSuffix = Math.min(pivots.size(), required - 1);
-            for (int suffix = maxSuffix; suffix >= 2; suffix--) {
+            // A two-pivot suffix satisfies one orientation of the leading leg
+            // for every non-flat tail, which would make noMatchRate unreachable
+            // and inflate forming counts. A forming claim requires the whole
+            // leading segment to be observable in the suffix window.
+            final int minSuffix = segmentLegs[0] + 1;
+            if (maxSuffix < minSuffix) {
+                // The leading segment is not observable yet: no honest forming
+                // claim is possible, however well the short tail happens to fit.
+                return false;
+            }
+            for (int suffix = maxSuffix; suffix >= minSuffix; suffix--) {
                 final List<ConfirmedPivot> window = pivots.subList(pivots.size() - suffix, pivots.size());
                 if (matchesPartialWindow(window)) {
                     return true;
@@ -856,12 +867,23 @@ final class StudyRunner {
     }
 
     /** Complete protocol-independent study configuration. */
+    /**
+     * @param primaryDetector stable identifier of the detector factory that
+     *                        produces H1/H2/null results; robustness rows carry
+     *                        their own names
+     */
     record Configuration(Partitions partitions, String protocolFingerprint, long seed, List<Integer> nullBlockLengths,
-            int nullEnsembleSize, List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors) {
+            int nullEnsembleSize, List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors,
+            String primaryDetector) {
+        private static final String DEFAULT_PRIMARY_DETECTOR = "in-kernel-default";
+
         Configuration {
             Objects.requireNonNull(partitions, "partitions");
             if (protocolFingerprint == null || protocolFingerprint.isBlank()) {
                 throw new IllegalArgumentException("protocolFingerprint must not be blank");
+            }
+            if (primaryDetector == null || primaryDetector.isBlank()) {
+                throw new IllegalArgumentException("primaryDetector must not be blank");
             }
             nullBlockLengths = nullBlockLengths == null ? List.of() : List.copyOf(nullBlockLengths);
             if (nullBlockLengths.isEmpty()
@@ -876,7 +898,14 @@ final class StudyRunner {
 
         static Configuration lockedDefault() {
             return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
-                    DetectorRobustnessMatrix.defaults());
+                    DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR);
+        }
+
+        /** Compact overload keeping the in-kernel default detector identity. */
+        static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
+                final List<Integer> nullBlockLengths, final int nullEnsembleSize) {
+            return new Configuration(partitions, protocolFingerprint, seed, nullBlockLengths, nullEnsembleSize,
+                    List.of(), DEFAULT_PRIMARY_DETECTOR);
         }
     }
 }

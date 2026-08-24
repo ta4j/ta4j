@@ -74,7 +74,8 @@ class StudyRunnerTest {
         final StudyRunner.Partitions partitions = StudyRunner.Partitions.lockedDefault();
         final StudyRunner.Configuration configuration = new StudyRunner.Configuration(partitions, "fingerprint", SEED,
                 List.of(2), 1,
-                List.of(new DetectorRobustnessMatrix.DetectorSpec("fractal", () -> SwingDetectors.fractal(2))));
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("fractal", () -> SwingDetectors.fractal(2))),
+                "test-fractal");
         final StudyRunner runner = new StudyRunner(() -> SwingDetectors.fractal(2), grammars(), rules(), configuration);
 
         final String prefix = runner.evaluate("BTC", buildSeries(24), 0, 19).toJson();
@@ -165,6 +166,7 @@ class StudyRunnerTest {
         // Null baselines must cover both preregistered hypothesis grammars.
         assertTrue(report.toJson().contains("\"grammar\":\"MOTIVE_5\""));
         assertTrue(report.toJson().contains("\"grammar\":\"CYCLE_5_3\""));
+        assertTrue(report.toJson().contains("\"primaryDetector\":\"synthetic-primary\""));
     }
 
     @Test
@@ -213,22 +215,37 @@ class StudyRunnerTest {
     }
 
     @Test
-    void competingAlternativeGrammarReportsFormingSuffixes() {
+    void competingAlternativeGrammarSeparatesFormingFromNoMatch() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
-        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+        final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::fallingDetector, grammars(), rules(),
                 configuration);
-        final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
+        final StudyReport fallingReport = fallingRunner.evaluate("BTC", buildFallingSeries(24), 0, 23);
 
-        // The scripted series yields nine alternating pivots, so "5+5" (11
-        // pivots) can never complete but its trailing suffixes keep matching:
-        // forming detection must come from shape, not merely short history.
-        final StudyReport.ModeReport fivePlusFive = report.competingGrammars()
+        // Regression: a two-pivot suffix satisfies one orientation of the
+        // leading leg for every non-flat tail, which made noMatchRate
+        // unreachable and inflated forming counts. A falling zigzag now reports
+        // no-match against "5+5" because it contradicts any directional leading
+        // segment inside the observable window.
+        final StudyReport.ModeReport fivePlusFive = fallingReport.competingGrammars()
                 .stream()
                 .filter(mode -> "competing-5+5".equals(mode.mode()))
                 .findFirst()
                 .orElseThrow();
         assertEquals(0, fivePlusFive.partitions().get(0).completeCount());
-        assertTrue(fivePlusFive.partitions().get(0).formingCount() > 0);
+        assertEquals(0, fivePlusFive.partitions().get(0).formingCount());
+        assertTrue(fivePlusFive.partitions().get(0).noMatchCount() > 0);
+
+        // A directional run whose junction stays the window extreme forms.
+        final StudyRunner trendingRunner = new StudyRunner(StudyRunnerTest::trendDetector, grammars(), rules(),
+                configuration);
+        final StudyReport trendingReport = trendingRunner.evaluate("BTC", buildTrendingSeries(24), 0, 23);
+        final StudyReport.ModeReport threePlusThree = trendingReport.competingGrammars()
+                .stream()
+                .filter(mode -> "competing-3+3".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0, threePlusThree.partitions().get(0).completeCount());
+        assertTrue(threePlusThree.partitions().get(0).formingCount() > 0);
     }
 
     @Test
@@ -293,7 +310,8 @@ class StudyRunnerTest {
             final int ensembleSize) {
         return new StudyRunner.Configuration(partitions,
                 "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2), ensembleSize,
-                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", StudyRunnerTest::detectorFactory)));
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", StudyRunnerTest::detectorFactory)),
+                "synthetic-primary");
     }
 
     private static SwingDetector detectorFactory() {
@@ -367,5 +385,146 @@ class StudyRunnerTest {
         case 17 -> 170;
         default -> 100 + index;
         };
+    }
+
+    @Test
+    void bootstrapMemberShapeTravelsWithSampledReturns() {
+        final BarSeries source = buildWickSeries();
+        final List<BarSeries> members = BlockBootstrapNulls.generate(source, 3, 1, 7L);
+        final BarSeries member = members.get(0);
+
+        // Regression: intrabar shape used to stay in original chronology, so
+        // every member inherited the real series' wick sequence. Each member
+        // bar must carry the OHLC ratios of the source bar whose close-to-close
+        // return was drawn for that position.
+        final double[] sourceReturns = new double[source.getBarCount() - 1];
+        for (int offset = 1; offset < source.getBarCount(); offset++) {
+            sourceReturns[offset - 1] = Math.log(source.getBar(offset).getClosePrice().doubleValue()
+                    / source.getBar(offset - 1).getClosePrice().doubleValue());
+        }
+        boolean sawRelocatedShape = false;
+        for (int offset = 1; offset < member.getBarCount(); offset++) {
+            final double drawnReturn = Math.log(member.getBar(offset).getClosePrice().doubleValue()
+                    / member.getBar(offset - 1).getClosePrice().doubleValue());
+            int shapePosition = -1;
+            for (int candidate = 0; candidate < sourceReturns.length; candidate++) {
+                if (Math.abs(sourceReturns[candidate] - drawnReturn) < 1e-12) {
+                    shapePosition = candidate + 1;
+                    break;
+                }
+            }
+            assertTrue(shapePosition >= 0, "member return not drawn from the observed tape at offset " + offset);
+            final double expectedRatio = source.getBar(shapePosition).getHighPrice().doubleValue()
+                    / source.getBar(shapePosition).getClosePrice().doubleValue();
+            final double actualRatio = member.getBar(offset).getHighPrice().doubleValue()
+                    / member.getBar(offset).getClosePrice().doubleValue();
+            assertEquals(expectedRatio, actualRatio, 1e-9, "wick ratio not traveling with sampled return");
+            final double chronologicalRatio = source.getBar(offset).getHighPrice().doubleValue()
+                    / source.getBar(offset).getClosePrice().doubleValue();
+            if (Math.abs(chronologicalRatio - actualRatio) > 1e-9) {
+                sawRelocatedShape = true;
+            }
+        }
+        assertTrue(sawRelocatedShape, "sampling never relocated a wick shape; test lost discriminating power");
+    }
+
+    /** Detector scripting six alternating pivots whose junction stays extreme. */
+    private static SwingDetector trendDetector() {
+        return (series, index, degree) -> {
+            final int[] pivotIndices = { 1, 3, 5, 7, 9, 11 };
+            final List<SwingPivot> pivots = new ArrayList<>();
+            for (final int pivotIndex : pivotIndices) {
+                if (pivotIndex <= index && pivotIndex < series.getBarCount()) {
+                    final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+                    pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
+                }
+            }
+            return new SwingDetectorResult(pivots, List.of());
+        };
+    }
+
+    /** Detector scripting six pivots whose peaks strictly fall. */
+    private static SwingDetector fallingDetector() {
+        return (series, index, degree) -> {
+            final int[] pivotIndices = { 1, 3, 5, 7, 9, 11 };
+            final List<SwingPivot> pivots = new ArrayList<>();
+            for (final int pivotIndex : pivotIndices) {
+                if (pivotIndex <= index && pivotIndex < series.getBarCount()) {
+                    final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+                    pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
+                }
+            }
+            return new SwingDetectorResult(pivots, List.of());
+        };
+    }
+
+    /**
+     * Series whose per-bar wick ratios and close-to-close returns are all distinct.
+     */
+    private static BarSeries buildWickSeries() {
+        final double[] closes = { 100, 101.5, 99.2, 104.1, 102.3, 107.8, 105.2, 110.9, 108.4, 113.6, 111.1, 116.9 };
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-wicks").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < closes.length; index++) {
+            final double close = closes[index];
+            final double high = close * (1 + (index % 5 + 1) / 50.0);
+            final double low = close * (1 - (index % 3 + 1) / 60.0);
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(low + (high - low) / 3)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries buildFallingSeries(final int count) {
+        final double[] prices = { 130, 100, 128, 90, 126, 85, 124, 75, 122, 70, 120, 60, 118, 58, 116, 56, 114, 54, 112,
+                52, 110, 50, 108, 48 };
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-falling").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < count; index++) {
+            final double close = prices[index];
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(Math.max(0.01d, close - 1))
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries buildTrendingSeries(final int count) {
+        final double[] prices = { 90, 100, 95, 108, 98, 102, 96, 115, 104, 110, 101, 112, 106, 118, 109, 121, 112, 124,
+                115, 127, 118, 130, 121, 133 };
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-trending").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < count; index++) {
+            final double close = prices[index];
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(Math.max(0.01d, close - 1))
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
     }
 }

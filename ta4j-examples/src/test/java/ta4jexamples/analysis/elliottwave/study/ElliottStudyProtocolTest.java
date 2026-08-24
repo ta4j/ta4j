@@ -19,9 +19,16 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 class ElliottStudyProtocolTest {
     private static final String PINNED_PROTOCOL_FINGERPRINT = "054589ddc3566e72ac8ed8b06b31cba5f94de6d5bc76222d8f703df6bad6bf06";
 
+    /**
+     * The protocol is immutable and its dataset digests are verified on load; parse
+     * and hash the pinned resources once for the whole class instead of repeating
+     * the heaviest fixture I/O in every test.
+     */
+    private static final ElliottStudyProtocol PROTOCOL = ElliottStudyProtocol.load();
+
     @Test
     void loadsFrozenProtocolAndPinnedFingerprint() {
-        ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        ElliottStudyProtocol protocol = PROTOCOL;
 
         assertEquals(1, protocol.schemaVersion());
         assertEquals("cf525-elliott-hypothesis-study", protocol.protocolId());
@@ -32,7 +39,7 @@ class ElliottStudyProtocolTest {
 
     @Test
     void exposesDistinctHypotheses() {
-        ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        ElliottStudyProtocol protocol = PROTOCOL;
 
         assertEquals(2, protocol.hypotheses().size());
         assertNotSame(protocol.h1(), protocol.h2());
@@ -44,7 +51,7 @@ class ElliottStudyProtocolTest {
 
     @Test
     void enforcesCalibrationEmbargo() {
-        ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        ElliottStudyProtocol protocol = PROTOCOL;
 
         assertTrue(protocol.isCalibrationAllowed(LocalDate.parse("2023-12-31")));
         assertFalse(protocol.isCalibrationAllowed(LocalDate.parse("2024-01-01")));
@@ -59,7 +66,7 @@ class ElliottStudyProtocolTest {
 
     @Test
     void verifiesDatasetIntegrityDuringLoad() {
-        ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        ElliottStudyProtocol protocol = PROTOCOL;
 
         assertEquals(2, protocol.datasets().size());
         for (ElliottStudyProtocol.DatasetSpec dataset : protocol.datasets()) {
@@ -76,7 +83,7 @@ class ElliottStudyProtocolTest {
 
     @Test
     void derivesDistinctDeterministicNullSeeds() {
-        ElliottStudyProtocol.NullSpec nullSpec = ElliottStudyProtocol.load().nullEnsemble();
+        ElliottStudyProtocol.NullSpec nullSpec = PROTOCOL.nullEnsemble();
 
         long expectedSeed0 = 5_252_026L * 1_000_003L;
         assertEquals(expectedSeed0, nullSpec.seedFor(0));
@@ -87,7 +94,7 @@ class ElliottStudyProtocolTest {
 
     @Test
     void resolvesEveryConfiguredDetectorFactory() {
-        ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
+        ElliottStudyProtocol protocol = PROTOCOL;
 
         for (ElliottStudyProtocol.DetectorConfiguration configuration : protocol.detectorConfigurations()) {
             SwingDetector detector;

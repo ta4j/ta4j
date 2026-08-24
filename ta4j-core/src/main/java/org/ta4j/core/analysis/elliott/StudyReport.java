@@ -34,6 +34,7 @@ final class StudyReport {
     private final String assetId;
     private final String protocolFingerprint;
     private final long seed;
+    private final String primaryDetector;
     private final List<PartitionSpec> partitions;
     private final LocalDate forbiddenCalibrationStart;
     private final HypothesisReport h1;
@@ -43,13 +44,14 @@ final class StudyReport {
     private final RobustnessReport robustness;
     private final List<NullReport> nulls;
 
-    StudyReport(final String assetId, final String protocolFingerprint, final long seed,
+    StudyReport(final String assetId, final String protocolFingerprint, final long seed, final String primaryDetector,
             final List<PartitionSpec> partitions, final LocalDate forbiddenCalibrationStart, final HypothesisReport h1,
             final HypothesisReport h2, final List<ModeReport> competingGrammars, final List<ModeReport> ablations,
             final RobustnessReport robustness, final List<NullReport> nulls) {
         this.assetId = requireText(assetId, "assetId");
         this.protocolFingerprint = requireText(protocolFingerprint, "protocolFingerprint");
         this.seed = seed;
+        this.primaryDetector = requireText(primaryDetector, "primaryDetector");
         this.partitions = immutable(partitions, "partitions");
         this.forbiddenCalibrationStart = Objects.requireNonNull(forbiddenCalibrationStart, "forbiddenCalibrationStart");
         this.h1 = Objects.requireNonNull(h1, "h1");
@@ -70,6 +72,14 @@ final class StudyReport {
 
     long seed() {
         return seed;
+    }
+
+    /**
+     * Stable identifier of the primary detector factory that produced H1/H2/null
+     * results.
+     */
+    String primaryDetector() {
+        return primaryDetector;
     }
 
     List<PartitionSpec> partitions() {
@@ -115,6 +125,7 @@ final class StudyReport {
         root.addProperty("assetId", assetId);
         root.addProperty("protocolFingerprint", protocolFingerprint);
         root.addProperty("seed", seed);
+        root.addProperty("primaryDetector", primaryDetector);
         final JsonArray partitionsJson = new JsonArray();
         for (final PartitionSpec partition : partitions) {
             final JsonObject partitionJson = new JsonObject();
