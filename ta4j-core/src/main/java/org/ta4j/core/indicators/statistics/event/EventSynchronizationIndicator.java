@@ -376,6 +376,12 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             // section: a concurrent evaluation for another index may otherwise
             // reset or evict the caches between the two slices, yielding predicted
             // and reference windows taken from different cache states.
+            // Reject an oversized window before either cache copy allocates:
+            // counting is two binary searches, while the slices would each
+            // materialize a full event array that the cell-budget check would
+            // otherwise only reject after the fact.
+            EventSynchronizationSupport.validateMatcherCapacity(predictedEvents.countBetween(windowStart, index),
+                    referenceEvents.countBetween(windowStart, index));
             predictedWindowEvents = predictedEvents.slice(windowStart, index);
             referenceWindowEvents = referenceEvents.slice(windowStart, index);
         }
@@ -861,6 +867,17 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             int first = EventSynchronizationSupport.lowerBound(events, 0, size, from);
             int end = EventSynchronizationSupport.upperBound(events, 0, size, to);
             return Arrays.copyOfRange(events, first, end);
+        }
+
+        /**
+         * @param from inclusive absolute index
+         * @param to   inclusive absolute index
+         * @return the number of cached event indexes inside {@code [from, to]}
+         */
+        synchronized int countBetween(int from, int to) {
+            int first = EventSynchronizationSupport.lowerBound(events, 0, size, from);
+            int end = EventSynchronizationSupport.upperBound(events, 0, size, to);
+            return end - first;
         }
     }
 }

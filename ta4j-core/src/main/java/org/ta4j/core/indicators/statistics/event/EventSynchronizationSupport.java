@@ -331,7 +331,7 @@ final class EventSynchronizationSupport {
      * @throws IllegalArgumentException if the alignment matrix would exceed the
      *                                  matcher capacity
      */
-    private static void validateMatcherCapacity(int predictedCount, int referenceCount) {
+    static void validateMatcherCapacity(int predictedCount, int referenceCount) {
         long cells = (long) (predictedCount + 1) * (referenceCount + 1);
         if (cells > MAX_MATCHING_CELLS) {
             throw new IllegalArgumentException("event counts " + predictedCount + " x " + referenceCount
