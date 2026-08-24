@@ -138,11 +138,22 @@ final class TopologyAnalyzer {
         // allowed length so a fresh prefix can form even when the retained
         // history already exceeds the grammar length.
         final int maxSuffixPivots = Math.min(window.size(), grammar.requiredPivots() - 1);
-        for (final WaveDirection direction : WaveDirection.values()) {
-            for (int suffix = maxSuffixPivots; suffix >= 2; suffix--) {
-                if (matchesPartialShape(grammar, direction, window.subList(window.size() - suffix, window.size()))) {
-                    return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in " + direction
-                            + " orientation over the " + suffix + " newest pivots");
+        // A single leg fits some orientation of every kernel grammar, so
+        // reporting FORMING from a two-pivot suffix would fold nearly every
+        // genuine non-match into forming and drive the null no-match rate to
+        // zero. Require the leading two legs pinned -- three pivots -- before
+        // claiming a partial pattern; grammars that complete on three pivots
+        // have no meaningful partial state left and surface only complete or
+        // no-match outcomes.
+        final int minSuffixPivots = Math.min(3, grammar.requiredPivots());
+        if (minSuffixPivots <= maxSuffixPivots) {
+            for (final WaveDirection direction : WaveDirection.values()) {
+                for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
+                    if (matchesPartialShape(grammar, direction,
+                            window.subList(window.size() - suffix, window.size()))) {
+                        return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in "
+                                + direction + " orientation over the " + suffix + " newest pivots");
+                    }
                 }
             }
         }

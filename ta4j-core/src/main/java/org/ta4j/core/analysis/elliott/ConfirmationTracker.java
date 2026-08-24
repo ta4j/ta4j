@@ -128,27 +128,50 @@ final class ConfirmationTracker {
             collapsed.values().removeIf(dominator -> dominator.equals(removed.pivotIndex()));
             changed = true;
         }
+        // First settle revisions of already-tracked pivots so dominance is
+        // judged against today's prices; then admit suppressed or fresh
+        // reports against those settled prices.
         for (final SwingPivot pivot : reported) {
             final ConfirmedPivot existing = known.get(pivot.index());
-            if (existing != null) {
-                if (existing.type() == pivot.type() && existing.price().compareTo(pivot.price()) == 0) {
-                    continue;
-                }
-                if (!order.isEmpty() && order.get(order.size() - 1).pivotIndex() == existing.pivotIndex()) {
-                    known.put(pivot.index(), new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type()));
-                    order.set(order.size() - 1, known.get(pivot.index()));
-                    changed = true;
-                    continue;
-                }
-                throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
-            }
-            final Integer dominator = collapsed.get(pivot.index());
-            if (dominator != null && known.containsKey(dominator)) {
+            if (existing == null) {
                 continue;
+            }
+            if (existing.type() == pivot.type() && existing.price().compareTo(pivot.price()) == 0) {
+                continue;
+            }
+            if (!order.isEmpty() && order.get(order.size() - 1).pivotIndex() == existing.pivotIndex()) {
+                final ConfirmedPivot revised = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
+                known.put(pivot.index(), revised);
+                order.set(order.size() - 1, revised);
+                changed = true;
+                continue;
+            }
+            throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
+        }
+        for (final SwingPivot pivot : reported) {
+            if (known.containsKey(pivot.index())) {
+                continue;
+            }
+            final Integer dominatorIndex = collapsed.get(pivot.index());
+            if (dominatorIndex != null) {
+                final ConfirmedPivot dominator = known.get(dominatorIndex);
+                // Suppression survives only while the dominator still
+                // dominates today: a revision can hand dominance back, and a
+                // retyped dominator never dominated this type at all.
+                if (dominator != null && dominates(dominator, pivot)) {
+                    continue;
+                }
             }
             final ConfirmedPivot confirmed = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
             known.put(pivot.index(), confirmed);
-            order.add(confirmed);
+            // A reconsidered dominated pivot can be older than pivots already
+            // tracked; keep the order index-ascending so snapshot collapse
+            // sees the same chronological shape the detector reports.
+            int at = order.size();
+            while (at > 0 && order.get(at - 1).pivotIndex() > pivot.index()) {
+                at--;
+            }
+            order.add(at, confirmed);
             changed = true;
         }
         if (normalizeOrder(order, known, collapsed)) {
@@ -209,6 +232,16 @@ final class ConfirmationTracker {
         order.clear();
         order.addAll(normalized);
         return true;
+    }
+
+    private static boolean dominates(final ConfirmedPivot dominator, final SwingPivot dominated) {
+        if (dominator.type() != dominated.type()) {
+            return false;
+        }
+        return switch (dominator.type()) {
+        case HIGH -> dominated.price().compareTo(dominator.price()) < 0;
+        case LOW -> dominated.price().compareTo(dominator.price()) > 0;
+        };
     }
 
     private boolean containsIndex(final List<SwingPivot> reported, final int pivotIndex) {

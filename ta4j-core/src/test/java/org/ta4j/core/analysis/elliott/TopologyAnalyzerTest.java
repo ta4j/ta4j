@@ -58,15 +58,20 @@ class TopologyAnalyzerTest {
     }
 
     @Test
-    void reportsFormingTrailingSuffixWhenFullWindowDoesNotFit() {
-        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
-                pivots(10, 20, 15, 16, 17, 18));
+    void refusesFormingClaimsFromASingleDecisiveLeg() {
+        final TopologyAnalyzer analyzer = new TopologyAnalyzer();
 
-        // The full six-pivot window breaks the motive shape mid-sequence, but
-        // the trailing suffix (rising final leg) still matches a forming
-        // bullish motive, so the analyzer reports FORMING without candidates.
-        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
-        assertThat(analysis.candidates()).isEmpty();
+        // A lone rising trailing leg fits some orientation of every kernel
+        // grammar, so a two-pivot suffix must not be reported as FORMING;
+        // otherwise nearly every genuine non-match folds into forming.
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, pivots(10, 20, 15, 16, 17, 18)).status())
+                .isEqualTo(TopologyStatus.NO_MATCH);
+        // A corrective two-pivot window has only one uninformative leg;
+        // its three-pivot state pins both legs and may form legitimately.
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 20)).status())
+                .isEqualTo(TopologyStatus.NO_MATCH);
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 20, 15)).status())
+                .isEqualTo(TopologyStatus.FORMING);
     }
 
     @Test
@@ -132,8 +137,9 @@ class TopologyAnalyzerTest {
         final TopologyAnalysis afterConfirmation = analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 7);
 
         assertThat(beforeAnySecondPivot.status()).isEqualTo(TopologyStatus.INSUFFICIENT_HISTORY);
-        assertThat(midFormation.status()).isEqualTo(TopologyStatus.FORMING);
-        assertThat(midFormation.direction()).isEqualTo(WaveDirection.BULLISH);
+        // Two visible pivots pin a single leg, which fits some orientation
+        // of every grammar -- too weak to claim FORMING.
+        assertThat(midFormation.status()).isEqualTo(TopologyStatus.NO_MATCH);
         assertThat(afterConfirmation.status()).isEqualTo(TopologyStatus.FORMING);
         assertThat(afterConfirmation.direction()).isEqualTo(WaveDirection.BULLISH);
     }

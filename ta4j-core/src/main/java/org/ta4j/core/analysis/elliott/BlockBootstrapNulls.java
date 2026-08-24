@@ -114,9 +114,9 @@ final class BlockBootstrapNulls {
                     : source.getBar(source.getBeginIndex() + shapePositions[offset]);
             final Num close = closes[offset];
             final Num sourceClose = shapeBar.getClosePrice();
-            final Num open = scaled(shapeBar.getOpenPrice(), sourceClose, close, numFactory);
-            Num high = scaled(shapeBar.getHighPrice(), sourceClose, close, numFactory);
-            Num low = scaled(shapeBar.getLowPrice(), sourceClose, close, numFactory);
+            final Num open = scaled(shapeBar.getOpenPrice(), sourceClose, close);
+            Num high = scaled(shapeBar.getHighPrice(), sourceClose, close);
+            Num low = scaled(shapeBar.getLowPrice(), sourceClose, close);
             if (high == null || high.isLessThan(close)) {
                 high = close;
             }
@@ -132,7 +132,7 @@ final class BlockBootstrapNulls {
         return result;
     }
 
-    private static Num scaled(final Num value, final Num sourceClose, final Num close, final NumFactory numFactory) {
+    private static Num scaled(final Num value, final Num sourceClose, final Num close) {
         if (value == null || !sourceClose.isPositive()) {
             return close;
         }

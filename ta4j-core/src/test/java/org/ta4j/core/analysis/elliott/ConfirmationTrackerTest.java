@@ -163,6 +163,27 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void revisedDominatorHandsDominanceBackToCollapsedPivot() {
+        // HIGH@1=10 collapses behind HIGH@3=12; the detector then revises the
+        // still-trailing pivot 3 down to 9 while continuing to report pivot 1.
+        // Suppression must be judged against today's prices: pivot 1 is the
+        // more extreme high again and re-enters the history.
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of(new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.HIGH)));
+        script.put(3, List.of(new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.HIGH),
+                new SwingPivot(3, DoubleNum.valueOf(12), SwingPivotType.HIGH)));
+        script.put(4, List.of(new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.HIGH),
+                new SwingPivot(3, DoubleNum.valueOf(9), SwingPivotType.HIGH)));
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script))
+                .observeReplay(seriesWithBars(5));
+
+        assertThat(replay.at(3)).extracting(ConfirmedPivot::pivotIndex).containsExactly(3);
+        assertThat(replay.at(4)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1);
+    }
+
+    @Test
     void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 2; asOf++) {
