@@ -461,6 +461,14 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         }
         std::vector<double> quantiles = copy_doubles(environment, quantiles_array, quantile_count, "quantiles");
         std::vector<int> stable = copy_ints(environment, stable_array, decision_count, "stable");
+        std::vector<int> stable_indices;
+        stable_indices.reserve(static_cast<std::size_t>(decision_count));
+        for (int decision = 0; decision < decision_count; ++decision) {
+            if (stable[decision] != 0) {
+                stable_indices.push_back(decision);
+            }
+        }
+        const std::size_t stable_count = stable_indices.size();
         std::vector<double> prices = copy_doubles(environment, prices_array, decision_count, "prices");
         std::vector<double> means = copy_doubles(environment, means_array, decision_count, "means");
         std::vector<double> drifts = copy_doubles(environment, drifts_array, decision_count, "drifts");
@@ -483,13 +491,28 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
                 pinned_payload[4U + static_cast<std::size_t>(decision) * row_length] = 1.0;
             }
         }
+        if (stable_indices.empty()) {
+            // No decision qualifies for simulation; return the marked payload
+            // without touching the device or reserving sample memory.
+            pinned_payload[1] = 0.0;
+            pinned_payload[2] = 0.0;
+            pinned_payload[3] = 0.0;
+            pinned_payload[0] = std::chrono::duration<double, std::micro>(
+                    std::chrono::steady_clock::now() - total_start).count();
+            jdoubleArray empty_result = environment->NewDoubleArray(static_cast<jsize>(payload_size));
+            if (empty_result == nullptr) {
+                throw std::runtime_error("unable to allocate JNI result array");
+            }
+            environment->SetDoubleArrayRegion(empty_result, 0, static_cast<jsize>(payload_size), pinned_payload);
+            return empty_result;
+        }
         int* pinned_status = nullptr;
         check_cuda(cudaMallocHost(&pinned_status, static_cast<std::size_t>(decision_count) * sizeof(int)),
                    "pinned status");
         std::unique_ptr<int, decltype(&cudaFreeHost)> pinned_status_guard(pinned_status, &cudaFreeHost);
 
         int path_blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-        device_buffer<double> device_samples(sample_stride * static_cast<std::size_t>(decision_count));
+        device_buffer<double> device_samples(sample_stride * stable_count);
         device_buffer<double> device_history(history_count);
         device_buffer<double> device_quantiles(static_cast<std::size_t>(quantile_count));
         device_buffer<int> device_status(static_cast<std::size_t>(decision_count));
@@ -527,11 +550,9 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         check_cuda(cudaEventRecord(transfer_finish.get(), stream.get()), "transfer finish event");
 
         check_cuda(cudaEventRecord(kernel_start.get(), stream.get()), "kernel start event");
-        for (int decision = 0; decision < decision_count; ++decision) {
-            if (stable[decision] == 0) {
-                continue;
-            }
-            std::size_t sample_offset = sample_stride * static_cast<std::size_t>(decision);
+        for (std::size_t index = 0; index < stable_count; ++index) {
+            const int decision = stable_indices[index];
+            std::size_t sample_offset = sample_stride * index;
             path_kernel<<<path_blocks, THREADS_PER_BLOCK, 0, stream.get()>>>(
                     prices[decision], means[decision], drifts[decision], variances[decision],
                     device_history.get() + static_cast<std::size_t>(decision) * static_cast<std::size_t>(lookback),
@@ -543,11 +564,9 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniCudaNativeBridge_nativeEval
         check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
 
         check_cuda(cudaEventRecord(reduction_start.get(), stream.get()), "reduction start event");
-        for (int decision = 0; decision < decision_count; ++decision) {
-            if (stable[decision] == 0) {
-                continue;
-            }
-            std::size_t sample_offset = sample_stride * static_cast<std::size_t>(decision);
+        for (std::size_t index = 0; index < stable_count; ++index) {
+            const int decision = stable_indices[index];
+            std::size_t sample_offset = sample_stride * index;
             double* summary_row = device_summary.get()
                     + static_cast<std::size_t>(decision) * (3U + static_cast<std::size_t>(quantile_count));
             int* status_row = device_status.get() + decision;
