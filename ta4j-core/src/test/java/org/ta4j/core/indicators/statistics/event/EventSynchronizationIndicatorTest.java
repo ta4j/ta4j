@@ -1013,7 +1013,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         // legally hold up to the 8,000,000-cell cap minus one events. The cache
         // growth must clamp to that cap instead of throwing at the previous
         // power-of-two doubling ceiling of 4,194,304 entries.
-        int endIndex = 5_000_000;
+        // Exactly the legal maximum for a one-sided window:
+        // MAX_MATCHING_CELLS - 1 events need (count + 1) * 1 = 8,000,000 cells.
+        int endIndex = 7_999_999;
         BarSeries series = series(1);
         BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
             @Override
@@ -1089,4 +1091,88 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertTrue(reads.get() > 2);
     }
 
+    @Test
+    public void rawSignalSyncAnchorsSourceWarmUpAtTheRetainedHead() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+                .withMaxBarCount(8)
+                .build();
+        // The raw signal overload must anchor source instability at
+        // beginIndex + unstableBars: on this rolling series (retained head 4,
+        // unstable 2) nothing below index 6 may be read.
+        AtomicInteger warmUpReads = new AtomicInteger();
+        EventSignal strict = new EventSignal() {
+            @Override
+            public boolean isEvent(int index) {
+                if (index < rolling.getBeginIndex() + 2) {
+                    warmUpReads.incrementAndGet();
+                    throw new IllegalStateException("read below the retained-head warm-up");
+                }
+                return false;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return rolling;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 2;
+            }
+        };
+
+        // Pre-fix this reads bars 4 and 5 inside the sources' warm-up and the
+        // strict signal throws; the anchored overload never touches them.
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(strict, strict, 0, 11, 0, 0);
+        assertEquals(0, warmUpReads.get());
+        assertFalse(result.predictedCount() > 0 || result.referenceCount() > 0);
+    }
+
+    @Test
+    public void exactCapOneSidedWindowFailsAtTheCacheGuard() {
+        // Storing MAX_MATCHING_CELLS events in one stream would need
+        // 8,000,001 alignment cells; the cache guard must reject the append
+        // itself rather than letting the matcher's own bound fire later.
+        int endIndex = 8_000_000;
+        BarSeries series = series(1);
+        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return endIndex;
+            }
+        };
+        Indicator<Boolean> predictedEverywhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        Indicator<Boolean> referenceNowhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return false;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        EventSynchronizationIndicator indicator = indicator(predictedEverywhere, referenceNowhere, endIndex, 0, 0);
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> indicator.getResult(endIndex));
+        assertTrue(thrown.getMessage().startsWith("event count exceeds"));
+    }
 }

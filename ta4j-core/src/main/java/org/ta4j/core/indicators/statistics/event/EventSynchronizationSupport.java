@@ -84,8 +84,14 @@ final class EventSynchronizationSupport {
 
         int availableStart = series.getBeginIndex();
         int availableEnd = series.getEndIndex();
-        int effectiveStart = Math.max(startIndex, Math.max(availableStart,
-                Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars())));
+        // Source instability counts from the retained head, not from absolute
+        // zero: on a rolling series the first trustworthy bar sits
+        // beginIndex + unstableBars bars in, and long arithmetic guards the
+        // far-end addition before the int clamp.
+        long anchoredStart = (long) availableStart
+                + Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
+        int effectiveStart = (int) Math.min(Integer.MAX_VALUE,
+                Math.max(Math.max(startIndex, availableStart), anchoredStart));
         int effectiveEnd = Math.min(endIndex, availableEnd);
         if (effectiveStart > effectiveEnd) {
             // Canonical empty inclusive range: start == end + 1.
@@ -267,16 +273,22 @@ final class EventSynchronizationSupport {
         int size = 0;
         for (int i = startIndex;; i++) {
             if (signal.isEvent(i)) {
+
+                // Enforce the reserved-cell budget on every append, not only
+                // when resizing: after the final clamped growth the array still
+                // has room for one more element, which would otherwise slip
+                // past the cap minus one contract. A one-sided alignment needs
+                // count + 1 cells, so a single stream must stay at or below the
+                // cap minus one events.
+                if ((long) size + 2 > MAX_MATCHING_CELLS) {
+                    throw new IllegalArgumentException(
+                            "event count exceeds the baseline matcher capacity of "
+                                    + (MAX_MATCHING_CELLS / 1_000_000L)
+                                    + " million cells (~128 MB of alignment arrays)");
+                }
                 if (size == events.length) {
-                    if ((long) size + 2 > MAX_MATCHING_CELLS) {
-                        // A one-sided alignment needs count + 1 cells, so a
-                        // single stream must stay at or below the cap minus one events;
-                        // fail only past that, and clamp growth to the cap
-                        // because doubling would overshoot it.
-                        throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                                + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment arrays)");
-                    }
-                    events = Arrays.copyOf(events, (int) Math.min((long) events.length * 2, MAX_MATCHING_CELLS));
+                    events = Arrays.copyOf(events,
+                            (int) Math.min((long) events.length * 2, MAX_MATCHING_CELLS));
                 }
                 events[size++] = i;
             }
