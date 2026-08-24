@@ -17,7 +17,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.analysis.elliott.ConfirmedPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
@@ -129,7 +132,9 @@ class StudyRunnerTest {
         // Robustness serialization must carry detector results, not an empty
         // array (regression: detectors were dropped from the JSON payload).
         assertTrue(report.toJson().contains("\"name\":\"synthetic\""));
-        assertEquals(List.of(2), report.nulls().stream().map(StudyReport.NullReport::blockLength).toList());
+        assertEquals(List.of("MOTIVE_5", "CYCLE_5_3"),
+                report.nulls().stream().map(StudyReport.NullReport::grammar).toList());
+        assertEquals(List.of(2, 2), report.nulls().stream().map(StudyReport.NullReport::blockLength).toList());
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
     }
@@ -156,9 +161,10 @@ class StudyRunnerTest {
                 .stream()
                 .flatMap(mode -> mode.partitions().stream())
                 .anyMatch(p -> p.evaluationCount() > 0));
-        // Hard structural rules pass without soft scores; serialized bounds stay
-        // finite.
         assertFalse(report.toJson().contains("Infinity"));
+        // Null baselines must cover both preregistered hypothesis grammars.
+        assertTrue(report.toJson().contains("\"grammar\":\"MOTIVE_5\""));
+        assertTrue(report.toJson().contains("\"grammar\":\"CYCLE_5_3\""));
     }
 
     @Test
@@ -189,6 +195,31 @@ class StudyRunnerTest {
     void robustnessDefaultsMatchTheFrozenProtocolMatrix() {
         assertEquals(List.of("fractal-w3", "fractal-w5", "prominence-default", "slope-change-w5"),
                 DetectorRobustnessMatrix.defaults().stream().map(DetectorRobustnessMatrix.DetectorSpec::name).toList());
+    }
+
+    @Test
+    void competingGrammarsAreSeparatedByJunctionExtremity() {
+        // Regression: with odd first segments, 3+3, 5+5 and 7+3 reduced to
+        // identical strict alternation over 11 pivots. The junction pivot must
+        // now be the window extreme on the leading trend side.
+        final List<ConfirmedPivot> fiveFiveShape = alternatingWindow(
+                new double[] { 10, 12, 11, 14, 12, 16, 13, 15, 13.5d, 15.5d, 14 });
+        assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(fiveFiveShape).size());
+        assertTrue(StudyRunner.AlternativeGrammar.of("7+3").matches(fiveFiveShape).isEmpty());
+
+        final List<ConfirmedPivot> sevenThreeShape = alternatingWindow(
+                new double[] { 10, 12, 11, 14, 12, 15, 13, 17, 14, 16, 15 });
+        assertEquals(1, StudyRunner.AlternativeGrammar.of("7+3").matches(sevenThreeShape).size());
+        assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(sevenThreeShape).isEmpty());
+    }
+
+    private static List<ConfirmedPivot> alternatingWindow(final double[] prices) {
+        final List<ConfirmedPivot> pivots = new ArrayList<>();
+        for (int i = 0; i < prices.length; i++) {
+            pivots.add(new ConfirmedPivot(i, i + 1, DoubleNum.valueOf(prices[i]),
+                    i % 2 == 0 ? SwingPivotType.LOW : SwingPivotType.HIGH));
+        }
+        return pivots;
     }
 
     private static List<TopologyGrammar> grammars() {

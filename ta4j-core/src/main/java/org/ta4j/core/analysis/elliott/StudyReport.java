@@ -254,6 +254,7 @@ final class StudyReport {
         final JsonArray json = new JsonArray();
         for (final NullReport nullReport : nulls) {
             final JsonObject nullJson = new JsonObject();
+            nullJson.addProperty("grammar", nullReport.grammar());
             nullJson.addProperty("blockLength", nullReport.blockLength());
             nullJson.addProperty("ensembleSize", nullReport.ensembleSize());
             nullJson.addProperty("seed", nullReport.seed());
@@ -371,8 +372,11 @@ final class StudyReport {
     }
 
     /** Immutable null-ensemble report for one stationary block length. */
-    record NullReport(int blockLength, int ensembleSize, long seed, List<PartitionMetrics> partitions) {
+    record NullReport(String grammar, int blockLength, int ensembleSize, long seed, List<PartitionMetrics> partitions) {
         NullReport {
+            if (grammar == null || grammar.isBlank()) {
+                throw new IllegalArgumentException("null report grammar must not be blank");
+            }
             if (blockLength <= 0 || ensembleSize <= 0) {
                 throw new IllegalArgumentException("null parameters must be positive");
             }

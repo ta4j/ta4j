@@ -8,7 +8,9 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -178,23 +180,35 @@ final class StudyRunner {
         final BarSeries causalSource = hasEvaluationWindow ? source.getSubSeries(sourceBegin, end + 1) : source;
         final int causalStart = hasEvaluationWindow ? start - sourceBegin : 0;
         final int causalEnd = hasEvaluationWindow ? end - sourceBegin : -1;
+        // Both preregistered hypotheses need a null baseline: H1 claims about
+        // MOTIVE_5 and the frozen H2 claim about complete CYCLE_5_3 cycles.
+        final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
         for (final int blockLength : configuration.nullBlockLengths()) {
-            final List<MetricAccumulator> totals = newAccumulators(List.of());
+            final Map<TopologyGrammar, List<MetricAccumulator>> totals = new LinkedHashMap<>();
+            for (final TopologyGrammar grammar : nullGrammars) {
+                totals.put(grammar, newAccumulators(List.of()));
+            }
             final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(causalSource, blockLength,
                     configuration.nullEnsembleSize(), configuration.seed());
             for (final BarSeries member : nullSeries) {
-                // Fresh accumulators per member: label-stability transitions
-                // must never leak across independent ensemble members.
-                final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                // One causal replay per member; fresh accumulators per member
+                // and grammar so label-stability transitions never leak across
+                // independent ensemble members.
                 final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                recordTopology(member, causalStart, causalEnd, configuration.partitions(), replay,
-                        TopologyGrammar.MOTIVE_5, List.of(), memberAccumulators);
-                for (int index = 0; index < totals.size(); index++) {
-                    totals.get(index).mergeFrom(memberAccumulators.get(index));
+                for (final TopologyGrammar grammar : nullGrammars) {
+                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                    recordTopology(member, causalStart, causalEnd, configuration.partitions(), replay, grammar,
+                            List.of(), memberAccumulators);
+                    final List<MetricAccumulator> grammarTotals = totals.get(grammar);
+                    for (int index = 0; index < grammarTotals.size(); index++) {
+                        grammarTotals.get(index).mergeFrom(memberAccumulators.get(index));
+                    }
                 }
             }
-            reports.add(new StudyReport.NullReport(blockLength, configuration.nullEnsembleSize(), configuration.seed(),
-                    metrics(totals, configuration.partitions())));
+            for (final TopologyGrammar grammar : nullGrammars) {
+                reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),
+                        configuration.seed(), metrics(totals.get(grammar), configuration.partitions())));
+            }
         }
         return List.copyOf(reports);
     }
@@ -628,8 +642,8 @@ final class StudyRunner {
         }
     }
 
-    private record AlternativeGrammar(String name, int[] segmentLegs) {
-        private static AlternativeGrammar of(final String name) {
+    record AlternativeGrammar(String name, int[] segmentLegs) {
+        static AlternativeGrammar of(final String name) {
             return switch (name) {
             case "3+3" -> new AlternativeGrammar(name, new int[] { 3, 3 });
             case "5+5" -> new AlternativeGrammar(name, new int[] { 5, 5 });
@@ -638,7 +652,7 @@ final class StudyRunner {
             };
         }
 
-        private List<String> matches(final List<ConfirmedPivot> pivots) {
+        List<String> matches(final List<ConfirmedPivot> pivots) {
             final int legCount = segmentLegs[0] + segmentLegs[1];
             final int required = legCount + 1;
             final List<String> matches = new ArrayList<>();
@@ -700,6 +714,32 @@ final class StudyRunner {
                         return false;
                     }
                 } else if (positive ? !signed.isPositive() : !signed.isNegative()) {
+                    return false;
+                }
+            }
+            return boundaryIsExtreme(window, direction);
+        }
+
+        /**
+         * Preregistration integrity: the junction between the two named segments must
+         * be observable, otherwise grammars sharing an odd first-segment length (3+3,
+         * 5+5 and 7+3 over 11 pivots) would match identical windows under different
+         * labels. The junction pivot is therefore required to be the window extreme on
+         * the leading trend side (bullish high / bearish low), which separates the
+         * match sets of the competing grammars.
+         */
+        private boolean boundaryIsExtreme(final List<ConfirmedPivot> window, final WaveDirection direction) {
+            final int boundary = segmentLegs[0];
+            if (boundary >= window.size()) {
+                return true;
+            }
+            final Num extreme = window.get(boundary).price();
+            for (int i = 0; i < window.size(); i++) {
+                if (i == boundary) {
+                    continue;
+                }
+                final Num price = window.get(i).price();
+                if (direction == WaveDirection.BULLISH ? price.isGreaterThan(extreme) : price.isLessThan(extreme)) {
                     return false;
                 }
             }
