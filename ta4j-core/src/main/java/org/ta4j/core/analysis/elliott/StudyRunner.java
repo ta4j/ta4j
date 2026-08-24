@@ -410,6 +410,12 @@ final class StudyRunner {
         if (!supplied.contains(TopologyGrammar.MOTIVE_5)) {
             throw new IllegalArgumentException("grammars must include MOTIVE_5 for the preregistered H1 claim");
         }
+        // Duplicate entries would emit indistinguishable H1/mode rows for the
+        // same experiment and invite double counting, mirroring the duplicate
+        // rule-id rejection below.
+        if (supplied.size() != Set.copyOf(supplied).size()) {
+            throw new IllegalArgumentException("grammars must not contain duplicates");
+        }
         return List.copyOf(supplied);
     }
 

@@ -84,9 +84,9 @@ final class ConfirmationTracker {
     }
 
     /**
-     * As {@link #observeReplay(BarSeries)}, but stops observing at the
-     * requested bar so a contradiction the detector only produces after
-     * {@code endIndex} cannot abort an evaluation of an earlier interval.
+     * As {@link #observeReplay(BarSeries)}, but stops observing at the requested
+     * bar so a contradiction the detector only produces after {@code endIndex}
+     * cannot abort an evaluation of an earlier interval.
      *
      * @param series   series to observe
      * @param endIndex last bar index to observe, inclusive
@@ -119,8 +119,17 @@ final class ConfirmationTracker {
     private boolean reconcile(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
             final List<SwingPivot> reported, final int asOf, final Map<Integer, Integer> collapsed) {
         boolean changed = false;
+        // Only the newest tracked pivot is retractable: everything before it
+        // was already frozen by that pivot's confirmation, so a detector
+        // withdrawing several reported pivots in one update rewrites frozen
+        // history and must fail loud instead of being popped successively.
+        final int retractableIndex = order.isEmpty() ? -1 : order.get(order.size() - 1).pivotIndex();
         while (!order.isEmpty() && !containsIndex(reported, order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
+            if (retractableIndex != -1 && removed.pivotIndex() != retractableIndex) {
+                throw new IllegalStateException("detector withdrew frozen pivot " + removed.pivotIndex()
+                        + " at bar " + asOf + "; only the newest tracked pivot may be withdrawn");
+            }
             known.remove(removed.pivotIndex());
             // A withdrawn dominator no longer suppresses the pivots it
             // dominated: if the detector still reports them, they must be
@@ -193,10 +202,10 @@ final class ConfirmationTracker {
      * normalization would be misread as a frozen-history violation even though no
      * emitted view ever contained it.
      *
-     * @param collapsedSink map recording each index removed by collapse and
-     *                      the pivot that dominates it, so later reports of
-     *                      those dominated pivots are ignored while their
-     *                      dominator stays tracked
+     * @param collapsedSink map recording each index removed by collapse and the
+     *                      pivot that dominates it, so later reports of those
+     *                      dominated pivots are ignored while their dominator stays
+     *                      tracked
      * @return true if the order changed through normalization
      */
     private static boolean normalizeOrder(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
@@ -217,8 +226,7 @@ final class ConfirmationTracker {
         // whose representative is the nearest kept neighbor in that run.
         int keptCursor = 0;
         for (final ConfirmedPivot pivot : order) {
-            if (keptCursor < normalized.size()
-                    && normalized.get(keptCursor).pivotIndex() == pivot.pivotIndex()) {
+            if (keptCursor < normalized.size() && normalized.get(keptCursor).pivotIndex() == pivot.pivotIndex()) {
                 keptCursor++;
             } else {
                 final ConfirmedPivot dominator = keptCursor < normalized.size()

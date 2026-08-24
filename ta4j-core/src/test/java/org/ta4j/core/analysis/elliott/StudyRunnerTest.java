@@ -540,15 +540,58 @@ class StudyRunnerTest {
     }
 
     @Test
+    void rejectsDuplicateGrammarEntries() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner(StudyRunnerTest::detectorFactory,
+                        List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.MOTIVE_5), rules(),
+                        configuration(partitions, 1)));
+    }
+
+    @Test
+    void logReturnsKeepTinyHighPrecisionMoves() {
+        // 1e30 -> 1e30+1 is a real move in DecimalNum space, but its ratio
+        // narrows to exactly 1.0 as a double; computing the relative delta in
+        // Num first keeps the 1e-30 log return alive instead of recording zero.
+        final String[] closes = { "1e30", "1000000000000000000000000000001", "1e30",
+                "1000000000000000000000000000001" };
+        final BarSeries source = new BaseBarSeriesBuilder().withName("tiny-decimal")
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < closes.length; index++) {
+            final Num close = DecimalNum.valueOf(closes[index]);
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final double[] returns = BlockBootstrapNulls.logReturns(source);
+        assertEquals(3, returns.length);
+        assertEquals(1e-30d, returns[0], 1e-45d);
+        assertEquals(-1e-30d, returns[1], 1e-45d);
+        assertEquals(1e-30d, returns[2], 1e-45d);
+    }
+
+    @Test
     void rejectsGrammarsOmittingDeclaredH1Grammar() {
         // H1 is declared over MOTIVE_5; a configuration without it must be
         // rejected instead of emitting an H1 section that never measured it.
         final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
                 List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
                 LocalDate.of(2024, 1, 1));
-        assertThrows(IllegalArgumentException.class,
-                () -> new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.CORRECTIVE_3), rules(),
-                        configuration(partitions, 1)));
+        assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory,
+                List.of(TopologyGrammar.CORRECTIVE_3), rules(), configuration(partitions, 1)));
     }
 
     @Test
@@ -572,8 +615,8 @@ class StudyRunnerTest {
                 LocalDate.of(2024, 1, 1));
         final BarSeries series = buildWickSeries();
 
-        final StudyReport prefix = new StudyRunner(() -> contradicting, grammars(), rules(), configuration(partitions, 1))
-                .evaluate("BTC", series, 0, 8);
+        final StudyReport prefix = new StudyRunner(() -> contradicting, grammars(), rules(),
+                configuration(partitions, 1)).evaluate("BTC", series, 0, 8);
         assertFalse(prefix.competingGrammars().isEmpty());
 
         // The same contradiction inside the requested range still fails loud.
@@ -634,7 +677,8 @@ class StudyRunnerTest {
         final BarSeries member = BlockBootstrapNulls.generate(source, 3, 1, 7L).get(0);
         assertEquals(source.getBarCount(), member.getBarCount());
         for (int offset = 1; offset < member.getBarCount(); offset++) {
-            final double ratio = member.getBar(offset).getClosePrice()
+            final double ratio = member.getBar(offset)
+                    .getClosePrice()
                     .dividedBy(member.getBar(offset - 1).getClosePrice())
                     .doubleValue();
             assertTrue(ratio == 2.0d || ratio == 0.5d, "unexpected member ratio " + ratio);

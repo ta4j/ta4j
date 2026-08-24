@@ -60,19 +60,22 @@ final class BlockBootstrapNulls {
         return List.copyOf(generated);
     }
 
-    private static double[] logReturns(final BarSeries source) {
+    static double[] logReturns(final BarSeries source) {
         final int count = source.getBarCount();
         final double[] returns = new double[count - 1];
+        final NumFactory numFactory = source.numFactory();
         for (int offset = 1; offset < count; offset++) {
-            // The ratio stays in the active Num domain so DecimalNum closes
-            // beyond double range keep a finite ratio; only the bounded value
-            // handed to Math.log narrows to double.
+            // The relative delta stays in the active Num domain so DecimalNum
+            // closes beyond double range keep a finite ratio AND tiny moves
+            // such as 1e30 -> 1e30+1 survive the narrowing: log(1 + delta)
+            // with delta computed at full precision keeps variation that a
+            // narrowed ratio would round to zero.
             final Num previous = source.getBar(source.getBeginIndex() + offset - 1).getClosePrice();
             final Num current = source.getBar(source.getBeginIndex() + offset).getClosePrice();
             if (!previous.isPositive() || !current.isPositive()) {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
             }
-            returns[offset - 1] = Math.log(current.dividedBy(previous).doubleValue());
+            returns[offset - 1] = Math.log1p(current.dividedBy(previous).minus(numFactory.one()).doubleValue());
         }
         return returns;
     }

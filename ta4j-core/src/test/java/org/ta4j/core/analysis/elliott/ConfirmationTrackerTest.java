@@ -184,6 +184,27 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void rejectsMultiPivotWithdrawalPastFrozenBoundary() {
+        final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final SwingPivot low5 = new SwingPivot(5, DoubleNum.valueOf(5), SwingPivotType.LOW);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of(low1));
+        script.put(3, List.of(low1, high3));
+        script.put(5, List.of(low1, high3, low5));
+        // Withdrawing both trailing pivots in one update rewrites history
+        // frozen by pivot 5's confirmation; only pivot 5 itself is retractable.
+        script.put(6, List.of(low1));
+
+        final ConfirmationTracker tracker = new ConfirmationTracker(scripted(script));
+
+        assertThatThrownBy(() -> tracker.observeReplay(seriesWithBars(7)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("withdrew frozen pivot");
+    }
+
+    @Test
     void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 2; asOf++) {
