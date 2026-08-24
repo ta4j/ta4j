@@ -1340,8 +1340,8 @@ class Ta4jCliTest {
                 Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of());
         WalkForwardRunResult.FoldFailure failure = new WalkForwardRunResult.FoldFailure("fold-1", 0,
                 "rule threw during fold", new IllegalStateException("boom"));
-        StrategyWalkForwardExecutionResult allFailed = new StrategyWalkForwardExecutionResult(series, strategy,
-                config, List.of(), runtimeReport, List.of(failure));
+        StrategyWalkForwardExecutionResult allFailed = new StrategyWalkForwardExecutionResult(series, strategy, config,
+                List.of(), runtimeReport, List.of(failure));
 
         assertThatThrownBy(() -> CliCommands.requireSuccessfulFoldResults(allFailed))
                 .isInstanceOf(IllegalArgumentException.class)

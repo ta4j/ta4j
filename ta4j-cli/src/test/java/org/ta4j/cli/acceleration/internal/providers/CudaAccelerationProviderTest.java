@@ -130,6 +130,7 @@ class CudaAccelerationProviderTest {
         assertThat(provider(new FakeBridge(CudaAccelerationProviderTest::constantResult))
                 .predictedSpeedup(request(forecast(doubleSeries(), 64, 4_096)))).isPositive();
     }
+
     @Test
     void productionProbeCachesSuccessAndRejectsWrongArchitecture() {
         AtomicInteger loads = new AtomicInteger();

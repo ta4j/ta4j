@@ -251,17 +251,15 @@ class CliSupportTest {
     void resolveCriteriaRejectsUnboundedMonteCarloIterations() {
         assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(),
                 List.of("{\"type\":\"MonteCarloMaximumDrawdownCriterion\",\"iterations\":100001}"), List.of(),
-                List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
+                List.of())).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("'iterations' must be between 1 and 100000");
     }
 
     @Test
     void resolveCriteriaRejectsUnboundedMonteCarloPathBlocks() {
-        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(), List.of(
-                "{\"type\":\"MonteCarloMaximumDrawdownCriterion\",\"iterations\":10000,\"pathBlocks\":1000001}"),
-                List.of(), List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(), List
+                .of("{\"type\":\"MonteCarloMaximumDrawdownCriterion\",\"iterations\":10000,\"pathBlocks\":1000001}"),
+                List.of(), List.of())).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("'pathBlocks' must be between 1 and 1000000");
     }
 

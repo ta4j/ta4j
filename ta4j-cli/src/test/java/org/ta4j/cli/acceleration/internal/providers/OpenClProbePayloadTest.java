@@ -16,9 +16,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The native OpenCL probe reports failures as a 10-field payload whose last
+ * The native OpenCL probe reports failures as an 11-field payload whose last
  * field carries the actionable detail (for example
- * {@code ERROR||||||||0|device lacks FP64}). The Java bridge must surface that
+ * {@code ERROR|||||||||0|device lacks FP64}). The Java bridge must surface that
  * detail; otherwise every native probe failure is reported as a meaningless
  * number-parse error and users cannot diagnose why OpenCL is unavailable.
  *
@@ -46,7 +46,7 @@ class OpenClProbePayloadTest {
     @Test
     void probeErrorPayloadSurfacesTheNativeDetail() throws Exception {
         ensureStubLoaded();
-        Files.writeString(PAYLOAD_FILE, "ERROR||||||||0|device lacks FP64", StandardCharsets.US_ASCII);
+        Files.writeString(PAYLOAD_FILE, "ERROR|||||||||0|device lacks FP64", StandardCharsets.US_ASCII);
 
         OpenClProbeResult result = new JniOpenClNativeBridge().probe();
 
@@ -57,7 +57,7 @@ class OpenClProbePayloadTest {
     @Test
     void probeOkPayloadStillParses() throws Exception {
         ensureStubLoaded();
-        Files.writeString(PAYLOAD_FILE, "OK|PoCL CPU|3|0|8589934592|8589934592|0|0|0|self-test passed",
+        Files.writeString(PAYLOAD_FILE, "OK|PoCL CPU|3|0|8589934592|8589934592|0|0|256|0|self-test passed",
                 StandardCharsets.US_ASCII);
 
         OpenClProbeResult result = new JniOpenClNativeBridge().probe();
@@ -65,6 +65,7 @@ class OpenClProbePayloadTest {
         assertThat(result.available()).isTrue();
         assertThat(result.deviceName()).isEqualTo("PoCL CPU");
         assertThat(result.gpuDevice()).isFalse();
+        assertThat(result.momentThreads()).isEqualTo(256);
     }
 
     @Test
@@ -123,10 +124,11 @@ class OpenClProbePayloadTest {
         // side sanitizes the ERROR detail but not the OK device name). Vendor
         // device names are arbitrary strings; a '|' inside the name shifts the
         // fixed numeric fields. The bridge must still parse the trailing
-        // fields (major|minor|free|total|driver|runtime|gpu|detail) instead
-        // of reporting the device unavailable with a number-parse error.
+        // fields (major|minor|free|total|driver|runtime|threads|gpu|detail)
+        // instead of reporting the device unavailable with a number-parse
+        // error.
         ensureStubLoaded();
-        Files.writeString(PAYLOAD_FILE, "OK|Pipe|Device|3|0|8589934592|8589934592|0|0|1|self-test passed",
+        Files.writeString(PAYLOAD_FILE, "OK|Pipe|Device|3|0|8589934592|8589934592|0|0|128|1|self-test passed",
                 StandardCharsets.US_ASCII);
 
         OpenClProbeResult result = new JniOpenClNativeBridge().probe();
@@ -134,6 +136,7 @@ class OpenClProbePayloadTest {
         assertThat(result.available()).isTrue();
         assertThat(result.deviceName()).isEqualTo("Pipe|Device");
         assertThat(result.gpuDevice()).isTrue();
+        assertThat(result.momentThreads()).isEqualTo(128);
     }
 
     private static void ensureStubLoaded() throws Exception {

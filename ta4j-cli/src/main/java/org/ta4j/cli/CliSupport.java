@@ -352,8 +352,8 @@ final class CliSupport {
 
     /**
      * Parses a positive amount in the series' {@link Num} representation so
-     * comparisons keep the exact operator-supplied precision instead of
-     * collapsing distinct tokens to the same double.
+     * comparisons keep the exact operator-supplied precision instead of collapsing
+     * distinct tokens to the same double.
      */
     private static Num parsePositiveAmount(NumFactory factory, String token, String optionName) {
         final Num value;
@@ -1916,9 +1916,9 @@ final class CliSupport {
 
     /**
      * Upper bound for operator-supplied Monte Carlo criterion iterations. The
-     * default configuration runs 10,000 simulations; anything above this cap
-     * cannot finish in bounded time per statement and fold evaluation and is
-     * rejected as invalid input before any command work starts.
+     * default configuration runs 10,000 simulations; anything above this cap cannot
+     * finish in bounded time per statement and fold evaluation and is rejected as
+     * invalid input before any command work starts.
      */
     static final int MAX_CRITERION_ITERATIONS = 100_000;
 

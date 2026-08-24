@@ -1003,17 +1003,43 @@ static int ensure_state(char* error, size_t error_size) {
     return 1;
 }
 
+/*
+ * Effective work-group size for the moments kernels: min(device max work
+ * group size, 256, both kernel CL_KERNEL_WORK_GROUP_SIZE limits), rounded
+ * down to a power of two. Shared by the probe (so the JVM preflight sizes
+ * the partial buffers exactly) and by evaluate (which allocates them).
+ */
+static size_t effective_moment_threads(void)
+{
+    size_t threads = STATE.max_work_group_size < 256 ? STATE.max_work_group_size : 256;
+    size_t kernel_limit = 0;
+    if (clGetKernelWorkGroupInfo(STATE.moments_partial_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
+                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
+        && kernel_limit > 0 && kernel_limit < threads) {
+        threads = kernel_limit;
+    }
+    if (clGetKernelWorkGroupInfo(STATE.moments_finalize_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
+                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
+        && kernel_limit > 0 && kernel_limit < threads) {
+        threads = kernel_limit;
+    }
+    while ((threads & (threads - 1)) != 0) {
+        --threads;
+    }
+    return threads;
+}
+
 JNIEXPORT jstring JNICALL
 Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeProbe(JNIEnv* environment, jclass,
                                                                                     jint abi_version) {
     char error[STATE_ERROR_BUFFER];
     char payload[1024];
     if (pthread_mutex_lock(&STATE_MUTEX) != 0) {
-        return (*environment)->NewStringUTF(environment, "ERROR||||||||0|unable to lock native state");
+        return (*environment)->NewStringUTF(environment, "ERROR|||||||||0|unable to lock native state");
     }
     if (abi_version != ABI_VERSION) {
         pthread_mutex_unlock(&STATE_MUTEX);
-        return (*environment)->NewStringUTF(environment, "ERROR||||||||0|ABI mismatch");
+        return (*environment)->NewStringUTF(environment, "ERROR|||||||||0|ABI mismatch");
     }
     if (!ensure_state(error, sizeof(error))) {
         char detail[768];
@@ -1021,13 +1047,13 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativePr
         // delimiters survive; sanitizing the full payload would replace every
         // delimiter with '/' and make the probe metadata unparseable.
         sanitize(error);
-        snprintf(detail, sizeof(detail), "ERROR||||||||0|%.750s", error);
+        snprintf(detail, sizeof(detail), "ERROR|||||||||0|%.750s", error);
         pthread_mutex_unlock(&STATE_MUTEX);
         return (*environment)->NewStringUTF(environment, detail);
     }
-    snprintf(payload, sizeof(payload), "OK|%s|%d|%d|%llu|%llu|0|0|%d|self-test passed", STATE.device_name,
+    snprintf(payload, sizeof(payload), "OK|%s|%d|%d|%llu|%llu|0|0|%zu|%d|self-test passed", STATE.device_name,
              STATE.cl_major, STATE.cl_minor, (unsigned long long)STATE.global_memory,
-             (unsigned long long)STATE.global_memory, STATE.gpu_device ? 1 : 0);
+             (unsigned long long)STATE.global_memory, effective_moment_threads(), STATE.gpu_device ? 1 : 0);
     pthread_mutex_unlock(&STATE_MUTEX);
     return (*environment)->NewStringUTF(environment, payload);
 }
@@ -1116,21 +1142,7 @@ Java_org_ta4j_cli_acceleration_internal_providers_JniOpenClNativeBridge_nativeEv
     }
     padded_int = (cl_int)padded;
     use_parallel = padded <= STATE.max_work_group_size;
-    moment_threads = STATE.max_work_group_size < 256 ? STATE.max_work_group_size : 256;
-    size_t kernel_limit = 0;
-    if (clGetKernelWorkGroupInfo(STATE.moments_partial_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
-                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
-            && kernel_limit > 0 && kernel_limit < moment_threads) {
-        moment_threads = kernel_limit;
-    }
-    if (clGetKernelWorkGroupInfo(STATE.moments_finalize_kernel, STATE.device, CL_KERNEL_WORK_GROUP_SIZE,
-                                 sizeof(kernel_limit), &kernel_limit, NULL) == CL_SUCCESS
-            && kernel_limit > 0 && kernel_limit < moment_threads) {
-        moment_threads = kernel_limit;
-    }
-    while ((moment_threads & (moment_threads - 1)) != 0) {
-        --moment_threads;
-    }
+    moment_threads = effective_moment_threads();
     path_blocks = ((size_t)iteration_count + moment_threads - 1) / moment_threads;
 
     if (!copy_doubles(environment, quantiles_array, quantile_count, "quantiles", &quantiles, error, sizeof(error))

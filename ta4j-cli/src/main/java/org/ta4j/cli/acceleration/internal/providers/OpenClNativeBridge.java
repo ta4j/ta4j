@@ -15,7 +15,8 @@ interface OpenClNativeBridge {
 }
 
 record OpenClProbeResult(boolean available, String deviceName, int computeMajor, int computeMinor, long freeMemoryBytes,
-        long totalMemoryBytes, int driverVersion, int runtimeVersion, boolean gpuDevice, String detail) {
+        long totalMemoryBytes, int driverVersion, int runtimeVersion, int momentThreads, boolean gpuDevice,
+        String detail) {
 }
 
 record OpenClEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, double reductionMicros,
@@ -39,31 +40,32 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
     public OpenClProbeResult probe() {
         String payload = nativeProbe(ABI_VERSION);
         if (payload == null || payload.isBlank()) {
-            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "OpenCL probe returned no metadata");
+            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, 0, false, "OpenCL probe returned no metadata");
         }
-        // Fixed trailing layout: major|minor|free|total|driver|runtime|gpu|detail.
+        // Fixed trailing layout:
+        // major|minor|free|total|driver|runtime|threads|gpu|detail.
         // The device name (fields[1..]) may itself contain '|' (the native OK
         // payload embeds it verbatim), so the trailing fields must be anchored
         // from the end instead of assuming the name occupies exactly one field.
         String[] fields = payload.split("\\|", -1);
-        if (fields.length < 10) {
-            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "Malformed OpenCL probe metadata");
+        if (fields.length < 11) {
+            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, 0, false, "Malformed OpenCL probe metadata");
         }
-        int tail = fields.length - 8;
+        int tail = fields.length - 9;
         if (!"OK".equals(fields[0])) {
             // Native failure payloads leave the numeric fields empty; the last
             // field carries the actionable detail and must be surfaced as-is.
             return new OpenClProbeResult(false, String.join("|", Arrays.copyOfRange(fields, 1, tail)), 0, 0, 0L, 0L, 0,
-                    0, false, fields[fields.length - 1]);
+                    0, 0, false, fields[fields.length - 1]);
         }
         try {
             return new OpenClProbeResult(true, String.join("|", Arrays.copyOfRange(fields, 1, tail)),
                     Integer.parseInt(fields[tail]), Integer.parseInt(fields[tail + 1]),
                     Long.parseLong(fields[tail + 2]), Long.parseLong(fields[tail + 3]),
                     Integer.parseInt(fields[tail + 4]), Integer.parseInt(fields[tail + 5]),
-                    "1".equals(fields[tail + 6]), fields[tail + 7]);
+                    Integer.parseInt(fields[tail + 6]), "1".equals(fields[tail + 7]), fields[tail + 8]);
         } catch (NumberFormatException exception) {
-            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false,
+            return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, 0, false,
                     "Malformed OpenCL probe number: " + exception.getMessage());
         }
     }

@@ -20,6 +20,9 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
 
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
+    /** Hard bound on retained profiling events before native evaluate. */
+    private static final long MAX_TRACKED_PROFILING_EVENTS = 2_000_000L;
+
     private final Capability capability;
     private final OpenClNativeBridge nativeBridge;
     private final OpenClProbeResult probe;
@@ -71,21 +74,37 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         // staging only.
         long deviceHistoryBytes = Math.multiplyExact(Math.multiplyExact(decisions, spec.lookbackBarCount()),
                 Double.BYTES);
-        // Profiling keeps up to eight retained events per stable decision
-        // (cl_event handle plus kind marker) until the single final clFinish,
-        // an O(decisions) host-side cost the per-decision estimate cannot see.
-        long profilingBytes = Math.multiplyExact(decisions, 128L);
+        // Profiling retains at most eight events per stable decision (cl_event
+        // handle plus kind marker, 12 bytes per host slot) until the single
+        // final clFinish. Stable decisions are only known after snapshot
+        // capture, so bound them by the total decision count — an upper bound
+        // because unstable decisions enqueue nothing. Driver-side event records
+        // are implementation defined; budget a conservative 512 bytes per
+        // tracked event so the ceiling cannot be grazed by driver allocations
+        // the JVM cannot see.
+        long trackedEvents = Math.multiplyExact(decisions, 8L) + 3L;
+        // Explicit command-depth bound: retained profiling events grow with
+        // every stable decision, so cap the batch before the queue itself
+        // becomes the failure mode instead of the preflight fallback.
+        if (trackedEvents > MAX_TRACKED_PROFILING_EVENTS) {
+            throw new IllegalArgumentException(
+                    ("OpenCL request tracks %d profiling events for %d decisions, above the %d event "
+                            + "budget; reduce the decision range.")
+                            .formatted(trackedEvents, decisions, MAX_TRACKED_PROFILING_EVENTS));
+        }
+        long profilingBytes = Math.multiplyExact(trackedEvents, 512L);
         // The moments reduction stages two device-side partial buffers sized
-        // ceil(iterationCount / MOMENT_THREADS) doubles each (native
-        // MOMENT_THREADS is fixed at 256); count them so a ceiling-grazing
-        // request cannot fail inside native allocation instead of preflight.
+        // ceil(iterationCount / momentThreads) doubles each; the probe reports
+        // the exact effective work-group size the native code derives (device
+        // max work group size, kernel CL_KERNEL_WORK_GROUP_SIZE limits, power
+        // of two), so this matches native allocation instead of assuming it.
+        long momentThreads = Math.max(1L, probe.momentThreads());
         long momentPartialBytes = Math.multiplyExact(
-                Math.multiplyExact((spec.iterationCount() + 255L) / 256L, 2L), Double.BYTES);
-        validateMemoryCeiling(Math.addExact(
-                Math.addExact(Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                Math.multiplyExact((spec.iterationCount() + momentThreads - 1L) / momentThreads, 2L), Double.BYTES);
+        validateMemoryCeiling(Math.addExact(Math.addExact(
+                Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
                         sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L), deviceHistoryBytes),
-                        profilingBytes),
-                momentPartialBytes));
+                profilingBytes), momentPartialBytes));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;
@@ -128,4 +147,3 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
     }
 
 }
-

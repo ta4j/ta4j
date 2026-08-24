@@ -35,7 +35,9 @@ final class CudaAccelerationProvider implements ForecastAccelerationProvider {
         return capability;
     }
 
-    /** Smallest per-decision path count measured in the RTX 5090 crossover matrix. */
+    /**
+     * Smallest per-decision path count measured in the RTX 5090 crossover matrix.
+     */
     private static final long MIN_QUALIFIED_ITERATION_COUNT = 64L;
 
     @Override

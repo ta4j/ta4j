@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -121,6 +122,40 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
+    void profilingEventBudgetRejectsOversizedBatches() {
+        // Retained profiling events grow linearly with the decision count, so
+        // an oversized batch must be rejected in preflight — before snapshot
+        // capture or any native enqueue — instead of turning the OpenCL
+        // command queue into the failure mode.
+        int decisionCount = 250_002; // above the 2,000,000-event budget (8 per decision + 3)
+        double[] data = new double[decisionCount];
+        Arrays.fill(data, 100d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(data)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close), 8,
+                0.94d);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(3)
+                .iterationCount(64)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .build();
+        AtomicInteger evaluations = new AtomicInteger();
+        FakeBridge bridge = new FakeBridge(request -> {
+            evaluations.incrementAndGet();
+            return constantResult(request);
+        });
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> provider(bridge).evaluate(new Request<>(forecast, 0, decisionCount - 1)));
+
+        assertThat(exception).hasMessageContaining("event budget");
+        assertThat(evaluations).hasValue(0);
+    }
+
+    @Test
     void memoryCeilingCountsHostAndDeviceSortBuffers() {
         // The OpenCL kernels hold the padded samples twice at once: the host
         // staging array (padded_host) and the device sort buffer
@@ -189,7 +224,6 @@ class OpenClAccelerationProviderTest {
         return power;
     }
 
-
     @Test
     void memoryCeilingIncludesMomentPartialBuffers() {
         // The native moments reduction stages two device-side partial buffers
@@ -199,9 +233,8 @@ class OpenClAccelerationProviderTest {
         // request must be admitted once the ceiling covers the estimate.
         int iterationCount = 3 * 256 + 7;
         long expectedBytes = ForecastSnapshot.estimatedPeakBytes(1L, 16L, 2L * nextPowerOfTwo(iterationCount), 1L,
-                false, 1L)
-                + (1L * 16L * Double.BYTES) // device_history: one decision x 16 bars
-                + 128L // profiling events for one decision
+                false, 1L) + (1L * 16L * Double.BYTES) // device_history: one decision x 16 bars
+                + ((8L + 3L) * 512L) // profiling events: one stable decision + batch markers
                 + (((iterationCount + 255L) / 256L) * 2L * Double.BYTES); // moment partials
 
         BarSeries series = doubleSeries();
@@ -229,6 +262,7 @@ class OpenClAccelerationProviderTest {
         Result<Forecast> result = admitting.evaluate(request);
         assertThat(result.status()).isEqualTo(org.ta4j.core.acceleration.AccelerationRuntime.Status.EXECUTED);
     }
+
     @Test
     void decimalPrecisionAndMemoryCeilingFailBeforeNativeExecution() {
         AtomicInteger evaluations = new AtomicInteger();
@@ -273,7 +307,7 @@ class OpenClAccelerationProviderTest {
                 new FakeBridge(OpenClAccelerationProviderTest::constantResult) {
                     @Override
                     public OpenClProbeResult probe() {
-                        return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "device lacks FP64");
+                        return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, 0, false, "device lacks FP64");
                     }
                 }, false);
         assertThat(rejected.probe().capability().available()).isFalse();
@@ -324,7 +358,7 @@ class OpenClAccelerationProviderTest {
         Request<Forecast> largeRequest = request(large);
 
         OpenClProbeResult weakIntegratedGpu = new OpenClProbeResult(true, "Weak Integrated GPU", 1, 2,
-                512L * 1024 * 1024, 1L * 1024 * 1024 * 1024, 0, 0, true, "self-test passed");
+                512L * 1024 * 1024, 1L * 1024 * 1024 * 1024, 0, 0, 256, true, "self-test passed");
         OpenClAccelerationProvider weakProvider = provider(
                 new FakeBridge(OpenClAccelerationProviderTest::constantResult), weakIntegratedGpu);
 
@@ -342,12 +376,12 @@ class OpenClAccelerationProviderTest {
 
     private static OpenClProbeResult qualifiedProbe() {
         return new OpenClProbeResult(true, "OpenCL GPU", 3, 0, 16L * 1024 * 1024 * 1024, 32L * 1024 * 1024 * 1024, 0, 0,
-                true, "self-test passed");
+                256, true, "self-test passed");
     }
 
     private static OpenClProbeResult cpuProbe() {
         return new OpenClProbeResult(true, "PoCL CPU", 3, 0, 16L * 1024 * 1024 * 1024, 32L * 1024 * 1024 * 1024, 0, 0,
-                false, "self-test passed");
+                256, false, "self-test passed");
     }
 
     private static OpenClEvaluationResult constantResult(NativeForecastRequest request) {

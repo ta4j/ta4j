@@ -1156,9 +1156,9 @@ final class CliCommands {
     }
 
     /**
-     * A single-strategy rule test cannot report per-strategy partial results,
-     * so when every fold execution failed the command must fail loudly instead
-     * of silently returning an empty analysis.
+     * A single-strategy rule test cannot report per-strategy partial results, so
+     * when every fold execution failed the command must fail loudly instead of
+     * silently returning an empty analysis.
      */
     static void requireSuccessfulFoldResults(StrategyWalkForwardExecutionResult walkForwardResult) {
         if (!allFoldsFailed(walkForwardResult)) {
