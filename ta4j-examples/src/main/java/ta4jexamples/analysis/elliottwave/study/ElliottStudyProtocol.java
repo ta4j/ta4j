@@ -17,11 +17,14 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Immutable, content-addressed loader for the CF-525 Elliott hypothesis study protocol.
+ * Immutable, content-addressed loader for the CF-525 Elliott hypothesis study
+ * protocol.
  *
- * <p>The protocol JSON and all referenced dataset resources are loaded from the classpath. Dataset
- * hashes are checked before this object is returned, so a protocol cannot be used with silently
- * changed input data.</p>
+ * <p>
+ * The protocol JSON and all referenced dataset resources are loaded from the
+ * classpath. Dataset hashes are checked before this object is returned, so a
+ * protocol cannot be used with silently changed input data.
+ * </p>
  */
 public final class ElliottStudyProtocol {
 
@@ -57,21 +60,28 @@ public final class ElliottStudyProtocol {
         this.version = requireText(version, "protocolVersion");
         this.frozenAt = Objects.requireNonNull(frozenAt, "frozenAt");
         this.fingerprintSha256 = requireText(fingerprintSha256, "fingerprintSha256");
-        this.hypotheses = immutableNonEmpty(hypotheses, "hypotheses");
-        this.datasets = immutableNonEmpty(datasets, "datasets");
+        requireNonEmpty(hypotheses, "hypotheses");
+        this.hypotheses = List.copyOf(hypotheses);
+        requireNonEmpty(datasets, "datasets");
+        this.datasets = List.copyOf(datasets);
         this.partitions = Objects.requireNonNull(partitions, "partitions");
-        this.detectorConfigurations = immutableNonEmpty(detectorConfigurations, "detectorConfigurations");
+        requireNonEmpty(detectorConfigurations, "detectorConfigurations");
+        this.detectorConfigurations = List.copyOf(detectorConfigurations);
         this.nullEnsemble = Objects.requireNonNull(nullEnsemble, "nullEnsemble");
-        this.competingGrammars = immutableNonEmpty(competingGrammars, "competingGrammars");
-        this.metrics = immutableNonEmpty(metrics, "metrics");
-        this.ablationSet = immutableNonEmpty(ablationSet, "ablationSet");
+        requireNonEmpty(competingGrammars, "competingGrammars");
+        this.competingGrammars = List.copyOf(competingGrammars);
+        requireNonEmpty(metrics, "metrics");
+        this.metrics = List.copyOf(metrics);
+        requireNonEmpty(ablationSet, "ablationSet");
+        this.ablationSet = List.copyOf(ablationSet);
     }
 
     /**
      * Loads and verifies the frozen protocol and every dataset referenced by it.
      *
      * @return the verified protocol
-     * @throws IllegalStateException if the protocol, a referenced resource, or a checksum is invalid
+     * @throws IllegalStateException if the protocol, a referenced resource, or a
+     *                               checksum is invalid
      */
     public static ElliottStudyProtocol load() {
         byte[] protocolBytes;
@@ -99,7 +109,7 @@ public final class ElliottStudyProtocol {
             ElliottStudyProtocol protocol = fromRaw(raw, fingerprint);
             verifyDatasets(protocol.datasets);
             return protocol;
-        } catch (IllegalArgumentException | NullPointerException exception) {
+        } catch (IllegalArgumentException exception) {
             throw new IllegalStateException("Invalid study protocol resource: " + RESOURCE, exception);
         }
     }
@@ -159,8 +169,9 @@ public final class ElliottStudyProtocol {
     }
 
     /**
-     * Returns whether calibration-dependent work is permitted on a date. The explicit forbidden
-     * start is authoritative even when a date falls in a later partition.
+     * Returns whether calibration-dependent work is permitted on a date. The
+     * explicit forbidden start is authoritative even when a date falls in a later
+     * partition.
      *
      * @param date date to check
      * @return {@code true} only before the forbidden calibration start
@@ -216,13 +227,14 @@ public final class ElliottStudyProtocol {
             throw new IllegalArgumentException("detectorConfigurations is required");
         }
         List<DetectorConfiguration> detectorConfigurations = raw.detectorConfigurations.stream()
-                .map(ElliottStudyProtocol::toDetectorConfiguration).toList();
+                .map(ElliottStudyProtocol::toDetectorConfiguration)
+                .toList();
         NullSpec nullEnsemble = toNullSpec(raw.nullEnsemble);
 
         return new ElliottStudyProtocol(raw.schemaVersion, raw.protocolId, raw.protocolVersion,
                 parseDate(raw.frozenAt, "frozenAt"), fingerprint, List.of(h1, h2), datasets, partitions,
-                detectorConfigurations, nullEnsemble, immutableNonEmpty(raw.competingGrammars, "competingGrammars"),
-                immutableNonEmpty(raw.metrics, "metrics"), immutableNonEmpty(raw.ablationSet, "ablationSet"));
+                detectorConfigurations, nullEnsemble, raw.competingGrammars,
+                raw.metrics, raw.ablationSet);
     }
 
     private static Hypothesis toHypothesis(RawHypothesis raw, String expectedId) {
@@ -251,8 +263,8 @@ public final class ElliottStudyProtocol {
         return new Partitions(parseDate(raw.calibration.start, "calibration.start"),
                 parseDate(raw.calibration.end, "calibration.end"), parseDate(raw.validation.start, "validation.start"),
                 parseDate(raw.validation.end, "validation.end"), parseDate(raw.holdout.start, "holdout.start"),
-                parseDate(raw.holdout.end, "holdout.end"), parseDate(raw.forbiddenCalibrationStart,
-                        "forbiddenCalibrationStart"));
+                parseDate(raw.holdout.end, "holdout.end"),
+                parseDate(raw.forbiddenCalibrationStart, "forbiddenCalibrationStart"));
     }
 
     private static DetectorConfiguration toDetectorConfiguration(RawDetectorConfiguration raw) {
@@ -325,11 +337,10 @@ public final class ElliottStudyProtocol {
         return value;
     }
 
-    private static <T> List<T> immutableNonEmpty(List<T> values, String fieldName) {
+    private static <T> void requireNonEmpty(List<T> values, String fieldName) {
         if (values == null || values.isEmpty()) {
             throw new IllegalArgumentException(fieldName + " must not be empty");
         }
-        return List.copyOf(values);
     }
 
     /** Immutable hypothesis entry. */
@@ -377,7 +388,8 @@ public final class ElliottStudyProtocol {
         }
 
         /**
-         * Returns whether calibration is permitted for a date under the protocol's embargo.
+         * Returns whether calibration is permitted for a date under the protocol's
+         * embargo.
          *
          * @param date date to check
          * @return false on or after {@code forbiddenCalibrationStart}
@@ -401,7 +413,10 @@ public final class ElliottStudyProtocol {
     public record NullSpec(String type, List<Integer> blockLengths, int ensembleSize, long seed) {
         public NullSpec {
             type = requireText(type, "nullEnsemble.type");
-            blockLengths = immutableNonEmpty(blockLengths, "nullEnsemble.blockLengths");
+            if (blockLengths == null || blockLengths.isEmpty()) {
+                throw new IllegalArgumentException("nullEnsemble.blockLengths must not be empty");
+            }
+            blockLengths = List.copyOf(blockLengths);
             if (blockLengths.stream().anyMatch(length -> length == null || length <= 0)) {
                 throw new IllegalArgumentException("nullEnsemble.blockLengths must contain positive values");
             }
@@ -439,8 +454,8 @@ public final class ElliottStudyProtocol {
     private record RawDataset(String id, String resource, String role, String asset, String barSize, String sha256) {
     }
 
-    private record RawPartitions(RawPartitionRange calibration, RawPartitionRange validation,
-            RawPartitionRange holdout, String forbiddenCalibrationStart) {
+    private record RawPartitions(RawPartitionRange calibration, RawPartitionRange validation, RawPartitionRange holdout,
+            String forbiddenCalibrationStart) {
     }
 
     private record RawPartitionRange(String start, String end) {
