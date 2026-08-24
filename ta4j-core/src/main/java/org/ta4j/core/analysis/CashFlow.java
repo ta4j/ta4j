@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -32,6 +33,7 @@ public class CashFlow implements PerformanceIndicator {
      * The (accrued) cash flow sequence (without trading costs).
      */
     private final List<Num> values;
+    private final AtomicBoolean frozen = new AtomicBoolean();
 
     /**
      * The first logical bar index materialized in {@link #values}.
@@ -196,7 +198,7 @@ public class CashFlow implements PerformanceIndicator {
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        sweep(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
     /**
@@ -220,11 +222,15 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
+        if (frozen.get()) {
+            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+        }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
-        if (values.isEmpty()) {
-            return;
-        }
+        sweep(tradingRecord, finalIndex, openPositionHandling);
+    }
+
+    private void sweep(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
@@ -343,6 +349,15 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
+     * Marks this curve immutable after {@link EquityBundle} fully materialized it,
+     * so the shared cached instance cannot be altered through the public
+     * accumulating operations.
+     */
+    void freeze() {
+        this.frozen.set(true);
+    }
+
+    /**
      * Applies the running factor to the bar at {@code index}. Cells before the
      * current sweep cursor hold only prior factors and are replaced outright; cells
      * within an already-written segment accumulate multiplicatively.
@@ -381,6 +396,9 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
+        if (frozen.get()) {
+            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+        }
         Trade entry = position.getEntry();
         if (entry == null) {
             return;

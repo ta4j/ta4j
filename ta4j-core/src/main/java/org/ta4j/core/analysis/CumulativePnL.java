@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
@@ -31,6 +32,8 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
     private final List<Num> values;
+    private final AtomicBoolean frozen = new AtomicBoolean();
+
     private final EquityCurveMode equityCurveMode;
 
     /**
@@ -53,7 +56,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         int seriesEnd = this.barSeries.getEndIndex();
         int size = Math.max(seriesEnd + 1, 0);
         this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        sweep(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
     /**
@@ -176,8 +179,15 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
+        if (frozen.get()) {
+            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+        }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
+        sweep(tradingRecord, finalIndex, openPositionHandling);
+    }
+
+    private void sweep(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
         if (values.isEmpty()) {
             return;
         }
@@ -262,6 +272,15 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
+     * Marks this curve immutable after {@link EquityBundle} fully materialized it,
+     * so the shared cached instance cannot be altered through the public
+     * accumulating operations.
+     */
+    void freeze() {
+        this.frozen.set(true);
+    }
+
+    /**
      * Adds {@code value} to every cell of the inclusive range {@code [from, to]}
      * and returns the next unmaterialized index ({@code max(from, to) + 1}).
      * Untouched cells hold zero, so composition equals replacement on a freshly
@@ -288,6 +307,9 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
+        if (frozen.get()) {
+            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+        }
         Trade entry = position.getEntry();
         if (entry == null) {
             return;

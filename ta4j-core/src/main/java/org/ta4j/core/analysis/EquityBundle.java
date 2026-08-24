@@ -28,10 +28,13 @@ import org.ta4j.core.analysis.cost.CostModel;
  * Typical use is indirect, through batch evaluation entry points that create
  * and distribute a bundle internally. The curves are memoized by their
  * configuration key; pulling the same key twice returns the identical instance.
- * The bundle captures its inputs by reference: when bars are appended to or
- * removed from the series or new trades are recorded, every memoized curve is
- * dropped and rebuilt on the next request so consumers never observe stale
- * values.
+ * Cached cash flow and cumulative PnL instances are immutable snapshots: their
+ * accumulating operations ({@code calculate}, {@code calculatePosition}) throw
+ * {@link UnsupportedOperationException} so a consumer cannot alter data shared
+ * with other consumers. The bundle captures its inputs by reference: when bars
+ * are appended to or removed from the series or new trades are recorded, every
+ * memoized curve is dropped and rebuilt on the next request so consumers never
+ * observe stale values.
  * </p>
  *
  * @since 0.24.2
@@ -112,7 +115,9 @@ public final class EquityBundle {
      *
      * @param equityCurveMode      the equity curve calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
-     * @return the shared cash flow instance for this key
+     * @return the shared immutable cash flow snapshot for this key; calling
+     *         {@code calculate} or {@code calculatePosition} on it throws
+     *         {@link UnsupportedOperationException}
      * @since 0.24.2
      */
     public CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
@@ -120,8 +125,12 @@ public final class EquityBundle {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
-            return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
-                    key -> new CashFlow(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+            return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
+                CashFlow cashFlow = new CashFlow(series, tradingRecord, key.equityCurveMode(),
+                        key.openPositionHandling());
+                cashFlow.freeze();
+                return cashFlow;
+            });
         }
     }
 
@@ -132,7 +141,9 @@ public final class EquityBundle {
      *
      * @param equityCurveMode      the equity curve calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
-     * @return the shared cumulative PnL instance for this key
+     * @return the shared immutable cumulative PnL snapshot for this key; calling
+     *         {@code calculate} or {@code calculatePosition} on it throws
+     *         {@link UnsupportedOperationException}
      * @since 0.24.2
      */
     public CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
@@ -140,8 +151,12 @@ public final class EquityBundle {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
-            return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling),
-                    key -> new CumulativePnL(series, tradingRecord, key.equityCurveMode(), key.openPositionHandling()));
+            return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
+                CumulativePnL cumulativePnL = new CumulativePnL(series, tradingRecord, key.equityCurveMode(),
+                        key.openPositionHandling());
+                cumulativePnL.freeze();
+                return cumulativePnL;
+            });
         }
     }
 

@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.ta4j.core.Position;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -200,5 +201,31 @@ public class EquityBundleTest {
         assertThrows(IllegalArgumentException.class, () -> equityBundle.requireInputsFor(series, otherRecord));
         assertThrows(IllegalArgumentException.class,
                 () -> new MaximumDrawdownCriterion().calculate(series, otherRecord, equityBundle));
+    }
+
+    @Test
+    public void bundleCachedCurvesRejectMutation() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+        CumulativePnL cumulativePnL = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        // The cached instances stay readable...
+        assertNumEquals(cashFlow.getValue(series.getEndIndex()), cashFlow.getValue(series.getEndIndex()));
+        assertNumEquals(cumulativePnL.getValue(series.getEndIndex()), cumulativePnL.getValue(series.getEndIndex()));
+        assertSame(cashFlow, equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE));
+
+        // ...but their accumulating operations must not alter shared state.
+        TradingRecord emptyRecord = new BaseTradingRecord();
+        assertThrows(UnsupportedOperationException.class,
+                () -> cashFlow.calculate(emptyRecord, series.getEndIndex(), OpenPositionHandling.IGNORE));
+        assertThrows(UnsupportedOperationException.class,
+                () -> cumulativePnL.calculate(emptyRecord, series.getEndIndex(), OpenPositionHandling.IGNORE));
+        for (Position position : closedPositionsRecord(series).getPositions()) {
+            assertThrows(UnsupportedOperationException.class, () -> cashFlow.calculatePosition(position, 3));
+            assertThrows(UnsupportedOperationException.class, () -> cumulativePnL.calculatePosition(position, 3));
+        }
     }
 }
