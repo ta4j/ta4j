@@ -473,7 +473,12 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
 
             @Override
             public boolean equals(Object other) {
-                return true;
+                return other instanceof NumFactory;
+            }
+
+            @Override
+            public int hashCode() {
+                return NumFactory.class.hashCode();
             }
         };
         MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))

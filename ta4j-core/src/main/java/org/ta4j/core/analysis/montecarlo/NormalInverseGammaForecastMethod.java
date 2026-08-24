@@ -112,6 +112,18 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return new NormalInverseGammaForecastMethod();
     }
 
+    /**
+     * Draws posterior predictive parameters from the Normal-Inverse-Gamma posterior
+     * fitted to the lookback window and compounds Normal increments into horizon
+     * cumulative log returns. Posteriors whose mean or scale cannot cross to the
+     * sampling precision degrade to an unstable result.
+     *
+     * @param context validated simulation inputs including the seeded random
+     *                generator
+     * @return exactly {@code context.iterationCount()} finite cumulative log-return
+     *         samples, or {@code null} when no stable posterior can be produced
+     * @since 0.24.2
+     */
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
         List<Num> window = context.historicalLogReturns();

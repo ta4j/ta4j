@@ -58,6 +58,16 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
         this.volatilityDecayFactor = volatilityDecayFactor;
     }
 
+    /**
+     * Samples shocks from the configured {@link ShockModel} and compounds them into
+     * horizon cumulative log returns using the window's volatility state.
+     *
+     * @param context validated simulation inputs including the seeded random
+     *                generator
+     * @return exactly {@code context.iterationCount()} finite cumulative log-return
+     *         samples, or {@code null} when the volatility state is unstable
+     * @since 0.24.2
+     */
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
         ProjectionState state = ProjectionState.from(context.moments(), context.numFactory());

@@ -43,6 +43,7 @@ public interface MonteCarloMethod {
      *                generator
      * @return exactly {@code context.iterationCount()} finite cumulative log-return
      *         samples, or {@code null} when no stable result can be produced
+     * @since 0.24.2
      */
     List<Num> terminalReturns(MonteCarloContext context);
 }

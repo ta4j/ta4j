@@ -49,6 +49,13 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
         numFactory = Objects.requireNonNull(numFactory, "numFactory must not be null");
     }
 
+    /**
+     * Returns the engine-owned lookback log-return window handed to the method for
+     * this invocation.
+     *
+     * @return the engine-owned historical log-return window, read-only by contract
+     * @since 0.24.2
+     */
     @Override
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The window is engine-owned per invocation and "
             + "handed to the method read-only; copying it per bar would defeat the allocation budget of hot "
