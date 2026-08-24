@@ -100,9 +100,9 @@ final class EventSynchronizationSupport {
             // range as end + 1 would wrap for an end of Integer.MAX_VALUE and
             // turn it into a full-domain scan, so the unavailable window is
             // materialized directly instead.
-            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0,
-                    NaN.NaN, NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN,
-                    NaN.NaN, NaN.NaN, false);
+            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0, NaN.NaN,
+                    NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN,
+                    false);
         }
         int effectiveStart = (int) candidateStart;
 
