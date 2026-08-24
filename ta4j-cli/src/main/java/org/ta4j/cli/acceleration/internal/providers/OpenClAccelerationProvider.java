@@ -75,10 +75,17 @@ final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
         // (cl_event handle plus kind marker) until the single final clFinish,
         // an O(decisions) host-side cost the per-decision estimate cannot see.
         long profilingBytes = Math.multiplyExact(decisions, 128L);
+        // The moments reduction stages two device-side partial buffers sized
+        // ceil(iterationCount / MOMENT_THREADS) doubles each (native
+        // MOMENT_THREADS is fixed at 256); count them so a ceiling-grazing
+        // request cannot fail inside native allocation instead of preflight.
+        long momentPartialBytes = Math.multiplyExact(
+                Math.multiplyExact((spec.iterationCount() + 255L) / 256L, 2L), Double.BYTES);
         validateMemoryCeiling(Math.addExact(
-                Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
+                Math.addExact(Math.addExact(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
                         sampleBufferIterations, spec.quantileProbabilities().size(), false, 1L), deviceHistoryBytes),
-                profilingBytes));
+                        profilingBytes),
+                momentPartialBytes));
         ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
                 "OpenCL");
         OpenClEvaluationResult nativeResult;

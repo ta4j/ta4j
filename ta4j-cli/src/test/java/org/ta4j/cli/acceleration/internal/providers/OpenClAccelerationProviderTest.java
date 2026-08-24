@@ -189,6 +189,46 @@ class OpenClAccelerationProviderTest {
         return power;
     }
 
+
+    @Test
+    void memoryCeilingIncludesMomentPartialBuffers() {
+        // The native moments reduction stages two device-side partial buffers
+        // at ceil(iterationCount / MOMENT_THREADS) doubles each (MOMENT_THREADS
+        // is 256). A request whose full estimate - partials included - exceeds
+        // the configured ceiling must be rejected in preflight, and the same
+        // request must be admitted once the ceiling covers the estimate.
+        int iterationCount = 3 * 256 + 7;
+        long expectedBytes = ForecastSnapshot.estimatedPeakBytes(1L, 16L, 2L * nextPowerOfTwo(iterationCount), 1L,
+                false, 1L)
+                + (1L * 16L * Double.BYTES) // device_history: one decision x 16 bars
+                + 128L // profiling events for one decision
+                + (((iterationCount + 255L) / 256L) * 2L * Double.BYTES); // moment partials
+
+        BarSeries series = doubleSeries();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        LogReturnIndicator returns = new LogReturnIndicator(close);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 8, 0.94d);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(2)
+                .iterationCount(iterationCount)
+                .lookbackBarCount(16)
+                .seed(17L)
+                .quantiles(0.5)
+                .build();
+        int end = forecast.getBarSeries().getEndIndex();
+        Request<Forecast> request = new Request<>(forecast, end, end);
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(expectedBytes - 1L));
+        OpenClAccelerationProvider rejecting = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> rejecting.evaluate(request));
+        assertThat(exception).hasMessageContaining("above the");
+
+        System.setProperty(OpenClAccelerationProvider.MAX_MEMORY_PROPERTY, Long.toString(expectedBytes));
+        OpenClAccelerationProvider admitting = provider(new FakeBridge(OpenClAccelerationProviderTest::constantResult));
+        Result<Forecast> result = admitting.evaluate(request);
+        assertThat(result.status()).isEqualTo(org.ta4j.core.acceleration.AccelerationRuntime.Status.EXECUTED);
+    }
     @Test
     void decimalPrecisionAndMemoryCeilingFailBeforeNativeExecution() {
         AtomicInteger evaluations = new AtomicInteger();
