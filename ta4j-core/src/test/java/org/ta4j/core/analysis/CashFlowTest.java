@@ -719,6 +719,39 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void barDataIsDeepCopiedAtConstruction() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        TradingRecord tradingRecord = closedPositionRecord(series, 0, 2);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNotSame(series.getBar(i), cashFlow.getBarSeries().getBar(i));
+        }
+    }
+
+    @Test
+    public void lateCompositionUsesConstructionTimePrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = closedPositionRecord(series, 0, 2);
+        CashFlow cashFlow = new CashFlow(series, recordA);
+        Num before = cashFlow.getValue(5);
+
+        // In-place edits to the original bars must not leak into later
+        // composition passes: the indicator prices them from its own copy.
+        series.getBar(2).addPrice(numFactory.numOf(1000));
+        cashFlow.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+
+        Num after = cashFlow.getValue(5);
+        assertTrue(after.isGreaterThan(before));
+        assertTrue(after.isLessThan(numFactory.numOf(2)));
+    }
+
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
         NumFactory numFactory = series.numFactory();
         BaseTradingRecord record = new BaseTradingRecord();

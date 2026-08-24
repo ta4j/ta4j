@@ -3,12 +3,14 @@
  */
 package org.ta4j.core.analysis;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.util.ArrayList;
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -21,6 +23,9 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
  * bar series, either marked to market or using realized values only.
+ * <p>
+ * The constructor deep-copies the series' bar data; later in-place edits to the
+ * original bars never affect this indicator.
  */
 public class CashFlow implements PerformanceIndicator {
 
@@ -516,9 +521,15 @@ public class CashFlow implements PerformanceIndicator {
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
+        for (Bar bar : series.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
+                .withBars(copiedBars)
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

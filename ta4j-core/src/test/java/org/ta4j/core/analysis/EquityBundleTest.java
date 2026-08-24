@@ -130,6 +130,39 @@ public class EquityBundleTest {
     }
 
     @Test
+    public void cachedCurvesAreUnaffectedByInPlaceBarEdits() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        Num before = cashFlow.getValue(5);
+
+        // Without a structural input change the memoized curve is served as is;
+        // an in-place bar edit can neither corrupt nor replace it.
+        series.getBar(2).addPrice(numFactory.numOf(1000));
+
+        CashFlow cached = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        assertSame(cashFlow, cached);
+        assertNumEquals(before, cached.getValue(5));
+    }
+
+    @Test
+    public void rebuildReflectsInPlaceEditsMadeBeforeStructuralChange() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        series.getBar(2).addPrice(numFactory.numOf(1000));
+        ((BaseTradingRecord) tradingRecord).operate(Trade.buyAt(10, series));
+
+        CashFlow rebuilt = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow direct = new CashFlow(series, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(direct.getValue(5), rebuilt.getValue(5));
+    }
+
+    @Test
     public void bundleRebuildsCurvesAfterSeriesAppend() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);

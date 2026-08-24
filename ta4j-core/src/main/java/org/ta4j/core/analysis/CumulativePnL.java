@@ -25,6 +25,10 @@ import org.ta4j.core.num.NumFactory;
  * series represents the total PnL up to that bar. The calculation mode can be
  * configured to mark open positions to market or to only realize PnL at exits.
  * </p>
+ * <p>
+ * The constructor deep-copies the series' bar data; later in-place edits to the
+ * original bars never affect this indicator.
+ * </p>
  *
  * @since 0.19
  */
@@ -410,9 +414,15 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
+        for (Bar bar : series.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
+                .withBars(copiedBars)
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }
