@@ -209,7 +209,9 @@ public class CashFlow implements PerformanceIndicator {
      * reproduces, per bar index, the exact multiplication sequence of per-position
      * processing (held-bar ratios followed by exit ratios), but avoids
      * re-multiplying the flat tail after every position: complexity is O(window +
-     * held bars) instead of O(positions &times; window).
+     * held bars) instead of O(positions &times; window). An exit whose effective
+     * index falls behind the sweep cursor (an out-of-order close under LIFO) is
+     * applied in place to the already-materialized cells instead.
      *
      * @param tradingRecord        the trading record
      * @param finalIndex           index up until values of open positions are
@@ -308,7 +310,17 @@ public class CashFlow implements PerformanceIndicator {
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
                 int from = Math.max(ratioIndex, windowStartIndex);
                 if (from <= windowEndIndex) {
-                    cursor = fillRange(cursor, from - 1, realized);
+                    if (from < cursor) {
+                        // A later-iterated position may close at an earlier bar
+                        // than the sweep cursor (e.g. a zero-duration lot closed
+                        // ahead of an older lot under LIFO). Those cells are
+                        // already materialized, so apply this exit ratio in
+                        // place instead of deferring it through the running
+                        // product.
+                        multiplyRange(from, cursor - 1, ratio);
+                    } else {
+                        cursor = fillRange(cursor, from - 1, realized);
+                    }
                     realized = realized.multipliedBy(ratio);
                 }
             }

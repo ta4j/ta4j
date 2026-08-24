@@ -61,14 +61,18 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     /**
-     * Returns the precomputed invested flag directly, bypassing the indicator cache
-     * ring. The flag array is an immutable snapshot computed from the trading
-     * record at construction time, so no cache synchronization is needed for
-     * in-range reads; all other indexes keep the inherited cached-path behavior.
+     * Returns the precomputed invested flag directly for retained in-range bars,
+     * bypassing the indicator cache ring. The flag array is an immutable snapshot
+     * computed from the trading record at construction time, so no cache
+     * synchronization is needed for those reads. Indexes pruned from a moving
+     * series (below {@link #getBarSeries()}'s begin index) and out-of-range indexes
+     * keep the inherited cached-path behavior so removed-bar remapping still
+     * applies.
      */
     @Override
     public Boolean getValue(int index) {
-        if (index >= 0 && index < investedIntervals.length) {
+        int beginIndex = getBarSeries().getBeginIndex();
+        if (index >= beginIndex && index < investedIntervals.length) {
             return investedIntervals[index];
         }
         return super.getValue(index);

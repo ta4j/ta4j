@@ -213,14 +213,19 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord,
-                equityBundle.cashFlow(equityCurveMode, openPositionHandling));
-        return simulate(series, tradingRecord, blocks);
+        CashFlow cashFlow = equityBundle.cashFlow(equityCurveMode, openPositionHandling);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
+        return simulate(series, tradingRecord, blocks, cashFlow);
     }
 
     private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks) {
+        return simulate(series, tradingRecord, blocks, null);
+    }
+
+    private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks, CashFlow cashFlow) {
         if (blocks.size() < 3) {
-            return maximumDrawdownCriterion.calculate(series, tradingRecord);
+            return cashFlow != null ? Drawdown.amount(series, tradingRecord, cashFlow)
+                    : maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();

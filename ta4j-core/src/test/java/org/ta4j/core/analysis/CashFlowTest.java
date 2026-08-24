@@ -576,6 +576,32 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
     }
 
+    @Test
+    public void realizedCashFlowAppliesOutOfOrderCloseRatioInPlace() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.numOf(2), null,
+                ExecutionSide.SELL, null, null));
+
+        CashFlow actual = new CashFlow(series, record, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow reference = new CashFlow(series, new BaseTradingRecord(), series.getEndIndex(),
+                EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        for (Position position : record.getPositions()) {
+            reference.calculatePosition(position, series.getEndIndex());
+        }
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(reference.getValue(i), actual.getValue(i));
+        }
+    }
+
     private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
         Duration period = targetSeries.getLastBar().getTimePeriod();
         targetSeries.barBuilder()

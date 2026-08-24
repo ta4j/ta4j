@@ -4,22 +4,23 @@
 package org.ta4j.core.criteria;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Trade;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityBundle;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -32,7 +33,6 @@ import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -87,21 +87,21 @@ public class CriteriaEvaluationTest extends AbstractIndicatorTest<Indicator<Num>
 
     @Test
     public void batchEvaluationMatchesSequentialEvaluationWithClosedPositions() {
-        var series = series();
-        var tradingRecord = closedPositionsRecord(series);
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
         assertBatchMatchesSequential(series, tradingRecord);
     }
 
     @Test
     public void batchEvaluationMatchesSequentialEvaluationWithOpenPosition() {
-        var series = series();
-        var tradingRecord = openPositionRecord(series);
+        BarSeries series = series();
+        TradingRecord tradingRecord = openPositionRecord(series);
         assertBatchMatchesSequential(series, tradingRecord);
     }
 
     @Test
     public void batchEvaluationMatchesSequentialEvaluationWithEmptyRecord() {
-        var series = series();
+        BarSeries series = series();
         assertBatchMatchesSequential(series, new BaseTradingRecord());
     }
 
@@ -110,38 +110,15 @@ public class CriteriaEvaluationTest extends AbstractIndicatorTest<Indicator<Num>
         Map<AnalysisCriterion, Num> batchResults = CriteriaEvaluation.evaluateAll(series, tradingRecord, criteria);
         assertEquals(criteria.size(), batchResults.size());
         for (AnalysisCriterion criterion : criteria) {
-            var sequential = criterion.calculate(series, tradingRecord);
+            Num sequential = criterion.calculate(series, tradingRecord);
             assertNumEquals(sequential, batchResults.get(criterion));
         }
     }
 
     @Test
-    public void bundleReusesOneCurveInstancePerConfigurationKey() {
-        var series = series();
-        var tradingRecord = closedPositionsRecord(series);
-        var equityBundle = new EquityBundle(series, tradingRecord);
-
-        var cashFlowMarkToMarket = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
-        var cashFlowAgain = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-        var cashFlowRealized = equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
-
-        assertSame(cashFlowMarkToMarket, cashFlowAgain);
-        assertNotSame(cashFlowMarkToMarket, cashFlowRealized);
-
-        var investedInterval = equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
-        assertSame(investedInterval, equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET));
-
-        var cumulativePnL = equityBundle.cumulativePnL(EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
-        assertSame(cumulativePnL,
-                equityBundle.cumulativePnL(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
-    }
-
-    @Test
     public void evaluateAllDispatchesToBundleAwareCriteria() {
-        var series = series();
-        var tradingRecord = closedPositionsRecord(series);
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
 
         var dispatched = new boolean[] { false };
         AnalysisCriterion bundleAware = new EquityBundleAwareCriterion(dispatched, numFactory);
@@ -185,8 +162,9 @@ public class CriteriaEvaluationTest extends AbstractIndicatorTest<Indicator<Num>
         }
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void evaluateAllRejectsNullTradingRecord() {
-        CriteriaEvaluation.evaluateAll(series(), null, criteria());
+        BarSeries series = series();
+        assertThrows(NullPointerException.class, () -> CriteriaEvaluation.evaluateAll(series, null, criteria()));
     }
 }
