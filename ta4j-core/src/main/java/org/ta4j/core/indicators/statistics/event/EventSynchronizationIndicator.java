@@ -225,6 +225,11 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
      *         anchored stability boundary
+     * @throws IllegalStateException when an uncached value is evaluated while
+     *                               the sources change repeatedly during event
+     *                               scanning and the bounded retry budget is
+     *                               exhausted (the same contract as
+     *                               {@link #getResult(int)})
      * @since 0.24.2
      */
     @Override
@@ -248,7 +253,16 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
             // so the cached scalar must not contradict it.
             return NaN.NaN;
         }
-        return super.getValue(index);
+        Num value = super.getValue(index);
+        // Revalidate against fresh state: a rolling ConcurrentBarSeries may
+        // prune index between the checks above and the inherited cache read,
+        // which maps the pruned request onto the first retained bar's cached
+        // window. The scalar must never report another window's F1, so a lost
+        // race degrades to the documented NaN instead.
+        if (series.getEndIndex() < 0 || index < series.getBeginIndex() || windowStartIndex < firstStableIndex()) {
+            return NaN.NaN;
+        }
+        return value;
     }
 
     /**

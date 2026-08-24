@@ -547,14 +547,18 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
 
         assertEquals(indicator.toDescriptor(), descriptorCopy.toDescriptor());
         assertEquals(indicator.toDescriptor(), jsonCopy.toDescriptor());
+        assertTrue(descriptorCopy instanceof EventSynchronizationIndicator);
+        EventSynchronizationIndicator descriptorRestored = (EventSynchronizationIndicator) descriptorCopy;
         assertTrue(jsonCopy instanceof EventSynchronizationIndicator);
         EventSynchronizationIndicator restored = (EventSynchronizationIndicator) jsonCopy;
         // Crossings at 10 (predicted) and 12 (reference) match within the
-        // tolerance window; both copies must agree with the original on
-        // unavailable (pre-stability and empty-window) and available indexes.
+        // tolerance window; both reconstructions must agree with the original
+        // on unavailable (pre-stability and empty-window) and available indexes.
         for (int index : new int[] { 3, 9, 14, 20, 21, 25 }) {
             assertNumEquals(indicator.getValue(index), restored.getValue(index));
             assertEquals(indicator.getResult(index), restored.getResult(index));
+            assertNumEquals(indicator.getValue(index), descriptorRestored.getValue(index));
+            assertEquals(indicator.getResult(index), descriptorRestored.getResult(index));
         }
         assertTrue(indicator.getResult(3).windowAvailable() == restored.getResult(3).windowAvailable());
         assertFalse(indicator.getResult(3).windowAvailable());

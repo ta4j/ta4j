@@ -141,15 +141,19 @@ final class EventSynchronizationSupport {
     static EventSynchronizationResult synchronize(int[] predictedEvents, int[] referenceEvents, int requestedStart,
             int requestedEnd, int effectiveStart, int effectiveEnd, int maxLeadBars, int maxLagBars,
             NumFactory numFactory) {
+        Objects.requireNonNull(predictedEvents, "predictedEvents");
+        Objects.requireNonNull(referenceEvents, "referenceEvents");
+        Objects.requireNonNull(numFactory, "numFactory");
+        validateTolerances(maxLeadBars, maxLagBars);
+        // Reject oversized windows before the defensive copies: a constrained
+        // heap must fail with the documented IllegalArgumentException rather
+        // than an OutOfMemoryError while cloning millions of events.
+        validateMatcherCapacity(predictedEvents.length, referenceEvents.length);
         // Callers own these arrays: copy up front so every downstream view
         // (including the zero-copy unmatched-index views) wraps buffers that
         // only this call can mutate, preserving the immutable result contract.
         predictedEvents = predictedEvents.clone();
         referenceEvents = referenceEvents.clone();
-        Objects.requireNonNull(predictedEvents, "predictedEvents");
-        Objects.requireNonNull(referenceEvents, "referenceEvents");
-        Objects.requireNonNull(numFactory, "numFactory");
-        validateTolerances(maxLeadBars, maxLagBars);
 
         List<EventSynchronizationIndicator.Result.Match> matches = matchEvents(predictedEvents, referenceEvents,
                 maxLeadBars, maxLagBars);
@@ -318,6 +322,24 @@ final class EventSynchronizationSupport {
         return size == events.length ? events : Arrays.copyOf(events, size);
     }
 
+    /**
+     * Enforces the baseline matcher's reserved-cell budget for a window holding
+     * {@code predictedCount} by {@code referenceCount} events.
+     *
+     * @param predictedCount  the number of predicted events in the window
+     * @param referenceCount  the number of reference events in the window
+     * @throws IllegalArgumentException if the alignment matrix would exceed the
+     *                                  matcher capacity
+     */
+    private static void validateMatcherCapacity(int predictedCount, int referenceCount) {
+        long cells = (long) (predictedCount + 1) * (referenceCount + 1);
+        if (cells > MAX_MATCHING_CELLS) {
+            throw new IllegalArgumentException("event counts " + predictedCount + " x " + referenceCount
+                    + " exceed the baseline matcher " + "capacity of " + (MAX_MATCHING_CELLS / 1_000_000L)
+                    + " million cells (~128 MB of alignment " + "arrays)");
+        }
+    }
+
     private static List<EventSynchronizationIndicator.Result.Match> matchEvents(int[] predicted, int[] reference,
             int maxLeadBars, int maxLagBars) {
         int n = predicted.length;
@@ -325,12 +347,8 @@ final class EventSynchronizationSupport {
         // Validate the documented cell budget before any fast path: even a
         // one-sided window needs (count + 1) * 1 cells, so an oversized stream
         // must fail here rather than flow through the empty-side shortcuts.
+        validateMatcherCapacity(n, m);
         long cells = (long) (n + 1) * (m + 1);
-        if (cells > MAX_MATCHING_CELLS) {
-            throw new IllegalArgumentException(
-                    "event counts " + n + " x " + m + " exceed the baseline matcher " + "capacity of "
-                            + (MAX_MATCHING_CELLS / 1_000_000L) + " million cells (~128 MB of alignment " + "arrays)");
-        }
         if (n == 0 || m == 0) {
             return List.of();
         }
