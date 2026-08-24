@@ -69,25 +69,40 @@ final class ConfirmationTracker {
      * changes rather than the number of bars.
      *
      * <p>
-     * Known limitation: swing-backed detectors only expose pivots once a swing
-     * pair exists, so a history's first pivot is confirmed when the second
-     * pivot appears and its confirmation lag is overstated by that pairing
-     * delay. A pivot-level detector view would remove the bias but would fork
-     * detection from the indicator-backed ground truth the study's emitted
-     * views use, so it stays out of scope here.
+     * Known limitation: swing-backed detectors only expose pivots once a swing pair
+     * exists, so a history's first pivot is confirmed when the second pivot appears
+     * and its confirmation lag is overstated by that pairing delay. A pivot-level
+     * detector view would remove the bias but would fork detection from the
+     * indicator-backed ground truth the study's emitted views use, so it stays out
+     * of scope here.
      *
      * @param series series to observe
      * @return final normalized history plus the per-bar causal replay
      */
     CausalReplay observeReplay(final BarSeries series) {
+        return observeReplay(series, series.getEndIndex());
+    }
+
+    /**
+     * As {@link #observeReplay(BarSeries)}, but stops observing at the
+     * requested bar so a contradiction the detector only produces after
+     * {@code endIndex} cannot abort an evaluation of an earlier interval.
+     *
+     * @param series   series to observe
+     * @param endIndex last bar index to observe, inclusive
+     * @return final normalized history plus the per-bar causal replay
+     */
+    CausalReplay observeReplay(final BarSeries series, final int endIndex) {
         Objects.requireNonNull(series, "series");
         final Map<Integer, ConfirmedPivot> known = new HashMap<>();
-        // Indices normalized away by snapshot collapse. Cumulative detectors
-        // keep reporting them; they must never re-enter the tracked order.
-        final Set<Integer> collapsed = new HashSet<>();
+        // Indices normalized away by snapshot collapse mapped to the pivot
+        // that dominates them. Cumulative detectors keep reporting dominated
+        // pivots; they stay suppressed only while their dominator is still
+        // tracked, and are reconsidered once it is withdrawn.
+        final Map<Integer, Integer> collapsed = new HashMap<>();
         final List<ConfirmedPivot> order = new ArrayList<>();
         final int begin = Math.max(series.getBeginIndex(), 0);
-        final int end = series.getEndIndex();
+        final int end = Math.min(series.getEndIndex(), endIndex);
         final List<Integer> versionAsOf = new ArrayList<>();
         final List<List<ConfirmedPivot>> versions = new ArrayList<>();
         for (int asOf = begin; asOf <= end; asOf++) {
@@ -102,11 +117,15 @@ final class ConfirmationTracker {
     }
 
     private boolean reconcile(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
-            final List<SwingPivot> reported, final int asOf, final Set<Integer> collapsed) {
+            final List<SwingPivot> reported, final int asOf, final Map<Integer, Integer> collapsed) {
         boolean changed = false;
         while (!order.isEmpty() && !containsIndex(reported, order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
             known.remove(removed.pivotIndex());
+            // A withdrawn dominator no longer suppresses the pivots it
+            // dominated: if the detector still reports them, they must be
+            // reconsidered instead of staying invisible forever.
+            collapsed.values().removeIf(dominator -> dominator.equals(removed.pivotIndex()));
             changed = true;
         }
         for (final SwingPivot pivot : reported) {
@@ -123,7 +142,8 @@ final class ConfirmationTracker {
                 }
                 throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
             }
-            if (collapsed.contains(pivot.index())) {
+            final Integer dominator = collapsed.get(pivot.index());
+            if (dominator != null && known.containsKey(dominator)) {
                 continue;
             }
             final ConfirmedPivot confirmed = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
@@ -150,31 +170,44 @@ final class ConfirmationTracker {
      * normalization would be misread as a frozen-history violation even though no
      * emitted view ever contained it.
      *
-     * @param collapsedSink sink recording indices removed by collapse so later
-     *                      reports of those dominated pivots are ignored
+     * @param collapsedSink map recording each index removed by collapse and
+     *                      the pivot that dominates it, so later reports of
+     *                      those dominated pivots are ignored while their
+     *                      dominator stays tracked
      * @return true if the order changed through normalization
      */
     private static boolean normalizeOrder(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
-            final Set<Integer> collapsedSink) {
+            final Map<Integer, Integer> collapsedSink) {
         if (order.size() < 2) {
             return false;
         }
-        final List<ConfirmedPivot> collapsed = PivotHistory.of(order).pivots();
-        if (collapsed.size() == order.size()) {
+        final List<ConfirmedPivot> normalized = PivotHistory.of(order).pivots();
+        if (normalized.size() == order.size()) {
             return false;
         }
         final Set<Integer> kept = new HashSet<>();
-        for (final ConfirmedPivot pivot : collapsed) {
+        for (final ConfirmedPivot pivot : normalized) {
             kept.add(pivot.pivotIndex());
         }
-        for (final Integer index : known.keySet()) {
-            if (!kept.contains(index)) {
-                collapsedSink.add(index);
+        // Derive explicit dominance by walking the original order against the
+        // normalized snapshot: every dropped pivot belongs to a same-type run
+        // whose representative is the nearest kept neighbor in that run.
+        int keptCursor = 0;
+        for (final ConfirmedPivot pivot : order) {
+            if (keptCursor < normalized.size()
+                    && normalized.get(keptCursor).pivotIndex() == pivot.pivotIndex()) {
+                keptCursor++;
+            } else {
+                final ConfirmedPivot dominator = keptCursor < normalized.size()
+                        && normalized.get(keptCursor).type() == pivot.type() ? normalized.get(keptCursor)
+                                : normalized.get(Math.max(0, keptCursor - 1));
+                collapsedSink.put(pivot.pivotIndex(), dominator.pivotIndex());
             }
         }
+        collapsedSink.values().removeIf(dominator -> !kept.contains(dominator));
         known.keySet().removeIf(index -> !kept.contains(index));
         order.clear();
-        order.addAll(collapsed);
+        order.addAll(normalized);
         return true;
     }
 

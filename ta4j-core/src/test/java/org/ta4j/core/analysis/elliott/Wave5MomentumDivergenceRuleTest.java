@@ -159,6 +159,21 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     @Test
+    void rejectsForeignSeriesForFixedMomentumIndicator() {
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 8, 0);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final BarSeries other = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
+
+        assertThatThrownBy(
+                () -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), other))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // The bound series itself still evaluates normally.
+        assertThat(rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries()).state()).isEqualTo(EvidenceState.PASS);
+    }
+
+    @Test
     void rejectsNaNScoredEvidence() {
         assertThatThrownBy(() -> RuleEvidence.scored("wave5-divergence", Double.NaN, List.of(), "explanation"))
                 .isInstanceOf(IllegalArgumentException.class)

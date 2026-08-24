@@ -30,7 +30,17 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
     Wave5MomentumDivergenceRule(final Indicator<Num> momentum) {
         Objects.requireNonNull(momentum, "momentum");
-        this.momentumFactory = series -> momentum;
+        final BarSeries boundSeries = momentum.getBarSeries();
+        // The fixed indicator is bound to exactly one series. Handing it to a
+        // runner evaluating another series would splice that asset's pivots
+        // onto the first asset's momentum values; fail fast instead.
+        this.momentumFactory = series -> {
+            if (series != boundSeries) {
+                throw new IllegalArgumentException(
+                        "fixed momentum indicator is bound to a different series; use the factory constructor");
+            }
+            return momentum;
+        };
     }
 
     Wave5MomentumDivergenceRule(final Function<BarSeries, Indicator<Num>> momentumFactory) {

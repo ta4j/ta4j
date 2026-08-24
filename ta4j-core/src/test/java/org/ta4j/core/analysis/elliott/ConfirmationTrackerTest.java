@@ -141,6 +141,28 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void withdrawingDominatorReconsidersCollapsedPivot() {
+        final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final SwingPivot high5 = new SwingPivot(5, DoubleNum.valueOf(25), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of(low1));
+        script.put(3, List.of(low1, high3));
+        script.put(5, List.of(low1, high3, high5));
+        script.put(6, List.of(low1, high3, high5));
+        // Winner 5 withdrawn while its dominated pivot 3 keeps being reported:
+        // the history must reconsider 3 instead of staying empty forever.
+        script.put(7, List.of(low1, high3));
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script))
+                .observeReplay(seriesWithBars(8));
+
+        assertThat(replay.at(6)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1, 5);
+        assertThat(replay.at(7)).extracting(ConfirmedPivot::pivotIndex).containsExactly(1, 3);
+    }
+
+    @Test
     void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 2; asOf++) {

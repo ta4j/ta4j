@@ -203,8 +203,11 @@ final class StudyRunner {
                         // transitions never leak across ensemble members.
                         final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
                         final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                        recordTopology(member, Math.max(member.getBeginIndex(), start), member.getEndIndex(),
-                                partitions, replay, grammar, List.of(), memberAccumulators);
+                        // Members are freshly-built series rebased to index 0;
+                        // the requested window stays in source coordinates and
+                        // must be translated before recording.
+                        recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
+                                member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators);
                         totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
                     }
                 }
@@ -231,14 +234,14 @@ final class StudyRunner {
     }
 
     private ConfirmationTracker.CausalReplay observeReplay(final BarSeries series) {
-        return observeReplay(series, detectorFactory);
+        return observeReplay(series, detectorFactory, series.getEndIndex());
     }
 
     private StudyReport.ModeReport evaluateMode(final BarSeries series, final int start, final int end,
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
             final String mode, final List<RelationshipRule> activeRules) {
         final List<MetricAccumulator> accumulators = newAccumulators(activeRules);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
         recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
                 metrics(accumulators, partitions));
@@ -251,7 +254,7 @@ final class StudyRunner {
         Objects.requireNonNull(partitions, "partitions");
         Objects.requireNonNull(factory, "factory");
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
         recordTopology(series, start, end, partitions, replay, grammar, List.of(), accumulators);
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
     }
@@ -278,7 +281,7 @@ final class StudyRunner {
             final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name) {
         final AlternativeGrammar grammar = AlternativeGrammar.of(name);
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory);
+        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
         if (start <= end) {
             for (int index = start; index <= end; index++) {
                 final int partitionIndex = partitionIndex(series, index, partitions);
@@ -293,14 +296,12 @@ final class StudyRunner {
                     accumulator.recordAlternative(index, false, false, false, "insufficient-history",
                             Set.of("insufficient-history"));
                 } else if (matches.size() == 1) {
-                    accumulator.recordAlternative(index, true, false, false, matches.get(0),
-                            Set.of(matches.get(0)));
+                    accumulator.recordAlternative(index, true, false, false, matches.get(0), Set.of(matches.get(0)));
                 } else if (matches.size() > 1) {
                     // Ambiguity stability must compare the actual placement
                     // identities, not a constant token, or the Jaccard metric
                     // reads 1 across shifting match sets.
-                    accumulator.recordAlternative(index, false, true, false, "ambiguous",
-                            Set.copyOf(matches));
+                    accumulator.recordAlternative(index, false, true, false, "ambiguous", Set.copyOf(matches));
                 } else if (grammar.hasPartial(visible)) {
                     accumulator.recordAlternative(index, false, false, true, "forming", Set.of("forming"));
                 } else {
@@ -342,10 +343,12 @@ final class StudyRunner {
     }
 
     private static ConfirmationTracker.CausalReplay observeReplay(final BarSeries series,
-            final Supplier<SwingDetector> factory) {
+            final Supplier<SwingDetector> factory, final int endIndex) {
         final SwingDetector detector = Objects.requireNonNull(factory, "detectorFactory").get();
         final SwingDetector nonNullDetector = Objects.requireNonNull(detector, "detectorFactory returned null");
-        return new ConfirmationTracker(nonNullDetector).observeReplay(series);
+        // Causally truncate: a detector contradiction on a bar beyond the
+        // requested range must not abort a report about an earlier interval.
+        return new ConfirmationTracker(nonNullDetector).observeReplay(series, endIndex);
     }
 
     private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules) {
@@ -400,6 +403,12 @@ final class StudyRunner {
         Objects.requireNonNull(supplied, "grammars");
         if (supplied.isEmpty()) {
             throw new IllegalArgumentException("grammars must not be empty");
+        }
+        // H1 is declared over MOTIVE_5; a configuration that omits it would
+        // emit an H1 section whose label and measurements contradict each
+        // other. Reject rather than silently widening the evaluation.
+        if (!supplied.contains(TopologyGrammar.MOTIVE_5)) {
+            throw new IllegalArgumentException("grammars must include MOTIVE_5 for the preregistered H1 claim");
         }
         return List.copyOf(supplied);
     }
@@ -751,7 +760,10 @@ final class StudyRunner {
                 final Num signed = direction == WaveDirection.BULLISH ? delta : delta.negate();
                 final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0 : (leg - segmentLegs[0]) % 2 != 0;
                 if (signed.isZero()) {
-                    if (complete) {
+                    // Flat legs are tolerated only as the uncommitted trailing
+                    // leg of a partial window; an earlier flat leg has already
+                    // contradicted the required decisive direction.
+                    if (complete || leg < window.size() - 2) {
                         return false;
                     }
                 } else if (positive ? !signed.isPositive() : !signed.isNegative()) {

@@ -20,7 +20,10 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.elliott.ConfirmedPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
@@ -501,6 +504,185 @@ class StudyRunnerTest {
         assertEquals(6L, calibrationBars);
     }
 
+    @Test
+    void movingWindowNullBaselineTranslatesRequestedStart() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 12)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2018, 1, 13), LocalDate.of(2018, 1, 20)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2018, 1, 21), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(partitions, 1));
+
+        // A rolling window whose first eight bars were dropped: beginIndex=8,
+        // so requested source bars 10..15 must map to member coordinates
+        // 2..7. Recording them at their untranslated source indices used to
+        // fall behind every member bar and observe nothing.
+        final BarSeries series = buildRollingWindowSeries(20, 12);
+        assertEquals(8, series.getBeginIndex());
+        final StudyReport report = runner.evaluate("BTC", series, 10, 15);
+        final StudyReport.NullReport nulls = report.nulls()
+                .stream()
+                .filter(nullReport -> "MOTIVE_5".equals(nullReport.grammar()))
+                .findFirst()
+                .orElseThrow();
+        long calibrationBars = 0;
+        long validationBars = 0;
+        for (final StudyReport.PartitionMetrics metrics : nulls.partitions()) {
+            if ("calibration".equals(metrics.partition())) {
+                calibrationBars += metrics.evaluationCount();
+            } else if ("validation".equals(metrics.partition())) {
+                validationBars += metrics.evaluationCount();
+            }
+        }
+        assertEquals(2L, calibrationBars);
+        assertEquals(4L, validationBars);
+    }
+
+    @Test
+    void rejectsGrammarsOmittingDeclaredH1Grammar() {
+        // H1 is declared over MOTIVE_5; a configuration without it must be
+        // rejected instead of emitting an H1 section that never measured it.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.CORRECTIVE_3), rules(),
+                        configuration(partitions, 1)));
+    }
+
+    @Test
+    void prefixEvaluationIgnoresContradictionsBeyondRequestedEnd() {
+        // Cumulative odd-bar pivots whose interior pivot at index 3 is
+        // silently re-priced from asOf=9 onward.
+        final SwingDetector contradicting = (series, index, degree) -> {
+            final List<SwingPivot> pivots = new ArrayList<>();
+            for (int pivotIndex = 1; pivotIndex <= index && pivotIndex < series.getBarCount(); pivotIndex += 2) {
+                final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+                double price = series.getBar(pivotIndex).getClosePrice().doubleValue();
+                if (index >= 9 && pivotIndex == 3) {
+                    price += 100;
+                }
+                pivots.add(new SwingPivot(pivotIndex, DoubleNum.valueOf(price), type));
+            }
+            return new SwingDetectorResult(pivots, List.of());
+        };
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final BarSeries series = buildWickSeries();
+
+        final StudyReport prefix = new StudyRunner(() -> contradicting, grammars(), rules(), configuration(partitions, 1))
+                .evaluate("BTC", series, 0, 8);
+        assertFalse(prefix.competingGrammars().isEmpty());
+
+        // The same contradiction inside the requested range still fails loud.
+        assertThrows(IllegalStateException.class,
+                () -> new StudyRunner(() -> contradicting, grammars(), rules(), configuration(partitions, 1))
+                        .evaluate("BTC", series, 0, 9));
+    }
+
+    @Test
+    void partialGrammarRequiresDirectionOnInternalLegs() {
+        // Pivots [100, 110, 110, 120]: the middle leading leg is flat, so no
+        // honest forming claim survives; only the uncommitted trailing leg may
+        // stay undecided.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(partitions, 1));
+        final BarSeries series = buildOddPivotSeries(new double[] { 100, 110, 110, 120 }, 10);
+
+        final StudyReport report = runner.evaluate("BTC", series, 0, 9);
+        final StudyReport.ModeReport threePlusThree = report.competingGrammars()
+                .stream()
+                .filter(mode -> "competing-3+3".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.PartitionMetrics calibration = threePlusThree.partitions().get(0);
+        assertEquals(0, calibration.formingCount());
+        assertTrue(calibration.noMatchCount() > 0);
+    }
+
+    @Test
+    void bootstrapStaysInNumDomainForHugeDecimalPrices() {
+        // Closes beyond double range: the return ratio stays finite in Num
+        // domain, while double narrowing used to produce Infinity and abort
+        // generation with a positivity failure.
+        final String[] closes = { "1e400", "2e400", "1e400", "2e400", "1e400", "2e400", "1e400", "2e400" };
+        final BarSeries source = new BaseBarSeriesBuilder().withName("huge-decimal")
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < closes.length; index++) {
+            final Num close = DecimalNum.valueOf(closes[index]);
+            final Num open = close.multipliedBy(DecimalNum.valueOf("0.99"));
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(open)
+                    .highPrice(close)
+                    .lowPrice(open)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final BarSeries member = BlockBootstrapNulls.generate(source, 3, 1, 7L).get(0);
+        assertEquals(source.getBarCount(), member.getBarCount());
+        for (int offset = 1; offset < member.getBarCount(); offset++) {
+            final double ratio = member.getBar(offset).getClosePrice()
+                    .dividedBy(member.getBar(offset - 1).getClosePrice())
+                    .doubleValue();
+            assertTrue(ratio == 2.0d || ratio == 0.5d, "unexpected member ratio " + ratio);
+        }
+    }
+
+    private static BarSeries buildRollingWindowSeries(final int total, final int retained) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName("rolling-window").build();
+        series.setMaximumBarCount(retained);
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < total; index++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(100 + index)
+                    .highPrice(101 + index)
+                    .lowPrice(99 + index)
+                    .closePrice(100 + index)
+                    .volume(1)
+                    .amount(100 + index)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries buildOddPivotSeries(final double[] pivotCloses, final int count) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName("odd-pivots").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        int nextPivot = 0;
+        for (int index = 0; index < count; index++) {
+            final boolean isPivot = index % 2 == 1 && nextPivot < pivotCloses.length;
+            final double close = isPivot ? pivotCloses[nextPivot++] : 90 + index;
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(Math.max(0.01d, close - 2))
+                    .highPrice(close + 1)
+                    .lowPrice(Math.max(0.01d, close - 1))
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
     /**
      * Two sequential rising zigzags whose per-window junctions stay extreme, so
      * both halves complete as disjoint "3+3" placements.
@@ -510,8 +692,8 @@ class StudyRunnerTest {
         // sharing pivot 6 (bearish 6-12 and bullish 7-13 both match while
         // live), then a fresh bullish placement (14-20) that completes only
         // after the earlier windows have left the one-pattern-length horizon.
-        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 101, 107, 96, 118, 110, 111, 105, 90, 96,
-                92, 102, 94, 100, 92 };
+        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 101, 107, 96, 118, 110, 111, 105, 90, 96, 92,
+                102, 94, 100, 92 };
         final double[] prices = new double[count];
         int pivotCursor = 0;
         for (int index = 0; index < count; index++) {

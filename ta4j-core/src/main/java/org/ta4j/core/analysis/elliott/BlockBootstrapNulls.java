@@ -64,12 +64,15 @@ final class BlockBootstrapNulls {
         final int count = source.getBarCount();
         final double[] returns = new double[count - 1];
         for (int offset = 1; offset < count; offset++) {
-            final double previous = source.getBar(source.getBeginIndex() + offset - 1).getClosePrice().doubleValue();
-            final double current = source.getBar(source.getBeginIndex() + offset).getClosePrice().doubleValue();
-            if (!(previous > 0.0d) || !(current > 0.0d)) {
+            // The ratio stays in the active Num domain so DecimalNum closes
+            // beyond double range keep a finite ratio; only the bounded value
+            // handed to Math.log narrows to double.
+            final Num previous = source.getBar(source.getBeginIndex() + offset - 1).getClosePrice();
+            final Num current = source.getBar(source.getBeginIndex() + offset).getClosePrice();
+            if (!previous.isPositive() || !current.isPositive()) {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
             }
-            returns[offset - 1] = Math.log(current / previous);
+            returns[offset - 1] = Math.log(current.dividedBy(previous).doubleValue());
         }
         return returns;
     }
@@ -78,8 +81,12 @@ final class BlockBootstrapNulls {
             final long seed, final int ensembleIndex) {
         final int count = source.getBarCount();
         final SplittableRandom random = new SplittableRandom(seed);
-        final double[] closes = new double[count];
-        closes[0] = source.getBar(source.getBeginIndex()).getClosePrice().doubleValue();
+        // Member prices are reconstructed entirely in the active Num domain so
+        // DecimalNum sources beyond double range neither overflow nor lose
+        // high-precision return variation; only the bounded values passed to
+        // Math.exp/Math.log narrow to double.
+        final Num[] closes = new Num[count];
+        closes[0] = source.getBar(source.getBeginIndex()).getClosePrice();
 
         final NumFactory numFactory = source.numFactory();
         final BarSeries result = new BaseBarSeriesBuilder().withName(source.getName() + "-null-" + ensembleIndex)
@@ -95,7 +102,7 @@ final class BlockBootstrapNulls {
             if (offset > 1 && random.nextInt(blockLength) == 0) {
                 tapePosition = random.nextInt(logReturns.length);
             }
-            closes[offset] = closes[offset - 1] * Math.exp(logReturns[tapePosition]);
+            closes[offset] = closes[offset - 1].multipliedBy(numFactory.numOf(Math.exp(logReturns[tapePosition])));
             shapePositions[offset] = tapePosition + 1;
             tapePosition = (tapePosition + 1) % logReturns.length;
         }
@@ -105,26 +112,30 @@ final class BlockBootstrapNulls {
             final Bar timelineBar = source.getBar(source.getBeginIndex() + offset);
             final Bar shapeBar = offset == 0 ? timelineBar
                     : source.getBar(source.getBeginIndex() + shapePositions[offset]);
-            final double close = closes[offset];
-            final double sourceClose = shapeBar.getClosePrice().doubleValue();
-            final double open = scaled(shapeBar.getOpenPrice(), sourceClose, close);
-            final double high = scaled(shapeBar.getHighPrice(), sourceClose, close);
-            final double low = scaled(shapeBar.getLowPrice(), sourceClose, close);
+            final Num close = closes[offset];
+            final Num sourceClose = shapeBar.getClosePrice();
+            final Num open = scaled(shapeBar.getOpenPrice(), sourceClose, close, numFactory);
+            Num high = scaled(shapeBar.getHighPrice(), sourceClose, close, numFactory);
+            Num low = scaled(shapeBar.getLowPrice(), sourceClose, close, numFactory);
+            if (high == null || high.isLessThan(close)) {
+                high = close;
+            }
+            if (low == null || low.isGreaterThan(close)) {
+                low = close;
+            }
             final Num volume = timelineBar.getVolume() == null ? numFactory.zero() : timelineBar.getVolume();
             final Num amount = timelineBar.getAmount() == null ? numFactory.zero() : timelineBar.getAmount();
             final BaseBar nullBar = new BaseBar(timelineBar.getTimePeriod(), timelineBar.getBeginTime(),
-                    timelineBar.getEndTime(), numFactory.numOf(open), numFactory.numOf(Math.max(high, close)),
-                    numFactory.numOf(Math.min(low, close)), numFactory.numOf(close), volume, amount,
-                    timelineBar.getTrades());
+                    timelineBar.getEndTime(), open, high, low, close, volume, amount, timelineBar.getTrades());
             result.addBar(nullBar);
         }
         return result;
     }
 
-    private static double scaled(final Num value, final double sourceClose, final double close) {
-        if (value == null || !(sourceClose > 0.0d)) {
+    private static Num scaled(final Num value, final Num sourceClose, final Num close, final NumFactory numFactory) {
+        if (value == null || !sourceClose.isPositive()) {
             return close;
         }
-        return close * value.doubleValue() / sourceClose;
+        return close.multipliedBy(value).dividedBy(sourceClose);
     }
 }
