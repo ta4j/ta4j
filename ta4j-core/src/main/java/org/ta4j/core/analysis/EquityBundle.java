@@ -6,10 +6,10 @@ package org.ta4j.core.analysis;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 
 /**
  * Shared, lazily computed equity analysis curves for one
@@ -54,6 +54,13 @@ public final class EquityBundle {
     private long inputRevision;
 
     /**
+     * Cost models observed when the cached curves were built; a swap (e.g. through
+     * {@code rehydrate}) rebuilds every memoized curve on the next request.
+     */
+    private CostModel transactionCostModel;
+    private CostModel holdingCostModel;
+
+    /**
      * Creates a bundle for the given series and trading record. Neither the series
      * nor the record is copied: the curves computed on demand are constructed from
      * these exact inputs, mirroring direct indicator construction.
@@ -66,6 +73,8 @@ public final class EquityBundle {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();
+        this.transactionCostModel = tradingRecord.getTransactionCostModel();
+        this.holdingCostModel = tradingRecord.getHoldingCostModel();
     }
 
     /**
@@ -75,8 +84,14 @@ public final class EquityBundle {
      */
     private void invalidateIfInputsChanged() {
         long revision = currentInputRevision();
-        if (revision != inputRevision) {
+        CostModel recordTransactionCostModel = tradingRecord.getTransactionCostModel();
+        CostModel recordHoldingCostModel = tradingRecord.getHoldingCostModel();
+        boolean costModelsChanged = transactionCostModel != recordTransactionCostModel
+                || holdingCostModel != recordHoldingCostModel;
+        if (revision != inputRevision || costModelsChanged) {
             inputRevision = revision;
+            transactionCostModel = recordTransactionCostModel;
+            holdingCostModel = recordHoldingCostModel;
             cashFlows.clear();
             cumulativePnLs.clear();
             investedIntervals.clear();

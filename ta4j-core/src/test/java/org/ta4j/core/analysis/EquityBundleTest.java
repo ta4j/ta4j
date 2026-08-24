@@ -20,12 +20,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -148,6 +152,33 @@ public class EquityBundleTest {
 
         tradingRecord.operate(Trade.buyAt(3, series));
         tradingRecord.operate(Trade.sellAt(5, series));
+
+        CumulativePnL rebuiltCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        assertNotSame(cachedCurve, rebuiltCurve);
+        assertNumEquals(new EquityBundle(series, tradingRecord)
+                .cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
+                .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
+    }
+
+    @Test
+    public void bundleRebuildsCurvesWhenCostModelsChange() {
+        CostModel transactionCostModel = new ZeroCostModel();
+        AtomicReference<CostModel> currentTransactionCostModel = new AtomicReference<>(transactionCostModel);
+        BarSeries series = series();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, transactionCostModel,
+                new ZeroCostModel()) {
+            @Override
+            public CostModel getTransactionCostModel() {
+                return currentTransactionCostModel.get();
+            }
+        };
+        tradingRecord.operate(Trade.buyAt(0, series));
+        tradingRecord.operate(Trade.sellAt(2, series));
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+
+        CumulativePnL cachedCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        currentTransactionCostModel.set(new ZeroCostModel());
 
         CumulativePnL rebuiltCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
         assertNotSame(cachedCurve, rebuiltCurve);
