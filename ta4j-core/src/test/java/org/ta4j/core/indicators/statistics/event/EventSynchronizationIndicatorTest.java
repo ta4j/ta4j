@@ -1138,6 +1138,50 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void emptyEffectiveRangeAtIntMaxEndDoesNotWrapIntoAFullScan() {
+        // begin == end == Integer.MAX_VALUE with a warm-up beyond it: encoding
+        // the empty range as end + 1 would wrap to Integer.MIN_VALUE and scan
+        // the whole int domain. The signals must not be read at all.
+        AtomicInteger reads = new AtomicInteger();
+        BarSeries base = series(1);
+        // begin == end == Integer.MAX_VALUE: the whole domain sits at the int
+        // ceiling, so any wrapped empty-range marker would alias a real index.
+        BaseBarSeries domain = new BaseBarSeries(base.getName(), base.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+        };
+        EventSignal strict = new EventSignal() {
+            @Override
+            public boolean isEvent(int index) {
+                reads.incrementAndGet();
+                throw new IllegalStateException("no signal bar may be read");
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return domain;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 5;
+            }
+        };
+
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(strict, strict,
+                Integer.MAX_VALUE, Integer.MAX_VALUE, 0, 0);
+        assertFalse(result.windowAvailable());
+        assertEquals(0, reads.get());
+    }
+
+    @Test
     public void rawSignalSyncAnchorsSourceWarmUpAtTheRetainedHead() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
@@ -1175,50 +1219,4 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertFalse(result.predictedCount() > 0 || result.referenceCount() > 0);
     }
 
-    @Test
-    public void exactCapOneSidedWindowFailsAtTheCacheGuard() {
-        // Storing MAX_MATCHING_CELLS events in one stream would need
-        // 8,000,001 alignment cells; the cache guard must reject the append
-        // itself rather than letting the matcher's own bound fire later.
-        int endIndex = 8_000_000;
-        BarSeries series = series(1);
-        BaseBarSeries proxy = new BaseBarSeries(series.getName(), series.getBarData()) {
-            @Override
-            public int getBeginIndex() {
-                return 0;
-            }
-
-            @Override
-            public int getEndIndex() {
-                return endIndex;
-            }
-        };
-        Indicator<Boolean> predictedEverywhere = new AbstractIndicator<Boolean>(proxy) {
-            @Override
-            public Boolean getValue(int index) {
-                return true;
-            }
-
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
-        };
-        Indicator<Boolean> referenceNowhere = new AbstractIndicator<Boolean>(proxy) {
-            @Override
-            public Boolean getValue(int index) {
-                return false;
-            }
-
-            @Override
-            public int getCountOfUnstableBars() {
-                return 0;
-            }
-        };
-
-        EventSynchronizationIndicator indicator = indicator(predictedEverywhere, referenceNowhere, endIndex, 0, 0);
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> indicator.getResult(endIndex));
-        assertTrue(thrown.getMessage().startsWith("event count exceeds"));
-    }
 }

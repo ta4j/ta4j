@@ -4,12 +4,15 @@
 package org.ta4j.core.indicators.statistics.event;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -96,5 +99,50 @@ class EventSynchronizationBenchmarkTest {
         assertEquals(0, terminal.falseNegatives());
         LOG.info("event-sync benchmark (every index): {} bars, 200-bar window -> {} ms total, terminal window {}", BARS,
                 elapsedMs, terminal);
+    }
+
+    @Test
+    void exactCapOneSidedWindowFailsAtTheCacheGuard() {
+        // Storing MAX_MATCHING_CELLS events in one stream would need
+        // 8,000,001 alignment cells; the cache guard must reject the append
+        // itself rather than letting the matcher's own bound fire later.
+        int endIndex = 8_000_000;
+        BarSeries base = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1d, 2d, 3d).build();
+        BaseBarSeries proxy = new BaseBarSeries(base.getName(), base.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return 0;
+            }
+            @Override
+            public int getEndIndex() {
+                return endIndex;
+            }
+        };
+        Indicator<Boolean> predictedEverywhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return true;
+            }
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        Indicator<Boolean> referenceNowhere = new AbstractIndicator<Boolean>(proxy) {
+            @Override
+            public Boolean getValue(int index) {
+                return false;
+            }
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EventSynchronizationIndicator indicator = new EventSynchronizationIndicator(predictedEverywhere,
+                referenceNowhere, endIndex, 0, 0);
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> indicator.getResult(endIndex));
+        assertTrue(thrown.getMessage().startsWith("event count exceeds"));
     }
 }

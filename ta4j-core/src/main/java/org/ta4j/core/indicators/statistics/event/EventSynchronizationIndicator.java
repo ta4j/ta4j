@@ -224,6 +224,7 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
      *         lies outside the series' current {@code [getBeginIndex(),
      *         getEndIndex()]} domain or the window reaches below the sources'
      *         anchored stability boundary
+     * @since 0.24.2
      */
     @Override
     public Num getValue(int index) {
