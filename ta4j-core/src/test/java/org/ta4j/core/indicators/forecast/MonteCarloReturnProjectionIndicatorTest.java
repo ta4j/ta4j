@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -18,6 +19,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.forecast.method.NormalInverseGammaForecastMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
@@ -28,6 +30,7 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -272,6 +275,179 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
         assertEquals(1, removed.decisionIndex());
         assertEquals(2, removed.horizon());
         assertFalse(removed.isStable());
+    }
+
+    @Test
+    public void preservesLegacySeededShockPathForecasts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 101, 99, 105, 104, 108, 106, 111)
+                .build();
+
+        Forecast empiricalEwma = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(2)
+                .iterationCount(200)
+                .lookbackBarCount(4)
+                .seed(7L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL)
+                .volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA)
+                .quantiles(0.05, 0.5, 0.95)
+                .build()
+                .getValue(6);
+        assertNumEquals("0.03483255181444142", empiricalEwma.mean());
+        assertNumEquals("0.03892637788195455", empiricalEwma.median());
+        assertNumEquals("0.04708855100981354", empiricalEwma.standardDeviation());
+        assertNumEquals("-0.0369318650958033", empiricalEwma.quantile(0.05));
+        assertNumEquals("0.11951942174290628", empiricalEwma.quantile(0.95));
+
+        Forecast normalConstant = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(2)
+                .iterationCount(200)
+                .lookbackBarCount(4)
+                .seed(7L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT)
+                .quantiles(0.05, 0.5, 0.95)
+                .build()
+                .getValue(6);
+        assertNumEquals("0.011102619447215032", normalConstant.mean());
+        assertNumEquals("0.01397158272752366", normalConstant.median());
+        assertNumEquals("0.05563425016603179", normalConstant.standardDeviation());
+        assertNumEquals("-0.08046700229217973", normalConstant.quantile(0.05));
+        assertNumEquals("0.10387657963270557", normalConstant.quantile(0.95));
+        Forecast bootstrapEwma = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(2)
+                .iterationCount(200)
+                .lookbackBarCount(4)
+                .seed(7L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
+                .volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.EWMA)
+                .quantiles(0.05, 0.5, 0.95)
+                .build()
+                .getValue(6);
+        assertNumEquals("0.03488116431995178", bootstrapEwma.mean());
+        assertNumEquals("0.040148367010780873", bootstrapEwma.median());
+        assertNumEquals("0.046971829055689786", bootstrapEwma.standardDeviation());
+        assertNumEquals("-0.03738426602430504", bootstrapEwma.quantile(0.05));
+        assertNumEquals("0.11768100004586679", bootstrapEwma.quantile(0.95));
+    }
+
+    @Test
+    public void customMethodOverridesShockConfiguration() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(1)
+                .iterationCount(5)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.NORMAL)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(context.numFactory().numOf(0.25d));
+                    }
+                    return samples;
+                })
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertEquals(5, prediction.sampleCount());
+        assertNumEquals(0.25, prediction.mean());
+        assertNumEquals(0.25, prediction.median());
+        assertNumEquals(0, prediction.standardDeviation());
+    }
+
+    @Test
+    public void unstableCustomResultPropagatesAsUnavailableForecast() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> null)
+                .build();
+
+        assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());
+    }
+
+    @Test
+    public void customResultWithWrongSampleCountIsUnstable() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .iterationCount(4)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> List.of(context.numFactory().zero(), context.numFactory().zero()))
+                .build();
+
+        assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());
+    }
+
+    @Test
+    public void smoothedEmpiricalShocksExtendBeyondObservedSupport() {
+        BarSeries series = variedSeries();
+        Forecast empirical = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(1)
+                .iterationCount(500)
+                .lookbackBarCount(4)
+                .seed(11L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.STANDARDIZED_EMPIRICAL)
+                .volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT)
+                .build()
+                .getValue(series.getBarCount() - 1);
+        Forecast smoothed = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(1)
+                .iterationCount(500)
+                .lookbackBarCount(4)
+                .seed(11L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.SMOOTHED_EMPIRICAL)
+                .volatilityUpdateMode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT)
+                .build()
+                .getValue(series.getBarCount() - 1);
+
+        assertTrue(empirical.isStable());
+        assertTrue(smoothed.isStable());
+        assertTrue(smoothed.standardDeviation().isGreaterThan(empirical.standardDeviation()));
+    }
+
+    @Test
+    public void smoothedEmpiricalCollapsesOnConstantSeries() {
+        BarSeries series = constantSeries(6, 100);
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .iterationCount(50)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.SMOOTHED_EMPIRICAL)
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertNumEquals(0, prediction.median());
+        assertNumEquals(0, prediction.standardDeviation());
+    }
+
+    @Test
+    public void conjugatePosteriorMethodProducesStableForecastThroughBuilder() {
+        BarSeries series = variedSeries();
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .horizon(2)
+                .iterationCount(100)
+                .lookbackBarCount(4)
+                .monteCarloMethod(NormalInverseGammaForecastMethod.withEmpiricalPriors())
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertEquals(100, prediction.sampleCount());
+    }
+
+    private EwmaReturnForecastStateIndicator state(BarSeries series) {
+        return new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+    }
+
+    private BarSeries variedSeries() {
+        return new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 103, 101, 107, 104, 110, 108, 113)
+                .build();
     }
 
     private MonteCarloReturnProjectionIndicator forecast(BarSeries series,

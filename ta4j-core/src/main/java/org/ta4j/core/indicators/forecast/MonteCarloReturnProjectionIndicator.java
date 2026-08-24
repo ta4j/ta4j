@@ -8,6 +8,8 @@ import java.util.Objects;
 
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.forecast.method.MonteCarloMethod;
+import org.ta4j.core.indicators.forecast.method.ShockPathMonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ReturnForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
@@ -48,7 +50,8 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
 
     private MonteCarloReturnProjectionIndicator(Builder builder) {
         super(builder.stateIndicator);
-        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings());
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
+                builder.methodOrDefault());
     }
 
     /**
@@ -120,6 +123,14 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         HISTORICAL_BOOTSTRAP,
         /** Sample standardized empirical residuals. */
         STANDARDIZED_EMPIRICAL,
+        /**
+         * Sample standardized empirical residuals with additive Gaussian kernel
+         * smoothing (Silverman reference bandwidth), extending sample support beyond
+         * the observed residual extremes.
+         *
+         * @since 0.24.2
+         */
+        SMOOTHED_EMPIRICAL,
         /** Sample standard normal shocks. */
         NORMAL
     }
@@ -152,6 +163,7 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         private VolatilityUpdateMode volatilityUpdateMode = VolatilityUpdateMode.CONSTANT;
         private double volatilityDecayFactor = 0.94d;
         private List<Double> quantileProbabilities = Forecast.DEFAULT_QUANTILE_PROBABILITIES;
+        private MonteCarloMethod monteCarloMethod;
 
         private Builder(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
             this.stateIndicator = Objects.requireNonNull(stateIndicator, "stateIndicator must not be null");
@@ -259,6 +271,19 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         }
 
         /**
+         * Overrides the Monte Carlo technique with a custom implementation, replacing
+         * the configured shock model, volatility update mode, and decay factor.
+         *
+         * @param value technique generating terminal samples
+         * @return this builder
+         * @since 0.24.2
+         */
+        public Builder monteCarloMethod(MonteCarloMethod value) {
+            monteCarloMethod = Objects.requireNonNull(value, "monteCarloMethod must not be null");
+            return this;
+        }
+
+        /**
          * Builds the validated projection indicator.
          *
          * @return configured projection
@@ -269,8 +294,12 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
         }
 
         private MonteCarloSettings settings() {
-            return new MonteCarloSettings(horizon, iterationCount, lookbackBarCount, seed, shockModel,
-                    volatilityUpdateMode, volatilityDecayFactor, quantileProbabilities);
+            return new MonteCarloSettings(horizon, iterationCount, lookbackBarCount, seed, quantileProbabilities);
+        }
+
+        private MonteCarloMethod methodOrDefault() {
+            return monteCarloMethod != null ? monteCarloMethod
+                    : new ShockPathMonteCarloMethod(shockModel, volatilityUpdateMode, volatilityDecayFactor);
         }
     }
 }
