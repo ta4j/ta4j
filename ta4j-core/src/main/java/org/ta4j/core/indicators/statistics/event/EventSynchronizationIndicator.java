@@ -804,15 +804,18 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
 
         private void appendEvent(int index, EventSignal signal) {
             if (signal.isEvent(index)) {
+                // Enforce the reserved-cell budget on every append, not only
+                // when resizing: after the final clamped growth the array still
+                // has room for one more element, which would otherwise slip
+                // past the cap minus one contract. A one-sided alignment needs
+                // count + 1 cells, so a single stream must stay at or below
+                // the cap minus one events.
+                if ((long) size + 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
+                    throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
+                            + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
+                            + " million cells (~128 MB of alignment arrays)");
+                }
                 if (size == events.length) {
-                    // A one-sided alignment needs count + 1 cells, so a single
-                    // stream must stay at or below the cap minus one events; growth is
-                    // clamped to the cap because doubling would overshoot it.
-                    if ((long) size + 2 > EventSynchronizationSupport.MAX_MATCHING_CELLS) {
-                        throw new IllegalArgumentException("event count exceeds the baseline matcher capacity of "
-                                + (EventSynchronizationSupport.MAX_MATCHING_CELLS / 1_000_000L)
-                                + " million cells (~128 MB of alignment arrays)");
-                    }
                     events = Arrays.copyOf(events,
                             (int) Math.min((long) events.length * 2, EventSynchronizationSupport.MAX_MATCHING_CELLS));
                 }
