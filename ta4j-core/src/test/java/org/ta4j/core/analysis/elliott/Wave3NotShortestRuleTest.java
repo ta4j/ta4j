@@ -41,10 +41,8 @@ class Wave3NotShortestRuleTest {
 
     @Test
     void mirrorsBullishAndBearishStates() {
-        final RuleEvidence bullish = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 130, 120, 125, 110, 150));
-        final RuleEvidence bearish = rule.evaluate(
-                candidate(WaveDirection.BEARISH, 100, 70, 80, 75, 90, 50));
+        final RuleEvidence bullish = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 130, 120, 125, 110, 150));
+        final RuleEvidence bearish = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 70, 80, 75, 90, 50));
 
         assertThat(bearish.state()).isEqualTo(bullish.state());
     }

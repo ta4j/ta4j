@@ -54,8 +54,8 @@ class PivotHistoryTest {
         assertThatThrownBy(() -> PivotHistory.of(List.of( //
                 new ConfirmedPivot(4, 4, DoubleNum.valueOf(5), SwingPivotType.LOW),
                 new ConfirmedPivot(4, 5, DoubleNum.valueOf(6), SwingPivotType.HIGH))))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("strictly increase");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("strictly increase");
     }
 
     @Test

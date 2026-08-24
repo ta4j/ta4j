@@ -18,8 +18,8 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivot;
  * {@link PivotHistory} with explicit confirmation provenance.
  *
  * <p>
- * The tracker replays the detector over ascending as-of indices and records
- * for every pivot the first index at which the detector reported it. Detector
+ * The tracker replays the detector over ascending as-of indices and records for
+ * every pivot the first index at which the detector reported it. Detector
  * revisions are handled deterministically:
  * <ul>
  * <li>a trailing pivot that disappears is dropped while no successor has been
@@ -72,13 +72,11 @@ final class ConfirmationTracker {
                     continue;
                 }
                 if (!order.isEmpty() && order.get(order.size() - 1).pivotIndex() == existing.pivotIndex()) {
-                    known.put(pivot.index(),
-                            new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type()));
+                    known.put(pivot.index(), new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type()));
                     order.set(order.size() - 1, known.get(pivot.index()));
                     continue;
                 }
-                throw new IllegalStateException(
-                        "detector contradicted frozen pivot history at index " + pivot.index());
+                throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
             }
             final ConfirmedPivot confirmed = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
             known.put(pivot.index(), confirmed);

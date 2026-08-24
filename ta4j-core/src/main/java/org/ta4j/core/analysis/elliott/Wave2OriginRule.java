@@ -23,10 +23,8 @@ final class Wave2OriginRule implements RelationshipRule {
 
         final double originPrice = candidate.pivots().get(0).price().doubleValue();
         final double wave2EndPrice = candidate.pivots().get(2).price().doubleValue();
-        final List<String> observations = List.of("origin price=" + originPrice,
-                "wave 2 end price=" + wave2EndPrice);
-        final boolean holdsOrigin = candidate.direction() == WaveDirection.BULLISH
-                ? wave2EndPrice > originPrice
+        final List<String> observations = List.of("origin price=" + originPrice, "wave 2 end price=" + wave2EndPrice);
+        final boolean holdsOrigin = candidate.direction() == WaveDirection.BULLISH ? wave2EndPrice > originPrice
                 : wave2EndPrice < originPrice;
         if (holdsOrigin) {
             return RuleEvidence.pass(id(), observations, "wave 2 holds the wave 1 origin");
@@ -35,7 +33,6 @@ final class Wave2OriginRule implements RelationshipRule {
     }
 
     private boolean isApplicable(final TopologyCandidate candidate) {
-        return candidate.grammar() == TopologyGrammar.MOTIVE_5
-                || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
+        return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
     }
 }

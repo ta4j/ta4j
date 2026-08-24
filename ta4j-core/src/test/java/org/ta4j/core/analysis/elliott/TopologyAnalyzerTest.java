@@ -17,8 +17,7 @@ class TopologyAnalyzerTest {
 
     @Test
     void reportsInsufficientHistoryForASinglePivot() {
-        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
-                pivots(10));
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, pivots(10));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.INSUFFICIENT_HISTORY);
         assertThat(analysis.candidates()).isEmpty();
@@ -47,10 +46,10 @@ class TopologyAnalyzerTest {
 
     @Test
     void matchesCorrectiveThreeAgainstTheDeclaredTrend() {
-        final TopologyAnalysis bullishTrendCorrection = new TopologyAnalyzer()
-                .analyze(TopologyGrammar.CORRECTIVE_3, pivots(20, 12, 16, 10));
-        final TopologyAnalysis bearishTrendCorrection = new TopologyAnalyzer()
-                .analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 18, 14, 22));
+        final TopologyAnalysis bullishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
+                pivots(20, 12, 16, 10));
+        final TopologyAnalysis bearishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
+                pivots(10, 18, 14, 22));
 
         assertThat(bullishTrendCorrection.status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(bullishTrendCorrection.direction()).isEqualTo(WaveDirection.BULLISH);
@@ -84,10 +83,8 @@ class TopologyAnalyzerTest {
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.AMBIGUOUS);
         assertThat(analysis.candidates()).hasSize(4);
-        assertThat(analysis.candidates().stream()
-                .map(TopologyCandidate::startBarIndex)
-                .sorted()
-                .toList()).containsExactly(0, 2, 4, 5);
+        assertThat(analysis.candidates().stream().map(TopologyCandidate::startBarIndex).sorted().toList())
+                .containsExactly(0, 2, 4, 5);
     }
 
     @Test
@@ -102,7 +99,8 @@ class TopologyAnalyzerTest {
 
     @Test
     void invalidatesWhenALaterPivotBreachesTheOrigin() {
-        // Bullish motive 10 -> 32 completed on pivots 0..5; pivot 6 breaks the origin low.
+        // Bullish motive 10 -> 32 completed on pivots 0..5; pivot 6 breaks the origin
+        // low.
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
                 pivots(10, 20, 14, 26, 18, 32, 9));
 
@@ -120,10 +118,10 @@ class TopologyAnalyzerTest {
 
     @Test
     void respectsAsOfViewsSoUnconfirmedPivotsAreInvisible() {
-        final PivotHistory history = PivotHistory.of(List.of(
-                new ConfirmedPivot(0, 0, DoubleNum.valueOf(10), SwingPivotType.LOW),
-                new ConfirmedPivot(1, 1, DoubleNum.valueOf(20), SwingPivotType.HIGH),
-                new ConfirmedPivot(2, 7, DoubleNum.valueOf(14), SwingPivotType.LOW)));
+        final PivotHistory history = PivotHistory
+                .of(List.of(new ConfirmedPivot(0, 0, DoubleNum.valueOf(10), SwingPivotType.LOW),
+                        new ConfirmedPivot(1, 1, DoubleNum.valueOf(20), SwingPivotType.HIGH),
+                        new ConfirmedPivot(2, 7, DoubleNum.valueOf(14), SwingPivotType.LOW)));
         final TopologyAnalyzer analyzer = new TopologyAnalyzer();
 
         final TopologyAnalysis beforeAnySecondPivot = analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 0);

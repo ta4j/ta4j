@@ -33,18 +33,16 @@ class Wave2OriginRuleTest {
 
     @Test
     void mirrorsBullishAndBearishStates() {
-        final RuleEvidence bullish = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 120, 110, 145, 125, 160));
-        final RuleEvidence bearish = rule.evaluate(
-                candidate(WaveDirection.BEARISH, 100, 80, 90, 55, 75, 40));
+        final RuleEvidence bullish = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 120, 110, 145, 125, 160));
+        final RuleEvidence bearish = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 80, 90, 55, 75, 40));
 
         assertThat(bearish.state()).isEqualTo(bullish.state());
     }
 
     @Test
     void appliesToCycleGrammar() {
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 120, 110, 145, 125, 160, 140, 170, 150));
+        final RuleEvidence evidence = rule
+                .evaluate(candidate(WaveDirection.BULLISH, 100, 120, 110, 145, 125, 160, 140, 170, 150));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
     }

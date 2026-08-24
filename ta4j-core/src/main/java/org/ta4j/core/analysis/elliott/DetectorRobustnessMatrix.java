@@ -36,11 +36,11 @@ final class DetectorRobustnessMatrix {
     /**
      * Evaluates one topology-only MOTIVE_5 mode per detector configuration.
      *
-     * @param series source series
-     * @param fromIndex first evaluated bar (inclusive)
-     * @param toIndex last evaluated bar (inclusive)
+     * @param series     source series
+     * @param fromIndex  first evaluated bar (inclusive)
+     * @param toIndex    last evaluated bar (inclusive)
      * @param partitions locked study partitions
-     * @param detectors detector configurations
+     * @param detectors  detector configurations
      * @return deterministic detector matrix report
      */
     static StudyReport.RobustnessReport evaluate(final BarSeries series, final int fromIndex, final int toIndex,
@@ -50,8 +50,8 @@ final class DetectorRobustnessMatrix {
         Objects.requireNonNull(detectors, "detectors");
         final List<StudyReport.DetectorResult> results = new ArrayList<>(detectors.size());
         for (final DetectorSpec detector : detectors) {
-            final StudyReport.ModeReport mode = StudyRunner.evaluateTopologyMode(series, fromIndex, toIndex,
-                    partitions, detector.factory(), TopologyGrammar.MOTIVE_5, "topology-only");
+            final StudyReport.ModeReport mode = StudyRunner.evaluateTopologyMode(series, fromIndex, toIndex, partitions,
+                    detector.factory(), TopologyGrammar.MOTIVE_5, "topology-only");
             results.add(new StudyReport.DetectorResult(detector.name(), mode));
         }
         return new StudyReport.RobustnessReport(results);

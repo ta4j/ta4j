@@ -54,9 +54,9 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         final double wave5MomentumValue = wave5Momentum.doubleValue();
         final double wave3Price = candidate.pivots().get(3).price().doubleValue();
         final double wave5Price = candidate.pivots().get(4).price().doubleValue();
-        final List<String> observations = new ArrayList<>(List.of("wave 3 momentum=" + wave3MomentumValue,
-                "wave 5 momentum=" + wave5MomentumValue, "wave 3 end price=" + wave3Price,
-                "wave 5 end price=" + wave5Price));
+        final List<String> observations = new ArrayList<>(
+                List.of("wave 3 momentum=" + wave3MomentumValue, "wave 5 momentum=" + wave5MomentumValue,
+                        "wave 3 end price=" + wave3Price, "wave 5 end price=" + wave5Price));
         final boolean divergence = candidate.direction() == WaveDirection.BULLISH
                 ? wave5Price > wave3Price && wave5MomentumValue < wave3MomentumValue
                 : wave5Price < wave3Price && wave5MomentumValue > wave3MomentumValue;
@@ -67,19 +67,16 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
         final double momentumMagnitude = Math.abs(wave3MomentumValue);
         final double magnitudeDifference = Math.abs(wave3MomentumValue - wave5MomentumValue);
-        final double score = momentumMagnitude == 0.0d ? 1.0d
-                : Math.min(1.0d, magnitudeDifference / momentumMagnitude);
+        final double score = momentumMagnitude == 0.0d ? 1.0d : Math.min(1.0d, magnitudeDifference / momentumMagnitude);
         return RuleEvidence.scored(id(), score, observations, "price and momentum diverge at wave 5");
     }
 
     private boolean isAvailableIndex(final int index) {
-        return index >= momentum.getCountOfUnstableBars()
-                && index >= momentum.getBarSeries().getBeginIndex()
+        return index >= momentum.getCountOfUnstableBars() && index >= momentum.getBarSeries().getBeginIndex()
                 && index <= momentum.getBarSeries().getEndIndex();
     }
 
     private boolean isApplicable(final TopologyCandidate candidate) {
-        return candidate.grammar() == TopologyGrammar.MOTIVE_5
-                || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
+        return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
     }
 }

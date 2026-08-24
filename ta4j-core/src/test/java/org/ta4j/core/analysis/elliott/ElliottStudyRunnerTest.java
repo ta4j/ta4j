@@ -21,7 +21,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class ElliottStudyRunnerTest {
 
@@ -29,10 +29,10 @@ class ElliottStudyRunnerTest {
 
     @Test
     void calibrationCannotTouchForbiddenDate() {
-        final StudyRunner.Partitions invalid = new StudyRunner.Partitions(List.of(
-                new StudyRunner.Partition("calibration", LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2)),
-                new StudyRunner.Partition("validation", LocalDate.of(2024, 1, 3), LocalDate.of(2024, 1, 4)),
-                new StudyRunner.Partition("holdout", LocalDate.of(2024, 1, 5), LocalDate.of(2024, 1, 6))),
+        final StudyRunner.Partitions invalid = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2024, 1, 3), LocalDate.of(2024, 1, 4)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2024, 1, 5), LocalDate.of(2024, 1, 6))),
                 LocalDate.of(2024, 1, 1));
         final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory,
                 List.of(TopologyGrammar.MOTIVE_5), List.of(), configuration(invalid, 1));
@@ -67,16 +67,36 @@ class ElliottStudyRunnerTest {
     }
 
     @Test
+    void fractalDetectorDoesNotLeakAppendedBars() {
+        final StudyRunner.Partitions partitions = StudyRunner.Partitions.lockedDefault();
+        final StudyRunner.Configuration configuration = new StudyRunner.Configuration(partitions, "fingerprint", SEED,
+                List.of(2), 1,
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("fractal", () -> SwingDetectors.fractal(2))));
+        final StudyRunner runner = new StudyRunner(() -> SwingDetectors.fractal(2), grammars(), rules(), configuration);
+
+        final String prefix = runner.evaluate("BTC", buildSeries(24), 0, 19).toJson();
+        final String appended = runner.evaluate("BTC", buildSeries(40), 0, 19).toJson();
+
+        assertEquals(prefix, appended);
+    }
+
+    @Test
     void ablationModesContainExactlyTheirSelectedRule() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner runner = new StudyRunner(ElliottStudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration);
         final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
 
-        final StudyReport.ModeReport first = report.ablations().stream().filter(mode -> "+first".equals(mode.mode()))
-                .findFirst().orElseThrow();
-        final StudyReport.ModeReport second = report.ablations().stream().filter(mode -> "+second".equals(mode.mode()))
-                .findFirst().orElseThrow();
+        final StudyReport.ModeReport first = report.ablations()
+                .stream()
+                .filter(mode -> "+first".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.ModeReport second = report.ablations()
+                .stream()
+                .filter(mode -> "+second".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
         assertEquals(List.of("first"), first.activeRuleIds());
         assertEquals(List.of("second"), second.activeRuleIds());
         assertFalse(first.activeRuleIds().contains("second"));
@@ -95,7 +115,8 @@ class ElliottStudyRunnerTest {
         assertEquals("H1", report.h1().id());
         assertEquals("H2", report.h2().id());
         assertEquals(7, report.competingGrammars().size());
-        assertTrue(report.competingGrammars().stream()
+        assertTrue(report.competingGrammars()
+                .stream()
                 .anyMatch(mode -> "competing-change-point-baseline".equals(mode.mode())));
         assertFalse(report.ablations().isEmpty());
         assertEquals(1, report.robustness().detectors().size());
@@ -153,9 +174,17 @@ class ElliottStudyRunnerTest {
         final Instant start = Instant.parse("2018-01-01T00:00:00Z");
         for (int index = 0; index < count; index++) {
             final double close = syntheticClose(index);
-            series.barBuilder().timePeriod(Duration.ofDays(1)).endTime(start.plus(Duration.ofDays(index + 1)))
-                    .openPrice(close).highPrice(close + 1).lowPrice(close - 1).closePrice(close).volume(1)
-                    .amount(close).trades(1).add();
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(close - 1)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
         }
         return series;
     }

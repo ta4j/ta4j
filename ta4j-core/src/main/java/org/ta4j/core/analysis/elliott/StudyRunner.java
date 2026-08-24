@@ -20,20 +20,23 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 /**
  * Package-private, protocol-agnostic Phase 3 study engine.
  *
- * <p>The caller supplies the detector, grammars, and relationship rules. The
+ * <p>
+ * The caller supplies the detector, grammars, and relationship rules. The
  * runner only evaluates bars inside the supplied locked partitions and never
  * consults truth anchors or a runtime registry. The confirmation-aware kernel
- * is always evaluated through an as-of view.</p>
+ * is always evaluated through an as-of view.
+ * </p>
  *
- * <p>Real-data execution is intentionally caller-owned: load a classpath or
+ * <p>
+ * Real-data execution is intentionally caller-owned: load a classpath or
  * file-backed {@link BarSeries} in the examples/test data plane, then invoke
  * {@link #evaluateAndWrite(String, BarSeries, int, int, Path)}. This core test
- * scope does not download or fabricate market data.</p>
+ * scope does not download or fabricate market data.
+ * </p>
  */
 final class StudyRunner {
 
-    private static final String DEFAULT_FINGERPRINT =
-            "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100";
+    private static final String DEFAULT_FINGERPRINT = "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100";
 
     private final Supplier<SwingDetector> detectorFactory;
     private final List<TopologyGrammar> grammars;
@@ -56,26 +59,27 @@ final class StudyRunner {
     /**
      * Evaluates the locked study over the supplied index range.
      *
-     * @param series source bars
+     * @param series    source bars
      * @param fromIndex first requested index, inclusive
-     * @param toIndex last requested index, inclusive
+     * @param toIndex   last requested index, inclusive
      * @return immutable study report
      */
     StudyReport evaluate(final BarSeries series, final int fromIndex, final int toIndex) {
         return evaluate("series", series, fromIndex, toIndex);
     }
+
     /**
      * Evaluates and persists one named asset as one deterministic JSON report.
      *
-     * @param assetId report asset identifier
-     * @param series source bars
+     * @param assetId   report asset identifier
+     * @param series    source bars
      * @param fromIndex first requested index, inclusive
-     * @param toIndex last requested index, inclusive
-     * @param path caller-selected output path
+     * @param toIndex   last requested index, inclusive
+     * @param path      caller-selected output path
      * @return the report written to {@code path}
      */
-    StudyReport evaluateAndWrite(final String assetId, final BarSeries series, final int fromIndex,
-            final int toIndex, final Path path) {
+    StudyReport evaluateAndWrite(final String assetId, final BarSeries series, final int fromIndex, final int toIndex,
+            final Path path) {
         final StudyReport report = evaluate(assetId, series, fromIndex, toIndex);
         report.write(path);
         return report;
@@ -85,10 +89,10 @@ final class StudyRunner {
      * Evaluates one named asset. The name is carried into the report so transfer
      * assets remain separately identifiable and are never merged with BTC.
      *
-     * @param assetId report asset identifier
-     * @param series source bars
+     * @param assetId   report asset identifier
+     * @param series    source bars
      * @param fromIndex first requested index, inclusive
-     * @param toIndex last requested index, inclusive
+     * @param toIndex   last requested index, inclusive
      * @return immutable study report
      */
     StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
@@ -153,10 +157,13 @@ final class StudyRunner {
         final List<StudyReport.ModeReport> h2Modes = new ArrayList<>();
         h2Modes.add(h2Topology);
         h2Modes.addAll(ablations);
-        final StudyReport.HypothesisReport h2 = new StudyReport.HypothesisReport("H2",
-                TopologyGrammar.CYCLE_5_3.name(), h2Modes);
-        final List<StudyReport.PartitionSpec> partitionSpecs = configuration.partitions().entries().stream()
-                .map(entry -> new StudyReport.PartitionSpec(entry.name(), entry.start(), entry.end())).toList();
+        final StudyReport.HypothesisReport h2 = new StudyReport.HypothesisReport("H2", TopologyGrammar.CYCLE_5_3.name(),
+                h2Modes);
+        final List<StudyReport.PartitionSpec> partitionSpecs = configuration.partitions()
+                .entries()
+                .stream()
+                .map(entry -> new StudyReport.PartitionSpec(entry.name(), entry.start(), entry.end()))
+                .toList();
         return new StudyReport(assetId, configuration.protocolFingerprint(), configuration.seed(), partitionSpecs,
                 configuration.partitions().forbiddenCalibrationStart(), h1, h2, competing, ablations, robustness,
                 nullReports);
@@ -253,8 +260,7 @@ final class StudyRunner {
                 }
             }
         }
-        return new StudyReport.ModeReport("competing-" + name, name, List.of(),
-                metrics(accumulators, partitions));
+        return new StudyReport.ModeReport("competing-" + name, name, List.of(), metrics(accumulators, partitions));
     }
 
     private static StudyReport.ModeReport evaluateChangePointBaseline(final BarSeries series, final int start,
@@ -274,8 +280,8 @@ final class StudyRunner {
                 } else {
                     final double first = close(series, index - 1) - close(series, index - 2);
                     final double second = close(series, index) - close(series, index - 1);
-                    final boolean change = first != 0.0d && second != 0.0d && Math.copySign(1.0d, first) != Math
-                            .copySign(1.0d, second);
+                    final boolean change = first != 0.0d && second != 0.0d
+                            && Math.copySign(1.0d, first) != Math.copySign(1.0d, second);
                     accumulator.recordAlternative(change, false, false, change ? "change" : "stable");
                 }
             }
@@ -413,8 +419,8 @@ final class StudyRunner {
             case COMPLETE -> {
                 completeCount++;
                 final TopologyCandidate candidate = analysis.candidates().get(0);
-                final Set<String> labels = Set.of(candidate.direction() + ":" + candidate.startBarIndex() + "-"
-                        + candidate.endBarIndex());
+                final Set<String> labels = Set
+                        .of(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
                 updateStability(labels);
                 double lag = 0.0d;
                 for (final ConfirmedPivot pivot : candidate.pivots()) {
@@ -432,8 +438,7 @@ final class StudyRunner {
                 ambiguousCount++;
                 final Set<String> labels = new HashSet<>();
                 for (final TopologyCandidate candidate : analysis.candidates()) {
-                    labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-"
-                            + candidate.endBarIndex());
+                    labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
                 }
                 updateStability(labels);
             }
@@ -524,11 +529,10 @@ final class StudyRunner {
                     lastIndex == Integer.MIN_VALUE ? -1 : lastIndex, evaluationCount, completeCount, formingCount,
                     ambiguousCount, noMatchCount, invalidatedCount, insufficientHistoryCount,
                     ratio(completeCount, denominator), ratio(ambiguousCount, denominator),
-                    ratio(noMatchCount, denominator),
-                    ratio(confirmationLagSum, confirmationLagCount), ratio(stabilitySum, stabilityCount),
-                    evidenceEvaluationCount, evidencePassCount, evidenceFailCount, evidencePendingCount,
-                    evidenceUnavailableCount, evidenceNotApplicableCount, ratio(evidencePassCount, evidenceDenominator),
-                    rules);
+                    ratio(noMatchCount, denominator), ratio(confirmationLagSum, confirmationLagCount),
+                    ratio(stabilitySum, stabilityCount), evidenceEvaluationCount, evidencePassCount, evidenceFailCount,
+                    evidencePendingCount, evidenceUnavailableCount, evidenceNotApplicableCount,
+                    ratio(evidencePassCount, evidenceDenominator), rules);
         }
 
         private static double ratio(final long numerator, final long denominator) {
@@ -599,8 +603,7 @@ final class StudyRunner {
                     final double delta = window.get(leg + 1).price().doubleValue()
                             - window.get(leg).price().doubleValue();
                     final double signed = direction == WaveDirection.BULLISH ? delta : -delta;
-                    final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0
-                            : (leg - segmentLegs[0]) % 2 != 0;
+                    final boolean positive = leg < segmentLegs[0] ? leg % 2 == 0 : (leg - segmentLegs[0]) % 2 != 0;
                     if (positive ? !(signed > 1e-12) : !(signed < -1e-12)) {
                         valid = false;
                         break;
@@ -653,10 +656,11 @@ final class StudyRunner {
         }
 
         static Partitions lockedDefault() {
-            return new Partitions(List.of(new Partition("calibration", LocalDate.of(2010, 1, 1),
-                    LocalDate.of(2019, 12, 31)), new Partition("validation", LocalDate.of(2020, 1, 1),
-                    LocalDate.of(2023, 6, 15)), new Partition("holdout", LocalDate.of(2023, 6, 16),
-                    LocalDate.of(2026, 3, 6))), LocalDate.of(2024, 1, 1));
+            return new Partitions(
+                    List.of(new Partition("calibration", LocalDate.of(2010, 1, 1), LocalDate.of(2019, 12, 31)),
+                            new Partition("validation", LocalDate.of(2020, 1, 1), LocalDate.of(2023, 6, 15)),
+                            new Partition("holdout", LocalDate.of(2023, 6, 16), LocalDate.of(2026, 3, 6))),
+                    LocalDate.of(2024, 1, 1));
         }
 
         Partition calibration() {
@@ -674,19 +678,19 @@ final class StudyRunner {
         void assertCalibrationConfiguration() {
             final Partition calibration = calibration();
             if (!calibration.end().isBefore(forbiddenCalibrationStart)) {
-                throw new IllegalStateException("calibration partition reaches forbidden date "
-                        + forbiddenCalibrationStart);
+                throw new IllegalStateException(
+                        "calibration partition reaches forbidden date " + forbiddenCalibrationStart);
             }
         }
 
         /**
-         * Hard post-2024 calibration guard. A calibration observation on or after
-         * the embargo date is an error, never a silently skipped sample.
+         * Hard post-2024 calibration guard. A calibration observation on or after the
+         * embargo date is an error, never a silently skipped sample.
          */
         void assertCalibrationDateAllowed(final LocalDate date) {
             if ("calibration".equals(partitionName(date)) && !date.isBefore(forbiddenCalibrationStart)) {
-                throw new IllegalStateException("calibration touched forbidden date " + date + " (start "
-                        + forbiddenCalibrationStart + ")");
+                throw new IllegalStateException(
+                        "calibration touched forbidden date " + date + " (start " + forbiddenCalibrationStart + ")");
             }
         }
 
@@ -700,7 +704,9 @@ final class StudyRunner {
         }
 
         private Partition byName(final String name) {
-            return entries.stream().filter(entry -> name.equals(entry.name())).findFirst()
+            return entries.stream()
+                    .filter(entry -> name.equals(entry.name()))
+                    .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("missing locked partition " + name));
         }
     }
@@ -725,8 +731,8 @@ final class StudyRunner {
         }
 
         static Configuration lockedDefault() {
-            return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60),
-                    200, DetectorRobustnessMatrix.defaults());
+            return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
+                    DetectorRobustnessMatrix.defaults());
         }
     }
 }

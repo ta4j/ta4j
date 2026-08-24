@@ -20,10 +20,12 @@ import java.util.Objects;
 /**
  * Immutable result of one locked empirical Elliott study evaluation.
  *
- * <p>The report keeps H1 (topology) and H2 (relationship evidence) in separate
+ * <p>
+ * The report keeps H1 (topology) and H2 (relationship evidence) in separate
  * fields. Partition metrics are represented as a list, rather than a combined
  * aggregate, so a caller cannot accidentally interpret a cross-partition
- * statistic as a held-out result.</p>
+ * statistic as a held-out result.
+ * </p>
  */
 final class StudyReport {
 
@@ -42,15 +44,14 @@ final class StudyReport {
     private final List<NullReport> nulls;
 
     StudyReport(final String assetId, final String protocolFingerprint, final long seed,
-            final List<PartitionSpec> partitions, final LocalDate forbiddenCalibrationStart,
-            final HypothesisReport h1, final HypothesisReport h2, final List<ModeReport> competingGrammars,
-            final List<ModeReport> ablations, final RobustnessReport robustness, final List<NullReport> nulls) {
+            final List<PartitionSpec> partitions, final LocalDate forbiddenCalibrationStart, final HypothesisReport h1,
+            final HypothesisReport h2, final List<ModeReport> competingGrammars, final List<ModeReport> ablations,
+            final RobustnessReport robustness, final List<NullReport> nulls) {
         this.assetId = requireText(assetId, "assetId");
         this.protocolFingerprint = requireText(protocolFingerprint, "protocolFingerprint");
         this.seed = seed;
         this.partitions = immutable(partitions, "partitions");
-        this.forbiddenCalibrationStart = Objects.requireNonNull(forbiddenCalibrationStart,
-                "forbiddenCalibrationStart");
+        this.forbiddenCalibrationStart = Objects.requireNonNull(forbiddenCalibrationStart, "forbiddenCalibrationStart");
         this.h1 = Objects.requireNonNull(h1, "h1");
         this.h2 = Objects.requireNonNull(h2, "h2");
         this.competingGrammars = immutable(competingGrammars, "competingGrammars");
@@ -74,6 +75,7 @@ final class StudyReport {
     List<PartitionSpec> partitions() {
         return partitions;
     }
+
     LocalDate forbiddenCalibrationStart() {
         return forbiddenCalibrationStart;
     }
@@ -101,7 +103,6 @@ final class StudyReport {
     List<NullReport> nulls() {
         return nulls;
     }
-
 
     /**
      * Serializes this report with a fixed insertion order and no locale-sensitive
@@ -232,8 +233,13 @@ final class StudyReport {
         for (final DetectorResult detector : robustness.detectors()) {
             final JsonObject detectorJson = new JsonObject();
             detectorJson.addProperty("name", detector.name());
-            detectorJson.add("partitions", modesJson(List.of(detector.mode())));
-            detectors.add(detectorJson);
+            detectorJson.addProperty("mode", detector.mode().mode());
+            detectorJson.addProperty("grammar", detector.mode().grammar());
+            final JsonArray partitions = new JsonArray();
+            for (final PartitionMetrics metrics : detector.mode().partitions()) {
+                partitions.add(partitionJson(metrics));
+            }
+            detectorJson.add("partitions", partitions);
         }
         json.add("detectors", detectors);
         return json;

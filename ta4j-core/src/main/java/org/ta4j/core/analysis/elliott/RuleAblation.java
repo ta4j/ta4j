@@ -10,14 +10,17 @@ import java.util.Objects;
 /**
  * Builds the preregistered one-rule-at-a-time ablation modes.
  *
- * <p>Each single-rule mode owns a one-element rule list. The driver never
- * mutates or shares a caller-owned mutable list, which makes rule isolation
- * explicit in the resulting report.</p>
+ * <p>
+ * Each single-rule mode owns a one-element rule list. The driver never mutates
+ * or shares a caller-owned mutable list, which makes rule isolation explicit in
+ * the resulting report.
+ * </p>
  */
 final class RuleAblation {
 
     private RuleAblation() {
     }
+
     static List<Mode> modes() {
         return modes(ClassicalRelationshipRules.classicalRelationships());
     }

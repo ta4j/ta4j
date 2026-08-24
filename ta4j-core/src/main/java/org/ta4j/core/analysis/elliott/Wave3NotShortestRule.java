@@ -37,7 +37,6 @@ final class Wave3NotShortestRule implements RelationshipRule {
     }
 
     private boolean isApplicable(final TopologyCandidate candidate) {
-        return candidate.grammar() == TopologyGrammar.MOTIVE_5
-                || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
+        return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
     }
 }

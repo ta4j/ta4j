@@ -18,10 +18,12 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Deterministic stationary-block-bootstrap null generator.
  *
- * <p>The generator resamples contiguous blocks of observed log returns on a
+ * <p>
+ * The generator resamples contiguous blocks of observed log returns on a
  * circular return tape. Reconstructing prices from those returns preserves the
  * observed return scale and local dependence while retaining the original bar
- * timestamps and non-price fields. The source series is never mutated.</p>
+ * timestamps and non-price fields. The source series is never mutated.
+ * </p>
  */
 final class BlockBootstrapNulls {
 
@@ -33,10 +35,10 @@ final class BlockBootstrapNulls {
     /**
      * Generates a deterministic ensemble for one expected block length.
      *
-     * @param source source price series
-     * @param blockLength expected block length in bars
+     * @param source       source price series
+     * @param blockLength  expected block length in bars
      * @param ensembleSize number of null series
-     * @param seed stable ensemble seed
+     * @param seed         stable ensemble seed
      * @return immutable null series in ensemble order
      */
     static List<BarSeries> generate(final BarSeries source, final int blockLength, final int ensembleSize,
@@ -90,7 +92,8 @@ final class BlockBootstrapNulls {
 
         final NumFactory numFactory = source.numFactory();
         final BarSeries result = new BaseBarSeriesBuilder().withName(source.getName() + "-null-" + ensembleIndex)
-                .withNumFactory(numFactory).build();
+                .withNumFactory(numFactory)
+                .build();
         for (int offset = 0; offset < count; offset++) {
             final Bar sourceBar = source.getBar(source.getBeginIndex() + offset);
             final double close = closes[offset];

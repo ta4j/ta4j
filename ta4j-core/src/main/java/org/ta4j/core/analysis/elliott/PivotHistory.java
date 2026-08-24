@@ -23,8 +23,7 @@ import java.util.Objects;
  *
  * <p>
  * As-of views truncate to pivots whose confirmation index is at or before the
- * requested bar so no future confirmation leaks backward into an earlier
- * state.
+ * requested bar so no future confirmation leaks backward into an earlier state.
  */
 final class PivotHistory {
 
@@ -64,15 +63,15 @@ final class PivotHistory {
 
     private static ConfirmedPivot chooseMoreExtreme(final ConfirmedPivot first, final ConfirmedPivot second) {
         final boolean secondMoreExtreme = switch (second.type()) {
-            case HIGH -> second.price().isGreaterThan(first.price());
-            case LOW -> second.price().isLessThan(first.price());
+        case HIGH -> second.price().isGreaterThan(first.price());
+        case LOW -> second.price().isLessThan(first.price());
         };
         if (secondMoreExtreme) {
             return second;
         }
         final boolean firstMoreExtreme = switch (second.type()) {
-            case HIGH -> first.price().isGreaterThan(second.price());
-            case LOW -> first.price().isLessThan(second.price());
+        case HIGH -> first.price().isGreaterThan(second.price());
+        case LOW -> first.price().isLessThan(second.price());
         };
         // Equal extremes keep the later pivot deterministically.
         return firstMoreExtreme ? first : second;

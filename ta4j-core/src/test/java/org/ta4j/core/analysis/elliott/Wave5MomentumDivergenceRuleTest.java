@@ -25,10 +25,8 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void scoresBullishDivergence() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
-                momentum(0, 0, 0, 10, 8, 0));
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).hasValue(0.2d);
@@ -38,10 +36,8 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void scoresBearishDivergenceWithTheSameStrength() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
-                momentum(0, 0, 0, 10, 12, 0));
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BEARISH, 100, 90, 95, 80, 75, 70));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 12, 0));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 90, 95, 80, 75, 70));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).hasValue(0.2d);
@@ -49,10 +45,8 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void passesWithoutScoreWhenPriceAndMomentumAreAligned() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
-                momentum(0, 0, 0, 10, 12, 0));
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 12, 0));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(evidence.score()).isEmpty();
@@ -62,11 +56,9 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void returnsUnavailableForMissingMomentum() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
-                momentum(DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(0),
-                        DoubleNum.valueOf(10), NaN.NaN, DoubleNum.valueOf(0)));
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(DoubleNum.valueOf(0),
+                DoubleNum.valueOf(0), DoubleNum.valueOf(0), DoubleNum.valueOf(10), NaN.NaN, DoubleNum.valueOf(0)));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
         assertThat(evidence.score()).isEmpty();
@@ -78,8 +70,7 @@ class Wave5MomentumDivergenceRuleTest {
         final Indicator<Num> momentum = new SMAIndicator(new ClosePriceIndicator(series), 5);
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
 
-        final RuleEvidence evidence = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130));
 
         assertThat(momentum.getCountOfUnstableBars()).isGreaterThan(3);
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
@@ -87,8 +78,7 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void doesNotApplyToCorrectiveGrammar() {
-        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
-                momentum(0, 0, 0, 10, 8, 0));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
 
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 115));
 

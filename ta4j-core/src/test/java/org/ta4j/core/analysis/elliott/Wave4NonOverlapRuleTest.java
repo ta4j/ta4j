@@ -33,10 +33,8 @@ class Wave4NonOverlapRuleTest {
 
     @Test
     void mirrorsBullishAndBearishStates() {
-        final RuleEvidence bullish = rule.evaluate(
-                candidate(WaveDirection.BULLISH, 100, 120, 110, 150, 120, 170));
-        final RuleEvidence bearish = rule.evaluate(
-                candidate(WaveDirection.BEARISH, 100, 80, 90, 50, 80, 30));
+        final RuleEvidence bullish = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 120, 110, 150, 120, 170));
+        final RuleEvidence bearish = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 80, 90, 50, 80, 30));
 
         assertThat(bearish.state()).isEqualTo(bullish.state());
     }

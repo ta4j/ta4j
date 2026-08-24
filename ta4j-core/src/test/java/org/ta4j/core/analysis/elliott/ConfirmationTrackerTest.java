@@ -127,8 +127,7 @@ class ConfirmationTrackerTest {
             final ConfirmedPivot pivot = history.pivots().get(i);
             assertThat(pivot.confirmationIndex()).isGreaterThanOrEqualTo(pivot.pivotIndex());
             if (i > 0) {
-                assertThat(pivot.pivotIndex())
-                        .isGreaterThan(history.pivots().get(i - 1).pivotIndex());
+                assertThat(pivot.pivotIndex()).isGreaterThan(history.pivots().get(i - 1).pivotIndex());
                 assertThat(pivot.type()).isNotEqualTo(history.pivots().get(i - 1).type());
             }
         }
@@ -136,7 +135,8 @@ class ConfirmationTrackerTest {
         // pivot's confirmation, that pivot is still absent from the view.
         final ConfirmedPivot newest = history.pivots().get(history.pivots().size() - 1);
         if (newest.pivotIndex() < newest.confirmationIndex()) {
-            assertThat(history.asOf(newest.confirmationIndex() - 1).stream()
+            assertThat(history.asOf(newest.confirmationIndex() - 1)
+                    .stream()
                     .noneMatch(pivot -> pivot.pivotIndex() == newest.pivotIndex())).isTrue();
         }
     }
@@ -150,11 +150,10 @@ class ConfirmationTrackerTest {
         return new SwingPivot(index, DoubleNum.valueOf(price), type);
     }
 
-
     /**
-     * Builds bars whose high/low straddle the close so fractal detection sees
-     * the zigzag on both price channels (close-only mocks give every bar an
-     * identical zero low).
+     * Builds bars whose high/low straddle the close so fractal detection sees the
+     * zigzag on both price channels (close-only mocks give every bar an identical
+     * zero low).
      */
     private static BarSeries ohlcSeriesAround(final double[] closes) {
         final BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
@@ -188,17 +187,17 @@ class ConfirmationTrackerTest {
         }
 
         @Override
-        public org.ta4j.core.analysis.elliott.swing.SwingDetectorResult detect(final BarSeries series,
-                final int index, final ElliottDegree degree) {
+        public org.ta4j.core.analysis.elliott.swing.SwingDetectorResult detect(final BarSeries series, final int index,
+                final ElliottDegree degree) {
             throw new UnsupportedOperationException("scripted detector only supports detectPivots");
         }
 
         @Override
         public List<SwingPivot> detectPivots(final BarSeries series, final int index) {
-            return script.getOrDefault(index, script.getOrDefault(script.keySet().stream()
-                    .filter(key -> key <= index)
-                    .max(Integer::compareTo)
-                    .orElseThrow(), List.of()));
+            return script.getOrDefault(index,
+                    script.getOrDefault(
+                            script.keySet().stream().filter(key -> key <= index).max(Integer::compareTo).orElseThrow(),
+                            List.of()));
         }
     }
 }

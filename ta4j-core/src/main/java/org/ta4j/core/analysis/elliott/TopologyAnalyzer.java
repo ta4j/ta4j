@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Bounded, deterministic wave-grammar matcher over contiguous confirmed
- * pivots.
+ * Bounded, deterministic wave-grammar matcher over contiguous confirmed pivots.
  *
  * <p>
  * The analyzer enumerates contiguous pivot windows without skipping pivots,
@@ -19,9 +18,8 @@ import java.util.Objects;
  *
  * <p>
  * Structural invalidation policy: the newest complete candidate is invalidated
- * when a later confirmed pivot breaches its origin extreme (a bullish
- * candidate dies below its origin low, a bearish candidate above its origin
- * high).
+ * when a later confirmed pivot breaches its origin extreme (a bullish candidate
+ * dies below its origin low, a bearish candidate above its origin high).
  *
  * <p>
  * Bounds: only the trailing {@code maxHistoryPivots} confirmed pivots are
@@ -74,8 +72,7 @@ final class TopologyAnalyzer {
         final int windowStart = Math.max(0, confirmed.size() - maxHistoryPivots);
         final List<ConfirmedPivot> window = confirmed.subList(windowStart, confirmed.size());
         if (window.size() < 2) {
-            return TopologyAnalysis.insufficientHistory(
-                    "need at least two confirmed pivots, got " + window.size());
+            return TopologyAnalysis.insufficientHistory("need at least two confirmed pivots, got " + window.size());
         }
 
         final List<TopologyCandidate> live = new ArrayList<>();
@@ -116,9 +113,8 @@ final class TopologyAnalyzer {
                     + mostRecentPrior.endBarIndex());
         }
         if (live.size() == 1) {
-            return new TopologyAnalysis(TopologyStatus.COMPLETE, live.get(0).direction(), live,
-                    "single " + grammar + " candidate spans bars " + live.get(0).startBarIndex() + "-"
-                            + live.get(0).endBarIndex());
+            return new TopologyAnalysis(TopologyStatus.COMPLETE, live.get(0).direction(), live, "single " + grammar
+                    + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex());
         }
         if (live.size() > 1) {
             final List<TopologyCandidate> bounded = boundedMostRecent(live);
@@ -128,22 +124,18 @@ final class TopologyAnalyzer {
 
         for (final WaveDirection direction : WaveDirection.values()) {
             if (matchesPartialShape(grammar, direction, window)) {
-                return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in "
-                        + direction + " orientation");
+                return TopologyAnalysis.forming(direction,
+                        "partial " + grammar + " prefix present in " + direction + " orientation");
             }
         }
         if (window.size() < grammar.requiredPivots()) {
-            return TopologyAnalysis.noMatch(
-                    "no " + grammar + " prefix or complete candidate in " + window.size() + " pivots");
+            return TopologyAnalysis
+                    .noMatch("no " + grammar + " prefix or complete candidate in " + window.size() + " pivots");
         }
-        return TopologyAnalysis.noMatch(
-                "no " + grammar + " candidate in " + window.size() + " confirmed pivots");
+        return TopologyAnalysis.noMatch("no " + grammar + " candidate in " + window.size() + " confirmed pivots");
     }
 
-
-
-    private boolean isBreachedByAnyLaterPivot(final TopologyCandidate candidate,
-            final List<ConfirmedPivot> window) {
+    private boolean isBreachedByAnyLaterPivot(final TopologyCandidate candidate, final List<ConfirmedPivot> window) {
         for (final ConfirmedPivot pivot : window) {
             if (pivot.pivotIndex() > candidate.endBarIndex() && isOriginBreach(candidate, pivot)) {
                 return true;
@@ -151,13 +143,14 @@ final class TopologyAnalyzer {
         }
         return false;
     }
+
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
         final double originPrice = candidate.legStartPrice(0);
         return switch (candidate.direction()) {
-            case BULLISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.LOW
-                    && pivot.price().doubleValue() < originPrice - EPSILON;
-            case BEARISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.HIGH
-                    && pivot.price().doubleValue() > originPrice + EPSILON;
+        case BULLISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.LOW
+                && pivot.price().doubleValue() < originPrice - EPSILON;
+        case BEARISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.HIGH
+                && pivot.price().doubleValue() > originPrice + EPSILON;
         };
     }
 
@@ -200,8 +193,7 @@ final class TopologyAnalyzer {
         for (int leg = 0; leg < legs; leg++) {
             final double startPrice = window.get(leg).price().doubleValue();
             final double endPrice = window.get(leg + 1).price().doubleValue();
-            final double signed = direction == WaveDirection.BULLISH ? endPrice - startPrice
-                    : startPrice - endPrice;
+            final double signed = direction == WaveDirection.BULLISH ? endPrice - startPrice : startPrice - endPrice;
             if (expectedLegPositive(grammar, leg) ? !(signed > EPSILON) : !(signed < -EPSILON)) {
                 return false;
             }
@@ -209,14 +201,13 @@ final class TopologyAnalyzer {
         return true;
     }
 
-
     private boolean expectedLegPositive(final TopologyGrammar grammar, final int leg) {
         return switch (grammar) {
-            case MOTIVE_5 -> leg % 2 == 0;
-            // A corrective block moves against the declared trend: its
-            // middle leg is the only positive one in trend-direction space.
-            case CORRECTIVE_3 -> leg == 1;
-            case CYCLE_5_3 -> leg % 2 == 0;
+        case MOTIVE_5 -> leg % 2 == 0;
+        // A corrective block moves against the declared trend: its
+        // middle leg is the only positive one in trend-direction space.
+        case CORRECTIVE_3 -> leg == 1;
+        case CYCLE_5_3 -> leg % 2 == 0;
         };
     }
 }
