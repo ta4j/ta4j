@@ -223,10 +223,18 @@ public final class CumulativePnL implements PerformanceIndicator {
                 Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
                 Num netExit = addCost(exitRaw, averageCostPerPeriod, isLongTrade);
                 Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-                cursor = fillRange(cursor, endIndex, realized);
-                addValue(endIndex, deltaExit);
+                if (endIndex < cursor) {
+                    // A later-iterated position may close at an earlier bar
+                    // than the sweep cursor. The realized delta applies from
+                    // its exit bar onward, so accumulate it across every
+                    // already-materialized cell instead of rewinding.
+                    addToRange(endIndex, cursor - 1, deltaExit);
+                } else {
+                    cursor = fillRange(cursor, endIndex, realized);
+                    addValue(endIndex, deltaExit);
+                    cursor = endIndex + 1;
+                }
                 realized = realized.plus(deltaExit);
-                cursor = endIndex + 1;
                 continue;
             }
 
@@ -235,10 +243,19 @@ public final class CumulativePnL implements PerformanceIndicator {
                 Num holdingCost = position.getHoldingCost(endIndex);
                 Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
                 Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-                cursor = fillRange(cursor, exit.getIndex(), realized);
-                addValue(exit.getIndex(), deltaExit);
+                int exitIndex = exit.getIndex();
+                if (exitIndex < cursor) {
+                    // A later-iterated position may close at an earlier bar
+                    // than the sweep cursor. The realized delta applies from
+                    // its exit bar onward, so accumulate it across every
+                    // already-materialized cell instead of rewinding.
+                    addToRange(exitIndex, cursor - 1, deltaExit);
+                } else {
+                    cursor = fillRange(cursor, exitIndex, realized);
+                    addValue(exitIndex, deltaExit);
+                    cursor = exitIndex + 1;
+                }
                 realized = realized.plus(deltaExit);
-                cursor = exit.getIndex() + 1;
             }
         }
         fillRange(cursor, seriesEnd, realized);

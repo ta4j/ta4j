@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -166,5 +167,47 @@ public class CriteriaEvaluationTest extends AbstractIndicatorTest<Indicator<Num>
     public void evaluateAllRejectsNullTradingRecord() {
         BarSeries series = series();
         assertThrows(NullPointerException.class, () -> CriteriaEvaluation.evaluateAll(series, null, criteria()));
+    }
+
+    @Test
+    public void evaluateAllSkipsDuplicateCriteriaBeforeEvaluating() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+
+        CountingCriterion countingCriterion = new CountingCriterion(numFactory);
+
+        Map<AnalysisCriterion, Num> results = CriteriaEvaluation.evaluateAll(series, tradingRecord,
+                List.of(countingCriterion, countingCriterion));
+
+        assertEquals(1, results.size());
+        assertSame(countingCriterion, results.keySet().iterator().next());
+        assertEquals(1, countingCriterion.calculations.get());
+    }
+
+    private static final class CountingCriterion implements AnalysisCriterion {
+
+        private final NumFactory numFactory;
+        private final AtomicInteger calculations;
+
+        CountingCriterion(NumFactory numFactory) {
+            this.numFactory = numFactory;
+            this.calculations = new AtomicInteger();
+        }
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            calculations.incrementAndGet();
+            return numFactory.one();
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+            return criterionValue1.isGreaterThan(criterionValue2);
+        }
     }
 }

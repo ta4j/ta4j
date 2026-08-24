@@ -293,9 +293,17 @@ public class CashFlow implements PerformanceIndicator {
                 Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
                 if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
-                    cursor = fillRange(cursor, ratioIndex, realized);
-                    setOrMultiply(ratioIndex, ratio);
-                    cursor = ratioIndex + 1;
+                    if (ratioIndex < cursor) {
+                        // A later-iterated position may close at an earlier bar
+                        // than the sweep cursor. Those cells are already
+                        // materialized with earlier marks, so apply this exit
+                        // ratio in place instead of rewinding the cursor.
+                        multiplyRange(ratioIndex, cursor - 1, ratio);
+                    } else {
+                        cursor = fillRange(cursor, ratioIndex, realized);
+                        setOrMultiply(ratioIndex, ratio);
+                        cursor = ratioIndex + 1;
+                    }
                 } else if (ratioIndex <= windowEndIndex) {
                     cursor = Math.max(cursor, ratioIndex + 1);
                 }

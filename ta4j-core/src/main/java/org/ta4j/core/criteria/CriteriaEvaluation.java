@@ -58,10 +58,13 @@ public final class CriteriaEvaluation {
         Map<AnalysisCriterion, Num> results = new LinkedHashMap<>();
         for (AnalysisCriterion criterion : criteria) {
             Objects.requireNonNull(criterion, "criteria must not contain null");
+            if (results.containsKey(criterion)) {
+                continue;
+            }
             Num value = criterion instanceof EquityBundleAware bundleAware
                     ? bundleAware.calculate(series, tradingRecord, equityBundle)
                     : criterion.calculate(series, tradingRecord);
-            results.putIfAbsent(criterion, value);
+            results.put(criterion, value);
         }
         return Collections.unmodifiableMap(results);
     }
