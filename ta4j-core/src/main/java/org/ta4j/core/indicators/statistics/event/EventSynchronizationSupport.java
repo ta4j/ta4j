@@ -471,6 +471,9 @@ final class EventSynchronizationSupport {
         private final int[] indexes;
 
         UnmatchedIndexesView(int[] indexes) {
+            // indexes is freshly allocated by extractEvents within the same
+            // synchronize call and never aliased to caller state, so wrapping
+            // it by reference retains only this call's own buffer.
             this.indexes = indexes;
         }
 

@@ -1052,7 +1052,7 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         };
 
         EventSynchronizationIndicator indicator = indicator(predictedEverywhere, referenceNowhere, endIndex, 0, 0);
-        var r = indicator.getResult(endIndex);
+        Result r = indicator.getResult(endIndex);
         assertTrue(r.windowAvailable());
         assertEquals(endIndex, r.predictedCount());
         assertEquals(0, r.referenceCount());
