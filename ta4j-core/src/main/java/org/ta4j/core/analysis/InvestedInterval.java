@@ -68,6 +68,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * series (below {@link #getBarSeries()}'s begin index) and out-of-range indexes
      * keep the inherited cached-path behavior so removed-bar remapping still
      * applies.
+     *
+     * @since 0.24.2
      */
     @Override
     public Boolean getValue(int index) {
