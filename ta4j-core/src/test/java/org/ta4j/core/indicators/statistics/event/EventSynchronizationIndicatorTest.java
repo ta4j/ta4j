@@ -550,10 +550,17 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertTrue(jsonCopy instanceof EventSynchronizationIndicator);
         EventSynchronizationIndicator restored = (EventSynchronizationIndicator) jsonCopy;
         // Crossings at 10 (predicted) and 12 (reference) match within the
-        // tolerance window [6, 25].
+        // tolerance window; both copies must agree with the original on
+        // unavailable (pre-stability and empty-window) and available indexes.
+        for (int index : new int[] {3, 9, 14, 20, 21, 25}) {
+            assertNumEquals(indicator.getValue(index), restored.getValue(index));
+            assertEquals(indicator.getResult(index), restored.getResult(index));
+        }
+        assertTrue(indicator.getResult(3).windowAvailable() == restored.getResult(3).windowAvailable());
+        assertFalse(indicator.getResult(3).windowAvailable());
+        assertTrue(indicator.getResult(25).windowAvailable());
         assertNumEquals(1.0, indicator.getValue(25));
         assertNumEquals(1.0, restored.getValue(25));
-        assertEquals(indicator.getResult(25), restored.getResult(25));
     }
 
     @Test
