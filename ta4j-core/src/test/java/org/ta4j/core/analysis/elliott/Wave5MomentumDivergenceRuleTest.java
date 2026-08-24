@@ -18,6 +18,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -139,6 +140,22 @@ class Wave5MomentumDivergenceRuleTest {
     void requiresCallerProvidedMomentum() {
         assertThatThrownBy(() -> new Wave5MomentumDivergenceRule((Indicator<Num>) null))
                 .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void keepsDivergenceArithmeticInNumDomainBeyondDoubleRange() {
+        // Wave-3 momentum 1e400 overflows double: magnitude difference and
+        // ratio must be computed in the Num domain, otherwise both become
+        // infinity, their ratio NaN, and scored evidence construction aborts.
+        final Indicator<Num> momentum = momentum(DecimalNum.valueOf("0"), DecimalNum.valueOf("0"),
+                DecimalNum.valueOf("0"), DecimalNum.valueOf("1e400"), DecimalNum.valueOf("8e399"),
+                DecimalNum.valueOf("0"));
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                momentum.getBarSeries());
+
+        assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(evidence.score()).hasValue(1.0d);
     }
 
     @Test

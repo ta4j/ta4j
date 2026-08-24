@@ -290,15 +290,21 @@ final class StudyRunner {
                 final List<String> matches = grammar.matches(visible);
                 final MetricAccumulator accumulator = accumulators.get(partitionIndex);
                 if (visible.size() < 2) {
-                    accumulator.recordAlternative(index, false, false, false, "insufficient-history");
+                    accumulator.recordAlternative(index, false, false, false, "insufficient-history",
+                            Set.of("insufficient-history"));
                 } else if (matches.size() == 1) {
-                    accumulator.recordAlternative(index, true, false, false, matches.get(0));
+                    accumulator.recordAlternative(index, true, false, false, matches.get(0),
+                            Set.of(matches.get(0)));
                 } else if (matches.size() > 1) {
-                    accumulator.recordAlternative(index, false, true, false, "ambiguous");
+                    // Ambiguity stability must compare the actual placement
+                    // identities, not a constant token, or the Jaccard metric
+                    // reads 1 across shifting match sets.
+                    accumulator.recordAlternative(index, false, true, false, "ambiguous",
+                            Set.copyOf(matches));
                 } else if (grammar.hasPartial(visible)) {
-                    accumulator.recordAlternative(index, false, false, true, "forming");
+                    accumulator.recordAlternative(index, false, false, true, "forming", Set.of("forming"));
                 } else {
-                    accumulator.recordAlternative(index, false, false, false, "no-match");
+                    accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
                 }
             }
         }
@@ -318,7 +324,8 @@ final class StudyRunner {
                 partitions.assertCalibrationDateAllowed(date);
                 final MetricAccumulator accumulator = accumulators.get(partitionIndex);
                 if (index - 2 < series.getBeginIndex()) {
-                    accumulator.recordAlternative(index, false, false, false, "insufficient-history");
+                    accumulator.recordAlternative(index, false, false, false, "insufficient-history",
+                            Set.of("insufficient-history"));
                     continue;
                 }
                 final Num first = series.getBar(index - 1)
@@ -326,7 +333,8 @@ final class StudyRunner {
                         .minus(series.getBar(index - 2).getClosePrice());
                 final Num second = series.getBar(index).getClosePrice().minus(series.getBar(index - 1).getClosePrice());
                 final boolean change = !first.isZero() && !second.isZero() && first.isPositive() != second.isPositive();
-                accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable");
+                accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable",
+                        Set.of(change ? "change" : "stable"));
             }
         }
         return new StudyReport.ModeReport("competing-change-point-baseline", "change-point-baseline", List.of(),
@@ -495,7 +503,7 @@ final class StudyRunner {
         }
 
         private void recordAlternative(final int index, final boolean complete, final boolean ambiguous,
-                final boolean forming, final String label) {
+                final boolean forming, final String label, final Set<String> stabilityLabels) {
             evaluationCount++;
             firstIndex = Math.min(firstIndex, index);
             lastIndex = Math.max(lastIndex, index);
@@ -510,7 +518,7 @@ final class StudyRunner {
             } else {
                 noMatchCount++;
             }
-            updateStability(Set.of(label));
+            updateStability(stabilityLabels);
         }
 
         private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
@@ -674,14 +682,14 @@ final class StudyRunner {
                 return List.of();
             }
             final List<String> matches = new ArrayList<>();
-            // Only placements ending at the newest visible pivot compete for
-            // the current label; earlier completed patterns are retired so a
-            // second historical match cannot freeze every later bar into
-            // permanent ambiguity.
-            final int newestIndex = pivots.get(pivots.size() - 1).pivotIndex();
+            // A placement stays a live hypothesis while its trailing edge is
+            // within one pattern-length of the newest pivot; completed
+            // patterns beyond that horizon are retired so distant history
+            // cannot freeze every later bar into permanent ambiguity.
+            final int horizonPosition = Math.max(0, pivots.size() - required);
             for (int start = 0; start + required <= pivots.size(); start++) {
                 final List<ConfirmedPivot> window = pivots.subList(start, start + required);
-                if (matchesWindow(window) && window.get(window.size() - 1).pivotIndex() == newestIndex) {
+                if (matchesWindow(window) && start + required - 1 >= horizonPosition) {
                     matches.add(window.get(0).pivotIndex() + "-" + window.get(window.size() - 1).pivotIndex());
                 }
             }

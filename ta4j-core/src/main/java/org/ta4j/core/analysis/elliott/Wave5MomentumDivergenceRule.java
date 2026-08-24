@@ -82,8 +82,8 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         final List<String> observations = new ArrayList<>(
                 List.of("wave 3 momentum=" + wave3MomentumValue, "wave 5 momentum=" + wave5MomentumValue,
                         "wave 3 end price=" + wave3Price, "wave 5 end price=" + wave5Price));
-        // Divergence predicate in Num domain; the soft score below stays
-        // double because it feeds report math only.
+        // Divergence predicate and its magnitude ratio both stay in Num
+        // domain; see the scored branch below.
         final boolean divergence = candidate.direction() == WaveDirection.BULLISH
                 ? wave5Price.isGreaterThan(wave3Price) && wave5MomentumValue.isLessThan(wave3MomentumValue)
                 : wave5Price.isLessThan(wave3Price) && wave5MomentumValue.isGreaterThan(wave3MomentumValue);
@@ -92,10 +92,19 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
             return RuleEvidence.pass(id(), observations, "price and momentum are aligned");
         }
 
-        final double wave3MomentumDouble = wave3MomentumValue.doubleValue();
-        final double momentumMagnitude = Math.abs(wave3MomentumDouble);
-        final double magnitudeDifference = Math.abs(wave3MomentumDouble - wave5MomentumValue.doubleValue());
-        final double score = momentumMagnitude == 0.0d ? 1.0d : Math.min(1.0d, magnitudeDifference / momentumMagnitude);
+        // Divergence magnitude arithmetic stays in the active Num domain so
+        // DecimalNum magnitudes beyond double range cannot collapse to NaN and
+        // abort the study; only the bounded final score narrows to double.
+        final Num momentumMagnitude = wave3MomentumValue.abs();
+        final Num magnitudeDifference = wave3MomentumValue.minus(wave5MomentumValue).abs();
+        final double score;
+        if (momentumMagnitude.isZero()) {
+            score = 1.0d;
+        } else if (magnitudeDifference.isGreaterThan(momentumMagnitude)) {
+            score = 1.0d;
+        } else {
+            score = magnitudeDifference.dividedBy(momentumMagnitude).doubleValue();
+        }
         return RuleEvidence.scored(id(), score, observations, "price and momentum diverge at wave 5");
     }
 

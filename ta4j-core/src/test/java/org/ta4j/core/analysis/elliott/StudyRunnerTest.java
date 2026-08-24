@@ -396,10 +396,10 @@ class StudyRunnerTest {
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
                 configuration);
 
-        // Two sequential complete "3+3" windows: once the first pattern is
-        // followed by a second placement, every later bar must not stay frozen
-        // in AMBIGUOUS just because an older match remains in the history.
-        final StudyReport report = runner.evaluate("BTC", buildDoublePatternSeries(30), 0, 29);
+        // Two sequential complete "3+3" windows: placements beyond one
+        // pattern-length behind the newest pivot are retired, so late bars are
+        // judged on live hypotheses instead of staying frozen in AMBIGUOUS.
+        final StudyReport report = runner.evaluate("BTC", buildDoublePatternSeries(42), 0, 41);
         final StudyReport.ModeReport threePlusThree = report.competingGrammars()
                 .stream()
                 .filter(mode -> "competing-3+3".equals(mode.mode()))
@@ -407,11 +407,14 @@ class StudyRunnerTest {
                 .orElseThrow();
         final StudyReport.PartitionMetrics calibration = threePlusThree.partitions().get(0);
         assertTrue(calibration.completeCount() > 0);
-        // Before frontier retirement, the two completed placements kept every
-        // later bar in permanent AMBIGUOUS; now only the second placement is a
-        // live candidate and the in-between bars report no-match instead.
-        assertEquals(0, calibration.ambiguousCount());
+        // Overlapping live placements still compete (ambiguity exists), stale
+        // history retires (completes return after the overlap), and gaps
+        // between placements report no-match.
+        assertTrue(calibration.ambiguousCount() > 0);
         assertTrue(calibration.noMatchCount() > 0);
+        // Shifting placement identities across adjacent ambiguous bars must
+        // register as instability, not a constant-token Jaccard of 1.
+        assertTrue(calibration.labelStabilityJaccard() < 1.0d);
     }
 
     @Test
@@ -503,7 +506,12 @@ class StudyRunnerTest {
      * both halves complete as disjoint "3+3" placements.
      */
     private static BarSeries buildDoublePatternSeries(final int count) {
-        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 108, 116, 110, 120, 112, 118, 114 };
+        // Three acts: a clean bullish "3+3" (pivots 0-6), an overlapping pair
+        // sharing pivot 6 (bearish 6-12 and bullish 7-13 both match while
+        // live), then a fresh bullish placement (14-20) that completes only
+        // after the earlier windows have left the one-pattern-length horizon.
+        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 101, 107, 96, 118, 110, 111, 105, 90, 96,
+                92, 102, 94, 100, 92 };
         final double[] prices = new double[count];
         int pivotCursor = 0;
         for (int index = 0; index < count; index++) {
