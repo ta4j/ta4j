@@ -149,6 +149,7 @@ class EventSynchronizationBenchmarkTest {
                 () -> indicator.getResult(endIndex));
         assertTrue(thrown.getMessage().startsWith("event count exceeds"));
     }
+
     @Test
     void oneSidedWindowMayHoldEventsUpToTheMatcherCellCap() {
         // A one-sided alignment needs (predictedCount + 1) * (referenceCount + 1)
@@ -160,9 +161,7 @@ class EventSynchronizationBenchmarkTest {
         // Exactly the legal maximum for a one-sided window:
         // MAX_MATCHING_CELLS - 1 events need (count + 1) * 1 = 8,000,000 cells.
         int endIndex = 7_999_999;
-        BarSeries base = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1d)
-                .build();
+        BarSeries base = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(1d).build();
         BaseBarSeries proxy = new BaseBarSeries(base.getName(), base.getBarData()) {
             @Override
             public int getBeginIndex() {

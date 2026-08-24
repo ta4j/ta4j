@@ -1006,7 +1006,6 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertFalse(indicator.getResult(11).windowAvailable());
     }
 
-
     @Test
     public void boundedRetriesReportUnavailableWhenTheSeriesMutatesOnEveryRead() {
         BaseBarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
