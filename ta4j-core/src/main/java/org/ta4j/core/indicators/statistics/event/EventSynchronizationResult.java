@@ -95,8 +95,10 @@ record EventSynchronizationResult(int requestedStartIndex, int requestedEndIndex
         Objects.requireNonNull(minSignedOffset, "minSignedOffset");
         Objects.requireNonNull(maxSignedOffset, "maxSignedOffset");
         matches = List.copyOf(matches);
-        unmatchedPredictedIndexes = List.copyOf(unmatchedPredictedIndexes);
-        unmatchedReferenceIndexes = List.copyOf(unmatchedReferenceIndexes);
+        // A primitive-backed unmatched view is already immutable; copying it
+        // would re-materialize up to the matcher capacity of boxed indexes.
+        unmatchedPredictedIndexes = EventSynchronizationSupport.immutableUnmatched(unmatchedPredictedIndexes);
+        unmatchedReferenceIndexes = EventSynchronizationSupport.immutableUnmatched(unmatchedReferenceIndexes);
     }
 
     @Override

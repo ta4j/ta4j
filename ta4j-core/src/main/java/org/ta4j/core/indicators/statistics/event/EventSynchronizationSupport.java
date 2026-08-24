@@ -3,7 +3,9 @@
  */
 package org.ta4j.core.indicators.statistics.event;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.RandomAccess;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -84,6 +86,13 @@ final class EventSynchronizationSupport {
 
         int availableStart = series.getBeginIndex();
         int availableEnd = series.getEndIndex();
+        if (availableEnd < 0) {
+            // Empty series: ta4j reports begin == end == -1 when no bar exists;
+            // no bar may be read and the window resolves unavailable.
+            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0,
+                    NaN.NaN, NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN,
+                    NaN.NaN, NaN.NaN, false);
+        }
         // Source instability counts from the retained head, not from absolute
         // zero: on a rolling series the first trustworthy bar sits
         // beginIndex + unstableBars bars in, and long arithmetic guards the
@@ -451,8 +460,48 @@ final class EventSynchronizationSupport {
         return low;
     }
 
+    /**
+     * Immutable {@link RandomAccess} view over one event-index array. Serves
+     * large one-sided windows without eagerly boxing every index: an element
+     * materializes only when a caller actually reads it, and the result record
+     * keeps the view by reference instead of copying it.
+     */
+    private static final class UnmatchedIndexesView extends AbstractList<Integer> implements RandomAccess {
+
+        private final int[] indexes;
+
+        UnmatchedIndexesView(int[] indexes) {
+            this.indexes = indexes;
+        }
+
+        @Override
+        public Integer get(int i) {
+            return indexes[i];
+        }
+
+        @Override
+        public int size() {
+            return indexes.length;
+        }
+    }
+
+    /**
+     * @return the list unchanged when it is already an immutable
+     *         primitive-backed view; otherwise a defensive immutable copy
+     */
+    static List<Integer> immutableUnmatched(List<Integer> unmatched) {
+        return unmatched instanceof UnmatchedIndexesView ? unmatched : List.copyOf(unmatched);
+    }
+
     private static List<Integer> unmatchedIndexes(int[] events,
             List<EventSynchronizationIndicator.Result.Match> matches, boolean predictedSide) {
+        if (matches.isEmpty()) {
+            // No match consumes an event on either side, so every event of this
+            // stream is unmatched: serve the whole ascending array as a
+            // zero-copy view rather than boxing up to the matcher-capacity
+            // minus one indexes into an ArrayList.
+            return new UnmatchedIndexesView(events);
+        }
         List<Integer> unmatched = new ArrayList<>();
         int matchIndex = 0;
         for (int event : events) {

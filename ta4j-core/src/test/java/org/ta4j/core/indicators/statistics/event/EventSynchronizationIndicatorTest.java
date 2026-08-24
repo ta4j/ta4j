@@ -1182,6 +1182,47 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void emptySeriesEndSentinelReportsUnavailableWithoutScanning() {
+        // An empty series reports begin == end == -1: the raw overload must
+        // reject that sentinel as a domain instead of reading bar -1.
+        BarSeries base = series(1);
+        BarSeries emptyProxy = new BaseBarSeries(base.getName(), base.getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return -1;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return -1;
+            }
+        };
+        AtomicInteger reads = new AtomicInteger();
+        EventSignal strict = new EventSignal() {
+            @Override
+            public boolean isEvent(int index) {
+                reads.incrementAndGet();
+                throw new IllegalStateException("no bar of an empty series may be read");
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return emptyProxy;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        EventSynchronizationResult result = EventSynchronizationSupport.synchronize(strict, strict,
+                emptyProxy.getEndIndex(), emptyProxy.getEndIndex(), 0, 0);
+        assertFalse(result.windowAvailable());
+        assertEquals(0, reads.get());
+    }
+
+    @Test
     public void rawSignalSyncAnchorsSourceWarmUpAtTheRetainedHead() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)

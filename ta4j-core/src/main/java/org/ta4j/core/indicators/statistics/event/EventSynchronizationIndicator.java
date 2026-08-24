@@ -229,7 +229,9 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
     @Override
     public Num getValue(int index) {
         BarSeries series = getBarSeries();
-        if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+        // An empty series reports begin == end == -1; treating that sentinel as
+        // an index would scan nonexistent bars instead of reporting undefined.
+        if (series.getEndIndex() < 0 || index < series.getBeginIndex() || index > series.getEndIndex()) {
             // The inherited CachedIndicator contract maps pruned indexes below the
             // retained begin index to the first retained bar; this indicator's
             // window semantics instead make them undefined (NaN), matching
@@ -279,7 +281,10 @@ public final class EventSynchronizationIndicator extends CachedIndicator<Num> {
         // (for example Integer.MIN_VALUE) must wrap neither the window start into
         // a bogus in-range index nor the comparison itself before the gate
         // rejects them.
-        if (index < series.getBeginIndex() || index > series.getEndIndex() || windowStartIndex < firstStableIndex()) {
+        if (series.getEndIndex() < 0 || index < series.getBeginIndex() || index > series.getEndIndex()
+                || windowStartIndex < firstStableIndex()) {
+            // The leading clause rejects an empty series whose -1 sentinels
+            // would otherwise pass the domain comparison and scan bar -1.
             return undefinedResult((int) Math.max(windowStartIndex, Integer.MIN_VALUE), index);
         }
         int windowStart = (int) windowStartIndex;
