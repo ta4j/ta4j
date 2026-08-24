@@ -89,9 +89,9 @@ final class EventSynchronizationSupport {
         if (availableEnd < 0) {
             // Empty series: ta4j reports begin == end == -1 when no bar exists;
             // no bar may be read and the window resolves unavailable.
-            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0,
-                    NaN.NaN, NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN,
-                    NaN.NaN, NaN.NaN, false);
+            return new EventSynchronizationResult(startIndex, endIndex, startIndex, endIndex, 0, 0, 0, 0, 0, NaN.NaN,
+                    NaN.NaN, NaN.NaN, List.of(), List.of(), List.of(), 0, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN, NaN.NaN,
+                    false);
         }
         // Source instability counts from the retained head, not from absolute
         // zero: on a rolling series the first trustworthy bar sits
@@ -461,10 +461,10 @@ final class EventSynchronizationSupport {
     }
 
     /**
-     * Immutable {@link RandomAccess} view over one event-index array. Serves
-     * large one-sided windows without eagerly boxing every index: an element
-     * materializes only when a caller actually reads it, and the result record
-     * keeps the view by reference instead of copying it.
+     * Immutable {@link RandomAccess} view over one event-index array. Serves large
+     * one-sided windows without eagerly boxing every index: an element materializes
+     * only when a caller actually reads it, and the result record keeps the view by
+     * reference instead of copying it.
      */
     private static final class UnmatchedIndexesView extends AbstractList<Integer> implements RandomAccess {
 
@@ -486,8 +486,8 @@ final class EventSynchronizationSupport {
     }
 
     /**
-     * @return the list unchanged when it is already an immutable
-     *         primitive-backed view; otherwise a defensive immutable copy
+     * @return the list unchanged when it is already an immutable primitive-backed
+     *         view; otherwise a defensive immutable copy
      */
     static List<Integer> immutableUnmatched(List<Integer> unmatched) {
         return unmatched instanceof UnmatchedIndexesView ? unmatched : List.copyOf(unmatched);
