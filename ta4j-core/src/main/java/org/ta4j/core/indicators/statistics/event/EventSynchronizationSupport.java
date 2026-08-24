@@ -90,12 +90,17 @@ final class EventSynchronizationSupport {
         // far-end addition before the int clamp.
         long anchoredStart = (long) availableStart
                 + Math.max(predicted.getCountOfUnstableBars(), reference.getCountOfUnstableBars());
-        int effectiveStart = (int) Math.min(Integer.MAX_VALUE,
-                Math.max(Math.max(startIndex, availableStart), anchoredStart));
+        // The candidate start stays in long past the far-end addition: clamping
+        // it into the int domain early could turn an out-of-range boundary
+        // (for example an extreme warm-up) back into a readable index.
+        long candidateStart = Math.max(Math.max(startIndex, availableStart), anchoredStart);
         int effectiveEnd = Math.min(endIndex, availableEnd);
-        if (effectiveStart > effectiveEnd) {
+        int effectiveStart;
+        if (candidateStart > effectiveEnd) {
             // Canonical empty inclusive range: start == end + 1.
             effectiveStart = effectiveEnd + 1;
+        } else {
+            effectiveStart = (int) candidateStart;
         }
 
         int[] predictedEvents = extractEvents(predicted, effectiveStart, effectiveEnd);
