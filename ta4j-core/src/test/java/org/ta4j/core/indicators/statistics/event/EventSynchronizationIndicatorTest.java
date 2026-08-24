@@ -1093,6 +1093,9 @@ public class EventSynchronizationIndicatorTest extends AbstractIndicatorTest<Ind
         assertEquals(0, reads.get());
         assertEquals(0, result.predictedCount());
         assertEquals(0, result.referenceCount());
+        // The overflowed warm-up leaves no evaluable window: unavailable, not
+        // an available empty result.
+        assertFalse(result.windowAvailable());
     }
 
     @Test
