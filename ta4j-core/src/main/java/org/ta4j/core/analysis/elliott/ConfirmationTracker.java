@@ -68,6 +68,14 @@ final class ConfirmationTracker {
      * the previous version, keeping memory proportional to the number of state
      * changes rather than the number of bars.
      *
+     * <p>
+     * Known limitation: swing-backed detectors only expose pivots once a swing
+     * pair exists, so a history's first pivot is confirmed when the second
+     * pivot appears and its confirmation lag is overstated by that pairing
+     * delay. A pivot-level detector view would remove the bias but would fork
+     * detection from the indicator-backed ground truth the study's emitted
+     * views use, so it stays out of scope here.
+     *
      * @param series series to observe
      * @return final normalized history plus the per-bar causal replay
      */
