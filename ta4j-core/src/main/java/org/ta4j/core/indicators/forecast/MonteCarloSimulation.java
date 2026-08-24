@@ -77,7 +77,7 @@ final class MonteCarloSimulation {
             if (!Num.isFinite(cumulativeReturn)) {
                 return Forecast.unstable(index, settings.horizon());
             }
-            if (!cumulativeReturn.getNumFactory().equals(numFactory)) {
+            if (cumulativeReturn.getNumFactory() != numFactory) {
                 cumulativeReturn = numFactory.numOf(cumulativeReturn.getDelegate());
             }
             Num terminalValue;

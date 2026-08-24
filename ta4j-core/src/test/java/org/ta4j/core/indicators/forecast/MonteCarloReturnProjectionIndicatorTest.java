@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -417,6 +418,80 @@ public class MonteCarloReturnProjectionIndicatorTest extends AbstractIndicatorTe
                 .build();
 
         assertFalse(forecast.getValue(series.getBarCount() - 1).isStable());
+    }
+
+    @Test
+    public void foreignFactoryWithOverriddenEqualsCoercesThroughSeriesFactory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(100, 101, 99, 105, 104, 108, 106, 111)
+                .build();
+        NumFactory spoofedEqualsFactory = new NumFactory() {
+            @Override
+            public Num minusOne() {
+                return numOf(-1);
+            }
+
+            @Override
+            public Num zero() {
+                return numOf(0);
+            }
+
+            @Override
+            public Num one() {
+                return numOf(1);
+            }
+
+            @Override
+            public Num two() {
+                return numOf(2);
+            }
+
+            @Override
+            public Num three() {
+                return numOf(3);
+            }
+
+            @Override
+            public Num hundred() {
+                return numOf(100);
+            }
+
+            @Override
+            public Num thousand() {
+                return numOf(1000);
+            }
+
+            @Override
+            public Num numOf(Number number) {
+                return DoubleNum.valueOf(number.doubleValue());
+            }
+
+            @Override
+            public Num numOf(String number) {
+                return DoubleNum.valueOf(number);
+            }
+
+            @Override
+            public boolean equals(Object other) {
+                return true;
+            }
+        };
+        MonteCarloReturnProjectionIndicator forecast = MonteCarloReturnProjectionIndicator.builder(state(series))
+                .iterationCount(4)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(spoofedEqualsFactory.numOf(0.1d));
+                    }
+                    return samples;
+                })
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertEquals("0.1", prediction.mean().toString());
     }
 
     @Test
