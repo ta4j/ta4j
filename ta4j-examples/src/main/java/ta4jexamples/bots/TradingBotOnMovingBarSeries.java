@@ -102,11 +102,11 @@ public class TradingBotOnMovingBarSeries {
     }
 
     /**
-     * @param endTime the end time of the generated bar; must be strictly after the
-     *                current series end time
+     * Generates a random bar.
+     *
      * @return a random bar
      */
-    private static Bar generateRandomBar(final Instant endTime) {
+    private static Bar generateRandomBar() {
         final Num maxRange = DecimalNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
         Num lowPrice = openPrice.minus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
@@ -116,7 +116,7 @@ public class TradingBotOnMovingBarSeries {
         return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(endTime)
+                .endTime(Instant.now())
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)
