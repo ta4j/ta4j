@@ -292,10 +292,16 @@ final class BlockBootstrapNulls {
             final Num open = scaled(shapeBar.getOpenPrice(), sourceClose, close);
             Num high = scaled(shapeBar.getHighPrice(), sourceClose, close);
             Num low = scaled(shapeBar.getLowPrice(), sourceClose, close);
-            if (high == null || high.isLessThan(close)) {
+            if (high == null || high.isLessThan(open)) {
+                high = open;
+            }
+            if (high.isLessThan(close)) {
                 high = close;
             }
-            if (low == null || low.isGreaterThan(close)) {
+            if (low == null || low.isGreaterThan(open)) {
+                low = open;
+            }
+            if (low.isGreaterThan(close)) {
                 low = close;
             }
             final Num volume = timelineBar.getVolume() == null ? numFactory.zero() : timelineBar.getVolume();

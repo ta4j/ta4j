@@ -35,14 +35,15 @@ public final class FractalSwingDetector implements SwingDetector {
      * series.
      */
     private static final int MAX_CACHED_SERIES = 4;
+    private static final int REPLAY_RESULT_CACHE_SIZE = 1;
 
     /**
      * Shared indicator per (series, degree): rebuilding an
      * {@link ElliottSwingIndicator} for every as-of evaluation discards its
-     * {@code CachedIndicator} state and makes causal replays quadratic in series
-     * length. Entries are bounded LRU rather than weakly keyed: each indicator
-     * strongly references its own series, so a weak key would remain reachable
-     * through that value and never be collected.
+     * incremental {@code CachedIndicator} state and makes causal replays
+     * unnecessarily expensive. The replay result cache is intentionally bounded
+     * because each result is a cumulative swing list; the child swing indicators
+     * retain the incremental state needed to recompute evicted historical lists.
      */
     private final Map<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> indicatorCache = Collections
             .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
@@ -93,8 +94,8 @@ public final class FractalSwingDetector implements SwingDetector {
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
         final ElliottSwingIndicator indicator = indicatorCache
                 .computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(degree, ignored -> new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
-                        allowedEqualBars, degree));
+                .computeIfAbsent(degree, ignored -> new ReplayElliottSwingIndicator(series, lookbackLength,
+                        lookforwardLength, allowedEqualBars, degree));
         return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
     }
 
@@ -120,5 +121,17 @@ public final class FractalSwingDetector implements SwingDetector {
      */
     public int getAllowedEqualBars() {
         return allowedEqualBars;
+    }
+
+    /**
+     * Elliott indicator used by causal replay. Its cumulative output lists are
+     * large, while the nested swing indicators retain the reusable state.
+     */
+    private static final class ReplayElliottSwingIndicator extends ElliottSwingIndicator {
+
+        private ReplayElliottSwingIndicator(final BarSeries series, final int lookbackLength,
+                final int lookforwardLength, final int allowedEqualBars, final ElliottDegree degree) {
+            super(series, lookbackLength, lookforwardLength, allowedEqualBars, degree, REPLAY_RESULT_CACHE_SIZE);
+        }
     }
 }

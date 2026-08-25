@@ -57,6 +57,28 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void explicitCacheCapacityBoundsRetainedResults() {
+        final CachedIndicator<Num> indicator = new CachedIndicator<Num>(series, 1) {
+            @Override
+            protected Num calculate(final int index) {
+                return series.getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        indicator.getValue(1);
+        indicator.getValue(2);
+
+        assertEquals(1, indicator.getCache().getCapacity());
+        assertNull(indicator.getCache().get(1));
+        assertNumEquals(3, indicator.getValue(2));
+    }
+
+    @Test
     public void readOnlySeriesViewIsStableAndDelegatesChangeSnapshots() {
         TestIndicator indicator = new TestIndicator(series);
         BarSeries firstView = indicator.getBarSeries();

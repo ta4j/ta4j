@@ -56,6 +56,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
+    private final int maximumCacheSize;
     private final long lastBarWaitTimeoutMs;
     private final AtomicReference<BarSeriesChangeSnapshot> observedSeriesSnapshot;
 
@@ -100,30 +101,45 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS, Integer.MAX_VALUE));
+    }
+
+    /**
+     * Constructor with an indicator-local result-cache bound.
+     *
+     * @param series           the bar series
+     * @param maximumCacheSize maximum number of non-terminal results to retain
+     * @since 0.24.2
+     */
+    protected CachedIndicator(BarSeries series, int maximumCacheSize) {
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS, maximumCacheSize));
     }
 
     CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
-        this(validatedConfig(series, lastBarWaitTimeoutMs));
+        this(validatedConfig(series, lastBarWaitTimeoutMs, Integer.MAX_VALUE));
     }
 
     private CachedIndicator(Config config) {
         super(config.series());
-        BarSeriesChangeSnapshot snapshot = config.snapshot();
-        this.cache = CachedBuffer.of(snapshot.maximumBarCount());
+        final BarSeriesChangeSnapshot snapshot = config.snapshot();
+        this.maximumCacheSize = config.maximumCacheSize();
+        this.cache = CachedBuffer.of(Math.min(maximumCacheSize, snapshot.maximumBarCount()));
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
         this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
     }
 
-    private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
+    private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs, int maximumCacheSize) {
         if (lastBarWaitTimeoutMs <= 0) {
             throw new IllegalArgumentException("Last-bar wait timeout must be positive");
         }
-        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
+        if (maximumCacheSize <= 0) {
+            throw new IllegalArgumentException("Maximum cache size must be strictly positive");
+        }
+        final BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
         if (snapshot.maximumBarCount() <= 0) {
             throw new IllegalArgumentException("Maximum bar count must be strictly positive");
         }
-        return new Config(series, snapshot, lastBarWaitTimeoutMs);
+        return new Config(series, snapshot, lastBarWaitTimeoutMs, maximumCacheSize);
     }
 
     /**
@@ -132,14 +148,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param indicator a related indicator (with a bar series)
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), LAST_BAR_WAIT_TIMEOUT_MS,
+                Integer.MAX_VALUE));
     }
 
-    private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {
-    }
-
-    private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
-        return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
+    private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs,
+            int maximumCacheSize) {
     }
 
     /**
@@ -223,7 +237,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 clearFirstBarCache();
             }
 
-            int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
+            int cacheHighest = cache.synchronize(firstRetainedIndex,
+                    Math.min(maximumCacheSize, snapshot.maximumBarCount()), invalidateFrom);
             highestResultIndex = Math.max(cacheHighest, lastBarIndex);
 
             if (observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {

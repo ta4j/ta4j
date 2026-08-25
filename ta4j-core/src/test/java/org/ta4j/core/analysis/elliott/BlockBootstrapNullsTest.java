@@ -162,6 +162,46 @@ class BlockBootstrapNullsTest {
     }
 
     @Test
+    void memberBarsKeepHighAndLowAroundScaledOpenAndClose() {
+        final BarSeries source = new BaseBarSeriesBuilder().withName("scaled-ohlc-bounds")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num sourceClose = DoubleNum.valueOf(Double.MIN_VALUE);
+        final Num scaledOpen = DoubleNum.valueOf(2d * Double.MIN_VALUE);
+        source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(start.plus(Duration.ofDays(1)))
+                .openPrice(sourceClose)
+                .highPrice(sourceClose)
+                .lowPrice(sourceClose)
+                .closePrice(sourceClose)
+                .volume(1)
+                .amount(sourceClose)
+                .trades(1)
+                .add();
+        source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(start.plus(Duration.ofDays(2)))
+                .openPrice(scaledOpen)
+                .highPrice(Double.MAX_VALUE)
+                .lowPrice(sourceClose)
+                .closePrice(sourceClose)
+                .volume(1)
+                .amount(sourceClose)
+                .trades(1)
+                .add();
+
+        final BarSeries member = BlockBootstrapNulls.generateMember(source,
+                new double[] { -Math.log(Double.MIN_VALUE) }, 1, 23L, 0);
+        final Bar bar = member.getBar(1);
+        assertEquals(2d, bar.getOpenPrice().doubleValue());
+        assertEquals(2d, bar.getHighPrice().doubleValue());
+        assertEquals(1d, bar.getLowPrice().doubleValue());
+        assertEquals(1d, bar.getClosePrice().doubleValue());
+    }
+
+    @Test
     void memberBarsStayFiniteOnFlatMaxValueSource() {
         // Every OHLC value of a flat MAX_VALUE source equals its close, so the
         // intrabar scale factor is exactly one; the short-circuit must keep
