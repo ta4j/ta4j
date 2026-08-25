@@ -83,4 +83,29 @@ public class BarSeriesManagerConstrainedSeriesTest {
         assertEquals(12, position.getExit().getIndex());
         assertEquals(offsetSeries.getBar(12).getClosePrice(), position.getExit().getPricePerAsset());
     }
+
+    @Test
+    public void closeScanReachesTerminalBarWithoutIntOverflow() {
+        // removedBarsCount = Integer.MAX_VALUE - 1 (near-terminal offset), raw bars
+        // at logical MAX_VALUE - 1 and MAX_VALUE, constrained endIndex = MAX_VALUE - 1.
+        // The raw upper bound removedBarsCount + size overflows int, so the close
+        // scan must still reach the trailing bar at Integer.MAX_VALUE to close the
+        // open position.
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10d, 20d)
+                .build();
+        NumFactory numFactory = sourceSeries.numFactory();
+        BaseBarSeries offsetSeries = new BaseBarSeries("terminal-offset-series", List.copyOf(sourceSeries.getBarData()),
+                Integer.MAX_VALUE - 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE - 1, false, numFactory,
+                new TimeBarBuilderFactory());
+        Strategy strategy = new BaseStrategy(new FixedRule(Integer.MAX_VALUE - 1), new FixedRule(Integer.MAX_VALUE));
+
+        TradingRecord tradingRecord = new BarSeriesManager(offsetSeries, new TradeOnCurrentCloseModel()).run(strategy);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(Integer.MAX_VALUE - 1, position.getEntry().getIndex());
+        assertEquals(Integer.MAX_VALUE, position.getExit().getIndex());
+        assertEquals(offsetSeries.getBar(Integer.MAX_VALUE).getClosePrice(), position.getExit().getPricePerAsset());
+    }
 }

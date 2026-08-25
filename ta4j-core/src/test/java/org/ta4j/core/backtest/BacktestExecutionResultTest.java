@@ -152,7 +152,7 @@ public class BacktestExecutionResultTest {
 
     @Test
     public void snapshotPreservesSeriesBeginIndexAndRemovedBarsOffset() {
-        var source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BaseBarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         BaseBarSeries offsetSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBeginIndex(10)
                 .withBars(source.getBarData())

@@ -586,15 +586,19 @@ public class BarSeriesManager {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1,
-                    barSeries.getRemovedBarsCount() + barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+            // The raw upper bound (exclusive) is computed in long to avoid int
+            // overflow when removedBarsCount + barData.size() exceeds
+            // Integer.MAX_VALUE (e.g. a trailing bar at Integer.MAX_VALUE).
+            long seriesMaxSize = Math.max((long) barSeries.getEndIndex() + 1,
+                    (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size());
+            for (long i = runEndIndex + 1L; i < seriesMaxSize; i++) {
+                int index = (int) i;
+                lastProcessedIndex = index;
+                tradeExecutionModel.onBar(index, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                if (strategy.shouldOperate(index, tradingRecord)) {
+                    tradeExecutionModel.execute(index, tradingRecord, barSeries, amountResolver.apply(index));
                     break;
                 }
             }
