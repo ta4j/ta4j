@@ -56,7 +56,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         super(snapshotSeries(series));
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        exposedBarSeries = snapshotSeries(series);
+        exposedBarSeries = snapshotSeries(super.getBarSeries());
         valueStartIndex = Math.max(0, super.getBarSeries().getBeginIndex());
         valueEndIndex = super.getBarSeries().getEndIndex();
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
