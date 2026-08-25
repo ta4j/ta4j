@@ -663,6 +663,7 @@ public class BarSeriesManager {
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
+                .withBeginIndex(series.getBeginIndex())
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

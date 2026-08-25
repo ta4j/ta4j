@@ -9,13 +9,16 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -30,6 +33,7 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -114,6 +118,57 @@ public class BarSeriesManagerTest {
         assertEquals(HUNDRED, allPositions.get(0).getEntry().getAmount());
         assertEquals(HUNDRED, allPositions.get(1).getEntry().getAmount());
 
+    }
+
+    @Test
+    public void runTerminatesAndTradesOnSeriesEndingAtMaximumIndex() {
+        // The main run loop must break on the inclusive terminal index instead
+        // of wrapping its increment back to Integer.MIN_VALUE and scanning
+        // forever through negative indexes.
+        final Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        final Bar last = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first, last))
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        Strategy terminalRoundTrip = new BaseStrategy(new FixedRule(Integer.MAX_VALUE - 1),
+                new FixedRule(Integer.MAX_VALUE));
+        BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        List<Position> positions = terminalManager.run(terminalRoundTrip, TradeType.BUY, HUNDRED).getPositions();
+
+        assertEquals(1, positions.size());
+        assertEquals(Integer.MAX_VALUE - 1, positions.get(0).getEntry().getIndex());
+        assertEquals(Integer.MAX_VALUE, positions.get(0).getExit().getIndex());
+        assertTrue(positions.get(0).isClosed());
+    }
+
+    @Test
+    public void runSkipsClosePositionScanOnSeriesEndingAtMaximumIndex() {
+        // The close-position scan must not start from runEndIndex + 1 when the
+        // run ends at Integer.MAX_VALUE: the increment would wrap to a
+        // negative index and evaluate bars outside the series.
+        final Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        Strategy entryOnlyStrategy = new BaseStrategy(new FixedRule(Integer.MAX_VALUE), new FixedRule());
+        BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        List<Position> positions = terminalManager.run(entryOnlyStrategy, TradeType.BUY, HUNDRED).getOpenPositions();
+
+        assertEquals(1, positions.size());
+        assertTrue(positions.get(0).isOpened());
     }
 
     @Test
