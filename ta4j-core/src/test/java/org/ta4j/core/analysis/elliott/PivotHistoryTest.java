@@ -59,6 +59,16 @@ class PivotHistoryTest {
     }
 
     @Test
+    void rejectsNonFinitePivotPrices() {
+        for (final double invalidPrice : new double[] { Double.NaN, Double.POSITIVE_INFINITY,
+                Double.NEGATIVE_INFINITY }) {
+            assertThatThrownBy(() -> new ConfirmedPivot(0, 0, DoubleNum.valueOf(invalidPrice), SwingPivotType.LOW))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("price must be finite");
+        }
+    }
+
+    @Test
     void asOfExcludesPivotsConfirmedLaterThanTheObservationPoint() {
         final PivotHistory history = PivotHistory.of(List.of( //
                 new ConfirmedPivot(0, 0, DoubleNum.valueOf(5), SwingPivotType.LOW),

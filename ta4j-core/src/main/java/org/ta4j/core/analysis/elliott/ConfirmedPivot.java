@@ -32,6 +32,9 @@ record ConfirmedPivot(int pivotIndex, int confirmationIndex, Num price, SwingPiv
             throw new IllegalArgumentException("confirmationIndex must not precede pivotIndex");
         }
         Objects.requireNonNull(price, "price");
+        if (!Num.isFinite(price)) {
+            throw new IllegalArgumentException("price must be finite");
+        }
         Objects.requireNonNull(type, "type");
     }
 

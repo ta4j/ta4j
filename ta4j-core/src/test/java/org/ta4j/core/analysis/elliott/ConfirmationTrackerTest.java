@@ -147,20 +147,20 @@ class ConfirmationTrackerTest {
         repriced.put(3, List.of(pivot(1, 20), pivot(1, 22)));
 
         final ConfirmationTracker repricedTracker = new ConfirmationTracker(rawDetector(repriced));
-        assertThatThrownBy(() -> repricedTracker.observeReplay(seriesWithBars(4)))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("contradictory pivots at index 1");
+        final IllegalStateException repricedFailure = assertThrows(IllegalStateException.class,
+                () -> repricedTracker.observeReplay(seriesWithBars(4)));
+        assertThat(repricedFailure).hasMessageContaining("contradictory pivots at index 1");
 
         final Map<Integer, List<SwingPivot>> retyped = new HashMap<>();
         retyped.put(0, List.of());
         retyped.put(1, List.of());
         retyped.put(2, List.of(pivot(1, 20)));
         retyped.put(3, List.of(pivot(1, 20), new SwingPivot(1, DoubleNum.valueOf(20), SwingPivotType.LOW)));
-
         final ConfirmationTracker retypedTracker = new ConfirmationTracker(rawDetector(retyped));
-        assertThatThrownBy(() -> retypedTracker.observeReplay(seriesWithBars(4)))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("contradictory pivots at index 1");
+
+        final IllegalStateException retypedFailure = assertThrows(IllegalStateException.class,
+                () -> retypedTracker.observeReplay(seriesWithBars(4)));
+        assertThat(retypedFailure).hasMessageContaining("contradictory pivots at index 1");
 
         // No partial history leaked past the rejected update: replaying only
         // the bars before it keeps the cleanly confirmed pivot alone.

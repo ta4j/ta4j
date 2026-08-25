@@ -150,6 +150,9 @@ final class StudyRunner {
      * @since 0.24.2
      */
     StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
+        if (assetId == null || assetId.isBlank()) {
+            throw new IllegalArgumentException("assetId must not be blank");
+        }
         Objects.requireNonNull(series, "series");
         validateRange(series, fromIndex, toIndex);
         configuration.partitions().assertCalibrationConfiguration();
@@ -662,8 +665,12 @@ final class StudyRunner {
         final Set<String> identifiers = new HashSet<>();
         for (final RelationshipRule rule : copy) {
             Objects.requireNonNull(rule, "rules contains null");
-            if (!identifiers.add(rule.id())) {
-                throw new IllegalArgumentException("duplicate relationship rule id: " + rule.id());
+            final String identifier = rule.id();
+            if (identifier == null || identifier.isBlank()) {
+                throw new IllegalArgumentException("rule id must not be blank");
+            }
+            if (!identifiers.add(identifier)) {
+                throw new IllegalArgumentException("duplicate relationship rule id: " + identifier);
             }
         }
         return copy;
@@ -1224,6 +1231,13 @@ final class StudyRunner {
                 throw new IllegalArgumentException("nullEnsembleSize must be positive");
             }
             robustnessDetectors = robustnessDetectors == null ? List.of() : List.copyOf(robustnessDetectors);
+            final Set<String> detectorNames = new HashSet<>();
+            for (final DetectorRobustnessMatrix.DetectorSpec detector : robustnessDetectors) {
+                if (!detectorNames.add(detector.name())) {
+                    throw new IllegalArgumentException(
+                            "robustness detector names must not contain duplicates: " + detector.name());
+                }
+            }
             // A frozen protocol must never silently widen its declared
             // competing set: unknown names fail here instead of running an
             // undeclared experiment.

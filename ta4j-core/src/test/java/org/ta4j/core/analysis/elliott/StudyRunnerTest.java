@@ -204,6 +204,23 @@ class StudyRunnerTest {
     }
 
     @Test
+    void rejectsBlankAssetIdsBeforeEvaluation() {
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+        assertThrows(IllegalArgumentException.class, () -> runner.evaluate(" ", buildSeries(24), 0, 23));
+        assertThrows(IllegalArgumentException.class, () -> runner.evaluate(null, buildSeries(24), 0, 23));
+    }
+
+    @Test
+    void rejectsBlankAndDuplicateRuleIds() {
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), List.of(rule(" ")), configuration));
+        assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory, grammars(),
+                List.of(rule("duplicate"), rule("duplicate")), configuration));
+    }
+
+    @Test
     void syntheticIntegrationProducesAllStudyModesAndSeparatedHypotheses() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
@@ -683,6 +700,21 @@ class StudyRunnerTest {
                 "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2, 2), 1,
                 List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", StudyRunnerTest::detectorFactory)),
                 "synthetic-primary", null));
+    }
+
+    @Test
+    void rejectsDuplicateRobustnessDetectorNames() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        final List<DetectorRobustnessMatrix.DetectorSpec> detectors = List.of(
+                new DetectorRobustnessMatrix.DetectorSpec("duplicate", StudyRunnerTest::detectorFactory),
+                new DetectorRobustnessMatrix.DetectorSpec("duplicate", StudyRunnerTest::detectorFactory));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner.Configuration(partitions,
+                        "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2), 1,
+                        detectors, "synthetic-primary", null));
     }
 
     @Test
