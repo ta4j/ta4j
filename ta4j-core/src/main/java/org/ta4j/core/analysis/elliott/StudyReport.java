@@ -27,7 +27,7 @@ import java.util.Objects;
  * statistic as a held-out result.
  * </p>
  */
-final class StudyReport {
+public final class StudyReport {
 
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().create();
 
@@ -120,7 +120,7 @@ final class StudyReport {
      *
      * @return deterministic JSON representation
      */
-    String toJson() {
+    public String toJson() {
         final JsonObject root = new JsonObject();
         root.addProperty("assetId", assetId);
         root.addProperty("protocolFingerprint", protocolFingerprint);
@@ -295,8 +295,8 @@ final class StudyReport {
 
     /** Immutable report for one hypothesis. */
     /** Immutable locked partition echo. */
-    record PartitionSpec(String name, java.time.LocalDate start, java.time.LocalDate end) {
-        PartitionSpec {
+    public record PartitionSpec(String name, java.time.LocalDate start, java.time.LocalDate end) {
+        public PartitionSpec {
             name = requireText(name, "partition.name");
             Objects.requireNonNull(start, "partition.start");
             Objects.requireNonNull(end, "partition.end");
@@ -306,11 +306,16 @@ final class StudyReport {
         }
     }
 
-    record HypothesisReport(String id, String grammar, List<ModeReport> modes) {
-        HypothesisReport {
+    public record HypothesisReport(String id, String grammar, List<ModeReport> modes) {
+        public HypothesisReport {
             id = requireText(id, "hypothesis.id");
             grammar = requireText(grammar, "hypothesis.grammar");
             modes = immutable(modes, "hypothesis.modes");
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<ModeReport> modes() {
+            return List.copyOf(modes);
         }
 
         ModeReport topologyOnly() {
@@ -319,23 +324,34 @@ final class StudyReport {
     }
 
     /** Immutable report for one study mode. */
-    record ModeReport(String mode, String grammar, List<String> activeRuleIds, List<PartitionMetrics> partitions) {
-        ModeReport {
+    public record ModeReport(String mode, String grammar, List<String> activeRuleIds,
+            List<PartitionMetrics> partitions) {
+        public ModeReport {
             mode = requireText(mode, "mode");
             grammar = requireText(grammar, "grammar");
             activeRuleIds = activeRuleIds == null ? List.of() : List.copyOf(activeRuleIds);
             partitions = immutable(partitions, "partitions");
         }
+
+        /** @return defensive copies; the report tree is shared across modules. */
+        public List<String> activeRuleIds() {
+            return List.copyOf(activeRuleIds);
+        }
+
+        /** @return defensive copies; the report tree is shared across modules. */
+        public List<PartitionMetrics> partitions() {
+            return List.copyOf(partitions);
+        }
     }
 
     /** Immutable metrics for exactly one protocol partition. */
-    record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount, long completeCount,
-            long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
+    public record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount,
+            long completeCount, long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
             long insufficientHistoryCount, double matchRate, double ambiguousRate, double noMatchRate,
             double confirmationLagBars, double labelStabilityJaccard, long evidenceEvaluationCount,
             long evidencePassCount, long evidenceFailCount, long evidencePendingCount, long evidenceUnavailableCount,
             long evidenceNotApplicableCount, double evidencePassRate, List<RuleMetrics> rules) {
-        PartitionMetrics {
+        public PartitionMetrics {
             partition = requireText(partition, "partition");
             if (fromIndex > toIndex && evaluationCount > 0) {
                 throw new IllegalArgumentException("fromIndex must not exceed toIndex");
@@ -344,6 +360,11 @@ final class StudyReport {
                 throw new IllegalArgumentException("metric counts must be non-negative");
             }
             rules = immutable(rules, "rules");
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<RuleMetrics> rules() {
+            return List.copyOf(rules);
         }
     }
 
@@ -355,10 +376,10 @@ final class StudyReport {
      * @param scoreMin    minimum carried score; {@code 0} when unscored
      * @param scoreMax    maximum carried score; {@code 0} when unscored
      */
-    record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
+    public record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
             long unavailableCount, long notApplicableCount, double passRate, long scoredCount, double scoreMean,
             double scoreMin, double scoreMax) {
-        RuleMetrics {
+        public RuleMetrics {
             ruleId = requireText(ruleId, "ruleId");
             if (evaluationCount < 0 || passCount < 0 || failCount < 0 || pendingCount < 0 || unavailableCount < 0
                     || notApplicableCount < 0 || scoredCount < 0) {
@@ -368,23 +389,29 @@ final class StudyReport {
     }
 
     /** Detector-robustness results for one detector configuration. */
-    record DetectorResult(String name, ModeReport mode) {
-        DetectorResult {
+    public record DetectorResult(String name, ModeReport mode) {
+        public DetectorResult {
             name = requireText(name, "detector.name");
             mode = Objects.requireNonNull(mode, "mode");
         }
     }
 
     /** Immutable detector matrix report. */
-    record RobustnessReport(List<DetectorResult> detectors) {
-        RobustnessReport {
+    public record RobustnessReport(List<DetectorResult> detectors) {
+        public RobustnessReport {
             detectors = immutable(detectors, "detectors");
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<DetectorResult> detectors() {
+            return List.copyOf(detectors);
         }
     }
 
     /** Immutable null-ensemble report for one stationary block length. */
-    record NullReport(String grammar, int blockLength, int ensembleSize, long seed, List<PartitionMetrics> partitions) {
-        NullReport {
+    public record NullReport(String grammar, int blockLength, int ensembleSize, long seed,
+            List<PartitionMetrics> partitions) {
+        public NullReport {
             if (grammar == null || grammar.isBlank()) {
                 throw new IllegalArgumentException("null report grammar must not be blank");
             }
@@ -392,6 +419,11 @@ final class StudyReport {
                 throw new IllegalArgumentException("null parameters must be positive");
             }
             partitions = immutable(partitions, "partitions");
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<PartitionMetrics> partitions() {
+            return List.copyOf(partitions);
         }
     }
 }

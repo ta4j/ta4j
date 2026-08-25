@@ -157,6 +157,28 @@ final class ConfirmationTracker {
             }
             if (!order.isEmpty() && order.get(order.size() - 1).pivotIndex() == existing.pivotIndex()) {
                 final ConfirmedPivot revised = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
+                // A retyped trailing pivot can normalize away its same-type
+                // frozen predecessor; that predecessor was already frozen by
+                // this pivot's original confirmation, so the revision would
+                // silently rewrite confirmed history. Project the change first
+                // and fail closed when anything other than the revised pivot
+                // disappears.
+                final List<ConfirmedPivot> projected = new ArrayList<>(order);
+                projected.set(projected.size() - 1, revised);
+                final Set<Integer> keptBefore = new HashSet<>();
+                for (final ConfirmedPivot tracked : order) {
+                    keptBefore.add(tracked.pivotIndex());
+                }
+                final Set<Integer> keptAfter = new HashSet<>();
+                for (final ConfirmedPivot normalizedPivot : PivotHistory.of(projected).pivots()) {
+                    keptAfter.add(normalizedPivot.pivotIndex());
+                }
+                for (final Integer index : keptBefore) {
+                    if (index.intValue() != revised.pivotIndex() && !keptAfter.contains(index)) {
+                        throw new IllegalStateException("detector revision at bar " + asOf
+                                + " would normalize away frozen pivot " + index + "; rejecting retyped trailing pivot");
+                    }
+                }
                 known.put(pivot.index(), revised);
                 order.set(order.size() - 1, revised);
                 changed = true;

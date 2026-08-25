@@ -44,6 +44,8 @@ public final class ElliottStudyProtocol {
     private final Partitions partitions;
     private final List<DetectorConfiguration> detectorConfigurations;
     private final NullSpec nullEnsemble;
+    private final MomentumSpec momentumIndicator;
+    private final String primaryDetector;
     private final List<String> competingGrammars;
     private final List<String> metrics;
     private final List<String> ablationSet;
@@ -51,7 +53,7 @@ public final class ElliottStudyProtocol {
     private ElliottStudyProtocol(int schemaVersion, String protocolId, String version, LocalDate frozenAt,
             String fingerprintSha256, List<Hypothesis> hypotheses, List<DatasetSpec> datasets, Partitions partitions,
             List<DetectorConfiguration> detectorConfigurations, NullSpec nullEnsemble, List<String> competingGrammars,
-            List<String> metrics, List<String> ablationSet) {
+            List<String> metrics, List<String> ablationSet, MomentumSpec momentumIndicator, String primaryDetector) {
         if (schemaVersion != 1) {
             throw new IllegalArgumentException("Unsupported protocol schemaVersion: " + schemaVersion);
         }
@@ -74,6 +76,8 @@ public final class ElliottStudyProtocol {
         this.metrics = List.copyOf(metrics);
         requireNonEmpty(ablationSet, "ablationSet");
         this.ablationSet = List.copyOf(ablationSet);
+        this.momentumIndicator = Objects.requireNonNull(momentumIndicator, "momentumIndicator");
+        this.primaryDetector = requireText(primaryDetector, "primaryDetector");
     }
 
     /**
@@ -205,6 +209,16 @@ public final class ElliottStudyProtocol {
         return ablationSet;
     }
 
+    /** @return frozen wave-5 divergence momentum indicator specification */
+    public MomentumSpec momentumIndicator() {
+        return momentumIndicator;
+    }
+
+    /** @return stable name of the primary detector configuration */
+    public String primaryDetector() {
+        return primaryDetector;
+    }
+
     private static ElliottStudyProtocol fromRaw(RawProtocol raw, String fingerprint) {
         if (raw.schemaVersion == null) {
             throw new IllegalArgumentException("schemaVersion is required");
@@ -230,10 +244,19 @@ public final class ElliottStudyProtocol {
                 .map(ElliottStudyProtocol::toDetectorConfiguration)
                 .toList();
         NullSpec nullEnsemble = toNullSpec(raw.nullEnsemble);
+        MomentumSpec momentumIndicator = toMomentumSpec(raw.momentumIndicator);
 
         return new ElliottStudyProtocol(raw.schemaVersion, raw.protocolId, raw.protocolVersion,
                 parseDate(raw.frozenAt, "frozenAt"), fingerprint, List.of(h1, h2), datasets, partitions,
-                detectorConfigurations, nullEnsemble, raw.competingGrammars, raw.metrics, raw.ablationSet);
+                detectorConfigurations, nullEnsemble, raw.competingGrammars, raw.metrics, raw.ablationSet,
+                momentumIndicator, raw.primaryDetector);
+    }
+
+    private static MomentumSpec toMomentumSpec(RawMomentumSpec raw) {
+        if (raw == null) {
+            throw new IllegalArgumentException("momentumIndicator is required");
+        }
+        return new MomentumSpec(raw.type, raw.barCount);
     }
 
     private static Hypothesis toHypothesis(RawHypothesis raw, String expectedId) {
@@ -408,6 +431,24 @@ public final class ElliottStudyProtocol {
         }
     }
 
+    /**
+     * Frozen wave-5 divergence momentum indicator. The preregistered definition
+     * participates in the protocol fingerprint, so two executions cannot silently
+     * use different momentum readings while claiming the same protocol.
+     */
+    public record MomentumSpec(String type, int barCount) {
+        public MomentumSpec {
+            type = requireText(type, "momentumIndicator.type");
+            if (!"RSI".equals(type)) {
+                throw new IllegalArgumentException(
+                        "momentumIndicator.type must be RSI for schemaVersion 1, found " + type);
+            }
+            if (barCount < 2 || barCount > 1000) {
+                throw new IllegalArgumentException("momentumIndicator.barCount must be within [2, 1000]");
+            }
+        }
+    }
+
     /** Immutable stationary-block-bootstrap specification. */
     public record NullSpec(String type, List<Integer> blockLengths, int ensembleSize, long seed) {
         public NullSpec {
@@ -441,7 +482,8 @@ public final class ElliottStudyProtocol {
     private record RawProtocol(Integer schemaVersion, String protocolId, String protocolVersion, String frozenAt,
             RawHypotheses hypotheses, List<RawDataset> datasets, RawPartitions partitions,
             List<RawDetectorConfiguration> detectorConfigurations, RawNullSpec nullEnsemble,
-            List<String> competingGrammars, List<String> metrics, List<String> ablationSet) {
+            List<String> competingGrammars, List<String> metrics, List<String> ablationSet,
+            RawMomentumSpec momentumIndicator, String primaryDetector) {
     }
 
     private record RawHypotheses(@SerializedName("H1") RawHypothesis h1, @SerializedName("H2") RawHypothesis h2) {
@@ -464,5 +506,8 @@ public final class ElliottStudyProtocol {
     }
 
     private record RawNullSpec(String type, List<Integer> expectedBlockLengths, Integer ensembleSize, Long seed) {
+    }
+
+    private record RawMomentumSpec(String type, Integer barCount) {
     }
 }

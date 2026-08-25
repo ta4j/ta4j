@@ -13,9 +13,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 
@@ -36,7 +38,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
  * scope does not download or fabricate market data.
  * </p>
  */
-final class StudyRunner {
+public final class StudyRunner {
 
     /**
      * Provenance token for the in-kernel default configuration. This is NOT a
@@ -61,6 +63,29 @@ final class StudyRunner {
         this.grammars = validateGrammars(grammars);
         this.rules = validateRules(rules);
         this.configuration = Objects.requireNonNull(configuration, "configuration");
+    }
+
+    /**
+     * Creates a runner preloaded with the preregistered classical relationship
+     * ladder (three hard rules plus protocol-configured wave-5 divergence momentum)
+     * over the motive and cycle grammars.
+     *
+     * <p>
+     * This is the cross-module execution surface for frozen protocols:
+     * {@code ta4j-examples} translates a verified {@code ElliottStudyProtocol} into
+     * the configuration and momentum factory here. The rule and grammar types stay
+     * internal to this package.
+     * </p>
+     *
+     * @param detectorFactory      primary detector supplier
+     * @param wave5MomentumFactory per-series momentum indicator factory
+     * @param configuration        locked study configuration
+     * @return runner bound to the supplied configuration
+     */
+    public static StudyRunner frozenPreregistered(final Supplier<SwingDetector> detectorFactory,
+            final Function<BarSeries, Indicator<Num>> wave5MomentumFactory, final Configuration configuration) {
+        return new StudyRunner(detectorFactory, List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
+                ClassicalRelationshipRules.classicalRelationships(wave5MomentumFactory), configuration);
     }
 
     /**
@@ -102,7 +127,7 @@ final class StudyRunner {
      * @param toIndex   last requested index, inclusive
      * @return immutable study report
      */
-    StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
+    public StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
         Objects.requireNonNull(series, "series");
         validateRange(series, fromIndex, toIndex);
         configuration.partitions().assertCalibrationConfiguration();
@@ -110,13 +135,11 @@ final class StudyRunner {
         final int start = Math.max(fromIndex, series.getBeginIndex());
         final int end = Math.min(toIndex, series.getEndIndex());
         final List<StudyReport.ModeReport> h1Modes = new ArrayList<>();
-        // H1 is topology-only classification over the caller-declared grammar
-        // set; the full kernel grammar spread is covered by the competing
-        // section, so no forced additions here.
-        for (final TopologyGrammar grammar : grammars) {
-            h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory, grammar,
-                    "topology-only"));
-        }
+        // H1 is exactly the preregistered MOTIVE_5 topology claim; additional
+        // caller grammars belong to the competing-grammar section below and
+        // must never appear under the motive-labeled hypothesis report.
+        h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
+                TopologyGrammar.MOTIVE_5, "topology-only"));
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
         for (final RuleAblation.Mode mode : RuleAblation.modes(rules)) {
@@ -212,7 +235,8 @@ final class StudyRunner {
                             // the requested window stays in source coordinates and
                             // must be translated before recording.
                             recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
-                                    member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators);
+                                    member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators,
+                                    sourceBegin);
                             totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
                         }
                     }
@@ -248,7 +272,7 @@ final class StudyRunner {
             final String mode, final List<RelationshipRule> activeRules) {
         final List<MetricAccumulator> accumulators = newAccumulators(activeRules);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
-        recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators);
+        recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators, 0);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
                 metrics(accumulators, partitions));
     }
@@ -261,13 +285,14 @@ final class StudyRunner {
         Objects.requireNonNull(factory, "factory");
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
-        recordTopology(series, start, end, partitions, replay, grammar, List.of(), accumulators);
+        recordTopology(series, start, end, partitions, replay, grammar, List.of(), accumulators, 0);
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
     }
 
     private static void recordTopology(final BarSeries series, final int start, final int end,
             final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
-            final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators) {
+            final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators,
+            final int recordedIndexOffset) {
         if (start > end) {
             return;
         }
@@ -279,7 +304,9 @@ final class StudyRunner {
             final LocalDate date = barDate(series, index);
             partitions.assertCalibrationDateAllowed(date);
             final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
-            accumulators.get(partitionIndex).record(analysis, index, activeRules, series);
+            // Null ensemble members are rebased sub-series; the offset restores
+            // source coordinates so null and real metric bounds are comparable.
+            accumulators.get(partitionIndex).record(analysis, index + recordedIndexOffset, activeRules, series);
         }
     }
 
@@ -462,6 +489,8 @@ final class StudyRunner {
         private long evidencePendingCount;
         private long evidenceUnavailableCount;
         private long evidenceNotApplicableCount;
+        private long jointEvaluationCount;
+        private long jointPassCount;
         private double confirmationLagSum;
         private long confirmationLagCount;
         private double stabilitySum;
@@ -544,9 +573,13 @@ final class StudyRunner {
 
         private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
                 final BarSeries series) {
+            boolean allRulesPass = !activeRules.isEmpty();
             for (int index = 0; index < activeRules.size(); index++) {
                 final RuleEvidence evidence = activeRules.get(index).evaluate(candidate, series);
                 evidenceEvaluationCount++;
+                if (evidence.state() != EvidenceState.PASS) {
+                    allRulesPass = false;
+                }
                 final RuleCounter counter = ruleCounters.get(index);
                 switch (evidence.state()) {
                 case PASS -> {
@@ -579,6 +612,13 @@ final class StudyRunner {
                 default -> throw new IllegalStateException("unhandled evidence state " + evidence.state());
                 }
                 counter.evaluationCount++;
+            }
+            // One joint outcome per candidate: a multi-rule mode's pass rate
+            // must reflect candidates satisfying every active rule together,
+            // not the average of independent per-rule pass rates.
+            jointEvaluationCount++;
+            if (allRulesPass) {
+                jointPassCount++;
             }
         }
 
@@ -616,6 +656,8 @@ final class StudyRunner {
             evidencePendingCount += other.evidencePendingCount;
             evidenceUnavailableCount += other.evidenceUnavailableCount;
             evidenceNotApplicableCount += other.evidenceNotApplicableCount;
+            jointEvaluationCount += other.jointEvaluationCount;
+            jointPassCount += other.jointPassCount;
             for (int index = 0; index < ruleCounters.size() && index < other.ruleCounters.size(); index++) {
                 ruleCounters.get(index).mergeFrom(other.ruleCounters.get(index));
             }
@@ -623,7 +665,10 @@ final class StudyRunner {
 
         private StudyReport.PartitionMetrics toMetrics(final String partition) {
             final long denominator = evaluationCount;
-            final long evidenceDenominator = evidenceEvaluationCount;
+            // Multi-rule modes report their aggregate rate from the joint
+            // per-candidate outcome while raw counters keep per-rule truth.
+            final long rateDenominator = ruleCounters.size() > 1 ? jointEvaluationCount : evidenceEvaluationCount;
+            final long rateNumerator = ruleCounters.size() > 1 ? jointPassCount : evidencePassCount;
             final List<StudyReport.RuleMetrics> rules = ruleCounters.stream().map(RuleCounter::toMetrics).toList();
             return new StudyReport.PartitionMetrics(partition, firstIndex == Integer.MAX_VALUE ? -1 : firstIndex,
                     lastIndex == Integer.MIN_VALUE ? -1 : lastIndex, evaluationCount, completeCount, formingCount,
@@ -632,7 +677,7 @@ final class StudyRunner {
                     ratio(noMatchCount, denominator), ratio(confirmationLagSum, confirmationLagCount),
                     ratio(stabilitySum, stabilityCount), evidenceEvaluationCount, evidencePassCount, evidenceFailCount,
                     evidencePendingCount, evidenceUnavailableCount, evidenceNotApplicableCount,
-                    ratio(evidencePassCount, evidenceDenominator), rules);
+                    ratio(rateNumerator, rateDenominator), rules);
         }
 
         private static double ratio(final long numerator, final long denominator) {
@@ -813,8 +858,8 @@ final class StudyRunner {
     }
 
     /** One inclusive date partition. */
-    record Partition(String name, LocalDate start, LocalDate end) {
-        Partition {
+    public record Partition(String name, LocalDate start, LocalDate end) {
+        public Partition {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("partition name must not be blank");
             }
@@ -831,8 +876,8 @@ final class StudyRunner {
     }
 
     /** Immutable locked partition set and calibration embargo. */
-    record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
-        Partitions {
+    public record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
+        public Partitions {
             entries = entries == null ? List.of() : List.copyOf(entries);
             Objects.requireNonNull(forbiddenCalibrationStart, "forbiddenCalibrationStart");
             if (entries.isEmpty()) {
@@ -912,12 +957,12 @@ final class StudyRunner {
      *                        produces H1/H2/null results; robustness rows carry
      *                        their own names
      */
-    record Configuration(Partitions partitions, String protocolFingerprint, long seed, List<Integer> nullBlockLengths,
-            int nullEnsembleSize, List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors,
-            String primaryDetector) {
+    public record Configuration(Partitions partitions, String protocolFingerprint, long seed,
+            List<Integer> nullBlockLengths, int nullEnsembleSize,
+            List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors, String primaryDetector) {
         private static final String DEFAULT_PRIMARY_DETECTOR = "in-kernel-default";
 
-        Configuration {
+        public Configuration {
             Objects.requireNonNull(partitions, "partitions");
             if (protocolFingerprint == null || protocolFingerprint.isBlank()) {
                 throw new IllegalArgumentException("protocolFingerprint must not be blank");
@@ -930,19 +975,24 @@ final class StudyRunner {
                     || nullBlockLengths.stream().anyMatch(length -> length == null || length <= 0)) {
                 throw new IllegalArgumentException("nullBlockLengths must contain positive values");
             }
+            // A duplicated block length would run the identical ensemble twice
+            // and double-count it in every aggregate.
+            if (nullBlockLengths.stream().distinct().count() != nullBlockLengths.size()) {
+                throw new IllegalArgumentException("nullBlockLengths must not contain duplicates");
+            }
             if (nullEnsembleSize <= 0) {
                 throw new IllegalArgumentException("nullEnsembleSize must be positive");
             }
             robustnessDetectors = robustnessDetectors == null ? List.of() : List.copyOf(robustnessDetectors);
         }
 
-        static Configuration lockedDefault() {
+        public static Configuration lockedDefault() {
             return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
                     DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR);
         }
 
         /** Compact overload keeping the in-kernel default detector identity. */
-        static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
+        public static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
                 final List<Integer> nullBlockLengths, final int nullEnsembleSize) {
             return new Configuration(partitions, protocolFingerprint, seed, nullBlockLengths, nullEnsembleSize,
                     List.of(), DEFAULT_PRIMARY_DETECTOR);

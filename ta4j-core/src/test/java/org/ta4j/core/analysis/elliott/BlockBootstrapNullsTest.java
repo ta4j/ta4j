@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.elliott;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -92,6 +93,15 @@ class BlockBootstrapNullsTest {
                         "member close at bar " + offset + " not representable: " + close);
             }
         }
+    }
+
+    @Test
+    void intrabarScalingStaysFiniteWhenProductOverflows() {
+        // wick * memberClose would overflow even though the mathematically
+        // exact scaled value is representable: ratio first, then multiply.
+        final Num scaled = BlockBootstrapNulls.scaled(DoubleNum.valueOf(1e308), DoubleNum.valueOf(Double.MAX_VALUE),
+                DoubleNum.valueOf(Double.MAX_VALUE));
+        assertEquals(1e308d, scaled.doubleValue(), 1e292d);
     }
 
     @Test

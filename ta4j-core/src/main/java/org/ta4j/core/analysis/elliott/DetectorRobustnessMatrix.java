@@ -15,7 +15,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 /**
  * Runs topology-only recognition over the preregistered detector matrix.
  */
-final class DetectorRobustnessMatrix {
+public final class DetectorRobustnessMatrix {
 
     private DetectorRobustnessMatrix() {
     }
@@ -60,8 +60,8 @@ final class DetectorRobustnessMatrix {
     }
 
     /** Immutable detector configuration. */
-    record DetectorSpec(String name, Supplier<SwingDetector> factory) {
-        DetectorSpec {
+    public record DetectorSpec(String name, Supplier<SwingDetector> factory) {
+        public DetectorSpec {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("detector name must not be blank");
             }

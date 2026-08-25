@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -117,11 +118,12 @@ class StudyRunnerTest {
                 configuration);
         final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
 
-        // H1 is exactly the caller-declared grammar set; H2 is exactly the
-        // ablation ladder (topology-only, one rung per rule, classical-all).
-        assertEquals(3, report.h1().modes().size());
-        assertEquals(List.of("MOTIVE_5", "CORRECTIVE_3", "CYCLE_5_3"),
-                report.h1().modes().stream().map(StudyReport.ModeReport::grammar).toList());
+        // H1 is exactly the preregistered MOTIVE_5 topology claim; additional
+        // caller grammars belong to the competing-grammar section. H2 is
+        // exactly the ablation ladder (topology-only, one rung per rule,
+        // classical-all).
+        assertEquals(1, report.h1().modes().size());
+        assertEquals(List.of("MOTIVE_5"), report.h1().modes().stream().map(StudyReport.ModeReport::grammar).toList());
         assertEquals(4, report.h2().modes().size());
         assertEquals(List.of("topology-only", "+first", "+second", "classical-all"),
                 report.h2().modes().stream().map(StudyReport.ModeReport::mode).toList());
@@ -528,15 +530,42 @@ class StudyRunnerTest {
                 .orElseThrow();
         long calibrationBars = 0;
         long validationBars = 0;
+        StudyReport.PartitionMetrics calibrationMetrics = null;
+        StudyReport.PartitionMetrics validationMetrics = null;
         for (final StudyReport.PartitionMetrics metrics : nulls.partitions()) {
             if ("calibration".equals(metrics.partition())) {
                 calibrationBars += metrics.evaluationCount();
+                calibrationMetrics = metrics;
             } else if ("validation".equals(metrics.partition())) {
                 validationBars += metrics.evaluationCount();
+                validationMetrics = metrics;
             }
         }
         assertEquals(2L, calibrationBars);
         assertEquals(4L, validationBars);
+        // Null members are rebased sub-series; recorded bounds must be
+        // translated back to source coordinates so null and real metric
+        // bounds are comparable (member 2..3 == source 10..11, member
+        // 4..7 == source 12..15).
+        assertNotNull(calibrationMetrics);
+        assertEquals(10, calibrationMetrics.fromIndex());
+        assertEquals(11, calibrationMetrics.toIndex());
+        assertNotNull(validationMetrics);
+        assertEquals(12, validationMetrics.fromIndex());
+        assertEquals(15, validationMetrics.toIndex());
+    }
+
+    @Test
+    void rejectsDuplicateNullBlockLengths() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        // A duplicated block length would run the identical ensemble twice and
+        // double-count it in every aggregate.
+        assertThrows(IllegalArgumentException.class, () -> new StudyRunner.Configuration(partitions,
+                "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2, 2), 1,
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", StudyRunnerTest::detectorFactory)),
+                "synthetic-primary"));
     }
 
     @Test

@@ -4,7 +4,8 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +27,25 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
      * reading one series' momentum values against another's pivots.
      */
     private final Function<BarSeries, Indicator<Num>> momentumFactory;
-    private final Map<BarSeries, Indicator<Num>> boundMomentum = new HashMap<>();
+
+    /**
+     * Upper bound on simultaneously retained series; studies evaluate one or few
+     * series per runner.
+     */
+    private static final int MAX_CACHED_SERIES = 4;
+
+    /**
+     * Bounded LRU rather than a plain map: every bound indicator strongly
+     * references its own series, so weak keys would never be collected and an
+     * unbounded map would retain every studied series for the runner's life.
+     */
+    private final Map<BarSeries, Indicator<Num>> boundMomentum = Collections
+            .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(final Map.Entry<BarSeries, Indicator<Num>> eldest) {
+                    return size() > MAX_CACHED_SERIES;
+                }
+            });
 
     Wave5MomentumDivergenceRule(final Indicator<Num> momentum) {
         Objects.requireNonNull(momentum, "momentum");
@@ -70,6 +89,11 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
             return RuleEvidence.unavailable(id(), "momentum rule requires the evaluated series binding");
         }
         final Indicator<Num> momentum = boundMomentum.computeIfAbsent(series, momentumFactory);
+        // A factory handing back an indicator bound to another series would
+        // splice foreign momentum values onto this series' pivots; fail fast.
+        if (momentum.getBarSeries() != series) {
+            throw new IllegalArgumentException("momentum factory returned an indicator bound to a different series");
+        }
 
         // Pivot 5 is the wave-5 ENDPOINT; pivot 4 is the wave-4 trough/peak.
         final int wave3Index = candidate.pivots().get(3).pivotIndex();
@@ -103,7 +127,10 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
                 : wave5Price.isLessThan(wave3Price) && wave5MomentumValue.isGreaterThan(wave3MomentumValue);
         if (!divergence) {
             observations.add("aligned");
-            return RuleEvidence.pass(id(), observations, "price and momentum are aligned");
+            // The rule premise IS divergence; alignment is a failed premise,
+            // never a pass, so the +wave5-divergence ablation measures how
+            // often five-wave candidates actually diverge.
+            return RuleEvidence.fail(id(), observations, "price and momentum are aligned");
         }
 
         // Divergence magnitude arithmetic stays in the active Num domain so

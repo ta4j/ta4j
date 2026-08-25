@@ -48,6 +48,11 @@
     },
     "forbiddenCalibrationStart": "2024-01-01"
   },
+  "primaryDetector": "fractal-w5",
+  "momentumIndicator": {
+    "type": "RSI",
+    "barCount": 14
+  },
   "detectorConfigurations": [
     {
       "name": "fractal-w3",

@@ -13,11 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class ElliottStudyProtocolTest {
-    private static final String PINNED_PROTOCOL_FINGERPRINT = "054589ddc3566e72ac8ed8b06b31cba5f94de6d5bc76222d8f703df6bad6bf06";
+    private static final String PINNED_PROTOCOL_FINGERPRINT = "92a217792dc20aa16214839d492829a7381675a1d3e92e2baea2d30b172c2078";
 
     /**
      * The protocol is immutable and its dataset digests are verified on load; parse
@@ -35,6 +37,14 @@ class ElliottStudyProtocolTest {
         assertEquals("1.0.0", protocol.version());
         assertEquals(LocalDate.parse("2026-08-24"), protocol.frozenAt());
         assertEquals(PINNED_PROTOCOL_FINGERPRINT, protocol.fingerprintSha256());
+
+        assertEquals("fractal-w5", protocol.primaryDetector());
+        ElliottStudyProtocol.MomentumSpec momentum = protocol.momentumIndicator();
+        assertEquals("RSI", momentum.type());
+        assertEquals(14, momentum.barCount());
+
+        assertThrows(IllegalArgumentException.class, () -> new ElliottStudyProtocol.MomentumSpec("MACD", 14));
+        assertThrows(IllegalArgumentException.class, () -> new ElliottStudyProtocol.MomentumSpec("RSI", 1));
     }
 
     @Test

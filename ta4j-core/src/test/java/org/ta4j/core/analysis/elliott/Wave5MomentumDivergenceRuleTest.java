@@ -50,15 +50,17 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     @Test
-    void passesWithoutScoreWhenPriceAndMomentumAreAligned() {
-        // Wave-5 momentum (index 5) above wave-3 momentum keeps the bullish
-        // move aligned even though the unused pivot-4 slot dips.
+    void failsWhenPriceAndMomentumAreAligned() {
+        // The rule premise IS divergence. Alignment is a failed premise (never
+        // a pass) so the +wave5-divergence ablation rung measures how often
+        // five-wave candidates actually diverge instead of reporting a
+        // constant 100% pass rate.
         final Indicator<Num> momentum = momentum(0, 0, 0, 10, 0, 11);
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
         final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
                 momentum.getBarSeries());
 
-        assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(evidence.state()).isEqualTo(EvidenceState.FAIL);
         assertThat(evidence.score()).isEmpty();
         assertThat(evidence.explanation()).contains("aligned");
         assertThat(evidence.observations()).contains("aligned");
@@ -121,9 +123,50 @@ class Wave5MomentumDivergenceRuleTest {
         assertThat(divergingEvidence.state()).isEqualTo(EvidenceState.PASS);
         assertThat(divergingEvidence.score()).hasValue(1.0d);
         assertThat(divergingEvidence.observations()).contains("wave 5 momentum=0.0");
-        assertThat(alignedEvidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(alignedEvidence.state()).isEqualTo(EvidenceState.FAIL);
         assertThat(alignedEvidence.score()).isEmpty();
         assertThat(alignedEvidence.observations()).contains("aligned");
+    }
+
+    @Test
+    void rejectsFactoryBoundToAnotherSeries() {
+        final Indicator<Num> foreign = momentum(0, 0, 0, 10, 8, 0);
+        final BarSeries studied = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
+
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(series -> foreign);
+
+        assertThatThrownBy(() -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), studied))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("different series");
+    }
+
+    @Test
+    void boundedCacheEvictsOldSeriesButKeepsResultsCorrect() {
+        // More distinct series than MAX_CACHED_SERIES flow through one rule
+        // instance: eviction must not corrupt or cross-wire any binding.
+        final List<Indicator<Num>> momenta = new ArrayList<>();
+        final List<BarSeries> series = new ArrayList<>();
+        for (int index = 0; index < 12; index++) {
+            final Indicator<Num> bound = momentum(0, 0, 0, 10, 8, index % 2 == 0 ? 0 : 20);
+            momenta.add(bound);
+            series.add(bound.getBarSeries());
+        }
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
+                bound -> momenta.stream().filter(m -> m.getBarSeries() == bound).findFirst().orElseThrow());
+
+        for (int round = 0; round < 2; round++) {
+            for (int index = 0; index < series.size(); index++) {
+                final RuleEvidence evidence = rule
+                        .evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), series.get(index));
+                if (index % 2 == 0) {
+                    assertThat(evidence.state()).isEqualTo(EvidenceState.PASS);
+                    assertThat(evidence.score()).hasValue(1.0d);
+                } else {
+                    assertThat(evidence.state()).isEqualTo(EvidenceState.FAIL);
+                    assertThat(evidence.observations()).contains("aligned");
+                }
+            }
+        }
     }
 
     @Test

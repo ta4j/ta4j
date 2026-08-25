@@ -296,7 +296,7 @@ final class BlockBootstrapNulls {
         return result;
     }
 
-    private static Num scaled(final Num value, final Num sourceClose, final Num close) {
+    static Num scaled(final Num value, final Num sourceClose, final Num close) {
         if (value == null || !sourceClose.isPositive()) {
             return close;
         }
@@ -306,7 +306,12 @@ final class BlockBootstrapNulls {
         if (value.equals(sourceClose)) {
             return close;
         }
-        final Num scaled = close.multipliedBy(value).dividedBy(sourceClose);
+        // Divide before multiplying: wick * memberClose can overflow even when
+        // the mathematically exact scaled value is representable (for example
+        // wick 1e308 against source close Double.MAX_VALUE), while the ratio
+        // wick / sourceClose stays inside double range. The reordered product
+        // preserves such wicks instead of clamping them to the close.
+        final Num scaled = close.multipliedBy(value.dividedBy(sourceClose));
         // A range-bounded domain that cannot hold the scaled wick clamps to the
         // member close instead of letting infinity or NaN reach BaseBar.
         if (scaled.getDelegate() instanceof Double delegate && !Double.isFinite(delegate)) {
