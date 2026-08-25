@@ -82,5 +82,20 @@ class PivotHistoryTest {
         assertThat(history.asOf(9)).extracting(ConfirmedPivot::pivotIndex).containsExactly(5);
         assertThat(history.asOf(10)).extracting(ConfirmedPivot::pivotIndex).containsExactly(0, 5);
     }
-}
 
+    @Test
+    void renormalizesAsOfViewsWhenInteriorPivotIsHidden() {
+        // With HIGH@5 still unconfirmed, the visible LOW@0/LOW@8 run must
+        // collapse instead of leaking a same-type sequence to consumers.
+        final PivotHistory history = PivotHistory.of(List.of(
+                new ConfirmedPivot(0, 1, DoubleNum.valueOf(10), SwingPivotType.LOW),
+                new ConfirmedPivot(5, 10, DoubleNum.valueOf(20), SwingPivotType.HIGH),
+                new ConfirmedPivot(8, 8, DoubleNum.valueOf(5), SwingPivotType.LOW),
+                new ConfirmedPivot(9, 9, DoubleNum.valueOf(25), SwingPivotType.HIGH)));
+
+        final List<ConfirmedPivot> view = history.asOf(9);
+        assertThat(view).extracting(ConfirmedPivot::pivotIndex).containsExactly(8, 9);
+        assertThat(view).extracting(ConfirmedPivot::type).containsExactly(SwingPivotType.LOW, SwingPivotType.HIGH);
+        assertThat(view.get(0).price()).isEqualTo(DoubleNum.valueOf(5));
+    }
+}

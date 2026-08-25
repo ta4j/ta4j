@@ -616,6 +616,39 @@ class StudyRunnerTest {
         assertTrue(jump.isPositive());
     }
 
+    @Test
+    void logReturnsTerminateWhenDoubleNumRatioOverflows() {
+        // MIN_VALUE -> MAX_VALUE overflows already in the DoubleNum ratio; the
+        // difference of decomposed close logs must terminate with a finite
+        // value instead of scaling an infinite Num forever.
+        final BarSeries source = new BaseBarSeriesBuilder().withName("double-overflow")
+                .withNumFactory(org.ta4j.core.num.DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final double[] closes = { Double.MIN_VALUE, Double.MAX_VALUE, Double.MIN_VALUE };
+        for (int index = 0; index < closes.length; index++) {
+            final Num close = org.ta4j.core.num.DoubleNum.valueOf(closes[index]);
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final double[] returns = BlockBootstrapNulls.logReturns(source);
+        final double expected = Math.log(Double.MAX_VALUE) - Math.log(Double.MIN_VALUE);
+        assertEquals(expected, returns[0], 1e-6d);
+        assertEquals(-expected, returns[1], 1e-6d);
+
+        final BarSeries member = BlockBootstrapNulls.generate(source, 2, 1, 7L).get(0);
+        assertTrue(member.getBarCount() == source.getBarCount());
+    }
 
     @Test
     void rejectsGrammarsOmittingDeclaredH1Grammar() {

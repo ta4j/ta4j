@@ -6,6 +6,8 @@ package org.ta4j.core.analysis.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -199,8 +201,7 @@ class ConfirmationTrackerTest {
 
         final ConfirmationTracker tracker = new ConfirmationTracker(scripted(script));
 
-        assertThatThrownBy(() -> tracker.observeReplay(seriesWithBars(7)))
-                .isInstanceOf(IllegalStateException.class)
+        assertThatThrownBy(() -> tracker.observeReplay(seriesWithBars(7))).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("withdrew frozen pivot");
     }
 
@@ -350,5 +351,30 @@ class ConfirmationTrackerTest {
                             script.keySet().stream().filter(key -> key <= index).max(Integer::compareTo).orElseThrow(),
                             List.of()));
         }
+    }
+
+    @Test
+    void equalRetainedExtremeSuppressesOlderEqualPivotWithoutChurn() {
+        final SwingPivot high1 = new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.HIGH);
+        final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(10), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of(high1));
+        // Cumulative detector keeps reporting both equal highs; normalization
+        // retains the later one, which now also dominates the older equal one.
+        for (int bar = 3; bar <= 6; bar++) {
+            script.put(bar, List.of(high1, high3));
+        }
+
+        final ConfirmationTracker tracker = new ConfirmationTracker(scripted(script));
+        final ConfirmationTracker.CausalReplay replay = tracker.observeReplay(seriesWithBars(7));
+
+        assertThat(replay.at(3)).extracting(ConfirmedPivot::pivotIndex).containsExactly(3);
+        assertThat(replay.at(6)).extracting(ConfirmedPivot::pivotIndex).containsExactly(3);
+        // Exactly two changes (confirmation at 1, collapse at 3); no per-bar churn.
+        assertEquals(2, replay.versionAsOf().length);
+        // Accessor returns a copy; mutating it cannot corrupt later lookups.
+        replay.versionAsOf()[0] = Integer.MAX_VALUE;
+        assertThat(replay.at(6)).extracting(ConfirmedPivot::pivotIndex).containsExactly(3);
     }
 }

@@ -60,6 +60,17 @@ final class BlockBootstrapNulls {
         return List.copyOf(generated);
     }
 
+    /**
+     * Close-to-close log returns of the source, one entry per bar transition.
+     *
+     * <p>
+     * Representation floor: returns are stored as primitive doubles per the
+     * frozen null protocol, so a relative move whose full-precision Num delta
+     * underflows the smallest positive double (below roughly 4.9e-324) records
+     * zero. Such moves are orders of magnitude below any recorded market tick
+     * quantization; preserving them would require abandoning the frozen double
+     * return representation.
+     */
     static double[] logReturns(final BarSeries source) {
         final int count = source.getBarCount();
         final double[] returns = new double[count - 1];
@@ -76,26 +87,35 @@ final class BlockBootstrapNulls {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
             }
             final Num ratio = current.dividedBy(previous);
-            final Num delta = ratio.minus(numFactory.one());
-            final double d = delta.doubleValue();
-            if (Math.abs(d) <= 0.5d) {
-                // Near unity the ratio's own rounding would swallow tiny moves;
-                // the full-precision Num delta narrows without collapsing.
-                returns[offset - 1] = Math.log1p(d);
+            final double narrowedRatio = ratio.doubleValue();
+            if (Double.isFinite(narrowedRatio) && narrowedRatio != 0.0d) {
+                final double d = ratio.minus(numFactory.one()).doubleValue();
+                if (d != 0.0d && Math.abs(d) <= 0.5d) {
+                    // Near unity the ratio's own rounding would swallow tiny
+                    // moves; the full-precision Num delta narrows without
+                    // collapsing down to the smallest positive double.
+                    returns[offset - 1] = Math.log1p(d);
+                } else {
+                    returns[offset - 1] = Math.log(narrowedRatio);
+                }
             } else {
-                // Far from unity the ratio itself carries enough relative
-                // precision; the magnitude decomposition keeps ratios beyond
-                // double range finite instead of narrowing to Infinity or zero.
-                returns[offset - 1] = logNum(numFactory, ratio);
+                // The ratio overflowed or underflowed double; scaling a
+                // non-finite Num would loop forever (an infinite DoubleNum
+                // divided by the scale stays infinite), so take the difference
+                // of individually decomposed close logarithms instead.
+                returns[offset - 1] = logNum(numFactory, current) - logNum(numFactory, previous);
             }
         }
         return returns;
     }
 
     /**
-     * Natural logarithm of a positive Num whose magnitude may exceed double
-     * range: decompose the value into a representable significand plus powers
-     * of 1e300 before narrowing, so Infinity and zero never reach Math.log.
+     * Natural logarithm of a positive Num whose magnitude may exceed double range:
+     * decompose the value into a representable significand plus powers of 1e300
+     * before narrowing, so Infinity and zero never reach Math.log. Callers must
+     * pass values that are finite and positive inside their own Num domain
+     * (guaranteed by the positivity check above); each decomposition step then
+     * strictly shrinks or grows the magnitude, so the loops terminate.
      */
     private static double logNum(final NumFactory numFactory, final Num value) {
         final Num scale = numFactory.numOf("1e300");
@@ -117,10 +137,10 @@ final class BlockBootstrapNulls {
     }
 
     /**
-     * e^y as a Num: the fractional part stays within double range and the
-     * integer part becomes fast-exponentiation squaring inside the active Num
-     * domain, so reconstruction survives returns beyond double range such as a
-     * single-bar jump from 1 to 1e400.
+     * e^y as a Num: the fractional part stays within double range and the integer
+     * part becomes fast-exponentiation squaring inside the active Num domain, so
+     * reconstruction survives returns beyond double range such as a single-bar jump
+     * from 1 to 1e400.
      */
     private static Num expNum(final NumFactory numFactory, final double y) {
         if (y < 0.0d) {

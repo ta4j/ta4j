@@ -127,8 +127,8 @@ final class ConfirmationTracker {
         while (!order.isEmpty() && !containsIndex(reported, order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
             if (retractableIndex != -1 && removed.pivotIndex() != retractableIndex) {
-                throw new IllegalStateException("detector withdrew frozen pivot " + removed.pivotIndex()
-                        + " at bar " + asOf + "; only the newest tracked pivot may be withdrawn");
+                throw new IllegalStateException("detector withdrew frozen pivot " + removed.pivotIndex() + " at bar "
+                        + asOf + "; only the newest tracked pivot may be withdrawn");
             }
             known.remove(removed.pivotIndex());
             // A withdrawn dominator no longer suppresses the pivots it
@@ -246,9 +246,13 @@ final class ConfirmationTracker {
         if (dominator.type() != dominated.type()) {
             return false;
         }
+        // Normalization keeps the LATER pivot of an equal-price same-type run,
+        // so equality counts as dominance: otherwise cumulative detectors
+        // re-admitting the retained equal pivot would collapse it again on
+        // every replay bar, defeating change-proportional snapshotting.
         return switch (dominator.type()) {
-        case HIGH -> dominated.price().compareTo(dominator.price()) < 0;
-        case LOW -> dominated.price().compareTo(dominator.price()) > 0;
+        case HIGH -> dominated.price().compareTo(dominator.price()) <= 0;
+        case LOW -> dominated.price().compareTo(dominator.price()) >= 0;
         };
     }
 
@@ -270,6 +274,15 @@ final class ConfirmationTracker {
             Objects.requireNonNull(history, "history");
             versions = versions == null ? List.of() : List.copyOf(versions);
             versionAsOf = versionAsOf == null ? new int[0] : versionAsOf.clone();
+        }
+
+        /**
+         * Returns a defensive copy so callers cannot corrupt the ordering that
+         * {@link #at(int)} binary search relies on.
+         */
+        @Override
+        public int[] versionAsOf() {
+            return versionAsOf.clone();
         }
 
         /**

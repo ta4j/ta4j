@@ -3,8 +3,12 @@
  */
 package org.ta4j.core.analysis.elliott.swing;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
@@ -25,6 +29,15 @@ public final class FractalSwingDetector implements SwingDetector {
     private final int lookbackLength;
     private final int lookforwardLength;
     private final int allowedEqualBars;
+
+    /**
+     * Shared indicator per (series, degree): rebuilding an {@link ElliottSwingIndicator}
+     * for every as-of evaluation discards its {@code CachedIndicator} state and makes
+     * causal replays quadratic in series length. Weak keys let garbage collect the
+     * indicator once the series itself becomes unreachable.
+     */
+    private final Map<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> indicatorCache =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     /**
      * Creates a detector with symmetric lookback/lookforward windows.
@@ -64,8 +77,11 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final ElliottSwingIndicator indicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
-                allowedEqualBars, degree);
+        final ElliottSwingIndicator indicator = indicatorCache
+                .computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(degree,
+                        ignored -> new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
+                                allowedEqualBars, degree));
         return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
     }
 

@@ -4,7 +4,6 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -110,8 +109,13 @@ final class PivotHistory {
                 visible.add(pivot);
             }
         }
-        visible.sort(Comparator.comparingInt(ConfirmedPivot::pivotIndex));
-        return List.copyOf(visible);
+        if (visible.isEmpty()) {
+            return List.of();
+        }
+        // Hiding an unconfirmed interior pivot can leave consecutive visible
+        // pivots with the same type, which violates the normalized alternating
+        // contract; re-run the same normalization the emitted history uses.
+        return PivotHistory.of(visible).pivots();
     }
 
     @Override
