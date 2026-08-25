@@ -256,6 +256,9 @@ public final class ElliottStudyProtocol {
         if (raw == null) {
             throw new IllegalArgumentException("momentumIndicator is required");
         }
+        if (raw.barCount == null) {
+            throw new IllegalArgumentException("momentumIndicator.barCount is required");
+        }
         return new MomentumSpec(raw.type, raw.barCount);
     }
 
@@ -435,6 +438,8 @@ public final class ElliottStudyProtocol {
      * Frozen wave-5 divergence momentum indicator. The preregistered definition
      * participates in the protocol fingerprint, so two executions cannot silently
      * use different momentum readings while claiming the same protocol.
+     *
+     * @since 0.24.2
      */
     public record MomentumSpec(String type, int barCount) {
         public MomentumSpec {

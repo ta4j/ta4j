@@ -26,6 +26,8 @@ import java.util.Objects;
  * aggregate, so a caller cannot accidentally interpret a cross-partition
  * statistic as a held-out result.
  * </p>
+ *
+ * @since 0.24.2
  */
 public final class StudyReport {
 
@@ -62,15 +64,27 @@ public final class StudyReport {
         this.nulls = immutable(nulls, "nulls");
     }
 
-    String assetId() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public String assetId() {
         return assetId;
     }
 
-    String protocolFingerprint() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public String protocolFingerprint() {
         return protocolFingerprint;
     }
 
-    long seed() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public long seed() {
         return seed;
     }
 
@@ -78,40 +92,76 @@ public final class StudyReport {
      * Stable identifier of the primary detector factory that produced H1/H2/null
      * results.
      */
-    String primaryDetector() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public String primaryDetector() {
         return primaryDetector;
     }
 
-    List<PartitionSpec> partitions() {
-        return partitions;
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public List<PartitionSpec> partitions() {
+        return List.copyOf(partitions);
     }
 
-    LocalDate forbiddenCalibrationStart() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public LocalDate forbiddenCalibrationStart() {
         return forbiddenCalibrationStart;
     }
 
-    HypothesisReport h1() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public HypothesisReport h1() {
         return h1;
     }
 
-    HypothesisReport h2() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public HypothesisReport h2() {
         return h2;
     }
 
-    List<ModeReport> competingGrammars() {
-        return competingGrammars;
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public List<ModeReport> competingGrammars() {
+        return List.copyOf(competingGrammars);
     }
 
-    List<ModeReport> ablations() {
-        return ablations;
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public List<ModeReport> ablations() {
+        return List.copyOf(ablations);
     }
 
-    RobustnessReport robustness() {
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public RobustnessReport robustness() {
         return robustness;
     }
 
-    List<NullReport> nulls() {
-        return nulls;
+    /**
+     * @return report component.
+     * @since 0.24.2
+     */
+    public List<NullReport> nulls() {
+        return List.copyOf(nulls);
     }
 
     /**
@@ -119,6 +169,12 @@ public final class StudyReport {
      * formatting.
      *
      * @return deterministic JSON representation
+     */
+    /**
+     * Serializes this report deterministically for durable storage.
+     *
+     * @return fixed-order JSON payload
+     * @since 0.24.2
      */
     public String toJson() {
         final JsonObject root = new JsonObject();
@@ -293,8 +349,11 @@ public final class StudyReport {
         return List.copyOf(values);
     }
 
-    /** Immutable report for one hypothesis. */
-    /** Immutable locked partition echo. */
+    /**
+     * Immutable locked partition echo.
+     *
+     * @since 0.24.2
+     */
     public record PartitionSpec(String name, java.time.LocalDate start, java.time.LocalDate end) {
         public PartitionSpec {
             name = requireText(name, "partition.name");
@@ -306,6 +365,11 @@ public final class StudyReport {
         }
     }
 
+    /**
+     * Immutable report for one preregistered hypothesis.
+     *
+     * @since 0.24.2
+     */
     public record HypothesisReport(String id, String grammar, List<ModeReport> modes) {
         public HypothesisReport {
             id = requireText(id, "hypothesis.id");
@@ -323,7 +387,11 @@ public final class StudyReport {
         }
     }
 
-    /** Immutable report for one study mode. */
+    /**
+     * Immutable report for one study mode.
+     *
+     * @since 0.24.2
+     */
     public record ModeReport(String mode, String grammar, List<String> activeRuleIds,
             List<PartitionMetrics> partitions) {
         public ModeReport {
@@ -344,7 +412,11 @@ public final class StudyReport {
         }
     }
 
-    /** Immutable metrics for exactly one protocol partition. */
+    /**
+     * Immutable metrics for exactly one protocol partition.
+     *
+     * @since 0.24.2
+     */
     public record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount,
             long completeCount, long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
             long insufficientHistoryCount, double matchRate, double ambiguousRate, double noMatchRate,
@@ -388,7 +460,11 @@ public final class StudyReport {
         }
     }
 
-    /** Detector-robustness results for one detector configuration. */
+    /**
+     * Detector-robustness results for one detector configuration.
+     *
+     * @since 0.24.2
+     */
     public record DetectorResult(String name, ModeReport mode) {
         public DetectorResult {
             name = requireText(name, "detector.name");
@@ -396,7 +472,11 @@ public final class StudyReport {
         }
     }
 
-    /** Immutable detector matrix report. */
+    /**
+     * Immutable detector matrix report.
+     *
+     * @since 0.24.2
+     */
     public record RobustnessReport(List<DetectorResult> detectors) {
         public RobustnessReport {
             detectors = immutable(detectors, "detectors");
@@ -408,7 +488,11 @@ public final class StudyReport {
         }
     }
 
-    /** Immutable null-ensemble report for one stationary block length. */
+    /**
+     * Immutable null-ensemble report for one stationary block length.
+     *
+     * @since 0.24.2
+     */
     public record NullReport(String grammar, int blockLength, int ensembleSize, long seed,
             List<PartitionMetrics> partitions) {
         public NullReport {

@@ -37,6 +37,8 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
  * {@link #evaluateAndWrite(String, BarSeries, int, int, Path)}. This core test
  * scope does not download or fabricate market data.
  * </p>
+ *
+ * @since 0.24.2
  */
 public final class StudyRunner {
 
@@ -50,6 +52,9 @@ public final class StudyRunner {
     private final Supplier<SwingDetector> detectorFactory;
     private final List<TopologyGrammar> grammars;
     private final List<RelationshipRule> rules;
+    private static final List<String> STRUCTURAL_COMPETING_MODES = List.of("3+3", "5+5", "7+3",
+            "change-point-baseline");
+
     private final Configuration configuration;
 
     StudyRunner(final Supplier<SwingDetector> detectorFactory, final List<TopologyGrammar> grammars,
@@ -81,6 +86,7 @@ public final class StudyRunner {
      * @param wave5MomentumFactory per-series momentum indicator factory
      * @param configuration        locked study configuration
      * @return runner bound to the supplied configuration
+     * @since 0.24.2
      */
     public static StudyRunner frozenPreregistered(final Supplier<SwingDetector> detectorFactory,
             final Function<BarSeries, Indicator<Num>> wave5MomentumFactory, final Configuration configuration) {
@@ -126,6 +132,7 @@ public final class StudyRunner {
      * @param fromIndex first requested index, inclusive
      * @param toIndex   last requested index, inclusive
      * @return immutable study report
+     * @since 0.24.2
      */
     public StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
         Objects.requireNonNull(series, "series");
@@ -149,16 +156,19 @@ public final class StudyRunner {
 
         final List<StudyReport.ModeReport> competing = new ArrayList<>();
         final Set<String> competingNames = new LinkedHashSet<>();
-        for (final TopologyGrammar grammar : TopologyGrammar.values()) {
-            competingNames.add(grammar.name());
+        if (configuration.competingModes() != null) {
+            // A frozen protocol executes exactly its declared competing set;
+            // undeclared kernel experiments stay out of the report.
+            competingNames.addAll(configuration.competingModes());
+        } else {
+            for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+                competingNames.add(grammar.name());
+            }
+            for (final TopologyGrammar grammar : grammars) {
+                competingNames.add(grammar.name());
+            }
+            competingNames.addAll(STRUCTURAL_COMPETING_MODES);
         }
-        for (final TopologyGrammar grammar : grammars) {
-            competingNames.add(grammar.name());
-        }
-        competingNames.add("3+3");
-        competingNames.add("5+5");
-        competingNames.add("7+3");
-        competingNames.add("change-point-baseline");
         for (final String grammarName : competingNames) {
             final StudyReport.ModeReport mode;
             if ("change-point-baseline".equals(grammarName)) {
@@ -858,6 +868,11 @@ public final class StudyRunner {
     }
 
     /** One inclusive date partition. */
+    /**
+     * Locked named evaluation window.
+     * 
+     * @since 0.24.2
+     */
     public record Partition(String name, LocalDate start, LocalDate end) {
         public Partition {
             if (name == null || name.isBlank()) {
@@ -876,6 +891,11 @@ public final class StudyRunner {
     }
 
     /** Immutable locked partition set and calibration embargo. */
+    /**
+     * Locked partition set with the forbidden calibration boundary.
+     * 
+     * @since 0.24.2
+     */
     public record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
         public Partitions {
             entries = entries == null ? List.of() : List.copyOf(entries);
@@ -957,9 +977,26 @@ public final class StudyRunner {
      *                        produces H1/H2/null results; robustness rows carry
      *                        their own names
      */
+    /**
+     * Locked study configuration.
+     *
+     * @param partitions          locked evaluation windows
+     * @param protocolFingerprint verified protocol hash this run executes
+     * @param seed                null-ensemble seed
+     * @param nullBlockLengths    stationary bootstrap block lengths
+     * @param nullEnsembleSize    members generated per grammar and block length
+     * @param robustnessDetectors detector matrix specifications
+     * @param primaryDetector     stable name of the primary detector
+     * @param competingModes      preregistered competing-mode names executed by the
+     *                            study; {@code null} runs the engine-default spread
+     *                            of every kernel grammar plus the structural
+     *                            alternatives
+     * @since 0.24.2
+     */
     public record Configuration(Partitions partitions, String protocolFingerprint, long seed,
             List<Integer> nullBlockLengths, int nullEnsembleSize,
-            List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors, String primaryDetector) {
+            List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors, String primaryDetector,
+            List<String> competingModes) {
         private static final String DEFAULT_PRIMARY_DETECTOR = "in-kernel-default";
 
         public Configuration {
@@ -984,18 +1021,69 @@ public final class StudyRunner {
                 throw new IllegalArgumentException("nullEnsembleSize must be positive");
             }
             robustnessDetectors = robustnessDetectors == null ? List.of() : List.copyOf(robustnessDetectors);
+            // A frozen protocol must never silently widen its declared
+            // competing set: unknown names fail here instead of running an
+            // undeclared experiment.
+            if (competingModes != null) {
+                for (final String mode : competingModes) {
+                    if (mode == null || mode.isBlank()) {
+                        throw new IllegalArgumentException("competingModes must not contain blank entries");
+                    }
+                    if (STRUCTURAL_COMPETING_MODES.contains(mode)) {
+                        continue;
+                    }
+                    boolean knownGrammar = false;
+                    for (final TopologyGrammar grammar : TopologyGrammar.values()) {
+                        if (grammar.name().equals(mode)) {
+                            knownGrammar = true;
+                            break;
+                        }
+                    }
+                    if (!knownGrammar) {
+                        throw new IllegalArgumentException("competingModes contains unsupported mode: " + mode);
+                    }
+                }
+                competingModes = List.copyOf(competingModes);
+            }
+        }
+
+        /**
+         * Engine-default configuration for in-kernel studies.
+         * 
+         * @since 0.24.2
+         */
+        /** @return defensive copies; configuration is shared across modules. */
+        @Override
+        public List<Integer> nullBlockLengths() {
+            return List.copyOf(nullBlockLengths);
+        }
+
+        /** @return defensive copies; configuration is shared across modules. */
+        @Override
+        public List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors() {
+            return List.copyOf(robustnessDetectors);
+        }
+
+        /** @return defensive copies when configured; null keeps the engine default. */
+        @Override
+        public List<String> competingModes() {
+            return competingModes == null ? null : List.copyOf(competingModes);
         }
 
         public static Configuration lockedDefault() {
             return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
-                    DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR);
+                    DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR, null);
         }
 
-        /** Compact overload keeping the in-kernel default detector identity. */
+        /**
+         * Compact overload keeping the in-kernel default detector identity.
+         * 
+         * @since 0.24.2
+         */
         public static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
                 final List<Integer> nullBlockLengths, final int nullEnsembleSize) {
             return new Configuration(partitions, protocolFingerprint, seed, nullBlockLengths, nullEnsembleSize,
-                    List.of(), DEFAULT_PRIMARY_DETECTOR);
+                    List.of(), DEFAULT_PRIMARY_DETECTOR, null);
         }
     }
 }

@@ -37,6 +37,8 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  * indicator, null parameter, or seed may be chosen at runtime; anything not
  * encoded by the protocol fails to load or resolve.
  * </p>
+ *
+ * @since 0.24.2
  */
 public final class FrozenProtocolStudy {
 
@@ -81,15 +83,21 @@ public final class FrozenProtocolStudy {
             if (series == null) {
                 throw new IllegalStateException("protocol dataset could not be loaded: " + dataset.id());
             }
+            // The frozen protocol executes exactly its declared competing
+            // set; undeclared kernel experiments stay out of the report.
+            List<String> competingModes = protocol.competingGrammars();
             StudyRunner.Configuration configuration = new StudyRunner.Configuration(partitions(protocol),
                     protocol.fingerprintSha256(), protocol.nullEnsemble().seed(),
                     protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                    List.copyOf(robustness), protocol.primaryDetector());
+                    List.copyOf(robustness), protocol.primaryDetector(), competingModes);
             StudyRunner runner = StudyRunner.frozenPreregistered(primaryDetector, momentumFactory, configuration);
-            StudyReport report = runner.evaluate(dataset.id(), series, series.getBeginIndex(), series.getEndIndex());
+            LOG.info("evaluating dataset {} ({}): ensemble {} members per block length {}, competing modes {}",
+                    dataset.id(), dataset.asset(), protocol.nullEnsemble().ensembleSize(),
+                    protocol.nullEnsemble().blockLengths(), competingModes);
+            StudyReport report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex());
             Path target = reportDir.resolve(dataset.id() + ".json");
             Files.writeString(target, report.toJson());
-            LOG.info("wrote study report {}", target);
+            LOG.info("wrote study report {} for {}", target, dataset.asset());
         }
     }
 
@@ -111,14 +119,25 @@ public final class FrozenProtocolStudy {
             }
             List<Integer> params = detector.params();
             return switch (detector.factory()) {
-            case "fractal" -> () -> SwingDetectors.fractal(params.get(0));
-            case "slopeChange" -> () -> SwingDetectors.slopeChange(params.get(0));
+            case "fractal" -> {
+                yield () -> SwingDetectors.fractal(requiredParam(detector, params));
+            }
+            case "slopeChange" -> {
+                yield () -> SwingDetectors.slopeChange(requiredParam(detector, params));
+            }
             case "prominence" -> SwingDetectors::prominence;
             default ->
                 throw new IllegalStateException("protocol detector factory is not executable: " + detector.factory());
             };
         }
         throw new IllegalArgumentException("unknown detector configuration: " + name);
+    }
+
+    private static int requiredParam(ElliottStudyProtocol.DetectorConfiguration detector, List<Integer> params) {
+        if (params.isEmpty()) {
+            throw new IllegalStateException("protocol detector requires one parameter: " + detector.name());
+        }
+        return params.get(0);
     }
 
     private static Function<BarSeries, Indicator<Num>> momentumFactory(ElliottStudyProtocol.MomentumSpec momentum) {
