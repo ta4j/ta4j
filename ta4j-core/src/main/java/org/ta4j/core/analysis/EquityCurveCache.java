@@ -48,10 +48,11 @@ import org.ta4j.core.analysis.cost.CostModel;
  * </p>
  *
  * <p>
- * All curves are computed from a private copy of the series' bar data taken at
- * bundle construction (and refreshed whenever structural input changes drop the
- * cache), so in-place edits of retained {@link Bar} references can neither
- * alter nor mix already-produced curves.
+ * All curves are computed from a private copy of the series' bar data taken
+ * when the first curve is requested (and refreshed whenever structural input
+ * changes drop the cache), so in-place edits of retained {@link Bar} references
+ * can neither alter nor mix already-produced curves. The copy is deferred so
+ * scopes that end up evaluating no equity-curve criteria never pay for it.
  * </p>
  *
  * @since 0.24.2
@@ -155,9 +156,9 @@ public final class EquityCurveCache {
 
     /**
      * Creates a bundle for the given series and trading record. The record and the
-     * series reference are captured for identity checks, while a private copy of
-     * the bar data backs every curve this bundle computes, mirroring direct
-     * indicator construction at creation time.
+     * series reference are captured for identity checks; a private deep-copy of the
+     * bar data backs every curve this bundle computes and is taken lazily when the
+     * first curve is requested.
      *
      * @param series        the bar series to analyze, not null
      * @param tradingRecord the trading record to analyze, not null
@@ -166,7 +167,6 @@ public final class EquityCurveCache {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();
-        this.curveSeries = SeriesSnapshots.deepCopy(this.series);
         this.transactionCostModel = tradingRecord.getTransactionCostModel();
         this.holdingCostModel = tradingRecord.getHoldingCostModel();
     }
@@ -183,7 +183,7 @@ public final class EquityCurveCache {
             CostModel recordHoldingCostModel = tradingRecord.getHoldingCostModel();
             boolean costModelsChanged = transactionCostModel != recordTransactionCostModel
                     || holdingCostModel != recordHoldingCostModel;
-            if (revision == inputRevision && !costModelsChanged) {
+            if (revision == inputRevision && !costModelsChanged && curveSeries != null) {
                 return;
             }
             // Copy the bars and bounds coherently: the live series may append or
@@ -224,6 +224,30 @@ public final class EquityCurveCache {
     }
 
     /**
+     * Runs the given curve factory and only accepts its result when the inputs did
+     * not change while it ran: the cache lock does not block the record's
+     * independent write lock, so a fill recorded mid-sweep would otherwise publish
+     * a stale or mixed curve under the superseded input revision.
+     *
+     * @param <T>          the produced curve type
+     * @param curveFactory builds the curve from the current snapshot state
+     * @return the curve built against stable inputs
+     */
+    private <T> T buildUnderStableInputs(Supplier<T> curveFactory) {
+        while (true) {
+            long revision = currentInputRevision();
+            CostModel transactionCostModel = tradingRecord.getTransactionCostModel();
+            CostModel holdingCostModel = tradingRecord.getHoldingCostModel();
+            T curve = curveFactory.get();
+            if (currentInputRevision() == revision && tradingRecord.getTransactionCostModel() == transactionCostModel
+                    && tradingRecord.getHoldingCostModel() == holdingCostModel) {
+                return curve;
+            }
+            invalidateIfInputsChanged();
+        }
+    }
+
+    /**
      * Returns the cash flow for the given mode and open position handling,
      * computing it on first request and reusing the same instance afterwards.
      *
@@ -239,12 +263,17 @@ public final class EquityCurveCache {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
-            return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CashFlow cashFlow = CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0, curveSeries.getEndIndex(),
-                        tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
-                cashFlow.freeze();
-                return cashFlow;
-            });
+            CurveKey key = new CurveKey(equityCurveMode, openPositionHandling);
+            CashFlow existing = cashFlows.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            CashFlow cashFlow = buildUnderStableInputs(
+                    () -> CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0, curveSeries.getEndIndex(),
+                            tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling()));
+            cashFlow.freeze();
+            cashFlows.put(key, cashFlow);
+            return cashFlow;
         }
     }
 
@@ -265,12 +294,17 @@ public final class EquityCurveCache {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
-            return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CumulativePnL cumulativePnL = CumulativePnL.overOwnedSnapshot(curveSeries, tradingRecord,
-                        tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
-                cumulativePnL.freeze();
-                return cumulativePnL;
-            });
+            CurveKey key = new CurveKey(equityCurveMode, openPositionHandling);
+            CumulativePnL existing = cumulativePnLs.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            CumulativePnL cumulativePnL = buildUnderStableInputs(
+                    () -> CumulativePnL.overOwnedSnapshot(curveSeries, tradingRecord,
+                            tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling()));
+            cumulativePnL.freeze();
+            cumulativePnLs.put(key, cumulativePnL);
+            return cumulativePnL;
         }
     }
 
@@ -286,8 +320,14 @@ public final class EquityCurveCache {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
-            return investedIntervals.computeIfAbsent(openPositionHandling,
-                    handling -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord, handling));
+            InvestedInterval existing = investedIntervals.get(openPositionHandling);
+            if (existing != null) {
+                return existing;
+            }
+            InvestedInterval investedInterval = buildUnderStableInputs(
+                    () -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord, openPositionHandling));
+            investedIntervals.put(openPositionHandling, investedInterval);
+            return investedInterval;
         }
     }
 

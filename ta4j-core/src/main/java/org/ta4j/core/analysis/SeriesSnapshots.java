@@ -40,16 +40,29 @@ final class SeriesSnapshots {
      */
     static BarSeries deepCopy(BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
-        List<Bar> copiedBars = new ArrayList<>(barSeries.getBarData().size());
-        for (Bar bar : barSeries.getBarData()) {
-            copiedBars.add(copyBar(bar));
+        while (true) {
+            // Copy bars and bounds coherently: a live series may append or prune
+            // while the snapshot is taken, which would pair bars copied before
+            // the mutation with bounds read after it. Revalidate afterwards and
+            // retry when the revision moved mid-copy.
+            long revision = barSeries.getBarHistoryRevision();
+            List<Bar> sourceBars = barSeries.getBarData();
+            List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
+            for (Bar bar : sourceBars) {
+                copiedBars.add(copyBar(bar));
+            }
+            int beginIndex = Math.max(0, barSeries.getBeginIndex());
+            int maximumBarCount = barSeries.getMaximumBarCount();
+            if (barSeries.getBarHistoryRevision() != revision) {
+                continue;
+            }
+            return new BaseBarSeriesBuilder().withName(barSeries.getName())
+                    .withNumFactory(barSeries.numFactory())
+                    .withBars(copiedBars)
+                    .withBeginIndex(beginIndex)
+                    .withMaxBarCount(maximumBarCount)
+                    .build();
         }
-        return new BaseBarSeriesBuilder().withName(barSeries.getName())
-                .withNumFactory(barSeries.numFactory())
-                .withBars(copiedBars)
-                .withBeginIndex(Math.max(0, barSeries.getBeginIndex()))
-                .withMaxBarCount(barSeries.getMaximumBarCount())
-                .build();
     }
 
     private static Bar copyBar(Bar bar) {

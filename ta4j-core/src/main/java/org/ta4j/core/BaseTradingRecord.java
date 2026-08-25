@@ -810,7 +810,6 @@ public class BaseTradingRecord implements TradingRecord {
         tradesCacheVersion = -1L;
         closedPositionsCache = null;
         closedPositionsCacheVersion = -1L;
-        modificationCount = 0L;
         numFactory = null;
     }
 
