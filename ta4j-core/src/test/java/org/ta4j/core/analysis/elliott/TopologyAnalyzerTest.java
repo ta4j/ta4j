@@ -118,9 +118,10 @@ class TopologyAnalyzerTest {
                 pivots(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 36, 19));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.AMBIGUOUS);
-        assertThat(analysis.candidates()).hasSize(4);
+        assertThat(analysis.candidates()).hasSize(3);
         assertThat(analysis.candidates().stream().map(TopologyCandidate::startBarIndex).sorted().toList())
-                .containsExactly(0, 2, 4, 5);
+                .containsExactly(2, 4, 5);
+        assertThat(analysis.candidates()).extracting(TopologyCandidate::endBarIndex).doesNotContain(5);
     }
 
     @Test

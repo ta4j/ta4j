@@ -134,7 +134,7 @@ final class TopologyAnalyzer {
             // candidates remain historical evidence, not current ambiguity.
             final TopologyCandidate newestLive = live.get(live.size() - 1);
             final List<TopologyCandidate> current = live.stream()
-                    .filter(candidate -> candidate.endBarIndex() >= newestLive.startBarIndex())
+                    .filter(candidate -> candidate.endBarIndex() > newestLive.startBarIndex())
                     .toList();
             if (current.size() == 1) {
                 return new TopologyAnalysis(TopologyStatus.COMPLETE, current.get(0).direction(), current,
