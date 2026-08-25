@@ -39,19 +39,9 @@ final class BlockBootstrapNulls {
     private static final double MAX_DIRECT_EXPONENT = 700d;
 
     /**
-     * Direct multiplication keeps consecutive-close ratios exact, so it is the
-     * preferred reconstruction whenever the factor itself is representable and, for
-     * range-bounded Num domains such as {@link DoubleNum}, the accumulated product
-     * also stays inside double range. Beyond those bounds only the decomposed
-     * absolute-log path can still produce finite values.
-     */
-    /**
-     * Mirrors the package-private {@code Num.isFinite} for double-backed nums: only
-     * primitive-backed infinities can slip past the positivity check.
-     */
-    /**
-     * A range-bounded double-backed domain holds the direct product only while it
-     * stays finite and strictly positive; unbounded domains hold any result.
+     * Returns whether a reconstructed close is finite and strictly positive in the
+     * active numeric domain. Double-backed series have bounded primitive delegates;
+     * arbitrary-precision domains accept every finite positive value.
      */
     private static boolean representableInDomain(final NumFactory numFactory, final Num value) {
         if (!(numFactory instanceof DoubleNumFactory)) {

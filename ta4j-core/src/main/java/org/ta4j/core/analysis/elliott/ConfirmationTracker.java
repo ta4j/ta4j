@@ -105,11 +105,16 @@ final class ConfirmationTracker {
         final int end = Math.min(series.getEndIndex(), endIndex);
         final List<Integer> versionAsOf = new ArrayList<>();
         final List<List<ConfirmedPivot>> versions = new ArrayList<>();
-        for (int asOf = begin; asOf <= end; asOf++) {
-            final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf, collapsed);
-            if (changed) {
-                versions.add(List.copyOf(PivotHistory.of(order).pivots()));
-                versionAsOf.add(asOf);
+        if (begin <= end) {
+            for (int asOf = begin;; asOf++) {
+                final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf, collapsed);
+                if (changed) {
+                    versions.add(List.copyOf(PivotHistory.of(order).pivots()));
+                    versionAsOf.add(asOf);
+                }
+                if (asOf == end) {
+                    break;
+                }
             }
         }
         return new CausalReplay(PivotHistory.of(order), versions,
@@ -155,7 +160,7 @@ final class ConfirmationTracker {
             if (existing.type() == pivot.type() && existing.price().compareTo(pivot.price()) == 0) {
                 continue;
             }
-            if (!order.isEmpty() && order.get(order.size() - 1).pivotIndex() == existing.pivotIndex()) {
+            if (retractableIndex != -1 && retractableIndex == existing.pivotIndex()) {
                 final ConfirmedPivot revised = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
                 // A retyped trailing pivot can normalize away its same-type
                 // frozen predecessor; that predecessor was already frozen by

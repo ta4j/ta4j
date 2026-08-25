@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.lang.reflect.Proxy;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -45,6 +46,26 @@ class StudyRunnerTest {
                 List.of(), configuration(invalid, 1));
 
         assertThrows(IllegalStateException.class, () -> runner.evaluate(buildSeries(20), 0, 19));
+    }
+
+    @Test
+    void evaluatesAtHighestPossibleBarIndexWithoutWrapping() {
+        final int lastIndex = Integer.MAX_VALUE;
+        final StudyRunner.Configuration configuration = new StudyRunner.Configuration(
+                StudyRunner.Partitions.lockedDefault(), "max-index-test", SEED, List.of(2), 1, List.of(), "test",
+                List.of());
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.MOTIVE_5),
+                List.of(), configuration);
+
+        final StudyReport report = runner.evaluate("MAX", indexedSeries(buildSeries(1), lastIndex), lastIndex,
+                lastIndex);
+
+        assertTrue(report.h1()
+                .modes()
+                .get(0)
+                .partitions()
+                .stream()
+                .anyMatch(partition -> partition.evaluationCount() == 1L));
     }
 
     @Test
@@ -147,6 +168,33 @@ class StudyRunnerTest {
         assertTrue(report.toJson().contains("\"members\""));
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
+        final StudyReport.PartitionMetrics topologyPartition = report.h1()
+                .modes()
+                .get(0)
+                .partitions()
+                .stream()
+                .filter(partition -> partition.evaluationCount() > 0)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(0L, topologyPartition.evidenceEvaluationCount());
+        assertTrue(Double.isNaN(topologyPartition.evidencePassRate()));
+        assertTrue(Double.isNaN(topologyPartition.jointPassRate()));
+        assertTrue(report.toJson().contains("\"evidencePassRate\":null"));
+        assertTrue(report.toJson().contains("\"jointPassRate\":null"));
+
+        final StudyReport.ModeReport classical = report.ablations()
+                .stream()
+                .filter(mode -> "classical-all".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        final StudyReport.PartitionMetrics jointPartition = classical.partitions()
+                .stream()
+                .filter(partition -> partition.jointEvaluationCount() > 0)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(classical.activeRuleIds().size(),
+                jointPartition.evidenceEvaluationCount() / jointPartition.jointEvaluationCount());
+        assertTrue(report.toJson().contains("\"jointEvaluationCount\""));
     }
 
     @Test
@@ -282,6 +330,15 @@ class StudyRunnerTest {
                 new double[] { 10, 12, 11, 14, 12, 15, 13, 17, 14, 16, 15 });
         assertEquals(1, StudyRunner.AlternativeGrammar.of("7+3").matches(sevenThreeShape).size());
         assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(sevenThreeShape).isEmpty());
+    }
+
+    @Test
+    void alternativeGrammarsRejectTheWrongOriginPivotType() {
+        final List<ConfirmedPivot> bearish = alternatingWindow(
+                new double[] { 14, 12, 13, 10, 12, 8, 11, 9, 10, 8.5d, 9 });
+        bearish.set(0, new ConfirmedPivot(0, 1, DoubleNum.valueOf(14), SwingPivotType.LOW));
+
+        assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(bearish).isEmpty());
     }
 
     private static List<ConfirmedPivot> alternatingWindow(final double[] prices) {
@@ -697,11 +754,11 @@ class StudyRunnerTest {
      * both halves complete as disjoint "3+3" placements.
      */
     private static BarSeries buildDoublePatternSeries(final int count) {
-        // Three acts: a clean bullish "3+3" (pivots 0-6), an overlapping pair
-        // sharing pivot 6 (bearish 6-12 and bullish 7-13 both match while
-        // live), then a fresh bullish placement (14-20) that completes only
-        // after the earlier windows have left the one-pattern-length horizon.
-        final double[] pivotCloses = { 100, 106, 102, 112, 104, 110, 106, 101, 107, 96, 118, 110, 111, 105, 90, 96, 92,
+        // Three acts: an initial bullish "3+3", an overlapping bearish and
+        // bullish pair that both satisfy the origin/extremity rules, then a
+        // fresh bullish placement that completes after the earlier windows
+        // leave the one-pattern-length horizon.
+        final double[] pivotCloses = { 100, 106, 102, 112, 98, 118, 110, 116, 108, 96, 118, 110, 111, 105, 90, 96, 92,
                 102, 94, 100, 92 };
         final double[] prices = new double[count];
         int pivotCursor = 0;
@@ -796,6 +853,17 @@ class StudyRunnerTest {
                     .add();
         }
         return series;
+    }
+
+    private static BarSeries indexedSeries(final BarSeries delegate, final int index) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    return switch (method.getName()) {
+                    case "getBeginIndex", "getEndIndex" -> index;
+                    case "getBar" -> delegate.getBar(0);
+                    default -> method.invoke(delegate, args);
+                    };
+                });
     }
 
 }

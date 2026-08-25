@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
 
 import java.io.IOException;
@@ -29,9 +30,9 @@ import java.util.Objects;
  *
  * @since 0.24.2
  */
-public final class StudyReport {
+final class StudyReport {
 
-    private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().create();
+    private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
     private final String assetId;
     private final String protocolFingerprint;
@@ -259,18 +260,21 @@ public final class StudyReport {
         json.addProperty("noMatchCount", metrics.noMatchCount());
         json.addProperty("invalidatedCount", metrics.invalidatedCount());
         json.addProperty("insufficientHistoryCount", metrics.insufficientHistoryCount());
-        json.addProperty("matchRate", metrics.matchRate());
-        json.addProperty("ambiguousRate", metrics.ambiguousRate());
-        json.addProperty("noMatchRate", metrics.noMatchRate());
-        json.addProperty("confirmationLagBars", metrics.confirmationLagBars());
-        json.addProperty("labelStabilityJaccard", metrics.labelStabilityJaccard());
+        addStatistic(json, "matchRate", metrics.matchRate());
+        addStatistic(json, "ambiguousRate", metrics.ambiguousRate());
+        addStatistic(json, "noMatchRate", metrics.noMatchRate());
+        addStatistic(json, "confirmationLagBars", metrics.confirmationLagBars());
+        addStatistic(json, "labelStabilityJaccard", metrics.labelStabilityJaccard());
         json.addProperty("evidenceEvaluationCount", metrics.evidenceEvaluationCount());
         json.addProperty("evidencePassCount", metrics.evidencePassCount());
         json.addProperty("evidenceFailCount", metrics.evidenceFailCount());
         json.addProperty("evidencePendingCount", metrics.evidencePendingCount());
         json.addProperty("evidenceUnavailableCount", metrics.evidenceUnavailableCount());
         json.addProperty("evidenceNotApplicableCount", metrics.evidenceNotApplicableCount());
-        json.addProperty("evidencePassRate", metrics.evidencePassRate());
+        addStatistic(json, "evidencePassRate", metrics.evidencePassRate());
+        json.addProperty("jointEvaluationCount", metrics.jointEvaluationCount());
+        json.addProperty("jointPassCount", metrics.jointPassCount());
+        addStatistic(json, "jointPassRate", metrics.jointPassRate());
         final JsonArray rules = new JsonArray();
         for (final RuleMetrics rule : metrics.rules()) {
             final JsonObject ruleJson = new JsonObject();
@@ -281,15 +285,23 @@ public final class StudyReport {
             ruleJson.addProperty("pendingCount", rule.pendingCount());
             ruleJson.addProperty("unavailableCount", rule.unavailableCount());
             ruleJson.addProperty("notApplicableCount", rule.notApplicableCount());
-            ruleJson.addProperty("passRate", rule.passRate());
+            addStatistic(ruleJson, "passRate", rule.passRate());
             ruleJson.addProperty("scoredCount", rule.scoredCount());
-            ruleJson.addProperty("scoreMean", rule.scoreMean());
-            ruleJson.addProperty("scoreMin", rule.scoreMin());
-            ruleJson.addProperty("scoreMax", rule.scoreMax());
+            addStatistic(ruleJson, "scoreMean", rule.scoreMean());
+            addStatistic(ruleJson, "scoreMin", rule.scoreMin());
+            addStatistic(ruleJson, "scoreMax", rule.scoreMax());
             rules.add(ruleJson);
         }
         json.add("rules", rules);
         return json;
+    }
+
+    private static void addStatistic(final JsonObject json, final String name, final double value) {
+        if (Double.isFinite(value)) {
+            json.addProperty(name, value);
+        } else {
+            json.add(name, JsonNull.INSTANCE);
+        }
     }
 
     private static JsonObject robustnessJson(final RobustnessReport robustness) {
@@ -355,13 +367,32 @@ public final class StudyReport {
         return List.copyOf(values);
     }
 
+    private static void requireNonNegative(final long... values) {
+        for (final long value : values) {
+            if (value < 0) {
+                throw new IllegalArgumentException("metric counts must be non-negative");
+            }
+        }
+    }
+
+    private static double rate(final long numerator, final long denominator) {
+        return denominator == 0 ? Double.NaN : (double) numerator / denominator;
+    }
+
+    private static void requireRate(final String name, final double actual, final long numerator,
+            final long denominator) {
+        if (Double.compare(actual, rate(numerator, denominator)) != 0) {
+            throw new IllegalArgumentException(name + " must equal its derived rate");
+        }
+    }
+
     /**
      * Immutable locked partition echo.
      *
      * @since 0.24.2
      */
-    public record PartitionSpec(String name, java.time.LocalDate start, java.time.LocalDate end) {
-        public PartitionSpec {
+    record PartitionSpec(String name, java.time.LocalDate start, java.time.LocalDate end) {
+        PartitionSpec {
             name = requireText(name, "partition.name");
             Objects.requireNonNull(start, "partition.start");
             Objects.requireNonNull(end, "partition.end");
@@ -376,8 +407,8 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record HypothesisReport(String id, String grammar, List<ModeReport> modes) {
-        public HypothesisReport {
+    record HypothesisReport(String id, String grammar, List<ModeReport> modes) {
+        HypothesisReport {
             id = requireText(id, "hypothesis.id");
             grammar = requireText(grammar, "hypothesis.grammar");
             modes = immutable(modes, "hypothesis.modes");
@@ -398,9 +429,8 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record ModeReport(String mode, String grammar, List<String> activeRuleIds,
-            List<PartitionMetrics> partitions) {
-        public ModeReport {
+    record ModeReport(String mode, String grammar, List<String> activeRuleIds, List<PartitionMetrics> partitions) {
+        ModeReport {
             mode = requireText(mode, "mode");
             grammar = requireText(grammar, "grammar");
             activeRuleIds = activeRuleIds == null ? List.of() : List.copyOf(activeRuleIds);
@@ -423,21 +453,53 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount,
-            long completeCount, long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
+    record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount, long completeCount,
+            long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
             long insufficientHistoryCount, double matchRate, double ambiguousRate, double noMatchRate,
             double confirmationLagBars, double labelStabilityJaccard, long evidenceEvaluationCount,
             long evidencePassCount, long evidenceFailCount, long evidencePendingCount, long evidenceUnavailableCount,
-            long evidenceNotApplicableCount, double evidencePassRate, List<RuleMetrics> rules) {
-        public PartitionMetrics {
+            long evidenceNotApplicableCount, double evidencePassRate, long jointEvaluationCount, long jointPassCount,
+            double jointPassRate, List<RuleMetrics> rules) {
+        PartitionMetrics {
             partition = requireText(partition, "partition");
             if (fromIndex > toIndex && evaluationCount > 0) {
                 throw new IllegalArgumentException("fromIndex must not exceed toIndex");
             }
-            if (evaluationCount < 0 || completeCount < 0 || evidenceEvaluationCount < 0) {
-                throw new IllegalArgumentException("metric counts must be non-negative");
+            requireNonNegative(evaluationCount, completeCount, formingCount, ambiguousCount, noMatchCount,
+                    invalidatedCount, insufficientHistoryCount, evidenceEvaluationCount, evidencePassCount,
+                    evidenceFailCount, evidencePendingCount, evidenceUnavailableCount, evidenceNotApplicableCount,
+                    jointEvaluationCount, jointPassCount);
+            final long statusTotal = completeCount + formingCount + ambiguousCount + noMatchCount + invalidatedCount
+                    + insufficientHistoryCount;
+            if (statusTotal != evaluationCount) {
+                throw new IllegalArgumentException("partition status counts must sum to evaluationCount");
+            }
+            final long evidenceStatusTotal = evidencePassCount + evidenceFailCount + evidencePendingCount
+                    + evidenceUnavailableCount + evidenceNotApplicableCount;
+            if (evidenceStatusTotal != evidenceEvaluationCount) {
+                throw new IllegalArgumentException("evidence status counts must sum to evidenceEvaluationCount");
+            }
+            if (jointPassCount > jointEvaluationCount || jointEvaluationCount > completeCount) {
+                throw new IllegalArgumentException("joint counts must be bounded by completeCount");
             }
             rules = immutable(rules, "rules");
+            final long ruleEvaluationTotal = rules.stream().mapToLong(RuleMetrics::evaluationCount).sum();
+            if (ruleEvaluationTotal != evidenceEvaluationCount) {
+                throw new IllegalArgumentException("rule counts must sum to evidenceEvaluationCount");
+            }
+            requireRate("matchRate", matchRate, completeCount, evaluationCount);
+            requireRate("ambiguousRate", ambiguousRate, ambiguousCount, evaluationCount);
+            requireRate("noMatchRate", noMatchRate, noMatchCount, evaluationCount);
+            requireRate("evidencePassRate", evidencePassRate, evidencePassCount, evidenceEvaluationCount);
+            requireRate("jointPassRate", jointPassRate, jointPassCount, jointEvaluationCount);
+            if (!Double.isNaN(confirmationLagBars)
+                    && (!Double.isFinite(confirmationLagBars) || confirmationLagBars < 0.0d)) {
+                throw new IllegalArgumentException("confirmationLagBars must be finite and non-negative");
+            }
+            if (!Double.isNaN(labelStabilityJaccard) && (!Double.isFinite(labelStabilityJaccard)
+                    || labelStabilityJaccard < 0.0d || labelStabilityJaccard > 1.0d)) {
+                throw new IllegalArgumentException("labelStabilityJaccard must be in [0, 1] or undefined");
+            }
         }
 
         /** @return defensive copy; the report tree is shared across modules. */
@@ -450,20 +512,34 @@ public final class StudyReport {
      * Immutable counts for one relationship rule in one partition.
      *
      * @param scoredCount number of PASS evaluations carrying a soft score
-     * @param scoreMean   mean of the carried scores; {@code 0} when unscored
-     * @param scoreMin    minimum carried score; {@code 0} when unscored
-     * @param scoreMax    maximum carried score; {@code 0} when unscored
+     * @param scoreMean   mean of the carried scores; undefined when unscored
+     * @param scoreMin    minimum carried score; undefined when unscored
+     * @param scoreMax    maximum carried score; undefined when unscored
      *
      * @since 0.24.2
      */
-    public record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
+    record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
             long unavailableCount, long notApplicableCount, double passRate, long scoredCount, double scoreMean,
             double scoreMin, double scoreMax) {
-        public RuleMetrics {
+        RuleMetrics {
             ruleId = requireText(ruleId, "ruleId");
-            if (evaluationCount < 0 || passCount < 0 || failCount < 0 || pendingCount < 0 || unavailableCount < 0
-                    || notApplicableCount < 0 || scoredCount < 0) {
-                throw new IllegalArgumentException("rule metric counts must be non-negative");
+            requireNonNegative(evaluationCount, passCount, failCount, pendingCount, unavailableCount,
+                    notApplicableCount, scoredCount);
+            final long statusTotal = passCount + failCount + pendingCount + unavailableCount + notApplicableCount;
+            if (statusTotal != evaluationCount) {
+                throw new IllegalArgumentException("rule status counts must sum to evaluationCount");
+            }
+            if (scoredCount > passCount) {
+                throw new IllegalArgumentException("scoredCount must not exceed passCount");
+            }
+            requireRate("passRate", passRate, passCount, evaluationCount);
+            if (scoredCount == 0) {
+                if (!Double.isNaN(scoreMean) || !Double.isNaN(scoreMin) || !Double.isNaN(scoreMax)) {
+                    throw new IllegalArgumentException("unscored rule metrics must be undefined");
+                }
+            } else if (!Double.isFinite(scoreMean) || !Double.isFinite(scoreMin) || !Double.isFinite(scoreMax)
+                    || scoreMin < 0.0d || scoreMax > 1.0d || scoreMin > scoreMean || scoreMean > scoreMax) {
+                throw new IllegalArgumentException("scored rule metrics must be ordered in [0, 1]");
             }
         }
     }
@@ -473,8 +549,8 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record DetectorResult(String name, ModeReport mode) {
-        public DetectorResult {
+    record DetectorResult(String name, ModeReport mode) {
+        DetectorResult {
             name = requireText(name, "detector.name");
             mode = Objects.requireNonNull(mode, "mode");
         }
@@ -485,8 +561,8 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record RobustnessReport(List<DetectorResult> detectors) {
-        public RobustnessReport {
+    record RobustnessReport(List<DetectorResult> detectors) {
+        RobustnessReport {
             detectors = immutable(detectors, "detectors");
         }
 
@@ -501,8 +577,8 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record NullMemberMetrics(int memberIndex, List<PartitionMetrics> partitions) {
-        public NullMemberMetrics {
+    record NullMemberMetrics(int memberIndex, List<PartitionMetrics> partitions) {
+        NullMemberMetrics {
             if (memberIndex < 0) {
                 throw new IllegalArgumentException("null member index must not be negative");
             }
@@ -520,9 +596,9 @@ public final class StudyReport {
      *
      * @since 0.24.2
      */
-    public record NullReport(String grammar, int blockLength, int ensembleSize, long seed,
-            List<PartitionMetrics> partitions, List<NullMemberMetrics> members) {
-        public NullReport {
+    record NullReport(String grammar, int blockLength, int ensembleSize, long seed, List<PartitionMetrics> partitions,
+            List<NullMemberMetrics> members) {
+        NullReport {
             if (grammar == null || grammar.isBlank()) {
                 throw new IllegalArgumentException("null report grammar must not be blank");
             }
@@ -533,6 +609,13 @@ public final class StudyReport {
             members = immutable(members, "members");
             if (members.size() != ensembleSize) {
                 throw new IllegalArgumentException("null member metrics must match ensemble size");
+            }
+            for (int index = 0; index < members.size(); index++) {
+                final NullMemberMetrics member = members.get(index);
+                if (member.memberIndex() != index || member.partitions().size() != partitions.size()) {
+                    throw new IllegalArgumentException(
+                            "null member metrics must preserve ensemble order and partitions");
+                }
             }
         }
 

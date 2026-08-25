@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave.study;
+package org.ta4j.core.analysis.elliott;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
@@ -26,10 +26,10 @@ import java.util.Objects;
  * protocol cannot be used with silently changed input data.
  * </p>
  */
-public final class ElliottStudyProtocol {
+final class ElliottStudyProtocol {
 
     /** Classpath location of the frozen protocol document. */
-    public static final String RESOURCE = "/ta4jexamples/analysis/elliottwave/study/cf525-study-protocol-v1.json";
+    static final String RESOURCE = "/org/ta4j/core/analysis/elliott/cf525-study-protocol-v1.json";
 
     private static final Gson GSON = new Gson();
     private static final long SEED_MULTIPLIER = 1_000_003L;
@@ -369,8 +369,8 @@ public final class ElliottStudyProtocol {
     }
 
     /** Immutable hypothesis entry. */
-    public record Hypothesis(String id, String statement, String grammar) {
-        public Hypothesis {
+    record Hypothesis(String id, String statement, String grammar) {
+        Hypothesis {
             id = requireText(id, "hypothesis.id");
             statement = requireText(statement, "hypothesis.statement");
             grammar = requireText(grammar, "hypothesis.grammar");
@@ -378,8 +378,8 @@ public final class ElliottStudyProtocol {
     }
 
     /** Immutable dataset entry whose bytes are verified by {@link #load()}. */
-    public record DatasetSpec(String id, String resource, String role, String asset, String barSize, String sha256) {
-        public DatasetSpec {
+    record DatasetSpec(String id, String resource, String role, String asset, String barSize, String sha256) {
+        DatasetSpec {
             id = requireText(id, "dataset.id");
             resource = requireText(resource, "dataset.resource");
             role = requireText(role, "dataset.role");
@@ -390,10 +390,10 @@ public final class ElliottStudyProtocol {
     }
 
     /** Immutable inclusive calendar partition bounds. */
-    public record Partitions(LocalDate calibrationStart, LocalDate calibrationEnd, LocalDate validationStart,
+    record Partitions(LocalDate calibrationStart, LocalDate calibrationEnd, LocalDate validationStart,
             LocalDate validationEnd, LocalDate holdoutStart, LocalDate holdoutEnd,
             LocalDate forbiddenCalibrationStart) {
-        public Partitions {
+        Partitions {
             Objects.requireNonNull(calibrationStart, "calibrationStart");
             Objects.requireNonNull(calibrationEnd, "calibrationEnd");
             Objects.requireNonNull(validationStart, "validationStart");
@@ -426,8 +426,8 @@ public final class ElliottStudyProtocol {
     }
 
     /** Immutable detector factory configuration. */
-    public record DetectorConfiguration(String name, String factory, List<Integer> params) {
-        public DetectorConfiguration {
+    record DetectorConfiguration(String name, String factory, List<Integer> params) {
+        DetectorConfiguration {
             name = requireText(name, "detectorConfiguration.name");
             factory = requireText(factory, "detectorConfiguration.factory");
             params = params == null ? List.of() : List.copyOf(params);
@@ -441,8 +441,8 @@ public final class ElliottStudyProtocol {
      *
      * @since 0.24.2
      */
-    public record MomentumSpec(String type, int barCount) {
-        public MomentumSpec {
+    record MomentumSpec(String type, int barCount) {
+        MomentumSpec {
             type = requireText(type, "momentumIndicator.type");
             if (!"RSI".equals(type)) {
                 throw new IllegalArgumentException(
@@ -455,8 +455,8 @@ public final class ElliottStudyProtocol {
     }
 
     /** Immutable stationary-block-bootstrap specification. */
-    public record NullSpec(String type, List<Integer> blockLengths, int ensembleSize, long seed) {
-        public NullSpec {
+    record NullSpec(String type, List<Integer> blockLengths, int ensembleSize, long seed) {
+        NullSpec {
             type = requireText(type, "nullEnsemble.type");
             if (blockLengths == null || blockLengths.isEmpty()) {
                 throw new IllegalArgumentException("nullEnsemble.blockLengths must not be empty");

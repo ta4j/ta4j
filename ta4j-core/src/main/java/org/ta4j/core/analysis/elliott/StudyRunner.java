@@ -21,6 +21,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 
 /**
  * Package-private, protocol-agnostic Phase 3 study engine.
@@ -41,12 +42,12 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
  *
  * @since 0.24.2
  */
-public final class StudyRunner {
+final class StudyRunner {
 
     /**
      * Provenance token for the in-kernel default configuration. This is NOT a
-     * content hash: the frozen protocol resource lives in ta4j-examples and pins
-     * its own fingerprint there. Reports must never fake a digest.
+     * content hash: the frozen protocol test resource pins its own fingerprint.
+     * Reports must never fake a digest.
      */
     private static final String DEFAULT_FINGERPRINT = "in-kernel-default-unpinned";
 
@@ -86,20 +87,23 @@ public final class StudyRunner {
      * over the motive and cycle grammars.
      *
      * <p>
-     * This is the cross-module execution surface for frozen protocols:
-     * {@code ta4j-examples} translates a verified {@code ElliottStudyProtocol} into
-     * the configuration and momentum factory here. The rule and grammar types stay
-     * internal to this package.
+     * This is the package-private execution surface for the frozen test-plane
+     * harness. The rule and grammar types stay internal to this package.
      * </p>
-     *
      * @param detectorFactory      primary detector supplier
      * @param wave5MomentumFactory per-series momentum indicator factory
      * @param configuration        locked study configuration
+     * @param declaredAblationSet  protocol-declared frozen ablation labels
      * @return runner bound to the supplied configuration
      * @since 0.24.2
      */
-    public static StudyRunner frozenPreregistered(final Supplier<SwingDetector> detectorFactory,
-            final Function<BarSeries, Indicator<Num>> wave5MomentumFactory, final Configuration configuration) {
+    static StudyRunner frozenPreregistered(final Supplier<SwingDetector> detectorFactory,
+            final Function<BarSeries, Indicator<Num>> wave5MomentumFactory, final Configuration configuration,
+            final List<String> declaredAblationSet) {
+        final List<String> declared = List.copyOf(Objects.requireNonNull(declaredAblationSet, "declaredAblationSet"));
+        if (!RuleAblation.frozenModeNames().equals(declared)) {
+            throw new IllegalArgumentException("declaredAblationSet must match the frozen protocol ladder");
+        }
         return new StudyRunner(detectorFactory, List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
                 ClassicalRelationshipRules.classicalRelationships(wave5MomentumFactory), configuration, true);
     }
@@ -144,7 +148,7 @@ public final class StudyRunner {
      * @return immutable study report
      * @since 0.24.2
      */
-    public StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
+    StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
         Objects.requireNonNull(series, "series");
         validateRange(series, fromIndex, toIndex);
         configuration.partitions().assertCalibrationConfiguration();
@@ -243,7 +247,7 @@ public final class StudyRunner {
             // ones. Keep both sides symmetrically empty instead.
             if (hasEvaluationWindow) {
                 final int sourceBegin = source.getBeginIndex();
-                final BarSeries causalSource = source.getSubSeries(sourceBegin, end + 1);
+                final BarSeries causalSource = subSeriesThrough(source, sourceBegin, end);
                 // Look-ahead-free sampling: every partition's ensemble is drawn
                 // only from returns available at that partition's last bar, so a
                 // calibration partition's null baseline can never incorporate
@@ -255,8 +259,8 @@ public final class StudyRunner {
                     if (partitionLastBar - causalSource.getBeginIndex() < 1) {
                         continue;
                     }
-                    final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
-                            partitionLastBar + 1);
+                    final BarSeries truncated = subSeriesThrough(causalSource, causalSource.getBeginIndex(),
+                            partitionLastBar);
                     final int partition = partitionIndex;
                     BlockBootstrapNulls.forEachMember(truncated, blockLength, configuration.nullEnsembleSize(),
                             configuration.seed(), (memberIndex, member) -> {
@@ -296,12 +300,26 @@ public final class StudyRunner {
      * Returns the last bar of {@code series} whose date belongs to the given
      * partition, or -1 when the partition has no bars in the series.
      */
+    private static BarSeries subSeriesThrough(final BarSeries series, final int start, final int inclusiveEnd) {
+        if (inclusiveEnd == series.getEndIndex()) {
+            return series;
+        }
+        return series.getSubSeries(start, Math.addExact(inclusiveEnd, 1));
+    }
+
     private static int lastBarInPartition(final BarSeries series, final Partitions partitions,
             final int partitionIndex) {
         int last = -1;
-        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
-            if (partitionIndex(series, index, partitions) == partitionIndex) {
-                last = index;
+        final int begin = series.getBeginIndex();
+        final int end = series.getEndIndex();
+        if (begin <= end) {
+            for (int index = begin;; index++) {
+                if (partitionIndex(series, index, partitions) == partitionIndex) {
+                    last = index;
+                }
+                if (index == end) {
+                    break;
+                }
             }
         }
         return last;
@@ -340,17 +358,19 @@ public final class StudyRunner {
         if (start > end) {
             return;
         }
-        for (int index = start; index <= end; index++) {
+        for (int index = start;; index++) {
             final int partitionIndex = partitionIndex(series, index, partitions);
-            if (partitionIndex < 0) {
-                continue;
+            if (partitionIndex >= 0) {
+                final LocalDate date = barDate(series, index);
+                partitions.assertCalibrationDateAllowed(date);
+                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
+                // Null ensemble members are rebased sub-series; the offset restores
+                // source coordinates so null and real metric bounds are comparable.
+                accumulators.get(partitionIndex).record(analysis, index + recordedIndexOffset, activeRules, series);
             }
-            final LocalDate date = barDate(series, index);
-            partitions.assertCalibrationDateAllowed(date);
-            final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
-            // Null ensemble members are rebased sub-series; the offset restores
-            // source coordinates so null and real metric bounds are comparable.
-            accumulators.get(partitionIndex).record(analysis, index + recordedIndexOffset, activeRules, series);
+            if (index == end) {
+                break;
+            }
         }
     }
 
@@ -360,29 +380,33 @@ public final class StudyRunner {
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
         if (start <= end) {
-            for (int index = start; index <= end; index++) {
+            for (int index = start;; index++) {
                 final int partitionIndex = partitionIndex(series, index, partitions);
-                if (partitionIndex < 0) {
-                    continue;
+                if (partitionIndex >= 0) {
+                    final LocalDate date = barDate(series, index);
+                    partitions.assertCalibrationDateAllowed(date);
+                    final List<ConfirmedPivot> visible = replay.at(index);
+                    final List<String> matches = grammar.matches(visible);
+                    final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                    if (visible.size() < 2) {
+                        accumulator.recordAlternative(index, false, false, false, "insufficient-history",
+                                Set.of("insufficient-history"));
+                    } else if (matches.size() == 1) {
+                        accumulator.recordAlternative(index, true, false, false, matches.get(0),
+                                Set.of(matches.get(0)));
+                    } else if (matches.size() > 1) {
+                        // Ambiguity stability must compare the actual placement
+                        // identities, not a constant token, or the Jaccard metric
+                        // reads 1 across shifting match sets.
+                        accumulator.recordAlternative(index, false, true, false, "ambiguous", Set.copyOf(matches));
+                    } else if (grammar.hasPartial(visible)) {
+                        accumulator.recordAlternative(index, false, false, true, "forming", Set.of("forming"));
+                    } else {
+                        accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
+                    }
                 }
-                final LocalDate date = barDate(series, index);
-                final List<ConfirmedPivot> visible = replay.at(index);
-                final List<String> matches = grammar.matches(visible);
-                final MetricAccumulator accumulator = accumulators.get(partitionIndex);
-                if (visible.size() < 2) {
-                    accumulator.recordAlternative(index, false, false, false, "insufficient-history",
-                            Set.of("insufficient-history"));
-                } else if (matches.size() == 1) {
-                    accumulator.recordAlternative(index, true, false, false, matches.get(0), Set.of(matches.get(0)));
-                } else if (matches.size() > 1) {
-                    // Ambiguity stability must compare the actual placement
-                    // identities, not a constant token, or the Jaccard metric
-                    // reads 1 across shifting match sets.
-                    accumulator.recordAlternative(index, false, true, false, "ambiguous", Set.copyOf(matches));
-                } else if (grammar.hasPartial(visible)) {
-                    accumulator.recordAlternative(index, false, false, true, "forming", Set.of("forming"));
-                } else {
-                    accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
+                if (index == end) {
+                    break;
                 }
             }
         }
@@ -393,26 +417,31 @@ public final class StudyRunner {
             final int end, final Partitions partitions) {
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         if (start <= end) {
-            for (int index = start; index <= end; index++) {
+            for (int index = start;; index++) {
                 final int partitionIndex = partitionIndex(series, index, partitions);
-                if (partitionIndex < 0) {
-                    continue;
+                if (partitionIndex >= 0) {
+                    final LocalDate date = barDate(series, index);
+                    partitions.assertCalibrationDateAllowed(date);
+                    final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                    if (index - 2 < series.getBeginIndex()) {
+                        accumulator.recordAlternative(index, false, false, false, "insufficient-history",
+                                Set.of("insufficient-history"));
+                    } else {
+                        final Num first = series.getBar(index - 1)
+                                .getClosePrice()
+                                .minus(series.getBar(index - 2).getClosePrice());
+                        final Num second = series.getBar(index)
+                                .getClosePrice()
+                                .minus(series.getBar(index - 1).getClosePrice());
+                        final boolean change = !first.isZero() && !second.isZero()
+                                && first.isPositive() != second.isPositive();
+                        accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable",
+                                Set.of(change ? "change" : "stable"));
+                    }
                 }
-                final LocalDate date = barDate(series, index);
-                partitions.assertCalibrationDateAllowed(date);
-                final MetricAccumulator accumulator = accumulators.get(partitionIndex);
-                if (index - 2 < series.getBeginIndex()) {
-                    accumulator.recordAlternative(index, false, false, false, "insufficient-history",
-                            Set.of("insufficient-history"));
-                    continue;
+                if (index == end) {
+                    break;
                 }
-                final Num first = series.getBar(index - 1)
-                        .getClosePrice()
-                        .minus(series.getBar(index - 2).getClosePrice());
-                final Num second = series.getBar(index).getClosePrice().minus(series.getBar(index - 1).getClosePrice());
-                final boolean change = !first.isZero() && !second.isZero() && first.isPositive() != second.isPositive();
-                accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable",
-                        Set.of(change ? "change" : "stable"));
             }
         }
         return new StudyReport.ModeReport("competing-change-point-baseline", "change-point-baseline", List.of(),
@@ -627,7 +656,10 @@ public final class StudyRunner {
 
         private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
                 final BarSeries series) {
-            boolean allRulesPass = !activeRules.isEmpty();
+            if (activeRules.isEmpty()) {
+                return;
+            }
+            boolean allRulesPass = true;
             for (int index = 0; index < activeRules.size(); index++) {
                 final RuleEvidence evidence = activeRules.get(index).evaluate(candidate, series);
                 evidenceEvaluationCount++;
@@ -667,9 +699,6 @@ public final class StudyRunner {
                 }
                 counter.evaluationCount++;
             }
-            // One joint outcome per candidate: a multi-rule mode's pass rate
-            // must reflect candidates satisfying every active rule together,
-            // not the average of independent per-rule pass rates.
             jointEvaluationCount++;
             if (allRulesPass) {
                 jointPassCount++;
@@ -719,10 +748,6 @@ public final class StudyRunner {
 
         private StudyReport.PartitionMetrics toMetrics(final String partition) {
             final long denominator = evaluationCount;
-            // Multi-rule modes report their aggregate rate from the joint
-            // per-candidate outcome while raw counters keep per-rule truth.
-            final long rateDenominator = ruleCounters.size() > 1 ? jointEvaluationCount : evidenceEvaluationCount;
-            final long rateNumerator = ruleCounters.size() > 1 ? jointPassCount : evidencePassCount;
             final List<StudyReport.RuleMetrics> rules = ruleCounters.stream().map(RuleCounter::toMetrics).toList();
             return new StudyReport.PartitionMetrics(partition, firstIndex == Integer.MAX_VALUE ? -1 : firstIndex,
                     lastIndex == Integer.MIN_VALUE ? -1 : lastIndex, evaluationCount, completeCount, formingCount,
@@ -731,16 +756,18 @@ public final class StudyRunner {
                     ratio(noMatchCount, denominator), ratio(confirmationLagSum, confirmationLagCount),
                     ratio(stabilitySum, stabilityCount), evidenceEvaluationCount, evidencePassCount, evidenceFailCount,
                     evidencePendingCount, evidenceUnavailableCount, evidenceNotApplicableCount,
-                    ratio(rateNumerator, rateDenominator), rules);
+                    ratio(evidencePassCount, evidenceEvaluationCount), jointEvaluationCount, jointPassCount,
+                    ratio(jointPassCount, jointEvaluationCount), rules);
         }
 
         private static double ratio(final long numerator, final long denominator) {
-            return denominator == 0 ? 0.0d : (double) numerator / denominator;
+            return denominator == 0 ? Double.NaN : (double) numerator / denominator;
         }
 
         private static double ratio(final double numerator, final long denominator) {
-            return denominator == 0 ? 0.0d : numerator / denominator;
+            return denominator == 0 ? Double.NaN : numerator / denominator;
         }
+
     }
 
     private static final class RuleCounter {
@@ -763,12 +790,12 @@ public final class StudyRunner {
         private StudyReport.RuleMetrics toMetrics() {
             return new StudyReport.RuleMetrics(id, evaluationCount, passCount, failCount, pendingCount,
                     unavailableCount, notApplicableCount,
-                    evaluationCount == 0 ? 0.0d : (double) passCount / evaluationCount, scoredCount, scoreMean(),
-                    scoredCount == 0 ? 0.0d : scoreMin, scoredCount == 0 ? 0.0d : scoreMax);
+                    evaluationCount == 0 ? Double.NaN : (double) passCount / evaluationCount, scoredCount, scoreMean(),
+                    scoredCount == 0 ? Double.NaN : scoreMin, scoredCount == 0 ? Double.NaN : scoreMax);
         }
 
         private double scoreMean() {
-            return scoredCount == 0 ? 0.0d : scoreSum / scoredCount;
+            return scoredCount == 0 ? Double.NaN : scoreSum / scoredCount;
         }
 
         private void mergeFrom(final RuleCounter other) {
@@ -863,6 +890,11 @@ public final class StudyRunner {
          */
         private boolean matchesLegSequence(final List<ConfirmedPivot> window, final WaveDirection direction,
                 final boolean complete) {
+            final SwingPivotType expectedOrigin = direction == WaveDirection.BULLISH ? SwingPivotType.LOW
+                    : SwingPivotType.HIGH;
+            if (window.isEmpty() || window.get(0).type() != expectedOrigin) {
+                return false;
+            }
             for (int leg = 0; leg < window.size() - 1; leg++) {
                 if (window.get(leg).type() == window.get(leg + 1).type()) {
                     return false;
@@ -916,8 +948,8 @@ public final class StudyRunner {
      *
      * @since 0.24.2
      */
-    public record Partition(String name, LocalDate start, LocalDate end) {
-        public Partition {
+    record Partition(String name, LocalDate start, LocalDate end) {
+        Partition {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("partition name must not be blank");
             }
@@ -938,8 +970,8 @@ public final class StudyRunner {
      *
      * @since 0.24.2
      */
-    public record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
-        public Partitions {
+    record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
+        Partitions {
             entries = entries == null ? List.of() : List.copyOf(entries);
             Objects.requireNonNull(forbiddenCalibrationStart, "forbiddenCalibrationStart");
             if (entries.isEmpty()) {
@@ -1030,13 +1062,12 @@ public final class StudyRunner {
      *                            alternatives
      * @since 0.24.2
      */
-    public record Configuration(Partitions partitions, String protocolFingerprint, long seed,
-            List<Integer> nullBlockLengths, int nullEnsembleSize,
-            List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors, String primaryDetector,
-            List<String> competingModes) {
+    record Configuration(Partitions partitions, String protocolFingerprint, long seed, List<Integer> nullBlockLengths,
+            int nullEnsembleSize, List<DetectorRobustnessMatrix.DetectorSpec> robustnessDetectors,
+            String primaryDetector, List<String> competingModes) {
         private static final String DEFAULT_PRIMARY_DETECTOR = "in-kernel-default";
 
-        public Configuration {
+        Configuration {
             Objects.requireNonNull(partitions, "partitions");
             if (protocolFingerprint == null || protocolFingerprint.isBlank()) {
                 throw new IllegalArgumentException("protocolFingerprint must not be blank");
@@ -1108,7 +1139,7 @@ public final class StudyRunner {
          * @return locked engine-default configuration
          * @since 0.24.2
          */
-        public static Configuration lockedDefault() {
+        static Configuration lockedDefault() {
             return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
                     DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR, null);
         }
@@ -1118,7 +1149,7 @@ public final class StudyRunner {
          * 
          * @since 0.24.2
          */
-        public static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
+        static Configuration of(final Partitions partitions, final String protocolFingerprint, final long seed,
                 final List<Integer> nullBlockLengths, final int nullEnsembleSize) {
             return new Configuration(partitions, protocolFingerprint, seed, nullBlockLengths, nullEnsembleSize,
                     List.of(), DEFAULT_PRIMARY_DETECTOR, null);

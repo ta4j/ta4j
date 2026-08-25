@@ -223,7 +223,7 @@ final class TopologyAnalyzer {
     private TopologyCandidate buildCandidate(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> window, final int start) {
         final List<ConfirmedPivot> pivots = window.subList(start, start + grammar.requiredPivots());
-        if (!startsInExpectedDirection(direction, pivots)) {
+        if (!startsInExpectedDirection(grammar, direction, pivots)) {
             return null;
         }
         try {
@@ -233,9 +233,15 @@ final class TopologyAnalyzer {
         }
     }
 
-    private boolean startsInExpectedDirection(final WaveDirection direction, final List<ConfirmedPivot> pivots) {
-        final SwingPivotType expectedOrigin = direction == WaveDirection.BULLISH ? SwingPivotType.LOW
-                : SwingPivotType.HIGH;
+    private boolean startsInExpectedDirection(final TopologyGrammar grammar, final WaveDirection direction,
+            final List<ConfirmedPivot> pivots) {
+        final boolean firstLegPositive = expectedLegPositive(grammar, 0);
+        final SwingPivotType expectedOrigin;
+        if (direction == WaveDirection.BULLISH) {
+            expectedOrigin = firstLegPositive ? SwingPivotType.LOW : SwingPivotType.HIGH;
+        } else {
+            expectedOrigin = firstLegPositive ? SwingPivotType.HIGH : SwingPivotType.LOW;
+        }
         return pivots.get(0).type() == expectedOrigin;
     }
 
@@ -253,7 +259,7 @@ final class TopologyAnalyzer {
     private boolean matchesPartialShape(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> segment) {
         final int legs = segment.size() - 1;
-        if (legs < 1 || legs >= grammar.legCount() || !startsInExpectedDirection(direction, segment)) {
+        if (legs < 1 || legs >= grammar.legCount() || !startsInExpectedDirection(grammar, direction, segment)) {
             return false;
         }
         for (int leg = 0; leg < legs; leg++) {

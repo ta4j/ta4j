@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -68,6 +69,36 @@ class ConfirmationTrackerTest {
         assertThat(history.pivots().get(1).pivotIndex()).isEqualTo(3);
         assertThat(history.pivots().get(1).price()).isEqualTo(DoubleNum.valueOf(11.5));
         assertThat(history.pivots().get(1).confirmationIndex()).isEqualTo(5);
+    }
+
+    @Test
+    void rejectsRepricedFrozenPredecessorAfterTrailingWithdrawal() {
+        final SwingPivot low0 = new SwingPivot(0, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot high1 = new SwingPivot(1, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of(low0));
+        script.put(1, List.of(low0, high1));
+        // HIGH@1 is retractable, but LOW@0 is already frozen by its successor.
+        // A repriced predecessor must not become silently retractable after the
+        // trailing withdrawal.
+        script.put(2, List.of(new SwingPivot(0, DoubleNum.valueOf(11), SwingPivotType.LOW)));
+
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new ConfirmationTracker(scripted(script)).observe(seriesWithBars(3)));
+
+        assertTrue(exception.getMessage().contains("contradicted frozen pivot history"), exception.getMessage());
+    }
+
+    @Test
+    void replaysAHighestPossibleBarIndexWithoutWrapping() {
+        final int lastIndex = Integer.MAX_VALUE;
+        final SwingPivot pivot = new SwingPivot(lastIndex, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = Map.of(lastIndex, List.of(pivot));
+
+        final PivotHistory history = new ConfirmationTracker(scripted(script))
+                .observe(indexedSeries(seriesWithBars(1), lastIndex));
+
+        assertThat(history.pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(lastIndex);
     }
 
     @Test
@@ -351,6 +382,17 @@ class ConfirmationTrackerTest {
             closes[i] = 100.0 + i;
         }
         return new MockBarSeriesBuilder().withData(closes).build();
+    }
+
+    private static BarSeries indexedSeries(final BarSeries delegate, final int index) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    return switch (method.getName()) {
+                    case "getBeginIndex", "getEndIndex" -> index;
+                    case "getBar" -> delegate.getBar(0);
+                    default -> method.invoke(delegate, args);
+                    };
+                });
     }
 
     private static final class ScriptedDetector implements SwingDetector {

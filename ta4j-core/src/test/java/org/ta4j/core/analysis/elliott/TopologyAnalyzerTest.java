@@ -56,14 +56,24 @@ class TopologyAnalyzerTest {
     @Test
     void matchesCorrectiveThreeAgainstTheDeclaredTrend() {
         final TopologyAnalysis bullishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
-                pivots(20, 12, 16, 10));
+                pivots(SwingPivotType.HIGH, 20, 12, 16, 10));
         final TopologyAnalysis bearishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
-                pivots(SwingPivotType.HIGH, 10, 18, 14, 22));
+                pivots(SwingPivotType.LOW, 10, 18, 14, 22));
 
         assertThat(bullishTrendCorrection.status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(bullishTrendCorrection.direction()).isEqualTo(WaveDirection.BULLISH);
         assertThat(bearishTrendCorrection.status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(bearishTrendCorrection.direction()).isEqualTo(WaveDirection.BEARISH);
+    }
+
+    @Test
+    void rejectsCorrectiveWindowUsingTheTrendDirectionOrigin() {
+        final TopologyAnalyzer analyzer = new TopologyAnalyzer();
+
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(SwingPivotType.LOW, 20, 12, 16, 10)).status())
+                .isEqualTo(TopologyStatus.NO_MATCH);
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(SwingPivotType.HIGH, 10, 18, 14, 22)).status())
+                .isEqualTo(TopologyStatus.NO_MATCH);
     }
 
     @Test
@@ -77,9 +87,7 @@ class TopologyAnalyzerTest {
                 .isEqualTo(TopologyStatus.NO_MATCH);
         // A corrective two-pivot window has only one uninformative leg;
         // its three-pivot state pins both legs and may form legitimately.
-        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 20)).status())
-                .isEqualTo(TopologyStatus.NO_MATCH);
-        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(SwingPivotType.HIGH, 10, 20, 15)).status())
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(SwingPivotType.HIGH, 20, 10, 15)).status())
                 .isEqualTo(TopologyStatus.FORMING);
     }
 

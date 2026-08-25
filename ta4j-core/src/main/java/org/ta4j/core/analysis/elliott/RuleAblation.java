@@ -18,6 +18,12 @@ import java.util.Objects;
  */
 final class RuleAblation {
 
+    private static final List<String> FROZEN_RULE_IDS = List.of("wave2-origin", "wave3-not-shortest",
+            "wave4-nonoverlap", "wave5-divergence");
+
+    private static final List<String> FROZEN_MODE_NAMES = List.of("topology-only", "+wave2-origin",
+            "+wave3-not-shortest", "+wave4-nonoverlap", "+wave5-divergence", "classical-all");
+
     private RuleAblation() {
     }
 
@@ -35,8 +41,7 @@ final class RuleAblation {
     static List<Mode> frozenModes(final List<RelationshipRule> suppliedRules) {
         final List<RelationshipRule> supplied = List.copyOf(Objects.requireNonNull(suppliedRules, "suppliedRules"));
         final List<RelationshipRule> frozenRules = new ArrayList<>(4);
-        for (final String ruleId : List.of("wave2-origin", "wave3-not-shortest", "wave4-nonoverlap",
-                "wave5-divergence")) {
+        for (final String ruleId : FROZEN_RULE_IDS) {
             final RelationshipRule rule = supplied.stream()
                     .filter(candidate -> ruleId.equals(candidate.id()))
                     .findFirst()
@@ -45,6 +50,10 @@ final class RuleAblation {
             frozenRules.add(rule);
         }
         return modes(frozenRules);
+    }
+
+    static List<String> frozenModeNames() {
+        return FROZEN_MODE_NAMES;
     }
 
     static List<Mode> modes(final List<RelationshipRule> suppliedRules) {

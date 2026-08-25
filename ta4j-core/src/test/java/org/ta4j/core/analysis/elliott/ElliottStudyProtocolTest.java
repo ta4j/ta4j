@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave.study;
+package org.ta4j.core.analysis.elliott;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,9 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.LocalDate;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,6 +31,7 @@ class ElliottStudyProtocolTest {
      * the heaviest fixture I/O in every test.
      */
     private static final ElliottStudyProtocol PROTOCOL = ElliottStudyProtocol.load();
+    private static final Logger LOG = LogManager.getLogger(ElliottStudyProtocolTest.class);
 
     @Test
     void loadsFrozenProtocolAndPinnedFingerprint() {
@@ -45,6 +50,20 @@ class ElliottStudyProtocolTest {
 
         assertThrows(IllegalArgumentException.class, () -> new ElliottStudyProtocol.MomentumSpec("MACD", 14));
         assertThrows(IllegalArgumentException.class, () -> new ElliottStudyProtocol.MomentumSpec("RSI", 1));
+    }
+
+    @Test
+    void verifiesPinnedDatasetBytesBeforeParsing() {
+        final ElliottStudyProtocol.DatasetSpec dataset = PROTOCOL.datasets().get(0);
+        final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottStudyProtocolTest.class,
+                dataset.resource(), dataset.asset(), dataset.sha256(), LOG);
+
+        assertNotNull(series);
+        assertTrue(series.getBarCount() > 1_000);
+
+        final String wrongSha256 = dataset.sha256().substring(0, 63) + (dataset.sha256().charAt(63) == '0' ? '1' : '0');
+        assertNull(OssifiedElliottWaveSeriesLoader.loadSeries(ElliottStudyProtocolTest.class, dataset.resource(),
+                dataset.asset(), wrongSha256, LOG));
     }
 
     @Test

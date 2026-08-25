@@ -17,7 +17,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
  *
  * @since 0.24.2
  */
-public final class DetectorRobustnessMatrix {
+final class DetectorRobustnessMatrix {
 
     private DetectorRobustnessMatrix() {
     }
@@ -61,14 +61,13 @@ public final class DetectorRobustnessMatrix {
         return new StudyReport.RobustnessReport(results);
     }
 
-    /** Immutable detector configuration. */
     /**
-     * Named detector supplier for the matrix.
-     * 
+     * Named immutable detector supplier for the matrix.
+     *
      * @since 0.24.2
      */
-    public record DetectorSpec(String name, Supplier<SwingDetector> factory) {
-        public DetectorSpec {
+    record DetectorSpec(String name, Supplier<SwingDetector> factory) {
+        DetectorSpec {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("detector name must not be blank");
             }
