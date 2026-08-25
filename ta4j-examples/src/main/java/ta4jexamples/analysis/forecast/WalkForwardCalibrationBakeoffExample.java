@@ -190,7 +190,34 @@ public final class WalkForwardCalibrationBakeoffExample {
                 new ArmSpec("nig-empirical-priors", "NI-GAMMA",
                                                 NormalInverseGammaForecastMethod.withEmpiricalPriors()),
                 new ArmSpec("posterior-smoothed-empirical", "NIG-COMPOSED",
-                        new PosteriorSmoothedResidualMonteCarloMethod(null)));
+                        new PosteriorSmoothedResidualMonteCarloMethod(null)),
+                new ArmSpec("nig-composed-recentvol", "NIG-COMPOSED+RECENTVOL",
+                        new RecentVolatilityWidenMethod(new PosteriorSmoothedResidualMonteCarloMethod(null))),
+                new ArmSpec("nig-composed-ttail", "NIG-COMPOSED+TTAIL",
+                        new StudentTScaleMixingMethod(new PosteriorSmoothedResidualMonteCarloMethod(null))),
+                new ArmSpec("nig-composed-recentvol-ttail", "NIG-COMPOSED+RECENTVOL+TTAIL",
+                        new StudentTScaleMixingMethod(
+                                new RecentVolatilityWidenMethod(new PosteriorSmoothedResidualMonteCarloMethod(null)))),
+                new ArmSpec("nig-composed-recentvol2-ttail", "NIG-COMPOSED+RECENTVOL2+TTAIL",
+                        new StudentTScaleMixingMethod(
+                                new RecentVolatilityWidenMethod(new PosteriorSmoothedResidualMonteCarloMethod(null),
+                                        RecentVolatilityWidenMethod.Amplification.TWO))),
+                new ArmSpec("nig-normal-composed-recentvol-ttail", "NIG-NORMAL+RECENTVOL+TTAIL",
+                        new StudentTScaleMixingMethod(new RecentVolatilityWidenMethod(
+                                new PosteriorSmoothedResidualMonteCarloMethod(
+                                        new ShockPathMonteCarloMethod(ShockModel.NORMAL,
+                                                VolatilityUpdateMode.CONSTANT, EWMA_DECAY))))),
+                new ArmSpec("nig-boot-composed-recentvol-ttail", "NIG-BOOT+RECENTVOL+TTAIL",
+                        new StudentTScaleMixingMethod(new RecentVolatilityWidenMethod(
+                                new PosteriorSmoothedResidualMonteCarloMethod(
+                                        new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP,
+                                                VolatilityUpdateMode.EWMA, EWMA_DECAY))))),
+                new ArmSpec("ensemble-boot-nig-recentvol-ttail", "ENSEMBLE-BOOT+NIG+RECENTVOL+TTAIL",
+                        new StudentTScaleMixingMethod(new RecentVolatilityWidenMethod(
+                                new EnsembleMethod(
+                                        new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP,
+                                                VolatilityUpdateMode.EWMA, EWMA_DECAY),
+                                        new PosteriorSmoothedResidualMonteCarloMethod(null))))));
     }
 
     /**
@@ -415,6 +442,229 @@ public final class WalkForwardCalibrationBakeoffExample {
                 throw new IllegalArgumentException("decision cap must be >= 1");
             }
             return cap;
+        }
+    }
+
+    /**
+     * Experimental decorator: widens the inner technique's centered terminal
+     * samples by the ratio of the recent realized volatility to the state
+     * volatility. Targets the high-forward-vol under-coverage observed across
+     * all baseline arms, where the state EWMA volatility lags the realized
+     * forward window. Widening is asymmetric: when the recent realized
+     * volatility is below the state estimate the factor is 1, so calm regimes
+     * are untouched.
+     *
+     * <p>
+     * All randomness is drawn exclusively from {@code context.random()}; the
+     * factor itself is deterministic in the window. Null/wrong-count results
+     * propagate as unstable.
+     */
+    private static final class RecentVolatilityWidenMethod implements MonteCarloMethod {
+
+        /** How aggressively the recent-realized over state volatility ratio is applied. */
+        enum Amplification {
+            /** factor = max(1, ratio), bounded by {@link #MAX_WIDEN}. */
+            STANDARD,
+            /** factor = max(1, 1 + 2 * (ratio - 1)), bounded by {@link #MAX_WIDEN}. */
+            TWO
+        }
+
+        private static final int RECENT_WINDOW = 10;
+        private static final double MAX_WIDEN = 4d;
+
+        private final MonteCarloMethod inner;
+        private final Amplification amplification;
+
+        RecentVolatilityWidenMethod(MonteCarloMethod inner) {
+            this(inner, Amplification.STANDARD);
+        }
+
+        RecentVolatilityWidenMethod(MonteCarloMethod inner, Amplification amplification) {
+            this.inner = inner;
+            this.amplification = amplification;
+        }
+
+        @Override
+        public List<Num> terminalReturns(MonteCarloContext context) {
+            List<Num> samples = inner.terminalReturns(context);
+            if (samples == null || samples.size() != context.iterationCount()) {
+                return null;
+            }
+            ReturnMoments moments = context.moments();
+            if (moments == null || !moments.isStable()) {
+                return null;
+            }
+            NumFactory numFactory = context.numFactory();
+            Num drift = moments.drift();
+            Num stateVol = moments.volatility();
+            if (!Num.isFinite(drift) || !Num.isFinite(stateVol) || stateVol.isZero()) {
+                return null;
+            }
+            double recentVol = recentVolatilityRms(context.historicalLogReturns(), numFactory);
+            if (!Double.isFinite(recentVol)) {
+                return null;
+            }
+            double ratio = recentVol / stateVol.doubleValue();
+            double expanded = amplification == Amplification.TWO ? 1d + 2d * (ratio - 1d) : ratio;
+            double factor = Math.min(MAX_WIDEN, Math.max(1d, expanded));
+            Num driftPath = drift.multipliedBy(numFactory.numOf(context.horizon()));
+            List<Num> widened = new ArrayList<>(context.iterationCount());
+            for (Num sample : samples) {
+                Num centered = sample.minus(driftPath);
+                Num scaled = driftPath.plus(centered.multipliedBy(numFactory.numOf(factor)));
+                if (!Num.isFinite(scaled)) {
+                    return null;
+                }
+                widened.add(scaled);
+            }
+            return widened;
+        }
+
+        /** RMS of the log returns over the trailing {@value #RECENT_WINDOW} bars. */
+        private static double recentVolatilityRms(List<Num> window, NumFactory numFactory) {
+            int start = Math.max(0, window.size() - RECENT_WINDOW);
+            if (window.size() - start < 2) {
+                return Double.NaN;
+            }
+            double sum = 0d;
+            int count = 0;
+            for (int i = start; i < window.size(); i++) {
+                double value = window.get(i).doubleValue();
+                if (!Double.isFinite(value)) {
+                    return Double.NaN;
+                }
+                sum += value * value;
+                count++;
+            }
+            return Math.sqrt(sum / count);
+        }
+    }
+
+    /**
+     * Experimental decorator: fattens the tails of the inner technique's
+     * centered terminal samples with a mean-normalized Student-t scale mixing
+     * factor drawn from {@code context.random()}. The factor has expectation 1
+     * (no central-scale shift) but heavy right tail, so the quantile spread
+     * grows where it matters for coverage.
+     */
+    private static final class StudentTScaleMixingMethod implements MonteCarloMethod {
+
+        private static final int T_DF = 5;
+        /** E[sqrt(df / chiSq(df))] normalizer so the mixing factor has mean 1. */
+        private static final double T_MEAN = tScaleMean(T_DF);
+
+        private final MonteCarloMethod inner;
+
+        StudentTScaleMixingMethod(MonteCarloMethod inner) {
+            this.inner = inner;
+        }
+
+        @Override
+        public List<Num> terminalReturns(MonteCarloContext context) {
+            List<Num> samples = inner.terminalReturns(context);
+            if (samples == null || samples.size() != context.iterationCount()) {
+                return null;
+            }
+            ReturnMoments moments = context.moments();
+            if (moments == null || !moments.isStable()) {
+                return null;
+            }
+            NumFactory numFactory = context.numFactory();
+            Num drift = moments.drift();
+            if (!Num.isFinite(drift)) {
+                return null;
+            }
+            Num driftPath = drift.multipliedBy(numFactory.numOf(context.horizon()));
+            java.util.random.RandomGenerator random = context.random();
+            List<Num> mixed = new ArrayList<>(context.iterationCount());
+            for (Num sample : samples) {
+                double factor = tScaleDraw(random) / T_MEAN;
+                Num centered = sample.minus(driftPath);
+                Num scaled = driftPath.plus(centered.multipliedBy(numFactory.numOf(factor)));
+                if (!Num.isFinite(scaled)) {
+                    return null;
+                }
+                mixed.add(scaled);
+            }
+            return mixed;
+        }
+
+        /** {@code sqrt(df / chiSq(df))} draw from the Student-t scale distribution. */
+        private static double tScaleDraw(java.util.random.RandomGenerator random) {
+            double chiSq = 0d;
+            for (int i = 0; i < T_DF; i++) {
+                double normal = random.nextGaussian();
+                chiSq += normal * normal;
+            }
+            return Math.sqrt(T_DF / chiSq);
+        }
+
+        /** Closed-form expectation of {@code sqrt(df / chiSq(df))}. */
+        private static double tScaleMean(int df) {
+            return Math.sqrt(df / 2d) * gamma((df - 1d) / 2d) / gamma(df / 2d);
+        }
+
+        private static double gamma(double x) {
+            // Lanczos approximation, sufficient for small half-integer arguments.
+            double[] coefficients = { 0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+                    771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012,
+                    9.9843695780195716e-6, 1.5056327351493116e-7 };
+            if (x < 0.5) {
+                return Math.PI / (Math.sin(Math.PI * x) * gamma(1d - x));
+            }
+            x -= 1d;
+            double a = coefficients[0];
+            double t = x + 7.5;
+            for (int i = 1; i < coefficients.length; i++) {
+                a += coefficients[i] / (x + i);
+            }
+            return Math.sqrt(2d * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+        }
+    }
+
+    /**
+     * Experimental decorator: pools two independent techniques 50/50 into a
+     * single sample distribution. Each component runs at half the iteration
+     * count with its own {@code SplittableRandom} derived from
+     * {@code context.random()} (two {@code nextLong} draws), so the ensemble is
+     * deterministic under the seam's single-source rule and each component
+     * reproduces its standalone draws at half the count. Null/wrong-count
+     * results propagate as unstable.
+     */
+    private static final class EnsembleMethod implements MonteCarloMethod {
+
+        private final MonteCarloMethod first;
+        private final MonteCarloMethod second;
+
+        EnsembleMethod(MonteCarloMethod first, MonteCarloMethod second) {
+            this.first = first;
+            this.second = second;
+        }
+
+        @Override
+        public List<Num> terminalReturns(MonteCarloContext context) {
+            int half = context.iterationCount() / 2;
+            int remainder = context.iterationCount() - half;
+            RandomGenerator baseRandom = context.random();
+            MonteCarloContext firstContext = subContext(context, half, new SplittableRandom(baseRandom.nextLong()));
+            MonteCarloContext secondContext = subContext(context, remainder, new SplittableRandom(baseRandom.nextLong()));
+            List<Num> firstSamples = first.terminalReturns(firstContext);
+            List<Num> secondSamples = second.terminalReturns(secondContext);
+            if (firstSamples == null || secondSamples == null) {
+                return null;
+            }
+            if (firstSamples.size() != half || secondSamples.size() != remainder) {
+                return null;
+            }
+            List<Num> pooled = new ArrayList<>(context.iterationCount());
+            pooled.addAll(firstSamples);
+            pooled.addAll(secondSamples);
+            return pooled;
+        }
+
+        private static MonteCarloContext subContext(MonteCarloContext context, int count, RandomGenerator random) {
+            return new MonteCarloContext(context.index(), context.horizon(), count, context.historicalLogReturns(),
+                    context.moments(), random, context.numFactory());
         }
     }
 
