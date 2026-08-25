@@ -638,9 +638,9 @@ class StudyRunnerTest {
     void memberGenerationRejectsCumulativePathBeyondDoubleRange() {
         // Two individually representable +598 returns compound past double max;
         // the second step must fail loud instead of materializing Infinity.
-        final BarSeries source = doubleSeries("cumulative-overflow", 1d);
+        final BarSeries source = source3Bar("cumulative-overflow");
         assertThrows(IllegalStateException.class, () -> BlockBootstrapNulls
-                .generateMember(source3Bar("cumulative-overflow"), new double[] { 598.8d, 598.8d }, 8, 7L, 0));
+                .generateMember(source, new double[] { 598.8d, 598.8d }, 8, 7L, 0));
     }
 
     @Test
