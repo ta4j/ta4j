@@ -21,6 +21,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Unit tests for {@link BlockBootstrapNulls} member generation and return
@@ -340,6 +341,34 @@ class BlockBootstrapNullsTest {
         assertEquals(1e-30d, returns[0], 1e-45d);
         assertEquals(-1e-30d, returns[1], 1e-45d);
         assertEquals(1e-30d, returns[2], 1e-45d);
+    }
+
+    @Test
+    void memberGenerationKeepsTinyDecimalMove() {
+        final NumFactory numFactory = DecimalNumFactory.getInstance(40);
+        final BarSeries source = new BaseBarSeriesBuilder().withName("tiny-decimal-member")
+                .withNumFactory(numFactory)
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num close = numFactory.one();
+        for (int index = 0; index < 2; index++) {
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final BarSeries member = BlockBootstrapNulls.generateMember(source, new double[] { 1e-30d }, 1, 7L, 0);
+
+        assertTrue(member.getBar(1).getClosePrice().isGreaterThan(member.getBar(0).getClosePrice()),
+                "active DecimalNum exponentiation must preserve a tiny positive return");
     }
 
     @Test

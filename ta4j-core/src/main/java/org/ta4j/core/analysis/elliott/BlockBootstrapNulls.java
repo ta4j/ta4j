@@ -186,10 +186,10 @@ final class BlockBootstrapNulls {
     }
 
     /**
-     * e^y as a Num: the fractional part stays within double range and the integer
-     * part becomes fast-exponentiation squaring inside the active Num domain, so
-     * reconstruction survives returns beyond double range such as a single-bar jump
-     * from 1 to 1e400.
+     * e^y as a Num: the fractional part is exponentiated in the active numeric
+     * domain, while the integer part becomes fast-exponentiation squaring inside
+     * that domain. Double-backed series still use the bounded primitive
+     * implementation for the full exponent.
      */
     private static Num expNum(final NumFactory numFactory, final double y) {
         if (y < 0.0d) {
@@ -199,7 +199,7 @@ final class BlockBootstrapNulls {
             return numFactory.one().dividedBy(expNum(numFactory, -y));
         }
         final int whole = (int) Math.floor(y);
-        Num result = numFactory.numOf(Math.exp(y - whole));
+        Num result = numFactory.numOf(y - whole).exp();
         Num base = numFactory.numOf(Math.E);
         int n = whole;
         while (n > 0) {

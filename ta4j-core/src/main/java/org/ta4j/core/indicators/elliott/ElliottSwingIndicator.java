@@ -173,30 +173,8 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
         this(validateInputs(swingHighIndicator, swingLowIndicator, degree));
     }
 
-    /**
-     * Builds an Elliott swing indicator with a bounded result cache for causal
-     * replay implementations.
-     *
-     * @param series            source bar series
-     * @param lookbackLength    bars inspected before a pivot candidate
-     * @param lookforwardLength bars inspected after a pivot candidate
-     * @param allowedEqualBars  maximum additional equal-value bars in a plateau
-     * @param degree            swing degree metadata
-     * @param maximumCacheSize  maximum number of non-terminal results to retain
-     * @since 0.24.2
-     */
-    protected ElliottSwingIndicator(final BarSeries series, final int lookbackLength, final int lookforwardLength,
-            final int allowedEqualBars, final ElliottDegree degree, final int maximumCacheSize) {
-        this(validateInputs(fractalHigh(series, lookbackLength, lookforwardLength, allowedEqualBars),
-                fractalLow(series, lookbackLength, lookforwardLength, allowedEqualBars), degree), maximumCacheSize);
-    }
-
     private ElliottSwingIndicator(final ValidatedSwingInputs inputs) {
-        this(inputs, Integer.MAX_VALUE);
-    }
-
-    private ElliottSwingIndicator(final ValidatedSwingInputs inputs, final int maximumCacheSize) {
-        super(inputs.series(), maximumCacheSize);
+        super(inputs.series());
         this.swingHighIndicator = inputs.swingHighIndicator();
         this.swingLowIndicator = inputs.swingLowIndicator();
         this.degree = inputs.degree();
