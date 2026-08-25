@@ -260,6 +260,26 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void rejectsReplacementThatWouldNormalizeAwayFrozenPredecessorAfterTrailingWithdrawal() {
+        final SwingPivot low0 = new SwingPivot(0, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot high1 = new SwingPivot(1, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final SwingPivot low2 = new SwingPivot(2, DoubleNum.valueOf(5), SwingPivotType.LOW);
+        final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(25), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of(low0));
+        script.put(1, List.of(low0, high1));
+        script.put(2, List.of(low0, high1, low2));
+        // LOW@2 was the retractable tail; replacing it with HIGH@3 would
+        // otherwise normalize away the frozen HIGH@1 predecessor.
+        script.put(3, List.of(low0, high1, high3));
+
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new ConfirmationTracker(scripted(script)).observeReplay(seriesWithBars(4)));
+
+        assertTrue(exception.getMessage().contains("normalize away frozen pivot 1"), exception.getMessage());
+    }
+
+    @Test
     void withdrawingDominatedSameTypePivotKeepsNormalizedHistory() {
         final Map<Integer, List<SwingPivot>> script = new HashMap<>();
         for (int asOf = 0; asOf <= 2; asOf++) {

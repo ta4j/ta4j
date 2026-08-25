@@ -136,6 +136,14 @@ final class ConfirmationTracker {
         // withdrawing several reported pivots in one update rewrites frozen
         // history and must fail loud instead of being popped successively.
         final int retractableIndex = order.isEmpty() ? -1 : order.get(order.size() - 1).pivotIndex();
+        // Capture frozen pivots before any trailing withdrawal. If the
+        // retractable tail is withdrawn, its predecessor remains frozen by
+        // that tail's earlier confirmation and must not be normalized away
+        // by admission of a replacement report.
+        final Set<Integer> frozenBeforeAdmission = new HashSet<>();
+        for (int index = 0; index + 1 < order.size(); index++) {
+            frozenBeforeAdmission.add(order.get(index).pivotIndex());
+        }
         while (!order.isEmpty() && !reportedIndices.contains(order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
             if (retractableIndex != -1 && removed.pivotIndex() != retractableIndex) {
@@ -190,13 +198,6 @@ final class ConfirmationTracker {
                 continue;
             }
             throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
-        }
-        // Remember what was tracked before admission: everything already in
-        // the order was frozen by an earlier confirmation and must survive
-        // this update's normalization.
-        final Set<Integer> frozenBeforeAdmission = new HashSet<>();
-        for (int index = 0; index + 1 < order.size(); index++) {
-            frozenBeforeAdmission.add(order.get(index).pivotIndex());
         }
         for (final SwingPivot pivot : reported) {
             if (known.containsKey(pivot.index())) {
