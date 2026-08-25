@@ -17,6 +17,18 @@
   (DecimalNum) faster than evaluating each criterion separately on a typical record. Criteria participate
   through the `EquityBundleAware` interface, non-participating criteria still evaluate normally, and curves
   handed out from the shared bundle are read-only snapshots.
+- **Unified parameter research pipeline (`CF-455`)**: Added `ParameterResearch`, a budget-exact hyperparameter search workflow: typed integer, decimal, boolean, and categorical domains feed seeded grid, genetic, and particle-swarm engines (`SearchPlan.grid` / `genetic` / `particleSwarm`) through one objective seam with per-candidate metrics and explicit invalid/failure outcomes. A run-local cache keeps duplicates, cache hits, and re-proposed elites from consuming the unique-evaluation budget; an optional holdout window rebuilds and rescores the top-K training candidates out of sample; deterministic leaderboards and a `TerminationReason`-carrying report make every run reproducible. `SimpleMovingAverageRangeBacktest` demonstrates a backtest-style objective and `RelationshipObjectiveSearchExample` tunes a synchronization-F1 event-relationship objective with a one-line grid/GA/PSO switch.
+
+- **Advanced lead/lag, DTW, and event-dependence analysis (`CF-454`)**: Added `LeadLagCorrelationIndicator`, which scans an inclusive lag range and reports every best lag plus one deterministic selection in its full `Profile`; `DynamicTimeWarpingDistanceIndicator`, a bounded two-row-DP shape distance with z-score or raw normalization, an explicit Sakoe–Chiba band (unconstrained opt-in), and exact path-length normalization; and `EventMutualInformationEvaluator`, which measures how much a continuous predictor reduces uncertainty about a sparse Boolean event in an explicit future-bar window (raw/normalized MI in nats, target entropy, prevalence). Equal-frequency binning never splits tied predictor values, and target windows never cross the evaluation partition boundary.
+- **Windowed event synchronization and F1 evaluation (`CF-453`)**: Added `EventSynchronizationIndicator`, a rolling `Indicator<Num>` that matches two sparse Boolean event streams one-to-one within asymmetric lead/lag tolerances (maximum cardinality first, then minimum lag cost, then deterministic ties) and reports each trailing window's F1 score, with precision/recall/match-offset/unmatched diagnostics via `getResult(index)`. Values are `NaN` until the window is fully available, windows never cross series boundaries so train/validation splits stay isolated, and a Net Momentum × ZigZag confirmation example ships with a 100,000-bar benchmark fixture.
+
+- **Event synchronization keeps rolling windows evicting at any window width (`CF-453`)**: the rolling event caches now cap their eviction threshold at half the matcher capacity, so a first evaluation far ahead of the current scan frontier with a window wider than the cache's growth ceiling still evicts stale events instead of throwing from the events-array capacity limit.
+- **RoMaD reports representation-neutral values for open positions**: `ReturnOverMaxDrawdownCriterion` now returns the configured return representation's neutral value (for example, 1.0 under `MULTIPLICATIVE`) when a position is null or still open, consistent with its no-drawdown conversion path, instead of always returning zero.
+- **Pearson correlation stays well-defined on evicted windows**: once bar eviction advances the series begin index, `PearsonCorrelationIndicator` normalizes by the number of retained values actually iterated rather than the requested window size, so partial windows keep producing valid correlations; warm-up behavior is unchanged.
+- **Lead/lag and event-dependence analysis hardened (`CF-454`)**: Pearson correlation now rescales and centers its window math, so extreme-but-finite values no longer overflow into undefined correlations and near-endpoint windows keep their deviations; z-score DTW normalization applies the same anchoring; equal-width event-MI bins handle subnormal and overflowing spans without shifting samples between bins; DTW path selection treats undefined predecessor cells as unreachable instead of reporting NaN on squared-cost underflow; and event-mutual-information evaluation returns undefined results for empty series and array-ceiling windows instead of throwing.
+
+- **Paired-window statistics indicators bound their sample windows (`CF-454`)**: `CorrelationWindowSupport` now rejects window lengths above ten million bars up front, so a hostile or mistyped window cannot allocate hundreds of megabytes of `Num` scratch arrays before the first evaluation; DTW distance keeps its stricter one-million-bar bound.
+- **Event synchronization honors retained-head warm-up and rejects far-out-of-domain requests (`CF-453`)**: the rolling event caches treat a source's unstable count as bars after the series' retained head (matching the anchoring convention of the other rolling statistics), so evaluation on trimmed or moved series no longer reads a source's unavailable lookback or caches its warm-up values; and `getResult` computes its window start in long and gates on the series domain first, so an extreme index such as `Integer.MIN_VALUE` reports an unavailable window instead of wrapping into one that throws from the event slice.
 - **Monte Carlo forecast techniques are swappable**: `MonteCarloReturnProjectionIndicator` and `MonteCarloPriceForecastIndicator` accept a custom sampling technique through the new builder `.monteCarloMethod(...)` hook, backed by the public `org.ta4j.core.analysis.montecarlo` API (`MonteCarloMethod`, `MonteCarloContext`, and stock `ShockPathMonteCarloMethod`). The engine keeps gating, lookback-window construction, seeding, quantiles, and price mapping, while a technique returning `null`, a wrong sample count, or non-finite or foreign-precision samples degrades to an unstable forecast normalized through the series' `NumFactory`. Legacy seeded shock-path outputs are unchanged.
 - **Smoothed bootstrap shocks and Normal-Inverse-Gamma posterior-predictive forecasts**: `MonteCarloReturnProjectionIndicator.ShockModel.SMOOTHED_EMPIRICAL` resamples Gaussian-kernel-smoothed standardized residuals with Silverman's reference bandwidth, extrapolating tails beyond the observed support and degenerating exactly to the standardized empirical sampler when the bandwidth collapses. New `NormalInverseGammaForecastMethod` samples horizon paths from the conjugate Normal-Inverse-Gamma posterior predictive of the lookback window, defaulting to data-driven weakly-informative priors and accepting explicit prior mean, strength, shape, and scale hyperparameters.
 
@@ -173,7 +185,6 @@
 - **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
-- **Indicator serialization round-trips now preserve constructor inputs**: `DPOIndicator` now serializes its source indicator and `barCount` instead of its rebuilt calculation graph, so JSON and descriptor reconstruction work correctly. `CCIIndicator` now keeps only `barCount` as serialized constructor state, and shared indicator round-trip fixture support covers both descriptor and JSON reconstruction (`#1538`).
 - **Kalman filter historical reads no longer replay recursively**: `KalmanFilterIndicator` now caches its one-dimensional filter state per index, preserving existing smoothing results while avoiding reset-and-replay behavior when callers request a late bar before reading earlier values.
 - **RWI indicators now honor the full warm-up window**: `RWIHighIndicator` and `RWILowIndicator` keep the configured period unstable until the longest ATR candidate is available, avoiding a one-bar-early value from incomplete range-width inputs.
 - **Strict local SpotBugs scans now compile before analysis**: Contributor docs now use `mvn -pl ta4j-core -am clean compile spotbugs:check`, so the standalone SpotBugs loop runs against fresh bytecode instead of succeeding as a no-op on an uncompiled module. The ATMA indicator also now uses the intended rounded-up fast smoothing length for odd windows, removing a SpotBugs-detected integer-division truncation (`CF-157`).
@@ -319,14 +330,11 @@
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
-- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 - **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
-- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
-- **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
@@ -917,7 +925,6 @@
 - **Breaking:** **`TradeOpenedMinimumBarCountRule`** renamed to **`OpenedPositionMinimumBarCountRule`**
 - **Breaking:** **`Trade.class`** renamed to **`Position.class`**
 - **Breaking:** **`Order.class`** renamed to **`Trade.class`**
-- **Breaking:** package "tradereports" renamed to "reports"
 - **Breaking:** package "trading/rules" renamed to "rules"
 - **Breaking:** remove Serializable from all indicators
 - **Breaking:** Bar#trades: changed type from int to long
@@ -1025,7 +1032,6 @@
 - **Enhancement** Implemented NumberOfBreakEvenTradesCriterion for counting break even trades
 - **Enhancement** Implemented NumberOfLosingTradesCriterion for counting losing trades
 - **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades
-- **Enhancement** Implemented NumberOfWinningTradesCriterion for counting winning trades
 - **Enhancement** Implemented ProfitLossPercentageCriterion for calculating the total performance percentage of your trades
 - **Enhancement** Implemented TotalProfit2Criterion for calculating the total profit of your trades
 - **Enhancement** Implemented TotalLossCriterion for calculating the total loss of your trades
@@ -1094,8 +1100,6 @@ for currentStopLossLimitActivation
 - **TimeSeries#addBar(Bar bar)**: _deprecated_. Use `TimeSeries#addBar(Time, open, high, low, ...)`
 - **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **FisherIndicator**: commented constructor removed.
-- **TestUtils**: removed convenience methods for permuted parameters, fixed all unit tests
-- **BaseTimeSeries**: _Constructor_ `BaseTimeSeries(TimeSeries defaultSeries, int seriesBeginIndex, int seriesEndIndex)` _removed_. Use `TimeSeries.getSubseries(int i, int i)` instead
 - **BigDecimalNum**: _removed_.  Replaced by `PrecisionNum`
 - **AbstractCriterionTest**: removed constructor `AbstractCriterionTest(Function<Number, Num)`.  Use `AbstractCriterionTest(CriterionFactory, Function<Number, Num>)`.
 - **<various>Indicator**: removed redundant `private TimeSeries`

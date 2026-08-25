@@ -85,15 +85,15 @@ public class DistanceCorrelationIndicator extends CachedIndicator<Num> {
         secondDistanceVariance = secondDistanceVariance.dividedBy(totalsDivisor);
 
         Num denominatorSquared = firstDistanceVariance.multipliedBy(secondDistanceVariance);
-        if (!CorrelationWindowSupport.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
+        if (!Num.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
         Num denominator = denominatorSquared.sqrt();
-        if (!CorrelationWindowSupport.isFinite(denominator) || denominator.isZero()) {
+        if (!Num.isFinite(denominator) || denominator.isZero()) {
             return NaN.NaN;
         }
         Num squaredCorrelation = distanceCovariance.dividedBy(denominator);
-        if (!CorrelationWindowSupport.isFinite(squaredCorrelation)) {
+        if (!Num.isFinite(squaredCorrelation)) {
             return NaN.NaN;
         }
         if (squaredCorrelation.isNegative()) {

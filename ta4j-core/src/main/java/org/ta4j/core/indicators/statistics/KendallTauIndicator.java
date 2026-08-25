@@ -90,15 +90,15 @@ public class KendallTauIndicator extends CachedIndicator<Num> {
                 .plus(numFactory.numOf(discordant))
                 .plus(numFactory.numOf(secondTies));
         Num denominatorSquared = firstDenominator.multipliedBy(secondDenominator);
-        if (!CorrelationWindowSupport.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
+        if (!Num.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
         Num denominator = denominatorSquared.sqrt();
-        if (!CorrelationWindowSupport.isFinite(denominator) || denominator.isZero()) {
+        if (!Num.isFinite(denominator) || denominator.isZero()) {
             return NaN.NaN;
         }
         Num result = numerator.dividedBy(denominator);
-        return CorrelationWindowSupport.isFinite(result) ? result : NaN.NaN;
+        return Num.isFinite(result) ? result : NaN.NaN;
     }
 
     @Override
