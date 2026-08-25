@@ -104,6 +104,30 @@ cross-capability demo `ta4jexamples.analysis.LeadLagDtwEventAnalysisExample`
 shows Net Momentum versus close price through all three lenses on a
 committed daily BTC dataset.
 
+## Choose the right parameter search engine
+
+`org.ta4j.core.research.ParameterResearch` runs budget-exact parameter
+searches from one fluent builder: declare typed domains, build a candidate
+per evaluation window, score it with an objective, and rank the top
+candidates against an untouched holdout window. All engines share one
+contract — the evaluation budget is never exceeded, duplicate proposals and
+cache hits are not charged, seeded engines are deterministic, and training
+scores are computed from the training window only. With a holdout window
+configured, `topK` evaluations are reserved from the budget for the holdout
+rebuild, so objective calls across training and holdout stay budget-exact.
+
+| Situation | Engine | Notes |
+| --- | --- | --- |
+| Small, enumerable space that must be covered completely | `SearchPlan.grid(maxEvaluations)` | Lazy Cartesian iteration in deterministic order; reports `SEARCH_SPACE_EXHAUSTED` once every combination has been proposed or processed, including those rejected by the normalizer or validator |
+| Large or mixed integer/decimal/boolean/categorical space | `SearchPlan.genetic(maxEvaluations, seed)` | Tournament selection with domain-aware crossover/mutation and elitism; the seeded run-local RNG keeps runs reproducible |
+| Large numeric-only space | `SearchPlan.particleSwarm(maxEvaluations, seed)` | Global-best swarm with velocity clamping; integer dimensions are rounded deterministically, and boolean/categorical domains are rejected before any evaluation |
+| The objective is noisy, the space is trivial, or a single baseline would do | Do not optimize | Search cannot create predictive value; a hand-picked baseline checked on a holdout window is the cheaper honest answer |
+
+See `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest` for a
+backtest-scored workflow and
+`ta4jexamples.research.RelationshipObjectiveSearchExample` for an
+event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

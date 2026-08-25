@@ -410,7 +410,7 @@ The `ta4j-examples` module is organized as progressive learning tracks:
 | First strategy and metrics | [`Quickstart`](ta4j-examples/src/main/java/ta4jexamples/Quickstart.java), [`StrategyAnalysis`](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java) |
 | Data sourcing | [`YahooFinanceBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/YahooFinanceBacktest.java), [`CoinbaseBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/CoinbaseBacktest.java) |
 | Execution semantics | [`TradingRecordParityBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java), [`TradeFillRecordingExample`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java) |
-| Parameter research | [`SimpleMovingAverageRangeBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java) |
+| Parameter research | [`SimpleMovingAverageRangeBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java), [`RelationshipObjectiveSearchExample`](ta4j-examples/src/main/java/ta4jexamples/research/RelationshipObjectiveSearchExample.java) |
 | Forecasting and calibration | [`RollingConformalForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/RollingConformalForecastExample.java), [`KinematicKalmanForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/KinematicKalmanForecastExample.java) |
 | Charting and diagnostics | [`IndicatorsToChart`](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java), [`CashFlowToChart`](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java) |
 
