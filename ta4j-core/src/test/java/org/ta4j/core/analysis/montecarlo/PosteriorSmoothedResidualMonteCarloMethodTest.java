@@ -21,10 +21,10 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Verifies {@link PosteriorSmoothedResidualMonteCarloMethod} against the
- * seam's contract: single-source determinism from {@code context.random()},
- * exact iteration-count and finite-sample guarantees, null propagation, and
- * count propagation through the wrapper.
+ * Verifies {@link PosteriorSmoothedResidualMonteCarloMethod} against the seam's
+ * contract: single-source determinism from {@code context.random()}, exact
+ * iteration-count and finite-sample guarantees, null propagation, and count
+ * propagation through the wrapper.
  */
 public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
@@ -116,8 +116,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
             variance = variance.plus(deviation.multipliedBy(deviation));
         }
         variance = variance.dividedBy(FACTORY.numOf(samples.size()));
-        assertTrue("posterior scale must produce positive sample variance",
-                variance.doubleValue() > 0d);
+        assertTrue("posterior scale must produce positive sample variance", variance.doubleValue() > 0d);
     }
 
     @Test
@@ -129,8 +128,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     @Test
     public void innerNullPropagatesAsUnstable() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                nullInner());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(nullInner());
         assertNull(method.terminalReturns(context(4, 10, window(WINDOW_FINITE), 7L)));
     }
 
@@ -166,7 +164,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
     private static MonteCarloContext context(int horizon, int iterations, List<Num> historicalLogReturns, long seed) {
         ReturnMoments moments = ReturnMoments.stable(100, Math.max(1, historicalLogReturns.size()),
                 ReturnRepresentation.LOG, FACTORY.zero(), FACTORY.zero(), FACTORY.one());
-        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments, new SplittableRandom(seed),
-                FACTORY);
+        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments,
+                new SplittableRandom(seed), FACTORY);
     }
 }

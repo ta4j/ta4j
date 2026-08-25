@@ -131,7 +131,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      *         posterior scale)
      * @since 0.24.2
      */
-        Posterior posterior(MonteCarloContext context) {
+    Posterior posterior(MonteCarloContext context) {
         List<Num> window = context.historicalLogReturns();
         int observationCount = window.size();
         if (observationCount == 0) {
@@ -208,16 +208,15 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return terminalReturns;
     }
 
-    private static double drawCumulativeReturn(Posterior posterior, MonteCarloContext context,
-            RandomGenerator random) {
-                ParameterDraw draw = drawParameters(posterior, random);
+    private static double drawCumulativeReturn(Posterior posterior, MonteCarloContext context, RandomGenerator random) {
+        ParameterDraw draw = drawParameters(posterior, random);
         double sigma = Math.sqrt(draw.sigmaSquared());
         double cumulativeReturn = 0d;
         for (int step = 0; step < context.horizon(); step++) {
-                        cumulativeReturn += draw.mu() + sigma * random.nextGaussian();
+            cumulativeReturn += draw.mu() + sigma * random.nextGaussian();
         }
         return cumulativeReturn;
-        }
+    }
 
     /**
      * Draws {@code (sigmaSquared, mu)} from the posterior predictive conditional,

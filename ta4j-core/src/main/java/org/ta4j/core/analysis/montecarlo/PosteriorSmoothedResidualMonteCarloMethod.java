@@ -20,8 +20,8 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * Each path draws {@code (sigmaSquared, mu)} from the shared
- * Normal-Inverse-Gamma posterior ({@link
- * NormalInverseGammaForecastMethod#posterior(MonteCarloContext)} and
+ * Normal-Inverse-Gamma posterior
+ * ({@link NormalInverseGammaForecastMethod#posterior(MonteCarloContext)} and
  * {@link NormalInverseGammaForecastMethod#drawParameters}) and adds that
  * posterior scale and drift on top of the standardized kernel-smoothed residual
  * path produced by an inner {@link MonteCarloMethod}:
@@ -67,15 +67,13 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
      */
     public PosteriorSmoothedResidualMonteCarloMethod(MonteCarloMethod inner) {
         this.inner = inner != null ? inner
-                : new ShockPathMonteCarloMethod(ShockModel.SMOOTHED_EMPIRICAL, VolatilityUpdateMode.CONSTANT,
-                                                0.5d);
+                : new ShockPathMonteCarloMethod(ShockModel.SMOOTHED_EMPIRICAL, VolatilityUpdateMode.CONSTANT, 0.5d);
         this.posteriorSource = NormalInverseGammaForecastMethod.withEmpiricalPriors();
     }
 
     /**
-     * Composes one posterior parameter draw with the inner technique's
-     * standardized residual path per iteration. See class Javadoc for the exact
-     * transform.
+     * Composes one posterior parameter draw with the inner technique's standardized
+     * residual path per iteration. See class Javadoc for the exact transform.
      *
      * @param context validated simulation inputs including the seeded random
      *                generator
