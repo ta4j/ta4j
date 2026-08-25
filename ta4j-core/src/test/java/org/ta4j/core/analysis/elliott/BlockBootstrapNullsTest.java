@@ -128,6 +128,14 @@ class BlockBootstrapNullsTest {
     }
 
     @Test
+    void intrabarScalingClampsPositiveUnderflowToClose() {
+        final Num scaled = BlockBootstrapNulls.scaled(DoubleNum.valueOf(Double.MIN_VALUE),
+                DoubleNum.valueOf(Double.MAX_VALUE), DoubleNum.valueOf(Double.MIN_VALUE));
+
+        assertEquals(Double.MIN_VALUE, scaled.doubleValue());
+    }
+
+    @Test
     void memberBarsPreserveSubnormalScaledWicks() {
         final BarSeries source = new BaseBarSeriesBuilder().withName("subnormal-wick")
                 .withNumFactory(DoubleNumFactory.getInstance())

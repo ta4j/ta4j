@@ -338,6 +338,10 @@ final class BlockBootstrapNulls {
             // representable; retry with the finite scale factor first.
             scaled = value.multipliedBy(close.dividedBy(sourceClose));
         }
+        if (scaled.isZero() && !value.isZero() && !close.isZero()) {
+            return close;
+        }
+
         // A range-bounded domain that cannot hold the scaled wick clamps to the
         // member close instead of letting infinity or NaN reach BaseBar.
         if (nonFiniteDouble(scaled)) {
