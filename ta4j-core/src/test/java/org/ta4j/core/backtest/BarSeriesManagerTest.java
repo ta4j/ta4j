@@ -255,6 +255,16 @@ public class BarSeriesManagerTest {
     }
 
     @Test
+    public void constructorAcceptsEmptySeriesAndSnapshotPreservesEmptyState() {
+        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        assertTrue(emptySeries.isEmpty());
+
+        BarSeriesManager emptyManager = new BarSeriesManager(emptySeries, new TradeOnCurrentCloseModel());
+
+        assertTrue(emptyManager.getBarSeries().isEmpty());
+    }
+
+    @Test
     public void runWithPositionSizerAndCustomExecutionModelFallsBackToNextOpenEstimate() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         TradeExecutionModel model = new TradeExecutionModel() {

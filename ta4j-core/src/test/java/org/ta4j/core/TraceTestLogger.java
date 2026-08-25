@@ -101,6 +101,9 @@ public final class TraceTestLogger {
     }
 
     private void restoreLoggerConfig(String loggerName) {
+        if (!originalLoggerConfigs.containsKey(loggerName)) {
+            return;
+        }
         Configuration config = loggerContext.getConfiguration();
         config.removeLogger(loggerName);
         LoggerConfig originalConfig = originalLoggerConfigs.remove(loggerName);

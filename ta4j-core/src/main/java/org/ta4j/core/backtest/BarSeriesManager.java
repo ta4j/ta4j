@@ -660,12 +660,14 @@ public class BarSeriesManager {
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
+        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
-                .withBeginIndex(series.getBeginIndex())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
+                .withMaxBarCount(series.getMaximumBarCount());
+        if (!series.isEmpty()) {
+            builder.withBeginIndex(series.getBeginIndex());
+        }
+        return builder.build();
     }
 
 }
