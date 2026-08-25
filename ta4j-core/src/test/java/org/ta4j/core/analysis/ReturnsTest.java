@@ -7,6 +7,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
@@ -425,5 +427,31 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(12, returns.getBarSeries().getEndIndex());
         assertEquals(10, returns.getBarSeries().getRemovedBarsCount());
         assertNumEquals(2.0, returns.getValue(12));
+    }
+
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        Returns returns = new Returns(terminal, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertEquals(0, returns.getSize());
+        assertTrue(returns.getValue(Integer.MAX_VALUE).isNaN());
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNaN() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        Returns returns = new Returns(offset, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertTrue(returns.getValue(9).isNaN());
+        assertTrue(returns.getValue(13).isNaN());
     }
 }

@@ -10,6 +10,8 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -106,6 +108,23 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
         var ignoreIndicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.IGNORE);
         assertThat(ignoreIndicator.getValue(beginIndex + 1)).as("ignored open position interval").isFalse();
+    }
+
+    @Test
+    public void marksIntervalsCompactlyForOffsetSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+        var indicator = new InvestedInterval(offset, tradingRecord);
+
+        assertThat(offset.getBeginIndex()).isEqualTo(10);
+        assertThat(indicator.getValue(10)).as("entry interval").isFalse();
+        assertThat(indicator.getValue(11)).as("between entry and exit").isTrue();
+        assertThat(indicator.getValue(12)).as("exit interval").isTrue();
+        assertThat(indicator.getValue(9)).as("below window").isFalse();
     }
 
 }

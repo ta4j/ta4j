@@ -216,7 +216,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         List<Num> returnRates = returns.getRawValues();
         for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num returnRate = returnRates.get(i);
+            Num returnRate = returnRates.get(i - series.getBeginIndex());
             if (returnRate.isNaN()) {
                 continue;
             }

@@ -306,4 +306,33 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(10, pnl.getBarSeries().getRemovedBarsCount());
         assertNumEquals(20, pnl.getValue(12));
     }
+
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        CumulativePnL pnl = new CumulativePnL(terminal, new BaseTradingRecord());
+
+        assertEquals(Integer.MAX_VALUE, pnl.getBarSeries().getEndIndex());
+        assertEquals(1, pnl.getSize());
+        assertNumEquals(0, pnl.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNeutralZero() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+        CumulativePnL pnl = new CumulativePnL(offset, record, EquityCurveMode.REALIZED);
+
+        assertNumEquals(0, pnl.getValue(9));
+        assertNumEquals(0, pnl.getValue(13));
+        assertNumEquals(20, pnl.getValue(12));
+    }
 }

@@ -33,6 +33,13 @@ import org.ta4j.core.num.NumFactory;
  * The default representation (when not explicitly specified) is obtained from
  * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
  *
+ * <p>
+ * The return values are materialized positionally within the window
+ * {@code [barSeries.getBeginIndex(), barSeries.getEndIndex()]}: the first list
+ * slot corresponds to {@code barSeries.getBeginIndex()}, and
+ * {@link #getValue(int)} resolves to the neutral value {@link Double#NaN}
+ * outside that window.
+ *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
@@ -62,7 +69,7 @@ public class Returns implements PerformanceIndicator {
      */
     private final List<Num> values;
 
-    private final List<Num> returnFactors;
+    private final OffsetNumBuffer returnFactors;
 
     /**
      * Constructor.
@@ -83,14 +90,12 @@ public class Returns implements PerformanceIndicator {
         this.barSeries = snapshotSeries(barSeries);
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
         Num one = this.barSeries.numFactory().one();
         Num zero = this.barSeries.numFactory().zero();
         Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
-        rawValues = new ArrayList<>(Collections.nCopies(size, zero));
-        values = new ArrayList<>(Collections.nCopies(size, zero));
+        returnFactors = OffsetNumBuffer.of(this.barSeries, initial, NaN.NaN);
+        rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
+        values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
         buildReturns();
     }
@@ -244,11 +249,16 @@ public class Returns implements PerformanceIndicator {
     /**
      * @param index the bar index
      * @return the return rate value at the index-th position (formatted according
-     *         to the configured representation)
+     *         to the configured representation), or {@link Double#NaN} for
+     *         indices outside the window materialized by the underlying series
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        int position = index - barSeries.getBeginIndex();
+        if (position < 0 || position >= values.size()) {
+            return NaN.NaN;
+        }
+        return values.get(position);
     }
 
     /**
@@ -366,13 +376,13 @@ public class Returns implements PerformanceIndicator {
     }
 
     private void combineReturnAtIndex(int index, Num strategyReturn) {
-        if (index < 0 || index >= returnFactors.size()) {
+        if (!returnFactors.contains(index)) {
             return;
         }
         if (representation == ReturnRepresentation.LOG) {
-            returnFactors.set(index, returnFactors.get(index).plus(strategyReturn));
+            returnFactors.add(index, strategyReturn);
         } else {
-            returnFactors.set(index, returnFactors.get(index).multipliedBy(toFactor(strategyReturn)));
+            returnFactors.multiply(index, toFactor(strategyReturn));
         }
     }
 
@@ -385,11 +395,11 @@ public class Returns implements PerformanceIndicator {
         Num one = barSeries.numFactory().one();
         for (int i = 1; i < rawValues.size(); i++) {
             if (representation == ReturnRepresentation.LOG) {
-                Num logReturn = returnFactors.get(i);
+                Num logReturn = returnFactors.at(i);
                 rawValues.set(i, logReturn);
                 values.set(i, logReturn);
             } else {
-                Num factor = returnFactors.get(i);
+                Num factor = returnFactors.at(i);
                 Num rawReturn = factor.minus(one);
                 rawValues.set(i, rawReturn);
                 values.set(i, representation.toRepresentationFromRateOfReturn(rawReturn));

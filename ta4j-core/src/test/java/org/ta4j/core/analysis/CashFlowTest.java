@@ -609,4 +609,32 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(3, cashFlow.getValue(12));
     }
 
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        CashFlow cashFlow = new CashFlow(terminal, new BaseTradingRecord());
+
+        assertEquals(Integer.MAX_VALUE, cashFlow.getBarSeries().getEndIndex());
+        assertEquals(1, cashFlow.getSize());
+        assertNumEquals(1, cashFlow.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNeutralOne() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        CashFlow cashFlow = new CashFlow(offset, new BaseTradingRecord());
+
+        assertNumEquals(1, cashFlow.getValue(9));
+        assertNumEquals(1, cashFlow.getValue(13));
+        assertNumEquals(1, cashFlow.getValue(12));
+    }
+
 }

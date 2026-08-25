@@ -3,9 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
@@ -30,7 +27,7 @@ public class CashFlow implements PerformanceIndicator {
     /**
      * The (accrued) cash flow sequence (without trading costs).
      */
-    private final List<Num> values;
+    private final OffsetNumBuffer values;
 
     /**
      * The first logical bar index materialized in {@link #values}.
@@ -187,8 +184,8 @@ public class CashFlow implements PerformanceIndicator {
         int seriesEnd = this.barSeries.getEndIndex();
         this.valueStartIndex = Math.max(0, startIndex);
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
-        int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));
+        Num one = this.barSeries.numFactory().one();
+        this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -273,11 +270,12 @@ public class CashFlow implements PerformanceIndicator {
 
     /**
      * @param index the bar index
-     * @return the cash flow value at the index-th position
+     * @return the cash flow value at the index-th position, or the neutral
+     *         value one for indices outside the materialized window
      */
     @Override
     public Num getValue(int index) {
-        return getStoredValue(index);
+        return values.get(index);
     }
 
     @Override
@@ -307,38 +305,15 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     private void multiplyValue(int index, Num ratio) {
-        if (!containsIndex(index)) {
-            return;
-        }
-        int valueIndex = toValueIndex(index);
-        values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
+        values.multiply(index, ratio);
     }
 
     private void multiplyRange(int startIndex, int endIndex, Num ratio) {
-        if (values.isEmpty()) {
-            return;
-        }
-        int start = Math.max(valueStartIndex, startIndex);
-        int end = Math.min(endIndex, valueEndIndex);
-        if (start > end) {
-            return;
-        }
-        for (int i = start; i <= end; i++) {
-            int valueIndex = toValueIndex(i);
-            values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
-        }
-    }
-
-    private boolean containsIndex(int index) {
-        return index >= valueStartIndex && index <= valueEndIndex;
+        values.multiplyRange(startIndex, endIndex, ratio);
     }
 
     private Num getStoredValue(int index) {
-        return values.get(toValueIndex(index));
-    }
-
-    private int toValueIndex(int index) {
-        return index - valueStartIndex;
+        return values.get(index);
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {

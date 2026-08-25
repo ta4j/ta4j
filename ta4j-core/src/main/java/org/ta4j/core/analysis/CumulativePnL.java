@@ -3,9 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.*;
@@ -29,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
 public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
-    private final List<Num> values;
+    private final OffsetNumBuffer values;
     private final EquityCurveMode equityCurveMode;
 
     /**
@@ -46,9 +43,8 @@ public final class CumulativePnL implements PerformanceIndicator {
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.barSeries = snapshotSeries(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
+        Num zero = this.barSeries.numFactory().zero();
+        this.values = OffsetNumBuffer.of(this.barSeries, zero, zero);
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -208,6 +204,10 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     /**
      * {@inheritDoc}
+     * <p>
+     * Returns the cumulative PnL at the given absolute bar index. Indices
+     * outside the window materialized by the underlying series resolve to the
+     * neutral value zero.
      *
      * @since 0.19
      */
@@ -256,24 +256,11 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     private void addValue(int index, Num delta) {
-        if (index < 0 || index >= values.size()) {
-            return;
-        }
-        values.set(index, values.get(index).plus(delta));
+        values.add(index, delta);
     }
 
     private void addToRange(int startIndex, int endIndex, Num delta) {
-        if (values.isEmpty()) {
-            return;
-        }
-        int start = Math.max(0, startIndex);
-        int end = Math.min(endIndex, values.size() - 1);
-        if (start > end) {
-            return;
-        }
-        for (int i = start; i <= end; i++) {
-            values.set(i, values.get(i).plus(delta));
-        }
+        values.addRange(startIndex, endIndex, delta);
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
