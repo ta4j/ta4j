@@ -11,10 +11,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.Bar;
 import org.ta4j.core.analysis.cost.CostModel;
 
 /**
@@ -52,6 +53,8 @@ import org.ta4j.core.analysis.cost.CostModel;
  * cache), so in-place edits of retained {@link Bar} references can neither
  * alter nor mix already-produced curves.
  * </p>
+ *
+ * @since 0.24.2
  */
 public final class EquityBundle {
 
@@ -91,6 +94,7 @@ public final class EquityBundle {
      * @param evaluation    the work to run, not null
      * @param <T>           the work's result type
      * @return the work's result
+     * @since 0.24.2
      */
     public static <T> T evaluate(BarSeries series, TradingRecord tradingRecord, Supplier<T> evaluation) {
         Objects.requireNonNull(series, "series cannot be null");
@@ -117,6 +121,7 @@ public final class EquityBundle {
      * @param series        the bar series to look up, not null
      * @param tradingRecord the trading record to look up, not null
      * @return the matching active bundle, or {@code null}
+     * @since 0.24.2
      */
     public static EquityBundle current(BarSeries series, TradingRecord tradingRecord) {
         ArrayDeque<EquityBundle> scopes = ACTIVE_SCOPES.get();
@@ -191,13 +196,16 @@ public final class EquityBundle {
         long revision = series.getBarHistoryRevision();
         revision = revision * 1_000_003L + series.getEndIndex();
         revision = revision * 1_000_003L + series.getRemovedBarsCount();
-        // Include reconstructed positions and open exposure: AVG_COST may merge
-        // fills while keeping the reconstructed trade count unchanged.
+        if (tradingRecord instanceof BaseTradingRecord baseTradingRecord) {
+            // Constant-time structural revision: every recorded fill bumps it.
+            return revision * 1_000_003L + baseTradingRecord.getModificationCount();
+        }
+        // Custom TradingRecord implementations expose no modification counter:
+        // fall back to hashing their reconstructed positions and open exposure.
         revision = revision * 1_000_003L + tradingRecord.getPositions().hashCode();
         revision = revision * 1_000_003L + tradingRecord.getTrades().hashCode();
         revision = revision * 1_000_003L + tradingRecord.getOpenPositions().hashCode();
-        revision = revision * 1_000_003L + Objects.hashCode(tradingRecord.getCurrentPosition());
-        return revision;
+        return revision * 1_000_003L + Objects.hashCode(tradingRecord.getCurrentPosition());
     }
 
     /**
