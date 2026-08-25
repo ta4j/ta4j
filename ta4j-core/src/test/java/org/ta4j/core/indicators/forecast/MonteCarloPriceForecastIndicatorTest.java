@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -152,6 +153,35 @@ public class MonteCarloPriceForecastIndicatorTest
         assertEquals(1, removed.decisionIndex());
         assertEquals(2, removed.horizon());
         assertFalse(removed.isStable());
+    }
+
+    @Test
+    public void customMethodReplacesShockSimulation() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ZERO);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series), state)
+                .horizon(1)
+                .iterationCount(25)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(context.numFactory().zero());
+                    }
+                    return samples;
+                })
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertEquals(25, prediction.sampleCount());
+        assertNumEquals(numOf(100), prediction.mean());
+        assertNumEquals(numOf(100), prediction.median());
+        assertNumEquals(0, prediction.standardDeviation());
     }
 
     private Forecast explicitHistoricalForecast(double down, double up) {

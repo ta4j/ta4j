@@ -47,6 +47,8 @@ public class TradingBotOnMovingBarSeries {
      */
     private static Num LAST_BAR_CLOSE_PRICE;
 
+    private static Instant LAST_BAR_END_TIME;
+
     /**
      * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
      *
@@ -112,10 +114,17 @@ public class TradingBotOnMovingBarSeries {
         Num highPrice = openPrice.plus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
+        Instant endTime = Instant.now();
+        if (LAST_BAR_END_TIME != null && !endTime.isAfter(LAST_BAR_END_TIME)) {
+            // Clock granularity can repeat across zero-delay ticks; addBar
+            // requires strictly increasing end times.
+            endTime = LAST_BAR_END_TIME.plusNanos(1);
+        }
+        LAST_BAR_END_TIME = endTime;
         return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
+                .endTime(endTime)
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)

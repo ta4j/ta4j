@@ -12,6 +12,8 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
@@ -39,6 +41,9 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
     private final MonteCarloSettings settings;
     private final MonteCarloSimulation simulation;
+    private final MonteCarloReturnProjectionIndicator.ShockModel shockModel;
+    private final MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode;
+    private final double volatilityDecayFactor;
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
@@ -89,11 +94,14 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     private MonteCarloPriceForecastIndicator(Builder builder) {
         super(IndicatorUtils.requireSameSeries(builder.priceIndicator, builder.stateIndicator));
-        IndicatorUtils.requireSameSeries(builder.stateIndicator.getReturnIndicator(), builder.stateIndicator);
         this.priceIndicator = builder.priceIndicator;
         this.stateIndicator = builder.stateIndicator;
         this.settings = builder.settings();
-        this.simulation = new MonteCarloSimulation(builder.stateIndicator, this.settings);
+        this.shockModel = builder.shockModel;
+        this.volatilityUpdateMode = builder.volatilityUpdateMode;
+        this.volatilityDecayFactor = builder.volatilityDecayFactor;
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
+                builder.methodOrDefault());
     }
 
     /**
@@ -191,8 +199,8 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      */
     public MonteCarloPriceForecastSpec accelerationSpec() {
         return new MonteCarloPriceForecastSpec(priceIndicator, stateIndicator, settings.horizon(),
-                settings.iterationCount(), settings.lookbackBarCount(), settings.seed(), settings.shockModel(),
-                settings.volatilityUpdateMode(), settings.volatilityDecayFactor(), settings.quantileProbabilities());
+                settings.iterationCount(), settings.lookbackBarCount(), settings.seed(), shockModel,
+                volatilityUpdateMode, volatilityDecayFactor, settings.quantileProbabilities());
     }
 
     private static Indicator<Num> sourceIndicator(
@@ -232,6 +240,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         private MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode = MonteCarloReturnProjectionIndicator.VolatilityUpdateMode.CONSTANT;
         private double volatilityDecayFactor = 0.94d;
         private List<Double> quantileProbabilities = Forecast.DEFAULT_QUANTILE_PROBABILITIES;
+        private MonteCarloMethod monteCarloMethod;
 
         private Builder(Indicator<Num> priceIndicator,
                 ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
@@ -341,6 +350,19 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         }
 
         /**
+         * Overrides the Monte Carlo technique with a custom implementation, replacing
+         * the configured shock model, volatility update mode, and decay factor.
+         *
+         * @param value technique generating terminal samples
+         * @return this builder
+         * @since 0.24.2
+         */
+        public Builder monteCarloMethod(MonteCarloMethod value) {
+            monteCarloMethod = Objects.requireNonNull(value, "monteCarloMethod must not be null");
+            return this;
+        }
+
+        /**
          * Builds the validated exact price projection.
          *
          * @return configured price projection
@@ -351,8 +373,12 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         }
 
         private MonteCarloSettings settings() {
-            return new MonteCarloSettings(horizon, iterationCount, lookbackBarCount, seed, shockModel,
-                    volatilityUpdateMode, volatilityDecayFactor, quantileProbabilities);
+            return new MonteCarloSettings(horizon, iterationCount, lookbackBarCount, seed, quantileProbabilities);
+        }
+
+        private MonteCarloMethod methodOrDefault() {
+            return monteCarloMethod != null ? monteCarloMethod
+                    : new ShockPathMonteCarloMethod(shockModel, volatilityUpdateMode, volatilityDecayFactor);
         }
     }
 }
