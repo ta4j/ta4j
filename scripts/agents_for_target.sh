@@ -49,8 +49,24 @@ else
   # Portable fallback: BSD and GNU find both support -name glob matching.
   # MSYS/Git Bash find emits backslash separators; normalize them so the
   # upward AGENTS.md walk sees ordinary slash-separated paths.
+  # Path-shaped targets (containing "/") are matched by splitting the
+  # directory prefix from the basename, preserving the rg path-input contract.
   file_listing() {
-    find "$root" -type f -name "$target_glob" 2>/dev/null | tr '\\' '/'
+    case "$target_glob" in
+      */*)
+        local dir_glob="${target_glob%/*}"
+        local base_glob="${target_glob##*/}"
+        local match
+        for match in "$root"/"$dir_glob"/"$base_glob"; do
+          if [ -f "$match" ]; then
+            printf '%s\n' "$match"
+          fi
+        done
+        ;;
+      *)
+        find "$root" -type f -name "$target_glob" 2>/dev/null | tr '\\' '/'
+        ;;
+    esac
   }
 fi
 
