@@ -12,14 +12,20 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -230,5 +236,52 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
             return upsideExcess == 0d ? 0d : Double.NaN;
         }
         return upsideExcess / downsideShortfall;
+    }
+
+    @Test
+    public void scansTerminalWindowWithoutIndexWrap() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 2, terminal),
+                Trade.sellAt(Integer.MAX_VALUE, terminal));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(terminal, record);
+
+        assertTrue(ratio.isPositive());
+    }
+
+    @Test
+    public void indexesReturnsFromCapturedSnapshotOffsets() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        // Mimics a concurrent retention advance: the live series advertises the
+        // full window while snapshot() returns a window shifted by one bar.
+        BarSeries live = new BaseBarSeries("omega-live", new ArrayList<>(source.getBarData())) {
+            @Override
+            public NumFactory numFactory() {
+                return numFactory;
+            }
+
+            @Override
+            public BarSeries snapshot() {
+                List<Bar> bars = getBarData();
+                return new MockBarSeriesBuilder().withNumFactory(numFactory())
+                        .withBars(bars.subList(1, bars.size()))
+                        .withBeginIndex(getBeginIndex() + 1)
+                        .build();
+            }
+        };
+        var record = new BaseTradingRecord(Trade.buyAt(0, live), Trade.sellAt(2, live));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(live, record);
+
+        // The shifted snapshot window [1, 2] has no preceding bar for index 1,
+        // so its first slot is NaN; only the positive return at index 2 remains,
+        // and Omega is undefined (NaN) without any downside.
+        assertTrue(ratio.isNaN());
     }
 }

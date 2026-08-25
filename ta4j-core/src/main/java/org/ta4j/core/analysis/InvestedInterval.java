@@ -88,8 +88,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         int exitIndex = position.isClosed() ? position.getExit().getIndex() : seriesEnd;
         int start = (int) startLong;
         int end = Math.min(exitIndex, seriesEnd);
-        for (int i = start; i <= end; i++) {
-            invested[i - beginIndex] = true;
+        for (long i = start; i <= end; i++) {
+            invested[(int) i - beginIndex] = true;
         }
     }
 

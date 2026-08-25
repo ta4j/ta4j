@@ -127,4 +127,20 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(9)).as("below window").isFalse();
     }
 
+    @Test
+    public void marksIntervalEndingAtTerminalBarWithoutOverflow() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, terminal),
+                Trade.sellAt(Integer.MAX_VALUE, terminal));
+
+        var indicator = new InvestedInterval(terminal, tradingRecord);
+
+        assertThat(indicator.getValue(Integer.MAX_VALUE - 1)).as("entry interval").isFalse();
+        assertThat(indicator.getValue(Integer.MAX_VALUE)).as("exit interval").isTrue();
+    }
+
 }

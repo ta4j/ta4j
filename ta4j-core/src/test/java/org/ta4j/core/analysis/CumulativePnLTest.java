@@ -322,6 +322,20 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void openTerminalPositionDoesNotWrapLoopIndexes() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, terminal));
+
+        CumulativePnL pnl = new CumulativePnL(terminal, record);
+
+        assertNumEquals(0, pnl.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
     public void outOfWindowReadsReturnNeutralZero() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)

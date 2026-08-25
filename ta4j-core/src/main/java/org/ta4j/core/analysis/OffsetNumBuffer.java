@@ -60,7 +60,8 @@ final class OffsetNumBuffer {
      * @param series       the bar series
      * @param initialValue the value pre-filling the window
      * @param neutral      the value returned for reads outside the window
-     * @return a buffer covering {@code [series.getBeginIndex(), series.getEndIndex()]}
+     * @return a buffer covering
+     *         {@code [series.getBeginIndex(), series.getEndIndex()]}
      */
     static OffsetNumBuffer of(BarSeries series, Num initialValue, Num neutral) {
         return new OffsetNumBuffer(series.getBeginIndex(), series.getEndIndex(), initialValue, neutral);
@@ -94,8 +95,8 @@ final class OffsetNumBuffer {
     }
 
     /**
-     * Returns the value at the given absolute index, or the neutral value when
-     * the index lies outside the window.
+     * Returns the value at the given absolute index, or the neutral value when the
+     * index lies outside the window.
      *
      * @param index the absolute index
      * @return the stored or neutral value
@@ -109,8 +110,7 @@ final class OffsetNumBuffer {
     }
 
     /**
-     * Adds the given delta at the index. Indexes outside the window are
-     * ignored.
+     * Adds the given delta at the index. Indexes outside the window are ignored.
      *
      * @param index the absolute index
      * @param delta the delta to add
@@ -124,8 +124,8 @@ final class OffsetNumBuffer {
     }
 
     /**
-     * Adds the given delta over the absolute index range, clamped to the
-     * window. Ranges entirely outside the window are ignored.
+     * Adds the given delta over the absolute index range, clamped to the window.
+     * Ranges entirely outside the window are ignored.
      *
      * @param fromIndex the first absolute index of the range
      * @param toIndex   the last absolute index of the range
@@ -141,8 +141,8 @@ final class OffsetNumBuffer {
     }
 
     /**
-     * Multiplies the value at the index by the factor. Indexes outside the
-     * window are ignored.
+     * Multiplies the value at the index by the factor. Indexes outside the window
+     * are ignored.
      *
      * @param index  the absolute index
      * @param factor the factor to multiply by
@@ -156,8 +156,8 @@ final class OffsetNumBuffer {
     }
 
     /**
-     * Multiplies the values over the absolute index range by the factor,
-     * clamped to the window. Ranges entirely outside the window are ignored.
+     * Multiplies the values over the absolute index range by the factor, clamped to
+     * the window. Ranges entirely outside the window are ignored.
      *
      * @param fromIndex the first absolute index of the range
      * @param toIndex   the last absolute index of the range

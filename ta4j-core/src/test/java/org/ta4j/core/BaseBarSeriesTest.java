@@ -721,6 +721,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(0, trailingCopy.getBeginIndex());
         assertEquals(1, trailingCopy.getEndIndex());
         assertEquals(5, trailingCopy.getBarData().size());
+        assertThrows(UnsupportedOperationException.class, () -> trailingCopy.getBarData().add(testBars.get(0)));
 
         // Empty series.
         BarSeries emptyCopy = emptySeries.snapshot();
