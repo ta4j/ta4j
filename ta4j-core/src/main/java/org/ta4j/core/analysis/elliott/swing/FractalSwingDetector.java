@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.elliott.swing;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,10 +11,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Swing detector backed by fractal swing high/low indicators.
@@ -38,18 +45,18 @@ public final class FractalSwingDetector implements SwingDetector {
     private static final int MAX_CACHED_SERIES = 4;
 
     /**
-     * Shared indicator per (series, degree): rebuilding an
-     * {@link ElliottSwingIndicator} for every as-of evaluation discards its
-     * incremental {@code CachedIndicator} state and makes causal replays
-     * unnecessarily expensive. The replay subclass clears each cumulative result
-     * after use, while the child swing indicators retain the incremental state
-     * needed to recompute that result.
+     * Shared incremental causal-replay state per (series, degree): rebuilding swing
+     * detection for every as-of evaluation makes ascending replays merge the full
+     * cumulative pivot prefix at every index. Each state keeps the merged
+     * alternating pivot sequence between queries and absorbs only the newly
+     * confirmed high/low pivots as an ascending replay advances, resetting on
+     * detected series history changes or descending queries.
      */
-    private final Map<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> indicatorCache = Collections
+    private final Map<BarSeries, Map<ElliottDegree, CausalReplayState>> replayStates = Collections
             .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(
-                        final Map.Entry<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> eldest) {
+                        final Map.Entry<BarSeries, Map<ElliottDegree, CausalReplayState>> eldest) {
                     return size() > MAX_CACHED_SERIES;
                 }
             });
@@ -92,11 +99,11 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final ElliottSwingIndicator indicator = indicatorCache
-                .computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(degree, ignored -> new ReplayElliottSwingIndicator(series, lookbackLength,
-                        lookforwardLength, allowedEqualBars, degree));
-        return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
+        return replayStates.computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(degree,
+                        ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
+                                degree))
+                .resultAt(clampedIndex);
     }
 
     /**
@@ -124,24 +131,190 @@ public final class FractalSwingDetector implements SwingDetector {
     }
 
     /**
-     * Elliott indicator used by causal replay. Its cumulative output lists are
-     * large, so the subclass clears the inherited result cache after each read
-     * while retaining the nested swing indicators' reusable state.
+     * Per-(series, degree) incremental causal replay. The fractal high/low swing
+     * indicators scan each newly observed bar once and expose the confirmed swing
+     * points visible at an as-of index; this state keeps the merged alternating
+     * pivot sequence between queries, so an ascending replay absorbs only the newly
+     * confirmed pivots instead of rebuilding the cumulative prefix at every index.
+     * Queries below the merged position or detected series history changes fall
+     * back to one full re-merge, which is exactly a from-scratch detection.
      */
-    private static final class ReplayElliottSwingIndicator extends ElliottSwingIndicator {
+    private static final class CausalReplayState {
 
-        private ReplayElliottSwingIndicator(final BarSeries series, final int lookbackLength,
-                final int lookforwardLength, final int allowedEqualBars, final ElliottDegree degree) {
-            super(series, lookbackLength, lookforwardLength, allowedEqualBars, degree);
+        private final BarSeries series;
+        private final RecentSwingIndicator swingHigh;
+        private final RecentSwingIndicator swingLow;
+        private final ElliottDegree degree;
+
+        /** Merged alternating pivots visible up to {@link #lastScannedIndex}. */
+        private final List<Pivot> pivots = new ArrayList<>();
+
+        /** Latest high/low swing indexes consumed by the causal replay cursor. */
+        private int lastHighIndex = Integer.MIN_VALUE;
+        private int lastLowIndex = Integer.MIN_VALUE;
+        private int lastScannedIndex = Integer.MIN_VALUE;
+
+        // History observation mirroring the swing indicators' own reset rules.
+        private long observedRevision;
+        private int observedBeginIndex;
+        private int observedEndIndex;
+        private Bar observedLastBar;
+
+        private CausalReplayState(final BarSeries series, final int lookbackLength, final int lookforwardLength,
+                final int allowedEqualBars, final ElliottDegree degree) {
+            this.series = series;
+            this.swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            this.degree = degree;
+            this.observedRevision = series.getBarHistoryRevision();
+            this.observedBeginIndex = series.getBeginIndex();
+            this.observedEndIndex = series.getEndIndex();
+            this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
         }
 
-        @Override
-        public List<ElliottSwing> getValue(final int index) {
-            try {
-                return super.getValue(index);
-            } finally {
-                invalidateCache();
+        /**
+         * Returns the detection result for {@code index}, extending the merged pivot
+         * state incrementally when the query advances the as-of position.
+         */
+        private synchronized SwingDetectorResult resultAt(final int index) {
+            if (index < lastScannedIndex || seriesHistoryChanged()) {
+                reset();
             }
+
+            final int beginIndex = series.getBeginIndex();
+            final int scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : lastScannedIndex + 1;
+            for (int asOfIndex = scanStart; asOfIndex <= index; asOfIndex++) {
+                final int highIndex = swingHigh.getLatestSwingIndex(asOfIndex);
+                final int lowIndex = swingLow.getLatestSwingIndex(asOfIndex);
+                final boolean newHigh = highIndex != lastHighIndex;
+                final boolean newLow = lowIndex != lastLowIndex;
+
+                if (newHigh && newLow && highIndex == lowIndex) {
+                    if (highIndex >= beginIndex) {
+                        final Num highPrice = swingHigh.getPriceIndicator().getValue(highIndex);
+                        final Num lowPrice = swingLow.getPriceIndicator().getValue(lowIndex);
+                        final PivotType chosen;
+                        if (pivots.isEmpty()) {
+                            if (Num.isNaNOrNull(highPrice)) {
+                                chosen = PivotType.LOW;
+                            } else if (Num.isNaNOrNull(lowPrice)) {
+                                chosen = PivotType.HIGH;
+                            } else {
+                                chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
+                            }
+                        } else {
+                            chosen = pivots.get(pivots.size() - 1).type().opposite();
+                        }
+                        absorb(chosen == PivotType.HIGH ? new Pivot(highIndex, highPrice, PivotType.HIGH)
+                                : new Pivot(lowIndex, lowPrice, PivotType.LOW));
+                    }
+                } else if (newHigh && newLow) {
+                    if (highIndex < lowIndex) {
+                        if (highIndex >= beginIndex) {
+                            absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex),
+                                    PivotType.HIGH));
+                        }
+                        if (lowIndex >= beginIndex) {
+                            absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                        }
+                    } else {
+                        if (lowIndex >= beginIndex) {
+                            absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                        }
+                        if (highIndex >= beginIndex) {
+                            absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex),
+                                    PivotType.HIGH));
+                        }
+                    }
+                } else {
+                    if (newHigh && highIndex >= beginIndex) {
+                        absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                    }
+                    if (newLow && lowIndex >= beginIndex) {
+                        absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                    }
+                }
+
+                lastHighIndex = highIndex;
+                lastLowIndex = lowIndex;
+            }
+            lastScannedIndex = index;
+            return snapshot();
         }
+
+        private void absorb(final Pivot pivot) {
+            if (Num.isNaNOrNull(pivot.price())) {
+                return;
+            }
+            if (pivots.isEmpty()) {
+                pivots.add(pivot);
+                return;
+            }
+            final Pivot last = pivots.get(pivots.size() - 1);
+            if (last.type() == pivot.type()) {
+                if (pivot.type() == PivotType.HIGH && !pivot.price().isLessThan(last.price())
+                        || pivot.type() == PivotType.LOW && !pivot.price().isGreaterThan(last.price())) {
+                    pivots.set(pivots.size() - 1, pivot);
+                }
+                return;
+            }
+            pivots.add(pivot);
+        }
+
+        /** Builds the immutable swing chain over the merged pivots. */
+        private SwingDetectorResult snapshot() {
+            if (pivots.size() < 2) {
+                return new SwingDetectorResult(List.of(), List.of());
+            }
+            final List<ElliottSwing> swings = new ArrayList<>(pivots.size() - 1);
+            for (int i = 1; i < pivots.size(); i++) {
+                final Pivot previous = pivots.get(i - 1);
+                final Pivot current = pivots.get(i);
+                swings.add(
+                        new ElliottSwing(previous.index(), current.index(), previous.price(), current.price(), degree));
+            }
+            return SwingDetectorResult.fromSwings(swings);
+        }
+
+        private void reset() {
+            pivots.clear();
+            lastHighIndex = Integer.MIN_VALUE;
+            lastLowIndex = Integer.MIN_VALUE;
+            lastScannedIndex = Integer.MIN_VALUE;
+        }
+
+        /**
+         * Detects series history changes with the same discipline the swing indicators
+         * apply internally, so stale merge state never survives a mutation they would
+         * themselves discard.
+         */
+        private boolean seriesHistoryChanged() {
+            final long currentRevision = series.getBarHistoryRevision();
+            final int currentBeginIndex = series.getBeginIndex();
+            final int currentEndIndex = series.getEndIndex();
+            final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            final boolean changed = currentBeginIndex != observedBeginIndex
+                    || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
+                    || (currentRevision < 0L && (currentEndIndex < observedEndIndex
+                            || (currentEndIndex == observedEndIndex && currentLastBar != observedLastBar)));
+            observedRevision = currentRevision;
+            observedBeginIndex = currentBeginIndex;
+            observedEndIndex = currentEndIndex;
+            observedLastBar = currentLastBar;
+            return changed;
+        }
+    }
+
+    private enum PivotType {
+        HIGH, LOW;
+
+        private PivotType opposite() {
+            return this == HIGH ? LOW : HIGH;
+        }
+    }
+
+    private record Pivot(int index, Num price, PivotType type) {
     }
 }

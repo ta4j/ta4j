@@ -728,7 +728,14 @@ final class StudyRunner {
             }
             boolean allRulesPass = true;
             for (int index = 0; index < activeRules.size(); index++) {
-                final RuleEvidence evidence = activeRules.get(index).evaluate(candidate, series);
+                final RelationshipRule rule = activeRules.get(index);
+                final RuleEvidence evidence = rule.evaluate(candidate, series);
+                // Evidence carrying another rule's id would silently credit a
+                // foreign ledger row; reject before any state or score lands.
+                if (!rule.id().equals(evidence.ruleId())) {
+                    throw new IllegalArgumentException("rule evidence id mismatch: rule " + rule.id()
+                            + " returned evidence for " + evidence.ruleId());
+                }
                 evidenceEvaluationCount++;
                 if (evidence.state() != EvidenceState.PASS) {
                     allRulesPass = false;

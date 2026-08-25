@@ -131,6 +131,28 @@ class StudyRunnerTest {
     }
 
     @Test
+    void mismatchedRuleEvidenceIdFailsBeforeAttribution() {
+        // Regression: a rule returning evidence under a foreign id used to be
+        // silently attributed to the active rule's ledger row.
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
+        final RelationshipRule mislabeled = new RelationshipRule() {
+            @Override
+            public String id() {
+                return "foo";
+            }
+
+            @Override
+            public RuleEvidence evaluate(final TopologyCandidate candidate) {
+                return RuleEvidence.pass("bar", List.of("synthetic"), "mislabeled synthetic pass");
+            }
+        };
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), List.of(mislabeled),
+                configuration);
+
+        assertThrows(IllegalArgumentException.class, () -> runner.evaluate("BTC", buildSeries(24), 0, 23));
+    }
+
+    @Test
     void syntheticIntegrationProducesAllStudyModesAndSeparatedHypotheses() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
