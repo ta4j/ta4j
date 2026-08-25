@@ -880,10 +880,9 @@ public final class StudyRunner {
         }
     }
 
-    /** One inclusive date partition. */
     /**
-     * Locked named evaluation window.
-     * 
+     * One inclusive date partition for a locked named evaluation window.
+     *
      * @since 0.24.2
      */
     public record Partition(String name, LocalDate start, LocalDate end) {
@@ -903,10 +902,9 @@ public final class StudyRunner {
         }
     }
 
-    /** Immutable locked partition set and calibration embargo. */
     /**
-     * Locked partition set with the forbidden calibration boundary.
-     * 
+     * Immutable locked partition set with the forbidden calibration boundary.
+     *
      * @since 0.24.2
      */
     public record Partitions(List<Partition> entries, LocalDate forbiddenCalibrationStart) {
@@ -984,14 +982,8 @@ public final class StudyRunner {
         }
     }
 
-    /** Complete protocol-independent study configuration. */
     /**
-     * @param primaryDetector stable identifier of the detector factory that
-     *                        produces H1/H2/null results; robustness rows carry
-     *                        their own names
-     */
-    /**
-     * Locked study configuration.
+     * Complete protocol-independent locked study configuration.
      *
      * @param partitions          locked evaluation windows
      * @param protocolFingerprint verified protocol hash this run executes
@@ -999,7 +991,8 @@ public final class StudyRunner {
      * @param nullBlockLengths    stationary bootstrap block lengths
      * @param nullEnsembleSize    members generated per grammar and block length
      * @param robustnessDetectors detector matrix specifications
-     * @param primaryDetector     stable name of the primary detector
+     * @param primaryDetector     stable name of the primary detector; robustness
+     *                            rows carry their own names
      * @param competingModes      preregistered competing-mode names executed by the
      *                            study; {@code null} runs the engine-default spread
      *                            of every kernel grammar plus the structural
@@ -1060,11 +1053,6 @@ public final class StudyRunner {
             }
         }
 
-        /**
-         * Engine-default configuration for in-kernel studies.
-         * 
-         * @since 0.24.2
-         */
         /** @return defensive copies; configuration is shared across modules. */
         @Override
         public List<Integer> nullBlockLengths() {
@@ -1083,6 +1071,12 @@ public final class StudyRunner {
             return competingModes == null ? null : List.copyOf(competingModes);
         }
 
+        /**
+         * Engine-default configuration for in-kernel studies.
+         *
+         * @return locked engine-default configuration
+         * @since 0.24.2
+         */
         public static Configuration lockedDefault() {
             return new Configuration(Partitions.lockedDefault(), DEFAULT_FINGERPRINT, 5_252_026L, List.of(20, 60), 200,
                     DetectorRobustnessMatrix.defaults(), DEFAULT_PRIMARY_DETECTOR, null);

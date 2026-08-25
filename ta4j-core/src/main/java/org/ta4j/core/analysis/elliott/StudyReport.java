@@ -91,8 +91,7 @@ public final class StudyReport {
     /**
      * Stable identifier of the primary detector factory that produced H1/H2/null
      * results.
-     */
-    /**
+     *
      * @return report component.
      * @since 0.24.2
      */
@@ -165,13 +164,8 @@ public final class StudyReport {
     }
 
     /**
-     * Serializes this report with a fixed insertion order and no locale-sensitive
-     * formatting.
-     *
-     * @return deterministic JSON representation
-     */
-    /**
-     * Serializes this report deterministically for durable storage.
+     * Serializes this report deterministically for durable storage with a fixed
+     * insertion order and no locale-sensitive formatting.
      *
      * @return fixed-order JSON payload
      * @since 0.24.2
