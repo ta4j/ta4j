@@ -235,7 +235,7 @@ public class CashFlow implements PerformanceIndicator {
      * @param finalIndex           index up until values of open positions are
      *                             considered
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.2
+     * @since 0.24.2
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
@@ -448,11 +448,22 @@ public class CashFlow implements PerformanceIndicator {
         }
         int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
         int seriesBegin = barSeries.getBeginIndex();
-        if (endIndex < seriesBegin) {
-            return;
-        }
         int windowStartIndex = Math.max(valueStartIndex, seriesBegin);
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
+        if (endIndex < seriesBegin) {
+            Trade exit = position.getExit();
+            if (exit != null) {
+                NumFactory numFactory = barSeries.numFactory();
+                Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
+                        ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
+                        : position.getHoldingCost(endIndex);
+                Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
+                Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
+                Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+                multiplyRange(windowStartIndex, windowEndIndex, ratio);
+            }
+            return;
+        }
         if (windowStartIndex > windowEndIndex || endIndex < windowStartIndex) {
             return;
         }
