@@ -66,22 +66,31 @@ cleanup_old_logs() {
         return 0
     fi
     
-    # Find all full-build-*.log files and sort by filename (which contains timestamp)
-    # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log
-    # Sorting alphabetically gives chronological order (newest last)
-    local files
-    files=$(find "$log_dir" -maxdepth 1 -type f -name "full-build-*.log" 2>/dev/null | sort || true)
-    if [[ -z "$files" ]]; then
+    # Find all full-build-*.log files and sort by filename (which contains timestamp).
+    # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log; sorting alphabetically
+    # gives chronological order (newest last). Bash globs stay portable across
+    # GNU find and BSD find (macOS lacks -maxdepth).
+    local -a log_files=()
+    local entry
+    for entry in "$log_dir"/full-build-*.log; do
+        if [[ -f "$entry" ]]; then
+            log_files+=("$entry")
+        fi
+    done
+    if ((${#log_files[@]} == 0)); then
         return 0
     fi
-
-    # Delete everything except the newest keep_count files; use POSIX-safe tail/awk
+    local sorted_files
+    sorted_files="$(printf '%s\n' "${log_files[@]}" | sort || true)"
+    if [[ -z "$sorted_files" ]]; then
+        return 0
+    fi
     local file_count
-    file_count=$(printf '%s\n' "$files" | grep -c . || true)
+    file_count=$(printf '%s\n' "$sorted_files" | grep -c . || true)
     local delete_count=$((file_count - keep_count))
     if ((delete_count > 0)); then
         local files_to_delete
-        files_to_delete=$(printf '%s\n' "$files" | head -n "$delete_count")
+        files_to_delete=$(printf '%s\n' "$sorted_files" | head -n "$delete_count")
         while IFS= read -r file; do
             if [[ -n "$file" && -f "$file" ]]; then
                 rm -f "$file"

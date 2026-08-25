@@ -63,7 +63,9 @@ import org.ta4j.core.num.Num;
  * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
  * {@link OpenPositionHandling} setting controls whether open positions
  * contribute to the return calculation. {@link EquityCurveMode#REALIZED} always
- * ignores open positions regardless of the requested handling.
+ * ignores open positions regardless of the requested handling. A null or still
+ * open position has no completed equity path and yields the configured
+ * representation's neutral value (for example, 1.0 under MULTIPLICATIVE).
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -153,7 +155,9 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.isOpened()) {
-            return series.numFactory().zero();
+            // No completed equity path exists yet, so report the representation's
+            // neutral value (0 for DECIMAL, 1 for MULTIPLICATIVE) instead of a raw zero.
+            return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
         Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         Num netReturn = calculateNetReturn(series, position);
