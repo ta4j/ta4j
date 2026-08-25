@@ -178,6 +178,7 @@ class TopologyAnalyzerTest {
         assertThat(analysis.status()).isNotEqualTo(TopologyStatus.COMPLETE);
         assertThat(analysis.status()).isEqualTo(TopologyStatus.INVALIDATED);
         assertThat(analysis.candidates()).isEmpty();
+        assertThat(analysis.explanation()).contains("BULLISH", "spanning bars 0-5");
     }
 
     @Test

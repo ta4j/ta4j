@@ -117,8 +117,8 @@ final class TopologyAnalyzer {
         }
         if (breachedByNewest != null) {
             return TopologyAnalysis.invalidated("newest confirmed pivot breached the origin of the most recent "
-                    + grammar + " candidate spanning bars " + breachedByNewest.startBarIndex() + "-"
-                    + breachedByNewest.endBarIndex());
+                    + breachedByNewest.direction() + " " + grammar + " candidate spanning bars "
+                    + breachedByNewest.startBarIndex() + "-" + breachedByNewest.endBarIndex());
         }
         if (live.size() == 1) {
             return new TopologyAnalysis(

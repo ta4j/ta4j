@@ -198,12 +198,12 @@ final class BlockBootstrapNulls {
             }
             return numFactory.one().dividedBy(expNum(numFactory, -y));
         }
-        final int whole = (int) Math.floor(y);
+        final long whole = (long) Math.floor(y);
         Num result = numFactory.numOf(y - whole).exp();
         Num base = numFactory.one().exp();
-        int n = whole;
+        long n = whole;
         while (n > 0) {
-            if ((n & 1) == 1) {
+            if ((n & 1L) == 1L) {
                 result = result.multipliedBy(base);
             }
             n >>= 1;

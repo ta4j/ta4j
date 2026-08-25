@@ -409,6 +409,34 @@ class BlockBootstrapNullsTest {
     }
 
     @Test
+    void expNumHandlesWholeExponentsBeyondIntRange() {
+        final NumFactory numFactory = DecimalNumFactory.getInstance(20);
+        final BarSeries source = new BaseBarSeriesBuilder().withName("large-integral-exp-decimal")
+                .withNumFactory(numFactory)
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num close = numFactory.one();
+        for (int index = 0; index < 2; index++) {
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final BarSeries member = BlockBootstrapNulls.generateMember(source, new double[] { 3_000_000_000d }, 1, 7L, 0);
+        final BigDecimal actual = (BigDecimal) member.getBar(1).getClosePrice().getDelegate();
+        assertTrue(actual.scale() < -1_000_000_000,
+                "large integral exponent must not be truncated to int: " + actual.scale());
+    }
+
+    @Test
     void logReturnsSurviveRatiosBeyondDoubleRange() {
         // A single-bar jump from 1 to 1e400 has no finite double ratio; the
         // magnitude decomposition must still yield +-ln(1e400) instead of

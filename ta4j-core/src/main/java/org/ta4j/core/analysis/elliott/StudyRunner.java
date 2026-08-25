@@ -754,7 +754,7 @@ final class StudyRunner {
             }
             case INVALIDATED -> {
                 invalidatedCount++;
-                updateStability(Set.of("invalidated"));
+                updateStability(Set.of("invalidated:" + analysis.explanation()));
             }
             case INSUFFICIENT_HISTORY -> {
                 insufficientHistoryCount++;
