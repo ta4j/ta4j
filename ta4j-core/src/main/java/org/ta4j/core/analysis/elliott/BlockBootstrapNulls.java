@@ -331,7 +331,12 @@ final class BlockBootstrapNulls {
         // wick 1e308 against source close Double.MAX_VALUE), while the ratio
         // wick / sourceClose stays inside double range. The reordered product
         // preserves such wicks instead of clamping them to the close.
-        final Num scaled = close.multipliedBy(value.dividedBy(sourceClose));
+        Num scaled = close.multipliedBy(value.dividedBy(sourceClose));
+        if (scaled.isZero() && !value.isZero() && !close.isZero()) {
+            // If the ratio underflows before multiplication, reverse the
+            // operations so a representable subnormal wick is not lost.
+            scaled = value.multipliedBy(close.dividedBy(sourceClose));
+        }
         // A range-bounded domain that cannot hold the scaled wick clamps to the
         // member close instead of letting infinity or NaN reach BaseBar.
         if (scaled.getDelegate() instanceof Double delegate && !Double.isFinite(delegate)) {

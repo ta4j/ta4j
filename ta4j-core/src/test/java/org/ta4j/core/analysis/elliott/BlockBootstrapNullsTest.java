@@ -17,6 +17,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
@@ -33,7 +34,7 @@ class BlockBootstrapNullsTest {
         // through the accumulated log-close so a finite source path can never
         // materialize an infinite close (or downstream NaN) in null members.
         final BarSeries source = new BaseBarSeriesBuilder().withName("member-overflow")
-                .withNumFactory(org.ta4j.core.num.DoubleNumFactory.getInstance())
+                .withNumFactory(DoubleNumFactory.getInstance())
                 .build();
         final Instant start = Instant.parse("2018-01-01T00:00:00Z");
         final double[] closes = { Double.MIN_VALUE, Double.MAX_VALUE };
@@ -116,6 +117,40 @@ class BlockBootstrapNullsTest {
         final Num scaled = BlockBootstrapNulls.scaled(DoubleNum.valueOf(1e308), DoubleNum.valueOf(Double.MAX_VALUE),
                 DoubleNum.valueOf(Double.MAX_VALUE));
         assertEquals(1e308d, scaled.doubleValue(), 1e292d);
+    }
+
+    @Test
+    void memberBarsPreserveSubnormalScaledWicks() {
+        final BarSeries source = new BaseBarSeriesBuilder().withName("subnormal-wick")
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num close = DoubleNum.valueOf(Double.MAX_VALUE);
+        source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(start.plus(Duration.ofDays(1)))
+                .openPrice(close)
+                .highPrice(close)
+                .lowPrice(close)
+                .closePrice(close)
+                .volume(1)
+                .amount(close)
+                .trades(1)
+                .add();
+        source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(start.plus(Duration.ofDays(2)))
+                .openPrice(close)
+                .highPrice(close)
+                .lowPrice(Double.MIN_VALUE)
+                .closePrice(close)
+                .volume(1)
+                .amount(close)
+                .trades(1)
+                .add();
+
+        final BarSeries member = BlockBootstrapNulls.generate(source, 1, 1, 19L).get(0);
+        assertEquals(Double.MIN_VALUE, member.getBar(1).getLowPrice().doubleValue());
     }
 
     @Test
