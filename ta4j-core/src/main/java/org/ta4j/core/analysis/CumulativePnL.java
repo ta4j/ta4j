@@ -246,6 +246,16 @@ public final class CumulativePnL implements PerformanceIndicator {
 
             if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
                 Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+                boolean beginValueSeeded = false;
+                if (entryIndex < seriesBegin) {
+                    Num beginRawPrice = seriesBegin == endIndex ? resolveExitPrice(position, endIndex, barSeries)
+                            : barSeries.getBar(seriesBegin).getClosePrice();
+                    Num beginNetPrice = addCost(beginRawPrice, averageCostPerPeriod, isLongTrade);
+                    Num beginDelta = isLongTrade ? beginNetPrice.minus(netEntryPrice)
+                            : netEntryPrice.minus(beginNetPrice);
+                    addValue(seriesBegin, beginDelta);
+                    beginValueSeeded = true;
+                }
                 int start = Math.max(entryIndex + 1, seriesBegin + 1);
                 for (int i = start; i < endIndex; i++) {
                     cursor = fillRange(cursor, i, realized);
@@ -259,14 +269,13 @@ public final class CumulativePnL implements PerformanceIndicator {
                 Num netExit = addCost(exitRaw, averageCostPerPeriod, isLongTrade);
                 Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
                 if (endIndex < cursor) {
-                    // A later-iterated position may close at an earlier bar
-                    // than the sweep cursor. The realized delta applies from
-                    // its exit bar onward, so accumulate it across every
-                    // already-materialized cell instead of rewinding.
-                    addToRange(endIndex, cursor - 1, deltaExit);
+                    int rangeStart = beginValueSeeded && endIndex == seriesBegin ? endIndex + 1 : endIndex;
+                    addToRange(rangeStart, cursor - 1, deltaExit);
                 } else {
                     cursor = fillRange(cursor, endIndex, realized);
-                    addValue(endIndex, deltaExit);
+                    if (!(beginValueSeeded && endIndex == seriesBegin)) {
+                        addValue(endIndex, deltaExit);
+                    }
                     cursor = endIndex + 1;
                 }
                 realized = realized.plus(deltaExit);

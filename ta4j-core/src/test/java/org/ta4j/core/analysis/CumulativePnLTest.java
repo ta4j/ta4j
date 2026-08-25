@@ -415,6 +415,22 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         }
     }
 
+    @Test
+    public void cumulativePnLSeedsPositionsOpenedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 150d, 120d, 110d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        series.setMaximumBarCount(3);
+
+        CumulativePnL cumulativePnL = new CumulativePnL(series, record);
+
+        assertEquals(1, series.getBeginIndex());
+        assertNumEquals(50, cumulativePnL.getValue(1));
+        assertNumEquals(20, cumulativePnL.getValue(2));
+        assertNumEquals(10, cumulativePnL.getValue(3));
+    }
+
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
         NumFactory numFactory = series.numFactory();
         BaseTradingRecord record = new BaseTradingRecord();

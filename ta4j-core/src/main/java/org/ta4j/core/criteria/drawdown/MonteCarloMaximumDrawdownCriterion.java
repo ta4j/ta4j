@@ -268,15 +268,22 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
         Num one = series.numFactory().one();
+        int retainedBegin = cashFlow.getBarSeries().getBeginIndex();
+        int retainedEnd = cashFlow.getBarSeries().getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;
             }
             int entryIndex = position.getEntry().getIndex();
             int exitIndex = position.getExit().getIndex();
+            int blockStart = Math.max(entryIndex, retainedBegin);
+            int blockEnd = Math.min(exitIndex, retainedEnd);
+            if (blockStart > blockEnd) {
+                continue;
+            }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
-            for (int i = entryIndex; i <= exitIndex; i++) {
+            Num previousEquity = blockStart > retainedBegin ? cashFlow.getValue(blockStart - 1) : one;
+            for (int i = blockStart; i <= blockEnd; i++) {
                 Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));
                 previousEquity = currentEquity;

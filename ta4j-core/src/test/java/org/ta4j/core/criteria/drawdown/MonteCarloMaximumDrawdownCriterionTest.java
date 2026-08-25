@@ -16,6 +16,7 @@ import org.ta4j.core.BaseTrade;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.EquityBundle;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
@@ -37,6 +38,20 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
         var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void clipsBlocksToRetainedMovingSeriesWindow() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 99, 102, 98, 103, 97, 104, 96, 105, 95, 106)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
+                Trade.sellAt(9, series), Trade.buyAt(10, series), Trade.sellAt(11, series));
+        series.setMaximumBarCount(5);
+        var bundle = new EquityBundle(series, record);
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
+
+        Assert.assertNotNull(criterion.calculate(series, record, bundle));
     }
 
     @Test
