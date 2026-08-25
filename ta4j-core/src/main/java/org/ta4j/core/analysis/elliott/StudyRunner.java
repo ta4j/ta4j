@@ -1093,9 +1093,13 @@ final class StudyRunner {
             // competing set: unknown names fail here instead of running an
             // undeclared experiment.
             if (competingModes != null) {
+                final Set<String> declaredModes = new HashSet<>();
                 for (final String mode : competingModes) {
                     if (mode == null || mode.isBlank()) {
                         throw new IllegalArgumentException("competingModes must not contain blank entries");
+                    }
+                    if (!declaredModes.add(mode)) {
+                        throw new IllegalArgumentException("competingModes must not contain duplicates: " + mode);
                     }
                     if (STRUCTURAL_COMPETING_MODES.contains(mode)) {
                         continue;

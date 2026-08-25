@@ -601,6 +601,17 @@ class StudyRunnerTest {
     }
 
     @Test
+    void rejectsDuplicateCompetingModes() {
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner.Configuration(partitions,
+                        "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", SEED, List.of(2), 1,
+                        List.of(), "synthetic-primary", List.of("3+3", "3+3")));
+    }
+
+    @Test
     void declaredCompetingModesRunExactly() {
         final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
                 List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
