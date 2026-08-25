@@ -23,6 +23,7 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 import java.time.Instant;
 
 public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTest {
@@ -50,7 +51,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         series.setMaximumBarCount(5);
         var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
 
-        var sharedValue = EquityCurveCache.evaluate(series, record, () -> criterion.calculate(series, record));
+        Num sharedValue = EquityCurveCache.evaluate(series, record, () -> criterion.calculate(series, record));
         Assert.assertNotNull(sharedValue);
         assertNumEquals(criterion.calculate(series, record), sharedValue);
     }

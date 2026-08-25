@@ -166,7 +166,7 @@ public final class EquityCurveCache {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();
-        this.curveSeries = snapshotSeries(this.series);
+        this.curveSeries = SeriesSnapshots.deepCopy(this.series);
         this.transactionCostModel = tradingRecord.getTransactionCostModel();
         this.holdingCostModel = tradingRecord.getHoldingCostModel();
     }
@@ -177,19 +177,33 @@ public final class EquityCurveCache {
      * requests observe up-to-date values instead of stale ones.
      */
     private void invalidateIfInputsChanged() {
-        long revision = currentInputRevision();
-        CostModel recordTransactionCostModel = tradingRecord.getTransactionCostModel();
-        CostModel recordHoldingCostModel = tradingRecord.getHoldingCostModel();
-        boolean costModelsChanged = transactionCostModel != recordTransactionCostModel
-                || holdingCostModel != recordHoldingCostModel;
-        if (revision != inputRevision || costModelsChanged) {
+        while (true) {
+            long revision = currentInputRevision();
+            CostModel recordTransactionCostModel = tradingRecord.getTransactionCostModel();
+            CostModel recordHoldingCostModel = tradingRecord.getHoldingCostModel();
+            boolean costModelsChanged = transactionCostModel != recordTransactionCostModel
+                    || holdingCostModel != recordHoldingCostModel;
+            if (revision == inputRevision && !costModelsChanged) {
+                return;
+            }
+            // Copy the bars and bounds coherently: the live series may append or
+            // prune while the snapshot is taken, which would mix pre- and
+            // post-mutation state into one snapshot (bars copied before a prune
+            // paired with bounds read after it). Revalidate afterwards and retry.
+            BarSeries snapshot = SeriesSnapshots.deepCopy(series);
+            if (currentInputRevision() != revision
+                    || tradingRecord.getTransactionCostModel() != recordTransactionCostModel
+                    || tradingRecord.getHoldingCostModel() != recordHoldingCostModel) {
+                continue;
+            }
             inputRevision = revision;
             transactionCostModel = recordTransactionCostModel;
             holdingCostModel = recordHoldingCostModel;
-            curveSeries = snapshotSeries(series);
+            curveSeries = snapshot;
             cashFlows.clear();
             cumulativePnLs.clear();
             investedIntervals.clear();
+            return;
         }
     }
 
@@ -210,29 +224,6 @@ public final class EquityCurveCache {
     }
 
     /**
-     * Creates a series mirroring the given one, but owning deep copies of its bar
-     * data so later in-place edits of the original bars cannot reach the curves
-     * computed from the copy. The snapshot keeps the source's absolute indexing:
-     * when the source has already pruned bars, its retained bars keep their
-     * original indices instead of being renumbered from zero.
-     */
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        Objects.requireNonNull(barSeries);
-        List<Bar> copiedBars = new ArrayList<>(barSeries.getBarData().size());
-        for (Bar bar : barSeries.getBarData()) {
-            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
-                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
-                    bar.getTrades()));
-        }
-        return new BaseBarSeriesBuilder().withName(barSeries.getName())
-                .withNumFactory(barSeries.numFactory())
-                .withBars(copiedBars)
-                .withBeginIndex(Math.max(0, barSeries.getBeginIndex()))
-                .withMaxBarCount(barSeries.getMaximumBarCount())
-                .build();
-    }
-
-    /**
      * Returns the cash flow for the given mode and open position handling,
      * computing it on first request and reusing the same instance afterwards.
      *
@@ -249,8 +240,8 @@ public final class EquityCurveCache {
         synchronized (this) {
             invalidateIfInputsChanged();
             return cashFlows.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CashFlow cashFlow = new CashFlow(curveSeries, tradingRecord, key.equityCurveMode(),
-                        key.openPositionHandling());
+                CashFlow cashFlow = CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0, curveSeries.getEndIndex(),
+                        tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
                 cashFlow.freeze();
                 return cashFlow;
             });
@@ -275,8 +266,8 @@ public final class EquityCurveCache {
         synchronized (this) {
             invalidateIfInputsChanged();
             return cumulativePnLs.computeIfAbsent(new CurveKey(equityCurveMode, openPositionHandling), key -> {
-                CumulativePnL cumulativePnL = new CumulativePnL(curveSeries, tradingRecord, key.equityCurveMode(),
-                        key.openPositionHandling());
+                CumulativePnL cumulativePnL = CumulativePnL.overOwnedSnapshot(curveSeries, tradingRecord,
+                        tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
                 cumulativePnL.freeze();
                 return cumulativePnL;
             });
@@ -296,7 +287,7 @@ public final class EquityCurveCache {
         synchronized (this) {
             invalidateIfInputsChanged();
             return investedIntervals.computeIfAbsent(openPositionHandling,
-                    handling -> new InvestedInterval(snapshotSeries(curveSeries), tradingRecord, handling));
+                    handling -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord, handling));
         }
     }
 

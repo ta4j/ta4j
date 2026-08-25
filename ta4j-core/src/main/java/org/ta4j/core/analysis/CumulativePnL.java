@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,9 +32,10 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final BarSeries barSeries;
     /**
      * The separate series snapshot exposed to callers so they cannot mutate the
-     * calculation input through {@link #getBarSeries()}.
+     * calculation input through {@link #getBarSeries()}. Created lazily on first
+     * access so cached curves never pay for a copy nobody requests.
      */
-    private final BarSeries exposedBarSeries;
+    private volatile BarSeries exposedBarSeries;
     private final List<Num> values;
     private final AtomicBoolean frozen = new AtomicBoolean();
 
@@ -70,8 +70,22 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = snapshotSeries(barSeries);
-        this.exposedBarSeries = snapshotSeries(this.barSeries);
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, false);
+    }
+
+    /**
+     * Internal factory. Creates the curve over an already detached, privately owned
+     * snapshot without copying it again; used by {@link EquityCurveCache}, whose
+     * snapshots are never shared.
+     */
+    static CumulativePnL overOwnedSnapshot(BarSeries ownedSnapshot, TradingRecord tradingRecord, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        return new CumulativePnL(ownedSnapshot, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, true);
+    }
+
+    private CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean seriesIsOwnedSnapshot) {
+        this.barSeries = seriesIsOwnedSnapshot ? barSeries : SeriesSnapshots.deepCopy(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesBegin = Math.max(this.barSeries.getBeginIndex(), 0);
         int seriesEnd = this.barSeries.getEndIndex();
@@ -385,6 +399,10 @@ public final class CumulativePnL implements PerformanceIndicator {
                 Num netExit = addCost(resolveExitPrice(position, endIndex, barSeries), holdingCost, entry.isBuy());
                 Num deltaExit = entry.isBuy() ? netExit.minus(entry.getNetPrice()) : entry.getNetPrice().minus(netExit);
                 addToRange(seriesBegin, seriesEnd, deltaExit);
+                // Per-position updates add one position at a time; flag the
+                // curve so a later batch sweep cannot reassociate the addition
+                // order over these cells.
+                materialized = true;
             }
             return;
         }
@@ -406,6 +424,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             Num netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             addToRange(endIndex, seriesEnd, deltaExit);
+            materialized = true;
             return;
         }
 
@@ -415,6 +434,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             addToRange(exit.getIndex(), seriesEnd, deltaExit);
+            materialized = true;
         }
     }
 
@@ -443,25 +463,18 @@ public final class CumulativePnL implements PerformanceIndicator {
      * does not alter the series used to calculate the curve.
      */
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
     public BarSeries getBarSeries() {
-        return exposedBarSeries;
-    }
-
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries);
-        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
-        for (Bar bar : series.getBarData()) {
-            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
-                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
-                    bar.getTrades()));
+        BarSeries snapshot = exposedBarSeries;
+        if (snapshot == null) {
+            synchronized (this) {
+                snapshot = exposedBarSeries;
+                if (snapshot == null) {
+                    snapshot = SeriesSnapshots.deepCopy(barSeries);
+                    exposedBarSeries = snapshot;
+                }
+            }
         }
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(copiedBars)
-                .withBeginIndex(Math.max(0, series.getBeginIndex()))
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
+        return snapshot;
     }
 
     /**

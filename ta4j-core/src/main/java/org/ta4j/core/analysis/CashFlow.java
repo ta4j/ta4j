@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,8 +10,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -35,7 +32,7 @@ public class CashFlow implements PerformanceIndicator {
      * prevents callers from mutating the calculation input through
      * {@link #getBarSeries()}.
      */
-    private final BarSeries exposedBarSeries;
+    private volatile BarSeries exposedBarSeries;
 
     /**
      * The (accrued) cash flow sequence (without trading costs).
@@ -206,8 +203,23 @@ public class CashFlow implements PerformanceIndicator {
      */
     private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = snapshotSeries(barSeries);
-        this.exposedBarSeries = snapshotSeries(this.barSeries);
+        this(barSeries, tradingRecord, startIndex, endIndex, finalIndex, equityCurveMode, openPositionHandling, false);
+    }
+
+    /**
+     * Internal factory. Creates the curve over an already detached, privately owned
+     * snapshot without copying it again; used by {@link EquityCurveCache}, whose
+     * snapshots are never shared.
+     */
+    static CashFlow overOwnedSnapshot(BarSeries ownedSnapshot, TradingRecord tradingRecord, int startIndex,
+            int endIndex, int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        return new CashFlow(ownedSnapshot, tradingRecord, startIndex, endIndex, finalIndex, equityCurveMode,
+                openPositionHandling, true);
+    }
+
+    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean seriesIsOwnedSnapshot) {
+        this.barSeries = seriesIsOwnedSnapshot ? barSeries : SeriesSnapshots.deepCopy(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.barSeries.getEndIndex();
         this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
@@ -461,6 +473,10 @@ public class CashFlow implements PerformanceIndicator {
                 Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
                 Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
                 multiplyRange(windowStartIndex, windowEndIndex, ratio);
+                // Per-position updates compose ratios one position at a time;
+                // flag the curve so a later batch sweep cannot reassociate the
+                // multiplication order over these cells.
+                materialized = true;
             }
             return;
         }
@@ -505,6 +521,7 @@ public class CashFlow implements PerformanceIndicator {
                 multiplyValue(ratioIndex, ratio);
             }
             multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
+            materialized = true;
             return;
         }
 
@@ -514,6 +531,7 @@ public class CashFlow implements PerformanceIndicator {
             Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
+            materialized = true;
         }
     }
 
@@ -535,26 +553,18 @@ public class CashFlow implements PerformanceIndicator {
      * Returns a stable defensive series snapshot. Mutating this returned series
      * does not alter the series used to calculate the curve.
      */
-    @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
     public BarSeries getBarSeries() {
-        return exposedBarSeries;
-    }
-
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries);
-        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
-        for (Bar bar : series.getBarData()) {
-            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
-                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
-                    bar.getTrades()));
+        BarSeries snapshot = exposedBarSeries;
+        if (snapshot == null) {
+            synchronized (this) {
+                snapshot = exposedBarSeries;
+                if (snapshot == null) {
+                    snapshot = SeriesSnapshots.deepCopy(barSeries);
+                    exposedBarSeries = snapshot;
+                }
+            }
         }
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(copiedBars)
-                .withBeginIndex(Math.max(0, series.getBeginIndex()))
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
+        return snapshot;
     }
 
     /**
