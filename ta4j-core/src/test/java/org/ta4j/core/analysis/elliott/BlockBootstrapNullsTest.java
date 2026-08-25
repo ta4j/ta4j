@@ -75,10 +75,20 @@ class BlockBootstrapNullsTest {
     }
 
     @Test
+    void memberGenerationKeepsRepresentableTinyCloseAfterSteepNegativeReturn() {
+        final BarSeries source = doubleSeries("near-underflow-negative", Double.MAX_VALUE);
+        final double returnToMinValue = Math.log(Double.MIN_VALUE) - Math.log(Double.MAX_VALUE);
+        final BarSeries member = BlockBootstrapNulls.generateMember(source, new double[] { returnToMinValue }, 8, 7L,
+                0);
+        final double close = member.getBar(1).getClosePrice().doubleValue();
+        assertTrue(Double.isFinite(close) && close > 0d, "representable tiny close was lost: " + close);
+    }
+
+    @Test
     void memberGenerationRejectsSteepNegativeReturnBelowDoubleRange() {
         // A steep negative sampled return from a tiny start accumulates below
-        // double range; expNum's reciprocal collapses to zero and must be
-        // rejected instead of recording a non-positive close.
+        // double range; direct negative exponentiation still underflows to zero
+        // and must be rejected instead of recording a non-positive close.
         final BarSeries source = doubleSeries("steep-negative", Double.MIN_VALUE);
         assertThrows(IllegalStateException.class,
                 () -> BlockBootstrapNulls.generateMember(source, new double[] { -3000d }, 8, 7L, 0));

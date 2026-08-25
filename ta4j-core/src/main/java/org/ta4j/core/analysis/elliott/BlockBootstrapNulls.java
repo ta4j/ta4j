@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.Consumer;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -77,7 +78,25 @@ final class BlockBootstrapNulls {
      */
     static List<BarSeries> generate(final BarSeries source, final int blockLength, final int ensembleSize,
             final long seed) {
+        final List<BarSeries> generated = new ArrayList<>(ensembleSize);
+        forEachMember(source, blockLength, ensembleSize, seed, generated::add);
+        return List.copyOf(generated);
+    }
+
+    /**
+     * Generates each deterministic ensemble member and releases it after the
+     * consumer returns.
+     *
+     * @param source       source price series
+     * @param blockLength  expected block length in bars
+     * @param ensembleSize number of null series
+     * @param seed         stable ensemble seed
+     * @param consumer     member consumer
+     */
+    static void forEachMember(final BarSeries source, final int blockLength, final int ensembleSize, final long seed,
+            final Consumer<BarSeries> consumer) {
         Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(consumer, "consumer");
         if (blockLength <= 0 || ensembleSize <= 0) {
             throw new IllegalArgumentException("blockLength and ensembleSize must be positive");
         }
@@ -86,12 +105,10 @@ final class BlockBootstrapNulls {
             throw new IllegalArgumentException("stationary bootstrap requires at least two bars");
         }
         final double[] logReturns = logReturns(source);
-        final List<BarSeries> generated = new ArrayList<>(ensembleSize);
         for (int ensembleIndex = 0; ensembleIndex < ensembleSize; ensembleIndex++) {
             final long memberSeed = seed * SEED_MULTIPLIER + ensembleIndex;
-            generated.add(generateMember(source, logReturns, blockLength, memberSeed, ensembleIndex));
+            consumer.accept(generateMember(source, logReturns, blockLength, memberSeed, ensembleIndex));
         }
-        return List.copyOf(generated);
     }
 
     /**
@@ -185,6 +202,9 @@ final class BlockBootstrapNulls {
      */
     private static Num expNum(final NumFactory numFactory, final double y) {
         if (y < 0.0d) {
+            if (numFactory instanceof DoubleNumFactory) {
+                return numFactory.numOf(Math.exp(y));
+            }
             return numFactory.one().dividedBy(expNum(numFactory, -y));
         }
         final int whole = (int) Math.floor(y);

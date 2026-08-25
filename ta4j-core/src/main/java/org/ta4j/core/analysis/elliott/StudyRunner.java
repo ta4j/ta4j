@@ -242,25 +242,25 @@ public final class StudyRunner {
                     }
                     final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
                             partitionLastBar + 1);
-                    final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
-                            configuration.nullEnsembleSize(), configuration.seed());
-                    for (final BarSeries member : nullSeries) {
-                        final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                        // Members are freshly-built series rebased to index 0;
-                        // the requested window stays in source coordinates and
-                        // must be translated before recording. Fresh accumulators
-                        // per member and grammar so label-stability transitions
-                        // never leak across ensemble members.
-                        for (final TopologyGrammar grammar : nullGrammars) {
-                            final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
-                            recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
-                                    member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators,
-                                    sourceBegin);
-                            totalsByGrammar.get(grammar)
-                                    .get(partitionIndex)
-                                    .mergeFrom(memberAccumulators.get(partitionIndex));
-                        }
-                    }
+                    final int partition = partitionIndex;
+                    BlockBootstrapNulls.forEachMember(truncated, blockLength, configuration.nullEnsembleSize(),
+                            configuration.seed(), member -> {
+                                final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+                                // Members are freshly-built series rebased to index 0;
+                                // the requested window stays in source coordinates and
+                                // must be translated before recording. Fresh accumulators
+                                // per member and grammar so label-stability transitions
+                                // never leak across ensemble members.
+                                for (final TopologyGrammar grammar : nullGrammars) {
+                                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                                    recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
+                                            member.getEndIndex(), partitions, replay, grammar, List.of(),
+                                            memberAccumulators, sourceBegin);
+                                    totalsByGrammar.get(grammar)
+                                            .get(partition)
+                                            .mergeFrom(memberAccumulators.get(partition));
+                                }
+                            });
                 }
             }
             for (final TopologyGrammar grammar : nullGrammars) {
