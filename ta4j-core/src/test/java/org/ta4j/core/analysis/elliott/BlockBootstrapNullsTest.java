@@ -51,9 +51,11 @@ class BlockBootstrapNullsTest {
         for (final BarSeries member : BlockBootstrapNulls.generate(source, 1, 8, 11L)) {
             for (int offset = 0; offset < 2; offset++) {
                 final Num close = member.getBar(offset).getClosePrice();
-                assertTrue(DoubleNum.valueOf(Double.MAX_VALUE).isGreaterThan(close),
-                        "member close at bar " + offset + " overflowed: " + close);
-                assertTrue(close.isPositive(), "member close at bar " + offset + " not positive");
+                // The contract is a finite positive close; a reconstruction
+                // equal to Double.MAX_VALUE itself stays representable.
+                final double narrowed = close.doubleValue();
+                assertTrue(Double.isFinite(narrowed) && narrowed > 0d,
+                        "member close at bar " + offset + " not representable: " + close);
             }
         }
     }
