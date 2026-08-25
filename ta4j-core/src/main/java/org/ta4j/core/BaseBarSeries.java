@@ -123,6 +123,11 @@ public class BaseBarSeries implements BarSeries {
      * is always a {@link BaseBarSeries}, regardless of the concrete type of
      * {@code series}.
      * </p>
+     * <p>
+     * When {@code series} is a {@link ConcurrentBarSeries}, the bar data, index
+     * range, and removal offset are read under a single read lock so the copy is
+     * observed atomically.
+     * </p>
      *
      * @param series the series to copy; must not be {@code null}
      * @return a new {@link BaseBarSeries} with the same logical view and raw data
@@ -131,15 +136,33 @@ public class BaseBarSeries implements BarSeries {
      */
     public static BaseBarSeries copyOf(BarSeries series) {
         Objects.requireNonNull(series, "series");
-        boolean constrained = series instanceof BaseBarSeries baseSeries && baseSeries.isConstrained();
-        BarBuilderFactory barBuilderFactory = series instanceof BaseBarSeries baseSeries
-                ? baseSeries.barBuilderFactory()
-                : new TimeBarBuilderFactory();
+        if (series instanceof ConcurrentBarSeries concurrentSeries) {
+            return concurrentSeries.atomicCopy();
+        }
+        if (series instanceof BaseBarSeries baseSeries) {
+            return baseSeries.copySelf();
+        }
+        // Unknown BarSeries implementation: reconstruct from the public accessors.
         BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
-                series.getEndIndex(), series.getRemovedBarsCount(), constrained, series.numFactory(),
-                barBuilderFactory);
-        if (!constrained) {
-            copy.setMaximumBarCount(series.getMaximumBarCount());
+                series.getEndIndex(), series.getRemovedBarsCount(), false, series.numFactory(),
+                new TimeBarBuilderFactory());
+        copy.setMaximumBarCount(series.getMaximumBarCount());
+        return copy;
+    }
+
+    /**
+     * Creates a defensive copy of this series by reading its fields directly,
+     * without acquiring any lock. Callers that need an atomic snapshot of a
+     * concurrent series must hold its read lock first (see
+     * {@link ConcurrentBarSeries#atomicCopy()}).
+     *
+     * @return a new {@link BaseBarSeries} with the same logical view and raw data
+     */
+    BaseBarSeries copySelf() {
+        BaseBarSeries copy = new BaseBarSeries(this.name, this.bars, this.seriesBeginIndex, this.seriesEndIndex,
+                this.removedBarsCount, this.constrained, this.numFactory, this.barBuilderFactory);
+        if (!this.constrained) {
+            copy.setMaximumBarCount(this.maximumBarCount);
         }
         return copy;
     }

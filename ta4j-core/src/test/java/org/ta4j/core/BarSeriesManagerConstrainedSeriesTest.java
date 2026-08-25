@@ -61,4 +61,26 @@ public class BarSeriesManagerConstrainedSeriesTest {
         assertEquals(leadingOrphanSeries.getBar(1).getClosePrice(), position.getEntry().getPricePerAsset());
         assertEquals(leadingOrphanSeries.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
     }
+
+    @Test
+    public void closeScanReachesOffsetBarsBeyondEndIndex() {
+        // removedBarsCount=10 (leading orphans), raw bars at logical 10, 11, 12,
+        // endIndex=11 (one trailing raw bar at logical 12). The close scan must
+        // reach logical index 12, not stop at getBarData().size() (3).
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10d, 20d, 30d)
+                .build();
+        NumFactory numFactory = sourceSeries.numFactory();
+        BaseBarSeries offsetSeries = new BaseBarSeries("offset-series", List.copyOf(sourceSeries.getBarData()), 10, 11,
+                10, false, numFactory, new TimeBarBuilderFactory());
+        Strategy strategy = new BaseStrategy(new FixedRule(10), new FixedRule(12));
+
+        TradingRecord tradingRecord = new BarSeriesManager(offsetSeries, new TradeOnCurrentCloseModel()).run(strategy);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(10, position.getEntry().getIndex());
+        assertEquals(12, position.getExit().getIndex());
+        assertEquals(offsetSeries.getBar(12).getClosePrice(), position.getExit().getPricePerAsset());
+    }
 }

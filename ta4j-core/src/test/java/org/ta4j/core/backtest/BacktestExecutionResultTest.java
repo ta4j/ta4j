@@ -8,6 +8,8 @@ import com.google.gson.JsonParser;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
@@ -146,6 +148,25 @@ public class BacktestExecutionResultTest {
         assertEquals(3, secondSnapshot.getBarCount());
         assertEquals(3, result.barSeries().getBarCount());
         assertEquals(series.getName(), firstSnapshot.getName());
+    }
+
+    @Test
+    public void snapshotPreservesSeriesBeginIndexAndRemovedBarsOffset() {
+        var source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BaseBarSeries offsetSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBeginIndex(10)
+                .withBars(source.getBarData())
+                .build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(offsetSeries, List.of(),
+                BacktestRuntimeReport.empty());
+        BarSeries snapshot = result.barSeries();
+
+        assertEquals(10, snapshot.getBeginIndex());
+        assertEquals(12, snapshot.getEndIndex());
+        assertEquals(10, snapshot.getRemovedBarsCount());
+        assertEquals(3, snapshot.getBarData().size());
+        assertEquals(offsetSeries.getBar(12).getClosePrice(), snapshot.getBar(12).getClosePrice());
     }
 
     @Test

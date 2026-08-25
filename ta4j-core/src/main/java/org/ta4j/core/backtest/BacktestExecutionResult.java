@@ -10,7 +10,7 @@ import com.google.gson.JsonParser;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.BaseTradingStatement;
@@ -392,11 +392,6 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries must not be null");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
+        return BaseBarSeries.copyOf(barSeries);
     }
 }

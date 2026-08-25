@@ -6,7 +6,7 @@ package org.ta4j.core.backtest;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -374,12 +374,7 @@ public interface PositionSizer {
         }
 
         private static BarSeries snapshotSeries(BarSeries barSeries) {
-            BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-            return new BaseBarSeriesBuilder().withName(series.getName())
-                    .withNumFactory(series.numFactory())
-                    .withBars(series.getBarData())
-                    .withMaxBarCount(series.getMaximumBarCount())
-                    .build();
+            return BaseBarSeries.copyOf(barSeries);
         }
     }
 }

@@ -163,6 +163,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
+    /**
+     * Copies this series under a single read lock so the bar data, index range, and
+     * removal offset are observed atomically.
+     *
+     * @return a new {@link BaseBarSeries} with the same logical view and raw data
+     * @see BaseBarSeries#copyOf(BarSeries)
+     */
+    BaseBarSeries atomicCopy() {
+        this.readLock.lock();
+        try {
+            return super.copySelf();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
     @Override
     public BarBuilder barBuilder() {
         this.readLock.lock();

@@ -586,7 +586,8 @@ public class BarSeriesManager {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
+            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1,
+                    barSeries.getRemovedBarsCount() + barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 lastProcessedIndex = i;
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
