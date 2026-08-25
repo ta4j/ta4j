@@ -147,13 +147,24 @@ final class TopologyAnalyzer {
         // no-match outcomes.
         final int minSuffixPivots = Math.min(3, grammar.requiredPivots());
         if (minSuffixPivots <= maxSuffixPivots) {
-            for (final WaveDirection direction : WaveDirection.values()) {
-                for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
+            // Resolve suffix length before direction: a longer trailing
+            // prefix is stronger evidence than any shorter one, so the
+            // forming direction must never depend on enum iteration order.
+            // At a given length, opposing orientations cancel out -- a
+            // contested shape is not evidence of either direction -- and the
+            // scan falls through to the next shorter suffix.
+            for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
+                final List<WaveDirection> matching = new ArrayList<>();
+                for (final WaveDirection direction : WaveDirection.values()) {
                     if (matchesPartialShape(grammar, direction,
                             window.subList(window.size() - suffix, window.size()))) {
-                        return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in "
-                                + direction + " orientation over the " + suffix + " newest pivots");
+                        matching.add(direction);
                     }
+                }
+                if (matching.size() == 1) {
+                    final WaveDirection direction = matching.get(0);
+                    return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in " + direction
+                            + " orientation over the " + suffix + " newest pivots");
                 }
             }
         }

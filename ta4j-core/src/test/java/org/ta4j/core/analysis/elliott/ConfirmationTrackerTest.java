@@ -121,6 +121,26 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void rejectsReadmissionThatWouldNormalizeAwayFrozenDominator() {
+        final SwingPivot low0 = new SwingPivot(0, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(9), SwingPivotType.LOW);
+        final SwingPivot high2 = new SwingPivot(2, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of(low0));
+        // LOW@1 collapses LOW@0, then HIGH@2 freezes LOW@1 as the interior pivot.
+        script.put(1, List.of(low0, low1));
+        script.put(2, List.of(low0, low1, high2));
+        // LOW@0 becomes newly dominant while both its former dominator and its
+        // successor remain reported. Re-admission must not rewrite LOW@1.
+        script.put(3, List.of(new SwingPivot(0, DoubleNum.valueOf(8), SwingPivotType.LOW), low1, high2));
+
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new ConfirmationTracker(scripted(script)).observeReplay(seriesWithBars(4)));
+
+        assertTrue(exception.getMessage().contains("normalize away frozen pivot 1"), exception.getMessage());
+    }
+
+    @Test
     void repeatedlyReportedDominatedPivotStaysCollapsed() {
         final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(10), SwingPivotType.LOW);
         final SwingPivot high3 = new SwingPivot(3, DoubleNum.valueOf(20), SwingPivotType.HIGH);

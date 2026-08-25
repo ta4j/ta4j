@@ -85,6 +85,17 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void prefersLongestFormingSuffixBeforeChoosingDirection() {
+        // The five-pivot suffix is a bearish motive prefix; its final four
+        // pivots also form a bullish prefix. The stronger, longer suffix wins.
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(30, 20, 25, 15, 22));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
+    }
+
+    @Test
     void keepsMateriallyTiedCandidatesAmbiguous() {
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
                 pivots(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 36, 19));

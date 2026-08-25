@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -213,46 +214,58 @@ public final class StudyRunner {
         final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
         final Partitions partitions = configuration.partitions();
         for (final int blockLength : configuration.nullBlockLengths()) {
+            // Every null grammar reads the same ensemble: generation and the
+            // detector replay are grammar-independent, so each member is built
+            // and reconciled once and both grammars record from that shared
+            // replay. Halves the dominant work of frozen evaluations.
+            final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar = new LinkedHashMap<>();
             for (final TopologyGrammar grammar : nullGrammars) {
-                final List<MetricAccumulator> totals = newAccumulators(List.of());
-                // An evaluation window before or after the series records no
-                // real topology; generating full-series null ensembles anyway
-                // would compare non-empty null partitions against empty real
-                // ones. Keep both sides symmetrically empty instead.
-                if (hasEvaluationWindow) {
-                    final int sourceBegin = source.getBeginIndex();
-                    final BarSeries causalSource = source.getSubSeries(sourceBegin, end + 1);
-                    // Look-ahead-free sampling: every partition's ensemble is drawn
-                    // only from returns available at that partition's last bar, so a
-                    // calibration partition's null baseline can never incorporate
-                    // validation or holdout returns. The shared seed keeps the RNG
-                    // stream comparable across partitions over different tapes.
-                    for (int partitionIndex = 0; partitionIndex < totals.size(); partitionIndex++) {
-                        final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
-                        if (partitionLastBar - causalSource.getBeginIndex() < 1) {
-                            continue;
-                        }
-                        final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
-                                partitionLastBar + 1);
-                        final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
-                                configuration.nullEnsembleSize(), configuration.seed());
-                        for (final BarSeries member : nullSeries) {
-                            // Fresh accumulators per member so label-stability
-                            // transitions never leak across ensemble members.
+                totalsByGrammar.put(grammar, newAccumulators(List.of()));
+            }
+            // An evaluation window before or after the series records no
+            // real topology; generating full-series null ensembles anyway
+            // would compare non-empty null partitions against empty real
+            // ones. Keep both sides symmetrically empty instead.
+            if (hasEvaluationWindow) {
+                final int sourceBegin = source.getBeginIndex();
+                final BarSeries causalSource = source.getSubSeries(sourceBegin, end + 1);
+                // Look-ahead-free sampling: every partition's ensemble is drawn
+                // only from returns available at that partition's last bar, so a
+                // calibration partition's null baseline can never incorporate
+                // validation or holdout returns. The shared seed keeps the RNG
+                // stream comparable across partitions over different tapes.
+                for (int partitionIndex = 0; partitionIndex < totalsByGrammar.get(nullGrammars.get(0))
+                        .size(); partitionIndex++) {
+                    final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
+                    if (partitionLastBar - causalSource.getBeginIndex() < 1) {
+                        continue;
+                    }
+                    final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
+                            partitionLastBar + 1);
+                    final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
+                            configuration.nullEnsembleSize(), configuration.seed());
+                    for (final BarSeries member : nullSeries) {
+                        final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+                        // Members are freshly-built series rebased to index 0;
+                        // the requested window stays in source coordinates and
+                        // must be translated before recording. Fresh accumulators
+                        // per member and grammar so label-stability transitions
+                        // never leak across ensemble members.
+                        for (final TopologyGrammar grammar : nullGrammars) {
                             final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
-                            final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                            // Members are freshly-built series rebased to index 0;
-                            // the requested window stays in source coordinates and
-                            // must be translated before recording.
                             recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
                                     member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators,
                                     sourceBegin);
-                            totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
+                            totalsByGrammar.get(grammar)
+                                    .get(partitionIndex)
+                                    .mergeFrom(memberAccumulators.get(partitionIndex));
                         }
                     }
                 }
+            }
+            for (final TopologyGrammar grammar : nullGrammars) {
                 reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),
-                        configuration.seed(), metrics(totals, partitions)));
+                        configuration.seed(), metrics(totalsByGrammar.get(grammar), partitions)));
             }
         }
         return List.copyOf(reports);

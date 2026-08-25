@@ -186,6 +186,13 @@ final class ConfirmationTracker {
             }
             throw new IllegalStateException("detector contradicted frozen pivot history at index " + pivot.index());
         }
+        // Remember what was tracked before admission: everything already in
+        // the order was frozen by an earlier confirmation and must survive
+        // this update's normalization.
+        final Set<Integer> frozenBeforeAdmission = new HashSet<>();
+        for (int index = 0; index + 1 < order.size(); index++) {
+            frozenBeforeAdmission.add(order.get(index).pivotIndex());
+        }
         for (final SwingPivot pivot : reported) {
             if (known.containsKey(pivot.index())) {
                 continue;
@@ -211,6 +218,26 @@ final class ConfirmationTracker {
             }
             order.add(at, confirmed);
             changed = true;
+        }
+        // A reconsidered collapsed pivot can out-dominate the pivot that used
+        // to suppress it; unconditional snapshot collapse would then drop that
+        // former dominator even though a later confirmation already froze it.
+        // Project the normalization first and fail closed when anything
+        // tracked before this update would disappear -- only pivots admitted
+        // at this bar may collapse away.
+        final List<ConfirmedPivot> projectedOrder = new ArrayList<>(order);
+        final Map<Integer, ConfirmedPivot> projectedKnown = new HashMap<>(known);
+        final Map<Integer, Integer> projectedCollapsed = new HashMap<>();
+        normalizeOrder(projectedOrder, projectedKnown, projectedCollapsed);
+        final Set<Integer> keptAfterNormalization = new HashSet<>();
+        for (final ConfirmedPivot kept : projectedOrder) {
+            keptAfterNormalization.add(kept.pivotIndex());
+        }
+        for (final Integer index : frozenBeforeAdmission) {
+            if (!keptAfterNormalization.contains(index)) {
+                throw new IllegalStateException("detector admission at bar " + asOf
+                        + " would normalize away frozen pivot " + index + "; rejecting collapsed-pivot readmission");
+            }
         }
         if (normalizeOrder(order, known, collapsed)) {
             changed = true;
