@@ -26,9 +26,11 @@ import org.ta4j.core.num.NumFactory;
  * the lexicographic objective documented on
  * {@link EventSynchronizationIndicator}. The effective range is the
  * intersection of the requested range with the series' available history and
- * both signals' unstable-bar boundaries; an empty intersection is reported as
- * the canonical empty inclusive range ({@code start == end + 1}) with no events
- * and undefined metrics.
+ * both signals' unstable-bar boundaries; an empty intersection repeats the
+ * requested bounds as the effective bounds, reports no events and undefined
+ * metrics, and sets {@code windowAvailable} to {@code false}. Emptiness is
+ * never encoded as an inverted ({@code start == end + 1}) index pair, because
+ * that encoding overflows for an end index of {@link Integer#MAX_VALUE}.
  *
  * <p>
  * The matching cost depends on the number of events, not the number of bars:
