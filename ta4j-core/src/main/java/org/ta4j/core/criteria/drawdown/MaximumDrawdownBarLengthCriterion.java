@@ -8,7 +8,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityBundle;
-import org.ta4j.core.criteria.EquityBundleAware;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -26,8 +25,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettingsCriterion
-        implements EquityBundleAware {
+public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettingsCriterion {
 
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
@@ -89,19 +87,10 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettin
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling)
+                : new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.length(series, tradingRecord, cashFlow);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        return Drawdown.length(series, tradingRecord, equityBundle.cashFlow(equityCurveMode, openPositionHandling));
     }
 
     /**

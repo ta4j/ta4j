@@ -13,7 +13,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityBundle;
-import org.ta4j.core.criteria.EquityBundleAware;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -44,8 +43,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.19
  */
-public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion
-        implements EquityBundleAware {
+public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
     private final int iterations;
     private final Integer pathBlocks;
@@ -202,30 +200,14 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
 
     /**
      * {@inheritDoc}
-     *
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
-        return simulate(series, tradingRecord, blocks);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        CashFlow cashFlow = equityBundle.cashFlow(equityCurveMode, openPositionHandling);
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
+        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling) : null;
+        List<List<Num>> blocks = cashFlow != null ? buildBlocks(series, tradingRecord, cashFlow)
+                : buildBlocks(series, tradingRecord);
         return simulate(series, tradingRecord, blocks, cashFlow);
-    }
-
-    private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks) {
-        return simulate(series, tradingRecord, blocks, null);
     }
 
     private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks, CashFlow cashFlow) {

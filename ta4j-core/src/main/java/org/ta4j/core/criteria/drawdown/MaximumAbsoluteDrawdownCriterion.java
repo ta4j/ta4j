@@ -8,7 +8,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityBundle;
-import org.ta4j.core.criteria.EquityBundleAware;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -25,8 +24,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveSettingsCriterion
-        implements EquityBundleAware {
+public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
@@ -74,20 +72,10 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveS
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CumulativePnL pnl = new CumulativePnL(series, tradingRecord, equityCurveMode, openPositionHandling);
+        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        CumulativePnL pnl = sharedCurves != null ? sharedCurves.cumulativePnL(equityCurveMode, openPositionHandling)
+                : new CumulativePnL(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, pnl, false);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        return Drawdown.amount(series, tradingRecord, equityBundle.cumulativePnL(equityCurveMode, openPositionHandling),
-                false);
     }
 
     /**

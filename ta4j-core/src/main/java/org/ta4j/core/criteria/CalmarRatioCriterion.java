@@ -55,7 +55,7 @@ import java.util.Optional;
  *      "https://www.investopedia.com/terms/c/calmarratio.asp">https://www.investopedia.com/terms/c/calmarratio.asp</a>
  * @since 0.22.5
  */
-public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion implements EquityBundleAware {
+public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     private final MaximumDrawdownCriterion maximumDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
@@ -162,40 +162,16 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion i
             return zero;
         }
 
-        Num annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
+        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        Num annualizedReturn;
+        if (sharedCurves != null) {
+            annualizedReturn = annualizedReturn(series, sharedCurves.cashFlow(equityCurveMode, openPositionHandling),
+                    beginIndex, endIndex);
+        } else {
+            annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
+        }
 
         Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
-        if (maximumDrawdown.isZero()) {
-            return toRepresentation(annualizedReturn);
-        }
-        Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
-        return toRepresentation(calmarRatio);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
-            return zero;
-        }
-
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
-            return zero;
-        }
-
-        CashFlow cashFlow = equityBundle.cashFlow(equityCurveMode, openPositionHandling);
-        Num annualizedReturn = annualizedReturn(series, cashFlow, beginIndex, endIndex);
-
-        Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord, equityBundle);
         if (maximumDrawdown.isZero()) {
             return toRepresentation(annualizedReturn);
         }

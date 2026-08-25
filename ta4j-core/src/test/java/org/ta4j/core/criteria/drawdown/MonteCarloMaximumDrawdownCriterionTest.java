@@ -48,10 +48,11 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
                 Trade.sellAt(9, series), Trade.buyAt(10, series), Trade.sellAt(11, series));
         series.setMaximumBarCount(5);
-        var bundle = new EquityBundle(series, record);
         var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
 
-        Assert.assertNotNull(criterion.calculate(series, record, bundle));
+        var sharedValue = EquityBundle.evaluate(series, record, () -> criterion.calculate(series, record));
+        Assert.assertNotNull(sharedValue);
+        assertNumEquals(criterion.calculate(series, record), sharedValue);
     }
 
     @Test

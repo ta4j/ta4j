@@ -104,7 +104,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.2
  *
  */
-public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements EquityBundleAware {
+public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private final SamplingFrequency samplingFrequency;
     private final Annualization annualization;
@@ -227,42 +227,10 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        if (tradingRecord == null) {
-            return zero;
-        }
-
-        OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
-        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
-                equityCurveMode, effectiveOpenPositionHandling);
-        Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
-                excessReturns, effectiveOpenPositionHandling);
-        SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);
-
-        if (summary.count() < 2) {
-            return zero;
-        }
-
-        Num stdev = summary.sampleVariance(numFactory).sqrt();
-        if (stdev.isZero()) {
-            return zero;
-        }
-
-        Num sharpePerPeriod = summary.mean().dividedBy(stdev);
-
-        return annualization.apply(sharpePerPeriod, summary, numFactory);
+        return calculate(series, tradingRecord, EquityBundle.current(series, tradingRecord));
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle sharedCurves) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {
@@ -271,8 +239,11 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion implements E
 
         OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, equityBundle,
-                equityCurveMode, effectiveOpenPositionHandling);
+        ExcessReturns excessReturns = sharedCurves != null
+                ? new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, sharedCurves, equityCurveMode,
+                        effectiveOpenPositionHandling)
+                : new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord, equityCurveMode,
+                        effectiveOpenPositionHandling);
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
                 excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);

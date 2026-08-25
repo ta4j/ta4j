@@ -13,7 +13,6 @@ import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityBundle;
-import org.ta4j.core.criteria.EquityBundleAware;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -43,7 +42,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
  */
-public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion implements EquityBundleAware {
+public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
@@ -94,19 +93,10 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling)
+                : new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, cashFlow);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        return Drawdown.amount(series, tradingRecord, equityBundle.cashFlow(equityCurveMode, openPositionHandling));
     }
 
     @Override

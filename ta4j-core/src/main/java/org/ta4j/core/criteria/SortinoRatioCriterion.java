@@ -104,7 +104,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.2
  *
  */
-public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements EquityBundleAware {
+public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
 
     private final SamplingFrequency samplingFrequency;
     private final Annualization annualization;
@@ -203,14 +203,21 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return calculate(series, tradingRecord, EquityBundle.current(series, tradingRecord));
+    }
+
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle sharedCurves) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
-                openPositionHandling);
+        ExcessReturns excessReturns = sharedCurves != null
+                ? new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, sharedCurves,
+                        EquityCurveMode.MARK_TO_MARKET, openPositionHandling)
+                : new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+                        openPositionHandling);
         List<Sample> samples = RatioSampleSupport
                 .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
                 .toList();
@@ -255,39 +262,6 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion implements 
     @Override
     public boolean betterThan(Num a, Num b) {
         return a.isGreaterThan(b);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.24.2
-     */
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle equityBundle) {
-        equityBundle.requireInputsFor(series, tradingRecord);
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        if (tradingRecord == null) {
-            return zero;
-        }
-        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, equityBundle,
-                EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
-        List<Sample> samples = RatioSampleSupport
-                .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
-                .toList();
-        SampleSummary summary = SampleSummary.fromSamples(samples.stream(), numFactory);
-
-        if (summary.count() < 2) {
-            return zero;
-        }
-        Num downsideDeviation = downsideDeviation(samples, numFactory);
-        if (downsideDeviation.isNaN()) {
-            return downsideDeviation;
-        }
-
-        Num sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
-        return annualization.apply(sortinoPerPeriod, summary, numFactory);
     }
 
 }

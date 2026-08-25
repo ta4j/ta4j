@@ -16,6 +16,7 @@ import java.util.Set;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityBundle;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
@@ -135,11 +136,20 @@ public interface TradingStatementExecutionResult<R> {
         Num[][] rawValuesByCriterion = new Num[criterionCount][statementCount];
         for (int statementIndex = 0; statementIndex < statementCount; statementIndex++) {
             TradingRecord tradingRecord = statements.get(statementIndex).getTradingRecord();
-            for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
-                AnalysisCriterion criterion = criteria[criterionIndex];
-                rawValuesByCriterion[criterionIndex][statementIndex] = tradingRecord == null ? NaN.NaN
-                        : criterion.calculate(barSeries(), tradingRecord);
+            if (tradingRecord == null) {
+                for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                    rawValuesByCriterion[criterionIndex][statementIndex] = NaN.NaN;
+                }
+                continue;
             }
+            final int index = statementIndex;
+            EquityBundle.evaluate(barSeries(), tradingRecord, () -> {
+                for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                    rawValuesByCriterion[criterionIndex][index] = criteria[criterionIndex].calculate(barSeries(),
+                            tradingRecord);
+                }
+                return null;
+            });
         }
 
         Num[] bestValuesByCriterion = new Num[criterionCount];

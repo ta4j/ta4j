@@ -3,12 +3,13 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.util.function.Supplier;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Bar;
@@ -17,8 +18,8 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.analysis.cost.CostModel;
 
 /**
- * Shared, lazily computed equity analysis curves for one
- * {@code (BarSeries, TradingRecord)} pair.
+ * Internal shared, lazily computed equity analysis curves for one
+ * {@code (BarSeries, TradingRecord)} pair; not part of the public API.
  *
  * <p>
  * Evaluating several equity-curve-based criteria over the same trading record
@@ -30,11 +31,14 @@ import org.ta4j.core.analysis.cost.CostModel;
  * </p>
  *
  * <p>
- * Typical use is indirect, through batch evaluation entry points that create
- * and distribute a bundle internally. The curves are memoized by their
- * configuration key; pulling the same key twice returns the identical instance.
- * Cached cash flow and cumulative PnL instances are immutable snapshots: their
- * accumulating operations ({@code calculate}, {@code calculatePosition}) throw
+ * The bundle is created and distributed internally by
+ * {@link #evaluate(BarSeries, TradingRecord, Supplier)}: participating criteria
+ * call {@link #current(BarSeries, TradingRecord)} from their regular
+ * two-argument calculation and fall back to constructing their own curves when
+ * no matching scope is active. The curves are memoized by their configuration
+ * key; pulling the same key twice returns the identical instance. Cached cash
+ * flow and cumulative PnL instances are immutable snapshots: their accumulating
+ * operations ({@code calculate}, {@code calculatePosition}) throw
  * {@link UnsupportedOperationException} so a consumer cannot alter data shared
  * with other consumers. The bundle captures its inputs by reference: when bars
  * are appended to or removed from the series or new trades are recorded, every
@@ -48,8 +52,6 @@ import org.ta4j.core.analysis.cost.CostModel;
  * cache), so in-place edits of retained {@link Bar} references can neither
  * alter nor mix already-produced curves.
  * </p>
- *
- * @since 0.24.2
  */
 public final class EquityBundle {
 
@@ -70,6 +72,61 @@ public final class EquityBundle {
     private final Map<CurveKey, CashFlow> cashFlows = new ConcurrentHashMap<>();
     private final Map<CurveKey, CumulativePnL> cumulativePnLs = new ConcurrentHashMap<>();
     private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new ConcurrentHashMap<>();
+
+    /**
+     * Active evaluation scopes for this thread; innermost scope first.
+     */
+    private static final ThreadLocal<ArrayDeque<EquityBundle>> ACTIVE_SCOPES = ThreadLocal.withInitial(ArrayDeque::new);
+
+    /**
+     * Evaluates the given work against one shared curve cache scoped to exactly
+     * this thread and the given inputs. Criteria running inside the work observe
+     * the shared curves via {@link #current(BarSeries, TradingRecord)}; nested
+     * evaluations for different inputs stack and resolve innermost-first.
+     *
+     * @param series        the bar series all calculations inside the work read,
+     *                      not null
+     * @param tradingRecord the trading record all calculations inside the work
+     *                      analyze, not null
+     * @param evaluation    the work to run, not null
+     * @param <T>           the work's result type
+     * @return the work's result
+     */
+    public static <T> T evaluate(BarSeries series, TradingRecord tradingRecord, Supplier<T> evaluation) {
+        Objects.requireNonNull(series, "series cannot be null");
+        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        Objects.requireNonNull(evaluation, "evaluation cannot be null");
+        ArrayDeque<EquityBundle> scopes = ACTIVE_SCOPES.get();
+        scopes.push(new EquityBundle(series, tradingRecord));
+        try {
+            return evaluation.get();
+        } finally {
+            scopes.pop();
+            if (scopes.isEmpty()) {
+                ACTIVE_SCOPES.remove();
+            }
+        }
+    }
+
+    /**
+     * Returns the bundle of the innermost active evaluation scope captured for
+     * exactly the given inputs, or {@code null} when no matching scope is active.
+     * The identity check lets callers safely mix shared and locally constructed
+     * curves without restating the scope's inputs.
+     *
+     * @param series        the bar series to look up, not null
+     * @param tradingRecord the trading record to look up, not null
+     * @return the matching active bundle, or {@code null}
+     */
+    public static EquityBundle current(BarSeries series, TradingRecord tradingRecord) {
+        ArrayDeque<EquityBundle> scopes = ACTIVE_SCOPES.get();
+        for (EquityBundle bundle : scopes) {
+            if (bundle.series == series && bundle.tradingRecord == tradingRecord) {
+                return bundle;
+            }
+        }
+        return null;
+    }
 
     /**
      * Fingerprint of the captured inputs at the time the cached curves were built;
@@ -98,9 +155,8 @@ public final class EquityBundle {
      *
      * @param series        the bar series to analyze, not null
      * @param tradingRecord the trading record to analyze, not null
-     * @since 0.24.2
      */
-    public EquityBundle(BarSeries series, TradingRecord tradingRecord) {
+    EquityBundle(BarSeries series, TradingRecord tradingRecord) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();
@@ -239,12 +295,8 @@ public final class EquityBundle {
      * Returns the series this bundle was created for.
      *
      * @return the captured bar series reference
-     * @since 0.24.2
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the captured series reference; the bundle "
-            + "documents that it captures its inputs by reference and requireInputsFor pins callers "
-            + "to those exact instances")
-    public BarSeries getBarSeries() {
+    BarSeries getBarSeries() {
         return series;
     }
 
@@ -252,28 +304,9 @@ public final class EquityBundle {
      * Returns the trading record this bundle was created for.
      *
      * @return the captured trading record reference
-     * @since 0.24.2
      */
-    public TradingRecord getTradingRecord() {
+    TradingRecord getTradingRecord() {
         return tradingRecord;
     }
 
-    /**
-     * Ensures that this bundle was created for exactly the given inputs. The bundle
-     * captures its inputs by reference, so curve consumers must pass the same
-     * instances; a mismatch would otherwise mix datasets between the shared curves
-     * and the caller's arguments.
-     *
-     * @param series        the bar series the curves will be read against
-     * @param tradingRecord the trading record the curves were computed from
-     * @throws IllegalArgumentException if either input differs from the references
-     *                                  this bundle was created with
-     * @since 0.24.2
-     */
-    public void requireInputsFor(BarSeries series, TradingRecord tradingRecord) {
-        if (this.series != series || this.tradingRecord != tradingRecord) {
-            throw new IllegalArgumentException(
-                    "EquityBundle was created for a different BarSeries/TradingRecord combination");
-        }
-    }
 }

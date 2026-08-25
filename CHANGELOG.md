@@ -6,17 +6,18 @@
   daily series with seven closed positions, individual evaluation runs about 1.4x faster (DoubleNum) and
   1.15x faster (DecimalNum); the win grows with trade count because curve cost no longer scales with
   positions times window length.
-- **Analysis curves are isolated from later bar edits**: `CashFlow`, `CumulativePnL`, and the shared bundle
-  behind `CriteriaEvaluation.evaluateAll(...)` compute from a private copy of the series' bar data, so
-  in-place edits of retained bar references can neither alter nor mix already-produced curves. Appending or
-  removing bars and recording new trades still rebuilds the shared curves from current contents.
-- **Batch criterion evaluation shares one equity bundle**: the new opt-in facade
-  `CriteriaEvaluation.evaluateAll(...)` evaluates several criteria against one shared set of equity curves
-  instead of every criterion building its own, cutting redundant curve construction when scanning many criteria
-  at once. On the same eight-criterion workload, `evaluateAll` finishes about 1.3x (DoubleNum) to 1.05x
-  (DecimalNum) faster than evaluating each criterion separately on a typical record. Criteria participate
-  through the `EquityBundleAware` interface, non-participating criteria still evaluate normally, and curves
-  handed out from the shared bundle are read-only snapshots.
+- **Analysis curves are isolated from later bar edits**: `CashFlow`, `CumulativePnL`, and the internal shared
+  curve bundle compute from a private copy of the series' bar data, so in-place edits of retained bar
+  references can neither alter nor mix already-produced curves. Appending or removing bars and recording new
+  trades still rebuilds the shared curves from current contents.
+- **Ranking and reporting workflows share one set of equity curves**: `BacktestExecutionResult.getTopStrategies(...)`,
+  `rankTradingStatements(...)`, and the built-in equity-curve criteria automatically evaluate against one shared,
+  lazily built curve bundle per `(BarSeries, TradingRecord)`, instead of every criterion building its own, cutting
+  redundant curve construction when scanning many criteria at once. On the same eight-criterion workload, ranking
+  finishes about 1.3x (DoubleNum) to 1.05x (DecimalNum) faster than evaluating each criterion separately on a typical
+  record. No opt-in is required: participating criteria detect the active scope from their regular two-argument
+  calculation, custom criteria still evaluate normally, and curves handed out from the shared bundle are read-only
+  snapshots.
 - **Unified parameter research pipeline (`CF-455`)**: Added `ParameterResearch`, a budget-exact hyperparameter search workflow: typed integer, decimal, boolean, and categorical domains feed seeded grid, genetic, and particle-swarm engines (`SearchPlan.grid` / `genetic` / `particleSwarm`) through one objective seam with per-candidate metrics and explicit invalid/failure outcomes. A run-local cache keeps duplicates, cache hits, and re-proposed elites from consuming the unique-evaluation budget; an optional holdout window rebuilds and rescores the top-K training candidates out of sample; deterministic leaderboards and a `TerminationReason`-carrying report make every run reproducible. `SimpleMovingAverageRangeBacktest` demonstrates a backtest-style objective and `RelationshipObjectiveSearchExample` tunes a synchronization-F1 event-relationship objective with a one-line grid/GA/PSO switch.
 
 - **Advanced lead/lag, DTW, and event-dependence analysis (`CF-454`)**: Added `LeadLagCorrelationIndicator`, which scans an inclusive lag range and reports every best lag plus one deterministic selection in its full `Profile`; `DynamicTimeWarpingDistanceIndicator`, a bounded two-row-DP shape distance with z-score or raw normalization, an explicit Sakoe–Chiba band (unconstrained opt-in), and exact path-length normalization; and `EventMutualInformationEvaluator`, which measures how much a continuous predictor reduces uncertainty about a sparse Boolean event in an explicit future-bar window (raw/normalized MI in nats, target entropy, prevalence). Equal-frequency binning never splits tied predictor values, and target windows never cross the evaluation partition boundary.

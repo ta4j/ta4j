@@ -4,7 +4,10 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -25,14 +28,22 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.criteria.CalmarRatioCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.criteria.SharpeRatioCriterion;
+import org.ta4j.core.criteria.SortinoRatioCriterion;
+import org.ta4j.core.criteria.drawdown.MaximumAbsoluteDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownBarLengthCriterion;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 
@@ -255,18 +266,57 @@ public class EquityBundleTest {
     }
 
     @Test
-    public void bundleRejectsMismatchedInputs() {
+    public void scopeMatchesOnlyIdenticalInputs() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
 
-        assertSame(series, equityBundle.getBarSeries());
-        assertSame(tradingRecord, equityBundle.getTradingRecord());
+        EquityBundle found = EquityBundle.evaluate(series, tradingRecord, () -> {
+            TradingRecord otherRecord = closedPositionsRecord(series);
+            assertNull("a mismatched record must not resolve to the active bundle",
+                    EquityBundle.current(series, otherRecord));
+            return EquityBundle.current(series, tradingRecord);
+        });
 
-        TradingRecord otherRecord = closedPositionsRecord(series);
-        assertThrows(IllegalArgumentException.class, () -> equityBundle.requireInputsFor(series, otherRecord));
-        assertThrows(IllegalArgumentException.class,
-                () -> new MaximumDrawdownCriterion().calculate(series, otherRecord, equityBundle));
+        assertNotNull(found);
+        assertSame(series, found.getBarSeries());
+        assertSame(tradingRecord, found.getTradingRecord());
+        assertNull("no bundle may stay active after the evaluation", EquityBundle.current(series, tradingRecord));
+    }
+
+    @Test
+    public void nestedScopesResolveInnermostFirstAndRestoreOuterState() {
+        BarSeries series = series();
+        TradingRecord outerRecord = closedPositionsRecord(series);
+        TradingRecord innerRecord = closedPositionsRecord(series);
+
+        EquityBundle innerBundle = EquityBundle.evaluate(series, outerRecord, () -> {
+            EquityBundle outerBundle = EquityBundle.current(series, outerRecord);
+            EquityBundle nested = EquityBundle.evaluate(series, innerRecord,
+                    () -> EquityBundle.current(series, innerRecord));
+            assertNotSame("each scope must get its own bundle", outerBundle, nested);
+            return EquityBundle.current(series, outerRecord);
+        });
+
+        assertNotNull(innerBundle);
+        assertNull("no bundle may stay active after the evaluations", EquityBundle.current(series, outerRecord));
+    }
+
+    @Test
+    public void builtInCriteriaInsideScopeMatchDirectCalculation() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        List<AnalysisCriterion> criteria = List.of(new MaximumDrawdownCriterion(),
+                new MaximumDrawdownCriterion(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE),
+                new MaximumDrawdownBarLengthCriterion(), new MaximumAbsoluteDrawdownCriterion(),
+                new ReturnOverMaxDrawdownCriterion(), new MonteCarloMaximumDrawdownCriterion(),
+                new CalmarRatioCriterion(), new SharpeRatioCriterion(0.05), new SortinoRatioCriterion(0.02));
+
+        for (int i = 0; i < criteria.size(); i++) {
+            AnalysisCriterion criterion = criteria.get(i);
+            Num direct = criterion.calculate(series, tradingRecord);
+            Num shared = EquityBundle.evaluate(series, tradingRecord, () -> criterion.calculate(series, tradingRecord));
+            assertNumEquals(direct, shared);
+        }
     }
 
     @Test
