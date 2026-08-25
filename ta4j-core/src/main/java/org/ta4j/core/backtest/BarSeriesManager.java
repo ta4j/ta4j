@@ -589,8 +589,11 @@ public class BarSeriesManager {
             // The raw upper bound (exclusive) is computed in long to avoid int
             // overflow when removedBarsCount + barData.size() exceeds
             // Integer.MAX_VALUE (e.g. a trailing bar at Integer.MAX_VALUE).
-            long seriesMaxSize = Math.max((long) barSeries.getEndIndex() + 1,
-                    (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size());
+            // Clamp it to Integer.MAX_VALUE + 1: bar/strategy APIs take int
+            // indices, so no representable bar exists beyond Integer.MAX_VALUE,
+            // and scanning past it would wrap the long-to-int cast negative.
+            long seriesMaxSize = Math.min((long) Integer.MAX_VALUE + 1, Math.max((long) barSeries.getEndIndex() + 1,
+                    (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size()));
             for (long i = runEndIndex + 1L; i < seriesMaxSize; i++) {
                 int index = (int) i;
                 lastProcessedIndex = index;

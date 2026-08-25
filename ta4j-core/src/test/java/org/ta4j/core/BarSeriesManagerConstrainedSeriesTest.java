@@ -4,10 +4,12 @@
 package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -107,5 +109,37 @@ public class BarSeriesManagerConstrainedSeriesTest {
         assertEquals(Integer.MAX_VALUE - 1, position.getEntry().getIndex());
         assertEquals(Integer.MAX_VALUE, position.getExit().getIndex());
         assertEquals(offsetSeries.getBar(Integer.MAX_VALUE).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void closeScanDoesNotWrapPastTerminalBar() {
+        // removedBarsCount = Integer.MAX_VALUE - 1 with three raw bars: logical
+        // MAX_VALUE - 1, MAX_VALUE, and one unreachable bar beyond MAX_VALUE. The
+        // raw upper bound (removedBarsCount + size) exceeds MAX_VALUE + 1, so the
+        // close scan must clamp to MAX_VALUE + 1 and never pass a wrapped negative
+        // index to the execution model or strategy.
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10d, 20d, 30d)
+                .build();
+        NumFactory numFactory = sourceSeries.numFactory();
+        BaseBarSeries offsetSeries = new BaseBarSeries("terminal-offset-series", List.copyOf(sourceSeries.getBarData()),
+                Integer.MAX_VALUE - 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE - 1, false, numFactory,
+                new TimeBarBuilderFactory());
+        // Exit rule never fires within the reachable index range, forcing the close
+        // scan to run past Integer.MAX_VALUE in an unclamped implementation.
+        Strategy strategy = new BaseStrategy(new FixedRule(Integer.MAX_VALUE - 1), new FixedRule(-1));
+        TradeExecutionModel negativeIndexGuard = new TradeOnCurrentCloseModel() {
+            @Override
+            public void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
+                if (index < 0) {
+                    throw new AssertionError("Close scan wrapped to a negative index: " + index);
+                }
+            }
+        };
+
+        TradingRecord tradingRecord = new BarSeriesManager(offsetSeries, negativeIndexGuard).run(strategy);
+
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(Integer.MAX_VALUE - 1, tradingRecord.getCurrentPosition().getEntry().getIndex());
     }
 }

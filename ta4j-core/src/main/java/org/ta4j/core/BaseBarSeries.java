@@ -128,6 +128,14 @@ public class BaseBarSeries implements BarSeries {
      * range, and removal offset are read under a single read lock so the copy is
      * observed atomically.
      * </p>
+     * <p>
+     * Subclasses of {@link BaseBarSeries} that override {@link BarSeries}
+     * accessors, and any foreign {@link BarSeries} implementation, are rebuilt from
+     * those public accessors so the copy matches the source's advertised logical
+     * view. The reported maximum bar count is carried over as-is without applying
+     * retention, so a source whose maximum bar count is a hint rather than a
+     * retention limit keeps all of its raw bars.
+     * </p>
      *
      * @param series the series to copy; must not be {@code null}
      * @return a new {@link BaseBarSeries} with the same logical view and raw data
@@ -139,14 +147,22 @@ public class BaseBarSeries implements BarSeries {
         if (series instanceof ConcurrentBarSeries concurrentSeries) {
             return concurrentSeries.atomicCopy();
         }
-        if (series instanceof BaseBarSeries baseSeries) {
-            return baseSeries.copySelf();
+        if (series.getClass() == BaseBarSeries.class) {
+            // Only the exact base class may be copied from its private fields.
+            // Subclasses may override BarSeries accessors to present a different
+            // logical view; reconstructing them below honors those overrides.
+            return ((BaseBarSeries) series).copySelf();
         }
-        // Unknown BarSeries implementation: reconstruct from the public accessors.
+        // Unknown BarSeries implementation or a BaseBarSeries subclass that may
+        // override accessors: reconstruct from the public accessors.
         BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
                 series.getEndIndex(), series.getRemovedBarsCount(), false, series.numFactory(),
                 new TimeBarBuilderFactory());
-        copy.setMaximumBarCount(series.getMaximumBarCount());
+        // Assign the maximum bar count without invoking setMaximumBarCount(), which
+        // applies retention (removeExceedingBars) and would truncate raw bars when
+        // the source reports a hint smaller than its raw list (e.g. a benchmark
+        // wrapper whose maximum bar count is a hint, not a retention limit).
+        copy.maximumBarCount = series.getMaximumBarCount();
         return copy;
     }
 

@@ -729,6 +729,53 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(-1, emptyCopy.getEndIndex());
     }
 
+    @Test
+    public void testCopyOfHonorsOverriddenAccessorsOnSubclass() {
+        // A BaseBarSeries subclass that overrides accessors to advertise a shifted
+        // logical view. copyOf must rebuild from those accessors, not from the
+        // superclass private fields.
+        BaseBarSeries shifted = new BaseBarSeries("shifted", new ArrayList<>(testBars)) {
+            @Override
+            public int getBeginIndex() {
+                return 5;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return 7;
+            }
+
+            @Override
+            public int getRemovedBarsCount() {
+                return 5;
+            }
+        };
+
+        BaseBarSeries copy = BaseBarSeries.copyOf(shifted);
+
+        assertEquals(5, copy.getBeginIndex());
+        assertEquals(7, copy.getEndIndex());
+        assertEquals(5, copy.getRemovedBarsCount());
+    }
+
+    @Test
+    public void testCopyOfPreservesRawBarsWhenMaxBarCountIsHintOnly() {
+        // A subclass reporting a maximum bar count smaller than its raw data mimics
+        // a hint-only wrapper. copyOf must keep every raw bar instead of applying
+        // retention, which would truncate the raw prefix.
+        BaseBarSeries hintOnly = new BaseBarSeries("hint-only", new ArrayList<>(testBars)) {
+            @Override
+            public int getMaximumBarCount() {
+                return 1;
+            }
+        };
+
+        BaseBarSeries copy = BaseBarSeries.copyOf(hintOnly);
+
+        assertEquals(5, copy.getBarData().size());
+        assertEquals(1, copy.getMaximumBarCount());
+    }
+
     // ==================== Utility Methods Tests ====================
 
     @Test
