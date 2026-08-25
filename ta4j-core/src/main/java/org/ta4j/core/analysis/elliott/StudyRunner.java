@@ -222,16 +222,10 @@ final class StudyRunner {
 
     private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
         final List<StudyReport.NullReport> reports = new ArrayList<>();
-        final boolean hasEvaluationWindow = start <= end;
-        // Both preregistered hypotheses need a null baseline: H1 claims about
-        // MOTIVE_5 and the frozen H2 claim about complete CYCLE_5_3 cycles.
         final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
+        final boolean hasEvaluationWindow = start <= end;
         final Partitions partitions = configuration.partitions();
         for (final int blockLength : configuration.nullBlockLengths()) {
-            // Every null grammar reads the same ensemble: generation and the
-            // detector replay are grammar-independent, so each member is built
-            // and reconciled once and both grammars record from that shared
-            // replay. Halves the dominant work of frozen evaluations.
             final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar = new LinkedHashMap<>();
             final Map<TopologyGrammar, List<List<MetricAccumulator>>> memberTotalsByGrammar = new LinkedHashMap<>();
             for (final TopologyGrammar grammar : nullGrammars) {
@@ -241,6 +235,16 @@ final class StudyRunner {
                     memberTotals.add(newAccumulators(List.of(), partitions));
                 }
                 memberTotalsByGrammar.put(grammar, memberTotals);
+            }
+            final List<List<MetricAccumulator>> h2Totals = new ArrayList<>(ablationModes.size());
+            final List<List<List<MetricAccumulator>>> h2MemberTotals = new ArrayList<>(ablationModes.size());
+            for (final RuleAblation.Mode mode : ablationModes) {
+                h2Totals.add(newAccumulators(mode.rules(), partitions));
+                final List<List<MetricAccumulator>> memberTotals = new ArrayList<>(configuration.nullEnsembleSize());
+                for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
+                    memberTotals.add(newAccumulators(mode.rules(), partitions));
+                }
+                h2MemberTotals.add(memberTotals);
             }
             // An evaluation window before or after the series records no
             // real topology; generating full-series null ensembles anyway
@@ -274,9 +278,22 @@ final class StudyRunner {
                                 for (final TopologyGrammar grammar : nullGrammars) {
                                     final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of(),
                                             partitions);
-                                    recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
-                                            member.getEndIndex(), partitions, replay, grammar, List.of(),
-                                            memberAccumulators, sourceBegin);
+                                    final List<List<MetricAccumulator>> modeAccumulators = new ArrayList<>(
+                                            ablationModes.size());
+                                    final List<TopologyRecording> recordings = new ArrayList<>(
+                                            1 + ablationModes.size());
+                                    recordings.add(new TopologyRecording(List.of(), memberAccumulators));
+                                    if (grammar == TopologyGrammar.CYCLE_5_3) {
+                                        for (final RuleAblation.Mode mode : ablationModes) {
+                                            final List<MetricAccumulator> modeMetrics = newAccumulators(mode.rules(),
+                                                    partitions);
+                                            modeAccumulators.add(modeMetrics);
+                                            recordings.add(new TopologyRecording(mode.rules(), modeMetrics));
+                                        }
+                                    }
+                                    recordTopologyWithRecordings(member,
+                                            Math.max(member.getBeginIndex(), start - sourceBegin), member.getEndIndex(),
+                                            partitions, replay, grammar, recordings, sourceBegin);
                                     totalsByGrammar.get(grammar)
                                             .get(partition)
                                             .mergeFrom(memberAccumulators.get(partition));
@@ -284,14 +301,28 @@ final class StudyRunner {
                                             .get(memberIndex)
                                             .get(partition)
                                             .mergeFrom(memberAccumulators.get(partition));
+                                    if (grammar == TopologyGrammar.CYCLE_5_3) {
+                                        for (int modeIndex = 0; modeIndex < modeAccumulators.size(); modeIndex++) {
+                                            final MetricAccumulator modeMetrics = modeAccumulators.get(modeIndex)
+                                                    .get(partition);
+                                            h2Totals.get(modeIndex).get(partition).mergeFrom(modeMetrics);
+                                            h2MemberTotals.get(modeIndex)
+                                                    .get(memberIndex)
+                                                    .get(partition)
+                                                    .mergeFrom(modeMetrics);
+                                        }
+                                    }
                                 }
                             });
                 }
             }
             for (final TopologyGrammar grammar : nullGrammars) {
+                final List<StudyReport.NullModeReport> modes = grammar == TopologyGrammar.CYCLE_5_3
+                        ? nullModeReports(ablationModes, h2Totals, h2MemberTotals, partitions)
+                        : List.of();
                 reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),
                         configuration.seed(), metrics(totalsByGrammar.get(grammar), partitions),
-                        memberMetrics(memberTotalsByGrammar.get(grammar), partitions)));
+                        memberMetrics(memberTotalsByGrammar.get(grammar), partitions), modes));
             }
         }
         return List.copyOf(reports);
@@ -352,10 +383,20 @@ final class StudyRunner {
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
     }
 
+    private record TopologyRecording(List<RelationshipRule> activeRules, List<MetricAccumulator> accumulators) {
+    }
+
     private static void recordTopology(final BarSeries series, final int start, final int end,
             final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
             final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators,
             final int recordedIndexOffset) {
+        recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
+                List.of(new TopologyRecording(activeRules, accumulators)), recordedIndexOffset);
+    }
+
+    private static void recordTopologyWithRecordings(final BarSeries series, final int start, final int end,
+            final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
+            final List<TopologyRecording> recordings, final int recordedIndexOffset) {
         if (start > end) {
             return;
         }
@@ -367,7 +408,11 @@ final class StudyRunner {
                 final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
                 // Null ensemble members are rebased sub-series; the offset restores
                 // source coordinates so null and real metric bounds are comparable.
-                accumulators.get(partitionIndex).record(analysis, index + recordedIndexOffset, activeRules, series);
+                for (final TopologyRecording recording : recordings) {
+                    recording.accumulators()
+                            .get(partitionIndex)
+                            .record(analysis, index + recordedIndexOffset, recording.activeRules(), series);
+                }
             }
             if (index == end) {
                 break;
@@ -491,6 +536,19 @@ final class StudyRunner {
                     metrics(memberAccumulators.get(memberIndex), partitions)));
         }
         return List.copyOf(metrics);
+    }
+
+    private static List<StudyReport.NullModeReport> nullModeReports(final List<RuleAblation.Mode> modes,
+            final List<List<MetricAccumulator>> totals, final List<List<List<MetricAccumulator>>> memberTotals,
+            final Partitions partitions) {
+        final List<StudyReport.NullModeReport> reports = new ArrayList<>(modes.size());
+        for (int modeIndex = 0; modeIndex < modes.size(); modeIndex++) {
+            final RuleAblation.Mode mode = modes.get(modeIndex);
+            reports.add(new StudyReport.NullModeReport(mode.name(), activeRuleIds(mode.rules()),
+                    metrics(totals.get(modeIndex), partitions),
+                    memberMetrics(memberTotals.get(modeIndex), partitions)));
+        }
+        return List.copyOf(reports);
     }
 
     private static int partitionIndex(final BarSeries series, final int index, final Partitions partitions) {
@@ -840,7 +898,7 @@ final class StudyRunner {
             final int horizonPosition = Math.max(0, pivots.size() - required);
             for (int start = 0; start + required <= pivots.size(); start++) {
                 final List<ConfirmedPivot> window = pivots.subList(start, start + required);
-                if (matchesWindow(window) && start + required - 1 >= horizonPosition) {
+                if (matchesWindow(window) && start + required - 1 > horizonPosition) {
                     matches.add(window.get(0).pivotIndex() + "-" + window.get(window.size() - 1).pivotIndex());
                 }
             }

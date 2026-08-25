@@ -4,32 +4,30 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.lang.reflect.Proxy;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.analysis.elliott.ConfirmedPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
-import org.ta4j.core.analysis.elliott.swing.SwingPivot;
-import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
-import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class StudyRunnerTest {
 
@@ -224,6 +222,16 @@ class StudyRunnerTest {
         assertTrue(report.toJson().contains("\"grammar\":\"MOTIVE_5\""));
         assertTrue(report.toJson().contains("\"grammar\":\"CYCLE_5_3\""));
         assertTrue(report.toJson().contains("\"primaryDetector\":\"synthetic-primary\""));
+
+        final StudyReport.NullReport cycleNulls = report.nulls()
+                .stream()
+                .filter(nullReport -> "CYCLE_5_3".equals(nullReport.grammar()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(4, cycleNulls.modes().size());
+        assertTrue(cycleNulls.modes().stream().allMatch(mode -> mode.members().size() == 2));
+        assertTrue(cycleNulls.modes().stream().anyMatch(mode -> mode.activeRuleIds().size() == rules().size()));
+        assertTrue(report.toJson().contains("\"modes\""));
     }
 
     @Test
@@ -322,6 +330,7 @@ class StudyRunnerTest {
         // Regression: with odd first segments, 3+3, 5+5 and 7+3 reduced to
         // identical strict alternation over 11 pivots. The junction pivot must
         // now be the window extreme on the leading trend side.
+
         final List<ConfirmedPivot> fiveFiveShape = alternatingWindow(
                 new double[] { 10, 12, 11, 14, 12, 16, 13, 15, 13.5d, 15.5d, 14 });
         assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(fiveFiveShape).size());
@@ -331,6 +340,14 @@ class StudyRunnerTest {
                 new double[] { 10, 12, 11, 14, 12, 15, 13, 17, 14, 16, 15 });
         assertEquals(1, StudyRunner.AlternativeGrammar.of("7+3").matches(sevenThreeShape).size());
         assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(sevenThreeShape).isEmpty());
+    }
+
+    @Test
+    void alternativeGrammarsDropBoundaryOnlyCompleteMatches() {
+        final List<ConfirmedPivot> pivots = alternatingWindow(
+                new double[] { 0, 10, 5, 20, 8, 15, 10, 18, 12, 25, 14, 22, 16 });
+
+        assertEquals(List.of("6-12"), StudyRunner.AlternativeGrammar.of("3+3").matches(pivots));
     }
 
     @Test

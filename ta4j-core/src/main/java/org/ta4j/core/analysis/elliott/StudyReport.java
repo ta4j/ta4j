@@ -338,18 +338,48 @@ final class StudyReport {
             nullJson.add("partitions", partitions);
             final JsonArray members = new JsonArray();
             for (final NullMemberMetrics member : nullReport.members()) {
-                final JsonObject memberJson = new JsonObject();
-                memberJson.addProperty("memberIndex", member.memberIndex());
-                final JsonArray memberPartitions = new JsonArray();
-                for (final PartitionMetrics metrics : member.partitions()) {
-                    memberPartitions.add(partitionJson(metrics));
-                }
-                memberJson.add("partitions", memberPartitions);
-                members.add(memberJson);
+                members.add(nullMemberJson(member));
             }
             nullJson.add("members", members);
+            final JsonArray modes = new JsonArray();
+            for (final NullModeReport mode : nullReport.modes()) {
+                modes.add(nullModeJson(mode));
+            }
+            nullJson.add("modes", modes);
             json.add(nullJson);
         }
+        return json;
+    }
+
+    private static JsonObject nullModeJson(final NullModeReport mode) {
+        final JsonObject json = new JsonObject();
+        json.addProperty("mode", mode.mode());
+        final JsonArray activeRuleIds = new JsonArray();
+        for (final String ruleId : mode.activeRuleIds()) {
+            activeRuleIds.add(ruleId);
+        }
+        json.add("activeRuleIds", activeRuleIds);
+        final JsonArray partitions = new JsonArray();
+        for (final PartitionMetrics metrics : mode.partitions()) {
+            partitions.add(partitionJson(metrics));
+        }
+        json.add("partitions", partitions);
+        final JsonArray members = new JsonArray();
+        for (final NullMemberMetrics member : mode.members()) {
+            members.add(nullMemberJson(member));
+        }
+        json.add("members", members);
+        return json;
+    }
+
+    private static JsonObject nullMemberJson(final NullMemberMetrics member) {
+        final JsonObject json = new JsonObject();
+        json.addProperty("memberIndex", member.memberIndex());
+        final JsonArray partitions = new JsonArray();
+        for (final PartitionMetrics metrics : member.partitions()) {
+            partitions.add(partitionJson(metrics));
+        }
+        json.add("partitions", partitions);
         return json;
     }
 
@@ -573,6 +603,43 @@ final class StudyReport {
     }
 
     /**
+     * Immutable ablation outcomes for one null-ensemble grammar.
+     *
+     * @since 0.24.2
+     */
+    record NullModeReport(String mode, List<String> activeRuleIds, List<PartitionMetrics> partitions,
+            List<NullMemberMetrics> members) {
+        NullModeReport {
+            mode = requireText(mode, "null.mode");
+            activeRuleIds = activeRuleIds == null ? List.of() : List.copyOf(activeRuleIds);
+            partitions = immutable(partitions, "null.mode.partitions");
+            members = immutable(members, "null.mode.members");
+            for (int index = 0; index < members.size(); index++) {
+                final NullMemberMetrics member = members.get(index);
+                if (member.memberIndex() != index || member.partitions().size() != partitions.size()) {
+                    throw new IllegalArgumentException(
+                            "null mode member metrics must preserve ensemble order and partitions");
+                }
+            }
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<String> activeRuleIds() {
+            return List.copyOf(activeRuleIds);
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<PartitionMetrics> partitions() {
+            return List.copyOf(partitions);
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<NullMemberMetrics> members() {
+            return List.copyOf(members);
+        }
+    }
+
+    /**
      * Compact per-member outcomes for one null ensemble member.
      *
      * @since 0.24.2
@@ -597,7 +664,7 @@ final class StudyReport {
      * @since 0.24.2
      */
     record NullReport(String grammar, int blockLength, int ensembleSize, long seed, List<PartitionMetrics> partitions,
-            List<NullMemberMetrics> members) {
+            List<NullMemberMetrics> members, List<NullModeReport> modes) {
         NullReport {
             if (grammar == null || grammar.isBlank()) {
                 throw new IllegalArgumentException("null report grammar must not be blank");
@@ -607,6 +674,7 @@ final class StudyReport {
             }
             partitions = immutable(partitions, "partitions");
             members = immutable(members, "members");
+            modes = modes == null ? List.of() : List.copyOf(modes);
             if (members.size() != ensembleSize) {
                 throw new IllegalArgumentException("null member metrics must match ensemble size");
             }
@@ -615,6 +683,11 @@ final class StudyReport {
                 if (member.memberIndex() != index || member.partitions().size() != partitions.size()) {
                     throw new IllegalArgumentException(
                             "null member metrics must preserve ensemble order and partitions");
+                }
+            }
+            for (final NullModeReport mode : modes) {
+                if (mode.members().size() != ensembleSize || mode.partitions().size() != partitions.size()) {
+                    throw new IllegalArgumentException("null mode metrics must match ensemble size and partitions");
                 }
             }
         }
@@ -627,6 +700,11 @@ final class StudyReport {
         /** @return defensive copy; the report tree is shared across modules. */
         public List<NullMemberMetrics> members() {
             return List.copyOf(members);
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<NullModeReport> modes() {
+            return List.copyOf(modes);
         }
     }
 }
