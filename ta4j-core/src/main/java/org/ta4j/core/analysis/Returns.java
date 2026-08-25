@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -44,6 +43,13 @@ public class Returns implements PerformanceIndicator {
 
     /** The bar series. */
     private final BarSeries barSeries;
+
+    /**
+     * Lazily created defensive copy of {@link #barSeries} handed out by
+     * {@link #getBarSeries()}; kept separate so caller-side mutations of the
+     * exposed series cannot reach the calculation inputs.
+     */
+    private volatile BarSeries exposedBarSeries;
 
     /**
      * The raw return rates (before formatting).
@@ -270,16 +276,23 @@ public class Returns implements PerformanceIndicator {
     }
 
     /**
-     * Returns the defensive series snapshot taken at construction time. The same
-     * instance is returned for every call; later mutations of the original series
-     * are not visible through it.
+     * Returns a defensive snapshot of the series used for the calculation. The same
+     * instance is returned for every call, and mutating it cannot reach the
+     * indicator's calculated values because those are computed from a separate
+     * internal snapshot taken at construction time.
      */
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the single "
-            + "construction-time defensive snapshot; the indicator is the sole owner of this instance and the "
-            + "stable-identity contract is documented on this class and pinned by tests")
     public BarSeries getBarSeries() {
-        return barSeries;
+        BarSeries snapshot = exposedBarSeries;
+        if (snapshot == null) {
+            synchronized (this) {
+                if (exposedBarSeries == null) {
+                    exposedBarSeries = snapshotSeries(barSeries);
+                }
+                snapshot = exposedBarSeries;
+            }
+        }
+        return snapshot;
     }
 
     /**

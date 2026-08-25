@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -76,9 +78,17 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
         foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
     }
 
+    /**
+     * Returns the detached bar-series snapshot backing this result. The same
+     * instance is returned on every call so equity-curve cache scopes keyed by
+     * series identity match across repeated lookups.
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "barSeries returns the single construction-time "
+            + "detached snapshot; stable identity is required so equity-curve cache scopes keyed by series "
+            + "identity match, and callers cannot reach mutable state through it")
     @Override
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override

@@ -108,9 +108,17 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
     }
 
+    /**
+     * Returns the detached bar-series snapshot backing this result. The same
+     * instance is returned on every call so equity-curve cache scopes keyed by
+     * series identity match across repeated lookups.
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "barSeries returns the single construction-time "
+            + "detached snapshot; stable identity is required so equity-curve cache scopes keyed by series "
+            + "identity match, and callers cannot reach mutable state through it")
     @Override
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override
