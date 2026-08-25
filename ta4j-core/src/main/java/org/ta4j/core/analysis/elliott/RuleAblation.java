@@ -25,6 +25,28 @@ final class RuleAblation {
         return modes(ClassicalRelationshipRules.classicalRelationships());
     }
 
+    /**
+     * Returns the frozen classical ladder in protocol order, independent of
+     * additional caller-supplied relationship rules.
+     *
+     * @param suppliedRules rules bound by the frozen runner
+     * @return topology-only, one-rule, and classical-all modes
+     */
+    static List<Mode> frozenModes(final List<RelationshipRule> suppliedRules) {
+        final List<RelationshipRule> supplied = List.copyOf(Objects.requireNonNull(suppliedRules, "suppliedRules"));
+        final List<RelationshipRule> frozenRules = new ArrayList<>(4);
+        for (final String ruleId : List.of("wave2-origin", "wave3-not-shortest", "wave4-nonoverlap",
+                "wave5-divergence")) {
+            final RelationshipRule rule = supplied.stream()
+                    .filter(candidate -> ruleId.equals(candidate.id()))
+                    .findFirst()
+                    .orElseThrow(
+                            () -> new IllegalArgumentException("frozen protocol requires relationship rule " + ruleId));
+            frozenRules.add(rule);
+        }
+        return modes(frozenRules);
+    }
+
     static List<Mode> modes(final List<RelationshipRule> suppliedRules) {
         Objects.requireNonNull(suppliedRules, "suppliedRules");
         final List<RelationshipRule> rules = List.copyOf(suppliedRules);

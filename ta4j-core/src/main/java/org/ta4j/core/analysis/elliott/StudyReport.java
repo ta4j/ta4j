@@ -324,6 +324,18 @@ public final class StudyReport {
                 partitions.add(partitionJson(metrics));
             }
             nullJson.add("partitions", partitions);
+            final JsonArray members = new JsonArray();
+            for (final NullMemberMetrics member : nullReport.members()) {
+                final JsonObject memberJson = new JsonObject();
+                memberJson.addProperty("memberIndex", member.memberIndex());
+                final JsonArray memberPartitions = new JsonArray();
+                for (final PartitionMetrics metrics : member.partitions()) {
+                    memberPartitions.add(partitionJson(metrics));
+                }
+                memberJson.add("partitions", memberPartitions);
+                members.add(memberJson);
+            }
+            nullJson.add("members", members);
             json.add(nullJson);
         }
         return json;
@@ -485,12 +497,31 @@ public final class StudyReport {
     }
 
     /**
+     * Compact per-member outcomes for one null ensemble member.
+     *
+     * @since 0.24.2
+     */
+    public record NullMemberMetrics(int memberIndex, List<PartitionMetrics> partitions) {
+        public NullMemberMetrics {
+            if (memberIndex < 0) {
+                throw new IllegalArgumentException("null member index must not be negative");
+            }
+            partitions = immutable(partitions, "partitions");
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<PartitionMetrics> partitions() {
+            return List.copyOf(partitions);
+        }
+    }
+
+    /**
      * Immutable null-ensemble report for one stationary block length.
      *
      * @since 0.24.2
      */
     public record NullReport(String grammar, int blockLength, int ensembleSize, long seed,
-            List<PartitionMetrics> partitions) {
+            List<PartitionMetrics> partitions, List<NullMemberMetrics> members) {
         public NullReport {
             if (grammar == null || grammar.isBlank()) {
                 throw new IllegalArgumentException("null report grammar must not be blank");
@@ -499,11 +530,20 @@ public final class StudyReport {
                 throw new IllegalArgumentException("null parameters must be positive");
             }
             partitions = immutable(partitions, "partitions");
+            members = immutable(members, "members");
+            if (members.size() != ensembleSize) {
+                throw new IllegalArgumentException("null member metrics must match ensemble size");
+            }
         }
 
         /** @return defensive copy; the report tree is shared across modules. */
         public List<PartitionMetrics> partitions() {
             return List.copyOf(partitions);
+        }
+
+        /** @return defensive copy; the report tree is shared across modules. */
+        public List<NullMemberMetrics> members() {
+            return List.copyOf(members);
         }
     }
 }

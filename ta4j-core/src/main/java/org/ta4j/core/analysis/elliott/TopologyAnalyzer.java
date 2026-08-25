@@ -129,9 +129,23 @@ final class TopologyAnalyzer {
                     + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex());
         }
         if (live.size() > 1) {
-            final List<TopologyCandidate> bounded = boundedMostRecent(live);
-            return new TopologyAnalysis(TopologyStatus.AMBIGUOUS, null, bounded,
-                    bounded.size() + " of " + live.size() + " tied " + grammar + " candidates remain");
+            // Only candidates whose windows overlap the newest live candidate
+            // can compete for the current interpretation. Older completed
+            // candidates remain historical evidence, not current ambiguity.
+            final TopologyCandidate newestLive = live.get(live.size() - 1);
+            final List<TopologyCandidate> current = live.stream()
+                    .filter(candidate -> candidate.endBarIndex() >= newestLive.startBarIndex())
+                    .toList();
+            if (current.size() == 1) {
+                return new TopologyAnalysis(TopologyStatus.COMPLETE, current.get(0).direction(), current,
+                        "newest " + grammar + " candidate spans bars " + current.get(0).startBarIndex() + "-"
+                                + current.get(0).endBarIndex());
+            }
+            if (current.size() > 1) {
+                final List<TopologyCandidate> bounded = boundedMostRecent(current);
+                return new TopologyAnalysis(TopologyStatus.AMBIGUOUS, null, bounded,
+                        bounded.size() + " of " + current.size() + " tied " + grammar + " candidates remain");
+            }
         }
 
         // No live complete candidate survived; the freshest partial pattern may

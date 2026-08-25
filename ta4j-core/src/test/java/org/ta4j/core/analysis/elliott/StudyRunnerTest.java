@@ -141,6 +141,10 @@ class StudyRunnerTest {
         assertEquals(List.of("MOTIVE_5", "CYCLE_5_3"),
                 report.nulls().stream().map(StudyReport.NullReport::grammar).toList());
         assertEquals(List.of(2, 2), report.nulls().stream().map(StudyReport.NullReport::blockLength).toList());
+        assertEquals(2, report.nulls().get(0).members().size());
+        assertEquals(report.nulls().get(0).partitions().size(),
+                report.nulls().get(0).members().get(0).partitions().size());
+        assertTrue(report.toJson().contains("\"members\""));
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
     }

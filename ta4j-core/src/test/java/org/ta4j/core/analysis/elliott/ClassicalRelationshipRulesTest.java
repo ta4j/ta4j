@@ -45,4 +45,15 @@ class ClassicalRelationshipRulesTest {
                 .containsExactly("wave2-origin", "wave3-not-shortest", "wave4-nonoverlap", "wave5-divergence");
     }
 
+    @Test
+    void frozenAblationLadderIncludesEveryClassicalRule() {
+        final BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7).build();
+        final Indicator<Num> momentum = new SMAIndicator(new ClosePriceIndicator(series), 3);
+
+        assertThat(RuleAblation.frozenModes(ClassicalRelationshipRules.classicalRelationships(momentum)))
+                .extracting(RuleAblation.Mode::name)
+                .containsExactly("topology-only", "+wave2-origin", "+wave3-not-shortest", "+wave4-nonoverlap",
+                        "+wave5-divergence", "classical-all");
+    }
+
 }

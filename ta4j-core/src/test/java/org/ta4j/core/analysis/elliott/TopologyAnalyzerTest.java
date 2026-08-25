@@ -116,6 +116,16 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void retiresHistoricalCandidatesBeforeDeclaringAmbiguity() {
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(10, 20, 14, 26, 18, 32, 40, 50, 44, 56, 48, 62));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.candidates()).extracting(TopologyCandidate::startBarIndex).containsExactly(6);
+    }
+
+    @Test
     void completesCycleFiveThreeWithMotiveAndCorrection() {
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.CYCLE_5_3,
                 pivots(10, 20, 14, 26, 18, 32, 22, 27, 19));

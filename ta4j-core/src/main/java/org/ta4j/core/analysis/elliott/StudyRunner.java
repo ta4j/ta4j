@@ -53,6 +53,7 @@ public final class StudyRunner {
     private final Supplier<SwingDetector> detectorFactory;
     private final List<TopologyGrammar> grammars;
     private final List<RelationshipRule> rules;
+    private final List<RuleAblation.Mode> ablationModes;
     private static final List<String> STRUCTURAL_COMPETING_MODES = List.of("3+3", "5+5", "7+3",
             "change-point-baseline");
 
@@ -65,10 +66,18 @@ public final class StudyRunner {
 
     StudyRunner(final Supplier<SwingDetector> detectorFactory, final List<TopologyGrammar> grammars,
             final List<RelationshipRule> rules, final Configuration configuration) {
+        this(detectorFactory, grammars, rules, configuration, false);
+    }
+
+    private StudyRunner(final Supplier<SwingDetector> detectorFactory, final List<TopologyGrammar> grammars,
+            final List<RelationshipRule> rules, final Configuration configuration,
+            final boolean frozenAblationProtocol) {
         this.detectorFactory = Objects.requireNonNull(detectorFactory, "detectorFactory");
         this.grammars = validateGrammars(grammars);
         this.rules = validateRules(rules);
         this.configuration = Objects.requireNonNull(configuration, "configuration");
+        this.ablationModes = frozenAblationProtocol ? RuleAblation.frozenModes(this.rules)
+                : RuleAblation.modes(this.rules);
     }
 
     /**
@@ -92,7 +101,7 @@ public final class StudyRunner {
     public static StudyRunner frozenPreregistered(final Supplier<SwingDetector> detectorFactory,
             final Function<BarSeries, Indicator<Num>> wave5MomentumFactory, final Configuration configuration) {
         return new StudyRunner(detectorFactory, List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
-                ClassicalRelationshipRules.classicalRelationships(wave5MomentumFactory), configuration);
+                ClassicalRelationshipRules.classicalRelationships(wave5MomentumFactory), configuration, true);
     }
 
     /**
@@ -150,7 +159,7 @@ public final class StudyRunner {
                 TopologyGrammar.MOTIVE_5, "topology-only"));
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
-        for (final RuleAblation.Mode mode : RuleAblation.modes(rules)) {
+        for (final RuleAblation.Mode mode : ablationModes) {
             ablations.add(evaluateMode(series, start, end, configuration.partitions(), detectorFactory,
                     TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules()));
         }
@@ -219,8 +228,14 @@ public final class StudyRunner {
             // and reconciled once and both grammars record from that shared
             // replay. Halves the dominant work of frozen evaluations.
             final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar = new LinkedHashMap<>();
+            final Map<TopologyGrammar, List<List<MetricAccumulator>>> memberTotalsByGrammar = new LinkedHashMap<>();
             for (final TopologyGrammar grammar : nullGrammars) {
-                totalsByGrammar.put(grammar, newAccumulators(List.of()));
+                totalsByGrammar.put(grammar, newAccumulators(List.of(), partitions));
+                final List<List<MetricAccumulator>> memberTotals = new ArrayList<>(configuration.nullEnsembleSize());
+                for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
+                    memberTotals.add(newAccumulators(List.of(), partitions));
+                }
+                memberTotalsByGrammar.put(grammar, memberTotals);
             }
             // An evaluation window before or after the series records no
             // real topology; generating full-series null ensembles anyway
@@ -244,7 +259,7 @@ public final class StudyRunner {
                             partitionLastBar + 1);
                     final int partition = partitionIndex;
                     BlockBootstrapNulls.forEachMember(truncated, blockLength, configuration.nullEnsembleSize(),
-                            configuration.seed(), member -> {
+                            configuration.seed(), (memberIndex, member) -> {
                                 final ConfirmationTracker.CausalReplay replay = observeReplay(member);
                                 // Members are freshly-built series rebased to index 0;
                                 // the requested window stays in source coordinates and
@@ -252,11 +267,16 @@ public final class StudyRunner {
                                 // per member and grammar so label-stability transitions
                                 // never leak across ensemble members.
                                 for (final TopologyGrammar grammar : nullGrammars) {
-                                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of(),
+                                            partitions);
                                     recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
                                             member.getEndIndex(), partitions, replay, grammar, List.of(),
                                             memberAccumulators, sourceBegin);
                                     totalsByGrammar.get(grammar)
+                                            .get(partition)
+                                            .mergeFrom(memberAccumulators.get(partition));
+                                    memberTotalsByGrammar.get(grammar)
+                                            .get(memberIndex)
                                             .get(partition)
                                             .mergeFrom(memberAccumulators.get(partition));
                                 }
@@ -265,7 +285,8 @@ public final class StudyRunner {
             }
             for (final TopologyGrammar grammar : nullGrammars) {
                 reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),
-                        configuration.seed(), metrics(totalsByGrammar.get(grammar), partitions)));
+                        configuration.seed(), metrics(totalsByGrammar.get(grammar), partitions),
+                        memberMetrics(memberTotalsByGrammar.get(grammar), partitions)));
             }
         }
         return List.copyOf(reports);
@@ -425,6 +446,16 @@ public final class StudyRunner {
         final List<StudyReport.PartitionMetrics> metrics = new ArrayList<>(accumulators.size());
         for (int index = 0; index < accumulators.size(); index++) {
             metrics.add(accumulators.get(index).toMetrics(partitions.entries().get(index).name()));
+        }
+        return List.copyOf(metrics);
+    }
+
+    private static List<StudyReport.NullMemberMetrics> memberMetrics(
+            final List<List<MetricAccumulator>> memberAccumulators, final Partitions partitions) {
+        final List<StudyReport.NullMemberMetrics> metrics = new ArrayList<>(memberAccumulators.size());
+        for (int memberIndex = 0; memberIndex < memberAccumulators.size(); memberIndex++) {
+            metrics.add(new StudyReport.NullMemberMetrics(memberIndex,
+                    metrics(memberAccumulators.get(memberIndex), partitions)));
         }
         return List.copyOf(metrics);
     }
