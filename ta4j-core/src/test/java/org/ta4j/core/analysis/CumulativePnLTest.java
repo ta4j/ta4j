@@ -108,7 +108,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
     @Test
     public void cumulativePnLTwoPositionsPinsExitDeltaOnExitBar() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 
@@ -122,7 +122,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
     @Test
     public void cumulativePnLRealizedTwoPositionsWithAdjacentExits() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
 

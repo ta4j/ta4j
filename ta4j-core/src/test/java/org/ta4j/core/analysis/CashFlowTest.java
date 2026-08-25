@@ -93,7 +93,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void cashFlowTwoPositionsWithEmptyHeldRangeOnSecondPosition() {
-        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d).build();
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d)
+                .build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
                 Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
 
@@ -107,7 +108,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void cashFlowRealizedTwoPositionsWithAdjacentExits() {
-        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d).build();
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 6d)
+                .build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
                 Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
 
