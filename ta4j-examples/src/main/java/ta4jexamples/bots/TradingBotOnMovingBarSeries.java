@@ -5,6 +5,7 @@ package ta4jexamples.bots;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -137,6 +138,12 @@ public class TradingBotOnMovingBarSeries {
     }
 
     static void runSimulation(int iterationCount, Duration tickDelay) throws InterruptedException {
+        runSimulation(iterationCount, tickDelay, () -> initMovingBarSeries(20),
+                TradingBotOnMovingBarSeries::generateRandomBar);
+    }
+
+    static void runSimulation(int iterationCount, Duration tickDelay, Supplier<BarSeries> seriesSupplier,
+            Supplier<Bar> barSupplier) throws InterruptedException {
         if (iterationCount < 0) {
             throw new IllegalArgumentException("Iteration count cannot be negative");
         }
@@ -146,7 +153,7 @@ public class TradingBotOnMovingBarSeries {
 
         LOG.debug("********************** Initialization **********************");
         // Getting the bar series
-        BarSeries series = initMovingBarSeries(20);
+        BarSeries series = seriesSupplier.get();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);
@@ -164,7 +171,7 @@ public class TradingBotOnMovingBarSeries {
             if (!tickDelay.isZero()) {
                 Thread.sleep(tickDelay.toMillis());
             }
-            Bar newBar = generateRandomBar();
+            Bar newBar = barSupplier.get();
             LOG.debug("------------------------------------------------------\nBar {} added, close price = {}", i,
                     newBar.getClosePrice().doubleValue());
             series.addBar(newBar);

@@ -1697,7 +1697,12 @@ command_snapshot_publication() {
 }
 
 sha256_file() {
-  shasum -a 256 "$1" | awk '{print $1}'
+  # sha256sum ships with GNU coreutils and MSYS; shasum covers macOS.
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
 }
 
 resolved_snapshot_value() {
@@ -1740,12 +1745,10 @@ fetch_snapshot_metadata() {
 run_with_timeout() {
   local timeout_seconds="$1"
   shift
-  if command -v timeout >/dev/null 2>&1; then
-    timeout -s KILL "$timeout_seconds" "$@"
-    return $?
-  fi
-
+  # Portable Bash watchdog: the GNU `timeout -s KILL` fast path was removed
+  # because macOS/BSD ship without a compatible timeout binary.
   "$@" &
+
   local pid=$!
   local elapsed=0
   while kill -0 "$pid" 2>/dev/null; do

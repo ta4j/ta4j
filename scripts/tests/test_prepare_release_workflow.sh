@@ -58,10 +58,17 @@ test_issue_permissions_declared() {
   echo "Running test_issue_permissions_declared"
 
   local permissions
+  # sub() strips a CR so CRLF checkouts of the workflow compare equal.
   permissions="$(awk '
+    { sub(/\r$/, "") }
+    /^[[:space:]]*#/ { next }
     /^permissions:/ { in_permissions = 1; next }
     in_permissions && /^[^[:space:]]/ { exit }
-    in_permissions && $1 == "issues:" { sub(/\r$/, "", $2); print $2; exit }
+    in_permissions && $1 == "issues:" {
+      sub(/^[[:space:]]*issues:[[:space:]]*/, "")
+      print
+      exit
+    }
   ' "$WORKFLOW")"
   if [[ "$permissions" != "write" ]]; then
     fail "prepare-release workflow should request issues: write permission"
