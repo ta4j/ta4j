@@ -11,7 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Objects;
 
 import org.apache.logging.log4j.Logger;
@@ -49,8 +52,12 @@ final class OssifiedElliottWaveSeriesLoader {
             }
             final JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
             final BarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
+            final List<JsonObject> candles = new ArrayList<>();
             for (final JsonElement element : root.getAsJsonArray("candles")) {
-                final JsonObject candle = element.getAsJsonObject();
+                candles.add(element.getAsJsonObject());
+            }
+            candles.sort(Comparator.comparingLong(candle -> candle.get("start").getAsLong()));
+            for (final JsonObject candle : candles) {
                 final Instant endTime = Instant.ofEpochSecond(candle.get("start").getAsLong()).plus(Duration.ofDays(1));
                 series.addBar(series.barBuilder()
                         .timePeriod(Duration.ofDays(1))

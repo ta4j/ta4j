@@ -303,6 +303,7 @@ class StudyRunnerTest {
                 .orElseThrow();
         assertEquals(0, threePlusThree.partitions().get(0).completeCount());
         assertTrue(threePlusThree.partitions().get(0).formingCount() > 0);
+        assertTrue(threePlusThree.partitions().get(0).labelStabilityJaccard() < 1.0d);
     }
 
     @Test

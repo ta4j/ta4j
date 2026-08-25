@@ -67,6 +67,18 @@ class ElliottStudyProtocolTest {
     }
 
     @Test
+    void loadsAllPinnedDatasetsInChronologicalOrder() {
+        for (final ElliottStudyProtocol.DatasetSpec dataset : PROTOCOL.datasets()) {
+            final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottStudyProtocolTest.class,
+                    dataset.resource(), dataset.asset(), dataset.sha256(), LOG);
+            assertNotNull(series, dataset.asset());
+            assertTrue(series.getBar(series.getBeginIndex())
+                    .getEndTime()
+                    .isBefore(series.getBar(series.getEndIndex()).getEndTime()), dataset.asset());
+        }
+    }
+
+    @Test
     void exposesDistinctHypotheses() {
         ElliottStudyProtocol protocol = PROTOCOL;
 

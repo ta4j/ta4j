@@ -90,6 +90,7 @@ final class StudyRunner {
      * This is the package-private execution surface for the frozen test-plane
      * harness. The rule and grammar types stay internal to this package.
      * </p>
+     *
      * @param detectorFactory      primary detector supplier
      * @param wave5MomentumFactory per-series momentum indicator factory
      * @param configuration        locked study configuration
@@ -399,10 +400,13 @@ final class StudyRunner {
                         // identities, not a constant token, or the Jaccard metric
                         // reads 1 across shifting match sets.
                         accumulator.recordAlternative(index, false, true, false, "ambiguous", Set.copyOf(matches));
-                    } else if (grammar.hasPartial(visible)) {
-                        accumulator.recordAlternative(index, false, false, true, "forming", Set.of("forming"));
                     } else {
-                        accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
+                        final Set<String> partialMatches = grammar.partialMatches(visible);
+                        if (!partialMatches.isEmpty()) {
+                            accumulator.recordAlternative(index, false, false, true, "forming", partialMatches);
+                        } else {
+                            accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
+                        }
                     }
                 }
                 if (index == end) {
@@ -843,40 +847,33 @@ final class StudyRunner {
             return matches;
         }
 
-        private boolean hasPartial(final List<ConfirmedPivot> pivots) {
+        private Set<String> partialMatches(final List<ConfirmedPivot> pivots) {
             final int required = segmentLegs[0] + segmentLegs[1] + 1;
             final int maxSuffix = Math.min(pivots.size(), required - 1);
-            // A two-pivot suffix satisfies one orientation of the leading leg
-            // for every non-flat tail, which would make noMatchRate unreachable
-            // and inflate forming counts. A forming claim requires the whole
-            // leading segment to be observable in the suffix window.
+            // A forming claim requires the whole leading segment to be observable
+            // in the suffix window.
             final int minSuffix = segmentLegs[0] + 1;
             if (maxSuffix < minSuffix) {
-                // The leading segment is not observable yet: no honest forming
-                // claim is possible, however well the short tail happens to fit.
-                return false;
+                // The leading segment is not observable yet: no honest forming claim
+                // is possible, however well the short tail happens to fit.
+                return Set.of();
             }
+            final Set<String> matches = new HashSet<>();
             for (int suffix = maxSuffix; suffix >= minSuffix; suffix--) {
                 final List<ConfirmedPivot> window = pivots.subList(pivots.size() - suffix, pivots.size());
-                if (matchesPartialWindow(window)) {
-                    return true;
+                for (final WaveDirection direction : WaveDirection.values()) {
+                    if (matchesLegSequence(window, direction, false)) {
+                        matches.add(direction + ":" + window.get(0).pivotIndex() + "-"
+                                + window.get(window.size() - 1).pivotIndex());
+                    }
                 }
             }
-            return false;
+            return Set.copyOf(matches);
         }
 
         private boolean matchesWindow(final List<ConfirmedPivot> window) {
             for (final WaveDirection direction : WaveDirection.values()) {
                 if (matchesLegSequence(window, direction, true)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private boolean matchesPartialWindow(final List<ConfirmedPivot> window) {
-            for (final WaveDirection direction : WaveDirection.values()) {
-                if (matchesLegSequence(window, direction, false)) {
                     return true;
                 }
             }
