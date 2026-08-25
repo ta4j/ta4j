@@ -38,10 +38,19 @@ class TopologyAnalyzerTest {
     @Test
     void mirrorsCompleteBearishMotive() {
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
-                pivots(32, 20, 26, 14, 24, 8));
+                pivots(SwingPivotType.HIGH, 32, 20, 26, 14, 24, 8));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
+    }
+
+    @Test
+    void rejectsBullishWindowThatStartsWithHigh() {
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(SwingPivotType.HIGH, 10, 20, 14, 26, 18, 32));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.NO_MATCH);
+        assertThat(analysis.candidates()).isEmpty();
     }
 
     @Test
@@ -49,7 +58,7 @@ class TopologyAnalyzerTest {
         final TopologyAnalysis bullishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
                 pivots(20, 12, 16, 10));
         final TopologyAnalysis bearishTrendCorrection = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
-                pivots(10, 18, 14, 22));
+                pivots(SwingPivotType.HIGH, 10, 18, 14, 22));
 
         assertThat(bullishTrendCorrection.status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(bullishTrendCorrection.direction()).isEqualTo(WaveDirection.BULLISH);
@@ -70,7 +79,7 @@ class TopologyAnalyzerTest {
         // its three-pivot state pins both legs and may form legitimately.
         assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 20)).status())
                 .isEqualTo(TopologyStatus.NO_MATCH);
-        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(10, 20, 15)).status())
+        assertThat(analyzer.analyze(TopologyGrammar.CORRECTIVE_3, pivots(SwingPivotType.HIGH, 10, 20, 15)).status())
                 .isEqualTo(TopologyStatus.FORMING);
     }
 
@@ -89,7 +98,7 @@ class TopologyAnalyzerTest {
         // The five-pivot suffix is a bearish motive prefix; its final four
         // pivots also form a bullish prefix. The stronger, longer suffix wins.
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
-                pivots(30, 20, 25, 15, 22));
+                pivots(SwingPivotType.HIGH, 30, 20, 25, 15, 22));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
         assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
@@ -161,9 +170,14 @@ class TopologyAnalyzerTest {
     }
 
     private static List<ConfirmedPivot> pivots(final double... prices) {
+        return pivots(SwingPivotType.LOW, prices);
+    }
+
+    private static List<ConfirmedPivot> pivots(final SwingPivotType firstType, final double... prices) {
         final List<ConfirmedPivot> result = new ArrayList<>(prices.length);
+        final SwingPivotType alternateType = firstType == SwingPivotType.LOW ? SwingPivotType.HIGH : SwingPivotType.LOW;
         for (int i = 0; i < prices.length; i++) {
-            final SwingPivotType type = i % 2 == 0 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+            final SwingPivotType type = i % 2 == 0 ? firstType : alternateType;
             result.add(new ConfirmedPivot(i, i, DoubleNum.valueOf(prices[i]), type));
         }
         return result;

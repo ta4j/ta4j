@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.num.Num;
 
 /**
@@ -187,10 +188,8 @@ final class TopologyAnalyzer {
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
         final Num originPrice = candidate.legStartPrice(0);
         return switch (candidate.direction()) {
-        case BULLISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.LOW
-                && pivot.price().isLessThan(originPrice);
-        case BEARISH -> pivot.type() == org.ta4j.core.analysis.elliott.swing.SwingPivotType.HIGH
-                && pivot.price().isGreaterThan(originPrice);
+        case BULLISH -> pivot.type() == SwingPivotType.LOW && pivot.price().isLessThan(originPrice);
+        case BEARISH -> pivot.type() == SwingPivotType.HIGH && pivot.price().isGreaterThan(originPrice);
         };
     }
 
@@ -210,11 +209,20 @@ final class TopologyAnalyzer {
     private TopologyCandidate buildCandidate(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> window, final int start) {
         final List<ConfirmedPivot> pivots = window.subList(start, start + grammar.requiredPivots());
+        if (!startsInExpectedDirection(direction, pivots)) {
+            return null;
+        }
         try {
             return new TopologyCandidate(grammar, direction, pivots);
         } catch (final IllegalArgumentException nonAlternatingWindow) {
             return null;
         }
+    }
+
+    private boolean startsInExpectedDirection(final WaveDirection direction, final List<ConfirmedPivot> pivots) {
+        final SwingPivotType expectedOrigin = direction == WaveDirection.BULLISH ? SwingPivotType.LOW
+                : SwingPivotType.HIGH;
+        return pivots.get(0).type() == expectedOrigin;
     }
 
     private boolean matchesShape(final TopologyCandidate candidate) {
@@ -231,7 +239,7 @@ final class TopologyAnalyzer {
     private boolean matchesPartialShape(final TopologyGrammar grammar, final WaveDirection direction,
             final List<ConfirmedPivot> segment) {
         final int legs = segment.size() - 1;
-        if (legs < 1 || legs >= grammar.legCount()) {
+        if (legs < 1 || legs >= grammar.legCount() || !startsInExpectedDirection(direction, segment)) {
             return false;
         }
         for (int leg = 0; leg < legs; leg++) {

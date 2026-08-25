@@ -441,6 +441,8 @@ public final class StudyReport {
      * @param scoreMean   mean of the carried scores; {@code 0} when unscored
      * @param scoreMin    minimum carried score; {@code 0} when unscored
      * @param scoreMax    maximum carried score; {@code 0} when unscored
+     *
+     * @since 0.24.2
      */
     public record RuleMetrics(String ruleId, long evaluationCount, long passCount, long failCount, long pendingCount,
             long unavailableCount, long notApplicableCount, double passRate, long scoredCount, double scoreMean,
