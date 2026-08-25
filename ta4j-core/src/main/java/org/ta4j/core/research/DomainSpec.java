@@ -242,14 +242,18 @@ final class DomainSpec {
             }
             return position - distinctGrid[index - 1] <= distinctGrid[index] - position ? index - 1 : index;
         }
-        int index = (int) Math.round((position - lowerBound) / step);
-        if (index < 0) {
+        // Clamp the offset in double space before narrowing to int: the cast
+        // truncates the low 32 bits of the saturated long produced by
+        // Math.round for extreme magnitudes, which would map an outlier
+        // coordinate to a boundary index of the wrong sign.
+        double offset = (position - lowerBound) / step;
+        if (Double.isNaN(offset) || offset <= 0.0) {
             return 0;
         }
-        if (index >= cardinality) {
+        if (offset >= cardinality - 1L) {
             return cardinality - 1;
         }
-        return index;
+        return (int) Math.round(offset);
     }
 
     /**
