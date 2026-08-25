@@ -203,7 +203,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
         if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
         }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
@@ -325,8 +325,8 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Marks this curve immutable after {@link EquityBundle} fully materialized it,
-     * so the shared cached instance cannot be altered through the public
+     * Marks this curve immutable after {@link EquityCurveCache} fully materialized
+     * it, so the shared cached instance cannot be altered through the public
      * accumulating operations.
      */
     void freeze() {
@@ -362,7 +362,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityBundle are immutable");
+            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
         }
         Trade entry = position.getEntry();
         if (entry == null) {

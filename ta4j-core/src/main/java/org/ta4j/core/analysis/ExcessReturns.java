@@ -123,23 +123,23 @@ public final class ExcessReturns {
 
     /**
      * Creates an excess return calculator that shares already-computed equity
-     * curves from one {@link EquityBundle} instead of constructing its own. Both
-     * curves are derived from the same captured series and record, so invested
+     * curves from one {@link EquityCurveCache} instead of constructing its own.
+     * Both curves are derived from the same captured series and record, so invested
      * intervals and equity values are consistent by construction; no defensive copy
      * or recomputation happens. The bar series providing time deltas and the num
      * factory is taken from the bundle's captured series.
      *
      * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
      * @param cashReturnPolicy     the policy for flat equity intervals
-     * @param equityBundle         the bundle supplying both shared curves, not null
+     * @param equityCurveCache     the bundle supplying both shared curves, not null
      * @param equityCurveMode      the cash flow calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
      * @since 0.24.2
      */
-    public ExcessReturns(Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, EquityBundle equityBundle,
+    public ExcessReturns(Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, EquityCurveCache equityCurveCache,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        Objects.requireNonNull(equityBundle, "equityBundle cannot be null");
-        this.series = equityBundle.getBarSeries();
+        Objects.requireNonNull(equityCurveCache, "equityCurveCache cannot be null");
+        this.series = equityCurveCache.getBarSeries();
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
@@ -148,9 +148,9 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        synchronized (equityBundle) {
-            this.investedInterval = equityBundle.investedInterval(effectiveOpenPositionHandling);
-            this.cashFlow = equityBundle.cashFlow(equityCurveMode, effectiveOpenPositionHandling);
+        synchronized (equityCurveCache) {
+            this.investedInterval = equityCurveCache.investedInterval(effectiveOpenPositionHandling);
+            this.cashFlow = equityCurveCache.cashFlow(equityCurveMode, effectiveOpenPositionHandling);
         }
     }
 

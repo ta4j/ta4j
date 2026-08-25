@@ -48,10 +48,10 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 
 /**
- * Verifies that {@link EquityBundle} reuses one curve instance per
+ * Verifies that {@link EquityCurveCache} reuses one curve instance per
  * configuration key across repeated requests.
  */
-public class EquityBundleTest {
+public class EquityCurveCacheTest {
 
     private final DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
 
@@ -70,45 +70,45 @@ public class EquityBundleTest {
     public void bundleReusesOneCurveInstancePerConfigurationKey() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        CashFlow cashFlowMarkToMarket = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow cashFlowMarkToMarket = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
-        CashFlow cashFlowAgain = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow cashFlowAgain = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
-        CashFlow cashFlowRealized = equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow cashFlowRealized = equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
 
         assertSame(cashFlowMarkToMarket, cashFlowAgain);
         assertNotSame(cashFlowMarkToMarket, cashFlowRealized);
 
-        InvestedInterval investedInterval = equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
-        assertSame(investedInterval, equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET));
+        InvestedInterval investedInterval = equityCurveCache.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
+        assertSame(investedInterval, equityCurveCache.investedInterval(OpenPositionHandling.MARK_TO_MARKET));
 
-        CumulativePnL cumulativePnL = equityBundle.cumulativePnL(EquityCurveMode.MARK_TO_MARKET,
+        CumulativePnL cumulativePnL = equityCurveCache.cumulativePnL(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
         assertSame(cumulativePnL,
-                equityBundle.cumulativePnL(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+                equityCurveCache.cumulativePnL(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
     }
 
     @Test
     public void bundleNormalizesRealizedModeCacheKeys() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
         // REALIZED curves ignore open positions regardless of the requested
         // handling, so different handlings must share one cache entry.
-        assertSame(equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
-                equityBundle.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
-        assertSame(equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
-                equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
+        assertSame(equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
+                equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
+        assertSame(equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET),
+                equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE));
     }
 
     @Test
     public void concurrentAccessReturnsSingleInstancePerKey() throws Exception {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
         int threads = 8;
         CyclicBarrier barrier = new CyclicBarrier(threads);
@@ -119,8 +119,8 @@ public class EquityBundleTest {
             tasks.add(() -> {
                 barrier.await();
                 cashFlowResults.add(
-                        equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
-                investedIntervalResults.add(equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET));
+                        equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+                investedIntervalResults.add(equityCurveCache.investedInterval(OpenPositionHandling.MARK_TO_MARKET));
                 return null;
             });
         }
@@ -137,22 +137,24 @@ public class EquityBundleTest {
         assertEquals(1, new HashSet<>(cashFlowResults).size());
         assertEquals(1, new HashSet<>(investedIntervalResults).size());
         assertSame(cashFlowResults.getFirst(),
-                equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+                equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
     }
 
     @Test
     public void cachedCurvesAreUnaffectedByInPlaceBarEdits() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
-        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
+        CashFlow cashFlow = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
         Num before = cashFlow.getValue(5);
 
         // Without a structural input change the memoized curve is served as is;
         // an in-place bar edit can neither corrupt nor replace it.
         series.getBar(2).addPrice(numFactory.numOf(1000));
 
-        CashFlow cached = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow cached = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
         assertSame(cashFlow, cached);
         assertNumEquals(before, cached.getValue(5));
     }
@@ -161,13 +163,14 @@ public class EquityBundleTest {
     public void rebuildReflectsInPlaceEditsMadeBeforeStructuralChange() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
-        equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
+        equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
 
         series.getBar(2).addPrice(numFactory.numOf(1000));
         ((BaseTradingRecord) tradingRecord).operate(Trade.buyAt(10, series));
 
-        CashFlow rebuilt = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow rebuilt = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
         CashFlow direct = new CashFlow(series, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
         assertNumEquals(direct.getValue(5), rebuilt.getValue(5));
@@ -177,12 +180,13 @@ public class EquityBundleTest {
     public void bundledCurvesUsePrivateBarCopies() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        InvestedInterval investedInterval = equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
+        InvestedInterval investedInterval = equityCurveCache.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
         investedInterval.getBarSeries().getBar(2).addPrice(numFactory.numOf(1000));
 
-        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow cashFlow = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertNotSame(series.getBar(i), cashFlow.getBarSeries().getBar(i));
             assertNotSame(series.getBar(i), investedInterval.getBarSeries().getBar(i));
@@ -196,9 +200,9 @@ public class EquityBundleTest {
     public void bundleRebuildsCurvesAfterSeriesAppend() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        CashFlow cachedCurve = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow cachedCurve = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
         Duration period = series.getLastBar().getTimePeriod();
@@ -212,10 +216,10 @@ public class EquityBundleTest {
                 .volume(1)
                 .add();
 
-        CashFlow rebuiltCurve = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow rebuiltCurve = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
         assertNotSame(cachedCurve, rebuiltCurve);
-        assertNumEquals(new EquityBundle(series, tradingRecord)
+        assertNumEquals(new EquityCurveCache(series, tradingRecord)
                 .cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)
                 .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
     }
@@ -224,16 +228,18 @@ public class EquityBundleTest {
     public void bundleRebuildsCurvesAfterNewTrades() {
         BarSeries series = series();
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        CumulativePnL cachedCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CumulativePnL cachedCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
 
         tradingRecord.operate(Trade.buyAt(3, series));
         tradingRecord.operate(Trade.sellAt(5, series));
 
-        CumulativePnL rebuiltCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CumulativePnL rebuiltCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
         assertNotSame(cachedCurve, rebuiltCurve);
-        assertNumEquals(new EquityBundle(series, tradingRecord)
+        assertNumEquals(new EquityCurveCache(series, tradingRecord)
                 .cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
                 .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
     }
@@ -252,15 +258,17 @@ public class EquityBundleTest {
         };
         tradingRecord.operate(Trade.buyAt(0, series));
         tradingRecord.operate(Trade.sellAt(2, series));
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        CumulativePnL cachedCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CumulativePnL cachedCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
 
         currentTransactionCostModel.set(new ZeroCostModel());
 
-        CumulativePnL rebuiltCurve = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CumulativePnL rebuiltCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
         assertNotSame(cachedCurve, rebuiltCurve);
-        assertNumEquals(new EquityBundle(series, tradingRecord)
+        assertNumEquals(new EquityCurveCache(series, tradingRecord)
                 .cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
                 .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
     }
@@ -270,17 +278,17 @@ public class EquityBundleTest {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
 
-        EquityBundle found = EquityBundle.evaluate(series, tradingRecord, () -> {
+        EquityCurveCache found = EquityCurveCache.evaluate(series, tradingRecord, () -> {
             TradingRecord otherRecord = closedPositionsRecord(series);
             assertNull("a mismatched record must not resolve to the active bundle",
-                    EquityBundle.current(series, otherRecord));
-            return EquityBundle.current(series, tradingRecord);
+                    EquityCurveCache.current(series, otherRecord));
+            return EquityCurveCache.current(series, tradingRecord);
         });
 
         assertNotNull(found);
         assertSame(series, found.getBarSeries());
         assertSame(tradingRecord, found.getTradingRecord());
-        assertNull("no bundle may stay active after the evaluation", EquityBundle.current(series, tradingRecord));
+        assertNull("no bundle may stay active after the evaluation", EquityCurveCache.current(series, tradingRecord));
     }
 
     @Test
@@ -289,16 +297,16 @@ public class EquityBundleTest {
         TradingRecord outerRecord = closedPositionsRecord(series);
         TradingRecord innerRecord = closedPositionsRecord(series);
 
-        EquityBundle innerBundle = EquityBundle.evaluate(series, outerRecord, () -> {
-            EquityBundle outerBundle = EquityBundle.current(series, outerRecord);
-            EquityBundle nested = EquityBundle.evaluate(series, innerRecord,
-                    () -> EquityBundle.current(series, innerRecord));
+        EquityCurveCache innerBundle = EquityCurveCache.evaluate(series, outerRecord, () -> {
+            EquityCurveCache outerBundle = EquityCurveCache.current(series, outerRecord);
+            EquityCurveCache nested = EquityCurveCache.evaluate(series, innerRecord,
+                    () -> EquityCurveCache.current(series, innerRecord));
             assertNotSame("each scope must get its own bundle", outerBundle, nested);
-            return EquityBundle.current(series, outerRecord);
+            return EquityCurveCache.current(series, outerRecord);
         });
 
         assertNotNull(innerBundle);
-        assertNull("no bundle may stay active after the evaluations", EquityBundle.current(series, outerRecord));
+        assertNull("no bundle may stay active after the evaluations", EquityCurveCache.current(series, outerRecord));
     }
 
     @Test
@@ -314,7 +322,8 @@ public class EquityBundleTest {
         for (int i = 0; i < criteria.size(); i++) {
             AnalysisCriterion criterion = criteria.get(i);
             Num direct = criterion.calculate(series, tradingRecord);
-            Num shared = EquityBundle.evaluate(series, tradingRecord, () -> criterion.calculate(series, tradingRecord));
+            Num shared = EquityCurveCache.evaluate(series, tradingRecord,
+                    () -> criterion.calculate(series, tradingRecord));
             assertNumEquals(direct, shared);
         }
     }
@@ -323,15 +332,16 @@ public class EquityBundleTest {
     public void bundleCachedCurvesRejectMutation() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
-        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
-        CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
-        CumulativePnL cumulativePnL = equityBundle.cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow cashFlow = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+        CumulativePnL cumulativePnL = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
 
         // The cached instances stay readable...
         assertNumEquals(cashFlow.getValue(series.getEndIndex()), cashFlow.getValue(series.getEndIndex()));
         assertNumEquals(cumulativePnL.getValue(series.getEndIndex()), cumulativePnL.getValue(series.getEndIndex()));
-        assertSame(cashFlow, equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE));
+        assertSame(cashFlow, equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE));
 
         // ...but their accumulating operations must not alter shared state.
         TradingRecord emptyRecord = new BaseTradingRecord();
@@ -352,8 +362,9 @@ public class EquityBundleTest {
         pruned.setMaximumBarCount(5);
         assertEquals(6, pruned.getBeginIndex());
 
-        EquityBundle equityBundle = new EquityBundle(pruned, tradingRecord);
-        CashFlow bundled = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(pruned, tradingRecord);
+        CashFlow bundled = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
 
         // Retained bars keep their absolute indices, and realized returns from
         // positions closed before the window carry into every retained cell.

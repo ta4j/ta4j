@@ -12,7 +12,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
@@ -227,10 +227,10 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return calculate(series, tradingRecord, EquityBundle.current(series, tradingRecord));
+        return calculate(series, tradingRecord, EquityCurveCache.current(series, tradingRecord));
     }
 
-    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityBundle sharedCurves) {
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityCurveCache sharedCurves) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {

@@ -7,7 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CumulativePnL;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -72,7 +72,7 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveS
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
         CumulativePnL pnl = sharedCurves != null ? sharedCurves.cumulativePnL(equityCurveMode, openPositionHandling)
                 : new CumulativePnL(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, pnl, false);

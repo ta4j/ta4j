@@ -16,7 +16,7 @@ import java.util.Set;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
@@ -143,7 +143,7 @@ public interface TradingStatementExecutionResult<R> {
                 continue;
             }
             final int index = statementIndex;
-            EquityBundle.evaluate(barSeries(), tradingRecord, () -> {
+            EquityCurveCache.evaluate(barSeries(), tradingRecord, () -> {
                 for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
                     rawValuesByCriterion[criterionIndex][index] = criteria[criterionIndex].calculate(barSeries(),
                             tradingRecord);

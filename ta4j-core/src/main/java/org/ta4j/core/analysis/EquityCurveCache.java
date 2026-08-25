@@ -56,7 +56,7 @@ import org.ta4j.core.analysis.cost.CostModel;
  *
  * @since 0.24.2
  */
-public final class EquityBundle {
+public final class EquityCurveCache {
 
     private record CurveKey(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
 
@@ -79,7 +79,8 @@ public final class EquityBundle {
     /**
      * Active evaluation scopes for this thread; innermost scope first.
      */
-    private static final ThreadLocal<ArrayDeque<EquityBundle>> ACTIVE_SCOPES = ThreadLocal.withInitial(ArrayDeque::new);
+    private static final ThreadLocal<ArrayDeque<EquityCurveCache>> ACTIVE_SCOPES = ThreadLocal
+            .withInitial(ArrayDeque::new);
 
     /**
      * Evaluates the given work against one shared curve cache scoped to exactly
@@ -100,8 +101,8 @@ public final class EquityBundle {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(evaluation, "evaluation cannot be null");
-        ArrayDeque<EquityBundle> scopes = ACTIVE_SCOPES.get();
-        scopes.push(new EquityBundle(series, tradingRecord));
+        ArrayDeque<EquityCurveCache> scopes = ACTIVE_SCOPES.get();
+        scopes.push(new EquityCurveCache(series, tradingRecord));
         try {
             return evaluation.get();
         } finally {
@@ -123,9 +124,9 @@ public final class EquityBundle {
      * @return the matching active bundle, or {@code null}
      * @since 0.24.2
      */
-    public static EquityBundle current(BarSeries series, TradingRecord tradingRecord) {
-        ArrayDeque<EquityBundle> scopes = ACTIVE_SCOPES.get();
-        for (EquityBundle bundle : scopes) {
+    public static EquityCurveCache current(BarSeries series, TradingRecord tradingRecord) {
+        ArrayDeque<EquityCurveCache> scopes = ACTIVE_SCOPES.get();
+        for (EquityCurveCache bundle : scopes) {
             if (bundle.series == series && bundle.tradingRecord == tradingRecord) {
                 return bundle;
             }
@@ -161,7 +162,7 @@ public final class EquityBundle {
      * @param series        the bar series to analyze, not null
      * @param tradingRecord the trading record to analyze, not null
      */
-    EquityBundle(BarSeries series, TradingRecord tradingRecord) {
+    EquityCurveCache(BarSeries series, TradingRecord tradingRecord) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         this.inputRevision = currentInputRevision();

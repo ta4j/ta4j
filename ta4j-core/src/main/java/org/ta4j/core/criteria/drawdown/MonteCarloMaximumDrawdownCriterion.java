@@ -12,7 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -203,7 +203,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
         CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling) : null;
         List<List<Num>> blocks = cashFlow != null ? buildBlocks(series, tradingRecord, cashFlow)
                 : buildBlocks(series, tradingRecord);

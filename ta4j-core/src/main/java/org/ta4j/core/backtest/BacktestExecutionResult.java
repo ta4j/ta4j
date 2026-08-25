@@ -13,7 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
@@ -209,7 +209,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             if (tradingRecord == null) {
                 sweep.run();
             } else {
-                EquityBundle.evaluate(barSeries, tradingRecord, () -> {
+                EquityCurveCache.evaluate(barSeries, tradingRecord, () -> {
                     sweep.run();
                     return null;
                 });

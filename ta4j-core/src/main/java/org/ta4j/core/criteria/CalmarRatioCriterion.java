@@ -8,7 +8,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.EquityBundle;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
@@ -162,7 +162,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        EquityBundle sharedCurves = EquityBundle.current(series, tradingRecord);
+        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
         Num annualizedReturn;
         if (sharedCurves != null) {
             annualizedReturn = annualizedReturn(series, sharedCurves.cashFlow(equityCurveMode, openPositionHandling),
