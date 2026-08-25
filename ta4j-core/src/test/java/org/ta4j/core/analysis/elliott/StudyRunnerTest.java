@@ -544,10 +544,8 @@ class StudyRunnerTest {
         final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
                 List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
                 LocalDate.of(2024, 1, 1));
-        assertThrows(IllegalArgumentException.class,
-                () -> new StudyRunner(StudyRunnerTest::detectorFactory,
-                        List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.MOTIVE_5), rules(),
-                        configuration(partitions, 1)));
+        assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory,
+                List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.MOTIVE_5), rules(), configuration(partitions, 1)));
     }
 
     @Test
@@ -582,6 +580,42 @@ class StudyRunnerTest {
         assertEquals(-1e-30d, returns[1], 1e-45d);
         assertEquals(1e-30d, returns[2], 1e-45d);
     }
+
+    @Test
+    void logReturnsSurviveRatiosBeyondDoubleRange() {
+        // A single-bar jump from 1 to 1e400 has no finite double ratio; the
+        // magnitude decomposition must still yield +-ln(1e400) instead of
+        // +-Infinity, and reconstruction must stay representable in Num.
+        final String[] closes = { "1", "1e400", "1" };
+        final BarSeries source = new BaseBarSeriesBuilder().withName("beyond-double")
+                .withNumFactory(DecimalNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < closes.length; index++) {
+            final Num close = DecimalNum.valueOf(closes[index]);
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final double[] returns = BlockBootstrapNulls.logReturns(source);
+        final double expected = 400 * Math.log(10);
+        assertEquals(expected, returns[0], 1e-9d);
+        assertEquals(-expected, returns[1], 1e-9d);
+
+        final BarSeries member = BlockBootstrapNulls.generate(source, 2, 1, 7L).get(0);
+        final Num jump = member.getBar(1).getClosePrice().dividedBy(member.getBar(0).getClosePrice());
+        assertTrue(jump.isPositive());
+    }
+
 
     @Test
     void rejectsGrammarsOmittingDeclaredH1Grammar() {

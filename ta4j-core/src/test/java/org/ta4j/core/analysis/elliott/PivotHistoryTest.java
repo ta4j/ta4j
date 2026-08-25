@@ -67,4 +67,20 @@ class PivotHistoryTest {
         assertThat(history.asOf(9)).hasSize(1);
         assertThat(history.asOf(10)).hasSize(2);
     }
+
+    @Test
+    void keepsLaterConfirmedPivotsVisibleWhenConfirmationsAreNonMonotonic() {
+        // Re-admission after reconsideration legitimately confirms an older
+        // pivot LATER than a newer one; the causal view must not stop at the
+        // first invisible entry.
+        final ConfirmedPivot olderLate = new ConfirmedPivot(0, 10, DoubleNum.valueOf(10), SwingPivotType.LOW);
+        final ConfirmedPivot newerEarly = new ConfirmedPivot(5, 5, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final PivotHistory history = PivotHistory.of(List.of(olderLate, newerEarly));
+
+        assertThat(history.asOf(4)).isEmpty();
+        assertThat(history.asOf(5)).extracting(ConfirmedPivot::pivotIndex).containsExactly(5);
+        assertThat(history.asOf(9)).extracting(ConfirmedPivot::pivotIndex).containsExactly(5);
+        assertThat(history.asOf(10)).extracting(ConfirmedPivot::pivotIndex).containsExactly(0, 5);
+    }
 }
+

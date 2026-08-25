@@ -75,9 +75,71 @@ final class BlockBootstrapNulls {
             if (!previous.isPositive() || !current.isPositive()) {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
             }
-            returns[offset - 1] = Math.log1p(current.dividedBy(previous).minus(numFactory.one()).doubleValue());
+            final Num ratio = current.dividedBy(previous);
+            final Num delta = ratio.minus(numFactory.one());
+            final double d = delta.doubleValue();
+            if (Math.abs(d) <= 0.5d) {
+                // Near unity the ratio's own rounding would swallow tiny moves;
+                // the full-precision Num delta narrows without collapsing.
+                returns[offset - 1] = Math.log1p(d);
+            } else {
+                // Far from unity the ratio itself carries enough relative
+                // precision; the magnitude decomposition keeps ratios beyond
+                // double range finite instead of narrowing to Infinity or zero.
+                returns[offset - 1] = logNum(numFactory, ratio);
+            }
         }
         return returns;
+    }
+
+    /**
+     * Natural logarithm of a positive Num whose magnitude may exceed double
+     * range: decompose the value into a representable significand plus powers
+     * of 1e300 before narrowing, so Infinity and zero never reach Math.log.
+     */
+    private static double logNum(final NumFactory numFactory, final Num value) {
+        final Num scale = numFactory.numOf("1e300");
+        final double logScale = Math.log(1e300);
+        Num scaled = value;
+        double narrowed = scaled.doubleValue();
+        int applications = 0;
+        while (Double.isInfinite(narrowed)) {
+            scaled = scaled.dividedBy(scale);
+            narrowed = scaled.doubleValue();
+            applications++;
+        }
+        while (narrowed == 0.0d) {
+            scaled = scaled.multipliedBy(scale);
+            narrowed = scaled.doubleValue();
+            applications--;
+        }
+        return Math.log(narrowed) + applications * logScale;
+    }
+
+    /**
+     * e^y as a Num: the fractional part stays within double range and the
+     * integer part becomes fast-exponentiation squaring inside the active Num
+     * domain, so reconstruction survives returns beyond double range such as a
+     * single-bar jump from 1 to 1e400.
+     */
+    private static Num expNum(final NumFactory numFactory, final double y) {
+        if (y < 0.0d) {
+            return numFactory.one().dividedBy(expNum(numFactory, -y));
+        }
+        final int whole = (int) Math.floor(y);
+        Num result = numFactory.numOf(Math.exp(y - whole));
+        Num base = numFactory.numOf(Math.E);
+        int n = whole;
+        while (n > 0) {
+            if ((n & 1) == 1) {
+                result = result.multipliedBy(base);
+            }
+            n >>= 1;
+            if (n > 0) {
+                base = base.multipliedBy(base);
+            }
+        }
+        return result;
     }
 
     private static BarSeries generateMember(final BarSeries source, final double[] logReturns, final int blockLength,
@@ -105,7 +167,7 @@ final class BlockBootstrapNulls {
             if (offset > 1 && random.nextInt(blockLength) == 0) {
                 tapePosition = random.nextInt(logReturns.length);
             }
-            closes[offset] = closes[offset - 1].multipliedBy(numFactory.numOf(Math.exp(logReturns[tapePosition])));
+            closes[offset] = closes[offset - 1].multipliedBy(expNum(numFactory, logReturns[tapePosition]));
             shapePositions[offset] = tapePosition + 1;
             tapePosition = (tapePosition + 1) % logReturns.length;
         }

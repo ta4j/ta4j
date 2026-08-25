@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -98,11 +99,19 @@ final class PivotHistory {
      * @return pivots confirmed at or before {@code barIndex}
      */
     List<ConfirmedPivot> asOf(final int barIndex) {
-        int end = 0;
-        while (end < pivots.size() && pivots.get(end).confirmedAt(barIndex)) {
-            end++;
+        // Confirmation times need not be monotonic in pivot index: a detector
+        // may re-admit an older pivot after a newer one was already confirmed,
+        // so a prefix scan would stop at the first not-yet-visible entry and
+        // hide later entries that were already confirmed. Filter every entry
+        // instead and restore ascending pivot-index order for the view.
+        final List<ConfirmedPivot> visible = new ArrayList<>();
+        for (final ConfirmedPivot pivot : pivots) {
+            if (pivot.confirmedAt(barIndex)) {
+                visible.add(pivot);
+            }
         }
-        return pivots.subList(0, end);
+        visible.sort(Comparator.comparingInt(ConfirmedPivot::pivotIndex));
+        return List.copyOf(visible);
     }
 
     @Override
