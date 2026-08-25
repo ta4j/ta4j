@@ -175,8 +175,6 @@ final class StudyRunner {
     private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
         final List<StudyReport.NullReport> reports = new ArrayList<>();
         final boolean hasEvaluationWindow = start <= end;
-        final int sourceBegin = source.getBeginIndex();
-        final BarSeries causalSource = hasEvaluationWindow ? source.getSubSeries(sourceBegin, end + 1) : source;
         // Both preregistered hypotheses need a null baseline: H1 claims about
         // MOTIVE_5 and the frozen H2 claim about complete CYCLE_5_3 cycles.
         final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
@@ -184,31 +182,39 @@ final class StudyRunner {
         for (final int blockLength : configuration.nullBlockLengths()) {
             for (final TopologyGrammar grammar : nullGrammars) {
                 final List<MetricAccumulator> totals = newAccumulators(List.of());
-                // Look-ahead-free sampling: every partition's ensemble is drawn
-                // only from returns available at that partition's last bar, so a
-                // calibration partition's null baseline can never incorporate
-                // validation or holdout returns. The shared seed keeps the RNG
-                // stream comparable across partitions over different tapes.
-                for (int partitionIndex = 0; partitionIndex < totals.size(); partitionIndex++) {
-                    final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
-                    if (partitionLastBar - causalSource.getBeginIndex() < 1) {
-                        continue;
-                    }
-                    final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
-                            partitionLastBar + 1);
-                    final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
-                            configuration.nullEnsembleSize(), configuration.seed());
-                    for (final BarSeries member : nullSeries) {
-                        // Fresh accumulators per member so label-stability
-                        // transitions never leak across ensemble members.
-                        final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
-                        final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                        // Members are freshly-built series rebased to index 0;
-                        // the requested window stays in source coordinates and
-                        // must be translated before recording.
-                        recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
-                                member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators);
-                        totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
+                // An evaluation window before or after the series records no
+                // real topology; generating full-series null ensembles anyway
+                // would compare non-empty null partitions against empty real
+                // ones. Keep both sides symmetrically empty instead.
+                if (hasEvaluationWindow) {
+                    final int sourceBegin = source.getBeginIndex();
+                    final BarSeries causalSource = source.getSubSeries(sourceBegin, end + 1);
+                    // Look-ahead-free sampling: every partition's ensemble is drawn
+                    // only from returns available at that partition's last bar, so a
+                    // calibration partition's null baseline can never incorporate
+                    // validation or holdout returns. The shared seed keeps the RNG
+                    // stream comparable across partitions over different tapes.
+                    for (int partitionIndex = 0; partitionIndex < totals.size(); partitionIndex++) {
+                        final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
+                        if (partitionLastBar - causalSource.getBeginIndex() < 1) {
+                            continue;
+                        }
+                        final BarSeries truncated = causalSource.getSubSeries(causalSource.getBeginIndex(),
+                                partitionLastBar + 1);
+                        final List<BarSeries> nullSeries = BlockBootstrapNulls.generate(truncated, blockLength,
+                                configuration.nullEnsembleSize(), configuration.seed());
+                        for (final BarSeries member : nullSeries) {
+                            // Fresh accumulators per member so label-stability
+                            // transitions never leak across ensemble members.
+                            final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of());
+                            final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+                            // Members are freshly-built series rebased to index 0;
+                            // the requested window stays in source coordinates and
+                            // must be translated before recording.
+                            recordTopology(member, Math.max(member.getBeginIndex(), start - sourceBegin),
+                                    member.getEndIndex(), partitions, replay, grammar, List.of(), memberAccumulators);
+                            totals.get(partitionIndex).mergeFrom(memberAccumulators.get(partitionIndex));
+                        }
                     }
                 }
                 reports.add(new StudyReport.NullReport(grammar.name(), blockLength, configuration.nullEnsembleSize(),

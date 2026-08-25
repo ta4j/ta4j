@@ -119,12 +119,19 @@ final class ConfirmationTracker {
     private boolean reconcile(final List<ConfirmedPivot> order, final Map<Integer, ConfirmedPivot> known,
             final List<SwingPivot> reported, final int asOf, final Map<Integer, Integer> collapsed) {
         boolean changed = false;
+        // Membership lookups against the freshly reported list happen once per
+        // tracked pivot per replay bar; scanning the list linearly for each of
+        // them made unchanged reconciliation quadratic in the pivot history.
+        final Set<Integer> reportedIndices = new HashSet<>(reported.size() * 2);
+        for (final SwingPivot pivot : reported) {
+            reportedIndices.add(pivot.index());
+        }
         // Only the newest tracked pivot is retractable: everything before it
         // was already frozen by that pivot's confirmation, so a detector
         // withdrawing several reported pivots in one update rewrites frozen
         // history and must fail loud instead of being popped successively.
         final int retractableIndex = order.isEmpty() ? -1 : order.get(order.size() - 1).pivotIndex();
-        while (!order.isEmpty() && !containsIndex(reported, order.get(order.size() - 1).pivotIndex())) {
+        while (!order.isEmpty() && !reportedIndices.contains(order.get(order.size() - 1).pivotIndex())) {
             final ConfirmedPivot removed = order.remove(order.size() - 1);
             if (retractableIndex != -1 && removed.pivotIndex() != retractableIndex) {
                 throw new IllegalStateException("detector withdrew frozen pivot " + removed.pivotIndex() + " at bar "
@@ -187,7 +194,7 @@ final class ConfirmationTracker {
             changed = true;
         }
         for (int i = 0; i < order.size(); i++) {
-            if (!containsIndex(reported, order.get(i).pivotIndex())) {
+            if (!reportedIndices.contains(order.get(i).pivotIndex())) {
                 throw new IllegalStateException("detector withdrew non-trailing pivot " + order.get(i).pivotIndex()
                         + " at bar " + asOf + "; frozen histories must never lose interior pivots");
             }
@@ -254,15 +261,6 @@ final class ConfirmationTracker {
         case HIGH -> dominated.price().compareTo(dominator.price()) <= 0;
         case LOW -> dominated.price().compareTo(dominator.price()) >= 0;
         };
-    }
-
-    private boolean containsIndex(final List<SwingPivot> reported, final int pivotIndex) {
-        for (final SwingPivot candidate : reported) {
-            if (candidate.index() == pivotIndex) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -201,8 +203,9 @@ class ConfirmationTrackerTest {
 
         final ConfirmationTracker tracker = new ConfirmationTracker(scripted(script));
 
-        assertThatThrownBy(() -> tracker.observeReplay(seriesWithBars(7))).isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("withdrew frozen pivot");
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> tracker.observeReplay(seriesWithBars(7)));
+        assertTrue(exception.getMessage().contains("withdrew frozen pivot"), exception.getMessage());
     }
 
     @Test

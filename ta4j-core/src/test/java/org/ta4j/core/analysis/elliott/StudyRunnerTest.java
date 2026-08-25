@@ -617,6 +617,73 @@ class StudyRunnerTest {
     }
 
     @Test
+    void nullsRecordNothingWhenEvaluationWindowPrecedesSeries() {
+        // toIndex below the series begin clamps to an empty evaluation window;
+        // real modes record nothing, so null partitions must stay empty too
+        // instead of comparing against full-series member observations.
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+        final StudyReport report = runner.evaluate("BTC", buildSeries(24), -4, -1);
+
+        assertFalse(report.nulls().isEmpty());
+        for (final StudyReport.NullReport nullReport : report.nulls()) {
+            for (final StudyReport.PartitionMetrics partition : nullReport.partitions()) {
+                assertEquals(0L, partition.evaluationCount(), () -> "non-empty null partition " + partition);
+            }
+        }
+    }
+
+    @Test
+    void memberGenerationRejectsCumulativePathBeyondDoubleRange() {
+        // Two individually representable +598 returns compound past double max;
+        // the second step must fail loud instead of materializing Infinity.
+        final BarSeries source = doubleSeries("cumulative-overflow", 1d);
+        assertThrows(IllegalStateException.class, () -> BlockBootstrapNulls
+                .generateMember(source3Bar("cumulative-overflow"), new double[] { 598.8d, 598.8d }, 8, 7L, 0));
+    }
+
+    @Test
+    void memberGenerationRejectsSteepNegativeReturnBelowDoubleRange() {
+        // A steep negative sampled return from a tiny start accumulates below
+        // double range; expNum's reciprocal collapses to zero and must be
+        // rejected instead of recording a non-positive close.
+        final BarSeries source = doubleSeries("steep-negative", Double.MIN_VALUE);
+        assertThrows(IllegalStateException.class,
+                () -> BlockBootstrapNulls.generateMember(source, new double[] { -3000d }, 8, 7L, 0));
+    }
+
+    private static BarSeries doubleSeries(final String name, final double close) {
+        return doubleSeries(name, close, 2);
+    }
+
+    private static BarSeries source3Bar(final String name) {
+        return doubleSeries(name, 1d, 3);
+    }
+
+    private static BarSeries doubleSeries(final String name, final double close, final int barCount) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName(name)
+                .withNumFactory(org.ta4j.core.num.DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num closeNum = org.ta4j.core.num.DoubleNum.valueOf(close);
+        for (int index = 1; index <= barCount; index++) {
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index)))
+                    .openPrice(closeNum)
+                    .highPrice(closeNum)
+                    .lowPrice(closeNum)
+                    .closePrice(closeNum)
+                    .volume(1)
+                    .amount(closeNum)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    @Test
     void memberClosesStayFiniteWhenSampledReturnSpansDoubleRange() {
         // exp(ln(MAX/MIN)) itself exceeds double range; reconstruction must go
         // through the accumulated log-close so a finite source path can never
@@ -681,9 +748,6 @@ class StudyRunnerTest {
         final double expected = Math.log(Double.MAX_VALUE) - Math.log(Double.MIN_VALUE);
         assertEquals(expected, returns[0], 1e-6d);
         assertEquals(-expected, returns[1], 1e-6d);
-
-        final BarSeries member = BlockBootstrapNulls.generate(source, 2, 1, 7L).get(0);
-        assertTrue(member.getBarCount() == source.getBarCount());
     }
 
     @Test

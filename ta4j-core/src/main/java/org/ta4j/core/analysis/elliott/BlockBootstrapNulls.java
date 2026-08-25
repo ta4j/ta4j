@@ -13,6 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -35,6 +36,21 @@ final class BlockBootstrapNulls {
      * overflow (~709.78) and underflow-to-zero boundaries.
      */
     private static final double MAX_DIRECT_EXPONENT = 700d;
+
+    /**
+     * Direct multiplication keeps consecutive-close ratios exact, so it is the
+     * preferred reconstruction whenever the factor itself is representable and, for
+     * range-bounded Num domains such as {@link DoubleNum}, the accumulated product
+     * also stays inside double range. Beyond those bounds only the decomposed
+     * absolute-log path can still produce finite values.
+     */
+    private static boolean directMultiplySafe(final NumFactory numFactory, final double drawnReturn,
+            final double runningLogClose) {
+        if (Math.abs(drawnReturn) > MAX_DIRECT_EXPONENT) {
+            return false;
+        }
+        return !(numFactory instanceof DoubleNumFactory) || Math.abs(runningLogClose) <= MAX_DIRECT_EXPONENT;
+    }
 
     private BlockBootstrapNulls() {
     }
@@ -169,7 +185,7 @@ final class BlockBootstrapNulls {
         return result;
     }
 
-    private static BarSeries generateMember(final BarSeries source, final double[] logReturns, final int blockLength,
+    static BarSeries generateMember(final BarSeries source, final double[] logReturns, final int blockLength,
             final long seed, final int ensembleIndex) {
         final int count = source.getBarCount();
         final SplittableRandom random = new SplittableRandom(seed);
@@ -201,17 +217,28 @@ final class BlockBootstrapNulls {
             }
             final double drawnReturn = logReturns[tapePosition];
             runningLogClose += drawnReturn;
-            if (Math.abs(drawnReturn) <= MAX_DIRECT_EXPONENT) {
+            final Num previousClose = closes[offset - 1];
+            if (directMultiplySafe(numFactory, drawnReturn, runningLogClose)) {
                 // Exact relative step while exp(return) sits comfortably inside
                 // double range; ordinary-market members keep their tight
                 // consecutive-close ratios.
-                closes[offset] = closes[offset - 1].multipliedBy(expNum(numFactory, drawnReturn));
+                closes[offset] = previousClose.multipliedBy(expNum(numFactory, drawnReturn));
             } else {
-                // A steeper transition (for example MIN_VALUE -> MAX_VALUE)
-                // has no representable multiplicative factor: exp(return)
-                // would overflow even though both endpoint closes are finite.
-                // Reconstruct from the accumulated log-close instead.
-                closes[offset] = expNum(numFactory, runningLogClose);
+                // A steeper transition (for example MIN_VALUE -> MAX_VALUE), or
+                // an accumulated path outside double range, has no representable
+                // multiplicative reconstruction; materialize from the running
+                // log-close and reject what a range-bounded Num domain cannot
+                // hold instead of silently writing zero or infinite closes.
+                final Num reconstructed = expNum(numFactory, runningLogClose);
+                if (numFactory instanceof DoubleNumFactory) {
+                    final double narrowed = reconstructed.doubleValue();
+                    if (!Double.isFinite(narrowed) || narrowed <= 0d) {
+                        throw new IllegalStateException("resampled null path leaves double range at member bar "
+                                + offset + " (accumulated log-close " + runningLogClose
+                                + "); not representable in the active Num domain");
+                    }
+                }
+                closes[offset] = reconstructed;
             }
             shapePositions[offset] = tapePosition + 1;
             tapePosition = (tapePosition + 1) % logReturns.length;
