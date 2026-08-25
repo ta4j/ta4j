@@ -154,6 +154,17 @@ public final class FractalSwingDetector implements SwingDetector {
         private int lastLowIndex = Integer.MIN_VALUE;
         private int lastScannedIndex = Integer.MIN_VALUE;
 
+        /**
+         * Cached immutable detection result over {@link #pivots}; rebuilt only when a
+         * merge mutation changed the tracked sequence, so unchanged replay bars reuse
+         * one instance instead of re-materializing an {@link ElliottSwing} for every
+         * accumulated pivot on every ascending query.
+         */
+        private SwingDetectorResult cachedResult;
+
+        /** Whether {@link #pivots} changed since {@link #cachedResult} was built. */
+        private boolean resultDirty = true;
+
         // History observation mirroring the swing indicators' own reset rules.
         private long observedRevision;
         private int observedBeginIndex;
@@ -241,7 +252,11 @@ public final class FractalSwingDetector implements SwingDetector {
                 lastLowIndex = lowIndex;
             }
             lastScannedIndex = index;
-            return snapshot();
+            if (resultDirty) {
+                cachedResult = snapshot();
+                resultDirty = false;
+            }
+            return cachedResult;
         }
 
         private void absorb(final Pivot pivot) {
@@ -250,6 +265,7 @@ public final class FractalSwingDetector implements SwingDetector {
             }
             if (pivots.isEmpty()) {
                 pivots.add(pivot);
+                resultDirty = true;
                 return;
             }
             final Pivot last = pivots.get(pivots.size() - 1);
@@ -257,10 +273,45 @@ public final class FractalSwingDetector implements SwingDetector {
                 if (pivot.type() == PivotType.HIGH && !pivot.price().isLessThan(last.price())
                         || pivot.type() == PivotType.LOW && !pivot.price().isGreaterThan(last.price())) {
                     pivots.set(pivots.size() - 1, pivot);
+                    resultDirty = true;
+                }
+                return;
+            }
+            if (last.index() == pivot.index()) {
+                // High and low plateaus of different lengths can confirm
+                // opposite-type sides at the same pivot index on different
+                // bars. Appending would create a zero-length swing, so
+                // reconcile with the tie rule of the simultaneous-update path.
+                final Pivot winner = reconcileSharedIndex(last, pivot);
+                if (winner != last) {
+                    pivots.set(pivots.size() - 1, winner);
+                    resultDirty = true;
                 }
                 return;
             }
             pivots.add(pivot);
+            resultDirty = true;
+        }
+
+        /**
+         * Reconciles two opposite-type pivots reported at the same index with the tie
+         * rule the simultaneous-update branch applies: with a tracked predecessor, the
+         * side alternating with that predecessor wins; otherwise the high side wins
+         * unless its price sits below the low side.
+         */
+        private Pivot reconcileSharedIndex(final Pivot first, final Pivot second) {
+            final boolean preferHigh;
+            if (pivots.size() >= 2) {
+                preferHigh = pivots.get(pivots.size() - 2).type() == PivotType.LOW;
+            } else {
+                final Num highPrice = first.type() == PivotType.HIGH ? first.price() : second.price();
+                final Num lowPrice = first.type() == PivotType.HIGH ? second.price() : first.price();
+                preferHigh = !highPrice.isLessThan(lowPrice);
+            }
+            if (preferHigh) {
+                return first.type() == PivotType.HIGH ? first : second;
+            }
+            return first.type() == PivotType.LOW ? first : second;
         }
 
         /** Builds the immutable swing chain over the merged pivots. */
@@ -283,6 +334,8 @@ public final class FractalSwingDetector implements SwingDetector {
             lastHighIndex = Integer.MIN_VALUE;
             lastLowIndex = Integer.MIN_VALUE;
             lastScannedIndex = Integer.MIN_VALUE;
+            cachedResult = null;
+            resultDirty = true;
         }
 
         /**

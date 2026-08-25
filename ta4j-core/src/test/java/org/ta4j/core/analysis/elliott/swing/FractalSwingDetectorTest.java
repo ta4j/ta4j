@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -126,6 +127,46 @@ class FractalSwingDetectorTest {
         assertThat(largeReads).isLessThan(3 * smallReads);
     }
 
+    @Test
+    void staggeredSameIndexSidesReconcileInsteadOfAppendingZeroLengthSwings() {
+        // With window 1 the LOW@1 (price 0) confirms at bar 2 while the HIGH
+        // plateau [1..2] only completes at bar 3, so the opposite-type side
+        // reaches pivot index 1 one bar later than the low side did.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 10, 10, 5, 4, 6, 8, 3 },
+                new double[] { 5, 0, 5, 5, 2, 3, 4, 2 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("staggered result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1).detectPivots(series, index));
+        }
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH), tuple(4, SwingPivotType.LOW),
+                        tuple(6, SwingPivotType.HIGH));
+    }
+
+    @Test
+    void repeatedQueriesReuseTheCachedDetectionResultWithoutRematerializing() {
+        final BarSeries series = noisySeries(120, 5L);
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        final int end = seriesEnd(series);
+
+        for (int index = 0; index <= end; index++) {
+            shared.detectPivots(series, index);
+        }
+        final List<SwingPivot> tail = shared.detectPivots(series, end);
+        // Unchanged replay state must not rebuild the cumulative swing chain:
+        // rebuilding would allocate an ElliottSwing for every accumulated pivot
+        // on every query, keeping causal replay quadratic in transient
+        // allocations. Instance identity proves the cached snapshot is reused.
+        assertThat(shared.detectPivots(series, end)).isSameAs(tail);
+        assertThat(shared.detectPivots(series, end)).isSameAs(tail);
+
+        final List<SwingPivot> middle = shared.detectPivots(series, end / 2);
+        assertThat(shared.detectPivots(series, end / 2)).isSameAs(middle);
+    }
+
     private static long replayAscending(final FractalSwingDetector detector, final CountedZigZagSeries fixture) {
         final long readsBefore = fixture.priceReads.sum();
         for (int index = 0; index <= fixture.seriesEnd(); index++) {
@@ -202,6 +243,21 @@ class FractalSwingDetectorTest {
             price *= 1 + random.nextDouble(-0.02, 0.02);
             final double close = price;
             series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
+        }
+        return series;
+    }
+
+    private static BarSeries seriesWithHighsAndLows(final double[] highs, final double[] lows) {
+        final BarSeries series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < highs.length; index++) {
+            final double close = (highs[index] + lows[index]) / 2;
+            series.barBuilder()
+                    .openPrice(close)
+                    .highPrice(highs[index])
+                    .lowPrice(lows[index])
+                    .closePrice(close)
+                    .volume(1)
+                    .add();
         }
         return series;
     }

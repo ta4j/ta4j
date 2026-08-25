@@ -16,6 +16,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -128,6 +133,52 @@ class StudyRunnerTest {
         assertEquals(List.of("second"), second.activeRuleIds());
         assertFalse(first.activeRuleIds().contains("second"));
         assertFalse(second.activeRuleIds().contains("first"));
+    }
+
+    @Test
+    void realAndNullModeRowsSerializeActiveRulesUnderOneProperty() {
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+        final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
+        final JsonObject json = JsonParser.parseString(report.toJson()).getAsJsonObject();
+
+        // Regression: null-ablation mode rows used to serialize their rule ids
+        // as "activeRuleIds" while the corresponding real H2 rows used
+        // "activeRules", so equivalent logical data could not be joined across
+        // the two report shapes.
+        final List<JsonObject> modeRows = new ArrayList<>();
+        for (final JsonElement ablation : json.getAsJsonArray("ablations")) {
+            modeRows.add(ablation.getAsJsonObject());
+        }
+        for (final JsonElement nullReport : json.getAsJsonArray("nulls")) {
+            for (final JsonElement nullMode : nullReport.getAsJsonObject().getAsJsonArray("modes")) {
+                modeRows.add(nullMode.getAsJsonObject());
+            }
+        }
+        assertFalse(modeRows.isEmpty());
+        for (final JsonObject modeRow : modeRows) {
+            assertTrue(modeRow.has("activeRules"), () -> "missing activeRules in " + modeRow);
+            assertFalse(modeRow.has("activeRuleIds"));
+        }
+
+        // The unified property preserves each row's active-rule values.
+        final StudyReport.ModeReport firstAblation = report.ablations()
+                .stream()
+                .filter(mode -> "+first".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(firstAblation.activeRuleIds(),
+                activeRulesOf(findModeRow(json.getAsJsonArray("ablations"), "+first")));
+        for (int nullIndex = 0; nullIndex < report.nulls().size(); nullIndex++) {
+            final JsonArray serializedModes = json.getAsJsonArray("nulls")
+                    .get(nullIndex)
+                    .getAsJsonObject()
+                    .getAsJsonArray("modes");
+            for (final StudyReport.NullModeReport nullMode : report.nulls().get(nullIndex).modes()) {
+                assertEquals(nullMode.activeRuleIds(), activeRulesOf(findModeRow(serializedModes, nullMode.mode())));
+            }
+        }
     }
 
     @Test
@@ -998,4 +1049,20 @@ class StudyRunnerTest {
                 });
     }
 
+    private static JsonObject findModeRow(final JsonArray modes, final String name) {
+        for (final JsonElement mode : modes) {
+            if (name.equals(mode.getAsJsonObject().get("mode").getAsString())) {
+                return mode.getAsJsonObject();
+            }
+        }
+        throw new AssertionError("no mode row named " + name);
+    }
+
+    private static List<String> activeRulesOf(final JsonObject modeRow) {
+        final List<String> rules = new ArrayList<>();
+        for (final JsonElement rule : modeRow.getAsJsonArray("activeRules")) {
+            rules.add(rule.getAsString());
+        }
+        return rules;
+    }
 }

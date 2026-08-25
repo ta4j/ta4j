@@ -354,11 +354,11 @@ final class StudyReport {
     private static JsonObject nullModeJson(final NullModeReport mode) {
         final JsonObject json = new JsonObject();
         json.addProperty("mode", mode.mode());
-        final JsonArray activeRuleIds = new JsonArray();
+        final JsonArray rules = new JsonArray();
         for (final String ruleId : mode.activeRuleIds()) {
-            activeRuleIds.add(ruleId);
+            rules.add(ruleId);
         }
-        json.add("activeRuleIds", activeRuleIds);
+        json.add("activeRules", rules);
         final JsonArray partitions = new JsonArray();
         for (final PartitionMetrics metrics : mode.partitions()) {
             partitions.add(partitionJson(metrics));
