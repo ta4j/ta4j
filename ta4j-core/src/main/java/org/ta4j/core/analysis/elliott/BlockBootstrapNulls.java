@@ -327,10 +327,14 @@ final class BlockBootstrapNulls {
             // If the ratio underflows before multiplication, reverse the
             // operations so a representable subnormal wick is not lost.
             scaled = value.multipliedBy(close.dividedBy(sourceClose));
+        } else if (nonFiniteDouble(scaled)) {
+            // The ratio can overflow even when the final scaled wick is
+            // representable; retry with the finite scale factor first.
+            scaled = value.multipliedBy(close.dividedBy(sourceClose));
         }
         // A range-bounded domain that cannot hold the scaled wick clamps to the
         // member close instead of letting infinity or NaN reach BaseBar.
-        if (scaled.getDelegate() instanceof Double delegate && !Double.isFinite(delegate)) {
+        if (nonFiniteDouble(scaled)) {
             return close;
         }
         return scaled;

@@ -671,7 +671,8 @@ final class StudyRunner {
             }
             case FORMING -> {
                 formingCount++;
-                updateStability(Set.of("forming:" + analysis.direction()));
+                updateStability(Set.of("forming:" + analysis.direction() + ":" + analysis.formingStartBarIndex() + "-"
+                        + analysis.formingEndBarIndex()));
             }
             case AMBIGUOUS -> {
                 ambiguousCount++;

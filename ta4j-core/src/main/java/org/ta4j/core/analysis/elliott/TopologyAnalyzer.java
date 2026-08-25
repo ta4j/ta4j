@@ -125,8 +125,10 @@ final class TopologyAnalyzer {
                     + mostRecentPrior.endBarIndex());
         }
         if (live.size() == 1) {
-            return new TopologyAnalysis(TopologyStatus.COMPLETE, live.get(0).direction(), live, "single " + grammar
-                    + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex());
+            return new TopologyAnalysis(
+                    TopologyStatus.COMPLETE, live.get(0).direction(), live, "single " + grammar
+                            + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex(),
+                    -1, -1);
         }
         if (live.size() > 1) {
             // Only candidates whose windows overlap the newest live candidate
@@ -139,12 +141,13 @@ final class TopologyAnalyzer {
             if (current.size() == 1) {
                 return new TopologyAnalysis(TopologyStatus.COMPLETE, current.get(0).direction(), current,
                         "newest " + grammar + " candidate spans bars " + current.get(0).startBarIndex() + "-"
-                                + current.get(0).endBarIndex());
+                                + current.get(0).endBarIndex(),
+                        -1, -1);
             }
             if (current.size() > 1) {
                 final List<TopologyCandidate> bounded = boundedMostRecent(current);
                 return new TopologyAnalysis(TopologyStatus.AMBIGUOUS, null, bounded,
-                        bounded.size() + " of " + current.size() + " tied " + grammar + " candidates remain");
+                        bounded.size() + " of " + current.size() + " tied " + grammar + " candidates remain", -1, -1);
             }
         }
 
@@ -169,17 +172,19 @@ final class TopologyAnalyzer {
             // contested shape is not evidence of either direction -- and the
             // scan falls through to the next shorter suffix.
             for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
+                final List<ConfirmedPivot> suffixPivots = window.subList(window.size() - suffix, window.size());
                 final List<WaveDirection> matching = new ArrayList<>();
                 for (final WaveDirection direction : WaveDirection.values()) {
-                    if (matchesPartialShape(grammar, direction,
-                            window.subList(window.size() - suffix, window.size()))) {
+                    if (matchesPartialShape(grammar, direction, suffixPivots)) {
                         matching.add(direction);
                     }
                 }
                 if (matching.size() == 1) {
                     final WaveDirection direction = matching.get(0);
-                    return TopologyAnalysis.forming(direction, "partial " + grammar + " prefix present in " + direction
-                            + " orientation over the " + suffix + " newest pivots");
+                    return TopologyAnalysis.forming(direction, suffixPivots.get(0).pivotIndex(),
+                            suffixPivots.get(suffixPivots.size() - 1).pivotIndex(),
+                            "partial " + grammar + " prefix present in " + direction + " orientation over the " + suffix
+                                    + " newest pivots");
                 }
             }
         }

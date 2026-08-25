@@ -98,7 +98,10 @@ class TopologyAnalyzerTest {
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
         assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.formingStartBarIndex()).isEqualTo(0);
+        assertThat(analysis.formingEndBarIndex()).isEqualTo(3);
         assertThat(analysis.candidates()).isEmpty();
+
     }
 
     @Test
