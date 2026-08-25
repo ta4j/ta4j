@@ -204,24 +204,6 @@ public interface BarSeries extends Serializable {
     int getEndIndex();
 
     /**
-     * Creates a detached snapshot of this series: a new {@link BaseBarSeries} with
-     * the same name, raw bar data, logical index range, removal offset, num
-     * factory, and maximum bar count.
-     * <p>
-     * The snapshot is rebuilt from this series's public accessors, so subclasses
-     * that override {@link BarSeries} accessors to advertise a shifted logical view
-     * are reproduced exactly. Concurrent implementations override this method to
-     * observe the source atomically under their read lock.
-     * </p>
-     *
-     * @return a new {@link BaseBarSeries} with the same logical view and raw data
-     * @since 0.24.2
-     */
-    default BarSeries snapshot() {
-        return BaseBarSeries.snapshotOf(this);
-    }
-
-    /**
      * @return the description of the series period (e.g. "from 2014-01-21T12:00:00Z
      *         to 2014-01-21T12:15:00Z"); times are in UTC.
      */

@@ -163,24 +163,6 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
-    /**
-     * Creates a detached snapshot of this series, observing its bar data, index
-     * range, and removal offset atomically under a single read lock.
-     *
-     * @return a new {@link BaseBarSeries} with the same logical view and raw data
-     * @since 0.24.2
-     * @see BarSeries#snapshot()
-     */
-    @Override
-    public BaseBarSeries snapshot() {
-        this.readLock.lock();
-        try {
-            return BaseBarSeries.snapshotOf(this);
-        } finally {
-            this.readLock.unlock();
-        }
-    }
-
     @Override
     public BarBuilder barBuilder() {
         this.readLock.lock();

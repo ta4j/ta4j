@@ -4,15 +4,16 @@
 package org.ta4j.core.analysis;
 
 import java.time.Instant;
-import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
@@ -50,19 +51,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsBorrowedInstance() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
-        int originalSize = cashFlow.getSize();
-        BarSeries firstReturnedSeries = cashFlow.getBarSeries();
 
-        appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
-
-        assertEquals(originalSize, cashFlow.getSize());
-        assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
-        assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
-        assertNotSame(firstReturnedSeries, cashFlow.getBarSeries());
+        assertSame(sampleBarSeries, cashFlow.getBarSeries());
     }
 
     @Test
@@ -549,19 +542,6 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
     }
 
-    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
-        Duration period = targetSeries.getLastBar().getTimePeriod();
-        targetSeries.barBuilder()
-                .timePeriod(period)
-                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
-                .closePrice(closePrice)
-                .volume(1)
-                .add();
-    }
-
     private record FixedHoldingCostModel(double fee) implements CostModel {
 
         @Override
@@ -635,6 +615,17 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(9));
         assertNumEquals(1, cashFlow.getValue(13));
         assertNumEquals(1, cashFlow.getValue(12));
+    }
+
+    @Test
+    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1.5, cashFlow.getValue(2));
     }
 
 }

@@ -64,11 +64,12 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         BarSeries series = getBarSeries();
         int beginIndex = series.getBeginIndex();
-        int size = series.getBarCount() == 0 ? 0 : series.getEndIndex() - beginIndex + 1;
+        int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
+        int size = series.getBarCount() == 0 ? 0 : analysisEndIndex - beginIndex + 1;
         boolean[] invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
+            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, analysisEndIndex);
             openPositions.forEach(position -> markInvestedIntervals(position, invested));
         }
         return invested;
@@ -80,14 +81,14 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             return;
         }
         int beginIndex = series.getBeginIndex();
-        int seriesEnd = series.getEndIndex();
+        int investedEndIndex = beginIndex + invested.length - 1;
         long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
-        if (startLong > seriesEnd) {
+        if (startLong > investedEndIndex) {
             return;
         }
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : seriesEnd;
+        int exitIndex = position.isClosed() ? position.getExit().getIndex() : investedEndIndex;
         int start = (int) startLong;
-        int end = Math.min(exitIndex, seriesEnd);
+        int end = Math.min(exitIndex, investedEndIndex);
         for (long i = start; i <= end; i++) {
             invested[(int) i - beginIndex] = true;
         }

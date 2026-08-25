@@ -255,33 +255,21 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void indexesReturnsFromCapturedSnapshotOffsets() {
-        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
-        // Mimics a concurrent retention advance: the live series advertises the
-        // full window while snapshot() returns a window shifted by one bar.
-        BarSeries live = new BaseBarSeries("omega-live", new ArrayList<>(source.getBarData())) {
-            @Override
-            public NumFactory numFactory() {
-                return numFactory;
-            }
-
-            @Override
-            public BarSeries snapshot() {
-                List<Bar> bars = getBarData();
-                return new MockBarSeriesBuilder().withNumFactory(numFactory())
-                        .withBars(bars.subList(1, bars.size()))
-                        .withBeginIndex(getBeginIndex() + 1)
-                        .build();
-            }
-        };
-        var record = new BaseTradingRecord(Trade.buyAt(0, live), Trade.sellAt(2, live));
+    public void indexesReturnsFromRetainedWindowOffsets() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        // Retained window starting one bar later: return slots must map against
+        // getBeginIndex(), not absolute indexes.
+        BarSeries live = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(full.getBarData().subList(1, 3))
+                .withBeginIndex(1)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(1, live), Trade.sellAt(2, live));
 
         Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
                 .calculate(live, record);
 
-        // The shifted snapshot window [1, 2] has no preceding bar for index 1,
-        // so its first slot is NaN; only the positive return at index 2 remains,
-        // and Omega is undefined (NaN) without any downside.
-        assertTrue(ratio.isNaN());
+        // The single retained return (11 / 12 - 1) is negative, so there is
+        // no weighted upside and the ratio collapses to zero.
+        assertNumEquals(0, ratio);
     }
 }

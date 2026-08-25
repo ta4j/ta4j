@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -239,6 +240,9 @@ public interface PositionSizer {
      * @param holdingCostModel     holding cost model
      * @since 0.22.9
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The context borrows the caller's live series, "
+            + "strategy, trading record and cost models so sizing observes the same price revision the strategy "
+            + "rules and execution models see; accessors expose them by contract.")
     public record Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
             TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
@@ -253,16 +257,11 @@ public interface PositionSizer {
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
             strategy = StrategySnapshots.copy(strategy);
-            barSeries = snapshotSeries(barSeries);
+            barSeries = Objects.requireNonNull(barSeries, "barSeries");
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");
             Objects.requireNonNull(holdingCostModel, "holdingCostModel");
-        }
-
-        @Override
-        public BarSeries barSeries() {
-            return snapshotSeries(barSeries);
         }
 
         @Override
@@ -372,8 +371,5 @@ public interface PositionSizer {
             return low;
         }
 
-        private static BarSeries snapshotSeries(BarSeries barSeries) {
-            return barSeries.snapshot();
-        }
     }
 }

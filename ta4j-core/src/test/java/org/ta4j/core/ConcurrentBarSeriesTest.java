@@ -120,21 +120,6 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
-    public void snapshotPreservesLogicalRangeAndOffsetForConcurrentSeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeries("copyOf-concurrent",
-                new ArrayList<>(testBars.subList(0, 3)), 10, 11, 10, false, numFactory, new TimeBarBuilderFactory());
-
-        BaseBarSeries copy = series.snapshot();
-
-        assertNotSame(series, copy);
-        assertEquals(10, copy.getBeginIndex());
-        assertEquals(11, copy.getEndIndex());
-        assertEquals(10, copy.getRemovedBarsCount());
-        assertEquals(3, copy.getBarData().size());
-        assertEquals(series.getBar(12).getClosePrice(), copy.getBar(12).getClosePrice());
-    }
-
-    @Test
     public void testFullConstructor() {
         ConcurrentBarSeries series = new ConcurrentBarSeries("TestName", testBars, 1, 3, true, numFactory,
                 barBuilderFactory);

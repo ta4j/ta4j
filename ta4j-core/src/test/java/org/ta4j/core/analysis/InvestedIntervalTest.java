@@ -9,9 +9,10 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
-
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -143,4 +144,14 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(Integer.MAX_VALUE)).as("exit interval").isTrue();
     }
 
+    @Test
+    public void marksTrailingExitIntervalBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+
+        var indicator = new InvestedInterval(series, tradingRecord);
+
+        assertThat(indicator.getValue(2)).as("trailing exit interval").isTrue();
+    }
 }

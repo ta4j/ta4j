@@ -40,9 +40,9 @@ public class BarSeriesManagerConstrainedSeriesTest {
     }
 
     @Test
-    public void snapshotPreservesLeadingOrphanRawBars() {
+    public void runPreservesLeadingOrphanRawBars() {
         // beginIndex=1, endIndex=2, removedBarsCount=0: the raw bar at index 0
-        // is an orphan preceding the logical range. The snapshot must keep the
+        // is an orphan preceding the logical range. Execution must keep the
         // raw-to-logical offset so getBar(1) returns the raw bar at index 1
         // (price 20), not the raw bar at index 0 (price 10).
         BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())

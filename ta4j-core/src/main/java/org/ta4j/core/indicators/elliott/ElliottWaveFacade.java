@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -89,7 +90,7 @@ public final class ElliottWaveFacade {
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
             final Optional<ElliottSwingCompressor> compressor) {
-        this.series = snapshotSeries(series);
+        this.series = Objects.requireNonNull(series, "series cannot be null");
         this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator cannot be null").copy();
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.fibTolerance = Objects.requireNonNull(fibTolerance, "fibTolerance cannot be null");
@@ -273,8 +274,10 @@ public final class ElliottWaveFacade {
      * @return the underlying bar series
      * @since 0.22.0
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; "
+            + "wave analysis reads the live series the indicators are bound to.")
     public BarSeries series() {
-        return snapshotSeries(series);
+        return series;
     }
 
     /**
@@ -563,7 +566,4 @@ public final class ElliottWaveFacade {
         return scenariosInternal().getValue(index).summary();
     }
 
-    private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        return Objects.requireNonNull(barSeries, "series cannot be null").snapshot();
-    }
 }

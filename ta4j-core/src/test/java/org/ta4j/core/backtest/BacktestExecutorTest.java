@@ -813,7 +813,7 @@ public class BacktestExecutorTest {
                 config);
 
         BarSeries resultSeries = result.barSeries();
-        assertNotSame(series, resultSeries);
+        assertSame(series, resultSeries);
         assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
@@ -872,7 +872,7 @@ public class BacktestExecutorTest {
         assertFalse(result.walkForward().folds().isEmpty());
         BarSeries backtestSeries = result.backtest().barSeries();
         BarSeries walkForwardSeries = result.walkForward().barSeries();
-        assertNotSame(backtestSeries, walkForwardSeries);
+        assertSame(backtestSeries, walkForwardSeries);
         assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
         assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }

@@ -6,7 +6,6 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -167,21 +166,14 @@ public class StrategyWalkForwardExecutorTest {
     }
 
     @Test
-    public void resultCopiesBarSeriesAndAccessorReturnsSnapshots() {
+    public void resultBorrowsSeriesAndAccessorReturnsIt() {
         BarSeries series = buildSeries(48);
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
 
         StrategyWalkForwardExecutionResult result = executor.execute(strategy, walkForwardConfig());
-        BarSeries firstSnapshot = result.barSeries();
-        BarSeries secondSnapshot = result.barSeries();
-        series.barBuilder().closePrice(250).add();
 
-        assertNotSame(series, firstSnapshot);
-        assertNotSame(firstSnapshot, secondSnapshot);
-        assertEquals(48, firstSnapshot.getBarCount());
-        assertEquals(48, secondSnapshot.getBarCount());
-        assertEquals(48, result.barSeries().getBarCount());
+        assertSame(series, result.barSeries());
     }
 
     @Test

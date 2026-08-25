@@ -111,43 +111,6 @@ public class BaseBarSeries implements BarSeries {
                 barBuilderFactory));
     }
 
-    /**
-     * Creates a detached snapshot of the given series: a new {@link BaseBarSeries}
-     * with the same name, raw bar data, logical index range
-     * ({@link #getBeginIndex()} / {@link #getEndIndex()}), raw-to-logical offset
-     * ({@link #getRemovedBarsCount()}), {@link NumFactory}, and maximum bar count.
-     * <p>
-     * The copy is rebuilt from the source's public accessors, so subclasses that
-     * override {@link BarSeries} accessors to advertise a different logical view
-     * are reproduced exactly. The maximum bar count is carried over as-is without
-     * applying retention, so a source whose maximum bar count is a hint rather than
-     * a retention limit keeps all of its raw bars.
-     * </p>
-     * <p>
-     * Implementations that need an atomic observation (e.g.
-     * {@link ConcurrentBarSeries}) call this method under their read lock and
-     * expose it through {@link BarSeries#snapshot()}.
-     * </p>
-     *
-     * @param series the series to copy; must not be {@code null}
-     * @return a new {@link BaseBarSeries} with the same logical view and raw data
-     * @throws NullPointerException if {@code series} is {@code null}
-     * @see BarSeries#snapshot()
-     * @since 0.24.2
-     */
-    static BaseBarSeries snapshotOf(final BarSeries series) {
-        Objects.requireNonNull(series, "series");
-        BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
-                series.getEndIndex(), series.getRemovedBarsCount(), false, series.numFactory(),
-                new TimeBarBuilderFactory());
-        // Assign the maximum bar count without invoking setMaximumBarCount(), which
-        // applies retention (removeExceedingBars) and would truncate raw bars when
-        // the source reports a hint smaller than its raw list (e.g. a benchmark
-        // wrapper whose maximum bar count is a hint, not a retention limit).
-        copy.maximumBarCount = series.getMaximumBarCount();
-        return copy;
-    }
-
     private BaseBarSeries(final Config config) {
         this.name = config.name();
         this.numFactory = config.numFactory();

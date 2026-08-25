@@ -38,8 +38,10 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @param runtimeReport     runtime statistics for the execution
      * @param strategyFailures  strategies skipped because execution failed
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The result borrows the caller's live series so "
+            + "post-run criteria evaluate the same instance execution observed; statements own all derived state.")
     public BacktestExecutionResult {
-        barSeries = snapshotSeries(barSeries);
+        Objects.requireNonNull(barSeries, "barSeries must not be null");
         tradingStatements = List
                 .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
@@ -106,8 +108,9 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override
@@ -390,7 +393,4 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         return gson.toJson(json);
     }
 
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        return barSeries.snapshot();
-    }
 }

@@ -91,7 +91,8 @@ final class OffsetNumBuffer {
      * @return {@code true} when the index is within {@code [startIndex, endIndex]}
      */
     boolean contains(int index) {
-        return index >= startIndex && index <= endIndex;
+        long position = (long) index - (long) startIndex;
+        return position >= 0 && position < values.size();
     }
 
     /**
@@ -102,11 +103,11 @@ final class OffsetNumBuffer {
      * @return the stored or neutral value
      */
     Num get(int index) {
-        int position = index - startIndex;
+        long position = (long) index - (long) startIndex;
         if (position < 0 || position >= values.size()) {
             return neutral;
         }
-        return values.get(position);
+        return values.get((int) position);
     }
 
     /**
@@ -116,11 +117,11 @@ final class OffsetNumBuffer {
      * @param delta the delta to add
      */
     void add(int index, Num delta) {
-        int position = index - startIndex;
+        long position = (long) index - (long) startIndex;
         if (position < 0 || position >= values.size()) {
             return;
         }
-        values.set(position, values.get(position).plus(delta));
+        values.set((int) position, values.get((int) position).plus(delta));
     }
 
     /**
@@ -132,10 +133,14 @@ final class OffsetNumBuffer {
      * @param delta     the delta to add
      */
     void addRange(int fromIndex, int toIndex, Num delta) {
-        int firstPosition = Math.max(fromIndex, startIndex) - startIndex;
-        int lastPosition = Math.min(toIndex, endIndex) - startIndex;
-        for (int position = Math.max(0, firstPosition); position <= lastPosition
-                && position < values.size(); position++) {
+        long from = Math.max((long) fromIndex, (long) startIndex);
+        long to = Math.min((long) toIndex, (long) endIndex);
+        if (from > to) {
+            return;
+        }
+        int firstPosition = (int) (from - startIndex);
+        int lastPosition = (int) Math.min(to - startIndex, values.size() - 1L);
+        for (int position = firstPosition; position <= lastPosition; position++) {
             values.set(position, values.get(position).plus(delta));
         }
     }
@@ -148,11 +153,11 @@ final class OffsetNumBuffer {
      * @param factor the factor to multiply by
      */
     void multiply(int index, Num factor) {
-        int position = index - startIndex;
+        long position = (long) index - (long) startIndex;
         if (position < 0 || position >= values.size()) {
             return;
         }
-        values.set(position, values.get(position).multipliedBy(factor));
+        values.set((int) position, values.get((int) position).multipliedBy(factor));
     }
 
     /**
@@ -164,10 +169,14 @@ final class OffsetNumBuffer {
      * @param factor    the factor to multiply by
      */
     void multiplyRange(int fromIndex, int toIndex, Num factor) {
-        int firstPosition = Math.max(fromIndex, startIndex) - startIndex;
-        int lastPosition = Math.min(toIndex, endIndex) - startIndex;
-        for (int position = Math.max(0, firstPosition); position <= lastPosition
-                && position < values.size(); position++) {
+        long from = Math.max((long) fromIndex, (long) startIndex);
+        long to = Math.min((long) toIndex, (long) endIndex);
+        if (from > to) {
+            return;
+        }
+        int firstPosition = (int) (from - startIndex);
+        int lastPosition = (int) Math.min(to - startIndex, values.size() - 1L);
+        for (int position = firstPosition; position <= lastPosition; position++) {
             values.set(position, values.get(position).multipliedBy(factor));
         }
     }

@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +25,14 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
  * {@link Strategy trading strategy} over the managed bar series.
+ *
+ * <p>
+ * The manager borrows the caller's {@link BarSeries} without copying it:
+ * strategies, indicators, execution models, and position sizing all observe the
+ * same instance, so signals and fills always see one coherent price revision.
+ * Callers that mutate the series between runs get results consistent with that
+ * mutation; the manager itself never modifies the series.
+ * </p>
  *
  * <p>
  * Default {@code run(...)} overloads create a fresh trading record through this
@@ -145,6 +154,9 @@ public class BarSeriesManager {
      * @param tradingRecordFactory factory for default run overloads
      * @since 0.22.4
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The manager borrows the caller's live series so "
+            + "strategies, indicators, execution models, and position sizing observe one coherent price revision; "
+            + "copying desynchronized signal and fill pricing.")
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory) {
         Objects.requireNonNull(barSeries, "barSeries");
@@ -152,7 +164,7 @@ public class BarSeriesManager {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
-        this.barSeries = snapshotSeries(barSeries);
+        this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -162,8 +174,10 @@ public class BarSeriesManager {
     /**
      * @return the managed bar series
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; see "
+            + "the class Javadoc ownership note.")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     /**
@@ -663,10 +677,6 @@ public class BarSeriesManager {
             fallbackIndex = safeEnd;
         }
         return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        return barSeries.snapshot();
     }
 
 }

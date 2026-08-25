@@ -220,10 +220,8 @@ public class BarSeriesManagerTest {
             assertNotSame(oneTradeStrategy, firstContextStrategy);
             assertNotSame(firstContextStrategy, secondContextStrategy);
             assertTrue(firstContextStrategy.shouldEnter(2));
-            assertNotSame(series, firstContextSeries);
-            assertNotSame(firstContextSeries, secondContextSeries);
-            assertEquals(series.getBarCount(), firstContextSeries.getBarCount());
-            assertEquals(TradeType.SELL, context.tradeType());
+            assertSame(series, firstContextSeries);
+            assertSame(firstContextSeries, secondContextSeries);
             return context.entryPrice().dividedBy(numFactory.numOf(10));
         };
 
@@ -239,23 +237,15 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
+    public void constructorBorrowsBarSeriesAndAccessorReturnsIt() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        BarSeries firstSnapshot = localManager.getBarSeries();
-        BarSeries secondSnapshot = localManager.getBarSeries();
-        series.barBuilder().closePrice(40).add();
 
-        assertNotSame(series, firstSnapshot);
-        assertNotSame(firstSnapshot, secondSnapshot);
-        assertEquals(3, firstSnapshot.getBarCount());
-        assertEquals(3, secondSnapshot.getBarCount());
-        assertEquals(3, localManager.getBarSeries().getBarCount());
-        assertEquals(series.getName(), firstSnapshot.getName());
+        assertSame(series, localManager.getBarSeries());
     }
 
     @Test
-    public void constructorAcceptsEmptySeriesAndSnapshotPreservesEmptyState() {
+    public void constructorAcceptsEmptySeriesAndPreservesEmptyState() {
         BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         assertTrue(emptySeries.isEmpty());
 
@@ -774,6 +764,26 @@ public class BarSeriesManagerTest {
                 assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
             }
         }
+    }
+
+    @Test
+    public void runObservesSeriesStateAtExecutionTime() {
+        // The manager borrows the caller's series: a bar appended after the
+        // manager and strategy are built must be visible to signal evaluation
+        // and fill pricing alike (no stale copy of the strategy graph).
+        BarSeries liveSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        Strategy lateRule = new BaseStrategy(new FixedRule(3), new FixedRule(3));
+        BarSeriesManager borrowedManager = new BarSeriesManager(liveSeries, new TradeOnCurrentCloseModel());
+
+        liveSeries.barBuilder().closePrice(40).add();
+
+        assertSame(liveSeries, borrowedManager.getBarSeries());
+        TradingRecord tradingRecord = borrowedManager.run(lateRule);
+
+        Position position = tradingRecord.getCurrentPosition();
+        assertTrue(position.isOpened());
+        assertEquals(3, position.getEntry().getIndex());
+        assertEquals(liveSeries.getBar(3).getClosePrice(), position.getEntry().getPricePerAsset());
     }
 
     @Test

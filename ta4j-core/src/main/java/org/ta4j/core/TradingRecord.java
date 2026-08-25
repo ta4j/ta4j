@@ -377,9 +377,31 @@ public interface TradingRecord extends Serializable {
      * @param series the bar series, not null
      * @return the {@link #getEndIndex()} if not null and less than
      *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}
+     *         {@link BarSeries#getEndIndex()}. An end index beyond the logical
+     *         window is still returned when the trailing bar remains addressable in
+     *         raw storage, so analyses can price exits that landed after the window
+     *         end.
      */
     default int getEndIndex(BarSeries series) {
-        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+        Integer endIndex = getEndIndex();
+        int logicalEndIndex = series.getEndIndex();
+        if (endIndex == null) {
+            // Records built directly from trades carry no run bounds: derive the
+            // end from the latest position activity so a trailing exit counts.
+            endIndex = getPositions().stream()
+                    .mapToInt(position -> position.getExit() != null ? position.getExit().getIndex()
+                            : position.getEntry() != null ? position.getEntry().getIndex() : logicalEndIndex)
+                    .max()
+                    .orElse(logicalEndIndex);
+            endIndex = Math.max(logicalEndIndex, endIndex);
+        }
+        if (series.getBarData().isEmpty()) {
+            return Math.min(endIndex, logicalEndIndex);
+        }
+        if (endIndex <= logicalEndIndex) {
+            return endIndex;
+        }
+        long addressableEndIndex = (long) series.getRemovedBarsCount() + series.getBarData().size() - 1;
+        return endIndex <= addressableEndIndex ? endIndex : logicalEndIndex;
     }
 }

@@ -5,7 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -13,13 +13,13 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.Instant;
-
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
@@ -59,20 +59,32 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsBorrowedInstance() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
-        int originalSeriesCount = returns.getBarSeries().getBarCount();
-        int originalSize = returns.getSize();
-        BarSeries firstReturnedSeries = returns.getBarSeries();
 
-        appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
+        assertSame(sampleBarSeries, returns.getBarSeries());
+    }
 
-        assertEquals(originalSize, returns.getSize());
-        assertEquals(originalSeriesCount, returns.getBarSeries().getBarCount());
-        assertNotSame(sampleBarSeries, returns.getBarSeries());
-        assertNotSame(firstReturnedSeries, returns.getBarSeries());
+    @Test
+    public void seedsFirstRetainedSlotWhenEntryPredatesWindow() {
+        // A rolling window capped at two bars evicts the entry bar (close 30):
+        // the first retained slot must still mark the whole move from the
+        // entry price (40 / 30 - 1), not sit at a neutral 0%.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(30d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(40d).add();
+        rolling.barBuilder().closePrice(50d).add();
+        var tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET);
+
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(40d / 30d - 1d, returns.getValue(1));
+        assertNumEquals(50d / 40d - 1d, returns.getValue(2));
     }
 
     @Test
@@ -182,7 +194,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void returnListsAreImmutableSnapshots() {
+    public void returnedValueListsAreImmutable() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
                 Trade.sellAt(1, sampleBarSeries));
@@ -399,19 +411,6 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, returns.getValue(2));
     }
 
-    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
-        Duration period = targetSeries.getLastBar().getTimePeriod();
-        targetSeries.barBuilder()
-                .timePeriod(period)
-                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
-                .closePrice(closePrice)
-                .volume(1)
-                .add();
-    }
-
     @Test
     public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
@@ -453,5 +452,16 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertTrue(returns.getValue(9).isNaN());
         assertTrue(returns.getValue(13).isNaN());
+    }
+
+    @Test
+    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+
+        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(0.5, returns.getValue(2));
     }
 }
