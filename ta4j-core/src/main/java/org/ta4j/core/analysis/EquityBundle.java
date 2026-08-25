@@ -135,9 +135,12 @@ public final class EquityBundle {
         long revision = series.getBarHistoryRevision();
         revision = revision * 1_000_003L + series.getEndIndex();
         revision = revision * 1_000_003L + series.getRemovedBarsCount();
-        // Include reconstructed positions as well as trades: AVG_COST may merge
+        // Include reconstructed positions and open exposure: AVG_COST may merge
         // fills while keeping the reconstructed trade count unchanged.
         revision = revision * 1_000_003L + tradingRecord.getPositions().hashCode();
+        revision = revision * 1_000_003L + tradingRecord.getTrades().hashCode();
+        revision = revision * 1_000_003L + tradingRecord.getOpenPositions().hashCode();
+        revision = revision * 1_000_003L + Objects.hashCode(tradingRecord.getCurrentPosition());
         return revision;
     }
 
