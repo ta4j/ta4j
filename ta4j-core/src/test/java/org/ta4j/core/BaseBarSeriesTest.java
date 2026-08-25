@@ -700,13 +700,13 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void testCopyOfPreservesLogicalRangeAndOffset() {
+    public void testSnapshotPreservesLogicalRangeAndOffset() {
         // Leading orphan: removedBarsCount=0 < beginIndex=1. The raw bar at
         // index 0 precedes the logical range and must stay orphaned in the
         // copy, so getBar(1) maps to the raw bar at index 1.
         BaseBarSeries leadingOrphan = new BaseBarSeries("leading-orphan", new ArrayList<>(testBars), 1, 3, 0, false,
                 numFactory, barBuilderFactory);
-        BaseBarSeries leadingOrphanCopy = BaseBarSeries.copyOf(leadingOrphan);
+        BarSeries leadingOrphanCopy = leadingOrphan.snapshot();
         assertEquals(1, leadingOrphanCopy.getBeginIndex());
         assertEquals(3, leadingOrphanCopy.getEndIndex());
         assertEquals(0, leadingOrphanCopy.getRemovedBarsCount());
@@ -717,22 +717,22 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         // to the raw size.
         BaseBarSeries trailingConstrained = new BaseBarSeries("trailing-constrained", new ArrayList<>(testBars), 0, 1,
                 true, numFactory, barBuilderFactory);
-        BaseBarSeries trailingCopy = BaseBarSeries.copyOf(trailingConstrained);
+        BarSeries trailingCopy = trailingConstrained.snapshot();
         assertEquals(0, trailingCopy.getBeginIndex());
         assertEquals(1, trailingCopy.getEndIndex());
         assertEquals(5, trailingCopy.getBarData().size());
 
         // Empty series.
-        BaseBarSeries emptyCopy = BaseBarSeries.copyOf(emptySeries);
+        BarSeries emptyCopy = emptySeries.snapshot();
         assertTrue(emptyCopy.isEmpty());
         assertEquals(-1, emptyCopy.getBeginIndex());
         assertEquals(-1, emptyCopy.getEndIndex());
     }
 
     @Test
-    public void testCopyOfHonorsOverriddenAccessorsOnSubclass() {
+    public void testSnapshotHonorsOverriddenAccessorsOnSubclass() {
         // A BaseBarSeries subclass that overrides accessors to advertise a shifted
-        // logical view. copyOf must rebuild from those accessors, not from the
+        // logical view. snapshot must rebuild from those accessors, not from the
         // superclass private fields.
         BaseBarSeries shifted = new BaseBarSeries("shifted", new ArrayList<>(testBars)) {
             @Override
@@ -751,7 +751,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
             }
         };
 
-        BaseBarSeries copy = BaseBarSeries.copyOf(shifted);
+        BarSeries copy = shifted.snapshot();
 
         assertEquals(5, copy.getBeginIndex());
         assertEquals(7, copy.getEndIndex());
@@ -759,9 +759,9 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void testCopyOfPreservesRawBarsWhenMaxBarCountIsHintOnly() {
+    public void testSnapshotPreservesRawBarsWhenMaxBarCountIsHintOnly() {
         // A subclass reporting a maximum bar count smaller than its raw data mimics
-        // a hint-only wrapper. copyOf must keep every raw bar instead of applying
+        // a hint-only wrapper. snapshot must keep every raw bar instead of applying
         // retention, which would truncate the raw prefix.
         BaseBarSeries hintOnly = new BaseBarSeries("hint-only", new ArrayList<>(testBars)) {
             @Override
@@ -770,18 +770,18 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
             }
         };
 
-        BaseBarSeries copy = BaseBarSeries.copyOf(hintOnly);
+        BarSeries copy = hintOnly.snapshot();
 
         assertEquals(5, copy.getBarData().size());
         assertEquals(1, copy.getMaximumBarCount());
     }
 
     @Test
-    public void testCopyOfHonorsOverriddenAccessorsOnConcurrentSubclass() {
+    public void testSnapshotHonorsOverriddenAccessorsOnConcurrentSubclass() {
         // A ConcurrentBarSeries subclass that overrides accessors to advertise a
-        // shifted logical view. copyOf must not take the exact-class atomic-copy
-        // fast path, which reads the superclass private fields and would ignore
-        // these overrides.
+        // shifted logical view. snapshot must honor these overrides: the concurrent
+        // override observes the source under its read lock but rebuilds the copy
+        // from the public accessors.
         ConcurrentBarSeries shifted = new ConcurrentBarSeries("shifted", new ArrayList<>(testBars), 0,
                 testBars.size() - 1, false, numFactory, barBuilderFactory) {
             @Override
@@ -800,7 +800,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
             }
         };
 
-        BaseBarSeries copy = BaseBarSeries.copyOf(shifted);
+        BarSeries copy = shifted.snapshot();
 
         assertEquals(5, copy.getBeginIndex());
         assertEquals(7, copy.getEndIndex());

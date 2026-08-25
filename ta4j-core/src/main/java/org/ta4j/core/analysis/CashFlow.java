@@ -5,7 +5,6 @@ package org.ta4j.core.analysis;
 
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -270,8 +269,8 @@ public class CashFlow implements PerformanceIndicator {
 
     /**
      * @param index the bar index
-     * @return the cash flow value at the index-th position, or the neutral
-     *         value one for indices outside the materialized window
+     * @return the cash flow value at the index-th position, or the neutral value
+     *         one for indices outside the materialized window
      */
     @Override
     public Num getValue(int index) {
@@ -317,7 +316,7 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {

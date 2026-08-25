@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -249,8 +248,8 @@ public class Returns implements PerformanceIndicator {
     /**
      * @param index the bar index
      * @return the return rate value at the index-th position (formatted according
-     *         to the configured representation), or {@link Double#NaN} for
-     *         indices outside the window materialized by the underlying series
+     *         to the configured representation), or {@link Double#NaN} for indices
+     *         outside the window materialized by the underlying series
      */
     @Override
     public Num getValue(int index) {
@@ -408,6 +407,6 @@ public class Returns implements PerformanceIndicator {
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 }

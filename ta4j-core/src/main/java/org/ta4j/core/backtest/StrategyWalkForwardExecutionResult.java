@@ -13,7 +13,6 @@ import java.util.Optional;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -196,7 +195,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 
     /**

@@ -205,9 +205,9 @@ public final class CumulativePnL implements PerformanceIndicator {
     /**
      * {@inheritDoc}
      * <p>
-     * Returns the cumulative PnL at the given absolute bar index. Indices
-     * outside the window materialized by the underlying series resolve to the
-     * neutral value zero.
+     * Returns the cumulative PnL at the given absolute bar index. Indices outside
+     * the window materialized by the underlying series resolve to the neutral value
+     * zero.
      *
      * @since 0.19
      */
@@ -264,7 +264,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 
 }

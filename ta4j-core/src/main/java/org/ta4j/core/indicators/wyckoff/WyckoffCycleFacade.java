@@ -6,7 +6,6 @@ package org.ta4j.core.indicators.wyckoff;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -172,12 +171,7 @@ public final class WyckoffCycleFacade {
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries source = Objects.requireNonNull(barSeries, "series");
-        return new BaseBarSeriesBuilder().withName(source.getName())
-                .withNumFactory(source.numFactory())
-                .withBars(source.getBarData())
-                .withMaxBarCount(source.getMaximumBarCount())
-                .build();
+        return Objects.requireNonNull(barSeries, "series").snapshot();
     }
 
     /**

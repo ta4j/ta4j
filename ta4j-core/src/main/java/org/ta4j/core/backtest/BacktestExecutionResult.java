@@ -10,7 +10,6 @@ import com.google.gson.JsonParser;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.BaseTradingStatement;
@@ -392,6 +391,6 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 }

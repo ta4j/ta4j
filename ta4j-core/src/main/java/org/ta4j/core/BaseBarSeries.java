@@ -112,54 +112,31 @@ public class BaseBarSeries implements BarSeries {
     }
 
     /**
-     * Returns a defensive copy of the given series that preserves its logical index
-     * range ({@link #getBeginIndex()} / {@link #getEndIndex()}), its raw-to-logical
-     * offset ({@link #getRemovedBarsCount()}), its raw bar data, its
-     * {@link NumFactory}, its name, and its maximum bar count.
-     *
+     * Creates a detached snapshot of the given series: a new {@link BaseBarSeries}
+     * with the same name, raw bar data, logical index range
+     * ({@link #getBeginIndex()} / {@link #getEndIndex()}), raw-to-logical offset
+     * ({@link #getRemovedBarsCount()}), {@link NumFactory}, and maximum bar count.
      * <p>
-     * The returned series owns a fresh, mutable copy of the source bar list, so
-     * later structural changes to either series do not affect the other. The result
-     * is always a {@link BaseBarSeries}, regardless of the concrete type of
-     * {@code series}.
+     * The copy is rebuilt from the source's public accessors, so subclasses that
+     * override {@link BarSeries} accessors to advertise a different logical view
+     * are reproduced exactly. The maximum bar count is carried over as-is without
+     * applying retention, so a source whose maximum bar count is a hint rather than
+     * a retention limit keeps all of its raw bars.
      * </p>
      * <p>
-     * When {@code series} is exactly a {@link ConcurrentBarSeries} (not a
-     * subclass), the bar data, index range, and removal offset are read under a
-     * single read lock so the copy is observed atomically.
-     * </p>
-     * <p>
-     * Subclasses of {@link BaseBarSeries} or {@link ConcurrentBarSeries} that
-     * override {@link BarSeries} accessors, and any foreign {@link BarSeries}
-     * implementation, are rebuilt from those public accessors so the copy matches
-     * the source's advertised logical view. The reported maximum bar count is
-     * carried over as-is without applying retention, so a source whose maximum bar
-     * count is a hint rather than a retention limit keeps all of its raw bars.
+     * Implementations that need an atomic observation (e.g.
+     * {@link ConcurrentBarSeries}) call this method under their read lock and
+     * expose it through {@link BarSeries#snapshot()}.
      * </p>
      *
      * @param series the series to copy; must not be {@code null}
      * @return a new {@link BaseBarSeries} with the same logical view and raw data
      * @throws NullPointerException if {@code series} is {@code null}
+     * @see BarSeries#snapshot()
      * @since 0.24.2
      */
-    public static BaseBarSeries copyOf(BarSeries series) {
+    static BaseBarSeries snapshotOf(final BarSeries series) {
         Objects.requireNonNull(series, "series");
-        if (series.getClass() == ConcurrentBarSeries.class) {
-            // Only the exact concurrent class may be copied from its private
-            // fields under its read lock. Subclasses may override BarSeries
-            // accessors to present a different logical view; reconstructing them
-            // below honors those overrides.
-            return ((ConcurrentBarSeries) series).atomicCopy();
-        }
-        if (series.getClass() == BaseBarSeries.class) {
-            // Only the exact base class may be copied from its private fields.
-            // Subclasses may override BarSeries accessors to present a different
-            // logical view; reconstructing them below honors those overrides.
-            return ((BaseBarSeries) series).copySelf();
-        }
-        // Unknown BarSeries implementation or a BaseBarSeries/ConcurrentBarSeries
-        // subclass that may override accessors: reconstruct from the public
-        // accessors.
         BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
                 series.getEndIndex(), series.getRemovedBarsCount(), false, series.numFactory(),
                 new TimeBarBuilderFactory());
@@ -168,23 +145,6 @@ public class BaseBarSeries implements BarSeries {
         // the source reports a hint smaller than its raw list (e.g. a benchmark
         // wrapper whose maximum bar count is a hint, not a retention limit).
         copy.maximumBarCount = series.getMaximumBarCount();
-        return copy;
-    }
-
-    /**
-     * Creates a defensive copy of this series by reading its fields directly,
-     * without acquiring any lock. Callers that need an atomic snapshot of a
-     * concurrent series must hold its read lock first (see
-     * {@link ConcurrentBarSeries#atomicCopy()}).
-     *
-     * @return a new {@link BaseBarSeries} with the same logical view and raw data
-     */
-    BaseBarSeries copySelf() {
-        BaseBarSeries copy = new BaseBarSeries(this.name, this.bars, this.seriesBeginIndex, this.seriesEndIndex,
-                this.removedBarsCount, this.constrained, this.numFactory, this.barBuilderFactory);
-        if (!this.constrained) {
-            copy.setMaximumBarCount(this.maximumBarCount);
-        }
         return copy;
     }
 

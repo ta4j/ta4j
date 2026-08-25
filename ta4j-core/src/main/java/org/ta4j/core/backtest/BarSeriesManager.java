@@ -9,7 +9,6 @@ import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -667,7 +666,7 @@ public class BarSeriesManager {
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        return BaseBarSeries.copyOf(barSeries);
+        return barSeries.snapshot();
     }
 
 }

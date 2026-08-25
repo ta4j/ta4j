@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
@@ -565,11 +564,6 @@ public final class ElliottWaveFacade {
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        final BarSeries source = Objects.requireNonNull(barSeries, "series cannot be null");
-        return new BaseBarSeriesBuilder().withName(source.getName())
-                .withNumFactory(source.numFactory())
-                .withBars(source.getBarData())
-                .withMaxBarCount(source.getMaximumBarCount())
-                .build();
+        return Objects.requireNonNull(barSeries, "series cannot be null").snapshot();
     }
 }
