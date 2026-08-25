@@ -9,7 +9,7 @@ import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -659,15 +659,7 @@ public class BarSeriesManager {
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount());
-        if (!series.isEmpty()) {
-            builder.withBeginIndex(series.getBeginIndex());
-        }
-        return builder.build();
+        return BaseBarSeries.copyOf(barSeries);
     }
 
 }

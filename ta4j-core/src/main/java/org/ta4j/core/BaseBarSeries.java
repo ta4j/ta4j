@@ -111,6 +111,39 @@ public class BaseBarSeries implements BarSeries {
                 barBuilderFactory));
     }
 
+    /**
+     * Returns a defensive copy of the given series that preserves its logical index
+     * range ({@link #getBeginIndex()} / {@link #getEndIndex()}), its raw-to-logical
+     * offset ({@link #getRemovedBarsCount()}), its raw bar data, its
+     * {@link NumFactory}, its name, and its maximum bar count.
+     *
+     * <p>
+     * The returned series owns a fresh, mutable copy of the source bar list, so
+     * later structural changes to either series do not affect the other. The result
+     * is always a {@link BaseBarSeries}, regardless of the concrete type of
+     * {@code series}.
+     * </p>
+     *
+     * @param series the series to copy; must not be {@code null}
+     * @return a new {@link BaseBarSeries} with the same logical view and raw data
+     * @throws NullPointerException if {@code series} is {@code null}
+     * @since 0.24.2
+     */
+    public static BaseBarSeries copyOf(BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        boolean constrained = series instanceof BaseBarSeries baseSeries && baseSeries.isConstrained();
+        BarBuilderFactory barBuilderFactory = series instanceof BaseBarSeries baseSeries
+                ? baseSeries.barBuilderFactory()
+                : new TimeBarBuilderFactory();
+        BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
+                series.getEndIndex(), series.getRemovedBarsCount(), constrained, series.numFactory(),
+                barBuilderFactory);
+        if (!constrained) {
+            copy.setMaximumBarCount(series.getMaximumBarCount());
+        }
+        return copy;
+    }
+
     private BaseBarSeries(final Config config) {
         this.name = config.name();
         this.numFactory = config.numFactory();

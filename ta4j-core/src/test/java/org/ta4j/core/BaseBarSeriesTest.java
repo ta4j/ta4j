@@ -699,6 +699,36 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals("", series.getName());
     }
 
+    @Test
+    public void testCopyOfPreservesLogicalRangeAndOffset() {
+        // Leading orphan: removedBarsCount=0 < beginIndex=1. The raw bar at
+        // index 0 precedes the logical range and must stay orphaned in the
+        // copy, so getBar(1) maps to the raw bar at index 1.
+        BaseBarSeries leadingOrphan = new BaseBarSeries("leading-orphan", new ArrayList<>(testBars), 1, 3, 0, false,
+                numFactory, barBuilderFactory);
+        BaseBarSeries leadingOrphanCopy = BaseBarSeries.copyOf(leadingOrphan);
+        assertEquals(1, leadingOrphanCopy.getBeginIndex());
+        assertEquals(3, leadingOrphanCopy.getEndIndex());
+        assertEquals(0, leadingOrphanCopy.getRemovedBarsCount());
+        assertNumEquals(testBars.get(1).getClosePrice(), leadingOrphanCopy.getBar(1).getClosePrice());
+        assertNumEquals(testBars.get(3).getClosePrice(), leadingOrphanCopy.getBar(3).getClosePrice());
+
+        // Trailing constrained: endIndex=1 with five raw bars must not extend
+        // to the raw size.
+        BaseBarSeries trailingConstrained = new BaseBarSeries("trailing-constrained", new ArrayList<>(testBars), 0, 1,
+                true, numFactory, barBuilderFactory);
+        BaseBarSeries trailingCopy = BaseBarSeries.copyOf(trailingConstrained);
+        assertEquals(0, trailingCopy.getBeginIndex());
+        assertEquals(1, trailingCopy.getEndIndex());
+        assertEquals(5, trailingCopy.getBarData().size());
+
+        // Empty series.
+        BaseBarSeries emptyCopy = BaseBarSeries.copyOf(emptySeries);
+        assertTrue(emptyCopy.isEmpty());
+        assertEquals(-1, emptyCopy.getBeginIndex());
+        assertEquals(-1, emptyCopy.getEndIndex());
+    }
+
     // ==================== Utility Methods Tests ====================
 
     @Test

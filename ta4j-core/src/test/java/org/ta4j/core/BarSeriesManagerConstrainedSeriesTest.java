@@ -36,4 +36,29 @@ public class BarSeriesManagerConstrainedSeriesTest {
         assertEquals(2, position.getExit().getIndex());
         assertEquals(constrainedSeries.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
     }
+
+    @Test
+    public void snapshotPreservesLeadingOrphanRawBars() {
+        // beginIndex=1, endIndex=2, removedBarsCount=0: the raw bar at index 0
+        // is an orphan preceding the logical range. The snapshot must keep the
+        // raw-to-logical offset so getBar(1) returns the raw bar at index 1
+        // (price 20), not the raw bar at index 0 (price 10).
+        BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10d, 20d, 30d)
+                .build();
+        NumFactory numFactory = sourceSeries.numFactory();
+        BaseBarSeries leadingOrphanSeries = new BaseBarSeries("leading-orphan-series",
+                List.copyOf(sourceSeries.getBarData()), 1, 2, 0, false, numFactory, new TimeBarBuilderFactory());
+        Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        TradingRecord tradingRecord = new BarSeriesManager(leadingOrphanSeries, new TradeOnCurrentCloseModel())
+                .run(strategy);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(2, position.getExit().getIndex());
+        assertEquals(leadingOrphanSeries.getBar(1).getClosePrice(), position.getEntry().getPricePerAsset());
+        assertEquals(leadingOrphanSeries.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
+    }
 }
