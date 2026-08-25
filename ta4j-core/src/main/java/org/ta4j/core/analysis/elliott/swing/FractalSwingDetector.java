@@ -4,10 +4,10 @@
 package org.ta4j.core.analysis.elliott.swing;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
@@ -31,13 +31,27 @@ public final class FractalSwingDetector implements SwingDetector {
     private final int allowedEqualBars;
 
     /**
-     * Shared indicator per (series, degree): rebuilding an {@link ElliottSwingIndicator}
-     * for every as-of evaluation discards its {@code CachedIndicator} state and makes
-     * causal replays quadratic in series length. Weak keys let garbage collect the
-     * indicator once the series itself becomes unreachable.
+     * Upper bound on simultaneously retained series; replays evaluate one or few
+     * series.
      */
-    private final Map<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> indicatorCache =
-            Collections.synchronizedMap(new WeakHashMap<>());
+    private static final int MAX_CACHED_SERIES = 4;
+
+    /**
+     * Shared indicator per (series, degree): rebuilding an
+     * {@link ElliottSwingIndicator} for every as-of evaluation discards its
+     * {@code CachedIndicator} state and makes causal replays quadratic in series
+     * length. Entries are bounded LRU rather than weakly keyed: each indicator
+     * strongly references its own series, so a weak key would remain reachable
+     * through that value and never be collected.
+     */
+    private final Map<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> indicatorCache = Collections
+            .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                        final Map.Entry<BarSeries, Map<ElliottDegree, ElliottSwingIndicator>> eldest) {
+                    return size() > MAX_CACHED_SERIES;
+                }
+            });
 
     /**
      * Creates a detector with symmetric lookback/lookforward windows.
@@ -79,9 +93,8 @@ public final class FractalSwingDetector implements SwingDetector {
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
         final ElliottSwingIndicator indicator = indicatorCache
                 .computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(degree,
-                        ignored -> new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
-                                allowedEqualBars, degree));
+                .computeIfAbsent(degree, ignored -> new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
+                        allowedEqualBars, degree));
         return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
     }
 

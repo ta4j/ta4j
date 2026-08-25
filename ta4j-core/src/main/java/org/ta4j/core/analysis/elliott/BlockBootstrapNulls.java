@@ -29,6 +29,13 @@ final class BlockBootstrapNulls {
 
     private static final long SEED_MULTIPLIER = 1_000_003L;
 
+    /**
+     * Largest |log return| applied as a direct {@code previous * exp(return)} step;
+     * exp(+/-700) stays a finite positive double with wide margin from both the
+     * overflow (~709.78) and underflow-to-zero boundaries.
+     */
+    private static final double MAX_DIRECT_EXPONENT = 700d;
+
     private BlockBootstrapNulls() {
     }
 
@@ -64,12 +71,12 @@ final class BlockBootstrapNulls {
      * Close-to-close log returns of the source, one entry per bar transition.
      *
      * <p>
-     * Representation floor: returns are stored as primitive doubles per the
-     * frozen null protocol, so a relative move whose full-precision Num delta
-     * underflows the smallest positive double (below roughly 4.9e-324) records
-     * zero. Such moves are orders of magnitude below any recorded market tick
-     * quantization; preserving them would require abandoning the frozen double
-     * return representation.
+     * Representation floor: returns are stored as primitive doubles per the frozen
+     * null protocol, so a relative move whose full-precision Num delta underflows
+     * the smallest positive double (below roughly 4.9e-324) records zero. Such
+     * moves are orders of magnitude below any recorded market tick quantization;
+     * preserving them would require abandoning the frozen double return
+     * representation.
      */
     static double[] logReturns(final BarSeries source) {
         final int count = source.getBarCount();
@@ -169,7 +176,11 @@ final class BlockBootstrapNulls {
         // Member prices are reconstructed entirely in the active Num domain so
         // DecimalNum sources beyond double range neither overflow nor lose
         // high-precision return variation; only the bounded values passed to
-        // Math.exp/Math.log narrow to double.
+        // Math.exp/Math.log narrow to double. Ordinary transitions multiply the
+        // previous close directly; transitions too steep for any representable
+        // multiplicative factor (both endpoints finite, yet exp(return) out of
+        // double range, like MIN_VALUE -> MAX_VALUE) fall back to the
+        // accumulated running log-close so no infinite close can materialize.
         final Num[] closes = new Num[count];
         closes[0] = source.getBar(source.getBeginIndex()).getClosePrice();
 
@@ -182,12 +193,26 @@ final class BlockBootstrapNulls {
         // was drawn for k, never the ratios at the same chronological position.
         // Otherwise every member would inherit the real series' wick sequence.
         final int[] shapePositions = new int[count];
+        double runningLogClose = logNum(numFactory, closes[0]);
         int tapePosition = random.nextInt(logReturns.length);
         for (int offset = 1; offset < count; offset++) {
             if (offset > 1 && random.nextInt(blockLength) == 0) {
                 tapePosition = random.nextInt(logReturns.length);
             }
-            closes[offset] = closes[offset - 1].multipliedBy(expNum(numFactory, logReturns[tapePosition]));
+            final double drawnReturn = logReturns[tapePosition];
+            runningLogClose += drawnReturn;
+            if (Math.abs(drawnReturn) <= MAX_DIRECT_EXPONENT) {
+                // Exact relative step while exp(return) sits comfortably inside
+                // double range; ordinary-market members keep their tight
+                // consecutive-close ratios.
+                closes[offset] = closes[offset - 1].multipliedBy(expNum(numFactory, drawnReturn));
+            } else {
+                // A steeper transition (for example MIN_VALUE -> MAX_VALUE)
+                // has no representable multiplicative factor: exp(return)
+                // would overflow even though both endpoint closes are finite.
+                // Reconstruct from the accumulated log-close instead.
+                closes[offset] = expNum(numFactory, runningLogClose);
+            }
             shapePositions[offset] = tapePosition + 1;
             tapePosition = (tapePosition + 1) % logReturns.length;
         }

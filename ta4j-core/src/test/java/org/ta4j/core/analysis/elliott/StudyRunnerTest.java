@@ -617,6 +617,42 @@ class StudyRunnerTest {
     }
 
     @Test
+    void memberClosesStayFiniteWhenSampledReturnSpansDoubleRange() {
+        // exp(ln(MAX/MIN)) itself exceeds double range; reconstruction must go
+        // through the accumulated log-close so a finite source path can never
+        // materialize an infinite close (or downstream NaN) in null members.
+        final BarSeries source = new BaseBarSeriesBuilder().withName("member-overflow")
+                .withNumFactory(org.ta4j.core.num.DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final double[] closes = { Double.MIN_VALUE, Double.MAX_VALUE };
+        for (int index = 0; index < closes.length; index++) {
+            final Num close = org.ta4j.core.num.DoubleNum.valueOf(closes[index]);
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        // Two bars -> exactly one log return, so every member draws it.
+        for (final BarSeries member : BlockBootstrapNulls.generate(source, 1, 8, 11L)) {
+            for (int offset = 0; offset < 2; offset++) {
+                final Num close = member.getBar(offset).getClosePrice();
+                assertTrue(org.ta4j.core.num.DoubleNum.valueOf(Double.MAX_VALUE).isGreaterThan(close),
+                        "member close at bar " + offset + " overflowed: " + close);
+                assertTrue(close.isPositive(), "member close at bar " + offset + " not positive");
+            }
+        }
+    }
+
+    @Test
     void logReturnsTerminateWhenDoubleNumRatioOverflows() {
         // MIN_VALUE -> MAX_VALUE overflows already in the DoubleNum ratio; the
         // difference of decomposed close logs must terminate with a finite

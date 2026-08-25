@@ -59,13 +59,17 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
     @Override
     public RuleEvidence evaluate(final TopologyCandidate candidate, final BarSeries series) {
+        // Applicability is decided before any series-specific work so foreign
+        // or absent series bindings cannot fail for grammars this rule never
+        // scores (for example a fixed momentum indicator bound to another
+        // series while the candidate is CORRECTIVE_3).
+        if (!isApplicable(candidate)) {
+            return RuleEvidence.notApplicable(id(), "wave 5 divergence applies only to five-wave grammars");
+        }
         if (series == null) {
             return RuleEvidence.unavailable(id(), "momentum rule requires the evaluated series binding");
         }
         final Indicator<Num> momentum = boundMomentum.computeIfAbsent(series, momentumFactory);
-        if (!isApplicable(candidate)) {
-            return RuleEvidence.notApplicable(id(), "wave 5 divergence applies only to five-wave grammars");
-        }
 
         // Pivot 5 is the wave-5 ENDPOINT; pivot 4 is the wave-4 trough/peak.
         final int wave3Index = candidate.pivots().get(3).pivotIndex();

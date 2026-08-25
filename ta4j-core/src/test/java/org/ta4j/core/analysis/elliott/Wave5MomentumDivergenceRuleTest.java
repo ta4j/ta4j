@@ -164,13 +164,27 @@ class Wave5MomentumDivergenceRuleTest {
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
         final BarSeries other = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
 
-        assertThatThrownBy(
-                () -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), other))
+        assertThatThrownBy(() -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), other))
                 .isInstanceOf(IllegalArgumentException.class);
 
         // The bound series itself still evaluates normally.
-        assertThat(rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
-                momentum.getBarSeries()).state()).isEqualTo(EvidenceState.PASS);
+        assertThat(
+                rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), momentum.getBarSeries())
+                        .state())
+                .isEqualTo(EvidenceState.PASS);
+    }
+
+    @Test
+    void inapplicableGrammarSkipsForeignSeriesBinding() {
+        // CORRECTIVE_3 is never scored by this rule, so evaluation must return
+        // NOT_APPLICABLE without consulting (or failing on) a momentum
+        // indicator bound to a different series.
+        final Indicator<Num> momentum = momentum(0, 0, 0, 10, 8, 0);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final BarSeries other = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
+
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120), other);
+        assertThat(evidence.state()).isEqualTo(EvidenceState.NOT_APPLICABLE);
     }
 
     @Test

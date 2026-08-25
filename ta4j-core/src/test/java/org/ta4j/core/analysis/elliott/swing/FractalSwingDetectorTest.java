@@ -5,6 +5,8 @@ package org.ta4j.core.analysis.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SplittableRandom;
 
 import org.junit.jupiter.api.Test;
@@ -19,8 +21,7 @@ class FractalSwingDetectorTest {
         final FractalSwingDetector shared = new FractalSwingDetector(2);
 
         for (int index = 0; index < series.getBarCount(); index++) {
-            assertThat(shared.detectPivots(series, index))
-                    .as("cached result at bar " + index)
+            assertThat(shared.detectPivots(series, index)).as("cached result at bar " + index)
                     .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
         }
     }
@@ -32,12 +33,29 @@ class FractalSwingDetectorTest {
         final FractalSwingDetector shared = new FractalSwingDetector(2);
 
         for (int index = 0; index <= seriesEnd(first); index++) {
-            assertThat(shared.detectPivots(first, index)).isEqualTo(new FractalSwingDetector(2).detectPivots(first,
-                    index));
+            assertThat(shared.detectPivots(first, index))
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(first, index));
         }
         for (int index = 0; index <= seriesEnd(second); index++) {
-            assertThat(shared.detectPivots(second, index)).isEqualTo(new FractalSwingDetector(2).detectPivots(second,
-                    index));
+            assertThat(shared.detectPivots(second, index))
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(second, index));
+        }
+    }
+
+    @Test
+    void boundedCacheEvictionKeepsResultsCorrect() {
+        // More distinct series than MAX_CACHED_SERIES; evicted entries must not
+        // corrupt later evaluations of re-touched or fresh series.
+        final List<BarSeries> seriesList = new ArrayList<>();
+        for (long seed = 10; seed < 22; seed++) {
+            seriesList.add(noisySeries(90, seed));
+        }
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        for (int pass = 0; pass < 2; pass++) {
+            for (final BarSeries series : seriesList) {
+                assertThat(shared.detectPivots(series, series.getEndIndex()))
+                        .isEqualTo(new FractalSwingDetector(2).detectPivots(series, series.getEndIndex()));
+            }
         }
     }
 
@@ -52,13 +70,7 @@ class FractalSwingDetectorTest {
         for (int index = 0; index < barCount; index++) {
             price *= 1 + random.nextDouble(-0.02, 0.02);
             final double close = price;
-            series.barBuilder()
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .add();
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
         }
         return series;
     }
