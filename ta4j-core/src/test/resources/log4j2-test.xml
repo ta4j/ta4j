@@ -14,6 +14,12 @@
         <Logger name="org.ta4j.core.bars.TimeBarBuilder" level="error"/>
         <!-- Parse tests intentionally trigger invalid-representation WARNs; keep them off test output. -->
         <Logger name="org.ta4j.core.criteria.ReturnRepresentation" level="error"/>
+        <!-- Walk-forward and batch-backtest tests intentionally trigger failure-path
+             WARNs (synthetic fold/candidate/strategy failures); keep them off test output. -->
+        <Logger name="org.ta4j.core.walkforward.WalkForwardEngine" level="error"/>
+        <Logger name="org.ta4j.core.walkforward.WalkForwardTuner" level="error"/>
+        <Logger name="org.ta4j.core.backtest.StrategyWalkForwardExecutor" level="error"/>
+        <Logger name="org.ta4j.core.backtest.BacktestExecutor" level="error"/>
         <Logger name="org.apache.poi" level="warn" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
