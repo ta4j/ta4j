@@ -41,7 +41,7 @@ final class FrozenProtocolStudy {
     private static final Logger LOG = LogManager.getLogger(FrozenProtocolStudy.class);
     private static final List<String> FROZEN_COMPETING_MODES = List.of("3+3", "5+5", "7+3", "change-point-baseline");
     private static final List<String> FROZEN_METRICS = List.of("matchRate", "ambiguousRate", "noMatchRate",
-            "confirmationLagBars", "labelStabilityJaccard");
+            "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
 
     private FrozenProtocolStudy() {
     }

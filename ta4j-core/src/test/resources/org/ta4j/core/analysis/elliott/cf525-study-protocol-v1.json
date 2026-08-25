@@ -92,7 +92,9 @@
     "ambiguousRate",
     "noMatchRate",
     "confirmationLagBars",
-    "labelStabilityJaccard"
+    "labelStabilityJaccard",
+    "evidencePassRate",
+    "jointPassRate"
   ],
   "ablationSet": [
     "topology-only",

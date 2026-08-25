@@ -530,10 +530,14 @@ final class StudyRunner {
 
     private static List<StudyReport.NullMemberMetrics> memberMetrics(
             final List<List<MetricAccumulator>> memberAccumulators, final Partitions partitions) {
-        final List<StudyReport.NullMemberMetrics> metrics = new ArrayList<>(memberAccumulators.size());
+        final int partitionCount = partitions.entries().size();
+        final List<StudyReport.NullMemberMetrics> metrics = new ArrayList<>(memberAccumulators.size() * partitionCount);
         for (int memberIndex = 0; memberIndex < memberAccumulators.size(); memberIndex++) {
-            metrics.add(new StudyReport.NullMemberMetrics(memberIndex,
-                    metrics(memberAccumulators.get(memberIndex), partitions)));
+            for (int partitionIndex = 0; partitionIndex < partitionCount; partitionIndex++) {
+                final String partitionName = partitions.entries().get(partitionIndex).name();
+                metrics.add(new StudyReport.NullMemberMetrics(memberIndex, partitionName,
+                        List.of(memberAccumulators.get(memberIndex).get(partitionIndex).toMetrics(partitionName))));
+            }
         }
         return List.copyOf(metrics);
     }

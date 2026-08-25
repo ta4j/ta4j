@@ -4,7 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,6 +105,17 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void rejectsFormingPrefixWithNonAlternatingPivotTypes() {
+        final List<ConfirmedPivot> pivots = List.of(new ConfirmedPivot(0, 0, DoubleNum.valueOf(10), SwingPivotType.LOW),
+                new ConfirmedPivot(1, 1, DoubleNum.valueOf(20), SwingPivotType.HIGH),
+                new ConfirmedPivot(2, 2, DoubleNum.valueOf(14), SwingPivotType.HIGH),
+                new ConfirmedPivot(3, 3, DoubleNum.valueOf(25), SwingPivotType.LOW));
+
+        assertThat(new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, pivots).status())
+                .isEqualTo(TopologyStatus.NO_MATCH);
+    }
+
+    @Test
     void prefersLongestFormingSuffixBeforeChoosingDirection() {
         // The five-pivot suffix is a bearish motive prefix; its final four
         // pivots also form a bullish prefix. The stronger, longer suffix wins.
@@ -188,7 +199,7 @@ class TopologyAnalyzerTest {
 
     @Test
     void rejectsDegenerateHistoryBounds() {
-        assertThatThrownBy(() -> new TopologyAnalyzer(1)).isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class, () -> new TopologyAnalyzer(1));
     }
 
     private static List<ConfirmedPivot> pivots(final double... prices) {

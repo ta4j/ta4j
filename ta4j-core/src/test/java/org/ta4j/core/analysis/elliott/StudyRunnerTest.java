@@ -160,9 +160,9 @@ class StudyRunnerTest {
         assertEquals(List.of("MOTIVE_5", "CYCLE_5_3"),
                 report.nulls().stream().map(StudyReport.NullReport::grammar).toList());
         assertEquals(List.of(2, 2), report.nulls().stream().map(StudyReport.NullReport::blockLength).toList());
-        assertEquals(2, report.nulls().get(0).members().size());
-        assertEquals(report.nulls().get(0).partitions().size(),
-                report.nulls().get(0).members().get(0).partitions().size());
+        final StudyReport.NullReport motiveNull = report.nulls().get(0);
+        assertEquals(2 * motiveNull.partitions().size(), motiveNull.members().size());
+        assertTrue(motiveNull.members().stream().allMatch(member -> member.partitions().size() == 1));
         assertTrue(report.toJson().contains("\"members\""));
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
@@ -229,9 +229,15 @@ class StudyRunnerTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(4, cycleNulls.modes().size());
-        assertTrue(cycleNulls.modes().stream().allMatch(mode -> mode.members().size() == 2));
+        final int expectedMemberMetrics = 2 * cycleNulls.partitions().size();
+        assertEquals(expectedMemberMetrics, cycleNulls.members().size());
+        assertTrue(cycleNulls.members().stream().allMatch(member -> member.partitions().size() == 1));
+        assertEquals((long) cycleNulls.partitions().size(),
+                cycleNulls.members().stream().map(StudyReport.NullMemberMetrics::partition).distinct().count());
+        assertTrue(cycleNulls.modes().stream().allMatch(mode -> mode.members().size() == expectedMemberMetrics));
         assertTrue(cycleNulls.modes().stream().anyMatch(mode -> mode.activeRuleIds().size() == rules().size()));
         assertTrue(report.toJson().contains("\"modes\""));
+        assertTrue(report.toJson().contains("\"partition\":\"calibration\""));
     }
 
     @Test

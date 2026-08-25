@@ -375,12 +375,22 @@ final class StudyReport {
     private static JsonObject nullMemberJson(final NullMemberMetrics member) {
         final JsonObject json = new JsonObject();
         json.addProperty("memberIndex", member.memberIndex());
+        json.addProperty("partition", member.partition());
         final JsonArray partitions = new JsonArray();
         for (final PartitionMetrics metrics : member.partitions()) {
             partitions.add(partitionJson(metrics));
         }
         json.add("partitions", partitions);
         return json;
+    }
+
+    private static int partitionIndex(final List<PartitionMetrics> partitions, final String partitionName) {
+        for (int index = 0; index < partitions.size(); index++) {
+            if (partitions.get(index).partition().equals(partitionName)) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private static String requireText(final String value, final String name) {
@@ -614,11 +624,9 @@ final class StudyReport {
             activeRuleIds = activeRuleIds == null ? List.of() : List.copyOf(activeRuleIds);
             partitions = immutable(partitions, "null.mode.partitions");
             members = immutable(members, "null.mode.members");
-            for (int index = 0; index < members.size(); index++) {
-                final NullMemberMetrics member = members.get(index);
-                if (member.memberIndex() != index || member.partitions().size() != partitions.size()) {
-                    throw new IllegalArgumentException(
-                            "null mode member metrics must preserve ensemble order and partitions");
+            for (final NullMemberMetrics member : members) {
+                if (member.partitions().size() != 1 || partitionIndex(partitions, member.partition()) < 0) {
+                    throw new IllegalArgumentException("null mode member metrics must identify one scoped partition");
                 }
             }
         }
@@ -640,16 +648,21 @@ final class StudyReport {
     }
 
     /**
-     * Compact per-member outcomes for one null ensemble member.
+     * Compact per-member outcomes for one independently generated null-ensemble
+     * partition.
      *
      * @since 0.24.2
      */
-    record NullMemberMetrics(int memberIndex, List<PartitionMetrics> partitions) {
+    record NullMemberMetrics(int memberIndex, String partition, List<PartitionMetrics> partitions) {
         NullMemberMetrics {
             if (memberIndex < 0) {
                 throw new IllegalArgumentException("null member index must not be negative");
             }
+            partition = requireText(partition, "null member partition");
             partitions = immutable(partitions, "partitions");
+            if (partitions.size() != 1 || !partitions.get(0).partition().equals(partition)) {
+                throw new IllegalArgumentException("null member metrics must contain exactly its scoped partition");
+            }
         }
 
         /** @return defensive copy; the report tree is shared across modules. */
@@ -673,21 +686,29 @@ final class StudyReport {
                 throw new IllegalArgumentException("null parameters must be positive");
             }
             partitions = immutable(partitions, "partitions");
+            if (partitions.isEmpty()) {
+                throw new IllegalArgumentException("null report must contain partitions");
+            }
             members = immutable(members, "members");
             modes = modes == null ? List.of() : List.copyOf(modes);
-            if (members.size() != ensembleSize) {
-                throw new IllegalArgumentException("null member metrics must match ensemble size");
+            final int expectedMemberCount = Math.multiplyExact(ensembleSize, partitions.size());
+            if (members.size() != expectedMemberCount) {
+                throw new IllegalArgumentException(
+                        "null member metrics must scope every ensemble member to every partition");
             }
-            for (int index = 0; index < members.size(); index++) {
-                final NullMemberMetrics member = members.get(index);
-                if (member.memberIndex() != index || member.partitions().size() != partitions.size()) {
-                    throw new IllegalArgumentException(
-                            "null member metrics must preserve ensemble order and partitions");
+            final boolean[][] seen = new boolean[ensembleSize][partitions.size()];
+            for (final NullMemberMetrics member : members) {
+                final int scopedPartitionIndex = partitionIndex(partitions, member.partition());
+                if (member.memberIndex() >= ensembleSize || scopedPartitionIndex < 0
+                        || seen[member.memberIndex()][scopedPartitionIndex]) {
+                    throw new IllegalArgumentException("null member metrics must preserve scoped ensemble order");
                 }
+                seen[member.memberIndex()][scopedPartitionIndex] = true;
             }
             for (final NullModeReport mode : modes) {
-                if (mode.members().size() != ensembleSize || mode.partitions().size() != partitions.size()) {
-                    throw new IllegalArgumentException("null mode metrics must match ensemble size and partitions");
+                if (mode.members().size() != expectedMemberCount || mode.partitions().size() != partitions.size()) {
+                    throw new IllegalArgumentException(
+                            "null mode metrics must match scoped ensemble size and partitions");
                 }
             }
         }

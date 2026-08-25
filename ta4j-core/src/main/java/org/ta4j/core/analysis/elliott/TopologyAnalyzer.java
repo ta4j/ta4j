@@ -268,6 +268,9 @@ final class TopologyAnalyzer {
             return false;
         }
         for (int leg = 0; leg < legs; leg++) {
+            if (segment.get(leg).type() == segment.get(leg + 1).type()) {
+                return false;
+            }
             final Num startPrice = segment.get(leg).price();
             final Num endPrice = segment.get(leg + 1).price();
             final Num signed = direction == WaveDirection.BULLISH ? endPrice.minus(startPrice)
