@@ -300,6 +300,18 @@ final class BlockBootstrapNulls {
         if (value == null || !sourceClose.isPositive()) {
             return close;
         }
-        return close.multipliedBy(value).dividedBy(sourceClose);
+        // A wick equal to its source close scales by exactly one; short-circuit
+        // so a range-bounded domain never overflows while computing ratio one
+        // (for example a flat Double.MAX_VALUE source).
+        if (value.equals(sourceClose)) {
+            return close;
+        }
+        final Num scaled = close.multipliedBy(value).dividedBy(sourceClose);
+        // A range-bounded domain that cannot hold the scaled wick clamps to the
+        // member close instead of letting infinity or NaN reach BaseBar.
+        if (scaled.getDelegate() instanceof Double delegate && !Double.isFinite(delegate)) {
+            return close;
+        }
+        return scaled;
     }
 }

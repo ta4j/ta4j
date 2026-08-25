@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
@@ -87,6 +88,26 @@ class BlockBootstrapNullsTest {
                 final double close = member.getBar(offset).getClosePrice().doubleValue();
                 assertTrue(Double.isFinite(close) && close > 0d,
                         "member close at bar " + offset + " not representable: " + close);
+            }
+        }
+    }
+
+    @Test
+    void memberBarsStayFiniteOnFlatMaxValueSource() {
+        // Every OHLC value of a flat MAX_VALUE source equals its close, so the
+        // intrabar scale factor is exactly one; the short-circuit must keep
+        // wicks finite instead of overflowing MAX * MAX / MAX to infinity.
+        final BarSeries source = doubleSeries("flat-max", Double.MAX_VALUE);
+        for (final BarSeries member : BlockBootstrapNulls.generate(source, 1, 8, 17L)) {
+            for (int offset = 0; offset < member.getBarCount(); offset++) {
+                final Bar bar = member.getBar(offset);
+                for (final Num price : new Num[] { bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
+                        bar.getClosePrice() }) {
+                    assertTrue(
+                            price.isPositive()
+                                    && (!(price.getDelegate() instanceof Double delegate) || Double.isFinite(delegate)),
+                            "non-representable price " + price + " at bar " + offset);
+                }
             }
         }
     }
