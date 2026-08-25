@@ -413,6 +413,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
+                .withBeginIndex(Math.max(0, series.getBeginIndex()))
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

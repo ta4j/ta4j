@@ -142,7 +142,9 @@ public final class EquityBundle {
     /**
      * Creates a series mirroring the given one, but owning deep copies of its bar
      * data so later in-place edits of the original bars cannot reach the curves
-     * computed from the copy.
+     * computed from the copy. The snapshot keeps the source's absolute indexing:
+     * when the source has already pruned bars, its retained bars keep their
+     * original indices instead of being renumbered from zero.
      */
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
@@ -155,6 +157,7 @@ public final class EquityBundle {
         return new BaseBarSeriesBuilder().withName(barSeries.getName())
                 .withNumFactory(barSeries.numFactory())
                 .withBars(copiedBars)
+                .withBeginIndex(Math.max(0, barSeries.getBeginIndex()))
                 .withMaxBarCount(barSeries.getMaximumBarCount())
                 .build();
     }

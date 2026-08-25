@@ -287,4 +287,30 @@ public class EquityBundleTest {
             assertThrows(UnsupportedOperationException.class, () -> cumulativePnL.calculatePosition(position, 3));
         }
     }
+
+    @Test
+    public void bundleCurvesPreservePrunedSeriesIndices() {
+        BarSeries pruned = series();
+        TradingRecord tradingRecord = closedPositionsRecord(pruned);
+        pruned.setMaximumBarCount(5);
+        assertEquals(6, pruned.getBeginIndex());
+
+        EquityBundle equityBundle = new EquityBundle(pruned, tradingRecord);
+        CashFlow bundled = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Retained bars keep their absolute indices, so the (buy@6, sell@9)
+        // position is marked against closes 5, 4, 6, 5 exactly where those bars
+        // live instead of being shifted onto renumbered 0..4 indices.
+        assertNumEquals(numFactory.one(), bundled.getValue(6));
+        assertNumEquals(numFactory.numOf(0.8), bundled.getValue(7));
+        assertNumEquals(numFactory.numOf(1.2), bundled.getValue(8));
+        assertNumEquals(numFactory.one(), bundled.getValue(9));
+        assertNumEquals(numFactory.one(), bundled.getValue(10));
+
+        CashFlow direct = new CashFlow(pruned, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
+            assertNumEquals(direct.getValue(i), bundled.getValue(i));
+        }
+    }
 }
