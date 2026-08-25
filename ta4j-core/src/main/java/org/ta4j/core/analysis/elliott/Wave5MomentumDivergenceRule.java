@@ -109,8 +109,12 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         } catch (IndexOutOfBoundsException exception) {
             return RuleEvidence.unavailable(id(), "momentum is missing at one or more wave endpoints");
         }
-        if (Num.isNaNOrNull(wave3Momentum) || Num.isNaNOrNull(wave5Momentum)) {
-            return RuleEvidence.unavailable(id(), "momentum is missing or NaN at one or more wave endpoints");
+        // isFinite rather than isNaNOrNull: an infinite DoubleNum endpoint
+        // survives the NaN check but then either manufactures a divergence
+        // score of 1 or yields infinity/infinity = NaN, aborting scored
+        // evidence construction.
+        if (!Num.isFinite(wave3Momentum) || !Num.isFinite(wave5Momentum)) {
+            return RuleEvidence.unavailable(id(), "momentum is missing or non-finite at one or more wave endpoints");
         }
 
         final Num wave3MomentumValue = wave3Momentum;

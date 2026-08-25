@@ -21,8 +21,10 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Structural invalidation policy: the newest complete candidate is invalidated
- * when a later confirmed pivot breaches its origin extreme (a bullish candidate
- * dies below its origin low, a bearish candidate above its origin high).
+ * when a later confirmed pivot breaches its origin extreme -- a bullish
+ * candidate dies when any later pivot's price falls below its origin low, a
+ * bearish candidate when any later pivot's price rises above its origin high,
+ * regardless of whether that pivot is a HIGH or a LOW.
  *
  * <p>
  * Bounds: only the trailing {@code maxHistoryPivots} confirmed pivots are
@@ -102,27 +104,21 @@ final class TopologyAnalyzer {
         // deterministic and keeps "most recent" semantics honest.
         live.sort(TopologyAnalyzer::chronological);
         breached.sort(TopologyAnalyzer::chronological);
-        // Report the kill moment: when the newest confirmed pivot breaches
-        // the origin of the most recently completed prior candidate, that
-        // hypothesis died even if fresh overlapping mirrors may form later.
+        // Report the kill moment: when any newest confirmed pivot breaches the
+        // origin of a completed prior candidate, that hypothesis died even if
+        // fresh overlapping mirrors may form later.
         final ConfirmedPivot newestPivot = window.get(window.size() - 1);
-        TopologyCandidate mostRecentPrior = null;
-        for (final TopologyCandidate candidate : live) {
-            if (candidate.endBarIndex() < newestPivot.pivotIndex()
-                    && (mostRecentPrior == null || candidate.endBarIndex() > mostRecentPrior.endBarIndex())) {
-                mostRecentPrior = candidate;
-            }
-        }
+        TopologyCandidate breachedByNewest = null;
         for (final TopologyCandidate candidate : breached) {
-            if (candidate.endBarIndex() < newestPivot.pivotIndex()
-                    && (mostRecentPrior == null || candidate.endBarIndex() > mostRecentPrior.endBarIndex())) {
-                mostRecentPrior = candidate;
+            if (candidate.endBarIndex() < newestPivot.pivotIndex() && isOriginBreach(candidate, newestPivot)
+                    && (breachedByNewest == null || candidate.endBarIndex() > breachedByNewest.endBarIndex())) {
+                breachedByNewest = candidate;
             }
         }
-        if (mostRecentPrior != null && isOriginBreach(mostRecentPrior, newestPivot)) {
+        if (breachedByNewest != null) {
             return TopologyAnalysis.invalidated("newest confirmed pivot breached the origin of the most recent "
-                    + grammar + " candidate spanning bars " + mostRecentPrior.startBarIndex() + "-"
-                    + mostRecentPrior.endBarIndex());
+                    + grammar + " candidate spanning bars " + breachedByNewest.startBarIndex() + "-"
+                    + breachedByNewest.endBarIndex());
         }
         if (live.size() == 1) {
             return new TopologyAnalysis(
@@ -206,9 +202,12 @@ final class TopologyAnalyzer {
 
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
         final Num originPrice = candidate.legStartPrice(0);
+        // A price crossing of the origin is a breach whichever way the pivot
+        // is labelled: a HIGH printed below a bullish origin still proves
+        // price traded under the structure's root.
         return switch (candidate.direction()) {
-        case BULLISH -> pivot.type() == SwingPivotType.LOW && pivot.price().isLessThan(originPrice);
-        case BEARISH -> pivot.type() == SwingPivotType.HIGH && pivot.price().isGreaterThan(originPrice);
+        case BULLISH -> pivot.price().isLessThan(originPrice);
+        case BEARISH -> pivot.price().isGreaterThan(originPrice);
         };
     }
 

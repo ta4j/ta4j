@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -369,6 +370,42 @@ class BlockBootstrapNullsTest {
 
         assertTrue(member.getBar(1).getClosePrice().isGreaterThan(member.getBar(0).getClosePrice()),
                 "active DecimalNum exponentiation must preserve a tiny positive return");
+    }
+
+    @Test
+    void expNumDerivesEulerBaseInActiveDecimalDomain() {
+        // A whole-number return exercises the integral-exponent path: the
+        // fractional term contributes nothing and only the Euler base is
+        // multiplied in. If the base were narrowed through double
+        // ("2.718281828459045"), e^5 would drift by roughly 4e-14 -- invisible
+        // to any double comparison but fatal at DecimalNum precision.
+        final NumFactory numFactory = DecimalNumFactory.getInstance(40);
+        final BarSeries source = new BaseBarSeriesBuilder().withName("integral-exp-decimal")
+                .withNumFactory(numFactory)
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final Num close = numFactory.one();
+        for (int index = 0; index < 2; index++) {
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final BarSeries member = BlockBootstrapNulls.generateMember(source, new double[] { 5d }, 1, 7L, 0);
+
+        // e^5 to 40 significant digits.
+        final BigDecimal expected = new BigDecimal("148.4131591025766034211155800405522796235");
+        final BigDecimal actual = (BigDecimal) member.getBar(1).getClosePrice().getDelegate();
+        assertTrue(actual.subtract(expected).abs().compareTo(new BigDecimal("1e-25")) < 0,
+                "integral exponent must reconstruct e^y from the active-domain Euler base: " + actual);
     }
 
     @Test

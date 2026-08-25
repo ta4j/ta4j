@@ -127,10 +127,20 @@ final class ConfirmationTracker {
         // Membership lookups against the freshly reported list happen once per
         // tracked pivot per replay bar; scanning the list linearly for each of
         // them made unchanged reconciliation quadratic in the pivot history.
-        final Set<Integer> reportedIndices = new HashSet<>(reported.size() * 2);
+        // One update must also be internally consistent: two entries sharing an
+        // index with differing type or price are contradictory, and admitting
+        // the first while silently skipping the second would record partial
+        // history. Identical restatements of the same pivot stay tolerated.
+        final Map<Integer, SwingPivot> reportedByIndex = new HashMap<>(reported.size() * 2);
         for (final SwingPivot pivot : reported) {
-            reportedIndices.add(pivot.index());
+            final SwingPivot previous = reportedByIndex.put(pivot.index(), pivot);
+            if (previous != null
+                    && (previous.type() != pivot.type() || previous.price().compareTo(pivot.price()) != 0)) {
+                throw new IllegalStateException(
+                        "detector reported contradictory pivots at index " + pivot.index() + " at bar " + asOf);
+            }
         }
+        final Set<Integer> reportedIndices = reportedByIndex.keySet();
         // Only the newest tracked pivot is retractable: everything before it
         // was already frozen by that pivot's confirmation, so a detector
         // withdrawing several reported pivots in one update rewrites frozen

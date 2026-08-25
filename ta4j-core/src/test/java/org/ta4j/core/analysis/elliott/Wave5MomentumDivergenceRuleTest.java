@@ -92,6 +92,33 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     @Test
+    void returnsUnavailableForInfiniteEndpointMomentum() {
+        // An infinite DoubleNum endpoint is neither NaN nor null: without an
+        // explicit finite check the divergence arithmetic either manufactures
+        // a scored pass or produces infinity/infinity = NaN and aborts the
+        // study. Both signs, at either endpoint, must stay unscored.
+        final Indicator<Num> positiveInfinityAtWave5 = momentum(DoubleNum.valueOf(0), DoubleNum.valueOf(0),
+                DoubleNum.valueOf(0), DoubleNum.valueOf(10), DoubleNum.valueOf(8),
+                DoubleNum.valueOf(Double.POSITIVE_INFINITY));
+        final Wave5MomentumDivergenceRule positiveRule = new Wave5MomentumDivergenceRule(positiveInfinityAtWave5);
+        final RuleEvidence positiveEvidence = positiveRule.evaluate(
+                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), positiveInfinityAtWave5.getBarSeries());
+
+        assertThat(positiveEvidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
+        assertThat(positiveEvidence.score()).isEmpty();
+
+        final Indicator<Num> negativeInfinityAtWave3 = momentum(DoubleNum.valueOf(0), DoubleNum.valueOf(0),
+                DoubleNum.valueOf(0), DoubleNum.valueOf(Double.NEGATIVE_INFINITY), DoubleNum.valueOf(8),
+                DoubleNum.valueOf(0));
+        final Wave5MomentumDivergenceRule negativeRule = new Wave5MomentumDivergenceRule(negativeInfinityAtWave3);
+        final RuleEvidence negativeEvidence = negativeRule.evaluate(
+                candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), negativeInfinityAtWave3.getBarSeries());
+
+        assertThat(negativeEvidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
+        assertThat(negativeEvidence.score()).isEmpty();
+    }
+
+    @Test
     void returnsUnavailableBelowMomentumUnstableRange() {
         final BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
         final Indicator<Num> momentum = new SMAIndicator(new ClosePriceIndicator(series), 5);

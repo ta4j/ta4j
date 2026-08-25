@@ -169,6 +169,18 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void invalidatesWhenALaterHighCrossesBelowTheBullishOrigin() {
+        // Bullish motive 10 -> 32 completed on pivots 0..5; the later HIGH at
+        // 9 crosses under the origin low even though it is not a LOW pivot.
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(10, 20, 14, 26, 18, 32, 12, 9));
+
+        assertThat(analysis.status()).isNotEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.INVALIDATED);
+        assertThat(analysis.candidates()).isEmpty();
+    }
+
+    @Test
     void isDeterministicAcrossRepeatedEvaluations() {
         final List<ConfirmedPivot> history = pivots(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 36, 19);
         final TopologyAnalysis first = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, history);

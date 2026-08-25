@@ -261,7 +261,12 @@ final class StudyRunner {
                 for (int partitionIndex = 0; partitionIndex < totalsByGrammar.get(nullGrammars.get(0))
                         .size(); partitionIndex++) {
                     final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
-                    if (partitionLastBar - causalSource.getBeginIndex() < 1) {
+                    if (partitionLastBar < causalSource.getBeginIndex()) {
+                        continue;
+                    }
+                    if (partitionLastBar == causalSource.getBeginIndex()) {
+                        recordSingleBarNullPartition(causalSource, sourceBegin, partitionIndex, partitionLastBar, start,
+                                nullGrammars, totalsByGrammar, memberTotalsByGrammar, h2Totals, h2MemberTotals);
                         continue;
                     }
                     final BarSeries truncated = subSeriesThrough(causalSource, causalSource.getBeginIndex(),
@@ -326,6 +331,56 @@ final class StudyRunner {
             }
         }
         return List.copyOf(reports);
+    }
+
+    /**
+     * Emits the configured null ensemble outcomes for a partition whose causal
+     * prefix contains exactly one bar.
+     *
+     * <p>
+     * The frozen stationary bootstrap requires at least two bars, so no member
+     * series can be generated for such a prefix. The real modes still observe that
+     * single bar (typically recording {@code INSUFFICIENT_HISTORY}), so every
+     * configured ensemble member emits the matching degenerate outcome; skipping
+     * the partition outright would report zero null evaluations against a non-empty
+     * real sample.
+     * </p>
+     */
+    private void recordSingleBarNullPartition(final BarSeries causalSource, final int sourceBegin,
+            final int partitionIndex, final int partitionLastBar, final int requestedStart,
+            final List<TopologyGrammar> nullGrammars,
+            final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar,
+            final Map<TopologyGrammar, List<List<MetricAccumulator>>> memberTotalsByGrammar,
+            final List<List<MetricAccumulator>> h2Totals, final List<List<List<MetricAccumulator>>> h2MemberTotals) {
+        // Members are rebased to position zero, and the recorded-index offset
+        // restores source coordinates; the single prefix bar sits at position
+        // zero of the causal tape.
+        final int recordedIndex = sourceBegin + partitionLastBar - causalSource.getBeginIndex();
+        if (recordedIndex < requestedStart) {
+            // Outside the requested window the real modes record nothing, so
+            // the null side stays symmetrically silent too.
+            return;
+        }
+        final Partitions partitions = configuration.partitions();
+        partitions.assertCalibrationDateAllowed(barDate(causalSource, partitionLastBar));
+        for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
+            for (final TopologyGrammar grammar : nullGrammars) {
+                totalsByGrammar.get(grammar).get(partitionIndex).recordInsufficientHistory(recordedIndex);
+                memberTotalsByGrammar.get(grammar)
+                        .get(memberIndex)
+                        .get(partitionIndex)
+                        .recordInsufficientHistory(recordedIndex);
+                if (grammar == TopologyGrammar.CYCLE_5_3) {
+                    for (int modeIndex = 0; modeIndex < h2Totals.size(); modeIndex++) {
+                        h2Totals.get(modeIndex).get(partitionIndex).recordInsufficientHistory(recordedIndex);
+                        h2MemberTotals.get(modeIndex)
+                                .get(memberIndex)
+                                .get(partitionIndex)
+                                .recordInsufficientHistory(recordedIndex);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -719,6 +774,19 @@ final class StudyRunner {
                 noMatchCount++;
             }
             updateStability(stabilityLabels);
+        }
+
+        /**
+         * Records the degenerate outcome of an evaluation whose history cannot support
+         * topology analysis, mirroring the {@code INSUFFICIENT_HISTORY} branch of
+         * {@link #record}.
+         */
+        private void recordInsufficientHistory(final int index) {
+            evaluationCount++;
+            firstIndex = Math.min(firstIndex, index);
+            lastIndex = Math.max(lastIndex, index);
+            insufficientHistoryCount++;
+            updateStability(Set.of("insufficient-history"));
         }
 
         private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,

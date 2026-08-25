@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
@@ -133,6 +134,57 @@ class ConfirmationTrackerTest {
         assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("contradicted");
+    }
+
+    @Test
+    void failsClosedWhenOneUpdateSuppliesContradictoryPivotsAtSameIndex() {
+        final Map<Integer, List<SwingPivot>> repriced = new HashMap<>();
+        repriced.put(0, List.of());
+        repriced.put(1, List.of());
+        repriced.put(2, List.of(pivot(1, 20)));
+        // One update reports pivot 1 twice with conflicting prices; the
+        // tracker must fail closed instead of admitting the first entry.
+        repriced.put(3, List.of(pivot(1, 20), pivot(1, 22)));
+
+        final ConfirmationTracker repricedTracker = new ConfirmationTracker(rawDetector(repriced));
+        assertThatThrownBy(() -> repricedTracker.observeReplay(seriesWithBars(4)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("contradictory pivots at index 1");
+
+        final Map<Integer, List<SwingPivot>> retyped = new HashMap<>();
+        retyped.put(0, List.of());
+        retyped.put(1, List.of());
+        retyped.put(2, List.of(pivot(1, 20)));
+        retyped.put(3, List.of(pivot(1, 20), new SwingPivot(1, DoubleNum.valueOf(20), SwingPivotType.LOW)));
+
+        final ConfirmationTracker retypedTracker = new ConfirmationTracker(rawDetector(retyped));
+        assertThatThrownBy(() -> retypedTracker.observeReplay(seriesWithBars(4)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("contradictory pivots at index 1");
+
+        // No partial history leaked past the rejected update: replaying only
+        // the bars before it keeps the cleanly confirmed pivot alone.
+        final ConfirmationTracker.CausalReplay before = repricedTracker.observeReplay(seriesWithBars(4), 2);
+        assertThat(before.history().pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(1);
+        assertThat(before.history().pivots().get(0).confirmationIndex()).isEqualTo(2);
+    }
+
+    @Test
+    void toleratesIdenticalDuplicateEntriesInOneUpdate() {
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of());
+        for (int asOf = 2; asOf <= 3; asOf++) {
+            script.put(asOf, List.of(pivot(1, 20), pivot(1, 20)));
+        }
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(rawDetector(script))
+                .observeReplay(seriesWithBars(4));
+
+        assertThat(replay.history().pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(1);
+        assertThat(replay.history().pivots().get(0).confirmationIndex()).isEqualTo(2);
+        // Identical restatements cause no per-bar churn.
+        assertEquals(1, replay.versionAsOf().length);
     }
 
     @Test
@@ -371,6 +423,14 @@ class ConfirmationTrackerTest {
         return new ScriptedDetector(script);
     }
 
+    /**
+     * Detector whose {@code detect} replays a fixed per-bar pivot list verbatim,
+     * including updates that repeat an index -- no normalization in between.
+     */
+    private static SwingDetector rawDetector(final Map<Integer, List<SwingPivot>> script) {
+        return (series, index, degree) -> new SwingDetectorResult(script.get(index), List.of());
+    }
+
     private static SwingPivot pivot(final int index, final double price) {
         final SwingPivotType type = index % 2 == 0 ? SwingPivotType.LOW : SwingPivotType.HIGH;
         return new SwingPivot(index, DoubleNum.valueOf(price), type);
@@ -424,8 +484,7 @@ class ConfirmationTrackerTest {
         }
 
         @Override
-        public org.ta4j.core.analysis.elliott.swing.SwingDetectorResult detect(final BarSeries series, final int index,
-                final ElliottDegree degree) {
+        public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
             throw new UnsupportedOperationException("scripted detector only supports detectPivots");
         }
 

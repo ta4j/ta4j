@@ -200,7 +200,7 @@ final class BlockBootstrapNulls {
         }
         final int whole = (int) Math.floor(y);
         Num result = numFactory.numOf(y - whole).exp();
-        Num base = numFactory.numOf(Math.E);
+        Num base = numFactory.one().exp();
         int n = whole;
         while (n > 0) {
             if ((n & 1) == 1) {

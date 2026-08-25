@@ -700,6 +700,81 @@ class StudyRunnerTest {
     }
 
     @Test
+    void singleBarPartitionRecordsConfiguredNullMembers() {
+        // Regression: a partition whose causal prefix held exactly one bar used
+        // to skip every null member (the frozen bootstrap needs two bars),
+        // leaving its null metrics at zero evaluations while the real modes
+        // still recorded the lone bar as INSUFFICIENT_HISTORY.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 1)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2018, 1, 2), LocalDate.of(2018, 1, 12)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2018, 2, 1), LocalDate.of(2018, 2, 28))),
+                LocalDate.of(2024, 1, 1));
+        final int ensembleSize = 2;
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(partitions, ensembleSize));
+
+        final StudyReport report = runner.evaluate("BTC", buildSeries(24), 0, 23);
+
+        // Symmetry anchor: the real H1 mode observes the lone calibration bar,
+        // and it is recorded as INSUFFICIENT_HISTORY.
+        final StudyReport.PartitionMetrics realCalibration = report.h1()
+                .modes()
+                .stream()
+                .filter(mode -> "MOTIVE_5".equals(mode.grammar()))
+                .findFirst()
+                .orElseThrow()
+                .partitions()
+                .stream()
+                .filter(partition -> "calibration".equals(partition.partition()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1L, realCalibration.evaluationCount());
+        assertEquals(1L, realCalibration.insufficientHistoryCount());
+
+        assertFalse(report.nulls().isEmpty());
+        for (final StudyReport.NullReport nullReport : report.nulls()) {
+            final StudyReport.PartitionMetrics calibration = partitionMetrics(nullReport.partitions(), "calibration");
+            assertEquals((long) ensembleSize, calibration.evaluationCount(),
+                    () -> "calibration evaluations for " + nullReport.grammar());
+            assertEquals((long) ensembleSize, calibration.insufficientHistoryCount(),
+                    () -> "calibration state for " + nullReport.grammar());
+            for (final StudyReport.NullMemberMetrics member : nullReport.members()) {
+                if (!"calibration".equals(member.partition())) {
+                    continue;
+                }
+                assertEquals(1L, member.partitions().get(0).evaluationCount(),
+                        () -> "member " + member.memberIndex() + " of " + nullReport.grammar());
+                assertEquals(1L, member.partitions().get(0).insufficientHistoryCount(),
+                        () -> "member state " + member.memberIndex() + " of " + nullReport.grammar());
+            }
+            // Ordinary multi-bar partitions keep their generated ensembles and
+            // bar-less partitions stay empty.
+            assertTrue(partitionMetrics(nullReport.partitions(), "validation").evaluationCount() > 0);
+            assertEquals(0L, partitionMetrics(nullReport.partitions(), "holdout").evaluationCount());
+            if ("CYCLE_5_3".equals(nullReport.grammar())) {
+                for (final StudyReport.NullModeReport mode : nullReport.modes()) {
+                    final long calibrationMembers = mode.members()
+                            .stream()
+                            .filter(member -> "calibration".equals(member.partition()))
+                            .count();
+                    assertEquals((long) ensembleSize, calibrationMembers);
+                    assertTrue(mode.members()
+                            .stream()
+                            .filter(member -> "calibration".equals(member.partition()))
+                            .allMatch(member -> member.partitions().get(0).evaluationCount() == 1L
+                                    && member.partitions().get(0).insufficientHistoryCount() == 1L));
+                }
+            }
+        }
+    }
+
+    private static StudyReport.PartitionMetrics partitionMetrics(final List<StudyReport.PartitionMetrics> partitions,
+            final String name) {
+        return partitions.stream().filter(partition -> name.equals(partition.partition())).findFirst().orElseThrow();
+    }
+
+    @Test
     void rejectsGrammarsOmittingDeclaredH1Grammar() {
         // H1 is declared over MOTIVE_5; a configuration without it must be
         // rejected instead of emitting an H1 section that never measured it.
