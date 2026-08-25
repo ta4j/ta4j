@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
+    private final int valueStartIndex;
 
     /**
      * Creates an indicator that reports invested intervals for the trading record.
@@ -49,15 +50,17 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        valueStartIndex = Math.max(0, getBarSeries().getBeginIndex());
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 0 || index >= investedIntervals.length) {
+        int offset = index - valueStartIndex;
+        if (offset < 0 || offset >= investedIntervals.length) {
             return Boolean.FALSE;
         }
-        return investedIntervals[index];
+        return investedIntervals[offset];
     }
 
     /**
@@ -74,19 +77,22 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     @Override
     public Boolean getValue(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
-        if (index >= beginIndex && index < investedIntervals.length) {
-            return investedIntervals[index];
+        int endIndex = getBarSeries().getEndIndex();
+        if (index >= beginIndex && index <= endIndex) {
+            return investedIntervals[index - valueStartIndex];
         }
         return super.getValue(index);
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         BarSeries series = getBarSeries();
-        int size = Math.max(series.getEndIndex() + 1, 0);
+        int seriesBegin = Math.max(0, series.getBeginIndex());
+        int seriesEnd = series.getEndIndex();
+        int size = seriesEnd < seriesBegin ? 0 : seriesEnd - seriesBegin + 1;
         boolean[] invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
+            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, seriesEnd);
             openPositions.forEach(position -> markInvestedIntervals(position, invested));
         }
         return invested;
@@ -100,9 +106,9 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         int entryIndex = position.getEntry().getIndex();
         int exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
         int start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
-        int end = Math.min(exitIndex, invested.length - 1);
+        int end = Math.min(exitIndex, series.getEndIndex());
         for (int i = start; i <= end; i++) {
-            invested[i] = true;
+            invested[i - valueStartIndex] = true;
         }
     }
 

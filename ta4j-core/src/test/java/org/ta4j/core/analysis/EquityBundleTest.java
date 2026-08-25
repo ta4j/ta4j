@@ -168,10 +168,17 @@ public class EquityBundleTest {
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
 
+        InvestedInterval investedInterval = equityBundle.investedInterval(OpenPositionHandling.MARK_TO_MARKET);
+        investedInterval.getBarSeries().getBar(2).addPrice(numFactory.numOf(1000));
+
         CashFlow cashFlow = equityBundle.cashFlow(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertNotSame(series.getBar(i), cashFlow.getBarSeries().getBar(i));
+            assertNotSame(series.getBar(i), investedInterval.getBarSeries().getBar(i));
         }
+        CashFlow direct = new CashFlow(series, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(direct.getValue(5), cashFlow.getValue(5));
     }
 
     @Test

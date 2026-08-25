@@ -35,6 +35,13 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final AtomicBoolean frozen = new AtomicBoolean();
 
     /**
+     * The first logical bar index materialized in {@link #values}; storage is
+     * window-relative so a series that has pruned bars does not force allocation of
+     * every cell below its begin index.
+     */
+    private final int valueStartIndex;
+
+    /**
      * Whether a sweep already composed positions into {@link #values}. Once data is
      * present, further public calculations fall back to per-position application so
      * the addition order (and therefore the finite-precision results) matches the
@@ -61,8 +68,10 @@ public final class CumulativePnL implements PerformanceIndicator {
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.barSeries = snapshotSeries(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        int seriesBegin = Math.max(this.barSeries.getBeginIndex(), 0);
         int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
+        this.valueStartIndex = seriesBegin;
+        int size = seriesEnd < seriesBegin ? 0 : seriesEnd - seriesBegin + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
         sweep(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
@@ -307,12 +316,13 @@ public final class CumulativePnL implements PerformanceIndicator {
      * on top of the data already present instead of discarding it.
      */
     private int fillRange(int from, int to, Num value) {
-        if (from > to || to < 0 || from >= values.size()) {
+        int lastAbsoluteIndex = lastIndex();
+        if (from > to || to < valueStartIndex || from > lastAbsoluteIndex) {
             return from;
         }
-        int end = Math.min(to, values.size() - 1);
-        for (int i = Math.max(from, 0); i <= end; i++) {
-            values.set(i, values.get(i).plus(value));
+        int end = Math.min(to, lastAbsoluteIndex);
+        for (int i = Math.max(from, valueStartIndex); i <= end; i++) {
+            values.set(i - valueStartIndex, values.get(i - valueStartIndex).plus(value));
         }
         return to + 1;
     }
@@ -380,7 +390,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        return values.get(index - valueStartIndex);
     }
 
     /**
@@ -438,24 +448,29 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     private void addValue(int index, Num delta) {
-        if (index < 0 || index >= values.size()) {
+        int offset = index - valueStartIndex;
+        if (offset < 0 || offset >= values.size()) {
             return;
         }
-        values.set(index, values.get(index).plus(delta));
+        values.set(offset, values.get(offset).plus(delta));
     }
 
     private void addToRange(int startIndex, int endIndex, Num delta) {
         if (values.isEmpty()) {
             return;
         }
-        int start = Math.max(0, startIndex);
-        int end = Math.min(endIndex, values.size() - 1);
+        int start = Math.max(startIndex, valueStartIndex);
+        int end = Math.min(endIndex, lastIndex());
         if (start > end) {
             return;
         }
         for (int i = start; i <= end; i++) {
-            values.set(i, values.get(i).plus(delta));
+            values.set(i - valueStartIndex, values.get(i - valueStartIndex).plus(delta));
         }
+    }
+
+    private int lastIndex() {
+        return valueStartIndex + values.size() - 1;
     }
 
 }

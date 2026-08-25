@@ -226,7 +226,7 @@ public final class EquityBundle {
         synchronized (this) {
             invalidateIfInputsChanged();
             return investedIntervals.computeIfAbsent(openPositionHandling,
-                    handling -> new InvestedInterval(curveSeries, tradingRecord, handling));
+                    handling -> new InvestedInterval(snapshotSeries(curveSeries), tradingRecord, handling));
         }
     }
 
