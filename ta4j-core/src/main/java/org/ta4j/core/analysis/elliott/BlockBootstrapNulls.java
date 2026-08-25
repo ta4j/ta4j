@@ -44,6 +44,14 @@ final class BlockBootstrapNulls {
      * also stays inside double range. Beyond those bounds only the decomposed
      * absolute-log path can still produce finite values.
      */
+    /**
+     * Mirrors the package-private {@code Num.isFinite} for double-backed nums: only
+     * primitive-backed infinities can slip past the positivity check.
+     */
+    private static boolean nonFiniteDouble(final Num value) {
+        return value.getDelegate() instanceof Double delegate && !Double.isFinite(delegate);
+    }
+
     private static boolean directMultiplySafe(final NumFactory numFactory, final double drawnReturn,
             final double runningLogClose) {
         if (Math.abs(drawnReturn) > MAX_DIRECT_EXPONENT) {
@@ -108,6 +116,13 @@ final class BlockBootstrapNulls {
             final Num current = source.getBar(source.getBeginIndex() + offset).getClosePrice();
             if (!previous.isPositive() || !current.isPositive()) {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
+            }
+            // DoubleNum accepts infinite delegates whose isPositive() is true;
+            // feeding one into the decomposed logarithm would scale it by 1e300
+            // forever. Reject non-finite range-bounded closes up front.
+            if (nonFiniteDouble(previous) || nonFiniteDouble(current)) {
+                throw new IllegalArgumentException(
+                        "bootstrap source close prices must be finite; bar " + offset + " holds " + current);
             }
             final Num ratio = current.dividedBy(previous);
             final double narrowedRatio = ratio.doubleValue();
