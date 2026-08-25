@@ -289,4 +289,21 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 .volume(1)
                 .add();
     }
+
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        CumulativePnL pnl = new CumulativePnL(offset, record, EquityCurveMode.REALIZED);
+
+        assertEquals(10, pnl.getBarSeries().getBeginIndex());
+        assertEquals(12, pnl.getBarSeries().getEndIndex());
+        assertEquals(10, pnl.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(20, pnl.getValue(12));
+    }
 }

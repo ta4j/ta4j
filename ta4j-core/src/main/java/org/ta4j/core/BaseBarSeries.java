@@ -124,17 +124,17 @@ public class BaseBarSeries implements BarSeries {
      * {@code series}.
      * </p>
      * <p>
-     * When {@code series} is a {@link ConcurrentBarSeries}, the bar data, index
-     * range, and removal offset are read under a single read lock so the copy is
-     * observed atomically.
+     * When {@code series} is exactly a {@link ConcurrentBarSeries} (not a
+     * subclass), the bar data, index range, and removal offset are read under a
+     * single read lock so the copy is observed atomically.
      * </p>
      * <p>
-     * Subclasses of {@link BaseBarSeries} that override {@link BarSeries}
-     * accessors, and any foreign {@link BarSeries} implementation, are rebuilt from
-     * those public accessors so the copy matches the source's advertised logical
-     * view. The reported maximum bar count is carried over as-is without applying
-     * retention, so a source whose maximum bar count is a hint rather than a
-     * retention limit keeps all of its raw bars.
+     * Subclasses of {@link BaseBarSeries} or {@link ConcurrentBarSeries} that
+     * override {@link BarSeries} accessors, and any foreign {@link BarSeries}
+     * implementation, are rebuilt from those public accessors so the copy matches
+     * the source's advertised logical view. The reported maximum bar count is
+     * carried over as-is without applying retention, so a source whose maximum bar
+     * count is a hint rather than a retention limit keeps all of its raw bars.
      * </p>
      *
      * @param series the series to copy; must not be {@code null}
@@ -144,8 +144,12 @@ public class BaseBarSeries implements BarSeries {
      */
     public static BaseBarSeries copyOf(BarSeries series) {
         Objects.requireNonNull(series, "series");
-        if (series instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries.atomicCopy();
+        if (series.getClass() == ConcurrentBarSeries.class) {
+            // Only the exact concurrent class may be copied from its private
+            // fields under its read lock. Subclasses may override BarSeries
+            // accessors to present a different logical view; reconstructing them
+            // below honors those overrides.
+            return ((ConcurrentBarSeries) series).atomicCopy();
         }
         if (series.getClass() == BaseBarSeries.class) {
             // Only the exact base class may be copied from its private fields.
@@ -153,8 +157,9 @@ public class BaseBarSeries implements BarSeries {
             // logical view; reconstructing them below honors those overrides.
             return ((BaseBarSeries) series).copySelf();
         }
-        // Unknown BarSeries implementation or a BaseBarSeries subclass that may
-        // override accessors: reconstruct from the public accessors.
+        // Unknown BarSeries implementation or a BaseBarSeries/ConcurrentBarSeries
+        // subclass that may override accessors: reconstruct from the public
+        // accessors.
         BaseBarSeries copy = new BaseBarSeries(series.getName(), series.getBarData(), series.getBeginIndex(),
                 series.getEndIndex(), series.getRemovedBarsCount(), false, series.numFactory(),
                 new TimeBarBuilderFactory());

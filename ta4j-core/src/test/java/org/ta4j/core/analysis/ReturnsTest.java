@@ -409,4 +409,21 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 .volume(1)
                 .add();
     }
+
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        Returns returns = new Returns(offset, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
+
+        assertEquals(10, returns.getBarSeries().getBeginIndex());
+        assertEquals(12, returns.getBarSeries().getEndIndex());
+        assertEquals(10, returns.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(2.0, returns.getValue(12));
+    }
 }

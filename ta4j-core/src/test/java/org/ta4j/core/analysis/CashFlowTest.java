@@ -592,4 +592,21 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        CashFlow cashFlow = new CashFlow(offset, record);
+
+        assertEquals(10, cashFlow.getBarSeries().getBeginIndex());
+        assertEquals(12, cashFlow.getBarSeries().getEndIndex());
+        assertEquals(10, cashFlow.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(3, cashFlow.getValue(12));
+    }
+
 }

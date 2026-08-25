@@ -776,6 +776,37 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(1, copy.getMaximumBarCount());
     }
 
+    @Test
+    public void testCopyOfHonorsOverriddenAccessorsOnConcurrentSubclass() {
+        // A ConcurrentBarSeries subclass that overrides accessors to advertise a
+        // shifted logical view. copyOf must not take the exact-class atomic-copy
+        // fast path, which reads the superclass private fields and would ignore
+        // these overrides.
+        ConcurrentBarSeries shifted = new ConcurrentBarSeries("shifted", new ArrayList<>(testBars), 0,
+                testBars.size() - 1, false, numFactory, barBuilderFactory) {
+            @Override
+            public int getBeginIndex() {
+                return 5;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return 7;
+            }
+
+            @Override
+            public int getRemovedBarsCount() {
+                return 5;
+            }
+        };
+
+        BaseBarSeries copy = BaseBarSeries.copyOf(shifted);
+
+        assertEquals(5, copy.getBeginIndex());
+        assertEquals(7, copy.getEndIndex());
+        assertEquals(5, copy.getRemovedBarsCount());
+    }
+
     // ==================== Utility Methods Tests ====================
 
     @Test
