@@ -452,7 +452,7 @@ public class CashFlow implements PerformanceIndicator {
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
         if (endIndex < seriesBegin) {
             Trade exit = position.getExit();
-            if (exit != null) {
+            if (exit != null && exit.getIndex() <= endIndex) {
                 NumFactory numFactory = barSeries.numFactory();
                 Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                         ? averageHoldingCostPerPeriod(position, endIndex, numFactory)

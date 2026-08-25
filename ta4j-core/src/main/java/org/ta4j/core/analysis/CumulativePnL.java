@@ -377,7 +377,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         int seriesBegin = barSeries.getBeginIndex();
         if (endIndex < seriesBegin) {
             Trade exit = position.getExit();
-            if (exit != null) {
+            if (exit != null && exit.getIndex() <= endIndex) {
                 NumFactory numFactory = barSeries.numFactory();
                 Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                         ? averageHoldingCostPerPeriod(position, endIndex, numFactory)

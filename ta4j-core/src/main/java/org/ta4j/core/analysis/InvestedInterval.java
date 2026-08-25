@@ -89,6 +89,15 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         return Boolean.FALSE;
     }
 
+    /**
+     * Returns the detached snapshot series the invested intervals were computed
+     * from: it mirrors the calculation series' absolute indexing but owns private
+     * bar data, so in-place edits of the original bars cannot alter the published
+     * intervals.
+     *
+     * @return the detached backing series snapshot
+     * @since 0.24.2
+     */
     @Override
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
     public BarSeries getBarSeries() {

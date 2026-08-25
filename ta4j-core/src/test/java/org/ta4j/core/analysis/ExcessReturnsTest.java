@@ -26,13 +26,13 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void cashReturnPolicyControlsFlatIntervalExcessGrowth() {
-        var series = getBarSeries("excess_returns_series");
-        var start = Instant.parse("2024-01-01T00:00:00Z");
+        BarSeries series = getBarSeries("excess_returns_series");
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 110d, 110d, 121d };
 
         IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofDays(i + 1L));
-            var close = closes[i];
+            Instant endTime = start.plus(Duration.ofDays(i + 1L));
+            double close = closes[i];
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(endTime)
@@ -45,25 +45,24 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         });
 
         var tradingRecord = new BaseTradingRecord();
-        var one = numFactory.one();
+        Num one = numFactory.one();
         tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
         tradingRecord.enter(2, series.getBar(2).getClosePrice(), one);
         tradingRecord.exit(3, series.getBar(3).getClosePrice(), one);
 
-        var annualRate = numFactory.numOf(0.05d);
-        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+        Num annualRate = numFactory.numOf(0.05d);
+        double perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
                 Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
-        var earnsRiskFree = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord)
-                .excessReturn(0, 3)
-                .doubleValue();
-        var earnsZero = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
+        double earnsRiskFree = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE,
+                tradingRecord).excessReturn(0, 3).doubleValue();
+        double earnsZero = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
                 .excessReturn(0, 3)
                 .doubleValue();
 
-        var expectedEarnsRiskFree = (1.21d / (perBarRiskFree * perBarRiskFree)) - 1.0d;
-        var expectedEarnsZero = (1.21d / (perBarRiskFree * perBarRiskFree * perBarRiskFree)) - 1.0d;
+        double expectedEarnsRiskFree = (1.21d / (perBarRiskFree * perBarRiskFree)) - 1.0d;
+        double expectedEarnsZero = (1.21d / (perBarRiskFree * perBarRiskFree * perBarRiskFree)) - 1.0d;
 
         assertEquals(expectedEarnsRiskFree, earnsRiskFree, 1e-12);
         assertEquals(expectedEarnsZero, earnsZero, 1e-12);
@@ -72,13 +71,13 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void bundleDerivedCurvesMatchRecordDerivedCurves() {
-        var series = getBarSeries("excess_returns_bundle_series");
-        var start = Instant.parse("2024-01-01T00:00:00Z");
+        BarSeries series = getBarSeries("excess_returns_bundle_series");
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 110d, 110d, 121d };
 
         IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofDays(i + 1L));
-            var close = closes[i];
+            Instant endTime = start.plus(Duration.ofDays(i + 1L));
+            double close = closes[i];
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(endTime)
@@ -91,19 +90,19 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         });
 
         var tradingRecord = new BaseTradingRecord();
-        var one = numFactory.one();
+        Num one = numFactory.one();
         tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
         tradingRecord.enter(2, series.getBar(2).getClosePrice(), one);
         tradingRecord.exit(3, series.getBar(3).getClosePrice(), one);
 
-        var annualRate = numFactory.numOf(0.05d);
-        var equityBundle = new EquityBundle(series, tradingRecord);
+        Num annualRate = numFactory.numOf(0.05d);
+        EquityBundle equityBundle = new EquityBundle(series, tradingRecord);
 
         for (EquityCurveMode equityCurveMode : EquityCurveMode.values()) {
-            var recordBased = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
-                    equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-            var bundleBased = new ExcessReturns(annualRate, CashReturnPolicy.CASH_EARNS_ZERO, equityBundle,
+            ExcessReturns recordBased = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
+                    tradingRecord, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+            ExcessReturns bundleBased = new ExcessReturns(annualRate, CashReturnPolicy.CASH_EARNS_ZERO, equityBundle,
                     equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
             assertEquals(recordBased.excessReturn(0, 3), bundleBased.excessReturn(0, 3));
         }
@@ -111,11 +110,11 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void defaultPolicyKeepsFlatCashNeutralWhenRiskFreeIsZero() {
-        var series = buildDailySeries(new double[] { 100d, 100d, 100d });
+        BarSeries series = buildDailySeries(new double[] { 100d, 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
 
-        var zero = numFactory.zero();
-        var actual = new ExcessReturns(series, zero, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord).excessReturn(0,
+        Num zero = numFactory.zero();
+        Num actual = new ExcessReturns(series, zero, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord).excessReturn(0,
                 2);
 
         assertEquals(zero, actual);
@@ -123,16 +122,16 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void cashEarnsZeroPenalizesFlatCashAgainstPositiveRiskFree() {
-        var series = buildDailySeries(new double[] { 100d, 100d });
+        BarSeries series = buildDailySeries(new double[] { 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
-        var annualRate = numFactory.numOf(0.1d);
-        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+        Num annualRate = numFactory.numOf(0.1d);
+        double perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
                 Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
-        var actual = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
+        double actual = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
                 .excessReturn(0, 1)
                 .doubleValue();
-        var expected = (1.0d / perBarRiskFree) - 1.0d;
+        double expected = (1.0d / perBarRiskFree) - 1.0d;
 
         assertEquals(expected, actual, 1e-12);
         assertTrue(actual < 0.0d);
@@ -140,16 +139,16 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void openPositionHandlingControlsExcessReturnForOpenPositions() {
-        var series = buildDailySeries(new double[] { 100d, 120d, 180d });
+        BarSeries series = buildDailySeries(new double[] { 100d, 120d, 180d });
         var tradingRecord = new BaseTradingRecord();
-        var amount = numFactory.one();
+        Num amount = numFactory.one();
         tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
         tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
 
-        var markToMarket = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
-                OpenPositionHandling.MARK_TO_MARKET).excessReturn(0, 2).doubleValue();
-        var ignore = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
+        double markToMarket = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
+                tradingRecord, OpenPositionHandling.MARK_TO_MARKET).excessReturn(0, 2).doubleValue();
+        double ignore = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
                 OpenPositionHandling.IGNORE).excessReturn(0, 2).doubleValue();
 
         assertEquals(0.8d, markToMarket, 1e-12);
@@ -159,25 +158,25 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void zeroPreviousEquityDoesNotBreakExcessReturn() {
-        var series = buildDailySeries(new double[] { 1d, 0d, 0d });
+        BarSeries series = buildDailySeries(new double[] { 1d, 0d, 0d });
         var tradingRecord = new BaseTradingRecord();
-        var one = numFactory.one();
+        Num one = numFactory.one();
         tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
 
-        var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
+        Num actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
                 .excessReturn(0, 2);
 
         assertEquals(one.negate(), actual);
     }
 
     private BarSeries buildDailySeries(double[] closes) {
-        var series = getBarSeries("excess_returns_series");
-        var start = Instant.parse("2024-01-01T00:00:00Z");
+        BarSeries series = getBarSeries("excess_returns_series");
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
 
         IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofDays(i + 1L));
-            var close = closes[i];
+            Instant endTime = start.plus(Duration.ofDays(i + 1L));
+            double close = closes[i];
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(endTime)
