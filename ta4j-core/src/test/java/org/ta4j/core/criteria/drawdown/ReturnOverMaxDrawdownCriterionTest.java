@@ -11,7 +11,9 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -322,7 +324,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // should use 0-based return internally, not 1-based
         // Position: buy at 100, sell at 95 (5% loss)
         // Drawdown: 5%
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 95, 100).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 95, 95, 100).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         // If using 1-based return (buggy): 0.95 / 0.05 = 19.0
@@ -330,7 +332,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         // MULTIPLICATIVE with negative ratio: 1 + (-1.0) = 0.0
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
-        var result = multiplicativeCriterion.calculate(series, position);
+        Num result = multiplicativeCriterion.calculate(series, position);
         // Should be 0.0 (1 + -1.0), not 19.0 (which would be the buggy result)
         assertNumEquals(0.0, result);
         // Explicitly verify it's NOT the buggy value
@@ -507,12 +509,12 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     public void testNegativeRatioMultiplicativeUsesSharedConversion() {
         // Position: buy at 100, sell at 90 (10% loss), drawdown = 10%
         // Rate of return = (90/100) - 1 = -0.10, drawdown = 0.10, ratio = -1.0
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 95, 100).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 95, 100).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(1, series));
 
         var rawRatio = numFactory.numOf(-0.10).dividedBy(numFactory.numOf(0.10));
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
-        var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
+        Num multiplicativeResult = multiplicativeCriterion.calculate(series, position);
 
         // MULTIPLICATIVE is a 1-based growth factor: 1 + ratio, also for negative
         // ratios, and matches the shared conversion used by other criteria
@@ -521,17 +523,17 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                 multiplicativeResult);
 
         // PERCENTAGE, DECIMAL, and LOG keep their existing mappings
-        var decimalResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series,
+        Num decimalResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series,
                 position);
         assertNumEquals(ReturnRepresentation.DECIMAL.toRepresentationFromRateOfReturn(rawRatio), decimalResult);
         assertNumEquals(-1.0, decimalResult);
 
-        var percentageResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE).calculate(series,
+        Num percentageResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE).calculate(series,
                 position);
         assertNumEquals(ReturnRepresentation.PERCENTAGE.toRepresentationFromRateOfReturn(rawRatio), percentageResult);
         assertNumEquals(-100.0, percentageResult);
 
-        var logResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.LOG).calculate(series, position);
+        Num logResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.LOG).calculate(series, position);
         assertNumEquals(ReturnRepresentation.LOG.toRepresentationFromRateOfReturn(rawRatio), logResult);
     }
 

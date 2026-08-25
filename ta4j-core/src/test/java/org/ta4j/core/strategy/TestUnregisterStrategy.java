@@ -16,7 +16,7 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  */
 public class TestUnregisterStrategy extends NamedStrategy {
 
-    public TestUnregisterStrategy() {
+    TestUnregisterStrategy() {
         super("TestUnregisterStrategy", new FixedRule(1), new FixedRule(2), 0);
     }
 }

@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
@@ -304,7 +305,7 @@ public abstract class AbstractHttpBarSeriesDataSource implements HttpBarSeriesDa
      * @since 0.24.2
      */
     protected static String encodeTickerForCacheFilename(String symbol) {
-        return symbol.toUpperCase().replaceAll("[^A-Z0-9-]", "_").replace("-", "%2D");
+        return symbol.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9-]", "_").replace("-", "%2D");
     }
 
     /**

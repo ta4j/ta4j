@@ -350,6 +350,16 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void rejectsWindowLengthAboveSharedCeiling() {
+        BarSeries series = series(40);
+        Indicator<Num> first = sine(series, 0);
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> indicator(first, first, 100_000_000, -1, 1));
+        assertEquals("barCount exceeds the maximum window length", e.getMessage());
+    }
+
+    @Test
     public void rejectsLagThatCannotBeIndexedSafely() {
         BarSeries series = series(40);
         Indicator<Num> first = sine(series, 0);
