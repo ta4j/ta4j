@@ -252,6 +252,7 @@ public final class CumulativePnL implements PerformanceIndicator {
                     Num netExit = addCost(resolveExitPrice(position, endIndex, barSeries), holdingCost, entry.isBuy());
                     Num deltaExit = entry.isBuy() ? netExit.minus(entry.getNetPrice())
                             : entry.getNetPrice().minus(netExit);
+                    addToRange(seriesBegin, cursor - 1, deltaExit);
                     realized = realized.plus(deltaExit);
                 }
                 continue;
@@ -439,9 +440,15 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
+        for (Bar bar : series.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
+                .withBars(copiedBars)
                 .withBeginIndex(Math.max(0, series.getBeginIndex()))
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();

@@ -9,7 +9,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -290,6 +292,7 @@ public class CashFlow implements PerformanceIndicator {
                     Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
                     Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
                     Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+                    multiplyRange(windowStartIndex, cursor - 1, ratio);
                     realized = realized.multipliedBy(ratio);
                 }
                 continue;
@@ -529,9 +532,15 @@ public class CashFlow implements PerformanceIndicator {
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
+        for (Bar bar : series.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
+                .withBars(copiedBars)
                 .withBeginIndex(Math.max(0, series.getBeginIndex()))
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
