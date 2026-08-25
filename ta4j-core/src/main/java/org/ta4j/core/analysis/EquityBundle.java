@@ -135,9 +135,9 @@ public final class EquityBundle {
         long revision = series.getBarHistoryRevision();
         revision = revision * 1_000_003L + series.getEndIndex();
         revision = revision * 1_000_003L + series.getRemovedBarsCount();
-        // The trade list fingerprint detects AVG_COST lot edits even when the
-        // number of published trades remains unchanged.
-        revision = revision * 1_000_003L + tradingRecord.getTrades().hashCode();
+        // Include reconstructed positions as well as trades: AVG_COST may merge
+        // fills while keeping the reconstructed trade count unchanged.
+        revision = revision * 1_000_003L + tradingRecord.getPositions().hashCode();
         return revision;
     }
 
