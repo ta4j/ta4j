@@ -43,17 +43,22 @@ final class SeriesSnapshots {
         while (true) {
             // Copy bars and bounds coherently: a live series may append or prune
             // while the snapshot is taken, which would pair bars copied before
-            // the mutation with bounds read after it. Revalidate afterwards and
-            // retry when the revision moved mid-copy.
+            // the mutation with bounds read after it. The bar-history revision
+            // explicitly excludes appends and expired-bar removals, so the
+            // structural state is revalidated alongside it before accepting the
+            // copy.
             long revision = barSeries.getBarHistoryRevision();
+            int removedBarsCount = barSeries.getRemovedBarsCount();
             List<Bar> sourceBars = barSeries.getBarData();
             List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
             for (Bar bar : sourceBars) {
                 copiedBars.add(copyBar(bar));
             }
             int beginIndex = Math.max(0, barSeries.getBeginIndex());
+            int endIndex = barSeries.getEndIndex();
             int maximumBarCount = barSeries.getMaximumBarCount();
-            if (barSeries.getBarHistoryRevision() != revision) {
+            if (barSeries.getBarHistoryRevision() != revision || barSeries.getRemovedBarsCount() != removedBarsCount
+                    || Math.max(0, barSeries.getBeginIndex()) != beginIndex || barSeries.getEndIndex() != endIndex) {
                 continue;
             }
             return new BaseBarSeriesBuilder().withName(barSeries.getName())

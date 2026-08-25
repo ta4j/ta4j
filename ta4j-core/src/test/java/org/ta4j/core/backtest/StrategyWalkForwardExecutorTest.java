@@ -167,7 +167,7 @@ public class StrategyWalkForwardExecutorTest {
     }
 
     @Test
-    public void resultCopiesBarSeriesAndAccessorReturnsStableInstance() {
+    public void resultCopiesBarSeriesAndAccessorReturnsDetachedCopies() {
         BarSeries series = buildSeries(48);
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
@@ -178,10 +178,10 @@ public class StrategyWalkForwardExecutorTest {
         series.barBuilder().closePrice(250).add();
 
         assertNotSame(series, firstSnapshot);
-        assertSame(firstSnapshot, secondSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
         assertEquals(48, firstSnapshot.getBarCount());
         assertEquals(48, secondSnapshot.getBarCount());
-        assertEquals(48, result.barSeries().getBarCount());
+        assertEquals(49, series.getBarCount());
     }
 
     @Test

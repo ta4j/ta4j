@@ -148,10 +148,10 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        synchronized (equityCurveCache) {
-            this.investedInterval = equityCurveCache.investedInterval(effectiveOpenPositionHandling);
-            this.cashFlow = equityCurveCache.cashFlow(equityCurveMode, effectiveOpenPositionHandling);
-        }
+        EquityCurveCache.SharedCurves sharedCurves = equityCurveCache.sharedCurves(equityCurveMode,
+                effectiveOpenPositionHandling);
+        this.investedInterval = sharedCurves.investedInterval();
+        this.cashFlow = sharedCurves.cashFlow();
     }
 
     /**

@@ -140,7 +140,7 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
-    public void constructorCopiesBarSeriesAndAccessorReturnsStableInstance() {
+    public void constructorCopiesBarSeriesAndAccessorReturnsDetachedCopies() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
 
         BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
@@ -148,12 +148,13 @@ public class BacktestExecutionResultTest {
         BarSeries secondSnapshot = result.barSeries();
         series.barBuilder().closePrice(8).add();
 
-        // The accessor hands back one stable detached snapshot so cache scopes
-        // keyed by series identity match across repeated lookups.
+        // Every accessor call hands back a fresh detached copy, so caller-side
+        // mutations can never reach the result's internal evaluation input.
         assertNotSame(series, firstSnapshot);
-        assertSame(firstSnapshot, secondSnapshot);
+        assertNotSame(firstSnapshot, secondSnapshot);
         assertEquals(3, firstSnapshot.getBarCount());
-        assertEquals(3, result.barSeries().getBarCount());
+        assertEquals(3, secondSnapshot.getBarCount());
+        assertEquals(4, series.getBarCount());
         assertEquals(series.getName(), firstSnapshot.getName());
     }
 

@@ -79,16 +79,14 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     /**
-     * Returns the detached bar-series snapshot backing this result. The same
-     * instance is returned on every call so equity-curve cache scopes keyed by
-     * series identity match across repeated lookups.
+     * Returns a detached bar-series snapshot backing this result. Each call returns
+     * a fresh copy, so caller-side mutations cannot reach the result's internal
+     * evaluation input; internal ranking and cache scopes bind one instance per
+     * invocation instead of re-reading this accessor.
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "barSeries returns the single construction-time "
-            + "detached snapshot; stable identity is required so equity-curve cache scopes keyed by series "
-            + "identity match, and callers cannot reach mutable state through it")
     @Override
     public BarSeries barSeries() {
-        return barSeries;
+        return snapshotSeries(barSeries);
     }
 
     @Override

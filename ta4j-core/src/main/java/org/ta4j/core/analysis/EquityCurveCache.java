@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.analysis;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +71,20 @@ public final class EquityCurveCache {
                 openPositionHandling = OpenPositionHandling.IGNORE;
             }
         }
+    }
+
+    /**
+     * Pair of shared curves captured from one coherent input revision by
+     * {@link #sharedCurves(EquityCurveMode, OpenPositionHandling)}.
+     *
+     * @param investedInterval the shared invested-interval indicator
+     * @param cashFlow         the shared cash-flow snapshot
+     * @since 0.24.2
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "SharedCurves deliberately hands the cached "
+            + "shared curve instances to ExcessReturns so both inputs come from one coherent revision; the curves "
+            + "are frozen and immutable once published")
+    public record SharedCurves(InvestedInterval investedInterval, CashFlow cashFlow) {
     }
 
     private final BarSeries series;
@@ -328,6 +344,55 @@ public final class EquityCurveCache {
                     () -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord, openPositionHandling));
             investedIntervals.put(openPositionHandling, investedInterval);
             return investedInterval;
+        }
+    }
+
+    /**
+     * Returns the invested-interval and cash-flow curves for excess-return
+     * calculation, both resolved against one coherent input revision. Requesting
+     * the two curves separately could straddle an input change: a fill recorded
+     * between the calls would be reflected in the rebuilt cash flow while the
+     * invested interval still reported the superseded in-market state, mixing new
+     * equity with stale invested flags.
+     *
+     * @param equityCurveMode      the equity curve calculation mode, not null
+     * @param openPositionHandling how open positions should be handled, not null
+     * @return both shared curves captured atomically
+     * @since 0.24.2
+     */
+    public SharedCurves sharedCurves(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        synchronized (this) {
+            while (true) {
+                long revision = currentInputRevision();
+                CostModel transactionCostModel = tradingRecord.getTransactionCostModel();
+                CostModel holdingCostModel = tradingRecord.getHoldingCostModel();
+                invalidateIfInputsChanged();
+                InvestedInterval existingInterval = investedIntervals.get(openPositionHandling);
+                CurveKey key = new CurveKey(equityCurveMode, openPositionHandling);
+                CashFlow existingFlow = cashFlows.get(key);
+                if (existingInterval != null && existingFlow != null) {
+                    return new SharedCurves(existingInterval, existingFlow);
+                }
+                InvestedInterval investedInterval = existingInterval != null ? existingInterval
+                        : buildUnderStableInputs(() -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord,
+                                openPositionHandling));
+                CashFlow cashFlow = existingFlow != null ? existingFlow : buildUnderStableInputs(() -> {
+                    CashFlow flow = CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0, curveSeries.getEndIndex(),
+                            tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
+                    return flow;
+                });
+                if (currentInputRevision() == revision
+                        && tradingRecord.getTransactionCostModel() == transactionCostModel
+                        && tradingRecord.getHoldingCostModel() == holdingCostModel) {
+                    cashFlow.freeze();
+                    investedIntervals.putIfAbsent(openPositionHandling, investedInterval);
+                    cashFlows.putIfAbsent(key, cashFlow);
+                    return new SharedCurves(investedIntervals.get(openPositionHandling), cashFlows.get(key));
+                }
+                invalidateIfInputsChanged();
+            }
         }
     }
 
