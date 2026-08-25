@@ -3,9 +3,14 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -23,7 +28,9 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
+    private final BarSeries exposedBarSeries;
     private final int valueStartIndex;
+    private final int valueEndIndex;
 
     /**
      * Creates an indicator that reports invested intervals for the trading record.
@@ -46,11 +53,12 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @since 0.22.2
      */
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        super(series);
-        Objects.requireNonNull(series, "series cannot be null");
+        super(snapshotSeries(series));
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        valueStartIndex = Math.max(0, getBarSeries().getBeginIndex());
+        exposedBarSeries = snapshotSeries(series);
+        valueStartIndex = Math.max(0, super.getBarSeries().getBeginIndex());
+        valueEndIndex = super.getBarSeries().getEndIndex();
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
@@ -64,25 +72,27 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     /**
-     * Returns the precomputed invested flag directly for retained in-range bars,
-     * bypassing the indicator cache ring. The flag array is an immutable snapshot
-     * computed from the trading record at construction time, so no cache
-     * synchronization is needed for those reads. Indexes pruned from a moving
-     * series (below {@link #getBarSeries()}'s begin index) and out-of-range indexes
-     * keep the inherited cached-path behavior so removed-bar remapping still
-     * applies.
+     * Returns the precomputed invested flag for a retained in-range bar.
+     *
+     * <p>
+     * The returned series is a detached view. Mutating it cannot alter the captured
+     * flag array or the calculation series.
      *
      * @since 0.24.2
      */
     @Override
     public Boolean getValue(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
-        int endIndex = getBarSeries().getEndIndex();
         int offset = index - valueStartIndex;
-        if (index >= beginIndex && index <= endIndex && offset >= 0 && offset < investedIntervals.length) {
+        if (index >= valueStartIndex && index <= valueEndIndex && offset >= 0 && offset < investedIntervals.length) {
             return investedIntervals[offset];
         }
-        return super.getValue(index);
+        return Boolean.FALSE;
+    }
+
+    @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
+    public BarSeries getBarSeries() {
+        return exposedBarSeries;
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
@@ -111,6 +121,22 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         for (int i = start; i <= end; i++) {
             invested[i - valueStartIndex] = true;
         }
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        List<Bar> copiedBars = new ArrayList<>(series.getBarData().size());
+        for (Bar bar : series.getBarData()) {
+            copiedBars.add(new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                    bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                    bar.getTrades()));
+        }
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(copiedBars)
+                .withBeginIndex(Math.max(0, series.getBeginIndex()))
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
     }
 
     @Override
