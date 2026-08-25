@@ -48,16 +48,19 @@ final class BlockBootstrapNulls {
      * Mirrors the package-private {@code Num.isFinite} for double-backed nums: only
      * primitive-backed infinities can slip past the positivity check.
      */
-    private static boolean nonFiniteDouble(final Num value) {
-        return value.getDelegate() instanceof Double delegate && !Double.isFinite(delegate);
+    /**
+     * A range-bounded double-backed domain holds the direct product only while it
+     * stays finite and strictly positive; unbounded domains hold any result.
+     */
+    private static boolean representableInDomain(final NumFactory numFactory, final Num value) {
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return true;
+        }
+        return value.getDelegate() instanceof Double delegate && Double.isFinite(delegate) && delegate > 0d;
     }
 
-    private static boolean directMultiplySafe(final NumFactory numFactory, final double drawnReturn,
-            final double runningLogClose) {
-        if (Math.abs(drawnReturn) > MAX_DIRECT_EXPONENT) {
-            return false;
-        }
-        return !(numFactory instanceof DoubleNumFactory) || Math.abs(runningLogClose) <= MAX_DIRECT_EXPONENT;
+    private static boolean nonFiniteDouble(final Num value) {
+        return value.getDelegate() instanceof Double delegate && !Double.isFinite(delegate);
     }
 
     private BlockBootstrapNulls() {
@@ -233,11 +236,20 @@ final class BlockBootstrapNulls {
             final double drawnReturn = logReturns[tapePosition];
             runningLogClose += drawnReturn;
             final Num previousClose = closes[offset - 1];
-            if (directMultiplySafe(numFactory, drawnReturn, runningLogClose)) {
-                // Exact relative step while exp(return) sits comfortably inside
-                // double range; ordinary-market members keep their tight
-                // consecutive-close ratios.
-                closes[offset] = previousClose.multipliedBy(expNum(numFactory, drawnReturn));
+            Num direct = null;
+            if (Math.abs(drawnReturn) <= MAX_DIRECT_EXPONENT) {
+                // Exact relative step; ordinary-market members keep their tight
+                // consecutive-close ratios. The product itself decides: a flat
+                // MIN_VALUE source has an accumulated log-close near -744 yet a
+                // perfectly representable direct close, so the accumulated-log
+                // magnitude alone must never reject it.
+                final Num candidate = previousClose.multipliedBy(expNum(numFactory, drawnReturn));
+                if (representableInDomain(numFactory, candidate)) {
+                    direct = candidate;
+                }
+            }
+            if (direct != null) {
+                closes[offset] = direct;
             } else {
                 // A steeper transition (for example MIN_VALUE -> MAX_VALUE), or
                 // an accumulated path outside double range, has no representable

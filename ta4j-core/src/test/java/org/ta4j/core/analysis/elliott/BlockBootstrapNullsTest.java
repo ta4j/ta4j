@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
 package org.ta4j.core.analysis.elliott;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -71,6 +74,21 @@ class BlockBootstrapNullsTest {
         final BarSeries source = doubleSeries("steep-negative", Double.MIN_VALUE);
         assertThrows(IllegalStateException.class,
                 () -> BlockBootstrapNulls.generateMember(source, new double[] { -3000d }, 8, 7L, 0));
+    }
+
+    @Test
+    void memberClosesStayRepresentableOnFlatMinValueSource() {
+        // A flat MIN_VALUE source draws zero returns; every member close equals
+        // MIN_VALUE. The accumulated log-close sits near -744, but the direct
+        // product is representable and must win over the collapsing fallback.
+        final BarSeries source = doubleSeries("flat-min", Double.MIN_VALUE);
+        for (final BarSeries member : BlockBootstrapNulls.generate(source, 1, 8, 13L)) {
+            for (int offset = 0; offset < member.getBarCount(); offset++) {
+                final double close = member.getBar(offset).getClosePrice().doubleValue();
+                assertTrue(Double.isFinite(close) && close > 0d,
+                        "member close at bar " + offset + " not representable: " + close);
+            }
+        }
     }
 
     @Test
