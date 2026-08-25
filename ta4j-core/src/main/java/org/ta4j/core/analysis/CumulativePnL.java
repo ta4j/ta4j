@@ -31,6 +31,11 @@ import org.ta4j.core.num.NumFactory;
 public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
+    /**
+     * The separate series snapshot exposed to callers so they cannot mutate the
+     * calculation input through {@link #getBarSeries()}.
+     */
+    private final BarSeries exposedBarSeries;
     private final List<Num> values;
     private final AtomicBoolean frozen = new AtomicBoolean();
 
@@ -52,10 +57,9 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final EquityCurveMode equityCurveMode;
 
     /**
-     * Constructor for a trading record with a specified final index. Takes a single
-     * defensive snapshot of the given bar series so the calculated values stay
-     * isolated from later mutations of the caller's series; {@link #getBarSeries()}
-     * returns that same snapshot for every call.
+     * Constructor for a trading record with a specified final index. Takes
+     * defensive snapshots so calculated values stay isolated from later mutations
+     * of the caller's series and from mutations through the public series accessor.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -67,6 +71,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.barSeries = snapshotSeries(barSeries);
+        this.exposedBarSeries = snapshotSeries(this.barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesBegin = Math.max(this.barSeries.getBeginIndex(), 0);
         int seriesEnd = this.barSeries.getEndIndex();
@@ -239,6 +244,16 @@ public final class CumulativePnL implements PerformanceIndicator {
             }
             int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
             if (endIndex < seriesBegin) {
+                Trade exit = position.getExit();
+                if (exit != null) {
+                    Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
+                            ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
+                            : position.getHoldingCost(endIndex);
+                    Num netExit = addCost(resolveExitPrice(position, endIndex, barSeries), holdingCost, entry.isBuy());
+                    Num deltaExit = entry.isBuy() ? netExit.minus(entry.getNetPrice())
+                            : entry.getNetPrice().minus(netExit);
+                    realized = realized.plus(deltaExit);
+                }
                 continue;
             }
             boolean isLongTrade = entry.isBuy();
@@ -413,18 +428,13 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Returns the defensive series snapshot taken at construction time. The same
-     * instance is returned for every call; later mutations of the original series
-     * are not visible through it.
-     *
-     * @since 0.19
+     * Returns a stable defensive series snapshot. Mutating this returned series
+     * does not alter the series used to calculate the curve.
      */
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the single "
-            + "construction-time defensive snapshot; the indicator is the sole owner of this instance and the "
-            + "stable-identity contract is documented on this class and pinned by tests")
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
     public BarSeries getBarSeries() {
-        return barSeries;
+        return exposedBarSeries;
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {

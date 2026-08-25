@@ -56,6 +56,8 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(originalSize, pnl.getBarSeries().getBarCount());
         assertNotSame(series, pnl.getBarSeries());
         assertSame(pnl.getBarSeries(), pnl.getBarSeries());
+        pnl.getBarSeries().setMaximumBarCount(1);
+        assertEquals(originalSize, pnl.getSize());
     }
 
     @Test
@@ -429,6 +431,19 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(50, cumulativePnL.getValue(1));
         assertNumEquals(20, cumulativePnL.getValue(2));
         assertNumEquals(10, cumulativePnL.getValue(3));
+    }
+
+    @Test
+    public void cumulativePnLCarriesRealizedPositionsClosedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 200d, 50d, 60d).build();
+        TradingRecord record = closedPositionRecord(series, 0, 1);
+        series.setMaximumBarCount(2);
+
+        CumulativePnL cumulativePnL = new CumulativePnL(series, record);
+
+        assertEquals(2, series.getBeginIndex());
+        assertNumEquals(100, cumulativePnL.getValue(2));
+        assertNumEquals(100, cumulativePnL.getValue(3));
     }
 
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {

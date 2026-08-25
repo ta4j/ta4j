@@ -64,6 +64,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
         assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
         assertSame(cashFlow.getBarSeries(), cashFlow.getBarSeries());
+        cashFlow.getBarSeries().setMaximumBarCount(1);
+        assertEquals(originalSize, cashFlow.getSize());
     }
 
     @Test
@@ -734,6 +736,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
             assertNumEquals(reference.getValue(i), cashFlow.getValue(i));
         }
+    }
+
+    @Test
+    public void cashFlowCarriesRealizedPositionsClosedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 200d, 50d, 60d).build();
+        TradingRecord record = closedPositionRecord(series, 0, 1);
+        series.setMaximumBarCount(2);
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertEquals(2, series.getBeginIndex());
+        assertNumEquals(2, cashFlow.getValue(2));
+        assertNumEquals(2, cashFlow.getValue(3));
     }
 
     private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {

@@ -78,8 +78,9 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     public Boolean getValue(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
         int endIndex = getBarSeries().getEndIndex();
-        if (index >= beginIndex && index <= endIndex) {
-            return investedIntervals[index - valueStartIndex];
+        int offset = index - valueStartIndex;
+        if (index >= beginIndex && index <= endIndex && offset >= 0 && offset < investedIntervals.length) {
+            return investedIntervals[offset];
         }
         return super.getValue(index);
     }

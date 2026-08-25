@@ -28,6 +28,12 @@ public class CashFlow implements PerformanceIndicator {
      * The bar series.
      */
     private final BarSeries barSeries;
+    /**
+     * The separate series snapshot exposed to callers. Keeping this distinct
+     * prevents callers from mutating the calculation input through
+     * {@link #getBarSeries()}.
+     */
+    private final BarSeries exposedBarSeries;
 
     /**
      * The (accrued) cash flow sequence (without trading costs).
@@ -192,14 +198,14 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Internal constructor. Takes a single defensive snapshot of the given bar
-     * series so the calculated values stay isolated from later mutations of the
-     * caller's series; {@link #getBarSeries()} returns that same snapshot for every
-     * call.
+     * Internal constructor. Takes defensive snapshots so calculated values stay
+     * isolated from later mutations of the caller's series and from mutations
+     * through the public series accessor.
      */
     private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.barSeries = snapshotSeries(barSeries);
+        this.exposedBarSeries = snapshotSeries(this.barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.barSeries.getEndIndex();
         this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
@@ -275,7 +281,17 @@ public class CashFlow implements PerformanceIndicator {
                 continue;
             }
             int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-            if (endIndex < seriesBegin || endIndex < windowStartIndex) {
+            if (endIndex < windowStartIndex) {
+                Trade exit = position.getExit();
+                if (exit != null) {
+                    Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
+                            ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
+                            : position.getHoldingCost(endIndex);
+                    Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
+                    Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
+                    Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+                    realized = realized.multipliedBy(ratio);
+                }
                 continue;
             }
             boolean isLongTrade = entry.isBuy();
@@ -502,16 +518,13 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Returns the defensive series snapshot taken at construction time. The same
-     * instance is returned for every call; later mutations of the original series
-     * are not visible through it.
+     * Returns a stable defensive series snapshot. Mutating this returned series
+     * does not alter the series used to calculate the curve.
      */
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries intentionally returns the single "
-            + "construction-time defensive snapshot; the indicator is the sole owner of this instance and the "
-            + "stable-identity contract is documented on this class and pinned by tests")
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "getBarSeries returns a detached snapshot")
     public BarSeries getBarSeries() {
-        return barSeries;
+        return exposedBarSeries;
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
