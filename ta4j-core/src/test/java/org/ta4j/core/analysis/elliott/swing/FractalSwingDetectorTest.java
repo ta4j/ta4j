@@ -1,0 +1,441 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.analysis.elliott.swing;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.SplittableRandom;
+import java.util.concurrent.atomic.LongAdder;
+
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NumFactory;
+
+class FractalSwingDetectorTest {
+
+    @Test
+    void cachedIndicatorReuseMatchesFreshDetectorResults() {
+        final BarSeries series = noisySeries(200, 42L);
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+
+        for (int index = 0; index < series.getBarCount(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("cached result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
+        }
+    }
+
+    @Test
+    void repeatedPivotQueriesReuseIncrementalPivotView() {
+        final BarSeries series = noisySeries(200, 43L);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        final List<SwingPivot> first = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(detector.detectPivots(series, series.getEndIndex())).isSameAs(first);
+    }
+
+    @Test
+    void singletonPivotViewMatchesFullDetectorView() {
+        final BarSeries series = noisySeries(200, 43L);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        boolean foundSingleton = false;
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            final List<SwingPivot> pivots = detector.detectPivots(series, index);
+            if (pivots.size() == 1) {
+                assertThat(detector.detect(series, index, ElliottDegree.MINUETTE).pivots()).isEqualTo(pivots);
+                foundSingleton = true;
+                break;
+            }
+        }
+
+        assertThat(foundSingleton).isTrue();
+    }
+
+    @Test
+    void maximumBarIndexReplayCursorTerminates() {
+        final Instant begin = Instant.parse("2024-01-01T00:00:00Z");
+        final Num price = DoubleNum.valueOf(10);
+        final BaseBar bar = new BaseBar(Duration.ofMinutes(1), begin, begin.plus(Duration.ofMinutes(1)), price, price,
+                price, price, DoubleNum.valueOf(1), DoubleNum.valueOf(0), 0L);
+        final BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(bar))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertThat(new FractalSwingDetector(1).detectPivots(series, Integer.MAX_VALUE)).isEmpty();
+    }
+
+    @Test
+    void indicatorCacheSeparatesSeriesWithoutCrossTalk() {
+        final BarSeries first = noisySeries(120, 1L);
+        final BarSeries second = noisySeries(150, 2L);
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+
+        for (int index = 0; index <= seriesEnd(first); index++) {
+            assertThat(shared.detectPivots(first, index))
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(first, index));
+        }
+        for (int index = 0; index <= seriesEnd(second); index++) {
+            assertThat(shared.detectPivots(second, index))
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(second, index));
+        }
+    }
+
+    @Test
+    void boundedCacheEvictionKeepsResultsCorrect() {
+        // More distinct series than MAX_CACHED_SERIES; evicted entries must not
+        // corrupt later evaluations of re-touched or fresh series.
+        final List<BarSeries> seriesList = new ArrayList<>();
+        for (long seed = 10; seed < 22; seed++) {
+            seriesList.add(noisySeries(90, seed));
+        }
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        for (int pass = 0; pass < 2; pass++) {
+            for (final BarSeries series : seriesList) {
+                assertThat(shared.detectPivots(series, series.getEndIndex()))
+                        .isEqualTo(new FractalSwingDetector(2).detectPivots(series, series.getEndIndex()));
+            }
+        }
+    }
+
+    @Test
+    void descendingAndRepeatedQueriesMatchFreshDetectorResults() {
+        final BarSeries series = noisySeries(160, 7L);
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        final int end = seriesEnd(series);
+
+        // Ascend past the target indices first so the later queries exercise
+        // the non-ascending and repeated-query paths of the replay state.
+        for (int index = 0; index <= end; index++) {
+            shared.detectPivots(series, index);
+        }
+        for (int index = end; index >= 0; index--) {
+            assertThat(shared.detectPivots(series, index)).as("descending result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
+        }
+        for (int index = 0; index <= end; index++) {
+            assertThat(shared.detectPivots(series, index)).as("re-ascending result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
+        }
+    }
+
+    @Test
+    void inPlaceLastBarMutationInvalidatesSameIndexReplayResult() {
+        // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising the
+        // retained last bar's prices in place withdraws that confirmation while
+        // leaving the series revision, bar identity, and end index untouched,
+        // so only a last-bar value snapshot can detect the change.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+
+        series.getLastBar().addPrice(series.numFactory().numOf(20));
+
+        assertThat(series.getBarHistoryRevision()).isGreaterThanOrEqualTo(0L);
+        assertThat(shared.detectPivots(series, series.getEndIndex()))
+                .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).isEmpty();
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE).pivots()).isEmpty();
+    }
+
+    @Test
+    void descendingQueryAfterRetractionRebuildsIndicatorScanState() {
+        // The equal-high plateau [2..3] truncates differently as later bars
+        // arrive: HIGH@2 confirms at bar 4, purges at bar 5 when the plateau
+        // grows to [2..4] with no canonical candidate, and re-confirms at bar
+        // 6. After ascending past those retractions, a descending query must
+        // rebuild the swing indicators instead of replaying through trackers
+        // whose confirmed swings were mutated by the later scans.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 9, 10, 10, 8, 10, 11, 7 },
+                new double[] { 1, 2, 3, 3, 4, 5, 6, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1, 1, 1);
+
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            shared.detectPivots(series, index);
+        }
+        assertThat(shared.detectPivots(series, series.getEndIndex())).as("ascending tail before descending")
+                .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, series.getEndIndex()));
+
+        assertThat(shared.detectPivots(series, 4)).as("descending result at bar 4")
+                .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, 4));
+        assertThat(shared.detectPivots(series, 4)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("post-descending result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, index));
+        }
+    }
+
+    @Test
+    void inPlaceEarlierBarMutationInvalidatesAscendingReplayResult() {
+        // HIGH@2 is confirmed while bar 1's high (6) stays below it. Replaying
+        // through bar 2, raising that earlier retained bar in place, and then
+        // restoring its original close leaves its close unchanged, but the
+        // BaseBarSeries mutation epoch advances and moves the fractal pivot to
+        // HIGH@1. O(1) revision invalidation must stop the ascending query at
+        // bar 3 from returning stale HIGH@2.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        assertThat(shared.detectPivots(series, 2)).isEqualTo(new FractalSwingDetector(1).detectPivots(series, 2));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(series.numFactory().numOf(20));
+        series.getBar(1).addPrice(series.numFactory().numOf(5.5));
+
+        assertThat(series.getBarHistoryRevision()).isGreaterThan(revisionBeforeMutation);
+        assertThat(series.getBar(1).getClosePrice()).isEqualTo(series.numFactory().numOf(5.5));
+        assertThat(shared.detectPivots(series, series.getEndIndex()))
+                .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH));
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE))
+                .isEqualTo(new FractalSwingDetector(1).detect(series, series.getEndIndex(), ElliottDegree.MINUETTE));
+
+    }
+
+    @Test
+    void inPlaceMutationOfObservedLastBarIsDetectedAfterAppend() {
+        // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising that
+        // bar's high to 11 withdraws the confirmation, and appending a further
+        // bar leaves the append operation itself revision-neutral while the
+        // retained-bar mutation epoch already invalidated the prior result.
+        // Because no later scan re-evaluates an already-confirmed fractal and
+        // the appended bar confirms no new pivot, the O(1) revision signal must
+        // stop the replay from extending over stale HIGH@2.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.getLastBar().addPrice(series.numFactory().numOf(11));
+        series.barBuilder().openPrice(8.5).highPrice(12).lowPrice(5).closePrice(8.5).volume(1).add();
+
+        assertThat(series.getBarHistoryRevision()).isGreaterThan(revisionBeforeMutation);
+        final int end = series.getEndIndex();
+        // Fresh detection sees highs {5, 6, 10, 11, 12} and lows
+        // {4, 5, 9, 6, 5}: no fractal survives the mutation.
+        assertThat(shared.detectPivots(series, end)).isEmpty();
+        assertThat(shared.detectPivots(series, end)).isEqualTo(new FractalSwingDetector(1).detectPivots(series, end));
+        assertThat(shared.detect(series, end, ElliottDegree.MINUETTE).pivots())
+                .isEqualTo(new FractalSwingDetector(1).detect(series, end, ElliottDegree.MINUETTE).pivots());
+    }
+
+    @Test
+    void seriesGrowthKeepsReplayResultsConsistentWithFreshDetection() {
+        final SplittableRandom random = new SplittableRandom(11L);
+        final BarSeries series = new MockBarSeriesBuilder().build();
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        double price = 100;
+
+        for (int stage = 0; stage < 3; stage++) {
+            for (int bars = 0; bars < 60; bars++) {
+                price *= 1 + random.nextDouble(-0.02, 0.02);
+                final double close = price;
+                series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
+            }
+            for (int index = 0; index <= seriesEnd(series); index++) {
+                assertThat(shared.detectPivots(series, index))
+                        .as("grown-series result at bar " + index + " in stage " + stage)
+                        .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
+            }
+        }
+    }
+
+    @Test
+    void ascendingReplayDoesNotRebuildTheFullPivotPrefixPerIndex() {
+        final CountedZigZagSeries small = new CountedZigZagSeries(1_200);
+        final FractalSwingDetector smallDetector = new FractalSwingDetector(2);
+        final long smallReads = replayAscending(smallDetector, small);
+        assertThat(smallReads).isPositive();
+        assertThat(smallDetector.detectPivots(small.series(), small.seriesEnd()))
+                .isEqualTo(new FractalSwingDetector(2).detectPivots(small.series(), small.seriesEnd()));
+
+        final CountedZigZagSeries large = new CountedZigZagSeries(2_400);
+        final FractalSwingDetector largeDetector = new FractalSwingDetector(2);
+        final long largeReads = replayAscending(largeDetector, large);
+
+        // Incremental replay work doubles with the series length. Rebuilding
+        // the cumulative pivot prefix at every as-of index would re-price all
+        // known pivots per index and roughly quadruple the counted reads.
+        assertThat(largeReads).isLessThan(3 * smallReads);
+    }
+
+    @Test
+    void staggeredSameIndexSidesReconcileInsteadOfAppendingZeroLengthSwings() {
+        // With window 1 the LOW@1 (price 0) confirms at bar 2 while the HIGH
+        // plateau [1..2] only completes at bar 3, so the opposite-type side
+        // reaches pivot index 1 one bar later than the low side did.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 10, 10, 5, 4, 6, 8, 3 },
+                new double[] { 5, 0, 5, 5, 2, 3, 4, 2 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("staggered result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1).detectPivots(series, index));
+        }
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH), tuple(4, SwingPivotType.LOW),
+                        tuple(6, SwingPivotType.HIGH));
+    }
+
+    @Test
+    void lateCrossSideConfirmationBehindMergedTailStaysChronological() {
+        // With windows (1, 1) and three allowed equal bars the HIGH@5 spike
+        // confirms at bar 6, while the four-bar LOW plateau [3..6] only
+        // completes at bar 7 and reports LOW@4 behind the already merged
+        // HIGH@5. The fallback rebuild triggered by that late confirmation
+        // must re-merge chronologically instead of appending the low after
+        // the high.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 7, 8, 9, 10, 11, 16, 10, 9, 8 },
+                new double[] { 6, 5, 4, 2, 2, 2, 2, 5, 4 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1, 1, 3);
+
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("staggered cross-side result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1, 1, 3).detectPivots(series, index));
+        }
+
+        assertThat(shared.detectPivots(series, 6)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(5, SwingPivotType.HIGH));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(4, SwingPivotType.LOW), tuple(5, SwingPivotType.HIGH));
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE).swings())
+                .extracting(ElliottSwing::fromIndex, ElliottSwing::toIndex)
+                .containsExactly(tuple(4, 5));
+    }
+
+    @Test
+    void repeatedQueriesReuseTheCachedDetectionResultWithoutRematerializing() {
+        final BarSeries series = noisySeries(120, 5L);
+        final FractalSwingDetector shared = new FractalSwingDetector(2);
+        final int end = seriesEnd(series);
+
+        for (int index = 0; index <= end; index++) {
+            shared.detectPivots(series, index);
+        }
+        final List<SwingPivot> tail = shared.detectPivots(series, end);
+        // Unchanged replay state must not rebuild the cumulative swing chain:
+        // rebuilding would allocate an ElliottSwing for every accumulated pivot
+        // on every query, keeping causal replay quadratic in transient
+        // allocations. Instance identity proves the cached snapshot is reused.
+        assertThat(shared.detectPivots(series, end)).isSameAs(tail);
+        assertThat(shared.detectPivots(series, end)).isSameAs(tail);
+
+        final List<SwingPivot> middle = shared.detectPivots(series, end / 2);
+        assertThat(shared.detectPivots(series, end / 2)).isSameAs(middle);
+    }
+
+    private static long replayAscending(final FractalSwingDetector detector, final CountedZigZagSeries fixture) {
+        final long readsBefore = fixture.priceReads.sum();
+        for (int index = 0; index <= fixture.seriesEnd(); index++) {
+            detector.detectPivots(fixture.series(), index);
+        }
+        return fixture.priceReads.sum() - readsBefore;
+    }
+
+    /** Zigzag fixture whose bars count high/low price reads during detection. */
+    private static final class CountedZigZagSeries {
+
+        private final BarSeries series = new MockBarSeriesBuilder().build();
+        private final LongAdder priceReads = new LongAdder();
+
+        private CountedZigZagSeries(final int barCount) {
+            final NumFactory factory = series.numFactory();
+            double price = 100;
+            int direction = 1;
+            for (int index = 0; index < barCount; index++) {
+                price += 2 * direction;
+                if ((index + 1) % 4 == 0) {
+                    direction = -direction;
+                }
+                final Instant beginTime = Instant.EPOCH.plus(Duration.ofMinutes(index));
+                final Num value = factory.numOf(price);
+                series.addBar(new CountingBar(priceReads, factory, beginTime, value));
+            }
+        }
+
+        private BarSeries series() {
+            return series;
+        }
+
+        private int seriesEnd() {
+            return series.getEndIndex();
+        }
+    }
+
+    private static final class CountingBar extends BaseBar {
+
+        private static final long serialVersionUID = 1L;
+
+        private final transient LongAdder priceReads;
+
+        private CountingBar(final LongAdder priceReads, final NumFactory factory, final Instant beginTime,
+                final Num price) {
+            super(Duration.ofMinutes(1), beginTime, beginTime.plus(Duration.ofMinutes(1)), price, price, price, price,
+                    factory.numOf(1), factory.numOf(0), 0L);
+            this.priceReads = priceReads;
+        }
+
+        @Override
+        public Num getHighPrice() {
+            priceReads.increment();
+            return super.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            priceReads.increment();
+            return super.getLowPrice();
+        }
+    }
+
+    private static int seriesEnd(final BarSeries series) {
+        return series.getEndIndex() - series.getBeginIndex();
+    }
+
+    private static BarSeries noisySeries(final int barCount, final long seed) {
+        final SplittableRandom random = new SplittableRandom(seed);
+        final BarSeries series = new MockBarSeriesBuilder().build();
+        double price = 100;
+        for (int index = 0; index < barCount; index++) {
+            price *= 1 + random.nextDouble(-0.02, 0.02);
+            final double close = price;
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
+        }
+        return series;
+    }
+
+    private static BarSeries seriesWithHighsAndLows(final double[] highs, final double[] lows) {
+        final BarSeries series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < highs.length; index++) {
+            final double close = (highs[index] + lows[index]) / 2;
+            series.barBuilder()
+                    .openPrice(close)
+                    .highPrice(highs[index])
+                    .lowPrice(lows[index])
+                    .closePrice(close)
+                    .volume(1)
+                    .add();
+        }
+        return series;
+    }
+}

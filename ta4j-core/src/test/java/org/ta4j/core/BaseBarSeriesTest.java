@@ -146,6 +146,18 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testBarHistoryRevisionTracksRetainedBaseBarMutation() {
+        long initialRevision = seriesWithBars.getBarHistoryRevision();
+        long observedBarRevision = seriesWithBars.getBarHistoryRevision();
+
+        seriesWithBars.getBar(1).addPrice(numFactory.numOf(42));
+
+        BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(observedBarRevision);
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(0, snapshot.earliestChangedIndex());
+    }
+
+    @Test
     public void testBarSeriesChangeSnapshotAggregatesSkippedRevisions() {
         long initialRevision = seriesWithBars.getBarHistoryRevision();
 
