@@ -432,8 +432,18 @@ public final class WalkForwardCalibrationBakeoffExample {
     }
 
     private static void writeJson(Path path, Object value) {
+        // Write to a sibling temp file and atomically replace the target so an
+        // interruption mid-write never truncates a previously durable checkpoint
+        // into partial, invalid JSON (AGENTS.md incremental-evidence rule).
+        Path tmp = path.resolveSibling(path.getFileName() + ".tmp" + System.nanoTime());
         try {
-            Files.writeString(path, GSON.toJson(value));
+            Files.writeString(tmp, GSON.toJson(value));
+            try {
+                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException("Failed to write " + path, e);
         }
