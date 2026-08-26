@@ -250,11 +250,11 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     @Override
     public long getBarHistoryRevision() {
-        this.readLock.lock();
+        this.writeLock.lock();
         try {
             return super.getBarHistoryRevision();
         } finally {
-            this.readLock.unlock();
+            this.writeLock.unlock();
         }
     }
 
@@ -265,11 +265,11 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     @Override
     public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
-        this.readLock.lock();
+        this.writeLock.lock();
         try {
             return super.getBarSeriesChangeSnapshot(sinceRevision);
         } finally {
-            this.readLock.unlock();
+            this.writeLock.unlock();
         }
     }
 
