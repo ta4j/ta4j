@@ -297,10 +297,29 @@ public class Returns implements PerformanceIndicator {
 
     /**
      * @return the number of materialized returns, including any trailing exit
-     *         return beyond the logical window end.
+     *         return beyond the logical window end. The leading no-prior-close
+     *         placeholder is only excluded when the first slot carries no real
+     *         return (see {@link #isFirstSlotSeeded()}).
      */
     public int getSize() {
-        return Math.max(0, returnFactors.size() - 1);
+        if (returnFactors.size() == 0) {
+            return 0;
+        }
+        return returnFactors.size() - (firstRetainedSlotSeeded ? 0 : 1);
+    }
+
+    /**
+     * Returns whether the first retained slot carries a real return instead of the
+     * leading no-prior-close placeholder. This is the case when an entry predating
+     * the window seeds the whole entry-to-first-retained-close move, or when a
+     * position enters and exits on the first retained bar itself. Tail-risk
+     * criteria use this distinction to decide whether the leading slot joins the
+     * return distribution.
+     *
+     * @return {@code true} if the first retained slot holds a real return
+     */
+    public boolean isFirstSlotSeeded() {
+        return firstRetainedSlotSeeded;
     }
 
     /**
@@ -344,7 +363,6 @@ public class Returns implements PerformanceIndicator {
                 Num rawReturn = calculateReturn(firstNetPrice, lastPrice);
                 combineReturnAtIndex(seriesBegin, isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne));
                 lastPrice = firstNetPrice;
-                firstRetainedSlotSeeded = true;
             }
             for (long i = start; i < endIndex; i++) {
                 Bar bar = barSeries.getBar((int) i);
@@ -406,6 +424,12 @@ public class Returns implements PerformanceIndicator {
     private void combineReturnAtIndex(int index, Num strategyReturn) {
         if (!returnFactors.contains(index)) {
             return;
+        }
+        if (index == materializedBeginIndex) {
+            // Any write into the first retained slot makes it a real return:
+            // either an entry predating the window seeded it, or a position
+            // entered and exited on the first retained bar itself.
+            firstRetainedSlotSeeded = true;
         }
         if (representation == ReturnRepresentation.LOG) {
             returnFactors.add(index, strategyReturn);

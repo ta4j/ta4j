@@ -272,4 +272,23 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         // no weighted upside and the ratio collapses to zero.
         assertNumEquals(0, ratio);
     }
+
+    @Test
+    public void omegaIncludesSeededFirstWindowReturn() {
+        // The entry predates the retained window; the seeded -50% loss is a
+        // real downside observation even though it lands in the first slot.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(rolling, record);
+
+        // Upside excess 1.4 over downside shortfall 0.5.
+        assertNumEquals(numFactory.numOf(2.8d), ratio);
+    }
 }

@@ -498,4 +498,44 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertEquals(2, returns.getSize());
     }
+
+    @Test
+    public void sameBarReturnSurvivesAtOffsetWindowStart() {
+        // A position entering and exiting on the first retained bar writes a
+        // real return into the first buffer slot; the placeholder overwrite
+        // must not erase it just because no entry predates the window.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(1);
+        for (int i = 0; i < 10; i++) {
+            rolling.barBuilder().closePrice(100d).add();
+        }
+        rolling.barBuilder().closePrice(110d).add();
+        var record = new BaseTradingRecord(Trade.buyAt(10, rolling), Trade.sellAt(10, rolling));
+
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(10, rolling.getBeginIndex());
+        assertNumEquals(numFactory.numOf(0d), returns.getValue(10));
+    }
+
+    @Test
+    public void sizeCountsSeededFirstWindowReturn() {
+        // The entry predates the retained window, so the first slot carries a
+        // real entry-to-close return instead of a placeholder; the reported
+        // size must include it or tail-risk criteria silently drop the loss.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(1));
+        assertEquals(2, returns.getSize());
+    }
 }
