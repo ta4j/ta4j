@@ -299,6 +299,31 @@ class ConfirmationTrackerTest {
     }
 
     @Test
+    void lateInterveningPivotRestoresCollapsedAlternatingHistory() {
+        final SwingPivot high0 = new SwingPivot(0, DoubleNum.valueOf(10), SwingPivotType.HIGH);
+        final SwingPivot low1 = new SwingPivot(1, DoubleNum.valueOf(5), SwingPivotType.LOW);
+        final SwingPivot high2 = new SwingPivot(2, DoubleNum.valueOf(20), SwingPivotType.HIGH);
+        final Map<Integer, List<SwingPivot>> script = new HashMap<>();
+        script.put(0, List.of());
+        script.put(1, List.of());
+        // Consecutive same-type highs collapse to the more extreme later one.
+        script.put(2, List.of(high0, high2));
+        script.put(3, List.of(high0, high2));
+        // A late report inserts the missing LOW between the two highs: they
+        // are no longer an uninterrupted same-type run, so snapshot
+        // normalization would keep both and the suppressed HIGH@0 must be
+        // restored ahead of LOW@1 instead of staying invisible forever.
+        script.put(4, List.of(high0, low1, high2));
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(scripted(script))
+                .observeReplay(seriesWithBars(5));
+
+        assertThat(replay.at(3)).extracting(ConfirmedPivot::pivotIndex).containsExactly(2);
+        assertThat(replay.at(4)).extracting(ConfirmedPivot::pivotIndex).containsExactly(0, 1, 2);
+        assertThat(replay.history().pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(0, 1, 2);
+    }
+
+    @Test
     void revisedDominatorHandsDominanceBackToCollapsedPivot() {
         // HIGH@1=10 collapses behind HIGH@3=12; the detector then revises the
         // still-trailing pivot 3 down to 9 while continuing to report pivot 1.

@@ -32,6 +32,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 class StudyRunnerTest {
@@ -392,6 +393,30 @@ class StudyRunnerTest {
     }
 
     @Test
+    void changePointBaselineRejectsInfiniteCloses() {
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+        // Regression: the close window 1, +Infinity, 1 produced opposite
+        // infinite deltas whose sign comparison classified a phantom change
+        // point. Non-finite closes must abort the classification instead of
+        // landing in any partition metric bucket.
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> runner
+                .evaluate("BTC", nonFiniteCloseSeries("synthetic-infinite-close", Double.POSITIVE_INFINITY), 0, 7));
+        assertTrue(exception.getMessage().contains("finite"));
+    }
+
+    @Test
+    void changePointBaselineRejectsNaNcloses() {
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+        // Regression: a NaN close made both deltas NaN, and NaN's sign
+        // predicates silently classified it as a change or stable sample.
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> runner.evaluate("BTC", nonFiniteCloseSeries("synthetic-nan-close", Double.NaN), 0, 7));
+        assertTrue(exception.getMessage().contains("finite"));
+    }
+
+    @Test
     void competingAlternativeGrammarSeparatesFormingFromNoMatch() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
@@ -583,6 +608,34 @@ class StudyRunnerTest {
                     .openPrice(close)
                     .highPrice(close + 1)
                     .lowPrice(close - 1)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    /**
+     * Eight-bar double-backed series whose second-to-last close is non-finite;
+     * every scripted-detector pivot index keeps a finite close so only the
+     * change-point baseline touches the corrupted bar.
+     */
+    private static BarSeries nonFiniteCloseSeries(final String name, final double nonFiniteClose) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName(name)
+                .withNumFactory(DoubleNumFactory.getInstance())
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        final double[] closes = { 1, 2, 1, 2, 1, 1, nonFiniteClose, 1 };
+        for (int index = 0; index < closes.length; index++) {
+            final double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(Double.isFinite(close) ? close + 1 : close)
+                    .lowPrice(Double.isFinite(close) ? close - 1 : close)
                     .closePrice(close)
                     .volume(1)
                     .amount(close)

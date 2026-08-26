@@ -156,8 +156,8 @@ public final class FractalSwingDetector implements SwingDetector {
     private static final class CausalReplayState {
 
         private final BarSeries series;
-        private final RecentSwingIndicator swingHigh;
-        private final RecentSwingIndicator swingLow;
+        private RecentSwingIndicator swingHigh;
+        private RecentSwingIndicator swingLow;
         private final ElliottDegree degree;
 
         /** Merged alternating pivots visible up to {@link #lastScannedIndex}. */
@@ -181,24 +181,32 @@ public final class FractalSwingDetector implements SwingDetector {
         /** Whether {@link #pivots} changed since {@link #cachedResult} was built. */
         private boolean resultDirty = true;
 
-        // History observation mirroring the swing indicators' own reset rules.
+        // History observation mirroring the swing indicators' own reset rules,
+        // plus a last-bar value snapshot: series revision tracking cannot see
+        // in-place mutations of the retained last bar (for example
+        // series.getLastBar().addPrice(...)), so high/low/close values are
+        // compared whenever the end index is unchanged.
         private long observedRevision;
         private int observedBeginIndex;
         private int observedEndIndex;
-        private Bar observedLastBar;
+        private LastBarState observedLastBar;
+
+        private final int lookbackLength;
+        private final int lookforwardLength;
+        private final int allowedEqualBars;
 
         private CausalReplayState(final BarSeries series, final int lookbackLength, final int lookforwardLength,
                 final int allowedEqualBars, final ElliottDegree degree) {
             this.series = series;
+            this.lookbackLength = lookbackLength;
+            this.lookforwardLength = lookforwardLength;
+            this.allowedEqualBars = allowedEqualBars;
             this.swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
             this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
             this.degree = degree;
-            this.observedRevision = series.getBarHistoryRevision();
-            this.observedBeginIndex = series.getBeginIndex();
-            this.observedEndIndex = series.getEndIndex();
-            this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            this.observedLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
         }
 
         /**
@@ -224,10 +232,16 @@ public final class FractalSwingDetector implements SwingDetector {
         }
 
         private void advanceTo(final int index) {
-            if (index < lastScannedIndex || seriesHistoryChanged()) {
-                reset();
+            if (index < lastScannedIndex) {
+                reset(false);
+            } else if (seriesHistoryChanged()) {
+                // Revision tracking cannot observe in-place mutations of the
+                // retained last bar, and the swing indicators share that blind
+                // spot through their own history trackers. Rebuild the
+                // indicators too so detection observes the mutated prices from
+                // scratch.
+                reset(true);
             }
-
             final int beginIndex = series.getBeginIndex();
             final long scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : (long) lastScannedIndex + 1L;
             long asOfIndex = scanStart;
@@ -422,7 +436,7 @@ public final class FractalSwingDetector implements SwingDetector {
             return SwingDetectorResult.fromSwings(swings);
         }
 
-        private void reset() {
+        private void reset(final boolean rebuildIndicators) {
             pivots.clear();
             lastHighIndex = Integer.MIN_VALUE;
             lastLowIndex = Integer.MIN_VALUE;
@@ -431,22 +445,30 @@ public final class FractalSwingDetector implements SwingDetector {
             cachedPivots = List.of();
             resultDirty = true;
             pivotViewDirty = true;
+            if (rebuildIndicators) {
+                swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
+                        lookforwardLength, allowedEqualBars);
+                swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
+                        lookforwardLength, allowedEqualBars);
+            }
         }
 
         /**
          * Detects series history changes with the same discipline the swing indicators
          * apply internally, so stale merge state never survives a mutation they would
-         * themselves discard.
+         * themselves discard. Because revision tracking cannot observe in-place
+         * mutations of the retained last bar, the last bar's high/low/close values are
+         * part of the validity key whenever the end index is unchanged.
          */
         private boolean seriesHistoryChanged() {
             final long currentRevision = series.getBarHistoryRevision();
             final int currentBeginIndex = series.getBeginIndex();
             final int currentEndIndex = series.getEndIndex();
-            final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            final LastBarState currentLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
             final boolean changed = currentBeginIndex != observedBeginIndex
                     || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
-                    || (currentRevision < 0L && (currentEndIndex < observedEndIndex
-                            || (currentEndIndex == observedEndIndex && currentLastBar != observedLastBar)));
+                    || currentEndIndex < observedEndIndex || (currentEndIndex == observedEndIndex
+                            && currentLastBar != null && !currentLastBar.sameAs(observedLastBar));
             observedRevision = currentRevision;
             observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;
@@ -477,5 +499,36 @@ public final class FractalSwingDetector implements SwingDetector {
     }
 
     private record Pivot(int index, Num price, PivotType type) {
+    }
+
+    /**
+     * Value snapshot of the retained last bar's high/low/close prices. Series
+     * revision tracking cannot observe in-place bar mutations such as
+     * {@code series.getLastBar().addPrice(...)}, so the replay validity key
+     * compares these values whenever the end index is unchanged.
+     */
+    private record LastBarState(Num high, Num low, Num close) {
+
+        private static LastBarState of(final Bar bar) {
+            return new LastBarState(bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice());
+        }
+
+        private boolean sameAs(final LastBarState other) {
+            return other != null && sameValue(high, other.high) && sameValue(low, other.low)
+                    && sameValue(close, other.close);
+        }
+
+        private static boolean sameValue(final Num left, final Num right) {
+            if (left == right) {
+                return true;
+            }
+            if (left == null || right == null) {
+                return false;
+            }
+            if (Num.isNaNOrNull(left) && Num.isNaNOrNull(right)) {
+                return true;
+            }
+            return left.equals(right);
+        }
     }
 }

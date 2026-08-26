@@ -131,6 +131,27 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void inPlaceLastBarMutationInvalidatesSameIndexReplayResult() {
+        // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising the
+        // retained last bar's prices in place withdraws that confirmation while
+        // leaving the series revision, bar identity, and end index untouched,
+        // so only a last-bar value snapshot can detect the change.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+
+        series.getLastBar().addPrice(series.numFactory().numOf(20));
+
+        assertThat(series.getBarHistoryRevision()).isGreaterThanOrEqualTo(0L);
+        assertThat(shared.detectPivots(series, series.getEndIndex()))
+                .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).isEmpty();
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE).pivots()).isEmpty();
+    }
+
+    @Test
     void seriesGrowthKeepsReplayResultsConsistentWithFreshDetection() {
         final SplittableRandom random = new SplittableRandom(11L);
         final BarSeries series = new MockBarSeriesBuilder().build();

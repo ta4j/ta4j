@@ -533,12 +533,13 @@ final class StudyRunner {
                         accumulator.recordAlternative(index, false, false, false, "insufficient-history",
                                 Set.of("insufficient-history"));
                     } else {
-                        final Num first = series.getBar(index - 1)
-                                .getClosePrice()
-                                .minus(series.getBar(index - 2).getClosePrice());
-                        final Num second = series.getBar(index)
-                                .getClosePrice()
-                                .minus(series.getBar(index - 1).getClosePrice());
+                        final Num previousPreviousClose = series.getBar(index - 2).getClosePrice();
+                        final Num previousClose = series.getBar(index - 1).getClosePrice();
+                        final Num currentClose = series.getBar(index).getClosePrice();
+                        final Num first = previousClose.minus(previousPreviousClose);
+                        final Num second = currentClose.minus(previousClose);
+                        requireFiniteChangePointInputs(index, previousPreviousClose, previousClose, currentClose, first,
+                                second);
                         final boolean change = !first.isZero() && !second.isZero()
                                 && first.isPositive() != second.isPositive();
                         final String label = change ? "change@" + index : "stable";
@@ -552,6 +553,23 @@ final class StudyRunner {
         }
         return new StudyReport.ModeReport("competing-change-point-baseline", "change-point-baseline", List.of(),
                 metrics(accumulators, partitions));
+    }
+
+    /**
+     * Hard finite-input guard for the change-point baseline. The classifier only
+     * subtracts closes and compares signs, so a NaN or infinite close would
+     * otherwise surface as a phantom sign flip ({@code 1, +Infinity, 1} classifies
+     * as a change) or vanish into a zero delta and silently corrupt partition
+     * metrics. Rejecting the whole classification window mirrors the bootstrap's
+     * finite-close rejection instead of recording a dishonest sample.
+     */
+    private static void requireFiniteChangePointInputs(final int index, final Num previousPreviousClose,
+            final Num previousClose, final Num currentClose, final Num firstDelta, final Num secondDelta) {
+        if (!Num.isFinite(previousPreviousClose) || !Num.isFinite(previousClose) || !Num.isFinite(currentClose)
+                || !Num.isFinite(firstDelta) || !Num.isFinite(secondDelta)) {
+            throw new IllegalArgumentException("change-point-baseline requires finite close prices; bar " + index
+                    + " holds closes [" + previousPreviousClose + ", " + previousClose + ", " + currentClose + "]");
+        }
     }
 
     private static ConfirmationTracker.CausalReplay observeReplay(final BarSeries series,

@@ -222,11 +222,19 @@ final class ConfirmationTracker {
             if (dominatorIndex != null) {
                 final ConfirmedPivot dominator = known.get(dominatorIndex);
                 // Suppression survives only while the dominator still
-                // dominates today: a revision can hand dominance back, and a
-                // retyped dominator never dominated this type at all.
-                if (dominator != null && dominates(dominator, pivot)) {
+                // dominates today and the pair still forms an uninterrupted
+                // same-type run in the current report: a revision can hand
+                // dominance back, a retyped dominator never dominated this
+                // type at all, and a late opposite-type pivot inserted
+                // between the two breaks the run so snapshot normalization
+                // would keep both pivots.
+                if (dominator != null && dominates(dominator, pivot)
+                        && uninterruptedSameTypeRun(reported, pivot, dominator)) {
                     continue;
                 }
+                // The stale dominance edge is dead either way; a future
+                // re-collapse re-records it fresh during normalization.
+                collapsed.remove(pivot.index());
             }
             final ConfirmedPivot confirmed = new ConfirmedPivot(pivot.index(), asOf, pivot.price(), pivot.type());
             known.put(pivot.index(), confirmed);
@@ -331,6 +339,26 @@ final class ConfirmationTracker {
         case HIGH -> dominated.price().compareTo(dominator.price()) <= 0;
         case LOW -> dominated.price().compareTo(dominator.price()) >= 0;
         };
+    }
+
+    /**
+     * Returns whether the current report still contains no opposite-type pivot
+     * strictly between a suppressed pivot and its recorded dominator. Snapshot
+     * collapse only merges pivots inside one maximal same-type run, so a late
+     * opposite-type insertion between the two ends the dominance relationship even
+     * though both pivots remain reported.
+     */
+    private static boolean uninterruptedSameTypeRun(final List<SwingPivot> reported, final SwingPivot dominated,
+            final ConfirmedPivot dominator) {
+        final int low = Math.min(dominated.index(), dominator.pivotIndex());
+        final int high = Math.max(dominated.index(), dominator.pivotIndex());
+        for (final SwingPivot other : reported) {
+            final int index = other.index();
+            if (index > low && index < high && other.type() != dominated.type()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
