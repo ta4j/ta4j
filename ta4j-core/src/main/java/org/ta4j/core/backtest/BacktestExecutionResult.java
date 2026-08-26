@@ -207,7 +207,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             TradingRecord tradingRecord = statement.getTradingRecord();
             Runnable sweep = () -> {
                 for (AnalysisCriterion criterion : criteria) {
-                    Num value = criterion.calculate(barSeries, statement.getTradingRecord());
+                    Num value = criterion.calculate(barSeries, tradingRecord);
                     values.add(value);
                     scores.put(criterion, value);
                 }
