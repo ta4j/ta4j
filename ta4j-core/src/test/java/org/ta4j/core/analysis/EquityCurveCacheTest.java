@@ -11,6 +11,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.DecimalNumFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -28,12 +29,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.criteria.CalmarRatioCriterion;
@@ -263,7 +266,7 @@ public class EquityCurveCacheTest {
         CumulativePnL cachedCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
                 OpenPositionHandling.IGNORE);
 
-        currentTransactionCostModel.set(new ZeroCostModel());
+        currentTransactionCostModel.set(new LinearTransactionCostModel(0.01));
 
         CumulativePnL rebuiltCurve = equityCurveCache.cumulativePnL(EquityCurveMode.REALIZED,
                 OpenPositionHandling.IGNORE);
@@ -271,6 +274,59 @@ public class EquityCurveCacheTest {
         assertNumEquals(new EquityCurveCache(series, tradingRecord)
                 .cumulativePnL(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
                 .getValue(series.getEndIndex()), rebuiltCurve.getValue(series.getEndIndex()));
+    }
+
+    @Test
+    public void bundleReusesCurveWhenCostModelReturnsEquivalentInstance() {
+        CostModel transactionCostModel = new ZeroCostModel();
+        AtomicReference<CostModel> currentTransactionCostModel = new AtomicReference<>(transactionCostModel);
+        BarSeries series = series();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, transactionCostModel,
+                new ZeroCostModel()) {
+            @Override
+            public CostModel getTransactionCostModel() {
+                return currentTransactionCostModel.get();
+            }
+        };
+        tradingRecord.operate(Trade.buyAt(0, series));
+        tradingRecord.operate(Trade.sellAt(2, series));
+        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
+
+        CashFlow cachedCurve = equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        // A record returning a fresh but semantically equal model instance must
+        // not invalidate the cache: identity is not part of the fingerprint.
+        currentTransactionCostModel.set(new ZeroCostModel());
+
+        CashFlow reusedCurve = equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        assertSame(cachedCurve, reusedCurve);
+    }
+
+    @Test
+    public void bundleDisablesReuseForSeriesWithoutRevisionTracking() {
+        // Bars must share the anonymous series' default DecimalNumFactory.
+        BarSeries trackedSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1d, 2d, 3d, 2d, 4d, 3d, 5d, 4d, 6d, 5d, 7d)
+                .build();
+        BarSeries untrackedSeries = new BaseBarSeries(trackedSeries.getName(), trackedSeries.getBarData()) {
+            // Reports the documented unsupported revision default of -1:
+            // retained-bar replacement cannot be ruled out, so reuse must be off.
+            @Override
+            public long getBarHistoryRevision() {
+                return -1;
+            }
+        };
+        TradingRecord tradingRecord = closedPositionsRecord(trackedSeries);
+        EquityCurveCache equityCurveCache = new EquityCurveCache(untrackedSeries, tradingRecord);
+
+        CashFlow firstCurve = equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow secondCurve = equityCurveCache.cashFlow(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        // Revision -1 cannot rule out retained-bar replacement, so reuse is
+        // disabled and every request observes a freshly computed curve.
+        assertNotSame(firstCurve, secondCurve);
+        assertNumEquals(firstCurve.getValue(untrackedSeries.getEndIndex()),
+                secondCurve.getValue(untrackedSeries.getEndIndex()));
     }
 
     @Test

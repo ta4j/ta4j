@@ -197,9 +197,14 @@ public final class EquityCurveCache {
             long revision = currentInputRevision();
             CostModel recordTransactionCostModel = tradingRecord.getTransactionCostModel();
             CostModel recordHoldingCostModel = tradingRecord.getHoldingCostModel();
-            boolean costModelsChanged = transactionCostModel != recordTransactionCostModel
-                    || holdingCostModel != recordHoldingCostModel;
-            if (revision == inputRevision && !costModelsChanged && curveSeries != null) {
+            boolean costModelsChanged = !transactionCostModel.equals(recordTransactionCostModel)
+                    || !holdingCostModel.equals(recordHoldingCostModel);
+            // A series whose getBarHistoryRevision() returns the documented
+            // "unsupported" default of -1 gives no guarantee that replacing a
+            // retained bar bumps any observable state: end index and removed-bar
+            // count stay fixed while prices change. Reuse must be disabled for
+            // such series, so they never hit this fast path.
+            if (revision == inputRevision && !costModelsChanged && curveSeries != null && tracksBarHistory()) {
                 return;
             }
             // Copy the bars and bounds coherently: the live series may append or
@@ -208,8 +213,8 @@ public final class EquityCurveCache {
             // paired with bounds read after it). Revalidate afterwards and retry.
             BarSeries snapshot = SeriesSnapshots.deepCopy(series);
             if (currentInputRevision() != revision
-                    || tradingRecord.getTransactionCostModel() != recordTransactionCostModel
-                    || tradingRecord.getHoldingCostModel() != recordHoldingCostModel) {
+                    || !tradingRecord.getTransactionCostModel().equals(recordTransactionCostModel)
+                    || !tradingRecord.getHoldingCostModel().equals(recordHoldingCostModel)) {
                 continue;
             }
             inputRevision = revision;
@@ -255,12 +260,22 @@ public final class EquityCurveCache {
             CostModel transactionCostModel = tradingRecord.getTransactionCostModel();
             CostModel holdingCostModel = tradingRecord.getHoldingCostModel();
             T curve = curveFactory.get();
-            if (currentInputRevision() == revision && tradingRecord.getTransactionCostModel() == transactionCostModel
-                    && tradingRecord.getHoldingCostModel() == holdingCostModel) {
+            if (currentInputRevision() == revision
+                    && tradingRecord.getTransactionCostModel().equals(transactionCostModel)
+                    && tradingRecord.getHoldingCostModel().equals(holdingCostModel)) {
                 return curve;
             }
             invalidateIfInputsChanged();
         }
+    }
+
+    /**
+     * Returns whether the captured series supports bar-history revision tracking;
+     * series returning the documented unsupported default of {@code -1} cannot
+     * prove retained-bar replacement, so cached curves are rebuilt for them.
+     */
+    private boolean tracksBarHistory() {
+        return series.getBarHistoryRevision() >= 0;
     }
 
     /**
@@ -384,8 +399,8 @@ public final class EquityCurveCache {
                     return flow;
                 });
                 if (currentInputRevision() == revision
-                        && tradingRecord.getTransactionCostModel() == transactionCostModel
-                        && tradingRecord.getHoldingCostModel() == holdingCostModel) {
+                        && tradingRecord.getTransactionCostModel().equals(transactionCostModel)
+                        && tradingRecord.getHoldingCostModel().equals(holdingCostModel)) {
                     cashFlow.freeze();
                     investedIntervals.putIfAbsent(openPositionHandling, investedInterval);
                     cashFlows.putIfAbsent(key, cashFlow);
