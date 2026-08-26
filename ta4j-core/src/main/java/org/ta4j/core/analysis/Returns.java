@@ -317,6 +317,7 @@ public class Returns implements PerformanceIndicator {
      * return distribution.
      *
      * @return {@code true} if the first retained slot holds a real return
+     * @since 0.24.2
      */
     public boolean isFirstSlotSeeded() {
         return firstRetainedSlotSeeded;

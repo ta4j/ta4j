@@ -107,7 +107,7 @@ public final class Drawdown {
         if (!series.isEmpty()) {
             for (long i = begin; i <= end; i++) {
                 int index = (int) i;
-                var value = curve.getValue(index);
+                Num value = curve.getValue(index);
                 if (value.isGreaterThan(peak)) {
                     peak = value;
                     peakIndex = index;
