@@ -13,6 +13,7 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Internal helper that creates detached, deep-copied series snapshots for the
@@ -40,37 +41,34 @@ final class SeriesSnapshots {
      */
     static BarSeries deepCopy(BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
+        // Copy the bars once and derive the snapshot bounds from the
+        // removed-bars count captured before the copy: a live series may append
+        // while the O(N) copy runs, which merely yields a slightly stale but
+        // coherent snapshot instead of restarting the copy (an unbounded retry
+        // could starve under sustained writes). Only an expired-bar removal,
+        // which shifts every logical index, triggers a retry.
         while (true) {
-            // Copy bars and bounds coherently: a live series may append or prune
-            // while the snapshot is taken, which would pair bars copied before
-            // the mutation with bounds read after it. The bar-history revision
-            // explicitly excludes appends and expired-bar removals, so the
-            // structural state is revalidated alongside it before accepting the
-            // copy.
-            long revision = barSeries.getBarHistoryRevision();
             int removedBarsCount = barSeries.getRemovedBarsCount();
             List<Bar> sourceBars = barSeries.getBarData();
             List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
             for (Bar bar : sourceBars) {
-                copiedBars.add(copyBar(bar));
+                copiedBars.add(copyBar(bar, barSeries.numFactory()));
             }
-            int beginIndex = Math.max(0, barSeries.getBeginIndex());
-            int endIndex = barSeries.getEndIndex();
-            int maximumBarCount = barSeries.getMaximumBarCount();
-            if (barSeries.getBarHistoryRevision() != revision || barSeries.getRemovedBarsCount() != removedBarsCount
-                    || Math.max(0, barSeries.getBeginIndex()) != beginIndex || barSeries.getEndIndex() != endIndex) {
+            if (barSeries.getRemovedBarsCount() != removedBarsCount) {
                 continue;
             }
-            return new BaseBarSeriesBuilder().withName(barSeries.getName())
+            int maximumBarCount = barSeries.getMaximumBarCount();
+            BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(barSeries.getName())
                     .withNumFactory(barSeries.numFactory())
-                    .withBars(copiedBars)
-                    .withBeginIndex(beginIndex)
-                    .withMaxBarCount(maximumBarCount)
-                    .build();
+                    .withMaxBarCount(maximumBarCount);
+            if (copiedBars.isEmpty()) {
+                return builder.withBeginIndex(Math.max(0, removedBarsCount)).build();
+            }
+            return builder.withBars(copiedBars).withBeginIndex(Math.max(0, removedBarsCount)).build();
         }
     }
 
-    private static Bar copyBar(Bar bar) {
+    private static Bar copyBar(Bar bar, NumFactory numFactory) {
         if (bar instanceof BaseRealtimeBar realtimeBar) {
             return new BaseRealtimeBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
                     bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
@@ -79,7 +77,7 @@ final class SeriesSnapshots {
                     realtimeBar.getSellTrades(), realtimeBar.getMakerVolume(), realtimeBar.getTakerVolume(),
                     realtimeBar.getMakerAmount(), realtimeBar.getTakerAmount(), realtimeBar.getMakerTrades(),
                     realtimeBar.getTakerTrades(), realtimeBar.hasSideData(), realtimeBar.hasLiquidityData(),
-                    bar.getOpenPrice().getNumFactory());
+                    numFactory);
         }
         return new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
                 bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),

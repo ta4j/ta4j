@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
 
@@ -43,7 +44,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
     @Test
     public void clipsBlocksToRetainedMovingSeriesWindow() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 101, 99, 102, 98, 103, 97, 104, 96, 105, 95, 106)
                 .build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
