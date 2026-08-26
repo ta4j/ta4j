@@ -43,29 +43,33 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
     }
 
     @Test
-    public void wilderRecentWindowWidensAroundDriftPathWithCap() {
+    public void wilderRecentWindowWidensAroundSampleMean() {
         // Recent RMS 0.2 over 2 bars vs state volatility 0.05 -> ratio 4, capped at 4.
-        // drift 0.05 * horizon 2 = 0.1; centered 0.9 -> 0.1 + 4 * 0.9 = 3.7.
-        MonteCarloMethod inner = fixedSamples(1.0d);
+        // Inner samples [0, 1] have center 0.5: 0.5 + 4 * (0 - 0.5) = -1.5,
+        // 0.5 + 4 * (1 - 0.5) = 2.5. Widening must not shift the center.
+        MonteCarloMethod inner = fixedSamples(0.0d, 1.0d);
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 4d);
 
-        List<Num> samples = method.terminalReturns(context(2, 1, window(0.2d, 0.2d), moments(0.05d, 0.05d), 1L));
+        List<Num> samples = method.terminalReturns(context(2, 2, window(0.2d, 0.2d), moments(0.05d, 0.05d), 1L));
 
-        assertEquals(1, samples.size());
-        TestUtils.assertNumEquals(FACTORY.numOf(3.7d), samples.get(0), 1e-12);
+        assertEquals(2, samples.size());
+        TestUtils.assertNumEquals(FACTORY.numOf(-1.5d), samples.get(0), 1e-12);
+        TestUtils.assertNumEquals(FACTORY.numOf(2.5d), samples.get(1), 1e-12);
     }
 
     @Test
     public void capIsAppliedWhenRatioExceedsMaxWiden() {
         // Recent RMS 0.4 vs state volatility 0.01 -> ratio 40, capped at 3.
-        // drift 0.05 * horizon 2 = 0.1; centered 0.9 -> 0.1 + 3 * 0.9 = 2.8.
-        MonteCarloMethod inner = fixedSamples(1.0d);
+        // Inner samples [0, 1] have center 0.5: 0.5 + 3 * (0 - 0.5) = -1.0,
+        // 0.5 + 3 * (1 - 0.5) = 2.0.
+        MonteCarloMethod inner = fixedSamples(0.0d, 1.0d);
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 3d);
 
-        List<Num> samples = method.terminalReturns(context(2, 1, window(0.4d, 0.4d), moments(0.01d, 0.05d), 1L));
+        List<Num> samples = method.terminalReturns(context(2, 2, window(0.4d, 0.4d), moments(0.01d, 0.05d), 1L));
 
-        assertEquals(1, samples.size());
-        TestUtils.assertNumEquals(FACTORY.numOf(2.8d), samples.get(0), 1e-12);
+        assertEquals(2, samples.size());
+        TestUtils.assertNumEquals(FACTORY.numOf(-1.0d), samples.get(0), 1e-12);
+        TestUtils.assertNumEquals(FACTORY.numOf(2.0d), samples.get(1), 1e-12);
     }
 
     @Test

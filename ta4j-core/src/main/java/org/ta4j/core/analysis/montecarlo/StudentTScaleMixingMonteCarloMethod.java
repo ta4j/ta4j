@@ -29,9 +29,11 @@ import org.ta4j.core.num.NumFactory;
  * so the quantile spread grows where it matters for coverage in high-volatility
  * regimes, while the mean and the calm-regime center are preserved. Higher
  * degrees of freedom approximate the unchanged gaussian case; lower values
- * permit more extreme scale draws. The numerator {@code sqrt(M / chiSq(M))}
+ * permit more extreme scale draws. The numerator {@code sqrt(df / chiSq(df))}
  * uses {@code degreesOfFreedom} independent standard-normal draws from
- * {@link MonteCarloContext#random()}.
+ * {@link MonteCarloContext#random()}, and each inner sample is coerced through
+ * the context's {@link NumFactory} so cross-factory inner techniques compose
+ * without throwing.
  *
  * <p>
  * This decorator stresses the seam contract: it draws exclusively from
@@ -68,7 +70,7 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
      * Wraps an inner technique with a configurable degrees of freedom.
      *
      * @param inner            technique whose centered samples are rescaled
-     * @param degreesOfFreedom of the mixing Student-t scale, must be >= 2
+     * @param degreesOfFreedom of the mixing Student-t scale, must be &gt;= 2
      * @since 0.24.2
      */
     public StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner, int degreesOfFreedom) {
@@ -102,8 +104,14 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
         RandomGenerator random = context.random();
         List<Num> mixed = new ArrayList<>(context.iterationCount());
         for (Num sample : samples) {
+            // Coerce cross-factory inner samples through the context factory so the
+            // arithmetic never throws (the seam explicitly supports foreign Num types).
+            Num converted = convert(sample, numFactory);
+            if (converted == null) {
+                return null;
+            }
             double factor = tScaleDraw(random) / scaleMean;
-            Num centered = sample.minus(driftPath);
+            Num centered = converted.minus(driftPath);
             Num scaled = driftPath.plus(centered.multipliedBy(numFactory.numOf(factor)));
             if (!Num.isFinite(scaled)) {
                 return null;
@@ -111,6 +119,10 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             mixed.add(scaled);
         }
         return mixed;
+    }
+
+    private static Num convert(Num value, NumFactory numFactory) {
+        return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
     }
 
     /** {@code sqrt(df / chiSq(df))} draw from the Student-t scale distribution. */
@@ -126,20 +138,31 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
     /**
      * Closed-form expectation of {@code sqrt(df / chiSq(df))},
      * {@code sqrt(df/2) * Gamma((df-1)/2) / Gamma(df/2)}, needed so the mixing
-     * factor has mean 1. Uses a Lanczos approximation of the gamma function,
-     * sufficient for the small half-integer arguments used here.
+     * factor has mean 1. Computed in log space so large degrees of freedom (where
+     * the individual Gamma terms overflow) still yield a finite ratio that
+     * approaches 1 as df grows.
+     *
+     * @param degreesOfFreedom the mixing degrees of freedom, &gt;= 2
+     * @return the finite scale expectation
      */
     private static double tScaleMean(int degreesOfFreedom) {
-        return Math.sqrt(degreesOfFreedom / 2d) * gamma((degreesOfFreedom - 1d) / 2d) / gamma(degreesOfFreedom / 2d);
+        return Math.sqrt(degreesOfFreedom / 2d)
+                * Math.exp(logGamma((degreesOfFreedom - 1d) / 2d) - logGamma(degreesOfFreedom / 2d));
     }
 
-    /** Lanczos approximation of {@code Gamma(x)} for {@code x > 0}. */
-    private static double gamma(double x) {
-        double[] coefficients = { 0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    /**
+     * Natural logarithm of the gamma function via the Lanczos approximation,
+     * computed in log space so large arguments never overflow intermediate terms.
+     *
+     * @param x a positive argument
+     * @return {@code ln Gamma(x)}
+     */
+    private static double logGamma(double x) {
+        final double[] coefficients = { 0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
                 -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6,
                 1.5056327351493116e-7 };
         if (x < 0.5) {
-            return Math.PI / (Math.sin(Math.PI * x) * gamma(1d - x));
+            return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * x)) - logGamma(1d - x);
         }
         x -= 1d;
         double a = coefficients[0];
@@ -147,7 +170,7 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
         for (int i = 1; i < coefficients.length; i++) {
             a += coefficients[i] / (x + i);
         }
-        return Math.sqrt(2d * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+        return 0.5 * Math.log(2d * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
     }
 
     @Override

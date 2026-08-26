@@ -95,7 +95,7 @@ public final class WalkForwardCalibrationBakeoffExample {
     static final double EWMA_DECAY = 0.94d;
     static final double NOMINAL_COVERAGE = 0.90d;
     static final double[] PINBALL_QUANTILES = new double[] { 0.05d, 0.5d, 0.95d };
-
+    static final int CHECKPOINT_EVERY = 250;
     private static final Logger LOG = LogManager.getLogger(WalkForwardCalibrationBakeoffExample.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final List<DatasetSpec> DATASETS = List.of(new DatasetSpec(SP500_RESOURCE, "SP500-weekly", "sp500"),
@@ -211,10 +211,6 @@ public final class WalkForwardCalibrationBakeoffExample {
                         new StudentTScaleMixingMonteCarloMethod(new RecentVolatilityWideningMonteCarloMethod(
                                 new PosteriorSmoothedResidualMonteCarloMethod(new ShockPathMonteCarloMethod(
                                         ShockModel.NORMAL, VolatilityUpdateMode.CONSTANT, EWMA_DECAY))))),
-                new ArmSpec("nig-boot-composed-recentvol-ttail", "NIG-BOOT+RECENTVOL+TTAIL",
-                        new StudentTScaleMixingMonteCarloMethod(new RecentVolatilityWideningMonteCarloMethod(
-                                new PosteriorSmoothedResidualMonteCarloMethod(new ShockPathMonteCarloMethod(
-                                        ShockModel.HISTORICAL_BOOTSTRAP, VolatilityUpdateMode.EWMA, EWMA_DECAY))))),
                 new ArmSpec("ensemble-boot-nig-recentvol-ttail", "ENSEMBLE-BOOT+NIG+RECENTVOL+TTAIL",
                         new StudentTScaleMixingMonteCarloMethod(
                                 new RecentVolatilityWideningMonteCarloMethod(new EnsembleMonteCarloMethod(
@@ -264,10 +260,16 @@ public final class WalkForwardCalibrationBakeoffExample {
                     tercileBucket(forwardVolatilityRMS(returns, index, HORIZON).doubleValue(), tercileBounds),
                     coverageHit, pinball05, pinball50, pinball95, crps));
 
-            if (++logged % 250 == 0) {
+            if (++logged % CHECKPOINT_EVERY == 0) {
                 LOG.info("  {}: {} origins evaluated, {} unstable", arm.name(), acc.sampleCount + acc.unstableCount,
                         acc.unstableCount);
+                // Persist the origin rows captured so far so a long run survives
+                // interruption with progressively richer evidence (AGENTS.md analysis rule).
+                writeJson(checkpoint, new ArmCheckpoint(arm.name(), List.copyOf(rows)));
             }
+        }
+        if (!rows.isEmpty()) {
+            writeJson(checkpoint, new ArmCheckpoint(arm.name(), List.copyOf(rows)));
         }
         acc.rows = rows;
         return acc;
@@ -454,6 +456,10 @@ public final class WalkForwardCalibrationBakeoffExample {
     private record ArmSpec(String token, String name, MonteCarloMethod method) {
     }
 
+    /** Incremental per-arm evidence, written to the arm checkpoint file. */
+    private record ArmCheckpoint(String arm, List<OriginRow> rows) {
+    }
+
     private record OriginRow(int index, int regime, double coverageHit, double pinball05, double pinball50,
             double pinball95, double crps) {
     }
@@ -489,10 +495,14 @@ public final class WalkForwardCalibrationBakeoffExample {
         }
 
         ArmResult toResult(String armName) {
-            double[] overall = new double[] { coverageRate(), meanPinball05(), meanPinball50(), meanPinball95(),
-                    meanCrps() };
+            Double[] overall = new Double[] { box(coverageRate()), box(meanPinball05()), box(meanPinball50()),
+                    box(meanPinball95()), box(meanCrps()) };
             return new ArmResult(armName, sampleCount, unstableCount, overall,
                     new RegimeResult[] { regimeResult(0), regimeResult(1), regimeResult(2) });
+        }
+
+        private static Double box(double value) {
+            return Double.isNaN(value) ? null : value;
         }
 
         private RegimeResult regimeResult(int regime) {
@@ -513,9 +523,9 @@ public final class WalkForwardCalibrationBakeoffExample {
                 pinball95 += row.pinball95();
                 crps += row.crps();
             }
-            return new RegimeResult(regimeName(regime), count, count == 0 ? Double.NaN : coverageHits / count,
-                    count == 0 ? Double.NaN : pinball05 / count, count == 0 ? Double.NaN : pinball50 / count,
-                    count == 0 ? Double.NaN : pinball95 / count, count == 0 ? Double.NaN : crps / count);
+            return new RegimeResult(regimeName(regime), count, count == 0 ? null : coverageHits / count,
+                    count == 0 ? null : pinball05 / count, count == 0 ? null : pinball50 / count,
+                    count == 0 ? null : pinball95 / count, count == 0 ? null : crps / count);
         }
 
         private static String regimeName(int regime) {
@@ -527,15 +537,28 @@ public final class WalkForwardCalibrationBakeoffExample {
         }
     }
 
-    record RegimeResult(String regime, int count, double coverage, double pinball05, double pinball50, double pinball95,
-            double crps) {
+    /**
+     * A regime's metrics are {@code null} when the regime held no stable origins
+     * (for example under a small decision cap), so the JSON stays well-formed
+     * rather than emitting non-finite numbers.
+     *
+     * @param regime    low | mid | high
+     * @param count     stable origins in the regime
+     * @param coverage  coverage rate over the regime, or null when empty
+     * @param pinball05 mean pinball at q05, or null when empty
+     * @param pinball50 mean pinball at q50, or null when empty
+     * @param pinball95 mean pinball at q95, or null when empty
+     * @param crps      mean CRPS, or null when empty
+     */
+    record RegimeResult(String regime, int count, Double coverage, Double pinball05, Double pinball50, Double pinball95,
+            Double crps) {
     }
 
     /**
      * {@code metrics} is {@code [coverage, pinball05, pinball50, pinball95, crps]}
-     * over all stable origins.
+     * over all stable origins; entries are {@code null} when there are none.
      */
-    record ArmResult(String name, int stableCount, int unstableCount, double[] metrics, RegimeResult[] regimes) {
+    record ArmResult(String name, int stableCount, int unstableCount, Double[] metrics, RegimeResult[] regimes) {
     }
 
     record BakeoffResult(String dataset, String resource, int horizon, int lookback, int iterations, long seed,

@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.montecarlo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,15 +16,16 @@ import org.junit.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
  * Verifies the Student-t scale mixing decorator: centered samples are rescaled
- * around the drift path with mean-1 scale draws, high degrees of freedom
- * approximate the unchanged inner, and the seam null/wrong-count contract is
- * honored.
+ * around the drift path with mean-1 scale draws, very high degrees of freedom
+ * stay finite, cross-factory inner samples are coerced without throwing, and
+ * the seam null/wrong-count contract is honored.
  */
 public class StudentTScaleMixingMonteCarloMethodTest {
 
@@ -56,6 +58,43 @@ public class StudentTScaleMixingMonteCarloMethodTest {
         assertEquals(1, samples.size());
         // The scale draw is concentrated near 1; allow a small tolerance.
         TestUtils.assertNumEquals(FACTORY.numOf(0.5d), samples.get(0), 0.5d);
+    }
+
+    @Test
+    public void veryHighDegreesOfFreedomStayFinite() {
+        // df = 300 previously overflowed the Lanczos gamma -> NaN scale mean and
+        // thereby NaN samples (instability). The log-space computation keeps the
+        // mean finite, so all samples must be finite.
+        MonteCarloMethod inner = fixedSamples(0.5d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(inner, 300);
+
+        List<Num> samples = method.terminalReturns(context(4, 1, window(0.01d, -0.01d, 0.01d), moments(0d), 7L));
+
+        assertEquals(1, samples.size());
+        for (Num sample : samples) {
+            assertTrue(Double.isFinite(sample.doubleValue()));
+        }
+    }
+
+    @Test
+    public void foreignFactoryInnerSamplesAreCoercedWithoutThrowing() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        // Inner returns DoubleNum samples while context and moments use DecimalNum;
+        // the decorator must coerce through the context factory instead of
+        // throwing a ClassCastException.
+        MonteCarloMethod inner = context -> {
+            List<Num> samples = new ArrayList<>(1);
+            samples.add(FACTORY.numOf(0.5d));
+            return samples;
+        };
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(inner, 5);
+        ReturnMoments decimalMoments = ReturnMoments.stable(100, 3, ReturnRepresentation.LOG, decimalFactory.zero(),
+                decimalFactory.zero(), decimalFactory.one());
+        List<Num> samples = method.terminalReturns(new MonteCarloContext(100, 4, 1, window(0.01d, -0.01d, 0.01d),
+                decimalMoments, new SplittableRandom(7L), decimalFactory));
+
+        assertEquals(1, samples.size());
+        assertTrue(Double.isFinite(samples.get(0).doubleValue()));
     }
 
     @Test

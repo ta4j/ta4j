@@ -117,8 +117,13 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
                     .drawParameters(posterior, random);
             double sigma = Math.sqrt(draw.sigmaSquared());
-            Num residualPath = innerSamples.get(iteration)
-                    .minus(drift.multipliedBy(numFactory.numOf(context.horizon())))
+            // Coerce the inner sample through the context factory so cross-factory
+            // inner techniques compose without throwing.
+            Num innerSample = normalize(innerSamples.get(iteration), numFactory);
+            if (innerSample == null) {
+                return null;
+            }
+            Num residualPath = innerSample.minus(drift.multipliedBy(numFactory.numOf(context.horizon())))
                     .dividedBy(volatility);
             double cumulativeReturn = draw.mu() * context.horizon() + sigma * residualPath.doubleValue();
             if (!Double.isFinite(cumulativeReturn)) {
