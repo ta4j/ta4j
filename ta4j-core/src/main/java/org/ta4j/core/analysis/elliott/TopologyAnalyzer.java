@@ -138,6 +138,13 @@ final class TopologyAnalyzer {
                     + breachedByObservation.startBarIndex() + "-" + breachedByObservation.endBarIndex());
         }
         if (live.size() == 1) {
+            // A lone historical completion must not mask a later disjoint
+            // suffix that is actively forming the next structure: the forming
+            // prefix describes the present, the old completion is history.
+            final TopologyAnalysis forming = detectForming(grammar, window);
+            if (forming != null && forming.formingStartBarIndex() > live.get(0).endBarIndex()) {
+                return forming;
+            }
             return new TopologyAnalysis(
                     TopologyStatus.COMPLETE, live.get(0).direction(), live, "single " + grammar
                             + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex(),
@@ -163,43 +170,11 @@ final class TopologyAnalyzer {
                         bounded.size() + " of " + current.size() + " tied " + grammar + " candidates remain", -1, -1);
             }
         }
-
         // No live complete candidate survived; the freshest partial pattern may
-        // still be forming in the newest pivots. Scan trailing suffixes of every
-        // allowed length so a fresh prefix can form even when the retained
-        // history already exceeds the grammar length.
-        final int maxSuffixPivots = Math.min(window.size(), grammar.requiredPivots() - 1);
-        // A single leg fits some orientation of every kernel grammar, so
-        // reporting FORMING from a two-pivot suffix would fold nearly every
-        // genuine non-match into forming and drive the null no-match rate to
-        // zero. Require the leading two legs pinned -- three pivots -- before
-        // claiming a partial pattern; grammars that complete on three pivots
-        // have no meaningful partial state left and surface only complete or
-        // no-match outcomes.
-        final int minSuffixPivots = Math.min(3, grammar.requiredPivots());
-        if (minSuffixPivots <= maxSuffixPivots) {
-            // Resolve suffix length before direction: a longer trailing
-            // prefix is stronger evidence than any shorter one, so the
-            // forming direction must never depend on enum iteration order.
-            // At a given length, opposing orientations cancel out -- a
-            // contested shape is not evidence of either direction -- and the
-            // scan falls through to the next shorter suffix.
-            for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
-                final List<ConfirmedPivot> suffixPivots = window.subList(window.size() - suffix, window.size());
-                final List<WaveDirection> matching = new ArrayList<>();
-                for (final WaveDirection direction : WaveDirection.values()) {
-                    if (matchesPartialShape(grammar, direction, suffixPivots)) {
-                        matching.add(direction);
-                    }
-                }
-                if (matching.size() == 1) {
-                    final WaveDirection direction = matching.get(0);
-                    return TopologyAnalysis.forming(direction, suffixPivots.get(0).pivotIndex(),
-                            suffixPivots.get(suffixPivots.size() - 1).pivotIndex(),
-                            "partial " + grammar + " prefix present in " + direction + " orientation over the " + suffix
-                                    + " newest pivots");
-                }
-            }
+        // still be forming in the newest pivots.
+        final TopologyAnalysis forming = detectForming(grammar, window);
+        if (forming != null) {
+            return forming;
         }
         if (window.size() < grammar.requiredPivots()) {
             return TopologyAnalysis
@@ -237,6 +212,49 @@ final class TopologyAnalyzer {
     private boolean hasNewerLiveCandidate(final List<TopologyCandidate> live,
             final TopologyCandidate invalidatedCandidate) {
         return live.stream().anyMatch(candidate -> chronological(candidate, invalidatedCandidate) > 0);
+    }
+
+    /**
+     * Scans trailing suffixes of every allowed length so a fresh prefix can form
+     * even when the retained history already exceeds the grammar length;
+     * {@code null} when no partial pattern is present.
+     */
+    private TopologyAnalysis detectForming(final TopologyGrammar grammar, final List<ConfirmedPivot> window) {
+        final int maxSuffixPivots = Math.min(window.size(), grammar.requiredPivots() - 1);
+        // A single leg fits some orientation of every kernel grammar, so
+        // reporting FORMING from a two-pivot suffix would fold nearly every
+        // genuine non-match into forming and drive the null no-match rate to
+        // zero. Require the leading two legs pinned -- three pivots -- before
+        // claiming a partial pattern; grammars that complete on three pivots
+        // have no meaningful partial state left and surface only complete or
+        // no-match outcomes.
+        final int minSuffixPivots = Math.min(3, grammar.requiredPivots());
+        if (minSuffixPivots > maxSuffixPivots) {
+            return null;
+        }
+        // Resolve suffix length before direction: a longer trailing
+        // prefix is stronger evidence than any shorter one, so the
+        // forming direction must never depend on enum iteration order.
+        // At a given length, opposing orientations cancel out -- a
+        // contested shape is not evidence of either direction -- and the
+        // scan falls through to the next shorter suffix.
+        for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
+            final List<ConfirmedPivot> suffixPivots = window.subList(window.size() - suffix, window.size());
+            final List<WaveDirection> matching = new ArrayList<>();
+            for (final WaveDirection direction : WaveDirection.values()) {
+                if (matchesPartialShape(grammar, direction, suffixPivots)) {
+                    matching.add(direction);
+                }
+            }
+            if (matching.size() == 1) {
+                final WaveDirection direction = matching.get(0);
+                return TopologyAnalysis.forming(direction, suffixPivots.get(0).pivotIndex(),
+                        suffixPivots.get(suffixPivots.size() - 1).pivotIndex(),
+                        "partial " + grammar + " prefix present in " + direction + " orientation over the " + suffix
+                                + " newest pivots");
+            }
+        }
+        return null;
     }
 
     private List<TopologyCandidate> boundedMostRecent(final List<TopologyCandidate> complete) {

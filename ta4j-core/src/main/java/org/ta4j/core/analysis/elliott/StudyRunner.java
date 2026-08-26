@@ -649,6 +649,12 @@ final class StudyRunner {
         if (!supplied.contains(TopologyGrammar.MOTIVE_5)) {
             throw new IllegalArgumentException("grammars must include MOTIVE_5 for the preregistered H1 claim");
         }
+        // H2 is declared over CYCLE_5_3; a configuration that omits it would
+        // emit an H2 ablation ladder whose label contradicts the measured
+        // grammar. Reject rather than silently emitting an undeclared result.
+        if (!supplied.contains(TopologyGrammar.CYCLE_5_3)) {
+            throw new IllegalArgumentException("grammars must include CYCLE_5_3 for the preregistered H2 claim");
+        }
         // Duplicate entries would emit indistinguishable H1/mode rows for the
         // same experiment and invite double counting, mirroring the duplicate
         // rule-id rejection below.
@@ -978,13 +984,15 @@ final class StudyRunner {
             }
             final List<String> matches = new ArrayList<>();
             // A placement stays a live hypothesis while its trailing edge is
-            // within one pattern-length of the newest pivot; completed
-            // patterns beyond that horizon are retired so distant history
-            // cannot freeze every later bar into permanent ambiguity.
+            // within one pattern-length of the newest pivot, inclusive: a
+            // complete placement ending exactly one pattern length behind the
+            // newest pivot remains eligible. Older completions are retired so
+            // distant history cannot freeze every later bar into permanent
+            // ambiguity.
             final int horizonPosition = Math.max(0, pivots.size() - required);
             for (int start = 0; start + required <= pivots.size(); start++) {
                 final List<ConfirmedPivot> window = pivots.subList(start, start + required);
-                if (matchesWindow(window) && start + required - 1 > horizonPosition) {
+                if (matchesWindow(window) && start + required - 1 >= horizonPosition) {
                     matches.add(window.get(0).pivotIndex() + "-" + window.get(window.size() - 1).pivotIndex());
                 }
             }

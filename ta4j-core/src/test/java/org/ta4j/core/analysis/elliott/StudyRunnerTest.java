@@ -45,8 +45,8 @@ class StudyRunnerTest {
                         new StudyRunner.Partition("validation", LocalDate.of(2024, 1, 3), LocalDate.of(2024, 1, 4)),
                         new StudyRunner.Partition("holdout", LocalDate.of(2024, 1, 5), LocalDate.of(2024, 1, 6))),
                 LocalDate.of(2024, 1, 1));
-        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.MOTIVE_5),
-                List.of(), configuration(invalid, 1));
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory,
+                List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3), List.of(), configuration(invalid, 1));
 
         assertThrows(IllegalStateException.class, () -> runner.evaluate(buildSeries(20), 0, 19));
     }
@@ -57,8 +57,8 @@ class StudyRunnerTest {
         final StudyRunner.Configuration configuration = new StudyRunner.Configuration(
                 StudyRunner.Partitions.lockedDefault(), "max-index-test", SEED, List.of(2), 1, List.of(), "test",
                 List.of());
-        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, List.of(TopologyGrammar.MOTIVE_5),
-                List.of(), configuration);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory,
+                List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3), List.of(), configuration);
 
         final StudyReport report = runner.evaluate("MAX", indexedSeries(buildSeries(1), lastIndex), lastIndex,
                 lastIndex);
@@ -455,11 +455,15 @@ class StudyRunnerTest {
     }
 
     @Test
-    void alternativeGrammarsDropBoundaryOnlyCompleteMatches() {
+    void alternativeGrammarsRetainPlacementAtExactHorizon() {
+        // Thirteen pivots make the first complete "3+3" window end exactly
+        // one pattern length behind the newest pivot (endpoint ==
+        // pivots.size() - required). The documented inclusive horizon keeps
+        // that placement live alongside the newest window.
         final List<ConfirmedPivot> pivots = alternatingWindow(
                 new double[] { 0, 10, 5, 20, 8, 15, 10, 18, 12, 25, 14, 22, 16 });
 
-        assertEquals(List.of("6-12"), StudyRunner.AlternativeGrammar.of("3+3").matches(pivots));
+        assertEquals(List.of("0-6", "6-12"), StudyRunner.AlternativeGrammar.of("3+3").matches(pivots));
     }
 
     @Test
@@ -904,6 +908,18 @@ class StudyRunnerTest {
                 LocalDate.of(2024, 1, 1));
         assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory,
                 List.of(TopologyGrammar.CORRECTIVE_3), rules(), configuration(partitions, 1)));
+    }
+
+    @Test
+    void rejectsGrammarsOmittingDeclaredH2Grammar() {
+        // H2 is declared over CYCLE_5_3; a MOTIVE_5-only configuration must
+        // be rejected instead of emitting an H2 ablation ladder labeled
+        // CYCLE_5_3 that never measured that grammar.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
+                LocalDate.of(2024, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory,
+                List.of(TopologyGrammar.MOTIVE_5), rules(), configuration(partitions, 1)));
     }
 
     @Test

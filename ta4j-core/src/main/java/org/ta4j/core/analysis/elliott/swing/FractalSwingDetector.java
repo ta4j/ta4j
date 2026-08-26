@@ -352,6 +352,23 @@ public final class FractalSwingDetector implements SwingDetector {
                 }
                 return;
             }
+            if (pivot.index() < last.index()) {
+                // Staggered plateaus can confirm one side behind an
+                // opposite-side pivot that already merged, including during
+                // the fallback rebuild of the causal prefix. Withdraw the
+                // trailing newer pivots, absorb the late arrival, then
+                // re-merge the withdrawn ones so every replayed observation
+                // keeps the merged sequence chronologically ordered.
+                final List<Pivot> displaced = new ArrayList<>();
+                while (!pivots.isEmpty() && pivots.get(pivots.size() - 1).index() > pivot.index()) {
+                    displaced.add(pivots.remove(pivots.size() - 1));
+                }
+                absorb(pivot);
+                for (int i = displaced.size() - 1; i >= 0; i--) {
+                    absorb(displaced.get(i));
+                }
+                return;
+            }
             pivots.add(pivot);
             resultDirty = true;
             pivotViewDirty = true;

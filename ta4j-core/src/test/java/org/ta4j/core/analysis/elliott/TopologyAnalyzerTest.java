@@ -171,6 +171,23 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void retiresStaleLoneCompletionWhenADisjointSuffixForms() {
+        // Bullish motive 10 -> 32 completes on pivots 0..5 and stays above
+        // its origin; every overlapping window is shape-broken by the
+        // mispriced LOW at pivot 6, so the completion is the lone live
+        // candidate. The later disjoint suffix 6..9 still forms a fresh
+        // bullish prefix, which must supersede the stale COMPLETE.
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(10, 20, 14, 26, 18, 32, 40, 44, 38, 46));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.formingStartBarIndex()).isEqualTo(6);
+        assertThat(analysis.formingEndBarIndex()).isEqualTo(9);
+        assertThat(analysis.candidates()).isEmpty();
+    }
+
+    @Test
     void invalidatesWhenALaterPivotBreachesTheOrigin() {
         // Bullish motive 10 -> 32 completed on pivots 0..5; the later
         // pivot at 7 breaks the origin without completing a reversal.

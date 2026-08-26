@@ -19,6 +19,7 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NumFactory;
@@ -186,6 +187,32 @@ class FractalSwingDetectorTest {
         assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
                 .containsExactly(tuple(1, SwingPivotType.HIGH), tuple(4, SwingPivotType.LOW),
                         tuple(6, SwingPivotType.HIGH));
+    }
+
+    @Test
+    void lateCrossSideConfirmationBehindMergedTailStaysChronological() {
+        // With windows (1, 1) and three allowed equal bars the HIGH@5 spike
+        // confirms at bar 6, while the four-bar LOW plateau [3..6] only
+        // completes at bar 7 and reports LOW@4 behind the already merged
+        // HIGH@5. The fallback rebuild triggered by that late confirmation
+        // must re-merge chronologically instead of appending the low after
+        // the high.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 7, 8, 9, 10, 11, 16, 10, 9, 8 },
+                new double[] { 6, 5, 4, 2, 2, 2, 2, 5, 4 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1, 1, 3);
+
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("staggered cross-side result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1, 1, 3).detectPivots(series, index));
+        }
+
+        assertThat(shared.detectPivots(series, 6)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(5, SwingPivotType.HIGH));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(4, SwingPivotType.LOW), tuple(5, SwingPivotType.HIGH));
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE).swings())
+                .extracting(ElliottSwing::fromIndex, ElliottSwing::toIndex)
+                .containsExactly(tuple(4, 5));
     }
 
     @Test
