@@ -146,7 +146,7 @@ final class ElliottStudyProtocol {
     }
 
     /** @return whether this protocol is retrospective and exploratory */
-    public String studyDesign() {
+    String studyDesign() {
         return studyDesign;
     }
 

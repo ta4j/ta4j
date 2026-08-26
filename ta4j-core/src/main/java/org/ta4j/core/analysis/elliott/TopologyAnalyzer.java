@@ -209,12 +209,8 @@ final class TopologyAnalyzer {
 
     private TopologyAnalysis disjointFormingSuffix(final TopologyGrammar grammar, final List<ConfirmedPivot> window,
             final List<TopologyCandidate> candidates) {
-        final TopologyAnalysis forming = detectForming(grammar, window);
-        if (forming != null && candidates.stream()
-                .allMatch(candidate -> forming.formingStartBarIndex() > candidate.endBarIndex())) {
-            return forming;
-        }
-        return null;
+        final int latestCompletionEnd = candidates.get(candidates.size() - 1).endBarIndex();
+        return detectForming(grammar, window, latestCompletionEnd);
     }
 
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
@@ -242,12 +238,22 @@ final class TopologyAnalyzer {
         return live.stream().anyMatch(candidate -> chronological(candidate, invalidatedCandidate) > 0);
     }
 
-    /**
-     * Scans trailing suffixes of every allowed length so a fresh prefix can form
-     * even when the retained history already exceeds the grammar length;
-     * {@code null} when no partial pattern is present.
-     */
     private TopologyAnalysis detectForming(final TopologyGrammar grammar, final List<ConfirmedPivot> window) {
+        return detectForming(grammar, window, Integer.MIN_VALUE);
+    }
+
+    /**
+     * Scans trailing suffixes from longest to shortest, ignoring prefixes that
+     * overlap the latest retained completion.
+     *
+     * @param grammar             grammar to match
+     * @param window              ordered confirmed pivots
+     * @param latestCompletionEnd last bar of the latest completion, or
+     *                            {@link Integer#MIN_VALUE} when no boundary applies
+     * @return the strongest unblocked forming suffix, or {@code null}
+     */
+    TopologyAnalysis detectForming(final TopologyGrammar grammar, final List<ConfirmedPivot> window,
+            final int latestCompletionEnd) {
         final int maxSuffixPivots = Math.min(window.size(), grammar.requiredPivots() - 1);
         // A single leg fits some orientation of every kernel grammar, so
         // reporting FORMING from a two-pivot suffix would fold nearly every
@@ -268,6 +274,9 @@ final class TopologyAnalyzer {
         // scan falls through to the next shorter suffix.
         for (int suffix = maxSuffixPivots; suffix >= minSuffixPivots; suffix--) {
             final List<ConfirmedPivot> suffixPivots = window.subList(window.size() - suffix, window.size());
+            if (suffixPivots.get(0).pivotIndex() <= latestCompletionEnd) {
+                continue;
+            }
             final List<WaveDirection> matching = new ArrayList<>();
             for (final WaveDirection direction : WaveDirection.values()) {
                 if (matchesPartialShape(grammar, direction, suffixPivots)) {

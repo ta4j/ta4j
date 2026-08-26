@@ -171,6 +171,18 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void skipsOverlappingLongerSuffixBeforeSelectingDisjointSuffix() {
+        final List<ConfirmedPivot> history = pivots(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 20, 50, 42, 52);
+        final TopologyAnalysis analysis = new TopologyAnalyzer().detectForming(TopologyGrammar.MOTIVE_5, history, 9);
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.formingStartBarIndex()).isEqualTo(10);
+        assertThat(analysis.formingEndBarIndex()).isEqualTo(13);
+        assertThat(analysis.candidates()).isEmpty();
+    }
+
+    @Test
     void retiresHistoricalCandidatesBeforeDeclaringAmbiguity() {
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
                 pivots(10, 20, 14, 26, 18, 32, 40, 50, 44, 56, 48, 62));
