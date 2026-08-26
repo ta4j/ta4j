@@ -277,6 +277,60 @@ class Wave5MomentumDivergenceRuleTest {
         assertThat(evidence.state()).isEqualTo(EvidenceState.NOT_APPLICABLE);
     }
 
+    @Test
+    void returnsUnavailableWhenUnstableFloorOverflowsInt() {
+        // beginIndex + unstableBars wraps negative in int arithmetic when the
+        // retained window sits near Integer.MAX_VALUE; the wrapped floor must
+        // not expose pre-warmup momentum as stable wave-5 evidence.
+        final BarSeries huge = new HighIndexSeries(Integer.MAX_VALUE - 10, Integer.MAX_VALUE - 1);
+        final Indicator<Num> momentum = new Indicator<>() {
+            @Override
+            public Num getValue(final int index) {
+                return DoubleNum.valueOf(0);
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return huge;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 20;
+            }
+        };
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                huge);
+
+        assertThat(momentum.getBarSeries().getBeginIndex() + momentum.getCountOfUnstableBars()).isNegative();
+        assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
+    }
+
+    /** Series whose retained window sits near {@link Integer#MAX_VALUE}. */
+    private static final class HighIndexSeries extends BaseBarSeries {
+
+        private final int begin;
+        private final int end;
+
+        private HighIndexSeries(final int begin, final int end) {
+            super("high-index", new MockBarSeriesBuilder().withData(new double[6]).build().getBarData());
+            this.begin = begin;
+            this.end = end;
+        }
+
+        @Override
+        public int getBeginIndex() {
+            return begin;
+        }
+
+        @Override
+        public int getEndIndex() {
+            return end;
+        }
+    }
+
     private static Indicator<Num> momentum(final BarSeries series, final double... values) {
         final List<Num> momentumValues = new ArrayList<>(values.length);
         for (double value : values) {

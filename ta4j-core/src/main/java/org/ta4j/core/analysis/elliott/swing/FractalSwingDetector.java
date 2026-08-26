@@ -458,17 +458,30 @@ public final class FractalSwingDetector implements SwingDetector {
          * apply internally, so stale merge state never survives a mutation they would
          * themselves discard. Because revision tracking cannot observe in-place
          * mutations of the retained last bar, the last bar's high/low/close values are
-         * part of the validity key whenever the end index is unchanged.
+         * part of the validity key whenever the end index is unchanged, and on an
+         * append-only advance the previously observed last bar (now penultimate) is
+         * compared against its stored snapshot before the replay extension is accepted.
          */
         private boolean seriesHistoryChanged() {
             final long currentRevision = series.getBarHistoryRevision();
             final int currentBeginIndex = series.getBeginIndex();
             final int currentEndIndex = series.getEndIndex();
             final LastBarState currentLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
+            boolean appendedPriorBarMutated = false;
+            if (currentEndIndex > observedEndIndex && observedLastBar != null && !series.isEmpty()
+                    && observedEndIndex >= currentBeginIndex) {
+                // An append-only advance replays over the previously observed
+                // last bar without rebuilding. Neither the revision nor the end
+                // index exposes an in-place mutation of that now-penultimate
+                // bar, so compare its stored high/low/close snapshot against the
+                // retained values before accepting the extension.
+                appendedPriorBarMutated = !observedLastBar.sameAs(LastBarState.of(series.getBar(observedEndIndex)));
+            }
             final boolean changed = currentBeginIndex != observedBeginIndex
                     || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
-                    || currentEndIndex < observedEndIndex || (currentEndIndex == observedEndIndex
-                            && currentLastBar != null && !currentLastBar.sameAs(observedLastBar));
+                    || currentEndIndex < observedEndIndex || appendedPriorBarMutated
+                    || (currentEndIndex == observedEndIndex && currentLastBar != null
+                            && !currentLastBar.sameAs(observedLastBar));
             observedRevision = currentRevision;
             observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;

@@ -152,6 +152,35 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void inPlaceMutationOfObservedLastBarIsDetectedAfterAppend() {
+        // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising that
+        // bar's high to 11 withdraws the confirmation, and appending a further
+        // bar leaves the series revision untouched (plain appends do not bump
+        // it) while advancing the end index. Because no later scan re-evaluates
+        // an already-confirmed fractal and the appended bar confirms no new
+        // pivot, only a snapshot comparison of the previously observed last
+        // bar can stop the replay from extending over the stale HIGH@2.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.getLastBar().addPrice(series.numFactory().numOf(11));
+        series.barBuilder().openPrice(8.5).highPrice(12).lowPrice(5).closePrice(8.5).volume(1).add();
+
+        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        final int end = series.getEndIndex();
+        // Fresh detection sees highs {5, 6, 10, 11, 12} and lows
+        // {4, 5, 9, 6, 5}: no fractal survives the mutation.
+        assertThat(shared.detectPivots(series, end)).isEmpty();
+        assertThat(shared.detectPivots(series, end)).isEqualTo(new FractalSwingDetector(1).detectPivots(series, end));
+        assertThat(shared.detect(series, end, ElliottDegree.MINUETTE).pivots())
+                .isEqualTo(new FractalSwingDetector(1).detect(series, end, ElliottDegree.MINUETTE).pivots());
+    }
+
+    @Test
     void seriesGrowthKeepsReplayResultsConsistentWithFreshDetection() {
         final SplittableRandom random = new SplittableRandom(11L);
         final BarSeries series = new MockBarSeriesBuilder().build();

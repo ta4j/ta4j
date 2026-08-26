@@ -155,11 +155,15 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
     }
 
     private boolean isAvailableIndex(final Indicator<Num> momentum, final int index) {
+        final BarSeries series = momentum.getBarSeries();
         // Indicator unstable bars count from the series begin; translate into
         // absolute bar indices so sub-series windows are handled correctly.
-        final int unstableFloor = momentum.getBarSeries().getBeginIndex() + momentum.getCountOfUnstableBars();
-        return index >= unstableFloor && index >= momentum.getBarSeries().getBeginIndex()
-                && index <= momentum.getBarSeries().getEndIndex();
+        // The sum is widened to long: near Integer.MAX_VALUE an int sum wraps
+        // negative, making the pre-warmup region look stable and letting
+        // false wave-5 evidence through. Overflow must keep the floor
+        // unreachable, never available.
+        final long unstableFloor = (long) series.getBeginIndex() + momentum.getCountOfUnstableBars();
+        return index >= unstableFloor && index >= series.getBeginIndex() && index <= series.getEndIndex();
     }
 
     private boolean isApplicable(final TopologyCandidate candidate) {
