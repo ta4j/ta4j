@@ -800,8 +800,10 @@ class StudyRunnerTest {
         final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
                 List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 31))),
                 LocalDate.of(2024, 1, 1));
-        assertThrows(IllegalArgumentException.class, () -> new StudyRunner(StudyRunnerTest::detectorFactory,
-                List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.MOTIVE_5), rules(), configuration(partitions, 1)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StudyRunner(StudyRunnerTest::detectorFactory,
+                        List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3, TopologyGrammar.MOTIVE_5), rules(),
+                        configuration(partitions, 1)));
     }
 
     @Test

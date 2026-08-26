@@ -21,10 +21,13 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Structural invalidation policy: the newest complete candidate is invalidated
- * when a later confirmed pivot breaches its origin extreme -- a bullish
- * candidate dies when any later pivot's price falls below its origin low, a
- * bearish candidate when any later pivot's price rises above its origin high,
- * regardless of whether that pivot is a HIGH or a LOW.
+ * when a later confirmed pivot breaches its origin extreme. The origin side
+ * follows the grammar's first leg under the declared direction -- not the
+ * direction alone -- so a bullish motive rooted on a LOW dies when any later
+ * pivot's price falls below that origin low, while a bullish corrective block
+ * rooted on a HIGH dies only when a later pivot's price rises above that origin
+ * high, and bearish candidates mirror both cases. A crossing in the breaching
+ * direction counts whichever way the pivot is labelled.
  *
  * <p>
  * Bounds: only the trailing {@code maxHistoryPivots} confirmed pivots are
@@ -141,14 +144,8 @@ final class TopologyAnalyzer {
             // A lone historical completion must not mask a later disjoint
             // suffix that is actively forming the next structure: the forming
             // prefix describes the present, the old completion is history.
-            final TopologyAnalysis forming = detectForming(grammar, window);
-            if (forming != null && forming.formingStartBarIndex() > live.get(0).endBarIndex()) {
-                return forming;
-            }
-            return new TopologyAnalysis(
-                    TopologyStatus.COMPLETE, live.get(0).direction(), live, "single " + grammar
-                            + " candidate spans bars " + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex(),
-                    -1, -1);
+            return loneCompletion(grammar, window, live, live.get(0), "single " + grammar + " candidate spans bars "
+                    + live.get(0).startBarIndex() + "-" + live.get(0).endBarIndex());
         }
         if (live.size() > 1) {
             // Only candidates whose windows overlap the newest live candidate
@@ -159,10 +156,9 @@ final class TopologyAnalyzer {
                     .filter(candidate -> candidate.endBarIndex() > newestLive.startBarIndex())
                     .toList();
             if (current.size() == 1) {
-                return new TopologyAnalysis(TopologyStatus.COMPLETE, current.get(0).direction(), current,
+                return loneCompletion(grammar, window, current, current.get(0),
                         "newest " + grammar + " candidate spans bars " + current.get(0).startBarIndex() + "-"
-                                + current.get(0).endBarIndex(),
-                        -1, -1);
+                                + current.get(0).endBarIndex());
             }
             if (current.size() > 1) {
                 final List<TopologyCandidate> bounded = boundedMostRecent(current);
@@ -192,15 +188,33 @@ final class TopologyAnalyzer {
         return false;
     }
 
+    /**
+     * Resolves one surviving completion against a later disjoint forming suffix: a
+     * retained historical completion must not mask an actively forming next
+     * structure whose prefix begins after the completion ends -- the forming prefix
+     * describes the present, the old completion is history.
+     */
+    private TopologyAnalysis loneCompletion(final TopologyGrammar grammar, final List<ConfirmedPivot> window,
+            final List<TopologyCandidate> candidates, final TopologyCandidate completion, final String explanation) {
+        final TopologyAnalysis forming = detectForming(grammar, window);
+        if (forming != null && forming.formingStartBarIndex() > completion.endBarIndex()) {
+            return forming;
+        }
+        return new TopologyAnalysis(TopologyStatus.COMPLETE, completion.direction(), candidates, explanation, -1, -1);
+    }
+
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {
         final Num originPrice = candidate.legStartPrice(0);
-        // A price crossing of the origin is a breach whichever way the pivot
-        // is labelled: a HIGH printed below a bullish origin still proves
-        // price traded under the structure's root.
-        return switch (candidate.direction()) {
-        case BULLISH -> pivot.price().isLessThan(originPrice);
-        case BEARISH -> pivot.price().isGreaterThan(originPrice);
-        };
+        // The origin side follows the grammar's first leg under the declared
+        // direction, not the declared direction alone: a bullish motive roots
+        // on a LOW and dies when price trades below it, while a bullish
+        // correction roots on a HIGH and dies only when price reclaims that
+        // origin high. A crossing in the breaching direction counts whichever
+        // way the pivot is labelled: a HIGH printed on the breaching side of
+        // the origin still proves price crossed the structure's root.
+        final boolean firstLegPositive = expectedLegPositive(candidate.grammar(), 0);
+        final boolean breachBelow = (candidate.direction() == WaveDirection.BULLISH) == firstLegPositive;
+        return breachBelow ? pivot.price().isLessThan(originPrice) : pivot.price().isGreaterThan(originPrice);
     }
 
     private static int chronological(final TopologyCandidate first, final TopologyCandidate second) {

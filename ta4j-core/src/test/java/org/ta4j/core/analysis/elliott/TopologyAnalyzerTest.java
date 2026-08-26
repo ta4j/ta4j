@@ -67,6 +67,26 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void retainsBullishCorrectiveCompletionWhenPriceStaysBelowHighOrigin() {
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
+                pivots(SwingPivotType.HIGH, 20, 12, 16, 10, 5));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.candidates()).extracting(TopologyCandidate::startBarIndex).containsExactly(0);
+    }
+
+    @Test
+    void retainsBearishCorrectiveCompletionWhenPriceStaysAboveLowOrigin() {
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.CORRECTIVE_3,
+                pivots(SwingPivotType.LOW, 10, 18, 14, 22, 25));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
+        assertThat(analysis.candidates()).extracting(TopologyCandidate::startBarIndex).containsExactly(0);
+    }
+
+    @Test
     void rejectsCorrectiveWindowUsingTheTrendDirectionOrigin() {
         final TopologyAnalyzer analyzer = new TopologyAnalyzer();
 
@@ -166,6 +186,7 @@ class TopologyAnalyzerTest {
                 pivots(10, 20, 14, 26, 18, 32, 9));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
+
         assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
         assertThat(analysis.candidates()).extracting(TopologyCandidate::startBarIndex).containsExactly(1);
     }
@@ -184,6 +205,18 @@ class TopologyAnalyzerTest {
         assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
         assertThat(analysis.formingStartBarIndex()).isEqualTo(6);
         assertThat(analysis.formingEndBarIndex()).isEqualTo(9);
+        assertThat(analysis.candidates()).isEmpty();
+    }
+
+    @Test
+    void prefersDisjointFormingSuffixOverRetainedCurrentCompletion() {
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(10, 20, 14, 26, 18, 32, 40, 50, 44, 56, 48, 62, 70, 80, 74, 86));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.FORMING);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BULLISH);
+        assertThat(analysis.formingStartBarIndex()).isEqualTo(12);
+        assertThat(analysis.formingEndBarIndex()).isEqualTo(15);
         assertThat(analysis.candidates()).isEmpty();
     }
 
