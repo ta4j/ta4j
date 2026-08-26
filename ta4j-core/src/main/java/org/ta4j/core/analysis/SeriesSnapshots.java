@@ -12,6 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -41,30 +42,43 @@ final class SeriesSnapshots {
      */
     static BarSeries deepCopy(BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
-        // Copy the bars once and reconcile the snapshot with any concurrent
-        // mutation instead of retrying: an unbounded copy-retry could starve
-        // when a moving series updates at least once per pass (an at-capacity
-        // series prunes on every append, so the removed-bars count never stays
-        // still). Appends during the copy only yield a slightly stale but
-        // coherent window; expired-bar removals shift logical indexes, so the
-        // copied prefix is trimmed by the removal delta and bounds follow the
-        // retained window.
-        int removedBarsCount = barSeries.getRemovedBarsCount();
+        // Concurrent series mutate under a write lock, so capturing the bar
+        // list and its bounds inside the read lock makes the copy atomic; an
+        // unbounded copy-retry would instead starve when an at-capacity moving
+        // series prunes on every append. Plain series are documented as
+        // single-threaded, so their reads are coherent by contract.
+        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
+            return concurrentBarSeries.withReadLock(() -> snapshot(barSeries));
+        }
+        return snapshot(barSeries);
+    }
+
+    private static BarSeries snapshot(BarSeries barSeries) {
+        // Capture the bar list before the counters: any prune already reflected
+        // in this list is also reflected in the baseline read right after it,
+        // so the reconciliation below never trims a retained bar twice.
         List<Bar> sourceBars = barSeries.getBarData();
+        int beginIndexAtCapture = Math.max(0, barSeries.getBeginIndex());
+        int removedBarsAtCapture = barSeries.getRemovedBarsCount();
         List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
         for (Bar bar : sourceBars) {
             copiedBars.add(copyBar(bar, barSeries.numFactory()));
         }
-        int removedAfterCopy = barSeries.getRemovedBarsCount();
-        int prunedDuringCopy = Math.max(0, removedAfterCopy - removedBarsCount);
+        // Appends during the copy only yield a slightly stale but coherent
+        // window; expired-bar removals shift logical indexes, so the copied
+        // prefix is trimmed by the removal delta and the first retained bar
+        // keeps its source index.
+        int prunedDuringCopy = Math.max(0, barSeries.getRemovedBarsCount() - removedBarsAtCapture);
+        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(barSeries.getName())
+                .withNumFactory(barSeries.numFactory())
+                .withMaxBarCount(barSeries.getMaximumBarCount());
+        if (copiedBars.isEmpty()) {
+            return builder.withBeginIndex(beginIndexAtCapture).build();
+        }
+        int retainedBeginIndex = beginIndexAtCapture + prunedDuringCopy;
         List<Bar> retainedBars = prunedDuringCopy >= copiedBars.size() ? List.of()
                 : copiedBars.subList(prunedDuringCopy, copiedBars.size());
-        return new BaseBarSeriesBuilder().withName(barSeries.getName())
-                .withNumFactory(barSeries.numFactory())
-                .withMaxBarCount(barSeries.getMaximumBarCount())
-                .withBeginIndex(Math.max(0, removedAfterCopy))
-                .withBars(retainedBars)
-                .build();
+        return builder.withBeginIndex(retainedBeginIndex).withBars(retainedBars).build();
     }
 
     private static Bar copyBar(Bar bar, NumFactory numFactory) {

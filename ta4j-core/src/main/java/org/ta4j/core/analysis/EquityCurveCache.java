@@ -143,6 +143,13 @@ public final class EquityCurveCache {
      */
     public static EquityCurveCache current(BarSeries series, TradingRecord tradingRecord) {
         ArrayDeque<EquityCurveCache> scopes = ACTIVE_SCOPES.get();
+        if (scopes.isEmpty()) {
+            // Standalone lookups outside evaluate(...) must not leave the
+            // thread-local initializer (and its class loader) parked on
+            // long-lived caller threads.
+            ACTIVE_SCOPES.remove();
+            return null;
+        }
         for (EquityCurveCache bundle : scopes) {
             if (bundle.series == series && bundle.tradingRecord == tradingRecord) {
                 return bundle;
