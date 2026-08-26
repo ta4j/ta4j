@@ -230,62 +230,86 @@ public final class FractalSwingDetector implements SwingDetector {
 
             final int beginIndex = series.getBeginIndex();
             final int scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : lastScannedIndex + 1;
-            for (int asOfIndex = scanStart; asOfIndex <= index; asOfIndex++) {
+            int asOfIndex = scanStart;
+            while (asOfIndex <= index) {
                 final int highIndex = swingHigh.getLatestSwingIndex(asOfIndex);
                 final int lowIndex = swingLow.getLatestSwingIndex(asOfIndex);
-                final boolean newHigh = highIndex != lastHighIndex;
-                final boolean newLow = lowIndex != lastLowIndex;
-
-                if (newHigh && newLow && highIndex == lowIndex) {
-                    if (highIndex >= beginIndex) {
-                        final Num highPrice = swingHigh.getPriceIndicator().getValue(highIndex);
-                        final Num lowPrice = swingLow.getPriceIndicator().getValue(lowIndex);
-                        final PivotType chosen;
-                        if (pivots.isEmpty()) {
-                            if (Num.isNaNOrNull(highPrice)) {
-                                chosen = PivotType.LOW;
-                            } else if (Num.isNaNOrNull(lowPrice)) {
-                                chosen = PivotType.HIGH;
-                            } else {
-                                chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
-                            }
-                        } else {
-                            chosen = pivots.get(pivots.size() - 1).type().opposite();
-                        }
-                        absorb(chosen == PivotType.HIGH ? new Pivot(highIndex, highPrice, PivotType.HIGH)
-                                : new Pivot(lowIndex, lowPrice, PivotType.LOW));
-                    }
-                } else if (newHigh && newLow) {
-                    if (highIndex < lowIndex) {
-                        if (highIndex >= beginIndex) {
-                            absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex),
-                                    PivotType.HIGH));
-                        }
-                        if (lowIndex >= beginIndex) {
-                            absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
-                        }
-                    } else {
-                        if (lowIndex >= beginIndex) {
-                            absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
-                        }
-                        if (highIndex >= beginIndex) {
-                            absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex),
-                                    PivotType.HIGH));
-                        }
+                if (highIndex < lastHighIndex || lowIndex < lastLowIndex) {
+                    // AbstractRecentSwingIndicator can retract a newer confirmed
+                    // point when a later scan discovers an older one. Rebuild the
+                    // merged causal prefix so the detector cannot retain a stale
+                    // pivot from before that retraction.
+                    resetMergedPivots();
+                    for (int replayIndex = beginIndex; replayIndex <= asOfIndex; replayIndex++) {
+                        processObservation(beginIndex, swingHigh.getLatestSwingIndex(replayIndex),
+                                swingLow.getLatestSwingIndex(replayIndex));
                     }
                 } else {
-                    if (newHigh && highIndex >= beginIndex) {
+                    processObservation(beginIndex, highIndex, lowIndex);
+                }
+                lastScannedIndex = asOfIndex;
+                asOfIndex++;
+            }
+        }
+
+        private void processObservation(final int beginIndex, final int highIndex, final int lowIndex) {
+            final boolean newHigh = highIndex != lastHighIndex;
+            final boolean newLow = lowIndex != lastLowIndex;
+
+            if (newHigh && newLow && highIndex == lowIndex) {
+                if (highIndex >= beginIndex) {
+                    final Num highPrice = swingHigh.getPriceIndicator().getValue(highIndex);
+                    final Num lowPrice = swingLow.getPriceIndicator().getValue(lowIndex);
+                    final PivotType chosen;
+                    if (pivots.isEmpty()) {
+                        if (Num.isNaNOrNull(highPrice)) {
+                            chosen = PivotType.LOW;
+                        } else if (Num.isNaNOrNull(lowPrice)) {
+                            chosen = PivotType.HIGH;
+                        } else {
+                            chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
+                        }
+                    } else {
+                        chosen = pivots.get(pivots.size() - 1).type().opposite();
+                    }
+                    absorb(chosen == PivotType.HIGH ? new Pivot(highIndex, highPrice, PivotType.HIGH)
+                            : new Pivot(lowIndex, lowPrice, PivotType.LOW));
+                }
+            } else if (newHigh && newLow) {
+                if (highIndex < lowIndex) {
+                    if (highIndex >= beginIndex) {
                         absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
                     }
-                    if (newLow && lowIndex >= beginIndex) {
+                    if (lowIndex >= beginIndex) {
                         absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
                     }
+                } else {
+                    if (lowIndex >= beginIndex) {
+                        absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                    }
+                    if (highIndex >= beginIndex) {
+                        absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                    }
                 }
-
-                lastHighIndex = highIndex;
-                lastLowIndex = lowIndex;
+            } else {
+                if (newHigh && highIndex >= beginIndex) {
+                    absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                }
+                if (newLow && lowIndex >= beginIndex) {
+                    absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                }
             }
-            lastScannedIndex = index;
+
+            lastHighIndex = highIndex;
+            lastLowIndex = lowIndex;
+        }
+
+        private void resetMergedPivots() {
+            pivots.clear();
+            lastHighIndex = Integer.MIN_VALUE;
+            lastLowIndex = Integer.MIN_VALUE;
+            resultDirty = true;
+            pivotViewDirty = true;
         }
 
         private void absorb(final Pivot pivot) {

@@ -462,7 +462,7 @@ final class StudyRunner {
             if (partitionIndex >= 0) {
                 final LocalDate date = barDate(series, index);
                 partitions.assertCalibrationDateAllowed(date);
-                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index));
+                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index), index);
                 // Null ensemble members are rebased sub-series; the offset restores
                 // source coordinates so null and real metric bounds are comparable.
                 for (final TopologyRecording recording : recordings) {
@@ -541,8 +541,8 @@ final class StudyRunner {
                                 .minus(series.getBar(index - 1).getClosePrice());
                         final boolean change = !first.isZero() && !second.isZero()
                                 && first.isPositive() != second.isPositive();
-                        accumulator.recordAlternative(index, change, false, false, change ? "change" : "stable",
-                                Set.of(change ? "change" : "stable"));
+                        final String label = change ? "change@" + index : "stable";
+                        accumulator.recordAlternative(index, change, false, false, label, Set.of(label));
                     }
                 }
                 if (index == end) {

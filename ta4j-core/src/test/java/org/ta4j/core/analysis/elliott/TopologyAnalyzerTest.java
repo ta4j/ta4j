@@ -182,6 +182,18 @@ class TopologyAnalyzerTest {
     }
 
     @Test
+    void emitsInvalidationOnlyWhenTheBreachPivotBecomesConfirmed() {
+        final PivotHistory history = PivotHistory.of(pivots(10, 20, 14, 26, 18, 32, 9));
+        final TopologyAnalyzer analyzer = new TopologyAnalyzer();
+
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 5).status()).isEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 6).status())
+                .isEqualTo(TopologyStatus.INVALIDATED);
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 7).status())
+                .isNotEqualTo(TopologyStatus.INVALIDATED);
+    }
+
+    @Test
     void isDeterministicAcrossRepeatedEvaluations() {
         final List<ConfirmedPivot> history = pivots(10, 20, 14, 26, 18, 32, 24, 40, 30, 48, 36, 19);
         final TopologyAnalysis first = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5, history);

@@ -66,7 +66,7 @@ final class TopologyAnalyzer {
     TopologyAnalysis analyze(final TopologyGrammar grammar, final PivotHistory history, final int asOfIndex) {
         Objects.requireNonNull(grammar, "grammar");
         Objects.requireNonNull(history, "history");
-        return analyze(grammar, history.asOf(asOfIndex));
+        return analyze(grammar, history.asOf(asOfIndex), asOfIndex);
     }
 
     /**
@@ -77,6 +77,11 @@ final class TopologyAnalyzer {
      * @return explicit topology outcome
      */
     TopologyAnalysis analyze(final TopologyGrammar grammar, final List<ConfirmedPivot> confirmed) {
+        return analyze(grammar, confirmed, null);
+    }
+
+    TopologyAnalysis analyze(final TopologyGrammar grammar, final List<ConfirmedPivot> confirmed,
+            final Integer observationIndex) {
         Objects.requireNonNull(grammar, "grammar");
         Objects.requireNonNull(confirmed, "confirmed");
         final int windowStart = Math.max(0, confirmed.size() - maxHistoryPivots);
@@ -104,21 +109,33 @@ final class TopologyAnalyzer {
         // deterministic and keeps "most recent" semantics honest.
         live.sort(TopologyAnalyzer::chronological);
         breached.sort(TopologyAnalyzer::chronological);
-        // Report the kill moment: when any newest confirmed pivot breaches the
-        // origin of a completed prior candidate, that hypothesis died even if
-        // fresh overlapping mirrors may form later.
-        final ConfirmedPivot newestPivot = window.get(window.size() - 1);
-        TopologyCandidate breachedByNewest = null;
+        // An explicit pivot list has no observation cursor, so preserve its
+        // historical newest-pivot behavior. Causal observations instead emit an
+        // invalidation only when the breach pivot first becomes confirmed.
+        TopologyCandidate breachedByObservation = null;
         for (final TopologyCandidate candidate : breached) {
-            if (candidate.endBarIndex() < newestPivot.pivotIndex() && isOriginBreach(candidate, newestPivot)
-                    && (breachedByNewest == null || candidate.endBarIndex() > breachedByNewest.endBarIndex())) {
-                breachedByNewest = candidate;
+            final boolean breachedNow;
+            if (observationIndex == null) {
+                final ConfirmedPivot newestPivot = window.get(window.size() - 1);
+                breachedNow = candidate.endBarIndex() < newestPivot.pivotIndex()
+                        && isOriginBreach(candidate, newestPivot);
+            } else {
+                breachedNow = window.stream()
+                        .filter(pivot -> pivot.confirmationIndex() == observationIndex)
+                        .anyMatch(pivot -> pivot.pivotIndex() > candidate.endBarIndex()
+                                && isOriginBreach(candidate, pivot));
+            }
+            if (breachedNow && (breachedByObservation == null
+                    || candidate.endBarIndex() > breachedByObservation.endBarIndex())) {
+                breachedByObservation = candidate;
             }
         }
-        if (breachedByNewest != null) {
-            return TopologyAnalysis.invalidated("newest confirmed pivot breached the origin of the most recent "
-                    + breachedByNewest.direction() + " " + grammar + " candidate spanning bars "
-                    + breachedByNewest.startBarIndex() + "-" + breachedByNewest.endBarIndex());
+        if (breachedByObservation != null) {
+            final String breachSubject = observationIndex == null ? "newest confirmed pivot"
+                    : "newly confirmed pivot at bar " + observationIndex;
+            return TopologyAnalysis.invalidated(breachSubject + " breached the origin of the most recent "
+                    + breachedByObservation.direction() + " " + grammar + " candidate spanning bars "
+                    + breachedByObservation.startBarIndex() + "-" + breachedByObservation.endBarIndex());
         }
         if (live.size() == 1) {
             return new TopologyAnalysis(

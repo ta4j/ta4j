@@ -376,6 +376,22 @@ class StudyRunnerTest {
     }
 
     @Test
+    void changePointBaselineStabilityTracksChangePositions() {
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+        final StudyReport report = runner.evaluate("BTC", alternatingChangeSeries(24), 0, 23);
+        final StudyReport.ModeReport baseline = report.competingGrammars()
+                .stream()
+                .filter(mode -> "competing-change-point-baseline".equals(mode.mode()))
+                .findFirst()
+                .orElseThrow();
+
+        // Every post-warmup bar is a sign change. Position-aware labels must
+        // therefore be unstable instead of treating all changes as one token.
+        assertTrue(baseline.partitions().get(0).labelStabilityJaccard() < 0.1d);
+    }
+
+    @Test
     void competingAlternativeGrammarSeparatesFormingFromNoMatch() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
@@ -537,6 +553,26 @@ class StudyRunnerTest {
         final Instant start = Instant.parse("2018-01-01T00:00:00Z");
         for (int index = 0; index < count; index++) {
             final double close = syntheticClose(index);
+            series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close + 1)
+                    .lowPrice(close - 1)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+        return series;
+    }
+
+    private static BarSeries alternatingChangeSeries(final int count) {
+        final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-alternating-changes").build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < count; index++) {
+            final double close = index % 2 == 0 ? 100.0d : 101.0d;
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
                     .endTime(start.plus(Duration.ofDays(index + 1)))
