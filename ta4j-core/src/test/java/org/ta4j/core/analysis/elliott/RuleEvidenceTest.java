@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,8 +29,10 @@ class RuleEvidenceTest {
 
     @Test
     void rejectsScoresOnNonPassingEvidence() {
-        assertThatThrownBy(() -> new RuleEvidence("wave5-divergence", EvidenceState.FAIL, Optional.of(0.5d), List.of(),
-                "explanation")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("PASS");
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new RuleEvidence("wave5-divergence", EvidenceState.FAIL, Optional.of(0.5d), List.of(),
+                        "explanation"));
+        assertThat(exception).hasMessageContaining("PASS");
     }
 
     @Test
