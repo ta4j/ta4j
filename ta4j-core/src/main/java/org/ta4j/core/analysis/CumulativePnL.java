@@ -46,7 +46,7 @@ public final class CumulativePnL implements PerformanceIndicator {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         Num zero = this.barSeries.numFactory().zero();
         this.values = new OffsetNumBuffer(this.barSeries.getBeginIndex(), Math.max(this.barSeries.getEndIndex(),
-                Math.min(finalIndex, PerformanceIndicator.addressableEndIndex(this.barSeries))), zero, zero);
+                Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(this.barSeries))), zero, zero);
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -165,7 +165,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             return;
         }
         int seriesEnd = barSeries.getEndIndex();
-        int analysisEndIndex = PerformanceIndicator.addressableEndIndex(barSeries);
+        int analysisEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
         int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;

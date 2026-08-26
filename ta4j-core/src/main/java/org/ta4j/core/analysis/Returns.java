@@ -79,6 +79,13 @@ public class Returns implements PerformanceIndicator {
     private boolean firstRetainedSlotSeeded;
 
     /**
+     * The series begin index captured when the return buffers were materialized.
+     * Later rolling advances of the borrowed series must not rebase the lookup, or
+     * old returns leak onto never-calculated bars.
+     */
+    private final int materializedBeginIndex;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -100,10 +107,9 @@ public class Returns implements PerformanceIndicator {
         Num one = this.barSeries.numFactory().one();
         Num zero = this.barSeries.numFactory().zero();
         Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new OffsetNumBuffer(this.barSeries.getBeginIndex(),
-                Math.max(this.barSeries.getEndIndex(),
-                        Math.min(finalIndex, PerformanceIndicator.addressableEndIndex(this.barSeries))),
-                initial, NaN.NaN);
+        returnFactors = new OffsetNumBuffer(this.barSeries.getBeginIndex(), Math.max(this.barSeries.getEndIndex(),
+                Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(this.barSeries))), initial, NaN.NaN);
+        this.materializedBeginIndex = this.barSeries.getBeginIndex();
         rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
         values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
@@ -264,7 +270,7 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public Num getValue(int index) {
-        int position = index - barSeries.getBeginIndex();
+        int position = index - materializedBeginIndex;
         if (position < 0 || position >= values.size()) {
             return NaN.NaN;
         }
@@ -290,10 +296,11 @@ public class Returns implements PerformanceIndicator {
     }
 
     /**
-     * @return the size of the return series.
+     * @return the number of materialized returns, including any trailing exit
+     *         return beyond the logical window end.
      */
     public int getSize() {
-        return barSeries.getBarCount() - 1;
+        return Math.max(0, returnFactors.size() - 1);
     }
 
     /**
@@ -315,7 +322,7 @@ public class Returns implements PerformanceIndicator {
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, PerformanceIndicator.addressableEndIndex(barSeries));
+        int endIndex = determineEndIndex(position, finalIndex, OffsetNumBuffer.addressableEndIndex(barSeries));
         int seriesBegin = barSeries.getBeginIndex();
         if (endIndex < seriesBegin) {
             return;

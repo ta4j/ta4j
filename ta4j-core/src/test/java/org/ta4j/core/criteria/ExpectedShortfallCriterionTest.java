@@ -11,7 +11,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.num.Num;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
@@ -130,4 +131,20 @@ public class ExpectedShortfallCriterionTest {
         assertTrue(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(-0.2)));
         assertFalse(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(0.0)));
     }
+
+    @Test
+    public void shortfallIncludesTrailingExitLoss() {
+        // The exit lands on a raw trailing bar beyond the logical window end;
+        // its -50% return must join the tail distribution instead of being
+        // cut off by the logical bar count.
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Num es = getCriterion().calculate(series, tradingRecord);
+
+        // Default representation converts the log tail mean back to a simple
+        // return ratio: exp(ln(55/110)) = 55/110.
+        assertNumEquals(numFactory.numOf(55d / 110d), es);
+    }
+
 }

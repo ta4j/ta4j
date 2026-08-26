@@ -38,4 +38,20 @@ public final class ConstrainedSeriesSupport {
         return new BaseBarSeries(name, List.copyOf(source.getBarData()), 0, endIndex, true, numFactory,
                 new TimeBarBuilderFactory());
     }
+
+    /**
+     * Builds a constrained one-bar series whose single bar sits at
+     * {@link Integer#MAX_VALUE}, exposing the terminal index to analyses that must
+     * survive loop arithmetic on the last representable index.
+     *
+     * @param name       the series name
+     * @param numFactory the number factory
+     * @param close      the raw close price of the terminal bar
+     * @return the constrained terminal series
+     */
+    public static BarSeries terminalOneBarSeries(String name, NumFactory numFactory, double close) {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(close).build();
+        return new BaseBarSeries(name, List.copyOf(source.getBarData()), Integer.MAX_VALUE, Integer.MAX_VALUE,
+                Integer.MAX_VALUE, true, numFactory, new TimeBarBuilderFactory());
+    }
 }

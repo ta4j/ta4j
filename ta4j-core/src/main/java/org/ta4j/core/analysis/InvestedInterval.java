@@ -25,6 +25,13 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     private final boolean[] investedIntervals;
 
     /**
+     * The series begin index captured when the interval array was materialized.
+     * Later rolling advances of the borrowed series must not rebase the lookup, or
+     * intervals shift onto never-calculated bars.
+     */
+    private final int materializedBeginIndex;
+
+    /**
      * Creates an indicator that reports invested intervals for the trading record.
      *
      * @param series        the bar series backing the indicator
@@ -49,12 +56,13 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        materializedBeginIndex = getBarSeries().getBeginIndex();
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
     @Override
     protected Boolean calculate(int index) {
-        int position = index - getBarSeries().getBeginIndex();
+        int position = index - materializedBeginIndex;
         if (position < 0 || position >= investedIntervals.length) {
             return Boolean.FALSE;
         }
@@ -63,7 +71,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         BarSeries series = getBarSeries();
-        int beginIndex = series.getBeginIndex();
+        int beginIndex = materializedBeginIndex;
         int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
         int size = series.getBarCount() == 0 ? 0 : analysisEndIndex - beginIndex + 1;
         boolean[] invested = new boolean[size];
@@ -76,11 +84,10 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private void markInvestedIntervals(Position position, boolean[] invested) {
-        BarSeries series = getBarSeries();
         if (position == null || position.getEntry() == null) {
             return;
         }
-        int beginIndex = series.getBeginIndex();
+        int beginIndex = materializedBeginIndex;
         int investedEndIndex = beginIndex + invested.length - 1;
         long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
         if (startLong > investedEndIndex) {

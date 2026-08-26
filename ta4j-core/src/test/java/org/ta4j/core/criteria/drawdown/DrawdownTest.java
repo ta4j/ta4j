@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.CashFlow;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -63,5 +68,38 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
         var length = Drawdown.length(series, record, close);
         assertNumEquals(0.6667, amount);
         assertNumEquals(1, length);
+    }
+
+    @Test
+    public void scanStopsAtTerminalEndIndexWithoutWraparound() {
+        BarSeries series = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 100d);
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+        CashFlow curve = new CashFlow(series, record);
+        int begin = series.getBeginIndex();
+        int end = record.getEndIndex(series);
+        Indicator<Num> guardedCurve = new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                if (index < begin || index > end) {
+                    throw new AssertionError("scan queried out-of-range index " + index);
+                }
+                return curve.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return curve.getCountOfUnstableBars();
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return curve.getBarSeries();
+            }
+        };
+
+        Num amount = Drawdown.amount(series, record, guardedCurve, true);
+
+        assertNumEquals(0, amount);
     }
 }

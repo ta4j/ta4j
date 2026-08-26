@@ -148,26 +148,6 @@ public interface PerformanceIndicator extends Indicator<Num> {
     }
 
     /**
-     * Resolves the highest bar index that is still addressable in the series' raw
-     * storage. For a live series this equals {@link BarSeries#getEndIndex()}; for
-     * builder-constrained or rolling-window series it can lie beyond the logical
-     * window end, where trailing bars remain readable for analyses that must price
-     * exits landing there.
-     *
-     * @param series the bar series
-     * @return the last addressable index, or {@code -1} for an empty series
-     * @since 0.24.2
-     */
-    static int addressableEndIndex(BarSeries series) {
-        int logicalEndIndex = series.getEndIndex();
-        if (logicalEndIndex < 0 || series.getBarData().isEmpty()) {
-            return logicalEndIndex;
-        }
-        long rawLastIndex = (long) series.getRemovedBarsCount() + series.getBarData().size() - 1;
-        return rawLastIndex > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rawLastIndex;
-    }
-
-    /**
      * Pads a list up to and including the specified end index using the provided
      * pad value.
      *

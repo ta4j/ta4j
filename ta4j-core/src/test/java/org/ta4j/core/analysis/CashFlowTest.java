@@ -628,4 +628,14 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1.5, cashFlow.getValue(2));
     }
 
+    @Test
+    public void sameBarPositionOnTerminalIndexDoesNotOverflow() {
+        BarSeries series = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 100d);
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertNumEquals(1, cashFlow.getValue(Integer.MAX_VALUE));
+    }
 }

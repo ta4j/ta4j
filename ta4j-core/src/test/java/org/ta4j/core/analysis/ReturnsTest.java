@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -463,5 +464,38 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
 
         assertNumEquals(0.5, returns.getValue(2));
+    }
+
+    @Test
+    public void getValueStaysAnchoredToMaterializedWindow() {
+        // The buffer is materialized against the window at construction time;
+        // later rolling advances of the borrowed series must not rebase the
+        // lookup, or old returns leak onto never-calculated bars.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(110d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        Num anchoredReturn = returns.getValue(1);
+
+        rolling.barBuilder().closePrice(120d).add();
+
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(anchoredReturn, returns.getValue(1));
+        assertTrue(returns.getValue(2).isNaN());
+    }
+
+    @Test
+    public void sizeIncludesTrailingExitReturn() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Returns returns = new Returns(series, record, record.getEndIndex(series), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(2, returns.getSize());
     }
 }

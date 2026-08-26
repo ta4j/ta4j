@@ -154,4 +154,25 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
         assertThat(indicator.getValue(2)).as("trailing exit interval").isTrue();
     }
+
+    @Test
+    public void intervalsStayAnchoredAfterWindowAdvances() {
+        // investedIntervals is materialized against the construction-time
+        // window; a later rolling advance of the borrowed series must not
+        // rebase the lookup or inherit flags onto never-calculated bars.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(30d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(40d).add();
+        var tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+        InvestedInterval indicator = new InvestedInterval(rolling, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+
+        rolling.barBuilder().closePrice(50d).add();
+
+        assertThat(indicator.getValue(1)).as("anchored invested interval").isTrue();
+        assertThat(indicator.getValue(2)).as("never-calculated bar stays uninvested").isFalse();
+    }
 }

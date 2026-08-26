@@ -184,7 +184,7 @@ public class CashFlow implements PerformanceIndicator {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         this.valueStartIndex = Math.max(0, startIndex);
         this.valueEndIndex = Math.min(Math.max(endIndex, this.valueStartIndex),
-                PerformanceIndicator.addressableEndIndex(this.barSeries));
+                OffsetNumBuffer.addressableEndIndex(this.barSeries));
         Num one = this.barSeries.numFactory().one();
         this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
@@ -205,7 +205,7 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int seriesEnd = barSeries.getEndIndex();
-        int analysisEndIndex = PerformanceIndicator.addressableEndIndex(barSeries);
+        int analysisEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
         int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;
@@ -244,12 +244,14 @@ public class CashFlow implements PerformanceIndicator {
                 multiplyValue(windowStartIndex, windowStartRatio);
                 windowStartSeeded = true;
             }
-            int start = Math.max(Math.max(entryIndex + 1, seriesBegin + 1), windowStartIndex + 1);
-            for (int barIndex = start; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
-                Num closePrice = barSeries.getBar(barIndex).getClosePrice();
+            long loopStart = Math.max(Math.max((long) entryIndex + 1, (long) seriesBegin + 1),
+                    (long) windowStartIndex + 1);
+            for (long barIndex = loopStart; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
+                int currentIndex = (int) barIndex;
+                Num closePrice = barSeries.getBar(currentIndex).getClosePrice();
                 Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                multiplyValue(barIndex, ratio);
+                multiplyValue(currentIndex, ratio);
             }
             Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
             Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
