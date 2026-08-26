@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -213,7 +214,7 @@ public final class FractalSwingDetector implements SwingDetector {
                     lookforwardLength, allowedEqualBars);
             this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
-            observeSeries(true);
+            observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex());
         }
 
         /**
@@ -276,7 +277,43 @@ public final class FractalSwingDetector implements SwingDetector {
             }
         }
 
+        /**
+         * Removes every merged pivot of {@code type} after its backing side
+         * purged to {@code -1}, then re-absorbs the surviving opposite-type
+         * pivots so consecutive survivors coalesce with the same
+         * extreme-keeping rule as ordinary merges instead of leaving stale
+         * withdrawn pivots or broken alternation behind.
+         */
+        private void withdrawPivotsOfType(final PivotType type) {
+            final List<Pivot> retained = new ArrayList<>(pivots.size());
+            for (final Pivot pivot : pivots) {
+                if (pivot.type() != type) {
+                    retained.add(pivot);
+                }
+            }
+            if (retained.size() == pivots.size()) {
+                return;
+            }
+            pivots.clear();
+            for (final Pivot pivot : retained) {
+                absorb(pivot);
+            }
+            resultDirty = true;
+            pivotViewDirty = true;
+        }
+
         private void processObservation(final int beginIndex, final int highIndex, final int lowIndex) {
+            // Fractal indicators purge every confirmed swing on a side when
+            // a later scan detects none (purgeOnNegativeDetection), reported
+            // as -1. A previously valid cursor dropping to -1 therefore means
+            // that side's merged pivots are withdrawn and must leave the
+            // merged sequence instead of being ignored below beginIndex.
+            if (highIndex < 0 && lastHighIndex >= 0) {
+                withdrawPivotsOfType(PivotType.HIGH);
+            }
+            if (lowIndex < 0 && lastLowIndex >= 0) {
+                withdrawPivotsOfType(PivotType.LOW);
+            }
             final boolean newHigh = highIndex != lastHighIndex;
             final boolean newLow = lowIndex != lastLowIndex;
 
@@ -471,12 +508,29 @@ public final class FractalSwingDetector implements SwingDetector {
          * ordinary ascending replay therefore stays incremental.
          */
         private boolean seriesHistoryChanged(final int requestedIndex) {
-            final long currentRevision = series.getBarHistoryRevision();
-            final int currentBeginIndex = series.getBeginIndex();
-            final int currentEndIndex = series.getEndIndex();
+            // Read the revision and series bounds through one coherent change
+            // snapshot, then verify the begin index was still read under that
+            // same revision. Reading them as separate calls would let an
+            // interior replaceBar between reads look unchanged while
+            // observeSeries publishes the newer revision without a rebuild,
+            // silently serving pivots computed from the replaced bar.
+            long sinceRevision = observedRevision;
+            BarSeriesChangeSnapshot snapshot;
+            int currentBeginIndex;
+            while (true) {
+                snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+                currentBeginIndex = series.getBeginIndex();
+                final BarSeriesChangeSnapshot verify = series.getBarSeriesChangeSnapshot(snapshot.revision());
+                if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()) {
+                    break;
+                }
+                sinceRevision = verify.revision();
+            }
+            final long currentRevision = snapshot.revision();
+            final int currentEndIndex = snapshot.endIndex();
             final boolean revisionUnavailable = currentRevision < 0L || observedRevision < 0L;
             boolean changed = currentBeginIndex != observedBeginIndex
-                    || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
+                    || (!revisionUnavailable && currentRevision != observedRevision)
                     || currentEndIndex < observedEndIndex;
             final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
             final boolean validateRetainedBars = !changed && revisionUnavailable
@@ -489,7 +543,7 @@ public final class FractalSwingDetector implements SwingDetector {
                 // high/low/close snapshot exactly.
                 changed = !BarState.of(series.getLastBar()).sameAs(observedLastBar);
             }
-            observeSeries(changed);
+            observeSeries(changed, snapshot, currentBeginIndex);
             return changed;
         }
 
@@ -516,13 +570,15 @@ public final class FractalSwingDetector implements SwingDetector {
         }
 
         /**
-         * Recaptures or extends the revision, retention window, and value snapshots.
+         * Recaptures or extends the revision, retention window, and value
+         * snapshots from the already verified change snapshot, so the published
+         * observation can never be newer than the bounds it is stored with.
          */
-        private void observeSeries(final boolean refreshBarSnapshot) {
-            final int currentBeginIndex = series.getBeginIndex();
+        private void observeSeries(final boolean refreshBarSnapshot, final BarSeriesChangeSnapshot snapshot,
+                final int currentBeginIndex) {
+            final int currentEndIndex = snapshot.endIndex();
+            final long currentRevision = snapshot.revision();
             final int previousObservedEndIndex = observedEndIndex;
-            final int currentEndIndex = series.getEndIndex();
-            final long currentRevision = series.getBarHistoryRevision();
             final boolean enteringLegacySnapshots = currentRevision < 0L && observedRevision >= 0L;
             final boolean snapshotBarValues = currentRevision < 0L || observedRevision < 0L;
             observedRevision = currentRevision;
