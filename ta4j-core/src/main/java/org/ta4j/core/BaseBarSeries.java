@@ -76,8 +76,8 @@ public class BaseBarSeries implements BarSeries {
      * Conservative global epoch observation: a mutation in another series may cause
      * an unnecessary invalidation, but never leaves this series stale.
      */
-    private transient long observedRetainedBarMutationEpoch;
-    private transient boolean retainedBarMutationEpochInitialized;
+    private long observedRetainedBarMutationEpoch;
+    private boolean retainedBarMutationEpochInitialized;
     private transient Deque<BarHistoryChange> barHistoryChanges;
 
     /**

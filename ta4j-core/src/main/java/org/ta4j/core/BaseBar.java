@@ -176,10 +176,12 @@ public class BaseBar implements Bar {
         return RETAINED_BAR_MUTATION_EPOCH.get();
     }
 
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "Series attachment lifecycle is serialized by the owning series; BaseBar price mutation remains intentionally mutable.")
     void attachToBarSeries() {
         mutationTrackingUsers++;
     }
 
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "Series attachment lifecycle is serialized by the owning series; BaseBar price mutation remains intentionally mutable.")
     void detachFromBarSeries() {
         if (mutationTrackingUsers <= 0) {
             throw new IllegalStateException("Bar is not attached to a bar series");
@@ -237,6 +239,7 @@ public class BaseBar implements Bar {
         return trades;
     }
 
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
         addPrice(tradePrice);
