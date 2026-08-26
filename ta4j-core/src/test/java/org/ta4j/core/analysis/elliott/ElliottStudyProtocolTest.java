@@ -23,7 +23,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class ElliottStudyProtocolTest {
-    private static final String PINNED_PROTOCOL_FINGERPRINT = "a1ed2b61f83281abde69eef8eefda0be23574503beefdcbc6cc925b8f3fc5fdd";
+    private static final String PINNED_PROTOCOL_FINGERPRINT = "51698bdb1ac4a385024cd9909a2c5ced74af254a53eafda5ab5aa12010e3bdb8";
 
     /**
      * The protocol is immutable and its dataset digests are verified on load; parse
@@ -41,6 +41,7 @@ class ElliottStudyProtocolTest {
         assertEquals("cf525-elliott-hypothesis-study", protocol.protocolId());
         assertEquals("1.0.0", protocol.version());
         assertEquals(LocalDate.parse("2026-08-24"), protocol.frozenAt());
+        assertEquals("retrospective-exploratory", protocol.studyDesign());
         assertEquals(PINNED_PROTOCOL_FINGERPRINT, protocol.fingerprintSha256());
 
         assertEquals("fractal-w5", protocol.primaryDetector());

@@ -33,11 +33,13 @@ final class ElliottStudyProtocol {
 
     private static final Gson GSON = new Gson();
     private static final long SEED_MULTIPLIER = 1_000_003L;
+    private static final String RETROSPECTIVE_EXPLORATORY = "retrospective-exploratory";
 
     private final int schemaVersion;
     private final String protocolId;
     private final String version;
     private final LocalDate frozenAt;
+    private final String studyDesign;
     private final String fingerprintSha256;
     private final List<Hypothesis> hypotheses;
     private final List<DatasetSpec> datasets;
@@ -51,9 +53,10 @@ final class ElliottStudyProtocol {
     private final List<String> ablationSet;
 
     private ElliottStudyProtocol(int schemaVersion, String protocolId, String version, LocalDate frozenAt,
-            String fingerprintSha256, List<Hypothesis> hypotheses, List<DatasetSpec> datasets, Partitions partitions,
-            List<DetectorConfiguration> detectorConfigurations, NullSpec nullEnsemble, List<String> competingGrammars,
-            List<String> metrics, List<String> ablationSet, MomentumSpec momentumIndicator, String primaryDetector) {
+            String studyDesign, String fingerprintSha256, List<Hypothesis> hypotheses, List<DatasetSpec> datasets,
+            Partitions partitions, List<DetectorConfiguration> detectorConfigurations, NullSpec nullEnsemble,
+            List<String> competingGrammars, List<String> metrics, List<String> ablationSet,
+            MomentumSpec momentumIndicator, String primaryDetector) {
         if (schemaVersion != 1) {
             throw new IllegalArgumentException("Unsupported protocol schemaVersion: " + schemaVersion);
         }
@@ -61,6 +64,10 @@ final class ElliottStudyProtocol {
         this.protocolId = requireText(protocolId, "protocolId");
         this.version = requireText(version, "protocolVersion");
         this.frozenAt = Objects.requireNonNull(frozenAt, "frozenAt");
+        this.studyDesign = requireText(studyDesign, "studyDesign");
+        if (!RETROSPECTIVE_EXPLORATORY.equals(this.studyDesign)) {
+            throw new IllegalArgumentException("studyDesign must be retrospective-exploratory");
+        }
         this.fingerprintSha256 = requireText(fingerprintSha256, "fingerprintSha256");
         requireNonEmpty(hypotheses, "hypotheses");
         this.hypotheses = List.copyOf(hypotheses);
@@ -136,6 +143,11 @@ final class ElliottStudyProtocol {
     /** @return date on which the protocol was frozen */
     public LocalDate frozenAt() {
         return frozenAt;
+    }
+
+    /** @return whether this protocol is retrospective and exploratory */
+    public String studyDesign() {
+        return studyDesign;
     }
 
     /**
@@ -247,8 +259,8 @@ final class ElliottStudyProtocol {
         MomentumSpec momentumIndicator = toMomentumSpec(raw.momentumIndicator);
 
         return new ElliottStudyProtocol(raw.schemaVersion, raw.protocolId, raw.protocolVersion,
-                parseDate(raw.frozenAt, "frozenAt"), fingerprint, List.of(h1, h2), datasets, partitions,
-                detectorConfigurations, nullEnsemble, raw.competingGrammars, raw.metrics, raw.ablationSet,
+                parseDate(raw.frozenAt, "frozenAt"), raw.studyDesign, fingerprint, List.of(h1, h2), datasets,
+                partitions, detectorConfigurations, nullEnsemble, raw.competingGrammars, raw.metrics, raw.ablationSet,
                 momentumIndicator, raw.primaryDetector);
     }
 
@@ -485,7 +497,7 @@ final class ElliottStudyProtocol {
     }
 
     private record RawProtocol(Integer schemaVersion, String protocolId, String protocolVersion, String frozenAt,
-            RawHypotheses hypotheses, List<RawDataset> datasets, RawPartitions partitions,
+            String studyDesign, RawHypotheses hypotheses, List<RawDataset> datasets, RawPartitions partitions,
             List<RawDetectorConfiguration> detectorConfigurations, RawNullSpec nullEnsemble,
             List<String> competingGrammars, List<String> metrics, List<String> ablationSet,
             RawMomentumSpec momentumIndicator, String primaryDetector) {

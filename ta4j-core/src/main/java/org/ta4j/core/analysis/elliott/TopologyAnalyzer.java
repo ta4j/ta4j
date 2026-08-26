@@ -161,6 +161,10 @@ final class TopologyAnalyzer {
                                 + current.get(0).endBarIndex());
             }
             if (current.size() > 1) {
+                final TopologyAnalysis forming = disjointFormingSuffix(grammar, window, current);
+                if (forming != null) {
+                    return forming;
+                }
                 final List<TopologyCandidate> bounded = boundedMostRecent(current);
                 return new TopologyAnalysis(TopologyStatus.AMBIGUOUS, null, bounded,
                         bounded.size() + " of " + current.size() + " tied " + grammar + " candidates remain", -1, -1);
@@ -196,11 +200,21 @@ final class TopologyAnalyzer {
      */
     private TopologyAnalysis loneCompletion(final TopologyGrammar grammar, final List<ConfirmedPivot> window,
             final List<TopologyCandidate> candidates, final TopologyCandidate completion, final String explanation) {
-        final TopologyAnalysis forming = detectForming(grammar, window);
-        if (forming != null && forming.formingStartBarIndex() > completion.endBarIndex()) {
+        final TopologyAnalysis forming = disjointFormingSuffix(grammar, window, candidates);
+        if (forming != null) {
             return forming;
         }
         return new TopologyAnalysis(TopologyStatus.COMPLETE, completion.direction(), candidates, explanation, -1, -1);
+    }
+
+    private TopologyAnalysis disjointFormingSuffix(final TopologyGrammar grammar, final List<ConfirmedPivot> window,
+            final List<TopologyCandidate> candidates) {
+        final TopologyAnalysis forming = detectForming(grammar, window);
+        if (forming != null && candidates.stream()
+                .allMatch(candidate -> forming.formingStartBarIndex() > candidate.endBarIndex())) {
+            return forming;
+        }
+        return null;
     }
 
     private boolean isOriginBreach(final TopologyCandidate candidate, final ConfirmedPivot pivot) {

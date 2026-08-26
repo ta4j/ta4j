@@ -3,6 +3,7 @@
   "protocolId": "cf525-elliott-hypothesis-study",
   "protocolVersion": "1.0.0",
   "frozenAt": "2026-08-24",
+  "studyDesign": "retrospective-exploratory",
   "hypotheses": {
     "H1": {
       "id": "H1",

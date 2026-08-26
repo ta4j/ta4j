@@ -92,8 +92,9 @@ final class FrozenProtocolStudy {
                     List.copyOf(robustness), protocol.primaryDetector(), competingModes);
             StudyRunner runner = StudyRunner.frozenPreregistered(primaryDetector, momentumFactory, configuration,
                     protocol.ablationSet());
-            LOG.info("evaluating dataset {} ({}): ensemble {} members per block length {}, competing modes {}",
-                    dataset.id(), dataset.asset(), protocol.nullEnsemble().ensembleSize(),
+            LOG.info(
+                    "evaluating dataset {} ({}): study design {}, ensemble {} members per block length {}, competing modes {}",
+                    dataset.id(), dataset.asset(), protocol.studyDesign(), protocol.nullEnsemble().ensembleSize(),
                     protocol.nullEnsemble().blockLengths(), competingModes);
             StudyReport report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex());
             Path target = reportDir.resolve(dataset.id() + ".json");
@@ -139,9 +140,10 @@ final class FrozenProtocolStudy {
             throw new IllegalArgumentException("protocol must not be null");
         }
         if (!"cf525-elliott-hypothesis-study".equals(protocol.protocolId()) || !"1.0.0".equals(protocol.version())
-                || !"H1".equals(protocol.h1().id()) || !"MOTIVE_5".equals(protocol.h1().grammar())
-                || !"H2".equals(protocol.h2().id()) || !"CYCLE_5_3".equals(protocol.h2().grammar())) {
-            throw new IllegalArgumentException("protocol hypotheses are not the frozen CF-525 path");
+                || !"retrospective-exploratory".equals(protocol.studyDesign()) || !"H1".equals(protocol.h1().id())
+                || !"MOTIVE_5".equals(protocol.h1().grammar()) || !"H2".equals(protocol.h2().id())
+                || !"CYCLE_5_3".equals(protocol.h2().grammar())) {
+            throw new IllegalArgumentException("protocol hypotheses or study design are not the frozen CF-525 path");
         }
         if (!FROZEN_COMPETING_MODES.equals(protocol.competingGrammars()) || !FROZEN_METRICS.equals(protocol.metrics())
                 || !RuleAblation.frozenModeNames().equals(protocol.ablationSet())) {
