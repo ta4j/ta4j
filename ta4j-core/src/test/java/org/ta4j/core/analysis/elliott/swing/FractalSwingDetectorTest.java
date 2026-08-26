@@ -182,11 +182,10 @@ class FractalSwingDetectorTest {
     @Test
     void inPlaceEarlierBarMutationInvalidatesSameIndexReplayResult() {
         // HIGH@2 is confirmed while bar 1's high (6) stays below it. Raising
-        // that earlier retained bar in place moves the fractal pivot to
-        // HIGH@1. Neither the series revision nor the end index changes, and
-        // the last bar is untouched, so only a snapshot comparison of the
-        // retained bars can stop the same-index query from returning the
-        // stale HIGH@2.
+        // that earlier retained bar in place and then restoring its original
+        // close leaves the series revision and close-only identity unchanged,
+        // but moves the fractal pivot to HIGH@1. Full OHLC fallback validation
+        // must stop the same-index query from returning stale HIGH@2.
         final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
         final FractalSwingDetector shared = new FractalSwingDetector(1);
 
@@ -195,8 +194,10 @@ class FractalSwingDetectorTest {
         final long revisionBeforeMutation = series.getBarHistoryRevision();
 
         series.getBar(1).addPrice(series.numFactory().numOf(20));
+        series.getBar(1).addPrice(series.numFactory().numOf(5.5));
 
         assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(series.getBar(1).getClosePrice()).isEqualTo(series.numFactory().numOf(5.5));
         assertThat(shared.detectPivots(series, series.getEndIndex()))
                 .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
         assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
