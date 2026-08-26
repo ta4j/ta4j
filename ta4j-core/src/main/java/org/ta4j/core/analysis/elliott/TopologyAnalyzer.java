@@ -130,7 +130,7 @@ final class TopologyAnalyzer {
                 breachedByObservation = candidate;
             }
         }
-        if (breachedByObservation != null) {
+        if (breachedByObservation != null && !hasNewerLiveCandidate(live, breachedByObservation)) {
             final String breachSubject = observationIndex == null ? "newest confirmed pivot"
                     : "newly confirmed pivot at bar " + observationIndex;
             return TopologyAnalysis.invalidated(breachSubject + " breached the origin of the most recent "
@@ -232,6 +232,11 @@ final class TopologyAnalyzer {
         int order = Integer.compare(first.endBarIndex(), second.endBarIndex());
         order = order != 0 ? order : Integer.compare(first.startBarIndex(), second.startBarIndex());
         return order != 0 ? order : first.direction().compareTo(second.direction());
+    }
+
+    private boolean hasNewerLiveCandidate(final List<TopologyCandidate> live,
+            final TopologyCandidate invalidatedCandidate) {
+        return live.stream().anyMatch(candidate -> chronological(candidate, invalidatedCandidate) > 0);
     }
 
     private List<TopologyCandidate> boundedMostRecent(final List<TopologyCandidate> complete) {

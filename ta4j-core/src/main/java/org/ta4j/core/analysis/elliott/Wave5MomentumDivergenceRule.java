@@ -39,10 +39,10 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
      * references its own series, so weak keys would never be collected and an
      * unbounded map would retain every studied series for the runner's life.
      */
-    private final Map<BarSeries, Indicator<Num>> boundMomentum = Collections
+    private final Map<SeriesKey, Indicator<Num>> boundMomentum = Collections
             .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
                 @Override
-                protected boolean removeEldestEntry(final Map.Entry<BarSeries, Indicator<Num>> eldest) {
+                protected boolean removeEldestEntry(final Map.Entry<SeriesKey, Indicator<Num>> eldest) {
                     return size() > MAX_CACHED_SERIES;
                 }
             });
@@ -88,7 +88,8 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         if (series == null) {
             return RuleEvidence.unavailable(id(), "momentum rule requires the evaluated series binding");
         }
-        final Indicator<Num> momentum = boundMomentum.computeIfAbsent(series, momentumFactory);
+        final Indicator<Num> momentum = boundMomentum.computeIfAbsent(new SeriesKey(series),
+                key -> momentumFactory.apply(key.series()));
         // A factory handing back an indicator bound to another series would
         // splice foreign momentum values onto this series' pivots; fail fast.
         if (momentum.getBarSeries() != series) {
@@ -163,5 +164,18 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
 
     private boolean isApplicable(final TopologyCandidate candidate) {
         return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
+    }
+
+    private record SeriesKey(BarSeries series) {
+
+        @Override
+        public boolean equals(final Object other) {
+            return other instanceof SeriesKey key && key.series == series;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(series);
+        }
     }
 }

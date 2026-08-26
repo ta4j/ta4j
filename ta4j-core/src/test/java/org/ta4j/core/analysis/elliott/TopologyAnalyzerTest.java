@@ -159,11 +159,23 @@ class TopologyAnalyzerTest {
     }
 
     @Test
-    void invalidatesWhenALaterPivotBreachesTheOrigin() {
-        // Bullish motive 10 -> 32 completed on pivots 0..5; pivot 6 breaks the origin
-        // low.
+    void prefersNewerReversalOverStaleInvalidation() {
+        // Bullish motive 10 -> 32 completed on pivots 0..5 and is breached
+        // by pivot 6; pivots 1..6 simultaneously complete its bearish reversal.
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
                 pivots(10, 20, 14, 26, 18, 32, 9));
+
+        assertThat(analysis.status()).isEqualTo(TopologyStatus.COMPLETE);
+        assertThat(analysis.direction()).isEqualTo(WaveDirection.BEARISH);
+        assertThat(analysis.candidates()).extracting(TopologyCandidate::startBarIndex).containsExactly(1);
+    }
+
+    @Test
+    void invalidatesWhenALaterPivotBreachesTheOrigin() {
+        // Bullish motive 10 -> 32 completed on pivots 0..5; the later
+        // pivot at 7 breaks the origin without completing a reversal.
+        final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
+                pivots(10, 20, 14, 26, 18, 32, 35, 9));
 
         assertThat(analysis.status()).isEqualTo(TopologyStatus.INVALIDATED);
     }
@@ -173,7 +185,7 @@ class TopologyAnalyzerTest {
         // Bullish motive 10 -> 32 completed on pivots 0..5; the later HIGH at
         // 9 crosses under the origin low even though it is not a LOW pivot.
         final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(TopologyGrammar.MOTIVE_5,
-                pivots(10, 20, 14, 26, 18, 32, 12, 9));
+                pivots(10, 20, 14, 26, 18, 32, 35, 30, 35, 9));
 
         assertThat(analysis.status()).isNotEqualTo(TopologyStatus.COMPLETE);
         assertThat(analysis.status()).isEqualTo(TopologyStatus.INVALIDATED);
@@ -183,13 +195,14 @@ class TopologyAnalyzerTest {
 
     @Test
     void emitsInvalidationOnlyWhenTheBreachPivotBecomesConfirmed() {
-        final PivotHistory history = PivotHistory.of(pivots(10, 20, 14, 26, 18, 32, 9));
+        final PivotHistory history = PivotHistory.of(pivots(10, 20, 14, 26, 18, 32, 35, 9));
         final TopologyAnalyzer analyzer = new TopologyAnalyzer();
 
         assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 5).status()).isEqualTo(TopologyStatus.COMPLETE);
-        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 6).status())
-                .isEqualTo(TopologyStatus.INVALIDATED);
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 6).status()).isEqualTo(TopologyStatus.COMPLETE);
         assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 7).status())
+                .isEqualTo(TopologyStatus.INVALIDATED);
+        assertThat(analyzer.analyze(TopologyGrammar.MOTIVE_5, history, 8).status())
                 .isNotEqualTo(TopologyStatus.INVALIDATED);
     }
 

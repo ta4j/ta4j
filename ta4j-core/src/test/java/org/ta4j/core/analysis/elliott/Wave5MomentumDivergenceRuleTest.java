@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -156,6 +158,24 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     @Test
+    void distinguishesEqualButDistinctSeriesInBoundedCache() {
+        final BarSeries firstSeries = equalSeries();
+        final BarSeries secondSeries = equalSeries();
+        final Indicator<Num> firstMomentum = momentum(firstSeries, 0, 0, 0, 10, 8, 0);
+        final Indicator<Num> secondMomentum = momentum(secondSeries, 0, 0, 0, 10, 0, 11);
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(
+                series -> series == firstSeries ? firstMomentum : secondMomentum);
+
+        final RuleEvidence firstEvidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                firstSeries);
+        final RuleEvidence secondEvidence = rule
+                .evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), secondSeries);
+
+        assertThat(firstEvidence.state()).isEqualTo(EvidenceState.PASS);
+        assertThat(secondEvidence.state()).isEqualTo(EvidenceState.FAIL);
+    }
+
+    @Test
     void rejectsFactoryBoundToAnotherSeries() {
         final Indicator<Num> foreign = momentum(0, 0, 0, 10, 8, 0);
         final BarSeries studied = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
@@ -257,6 +277,14 @@ class Wave5MomentumDivergenceRuleTest {
         assertThat(evidence.state()).isEqualTo(EvidenceState.NOT_APPLICABLE);
     }
 
+    private static Indicator<Num> momentum(final BarSeries series, final double... values) {
+        final List<Num> momentumValues = new ArrayList<>(values.length);
+        for (double value : values) {
+            momentumValues.add(DoubleNum.valueOf(value));
+        }
+        return new MockIndicator(series, momentumValues);
+    }
+
     private static Indicator<Num> momentum(final double... values) {
         final double[] seriesValues = new double[values.length];
         final BarSeries series = new MockBarSeriesBuilder().withData(seriesValues).build();
@@ -271,6 +299,28 @@ class Wave5MomentumDivergenceRuleTest {
         final double[] seriesValues = new double[values.length];
         final BarSeries series = new MockBarSeriesBuilder().withData(seriesValues).build();
         return new MockIndicator(series, List.of(values));
+    }
+
+    private static BarSeries equalSeries() {
+        final BarSeries template = new MockBarSeriesBuilder().withData(new double[6]).build();
+        return new EqualBarSeries(template.getBarData());
+    }
+
+    private static final class EqualBarSeries extends BaseBarSeries {
+
+        private EqualBarSeries(final List<Bar> bars) {
+            super("equal-series", bars);
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            return other instanceof EqualBarSeries;
+        }
+
+        @Override
+        public int hashCode() {
+            return 1;
+        }
     }
 
     private static TopologyCandidate candidate(final WaveDirection direction, final double... prices) {
