@@ -835,6 +835,8 @@ class StudyRunnerTest {
             // bar-less partitions stay empty.
             assertTrue(partitionMetrics(nullReport.partitions(), "validation").evaluationCount() > 0);
             assertEquals(0L, partitionMetrics(nullReport.partitions(), "holdout").evaluationCount());
+            assertTrue(Double.isNaN(partitionMetrics(nullReport.partitions(), "calibration").labelStabilityJaccard()),
+                    "one observation per member must not create cross-member stability");
             if ("CYCLE_5_3".equals(nullReport.grammar())) {
                 for (final StudyReport.NullModeReport mode : nullReport.modes()) {
                     final long calibrationMembers = mode.members()

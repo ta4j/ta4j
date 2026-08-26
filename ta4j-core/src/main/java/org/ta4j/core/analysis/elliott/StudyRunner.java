@@ -368,18 +368,17 @@ final class StudyRunner {
         partitions.assertCalibrationDateAllowed(barDate(causalSource, partitionLastBar));
         for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
             for (final TopologyGrammar grammar : nullGrammars) {
-                totalsByGrammar.get(grammar).get(partitionIndex).recordInsufficientHistory(recordedIndex);
-                memberTotalsByGrammar.get(grammar)
-                        .get(memberIndex)
-                        .get(partitionIndex)
-                        .recordInsufficientHistory(recordedIndex);
+                final MetricAccumulator memberMetrics = new MetricAccumulator(List.of());
+                memberMetrics.recordInsufficientHistory(recordedIndex);
+                totalsByGrammar.get(grammar).get(partitionIndex).mergeFrom(memberMetrics);
+                memberTotalsByGrammar.get(grammar).get(memberIndex).get(partitionIndex).mergeFrom(memberMetrics);
                 if (grammar == TopologyGrammar.CYCLE_5_3) {
                     for (int modeIndex = 0; modeIndex < h2Totals.size(); modeIndex++) {
-                        h2Totals.get(modeIndex).get(partitionIndex).recordInsufficientHistory(recordedIndex);
-                        h2MemberTotals.get(modeIndex)
-                                .get(memberIndex)
-                                .get(partitionIndex)
-                                .recordInsufficientHistory(recordedIndex);
+                        final MetricAccumulator modeMetrics = new MetricAccumulator(
+                                ablationModes.get(modeIndex).rules());
+                        modeMetrics.recordInsufficientHistory(recordedIndex);
+                        h2Totals.get(modeIndex).get(partitionIndex).mergeFrom(modeMetrics);
+                        h2MemberTotals.get(modeIndex).get(memberIndex).get(partitionIndex).mergeFrom(modeMetrics);
                     }
                 }
             }
