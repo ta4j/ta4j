@@ -19,14 +19,14 @@ public class BaseBar implements Bar {
 
     /**
      * Monotonic signal for mutations of bars currently retained by a
-     * {@link BaseBarSeries}. The series revision synchronizer uses this signal
-     * to invalidate cached consumers without scanning every retained bar.
+     * {@link BaseBarSeries}. The series revision synchronizer uses this signal to
+     * invalidate cached consumers without scanning every retained bar.
      */
     private static final AtomicLong RETAINED_BAR_MUTATION_EPOCH = new AtomicLong();
 
     /**
-     * Number of series retaining this bar. Package-private attachment methods
-     * keep construction-time builder mutations out of the retained-bar signal.
+     * Number of series retaining this bar. Package-private attachment methods keep
+     * construction-time builder mutations out of the retained-bar signal.
      */
     private int mutationTrackingUsers;
 

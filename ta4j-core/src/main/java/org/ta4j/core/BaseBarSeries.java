@@ -73,8 +73,8 @@ public class BaseBarSeries implements BarSeries {
     private int removedBarsCount = 0;
     private long barHistoryRevision;
     /**
-     * Conservative global epoch observation: a mutation in another series may
-     * cause an unnecessary invalidation, but never leaves this series stale.
+     * Conservative global epoch observation: a mutation in another series may cause
+     * an unnecessary invalidation, but never leaves this series stale.
      */
     private transient long observedRetainedBarMutationEpoch;
     private transient boolean retainedBarMutationEpochInitialized;

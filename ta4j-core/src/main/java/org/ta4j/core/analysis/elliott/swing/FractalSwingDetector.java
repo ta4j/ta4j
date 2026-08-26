@@ -192,8 +192,8 @@ public final class FractalSwingDetector implements SwingDetector {
         /**
          * OHLC snapshots per retained bar, indexed from {@link #observedBarBaseIndex}.
          * Direct {@link Bar} mutations can change a fractal's high/low input while
-         * restoring its close, so all three prices are retained for fallback
-         * validation on replay boundaries.
+         * restoring its close, so all three prices are retained for fallback validation
+         * on replay boundaries.
          */
         private final List<BarState> observedBars = new ArrayList<>();
         private int observedBarBaseIndex;
@@ -466,9 +466,9 @@ public final class FractalSwingDetector implements SwingDetector {
          * apply internally, so stale merge state never survives a mutation they would
          * themselves discard. Revision-aware series changes remain O(1). For legacy
          * series whose revisions cannot observe direct {@link Bar} mutations, the
-         * retained OHLC snapshots are validated only when a replay rewinds, an
-         * append extends the observed window, or a cached as-of result is queried
-         * again; ordinary ascending replay therefore stays incremental.
+         * retained OHLC snapshots are validated only when a replay rewinds, an append
+         * extends the observed window, or a cached as-of result is queried again;
+         * ordinary ascending replay therefore stays incremental.
          */
         private boolean seriesHistoryChanged(final int requestedIndex) {
             final long currentRevision = series.getBarHistoryRevision();
@@ -515,7 +515,9 @@ public final class FractalSwingDetector implements SwingDetector {
             return false;
         }
 
-        /** Recaptures or extends the revision, retention window, and value snapshots. */
+        /**
+         * Recaptures or extends the revision, retention window, and value snapshots.
+         */
         private void observeSeries(final boolean refreshBarSnapshot) {
             final int currentBeginIndex = series.getBeginIndex();
             final int previousObservedEndIndex = observedEndIndex;
