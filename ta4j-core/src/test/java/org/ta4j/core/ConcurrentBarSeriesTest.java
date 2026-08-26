@@ -832,6 +832,31 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(0, snapshot.earliestChangedIndex());
     }
 
+    @Test
+    public void addTradeJournalsConcurrentRetainedBarMutations() {
+        Bar companionBar = testBars.get(1);
+        List<Bar> bars = new ArrayList<>(testBars.subList(0, 4));
+        bars.add(new CompanionMutatingTradeBar(testBars.get(3), companionBar));
+
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("addTradeJournalsConcurrentRetainedBarMutationsSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(bars)
+                .build();
+        long baselineRevision = series.getBarHistoryRevision();
+
+        // The injected last bar mutates the retained companion at index 1 while
+        // addTrade runs, simulating another thread mutating an earlier retained
+        // bar between this operation's initial epoch reconciliation and its
+        // publication step. That advance must be journaled, not consumed.
+        series.addTrade(numOf(1), numOf(100));
+
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(baselineRevision);
+        assertTrue("Concurrently mutated retained bar must be journaled, but earliest changed index was "
+                + snapshot.earliestChangedIndex(), snapshot.earliestChangedIndex() <= 1);
+    }
+
 
     @Test
     public void withWriteLockSupportsRunnableAndSupplier() {
@@ -1479,6 +1504,26 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(-1, restored.getBeginIndex());
         assertEquals(-1, restored.getEndIndex());
         assertTrue(restored.isEmpty());
+    }
+
+    @Test
+    public void serializeAndDeserializeRollingSeriesRestoresTransientLogger() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeRollingSeriesRestoresTransientLoggerSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withMaxBarCount(2)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+        assertEquals(3, series.getRemovedBarsCount());
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+
+        assertEquals(3, restored.getRemovedBarsCount());
+        // Index 1 precedes the removed-bars window, forcing getBar(int) through
+        // the trace-logging branch that dereferenced a null transient logger
+        // before readObject reinitialized it.
+        assertEquals(restored.getBar(3).getEndTime(), restored.getBar(1).getEndTime());
     }
 
     // ==================== getFirstBar() and getLastBar() Tests
@@ -2277,8 +2322,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             series.barBuilder().endTime(now.plus(Duration.ofMinutes(i))).closePrice(i + 1).add();
         }
 
-        BarSeries subSeries = series.getSubSeries(1, 4);
-        assertTrue(subSeries instanceof ConcurrentBarSeries);
+        ConcurrentBarSeries subSeries = series.getSubSeries(1, 4);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(series.getBar(1).getEndTime(), subSeries.getFirstBar().getEndTime());
 
@@ -2433,4 +2477,32 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             return super.getClosePrice();
         }
     }
+
+    /**
+     * Bar whose trade application first mutates a retained companion bar,
+     * reproducing deterministically the interleaving in which another thread
+     * mutates an earlier retained bar of the same series while a series-level
+     * write operation is running.
+     */
+    private static final class CompanionMutatingTradeBar extends BaseBar {
+
+        private static final long serialVersionUID = 6157293408821547093L;
+
+        private final Bar companionBar;
+
+        private CompanionMutatingTradeBar(final Bar source, final Bar companionBar) {
+            super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
+                    source.getEndTime().plus(Duration.ofDays(7)), source.getOpenPrice(), source.getHighPrice(),
+                    source.getLowPrice(), source.getClosePrice(), source.getVolume(), source.getAmount(),
+                    source.getTrades());
+            this.companionBar = companionBar;
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            companionBar.addPrice(tradePrice);
+            super.addTrade(tradeVolume, tradePrice);
+        }
+    }
+
 }

@@ -9,6 +9,7 @@ import java.io.Serial;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -28,10 +29,22 @@ public class BaseBar implements Bar {
     private static final AtomicLong RETAINED_BAR_MUTATION_EPOCH = new AtomicLong();
 
     /**
-     * Number of series retaining this bar. Package-private attachment methods keep
-     * construction-time builder mutations out of the retained-bar signal.
+     * Atomic updater for {@link #mutationTrackingUsers}: the same {@code BaseBar}
+     * can be retained by several series (for example through
+     * {@link BaseBarSeries#getSubSeries}), and those series synchronize on
+     * independent locks, so the attachment count must be maintained atomically at
+     * the bar level or concurrent attachments can lose increments.
      */
-    private transient int mutationTrackingUsers;
+    private static final AtomicIntegerFieldUpdater<BaseBar> MUTATION_TRACKING_USERS =
+            AtomicIntegerFieldUpdater.newUpdater(BaseBar.class, "mutationTrackingUsers");
+
+    /**
+     * Number of series retaining this bar. Package-private attachment methods keep
+     * construction-time builder mutations out of the retained-bar signal. Volatile
+     * so lock-free reads (see {@link #publishRetainedBarMutation()}) observe the
+     * latest count.
+     */
+    private volatile transient int mutationTrackingUsers;
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -185,17 +198,18 @@ public class BaseBar implements Bar {
         mutationTrackingUsers = 0;
     }
 
-    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "Series attachment lifecycle is serialized by the owning series; BaseBar price mutation remains intentionally mutable.")
     void attachToBarSeries() {
-        mutationTrackingUsers++;
+        MUTATION_TRACKING_USERS.incrementAndGet(this);
     }
 
-    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "Series attachment lifecycle is serialized by the owning series; BaseBar price mutation remains intentionally mutable.")
     void detachFromBarSeries() {
-        if (mutationTrackingUsers <= 0) {
-            throw new IllegalStateException("Bar is not attached to a bar series");
-        }
-        mutationTrackingUsers--;
+        int users;
+        do {
+            users = MUTATION_TRACKING_USERS.get(this);
+            if (users <= 0) {
+                throw new IllegalStateException("Bar is not attached to a bar series");
+            }
+        } while (!MUTATION_TRACKING_USERS.compareAndSet(this, users, users - 1));
     }
 
     @Override
@@ -251,15 +265,25 @@ public class BaseBar implements Bar {
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
-        addPrice(tradePrice);
+        applyTradePrice(tradePrice);
 
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
+
+        // Publish exactly one mutation signal, and only after open/high/low/close,
+        // volume, amount, and trades are all updated, so revision-aware consumers
+        // invalidated by the signal never observe a half-applied trade.
+        publishRetainedBarMutation();
     }
 
     @Override
     public void addPrice(Num price) {
+        applyTradePrice(price);
+        publishRetainedBarMutation();
+    }
+
+    private void applyTradePrice(Num price) {
         if (openPrice == null) {
             openPrice = price;
         }
@@ -270,6 +294,9 @@ public class BaseBar implements Bar {
         if (lowPrice == null || lowPrice.isGreaterThan(price)) {
             lowPrice = price;
         }
+    }
+
+    private void publishRetainedBarMutation() {
         if (mutationTrackingUsers > 0) {
             RETAINED_BAR_MUTATION_EPOCH.incrementAndGet();
         }
