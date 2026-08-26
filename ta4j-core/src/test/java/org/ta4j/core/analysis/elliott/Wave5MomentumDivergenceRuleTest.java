@@ -4,7 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +15,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -181,10 +182,9 @@ class Wave5MomentumDivergenceRuleTest {
         final BarSeries studied = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
 
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(series -> foreign);
-
-        assertThatThrownBy(() -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), studied))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("different series");
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), studied));
+        assertThat(exception).hasMessageContaining("different series");
     }
 
     @Test
@@ -228,8 +228,7 @@ class Wave5MomentumDivergenceRuleTest {
 
     @Test
     void requiresCallerProvidedMomentum() {
-        assertThatThrownBy(() -> new Wave5MomentumDivergenceRule((Indicator<Num>) null))
-                .isInstanceOf(NullPointerException.class);
+        assertThrows(NullPointerException.class, () -> new Wave5MomentumDivergenceRule((Indicator<Num>) null));
     }
 
     @Test
@@ -254,14 +253,37 @@ class Wave5MomentumDivergenceRuleTest {
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
         final BarSeries other = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
 
-        assertThatThrownBy(() -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), other))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThrows(IllegalArgumentException.class,
+                () -> rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), other));
 
         // The bound series itself still evaluates normally.
         assertThat(
                 rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), momentum.getBarSeries())
                         .state())
                 .isEqualTo(EvidenceState.PASS);
+    }
+
+    @Test
+    void acceptsIndicatorBackedByReadOnlyViewOfEvaluatedSeries() {
+        // AbstractIndicator.getBarSeries() exposes a memoized read-only view
+        // of the underlying series, so a standard RSIIndicator built on the
+        // evaluated series must be accepted even though its exposed series is
+        // not reference-identical to the evaluated series.
+        final BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6).build();
+        final Indicator<Num> momentum = new RSIIndicator(new ClosePriceIndicator(series), 3);
+        assertThat(momentum.getBarSeries()).isNotSameAs(series);
+
+        final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
+        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
+                series);
+
+        assertThat(evidence.state()).isNotEqualTo(EvidenceState.NOT_APPLICABLE);
+
+        // An indicator bound to a genuinely different series stays rejected.
+        final Wave5MomentumDivergenceRule foreignRule = new Wave5MomentumDivergenceRule(
+                momentum(0, 0, 0, 10, 8, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> foreignRule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), series));
     }
 
     @Test

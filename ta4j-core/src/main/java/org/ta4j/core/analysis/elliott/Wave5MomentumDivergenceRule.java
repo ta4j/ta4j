@@ -13,6 +13,7 @@ import java.util.function.Function;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.Num;
 
 /**
@@ -54,7 +55,10 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
         // runner evaluating another series would splice that asset's pivots
         // onto the first asset's momentum values; fail fast instead.
         this.momentumFactory = series -> {
-            if (series != boundSeries) {
+            // AbstractIndicator exposes a read-only view of its underlying
+            // series, so equivalence must unwrap views rather than compare
+            // references; indicators bound to a different series still fail.
+            if (!IndicatorUtils.isSameSeries(series, boundSeries)) {
                 throw new IllegalArgumentException(
                         "fixed momentum indicator is bound to a different series; use the factory constructor");
             }
@@ -92,7 +96,7 @@ final class Wave5MomentumDivergenceRule implements RelationshipRule {
                 key -> momentumFactory.apply(key.series()));
         // A factory handing back an indicator bound to another series would
         // splice foreign momentum values onto this series' pivots; fail fast.
-        if (momentum.getBarSeries() != series) {
+        if (!IndicatorUtils.isSameSeries(momentum.getBarSeries(), series)) {
             throw new IllegalArgumentException("momentum factory returned an indicator bound to a different series");
         }
 
