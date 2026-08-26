@@ -152,6 +152,60 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void descendingQueryAfterRetractionRebuildsIndicatorScanState() {
+        // The equal-high plateau [2..3] truncates differently as later bars
+        // arrive: HIGH@2 confirms at bar 4, purges at bar 5 when the plateau
+        // grows to [2..4] with no canonical candidate, and re-confirms at bar
+        // 6. After ascending past those retractions, a descending query must
+        // rebuild the swing indicators instead of replaying through trackers
+        // whose confirmed swings were mutated by the later scans.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 9, 10, 10, 8, 10, 11, 7 },
+                new double[] { 1, 2, 3, 3, 4, 5, 6, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1, 1, 1);
+
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            shared.detectPivots(series, index);
+        }
+        assertThat(shared.detectPivots(series, series.getEndIndex())).as("ascending tail before descending")
+                .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, series.getEndIndex()));
+
+        assertThat(shared.detectPivots(series, 4)).as("descending result at bar 4")
+                .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, 4));
+        assertThat(shared.detectPivots(series, 4)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            assertThat(shared.detectPivots(series, index)).as("post-descending result at bar " + index)
+                    .isEqualTo(new FractalSwingDetector(1, 1, 1).detectPivots(series, index));
+        }
+    }
+
+    @Test
+    void inPlaceEarlierBarMutationInvalidatesSameIndexReplayResult() {
+        // HIGH@2 is confirmed while bar 1's high (6) stays below it. Raising
+        // that earlier retained bar in place moves the fractal pivot to
+        // HIGH@1. Neither the series revision nor the end index changes, and
+        // the last bar is untouched, so only a snapshot comparison of the
+        // retained bars can stop the same-index query from returning the
+        // stale HIGH@2.
+        final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(series.numFactory().numOf(20));
+
+        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(shared.detectPivots(series, series.getEndIndex()))
+                .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH));
+        assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE))
+                .isEqualTo(new FractalSwingDetector(1).detect(series, series.getEndIndex(), ElliottDegree.MINUETTE));
+    }
+
+    @Test
     void inPlaceMutationOfObservedLastBarIsDetectedAfterAppend() {
         // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising that
         // bar's high to 11 withdraws the confirmation, and appending a further

@@ -182,14 +182,24 @@ public final class FractalSwingDetector implements SwingDetector {
         private boolean resultDirty = true;
 
         // History observation mirroring the swing indicators' own reset rules,
-        // plus a last-bar value snapshot: series revision tracking cannot see
-        // in-place mutations of the retained last bar (for example
-        // series.getLastBar().addPrice(...)), so high/low/close values are
-        // compared whenever the end index is unchanged.
+        // plus value snapshots: series revision tracking cannot see in-place
+        // mutations made directly through a retained Bar reference (for
+        // example addPrice(...) on an earlier bar), so every retained bar's
+        // close price is compared on each query and the last bar's high/low/
+        // close values whenever the end index is unchanged.
         private long observedRevision;
         private int observedBeginIndex;
         private int observedEndIndex;
         private LastBarState observedLastBar;
+
+        /**
+         * Close price per retained bar, indexed from {@link #observedCloseBaseIndex}.
+         * The {@link Bar} mutators ({@code addPrice}/{@code addTrade}) always rewrite
+         * the close, so this snapshot detects direct edits of any retained bar while
+         * leaving untouched queries on the cheap append fast path.
+         */
+        private final List<Num> observedCloses = new ArrayList<>();
+        private int observedCloseBaseIndex;
 
         private final int lookbackLength;
         private final int lookforwardLength;
@@ -200,13 +210,13 @@ public final class FractalSwingDetector implements SwingDetector {
             this.series = series;
             this.lookbackLength = lookbackLength;
             this.lookforwardLength = lookforwardLength;
+            this.degree = degree;
             this.allowedEqualBars = allowedEqualBars;
             this.swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
             this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
-            this.degree = degree;
-            this.observedLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
+            observeSeries(true);
         }
 
         /**
@@ -233,10 +243,14 @@ public final class FractalSwingDetector implements SwingDetector {
 
         private void advanceTo(final int index) {
             if (index < lastScannedIndex) {
-                reset(false);
+                // Later scans can retract or purge confirmed points inside the
+                // swing indicators' own trackers. Rebuild the indicators too so
+                // the replayed observations are recomputed from scratch and the
+                // result stays order-independent.
+                reset(true);
             } else if (seriesHistoryChanged()) {
                 // Revision tracking cannot observe in-place mutations of the
-                // retained last bar, and the swing indicators share that blind
+                // retained bars, and the swing indicators share that blind
                 // spot through their own history trackers. Rebuild the
                 // indicators too so detection observes the mutated prices from
                 // scratch.
@@ -255,11 +269,13 @@ public final class FractalSwingDetector implements SwingDetector {
                         && ((highIndex != lastHighIndex && highIndex < mergedTailIndex)
                                 || (lowIndex != lastLowIndex && lowIndex < mergedTailIndex));
                 if (highIndex < lastHighIndex || lowIndex < lastLowIndex || changedSidePrecedesMergedTail) {
-                    // AbstractRecentSwingIndicator can retract a newer confirmed
-                    // point when a later scan discovers an older one. Rebuild the
-                    // merged causal prefix so the detector cannot retain a stale
-                    // pivot from before that retraction.
+                    // AbstractRecentSwingIndicator can retract or purge a newer
+                    // confirmed point when a later scan discovers an older one.
+                    // Rebuild the merged causal prefix and the indicators so the
+                    // replayed observations cannot reuse confirmed-swing state
+                    // damaged by those later scans.
                     resetMergedPivots();
+                    rebuildIndicators();
                     for (long replayIndex = beginIndex; replayIndex <= observationIndex; replayIndex++) {
                         final int replayObservationIndex = (int) replayIndex;
                         processObservation(beginIndex, swingHigh.getLatestSwingIndex(replayObservationIndex),
@@ -446,47 +462,93 @@ public final class FractalSwingDetector implements SwingDetector {
             resultDirty = true;
             pivotViewDirty = true;
             if (rebuildIndicators) {
-                swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
-                        lookforwardLength, allowedEqualBars);
-                swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
-                        lookforwardLength, allowedEqualBars);
+                rebuildIndicators();
             }
+        }
+
+        /** Replaces both swing indicators so their confirmed-swing state is rebuilt. */
+        private void rebuildIndicators() {
+            swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
         }
 
         /**
          * Detects series history changes with the same discipline the swing indicators
          * apply internally, so stale merge state never survives a mutation they would
          * themselves discard. Because revision tracking cannot observe in-place
-         * mutations of the retained last bar, the last bar's high/low/close values are
-         * part of the validity key whenever the end index is unchanged, and on an
-         * append-only advance the previously observed last bar (now penultimate) is
-         * compared against its stored snapshot before the replay extension is accepted.
+         * mutations made directly through a retained {@link Bar} reference, every
+         * retained bar's stored close-price snapshot is compared on each query, and the
+         * last bar's high/low/close values are part of the validity key whenever the
+         * end index is unchanged. The comparison keeps unchanged queries on the
+         * incremental append fast path; only a detected edit triggers a full rebuild.
          */
         private boolean seriesHistoryChanged() {
             final long currentRevision = series.getBarHistoryRevision();
             final int currentBeginIndex = series.getBeginIndex();
             final int currentEndIndex = series.getEndIndex();
-            final LastBarState currentLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
-            boolean appendedPriorBarMutated = false;
-            if (currentEndIndex > observedEndIndex && observedLastBar != null && !series.isEmpty()
-                    && observedEndIndex >= currentBeginIndex) {
-                // An append-only advance replays over the previously observed
-                // last bar without rebuilding. Neither the revision nor the end
-                // index exposes an in-place mutation of that now-penultimate
-                // bar, so compare its stored high/low/close snapshot against the
-                // retained values before accepting the extension.
-                appendedPriorBarMutated = !observedLastBar.sameAs(LastBarState.of(series.getBar(observedEndIndex)));
-            }
-            final boolean changed = currentBeginIndex != observedBeginIndex
+            boolean changed = currentBeginIndex != observedBeginIndex
                     || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
-                    || currentEndIndex < observedEndIndex || appendedPriorBarMutated
-                    || (currentEndIndex == observedEndIndex && currentLastBar != null
-                            && !currentLastBar.sameAs(observedLastBar));
-            observedRevision = currentRevision;
+                    || currentEndIndex < observedEndIndex;
+            if (!changed && !series.isEmpty()) {
+                changed = retainedClosesChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+                if (!changed && currentEndIndex == observedEndIndex) {
+                    // The last bar is the live-forming bar: compare its full
+                    // high/low/close snapshot exactly.
+                    changed = !LastBarState.of(series.getLastBar()).sameAs(observedLastBar);
+                }
+            }
+            observeSeries(changed);
+            return changed;
+        }
+
+        /**
+         * Compares the stored close-price snapshots of the previously observed retained
+         * bars against the live bars. Bounds are clamped to the overlap of the captured
+         * window and the current retention window so head removals or concurrent
+         * truncations can never index outside the snapshot.
+         */
+        private boolean retainedClosesChanged(final int fromIndex, final int toIndex) {
+            if (observedCloses.isEmpty()) {
+                return !series.isEmpty();
+            }
+            final int snapshotLast = observedCloseBaseIndex + observedCloses.size() - 1;
+            final int begin = Math.max(fromIndex, observedCloseBaseIndex);
+            final int end = Math.min(toIndex, snapshotLast);
+            for (long index = begin; index <= (long) end; index++) {
+                final int barIndex = (int) index;
+                if (!Objects.equals(observedCloses.get(barIndex - observedCloseBaseIndex),
+                        series.getBar(barIndex).getClosePrice())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Recaptures or extends the revision, retention window, and value snapshots.
+         */
+        private void observeSeries(final boolean refreshCloseSnapshot) {
+            final int currentBeginIndex = series.getBeginIndex();
+            final int previousObservedEndIndex = observedEndIndex;
+            final int currentEndIndex = series.getEndIndex();
+            observedRevision = series.getBarHistoryRevision();
             observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;
-            observedLastBar = currentLastBar;
-            return changed;
+            observedLastBar = series.isEmpty() ? null : LastBarState.of(series.getLastBar());
+            if (refreshCloseSnapshot || series.isEmpty()) {
+                observedCloseBaseIndex = currentBeginIndex;
+                observedCloses.clear();
+                for (long index = currentBeginIndex; index <= (long) currentEndIndex; index++) {
+                    observedCloses.add(series.getBar((int) index).getClosePrice());
+                }
+            } else {
+                for (long index = Math.max((long) previousObservedEndIndex + 1L,
+                        currentBeginIndex); index <= (long) currentEndIndex; index++) {
+                    observedCloses.add(series.getBar((int) index).getClosePrice());
+                }
+            }
         }
     }
 

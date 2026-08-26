@@ -281,7 +281,10 @@ class Wave5MomentumDivergenceRuleTest {
     void returnsUnavailableWhenUnstableFloorOverflowsInt() {
         // beginIndex + unstableBars wraps negative in int arithmetic when the
         // retained window sits near Integer.MAX_VALUE; the wrapped floor must
-        // not expose pre-warmup momentum as stable wave-5 evidence.
+        // not expose pre-warmup momentum as stable wave-5 evidence. The
+        // candidate pivots sit inside the retained window (at or above
+        // beginIndex) but below the true unstable floor, so only the
+        // overflowing floor computation keeps them unavailable.
         final BarSeries huge = new HighIndexSeries(Integer.MAX_VALUE - 10, Integer.MAX_VALUE - 1);
         final Indicator<Num> momentum = new Indicator<>() {
             @Override
@@ -301,10 +304,13 @@ class Wave5MomentumDivergenceRuleTest {
         };
         final Wave5MomentumDivergenceRule rule = new Wave5MomentumDivergenceRule(momentum);
 
-        final RuleEvidence evidence = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130),
-                huge);
+        final RuleEvidence evidence = rule.evaluate(
+                candidateAt(WaveDirection.BULLISH, Integer.MAX_VALUE - 10, 100, 110, 105, 120, 125, 130), huge);
 
         assertThat(momentum.getBarSeries().getBeginIndex() + momentum.getCountOfUnstableBars()).isNegative();
+        assertThat(huge.getBeginIndex()).isEqualTo(2147483637);
+        assertThat(2147483640).isGreaterThanOrEqualTo(huge.getBeginIndex());
+        assertThat(2147483642).isLessThanOrEqualTo(huge.getEndIndex());
         assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
     }
 
@@ -378,13 +384,19 @@ class Wave5MomentumDivergenceRuleTest {
     }
 
     private static TopologyCandidate candidate(final WaveDirection direction, final double... prices) {
+        return candidateAt(direction, 0, prices);
+    }
+
+    private static TopologyCandidate candidateAt(final WaveDirection direction, final int firstPivotIndex,
+            final double... prices) {
         final TopologyGrammar grammar = grammarFor(prices.length);
         final List<ConfirmedPivot> pivots = new ArrayList<>(prices.length);
         final SwingPivotType firstType = direction == WaveDirection.BULLISH ? SwingPivotType.LOW : SwingPivotType.HIGH;
         for (int index = 0; index < prices.length; index++) {
             final SwingPivotType type = index % 2 == 0 ? firstType
                     : firstType == SwingPivotType.HIGH ? SwingPivotType.LOW : SwingPivotType.HIGH;
-            pivots.add(new ConfirmedPivot(index, index, DoubleNum.valueOf(prices[index]), type));
+            pivots.add(new ConfirmedPivot(index + firstPivotIndex, index + firstPivotIndex,
+                    DoubleNum.valueOf(prices[index]), type));
         }
         return new TopologyCandidate(grammar, direction, pivots);
     }
