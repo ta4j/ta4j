@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
 
@@ -16,12 +17,14 @@ import org.ta4j.core.BaseTrade;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 import java.time.Instant;
 
 public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTest {
@@ -37,6 +40,21 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
         var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void clipsBlocksToRetainedMovingSeriesWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 99, 102, 98, 103, 97, 104, 96, 105, 95, 106)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
+                Trade.sellAt(9, series), Trade.buyAt(10, series), Trade.sellAt(11, series));
+        series.setMaximumBarCount(5);
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
+
+        Num sharedValue = EquityCurveCache.evaluate(series, record, () -> criterion.calculate(series, record));
+        Assert.assertNotNull(sharedValue);
+        assertNumEquals(criterion.calculate(series, record), sharedValue);
     }
 
     @Test

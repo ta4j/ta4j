@@ -49,6 +49,12 @@ public class TradingBotOnMovingBarSeries {
     private static Num LAST_BAR_CLOSE_PRICE;
 
     /**
+     * End time of the last generated bar, kept so that simulated bars always
+     * advance monotonically even when the wall clock does not move between ticks.
+     */
+    private static Instant LAST_BAR_END_TIME = Instant.MIN;
+
+    /**
      * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
      *
      * @param maxBarCount the number of bars to keep in the bar series (at maximum)
@@ -116,12 +122,28 @@ public class TradingBotOnMovingBarSeries {
         return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(Instant.now())
+                .endTime(nextBarEndTime())
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)
                 .closePrice(closePrice)
                 .build();
+    }
+
+    /**
+     * Returns a strictly increasing end time for a simulated bar: the current time,
+     * or one nanosecond past the previously used end time if the clock has not
+     * advanced yet.
+     *
+     * @return an end time strictly later than every earlier bar's end time
+     */
+    private static Instant nextBarEndTime() {
+        Instant endTime = Instant.now();
+        if (!endTime.isAfter(LAST_BAR_END_TIME)) {
+            endTime = LAST_BAR_END_TIME.plusNanos(1);
+        }
+        LAST_BAR_END_TIME = endTime;
+        return endTime;
     }
 
     public static void main(String[] args) throws InterruptedException {

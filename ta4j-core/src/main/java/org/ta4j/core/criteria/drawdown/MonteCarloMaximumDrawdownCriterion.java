@@ -12,6 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -199,14 +200,20 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
 
     /**
      * {@inheritDoc}
-     *
-     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
+        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
+        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling) : null;
+        List<List<Num>> blocks = cashFlow != null ? buildBlocks(series, tradingRecord, cashFlow)
+                : buildBlocks(series, tradingRecord);
+        return simulate(series, tradingRecord, blocks, cashFlow);
+    }
+
+    private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks, CashFlow cashFlow) {
         if (blocks.size() < 3) {
-            return maximumDrawdownCriterion.calculate(series, tradingRecord);
+            return cashFlow != null ? Drawdown.amount(series, tradingRecord, cashFlow)
+                    : maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();
@@ -237,18 +244,35 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
+        return buildBlocks(series, record, new CashFlow(series, record, equityCurveMode, openPositionHandling));
+    }
+
+    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
-        CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
+        int retainedBegin = series.getBeginIndex();
+        int retainedEnd = series.getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;
             }
             int entryIndex = position.getEntry().getIndex();
             int exitIndex = position.getExit().getIndex();
+            int blockStart = Math.max(entryIndex, retainedBegin);
+            int blockEnd = Math.min(exitIndex, retainedEnd);
+            if (blockStart > blockEnd) {
+                continue;
+            }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
-            for (int i = entryIndex; i <= exitIndex; i++) {
+            int firstIndex = blockStart;
+            Num previousEquity;
+            if (blockStart == retainedBegin) {
+                previousEquity = cashFlow.getValue(blockStart);
+                firstIndex++;
+            } else {
+                previousEquity = cashFlow.getValue(blockStart - 1);
+            }
+            for (int i = firstIndex; i <= blockEnd; i++) {
                 Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));
                 previousEquity = currentEquity;

@@ -6,6 +6,7 @@ package org.ta4j.core.analysis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -57,20 +58,18 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsDefensiveSnapshot() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
         int originalSeriesCount = returns.getBarSeries().getBarCount();
         int originalSize = returns.getSize();
-        BarSeries firstReturnedSeries = returns.getBarSeries();
 
         appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
 
         assertEquals(originalSize, returns.getSize());
         assertEquals(originalSeriesCount, returns.getBarSeries().getBarCount());
         assertNotSame(sampleBarSeries, returns.getBarSeries());
-        assertNotSame(firstReturnedSeries, returns.getBarSeries());
+        assertSame(returns.getBarSeries(), returns.getBarSeries());
     }
 
     @Test

@@ -10,6 +10,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -106,6 +107,38 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
         var ignoreIndicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.IGNORE);
         assertThat(ignoreIndicator.getValue(beginIndex + 1)).as("ignored open position interval").isFalse();
+    }
+
+    @Test
+    public void returnsFalseForOutOfRangeIndices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1).build();
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord);
+
+        assertThat(indicator.getValue(-1)).isFalse();
+        assertThat(indicator.getValue(series.getEndIndex() + 1)).isFalse();
+    }
+
+    @Test
+    public void mapsPrunedIndicesToRetainedWindowOnMovingSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1, 1, 1, 1, 1)
+                .withMaxBarCount(3)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        Num price = series.numFactory().one();
+        Num amount = series.numFactory().one();
+
+        tradingRecord.enter(1, price, amount);
+        tradingRecord.exit(4, price, amount);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord);
+
+        int beginIndex = series.getBeginIndex();
+        assertThat(beginIndex).isGreaterThan(0);
+        // Pruned indices keep the inherited cached-path behavior so removed-bar
+        // remapping still applies instead of reading stale precomputed cells.
+        assertThat(indicator.getValue(0)).isEqualTo(indicator.getValue(beginIndex));
     }
 
 }

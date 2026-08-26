@@ -12,6 +12,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveCache;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -201,14 +203,21 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return calculate(series, tradingRecord, EquityCurveCache.current(series, tradingRecord));
+    }
+
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityCurveCache sharedCurves) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
-                openPositionHandling);
+        ExcessReturns excessReturns = sharedCurves != null
+                ? new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, sharedCurves,
+                        EquityCurveMode.MARK_TO_MARKET, openPositionHandling)
+                : new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+                        openPositionHandling);
         List<Sample> samples = RatioSampleSupport
                 .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
                 .toList();

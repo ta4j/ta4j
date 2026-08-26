@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -14,6 +15,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
@@ -23,6 +25,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<Num>, Num> {
@@ -42,19 +45,19 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsDefensiveSnapshot() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
         int originalSize = pnl.getSize();
-        BarSeries firstReturnedSeries = pnl.getBarSeries();
 
         appendOneBar(series, 115);
-        appendOneBar(firstReturnedSeries, 120);
 
         assertEquals(originalSize, pnl.getSize());
         assertEquals(originalSize, pnl.getBarSeries().getBarCount());
         assertNotSame(series, pnl.getBarSeries());
-        assertNotSame(firstReturnedSeries, pnl.getBarSeries());
+        assertSame(pnl.getBarSeries(), pnl.getBarSeries());
+        pnl.getBarSeries().setMaximumBarCount(1);
+        assertEquals(originalSize, pnl.getSize());
     }
 
     @Test
@@ -101,6 +104,34 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(0, pnl.getValue(0));
         assertNumEquals(0, pnl.getValue(1));
         assertNumEquals(0, pnl.getValue(2));
+    }
+
+    @Test
+    public void cumulativePnLTwoPositionsPinsExitDeltaOnExitBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series));
+
+        var pnl = new CumulativePnL(series, record);
+
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(1, pnl.getValue(1));
+        assertNumEquals(2, pnl.getValue(2));
+        assertNumEquals(3, pnl.getValue(3));
+    }
+
+    @Test
+    public void cumulativePnLRealizedTwoPositionsWithAdjacentExits() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series));
+
+        var pnl = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(0, pnl.getValue(1));
+        assertNumEquals(2, pnl.getValue(2));
+        assertNumEquals(3, pnl.getValue(3));
     }
 
     @Test
@@ -268,6 +299,178 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         var actual = new CumulativePnL(series, record, OpenPositionHandling.IGNORE);
 
         assertSameValues(expected, actual);
+    }
+
+    @Test
+    public void cumulativePnLHandlesDecreasingExitIndices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        // LIFO matching closes the newest lot first: exit at 5 precedes exit
+        // at 3 in the positions list even though 3 < 5.
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CumulativePnL actual = new CumulativePnL(series, record, mode);
+            CumulativePnL reference = new CumulativePnL(series, new BaseTradingRecord(), mode);
+            for (Position position : record.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            assertSameValues(reference, actual);
+        }
+    }
+
+    @Test
+    public void repeatedCalculateComposesOntoPriorCurveData() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = closedPositionRecord(series, 3, 5);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            // Reference: every position composed through the per-position
+            // recipe onto one shared curve.
+            CumulativePnL reference = new CumulativePnL(series, new BaseTradingRecord(), mode,
+                    OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CumulativePnL reused = new CumulativePnL(series, new BaseTradingRecord(), mode,
+                    OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            Num valueAfterFirst = reused.getValue(4);
+
+            // Calculating an empty record must not reset prior curve data.
+            reused.calculate(new BaseTradingRecord(), series.getEndIndex(), OpenPositionHandling.IGNORE);
+            assertNumEquals(valueAfterFirst, reused.getValue(4));
+
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void repeatedCalculatePreservesPerPositionArithmeticOrder() {
+        // These prices produce deltas whose running sums exceed the decimal
+        // precision, which exposes addition-order differences: composing the
+        // combined exit delta of a multi-position record onto an already-
+        // materialized curve in one step can round to a different last digit than
+        // applying each position successively.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(31.12345678901234d, 37.98765432109876d, 41.13579111357911d, 43.2468101224681d,
+                        47.36912151836912d, 53.4851620485162d, 59.61723429617234d, 61.73935654739356d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = multiPositionRecord(series, 3, 5, 6, 7);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CumulativePnL reference = new CumulativePnL(series, new BaseTradingRecord(), mode,
+                    OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CumulativePnL reused = new CumulativePnL(series, new BaseTradingRecord(), mode,
+                    OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void cumulativePnLPreservesPrunedSeriesBeginIndex() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        TradingRecord fullRecord = closedPositionRecord(full, 3, 4);
+        CumulativePnL reference = new CumulativePnL(full, fullRecord);
+
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        TradingRecord prunedRecord = closedPositionRecord(pruned, 3, 4);
+        pruned.setMaximumBarCount(3);
+        assertEquals(2, pruned.getBeginIndex());
+
+        CumulativePnL cumulativePnL = new CumulativePnL(pruned, prunedRecord);
+        for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
+            assertNumEquals(reference.getValue(i), cumulativePnL.getValue(i));
+        }
+    }
+
+    @Test
+    public void cumulativePnLSeedsPositionsOpenedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 150d, 120d, 110d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        series.setMaximumBarCount(3);
+
+        CumulativePnL cumulativePnL = new CumulativePnL(series, record);
+
+        assertEquals(1, series.getBeginIndex());
+        assertNumEquals(50, cumulativePnL.getValue(1));
+        assertNumEquals(20, cumulativePnL.getValue(2));
+        assertNumEquals(10, cumulativePnL.getValue(3));
+    }
+
+    @Test
+    public void cumulativePnLCarriesRealizedPositionsClosedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 200d, 50d, 60d).build();
+        TradingRecord record = closedPositionRecord(series, 0, 1);
+        series.setMaximumBarCount(2);
+
+        CumulativePnL cumulativePnL = new CumulativePnL(series, record);
+
+        assertEquals(2, series.getBeginIndex());
+        assertNumEquals(100, cumulativePnL.getValue(2));
+        assertNumEquals(100, cumulativePnL.getValue(3));
+    }
+
+    private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.SELL, null, null));
+        return record;
+    }
+
+    private static TradingRecord multiPositionRecord(BarSeries series, int... entryExitIndexes) {
+        if (entryExitIndexes.length % 2 != 0) {
+            throw new IllegalArgumentException("entryExitIndexes must contain complete (entry, exit) pairs");
+        }
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        for (int i = 0; i < entryExitIndexes.length; i += 2) {
+            int entryIndex = entryExitIndexes[i];
+            int exitIndex = entryExitIndexes[i + 1];
+            record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.BUY, null, null));
+            record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.SELL, null, null));
+        }
+        return record;
     }
 
     private void assertSameValues(CumulativePnL expected, CumulativePnL actual) {

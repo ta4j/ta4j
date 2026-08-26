@@ -12,6 +12,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -92,7 +93,9 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
+        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling)
+                : new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 
