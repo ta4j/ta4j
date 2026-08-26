@@ -28,7 +28,8 @@ import org.ta4j.core.num.Num;
  * exclusively from {@link MonteCarloContext#random()}, returns exactly
  * {@code context.iterationCount()} finite samples, propagates a {@code null}
  * (unstable) result when either inner method fails, and declares the forecast
- * unstable when either component returns the wrong sample count.
+ * unstable when either component returns the wrong sample count or contains a
+ * {@code null} or non-finite sample.
  *
  * @see MonteCarloMethod
  * @since 0.24.2
@@ -71,10 +72,22 @@ public final class EnsembleMonteCarloMethod implements MonteCarloMethod {
         if (firstSamples.size() != half || secondSamples.size() != remainder) {
             return null;
         }
+        if (!allFinite(firstSamples) || !allFinite(secondSamples)) {
+            return null;
+        }
         List<Num> pooled = new ArrayList<>(context.iterationCount());
         pooled.addAll(firstSamples);
         pooled.addAll(secondSamples);
         return pooled;
+    }
+
+    private static boolean allFinite(List<Num> samples) {
+        for (Num sample : samples) {
+            if (sample == null || !Num.isFinite(sample)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static MonteCarloContext subContext(MonteCarloContext context, int count, RandomGenerator random) {

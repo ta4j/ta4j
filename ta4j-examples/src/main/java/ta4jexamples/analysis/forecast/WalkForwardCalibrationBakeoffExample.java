@@ -25,6 +25,7 @@ import org.ta4j.core.analysis.montecarlo.StudentTScaleMixingMonteCarloMethod;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
+import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
@@ -236,47 +237,48 @@ public final class WalkForwardCalibrationBakeoffExample {
             List<Num> terminalSamples = arm.method().terminalReturns(context);
             if (terminalSamples == null || terminalSamples.size() != ITERATION_COUNT || !allFinite(terminalSamples)) {
                 acc.unstableCount++;
-                continue;
-            }
-            double[] samples = toPrimitiveDoubles(terminalSamples);
-            java.util.Arrays.sort(samples);
-            double q05 = percentile(samples, 0.05d);
-            double q50 = percentile(samples, 0.50d);
-            double q95 = percentile(samples, 0.95d);
-            double realized = realizedReturn.doubleValue();
-            double coverageHit = realized >= q05 && realized <= q95 ? 1d : 0d;
-            double pinball05 = pinball(0.05d, q05, realized);
-            double pinball50 = pinball(0.50d, q50, realized);
-            double pinball95 = pinball(0.95d, q95, realized);
-            double crps = crps(samples, realized);
+            } else {
+                double[] samples = toPrimitiveDoubles(terminalSamples);
+                java.util.Arrays.sort(samples);
+                double q05 = percentile(samples, 0.05d);
+                double q50 = percentile(samples, 0.50d);
+                double q95 = percentile(samples, 0.95d);
+                double realized = realizedReturn.doubleValue();
+                double coverageHit = realized >= q05 && realized <= q95 ? 1d : 0d;
+                double pinball05 = pinball(0.05d, q05, realized);
+                double pinball50 = pinball(0.50d, q50, realized);
+                double pinball95 = pinball(0.95d, q95, realized);
+                double crps = crps(samples, realized);
 
-            acc.sampleCount++;
-            acc.coverageHits += coverageHit;
-            acc.pinball05 += pinball05;
-            acc.pinball50 += pinball50;
-            acc.pinball95 += pinball95;
-            acc.crps += crps;
-            rows.add(new OriginRow(index,
-                    tercileBucket(forwardVolatilityRMS(returns, index, HORIZON).doubleValue(), tercileBounds),
-                    coverageHit, pinball05, pinball50, pinball95, crps));
+                acc.sampleCount++;
+                acc.coverageHits += coverageHit;
+                acc.pinball05 += pinball05;
+                acc.pinball50 += pinball50;
+                acc.pinball95 += pinball95;
+                acc.crps += crps;
+                rows.add(new OriginRow(index,
+                        tercileBucket(forwardVolatilityRMS(returns, index, HORIZON).doubleValue(), tercileBounds),
+                        coverageHit, pinball05, pinball50, pinball95, crps));
+            }
 
             if (++logged % CHECKPOINT_EVERY == 0) {
                 LOG.info("  {}: {} origins evaluated, {} unstable", arm.name(), acc.sampleCount + acc.unstableCount,
                         acc.unstableCount);
-                // Persist the origin rows captured so far so a long run survives
-                // interruption with progressively richer evidence (AGENTS.md analysis rule).
-                writeJson(checkpoint, new ArmCheckpoint(arm.name(), List.copyOf(rows)));
+                // Persist progress (rows and the running unstable count) so a long run,
+                // including one with a fully unstable stretch, survives interruption
+                // with progressively richer evidence (AGENTS.md analysis rule).
+                writeJson(checkpoint, new ArmCheckpoint(arm.name(), acc.unstableCount, List.copyOf(rows)));
             }
         }
-        if (!rows.isEmpty()) {
-            writeJson(checkpoint, new ArmCheckpoint(arm.name(), List.copyOf(rows)));
+        if (!rows.isEmpty() || acc.unstableCount > 0) {
+            writeJson(checkpoint, new ArmCheckpoint(arm.name(), acc.unstableCount, List.copyOf(rows)));
         }
         acc.rows = rows;
         return acc;
     }
 
     private static ReturnMoments stableMoments(EwmaReturnForecastStateIndicator state, int index) {
-        var value = state.getValue(index);
+        ReturnForecastState value = state.getValue(index);
         if (value == null) {
             return null;
         }
@@ -411,7 +413,7 @@ public final class WalkForwardCalibrationBakeoffExample {
         if (value < bounds[0]) {
             return 0;
         }
-        return value <= bounds[1] ? 1 : 2;
+        return value < bounds[1] ? 1 : 2;
     }
 
     private static BarSeries loadSeries(String resource) {
@@ -457,7 +459,7 @@ public final class WalkForwardCalibrationBakeoffExample {
     }
 
     /** Incremental per-arm evidence, written to the arm checkpoint file. */
-    private record ArmCheckpoint(String arm, List<OriginRow> rows) {
+    private record ArmCheckpoint(String arm, int unstableCount, List<OriginRow> rows) {
     }
 
     private record OriginRow(int index, int regime, double coverageHit, double pinball05, double pinball50,

@@ -105,11 +105,61 @@ public class EnsembleMonteCarloMethodTest {
         assertNull(method.terminalReturns(context(4, 1, window(0.01d, -0.01d, 0.01d), moments(0d), 7L)));
     }
 
+    @Test
+    public void nonFiniteComponentPropagatesAsUnstable() {
+        // First component returns 2 samples, the last of which is NaN (correct
+        // count but non-finite), so the ensemble must degrade to null.
+        MonteCarloMethod method = new EnsembleMonteCarloMethod(nonFiniteSamplesOfSize(2, Double.NaN),
+                fixedSamplesOfSize(3, 1.0d));
+
+        assertNull(method.terminalReturns(context(4, 5, window(0.01d, -0.01d, 0.01d), moments(0d), 7L)));
+    }
+
+    @Test
+    public void infiniteComponentPropagatesAsUnstable() {
+        MonteCarloMethod method = new EnsembleMonteCarloMethod(fixedSamplesOfSize(2, 1.0d),
+                infiniteSamplesOfSize(3, Double.POSITIVE_INFINITY));
+
+        assertNull(method.terminalReturns(context(4, 5, window(0.01d, -0.01d, 0.01d), moments(0d), 7L)));
+    }
+
+    @Test
+    public void nullSampleComponentPropagatesAsUnstable() {
+        MonteCarloMethod method = new EnsembleMonteCarloMethod(context -> {
+            List<Num> samples = new ArrayList<>(2);
+            samples.add(FACTORY.numOf(1.0d));
+            samples.add(null);
+            return samples;
+        }, fixedSamplesOfSize(3, 1.0d));
+
+        assertNull(method.terminalReturns(context(4, 5, window(0.01d, -0.01d, 0.01d), moments(0d), 7L)));
+    }
+
     private static MonteCarloMethod fixedSamplesOfSize(int size, double value) {
         return context -> {
             List<Num> samples = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 samples.add(FACTORY.numOf(value));
+            }
+            return samples;
+        };
+    }
+
+    private static MonteCarloMethod nonFiniteSamplesOfSize(int size, double bad) {
+        return context -> {
+            List<Num> samples = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                samples.add(FACTORY.numOf(i == size - 1 ? bad : 1.0d));
+            }
+            return samples;
+        };
+    }
+
+    private static MonteCarloMethod infiniteSamplesOfSize(int size, double bad) {
+        return context -> {
+            List<Num> samples = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                samples.add(FACTORY.numOf(i == size - 1 ? bad : 1.0d));
             }
             return samples;
         };

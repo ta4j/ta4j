@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -125,6 +126,41 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
                 () -> new RecentVolatilityWideningMonteCarloMethod(fixedSamples(0.5d), 2, Double.NaN));
     }
 
+    @Test
+    public void hugeDecimalWindowWidensInsteadOfOverflowing() {
+        // Returns ~1e160 in a BigDecimal context: primitive-domain squaring would
+        // overflow to infinity and the decorator would return null, but the
+        // Num-domain RMS stays finite, so the factor (capped at 4) widens instead.
+        MonteCarloMethod inner = fixedSamples(0.0d, 1.0d);
+        MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 4d);
+
+        List<Num> samples = method
+                .terminalReturns(decimalContext(2, 2, decimalWindow(1e160, 1e160), decimalMoments(1e-4, 0d), 1L));
+
+        assertEquals(2, samples.size());
+        assertEquals(0, samples.stream().filter(s -> !Num.isFinite(s)).count());
+        TestUtils.assertNumEquals(DECIMAL.numOf(-1.5d), samples.get(0), 1e-6);
+        TestUtils.assertNumEquals(DECIMAL.numOf(2.5d), samples.get(1), 1e-6);
+    }
+
+    @Test
+    public void tinyDecimalWindowDoesNotUnderflow() {
+        // Returns ~1e-200 against a state volatility ~1e-210: in double, squaring
+        // the window returns underflows to zero and the ratio collapses to 1 (no
+        // widening); in BigDecimal the squares stay representable so the ratio
+        // exceeds the cap and the samples are widened around their mean.
+        ReturnMoments tinyVol = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(),
+                DECIMAL.numOf(0d), DECIMAL.numOf(new java.math.BigDecimal("1E-420")));
+        MonteCarloMethod inner = fixedSamples(0.0d, 1.0d);
+        MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 4d);
+
+        List<Num> samples = method.terminalReturns(decimalContext(1, 2, decimalWindow(1e-200, 1e-200), tinyVol, 1L));
+
+        assertEquals(2, samples.size());
+        TestUtils.assertNumEquals(DECIMAL.numOf(-1.5d), samples.get(0), 1e-6);
+        TestUtils.assertNumEquals(DECIMAL.numOf(2.5d), samples.get(1), 1e-6);
+    }
+
     private static MonteCarloMethod fixedSamples(double... values) {
         return context -> {
             List<Num> samples = new ArrayList<>(values.length);
@@ -156,5 +192,26 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
             ReturnMoments moments, long seed) {
         return new MonteCarloContext(100, horizon, iterationCount, historicalLogReturns, moments,
                 new SplittableRandom(seed), FACTORY);
+    }
+
+    private static final NumFactory DECIMAL = DecimalNumFactory.getInstance();
+
+    private static List<Num> decimalWindow(double... values) {
+        List<Num> result = new ArrayList<>(values.length);
+        for (double value : values) {
+            result.add(DECIMAL.numOf(value));
+        }
+        return result;
+    }
+
+    private static ReturnMoments decimalMoments(double volatility, double drift) {
+        return ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(), DECIMAL.numOf(drift),
+                DECIMAL.numOf(volatility * volatility));
+    }
+
+    private static MonteCarloContext decimalContext(int horizon, int iterationCount, List<Num> historicalLogReturns,
+            ReturnMoments moments, long seed) {
+        return new MonteCarloContext(100, horizon, iterationCount, historicalLogReturns, moments,
+                new SplittableRandom(seed), DECIMAL);
     }
 }

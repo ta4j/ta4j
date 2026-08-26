@@ -118,11 +118,11 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
         if (!Num.isFinite(stateVolatility) || stateVolatility.isNegative() || stateVolatility.isZero()) {
             return null;
         }
-        double recentRealized = recentVolatilityRms(context.historicalLogReturns());
-        if (!Double.isFinite(recentRealized)) {
+        Num recentRealized = recentVolatilityRms(context.historicalLogReturns(), numFactory);
+        if (recentRealized == null || !Num.isFinite(recentRealized)) {
             return null;
         }
-        double ratio = recentRealized / stateVolatility.doubleValue();
+        double ratio = recentRealized.doubleValue() / stateVolatility.doubleValue();
         double factor = Math.min(maxWiden, Math.max(1d, ratio));
 
         // Coerce to the context factory and locate the inner distribution's empirical
@@ -159,26 +159,28 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
     }
 
     /**
-     * RMS of the trailing realized returns. Returns {@link Double#NaN} when the
-     * window does not contain at least two finite returns.
+     * RMS of the trailing realized returns, accumulated in the active {@code Num}
+     * domain so magnitudes beyond the primitive {@code double} range neither
+     * overflow (squares to infinity) nor underflow (tiny squares to zero) before
+     * the root. Returns {@code null} when the window does not contain at least two
+     * finite returns.
      */
-    private double recentVolatilityRms(List<Num> window) {
+    private Num recentVolatilityRms(List<Num> window, NumFactory numFactory) {
         int from = Math.max(0, window.size() - recentBarCount);
         int count = 0;
-        double sumSquares = 0d;
+        Num sumSquares = numFactory.zero();
         for (int i = from; i < window.size(); i++) {
             Num value = window.get(i);
             if (!Num.isFinite(value)) {
-                return Double.NaN;
+                return null;
             }
-            double r = value.doubleValue();
-            sumSquares += r * r;
+            sumSquares = sumSquares.plus(value.multipliedBy(value));
             count++;
         }
         if (count < 2) {
-            return Double.NaN;
+            return null;
         }
-        return Math.sqrt(sumSquares / count);
+        return sumSquares.dividedBy(numFactory.numOf(count)).sqrt();
     }
 
     @Override
