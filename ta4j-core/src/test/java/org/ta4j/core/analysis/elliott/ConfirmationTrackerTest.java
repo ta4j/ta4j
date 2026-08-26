@@ -4,7 +4,6 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -160,9 +159,9 @@ class ConfirmationTrackerTest {
         script.put(4, List.of(pivot(0, 9.5), pivot(3, 14)));
         final BarSeries series = seriesWithBars(5);
 
-        assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("contradicted");
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new ConfirmationTracker(scripted(script)).observe(series));
+        assertTrue(exception.getMessage().contains("contradicted"), exception.getMessage());
     }
 
     @Test
@@ -227,9 +226,9 @@ class ConfirmationTrackerTest {
         script.put(4, List.of(pivot(3, 14)));
         final BarSeries series = seriesWithBars(5);
 
-        assertThatThrownBy(() -> new ConfirmationTracker(scripted(script)).observe(series))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("withdrew non-trailing pivot");
+        final IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> new ConfirmationTracker(scripted(script)).observe(series));
+        assertTrue(exception.getMessage().contains("withdrew non-trailing pivot"), exception.getMessage());
     }
 
     @Test

@@ -4,7 +4,8 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -51,20 +52,19 @@ class PivotHistoryTest {
 
     @Test
     void rejectsNonIncreasingIndices() {
-        assertThatThrownBy(() -> PivotHistory.of(List.of( //
+        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> PivotHistory.of(List.of( //
                 new ConfirmedPivot(4, 4, DoubleNum.valueOf(5), SwingPivotType.LOW),
-                new ConfirmedPivot(4, 5, DoubleNum.valueOf(6), SwingPivotType.HIGH))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("strictly increase");
+                new ConfirmedPivot(4, 5, DoubleNum.valueOf(6), SwingPivotType.HIGH))));
+        assertTrue(exception.getMessage().contains("strictly increase"), exception.getMessage());
     }
 
     @Test
     void rejectsNonFinitePivotPrices() {
         for (final double invalidPrice : new double[] { Double.NaN, Double.POSITIVE_INFINITY,
                 Double.NEGATIVE_INFINITY }) {
-            assertThatThrownBy(() -> new ConfirmedPivot(0, 0, DoubleNum.valueOf(invalidPrice), SwingPivotType.LOW))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("price must be finite");
+            final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> new ConfirmedPivot(0, 0, DoubleNum.valueOf(invalidPrice), SwingPivotType.LOW));
+            assertTrue(exception.getMessage().contains("price must be finite"), exception.getMessage());
         }
     }
 

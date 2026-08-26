@@ -39,9 +39,9 @@ final class BlockBootstrapNulls {
     private static final double MAX_DIRECT_EXPONENT = 700d;
 
     /**
-     * Checks whether a reconstructed close is a finite positive value in the
-     * active numeric domain. This rejects null, NaN, and infinite delegates
-     * without narrowing arbitrary-precision values through {@code double}.
+     * Checks whether a reconstructed close is a finite positive value in the active
+     * numeric domain. This rejects null, NaN, and infinite delegates without
+     * narrowing arbitrary-precision values through {@code double}.
      */
     private static boolean representableInDomain(final Num value) {
         return Num.isFinite(value) && value.isPositive();

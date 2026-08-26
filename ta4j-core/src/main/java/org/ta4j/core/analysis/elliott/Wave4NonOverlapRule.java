@@ -18,7 +18,7 @@ final class Wave4NonOverlapRule implements RelationshipRule {
 
     @Override
     public RuleEvidence evaluate(final TopologyCandidate candidate) {
-        if (!isApplicable(candidate)) {
+        if (!(candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3)) {
             return RuleEvidence.notApplicable(id(), "wave 4 overlap protection applies only to five-wave grammars");
         }
 
@@ -35,7 +35,4 @@ final class Wave4NonOverlapRule implements RelationshipRule {
         return RuleEvidence.fail(id(), observations, "wave 4 overlaps or breaches the wave 1 extreme");
     }
 
-    private boolean isApplicable(final TopologyCandidate candidate) {
-        return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
-    }
 }
