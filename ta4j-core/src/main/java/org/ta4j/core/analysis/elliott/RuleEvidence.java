@@ -28,6 +28,9 @@ record RuleEvidence(String ruleId, EvidenceState state, Optional<Double> score, 
         Objects.requireNonNull(ruleId, "ruleId");
         Objects.requireNonNull(state, "state");
         score = score == null ? Optional.empty() : score;
+        if (state != EvidenceState.PASS && score.isPresent()) {
+            throw new IllegalArgumentException("score is only valid for PASS evidence");
+        }
         score = score.map(value -> {
             if (!Double.isFinite(value) || value < -EPSILON || value > 1 + EPSILON) {
                 throw new IllegalArgumentException("score must be within [0, 1]: " + value);

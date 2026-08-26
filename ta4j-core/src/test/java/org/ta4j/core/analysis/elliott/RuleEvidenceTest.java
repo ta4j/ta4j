@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,12 @@ class RuleEvidenceTest {
     void acceptsExactBoundaryScores() {
         assertThat(RuleEvidence.scored("wave5-divergence", 0.0d, List.of(), "explanation").score()).contains(0.0d);
         assertThat(RuleEvidence.scored("wave5-divergence", 1.0d, List.of(), "explanation").score()).contains(1.0d);
+    }
+
+    @Test
+    void rejectsScoresOnNonPassingEvidence() {
+        assertThatThrownBy(() -> new RuleEvidence("wave5-divergence", EvidenceState.FAIL, Optional.of(0.5d), List.of(),
+                "explanation")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("PASS");
     }
 
     @Test

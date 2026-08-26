@@ -16,8 +16,11 @@ import java.util.concurrent.atomic.LongAdder;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NumFactory;
 
 class FractalSwingDetectorTest {
@@ -40,6 +43,36 @@ class FractalSwingDetectorTest {
         final List<SwingPivot> first = detector.detectPivots(series, series.getEndIndex());
 
         assertThat(detector.detectPivots(series, series.getEndIndex())).isSameAs(first);
+    }
+
+    @Test
+    void singletonPivotViewMatchesFullDetectorView() {
+        final BarSeries series = noisySeries(200, 43L);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        boolean foundSingleton = false;
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            final List<SwingPivot> pivots = detector.detectPivots(series, index);
+            if (pivots.size() == 1) {
+                assertThat(detector.detect(series, index, ElliottDegree.MINUETTE).pivots()).isEqualTo(pivots);
+                foundSingleton = true;
+                break;
+            }
+        }
+
+        assertThat(foundSingleton).isTrue();
+    }
+
+    @Test
+    void maximumBarIndexReplayCursorTerminates() {
+        final Instant begin = Instant.parse("2024-01-01T00:00:00Z");
+        final Num price = DoubleNum.valueOf(10);
+        final BaseBar bar = new BaseBar(Duration.ofMinutes(1), begin, begin.plus(Duration.ofMinutes(1)), price, price,
+                price, price, DoubleNum.valueOf(1), DoubleNum.valueOf(0), 0L);
+        final BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(bar))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+
+        assertThat(new FractalSwingDetector(1).detectPivots(series, Integer.MAX_VALUE)).isEmpty();
     }
 
     @Test

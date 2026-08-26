@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -100,6 +101,34 @@ class ConfirmationTrackerTest {
                 .observe(indexedSeries(seriesWithBars(1), lastIndex));
 
         assertThat(history.pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(lastIndex);
+    }
+
+    @Test
+    void reconcilesWhenDetectorMutatesAReusedPivotList() {
+        final List<SwingPivot> reused = new ArrayList<>();
+        final SwingDetector detector = new SwingDetector() {
+            @Override
+            public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
+                throw new UnsupportedOperationException("mutable detector only supports detectPivots");
+            }
+
+            @Override
+            public List<SwingPivot> detectPivots(final BarSeries series, final int index) {
+                reused.clear();
+                if (index >= 1) {
+                    reused.add(pivot(0, 10));
+                }
+                if (index >= 2) {
+                    reused.add(pivot(1, 20));
+                }
+                return reused;
+            }
+        };
+
+        final ConfirmationTracker.CausalReplay replay = new ConfirmationTracker(detector)
+                .observeReplay(seriesWithBars(3));
+
+        assertThat(replay.history().pivots()).extracting(ConfirmedPivot::pivotIndex).containsExactly(0, 1);
     }
 
     @Test

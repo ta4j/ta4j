@@ -52,11 +52,11 @@ public final class FractalSwingDetector implements SwingDetector {
      * confirmed high/low pivots as an ascending replay advances, resetting on
      * detected series history changes or descending queries.
      */
-    private final Map<BarSeries, Map<ElliottDegree, CausalReplayState>> replayStates = Collections
-            .synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+    private final Map<SeriesKey, Map<ElliottDegree, CausalReplayState>> replayStates = Collections
+            .synchronizedMap(new LinkedHashMap<SeriesKey, Map<ElliottDegree, CausalReplayState>>(16, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(
-                        final Map.Entry<BarSeries, Map<ElliottDegree, CausalReplayState>> eldest) {
+                        final Map.Entry<SeriesKey, Map<ElliottDegree, CausalReplayState>> eldest) {
                     return size() > MAX_CACHED_SERIES;
                 }
             });
@@ -99,7 +99,7 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return replayStates.computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
+        return replayStates.computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
                 .computeIfAbsent(degree,
                         ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
                                 degree))
@@ -113,7 +113,7 @@ public final class FractalSwingDetector implements SwingDetector {
             return List.of();
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return replayStates.computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
+        return replayStates.computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
                 .computeIfAbsent(ElliottDegree.MINUETTE,
                         ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
                                 ElliottDegree.MINUETTE))
@@ -229,25 +229,32 @@ public final class FractalSwingDetector implements SwingDetector {
             }
 
             final int beginIndex = series.getBeginIndex();
-            final int scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : lastScannedIndex + 1;
-            int asOfIndex = scanStart;
+            final long scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : (long) lastScannedIndex + 1L;
+            long asOfIndex = scanStart;
             while (asOfIndex <= index) {
-                final int highIndex = swingHigh.getLatestSwingIndex(asOfIndex);
-                final int lowIndex = swingLow.getLatestSwingIndex(asOfIndex);
-                if (highIndex < lastHighIndex || lowIndex < lastLowIndex) {
+                final int observationIndex = (int) asOfIndex;
+                final int highIndex = swingHigh.getLatestSwingIndex(observationIndex);
+                final int lowIndex = swingLow.getLatestSwingIndex(observationIndex);
+                final int mergedTailIndex = pivots.isEmpty() ? Integer.MIN_VALUE
+                        : pivots.get(pivots.size() - 1).index();
+                final boolean changedSidePrecedesMergedTail = !pivots.isEmpty()
+                        && ((highIndex != lastHighIndex && highIndex < mergedTailIndex)
+                                || (lowIndex != lastLowIndex && lowIndex < mergedTailIndex));
+                if (highIndex < lastHighIndex || lowIndex < lastLowIndex || changedSidePrecedesMergedTail) {
                     // AbstractRecentSwingIndicator can retract a newer confirmed
                     // point when a later scan discovers an older one. Rebuild the
                     // merged causal prefix so the detector cannot retain a stale
                     // pivot from before that retraction.
                     resetMergedPivots();
-                    for (int replayIndex = beginIndex; replayIndex <= asOfIndex; replayIndex++) {
-                        processObservation(beginIndex, swingHigh.getLatestSwingIndex(replayIndex),
-                                swingLow.getLatestSwingIndex(replayIndex));
+                    for (long replayIndex = beginIndex; replayIndex <= observationIndex; replayIndex++) {
+                        final int replayObservationIndex = (int) replayIndex;
+                        processObservation(beginIndex, swingHigh.getLatestSwingIndex(replayObservationIndex),
+                                swingLow.getLatestSwingIndex(replayObservationIndex));
                     }
                 } else {
                     processObservation(beginIndex, highIndex, lowIndex);
                 }
-                lastScannedIndex = asOfIndex;
+                lastScannedIndex = observationIndex;
                 asOfIndex++;
             }
         }
@@ -386,7 +393,7 @@ public final class FractalSwingDetector implements SwingDetector {
         /** Builds the immutable swing chain over the merged pivots. */
         private SwingDetectorResult snapshot() {
             if (pivots.size() < 2) {
-                return new SwingDetectorResult(List.of(), List.of());
+                return SwingDetectorResult.fromPivots(snapshotPivots(), degree);
             }
             final List<ElliottSwing> swings = new ArrayList<>(pivots.size() - 1);
             for (int i = 1; i < pivots.size(); i++) {
@@ -428,6 +435,19 @@ public final class FractalSwingDetector implements SwingDetector {
             observedEndIndex = currentEndIndex;
             observedLastBar = currentLastBar;
             return changed;
+        }
+    }
+
+    private record SeriesKey(BarSeries series) {
+
+        @Override
+        public boolean equals(final Object other) {
+            return this == other || other instanceof SeriesKey key && series == key.series;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(series);
         }
     }
 
