@@ -34,6 +34,15 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void repeatedPivotQueriesReuseIncrementalPivotView() {
+        final BarSeries series = noisySeries(200, 43L);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        final List<SwingPivot> first = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(detector.detectPivots(series, series.getEndIndex())).isSameAs(first);
+    }
+
+    @Test
     void indicatorCacheSeparatesSeriesWithoutCrossTalk() {
         final BarSeries first = noisySeries(120, 1L);
         final BarSeries second = noisySeries(150, 2L);

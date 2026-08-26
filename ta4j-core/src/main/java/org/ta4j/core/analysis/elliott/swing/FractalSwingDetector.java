@@ -106,6 +106,20 @@ public final class FractalSwingDetector implements SwingDetector {
                 .resultAt(clampedIndex);
     }
 
+    @Override
+    public List<SwingPivot> detectPivots(final BarSeries series, final int index) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            return List.of();
+        }
+        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
+        return replayStates.computeIfAbsent(series, ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(ElliottDegree.MINUETTE,
+                        ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
+                                ElliottDegree.MINUETTE))
+                .pivotsAt(clampedIndex);
+    }
+
     /**
      * @return lookback window length
      * @since 0.22.2
@@ -161,6 +175,8 @@ public final class FractalSwingDetector implements SwingDetector {
          * accumulated pivot on every ascending query.
          */
         private SwingDetectorResult cachedResult;
+        private List<SwingPivot> cachedPivots = List.of();
+        private boolean pivotViewDirty = true;
 
         /** Whether {@link #pivots} changed since {@link #cachedResult} was built. */
         private boolean resultDirty = true;
@@ -189,7 +205,25 @@ public final class FractalSwingDetector implements SwingDetector {
          * Returns the detection result for {@code index}, extending the merged pivot
          * state incrementally when the query advances the as-of position.
          */
+        private synchronized List<SwingPivot> pivotsAt(final int index) {
+            advanceTo(index);
+            if (pivotViewDirty) {
+                cachedPivots = snapshotPivots();
+                pivotViewDirty = false;
+            }
+            return cachedPivots;
+        }
+
         private synchronized SwingDetectorResult resultAt(final int index) {
+            advanceTo(index);
+            if (resultDirty) {
+                cachedResult = snapshot();
+                resultDirty = false;
+            }
+            return cachedResult;
+        }
+
+        private void advanceTo(final int index) {
             if (index < lastScannedIndex || seriesHistoryChanged()) {
                 reset();
             }
@@ -252,11 +286,6 @@ public final class FractalSwingDetector implements SwingDetector {
                 lastLowIndex = lowIndex;
             }
             lastScannedIndex = index;
-            if (resultDirty) {
-                cachedResult = snapshot();
-                resultDirty = false;
-            }
-            return cachedResult;
         }
 
         private void absorb(final Pivot pivot) {
@@ -266,6 +295,7 @@ public final class FractalSwingDetector implements SwingDetector {
             if (pivots.isEmpty()) {
                 pivots.add(pivot);
                 resultDirty = true;
+                pivotViewDirty = true;
                 return;
             }
             final Pivot last = pivots.get(pivots.size() - 1);
@@ -274,6 +304,7 @@ public final class FractalSwingDetector implements SwingDetector {
                         || pivot.type() == PivotType.LOW && !pivot.price().isGreaterThan(last.price())) {
                     pivots.set(pivots.size() - 1, pivot);
                     resultDirty = true;
+                    pivotViewDirty = true;
                 }
                 return;
             }
@@ -286,11 +317,13 @@ public final class FractalSwingDetector implements SwingDetector {
                 if (winner != last) {
                     pivots.set(pivots.size() - 1, winner);
                     resultDirty = true;
+                    pivotViewDirty = true;
                 }
                 return;
             }
             pivots.add(pivot);
             resultDirty = true;
+            pivotViewDirty = true;
         }
 
         /**
@@ -314,6 +347,18 @@ public final class FractalSwingDetector implements SwingDetector {
             return first.type() == PivotType.LOW ? first : second;
         }
 
+        private List<SwingPivot> snapshotPivots() {
+            if (pivots.isEmpty()) {
+                return List.of();
+            }
+            final List<SwingPivot> snapshot = new ArrayList<>(pivots.size());
+            for (final Pivot pivot : pivots) {
+                snapshot.add(new SwingPivot(pivot.index(), pivot.price(),
+                        pivot.type() == PivotType.HIGH ? SwingPivotType.HIGH : SwingPivotType.LOW));
+            }
+            return List.copyOf(snapshot);
+        }
+
         /** Builds the immutable swing chain over the merged pivots. */
         private SwingDetectorResult snapshot() {
             if (pivots.size() < 2) {
@@ -335,7 +380,9 @@ public final class FractalSwingDetector implements SwingDetector {
             lastLowIndex = Integer.MIN_VALUE;
             lastScannedIndex = Integer.MIN_VALUE;
             cachedResult = null;
+            cachedPivots = List.of();
             resultDirty = true;
+            pivotViewDirty = true;
         }
 
         /**

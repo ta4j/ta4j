@@ -105,12 +105,17 @@ final class ConfirmationTracker {
         final int end = Math.min(series.getEndIndex(), endIndex);
         final List<Integer> versionAsOf = new ArrayList<>();
         final List<List<ConfirmedPivot>> versions = new ArrayList<>();
+        List<SwingPivot> previousReported = null;
         if (begin <= end) {
             for (int asOf = begin;; asOf++) {
-                final boolean changed = reconcile(order, known, detector.detectPivots(series, asOf), asOf, collapsed);
-                if (changed) {
-                    versions.add(List.copyOf(PivotHistory.of(order).pivots()));
-                    versionAsOf.add(asOf);
+                final List<SwingPivot> reported = detector.detectPivots(series, asOf);
+                if (reported != previousReported) {
+                    final boolean changed = reconcile(order, known, reported, asOf, collapsed);
+                    if (changed) {
+                        versions.add(List.copyOf(PivotHistory.of(order).pivots()));
+                        versionAsOf.add(asOf);
+                    }
+                    previousReported = reported;
                 }
                 if (asOf == end) {
                     break;
