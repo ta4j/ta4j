@@ -3,6 +3,9 @@
  */
 package org.ta4j.core;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -28,7 +31,7 @@ public class BaseBar implements Bar {
      * Number of series retaining this bar. Package-private attachment methods keep
      * construction-time builder mutations out of the retained-bar signal.
      */
-    private int mutationTrackingUsers;
+    private transient int mutationTrackingUsers;
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -174,6 +177,12 @@ public class BaseBar implements Bar {
 
     static long retainedBarMutationEpoch() {
         return RETAINED_BAR_MUTATION_EPOCH.get();
+    }
+
+    @Serial
+    private void readObject(final ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+        inputStream.defaultReadObject();
+        mutationTrackingUsers = 0;
     }
 
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "Series attachment lifecycle is serialized by the owning series; BaseBar price mutation remains intentionally mutable.")

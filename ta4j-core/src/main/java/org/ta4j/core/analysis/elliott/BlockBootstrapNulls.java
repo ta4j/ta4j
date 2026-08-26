@@ -39,19 +39,12 @@ final class BlockBootstrapNulls {
     private static final double MAX_DIRECT_EXPONENT = 700d;
 
     /**
-     * Returns whether a reconstructed close is finite and strictly positive in the
-     * active numeric domain. Double-backed series have bounded primitive delegates;
-     * arbitrary-precision domains accept every finite positive value.
+     * Checks whether a reconstructed close is a finite positive value in the
+     * active numeric domain. This rejects null, NaN, and infinite delegates
+     * without narrowing arbitrary-precision values through {@code double}.
      */
-    private static boolean representableInDomain(final NumFactory numFactory, final Num value) {
-        if (!(numFactory instanceof DoubleNumFactory)) {
-            return true;
-        }
-        return value.getDelegate() instanceof Double delegate && Double.isFinite(delegate) && delegate > 0d;
-    }
-
-    private static boolean nonFiniteDouble(final Num value) {
-        return value.getDelegate() instanceof Double delegate && !Double.isFinite(delegate);
+    private static boolean representableInDomain(final Num value) {
+        return Num.isFinite(value) && value.isPositive();
     }
 
     private BlockBootstrapNulls() {
@@ -128,10 +121,9 @@ final class BlockBootstrapNulls {
             if (!previous.isPositive() || !current.isPositive()) {
                 throw new IllegalArgumentException("bootstrap source close prices must be positive");
             }
-            // DoubleNum accepts infinite delegates whose isPositive() is true;
-            // feeding one into the decomposed logarithm would scale it by 1e300
-            // forever. Reject non-finite range-bounded closes up front.
-            if (nonFiniteDouble(previous) || nonFiniteDouble(current)) {
+            // The bootstrap protocol requires finite values for every Num
+            // implementation, including bounded delegates other than Double.
+            if (!Num.isFinite(previous) || !Num.isFinite(current)) {
                 throw new IllegalArgumentException(
                         "bootstrap source close prices must be finite; bar " + offset + " holds " + current);
             }
@@ -255,7 +247,7 @@ final class BlockBootstrapNulls {
                 // perfectly representable direct close, so the accumulated-log
                 // magnitude alone must never reject it.
                 final Num candidate = previousClose.multipliedBy(expNum(numFactory, drawnReturn));
-                if (representableInDomain(numFactory, candidate)) {
+                if (representableInDomain(candidate)) {
                     direct = candidate;
                 }
             }
@@ -268,13 +260,10 @@ final class BlockBootstrapNulls {
                 // log-close and reject what a range-bounded Num domain cannot
                 // hold instead of silently writing zero or infinite closes.
                 final Num reconstructed = expNum(numFactory, runningLogClose);
-                if (numFactory instanceof DoubleNumFactory) {
-                    final double narrowed = reconstructed.doubleValue();
-                    if (!Double.isFinite(narrowed) || narrowed <= 0d) {
-                        throw new IllegalStateException("resampled null path leaves double range at member bar "
-                                + offset + " (accumulated log-close " + runningLogClose
-                                + "); not representable in the active Num domain");
-                    }
+                if (!Num.isFinite(reconstructed) || !reconstructed.isPositive()) {
+                    throw new IllegalStateException("resampled null path leaves the active Num domain at member bar "
+                            + offset + " (accumulated log-close " + runningLogClose
+                            + "); not representable in the active Num domain");
                 }
                 closes[offset] = reconstructed;
             }
@@ -333,7 +322,7 @@ final class BlockBootstrapNulls {
             // If the ratio underflows before multiplication, reverse the
             // operations so a representable subnormal wick is not lost.
             scaled = value.multipliedBy(close.dividedBy(sourceClose));
-        } else if (nonFiniteDouble(scaled)) {
+        } else if (!Num.isFinite(scaled)) {
             // The ratio can overflow even when the final scaled wick is
             // representable; retry with the finite scale factor first.
             scaled = value.multipliedBy(close.dividedBy(sourceClose));
@@ -344,7 +333,7 @@ final class BlockBootstrapNulls {
 
         // A range-bounded domain that cannot hold the scaled wick clamps to the
         // member close instead of letting infinity or NaN reach BaseBar.
-        if (nonFiniteDouble(scaled)) {
+        if (!Num.isFinite(scaled)) {
             return close;
         }
         return scaled;

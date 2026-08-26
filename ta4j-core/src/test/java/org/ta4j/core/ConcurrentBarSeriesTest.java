@@ -815,6 +815,25 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void revisionQueriesWorkInsideReadLock() {
+        var series = new ConcurrentBarSeriesBuilder().withName("revisionQueriesWorkInsideReadLockSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        series.addBar(streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:00:00Z"), 100, 110, 90, 105,
+                5));
+        long initialRevision = series.getBarHistoryRevision();
+        series.getBar(0).addPrice(numOf(106));
+
+        series.withReadLock(() -> assertEquals(initialRevision + 1, series.getBarHistoryRevision()));
+        BarSeriesChangeSnapshot snapshot = series
+                .withReadLock(() -> series.getBarSeriesChangeSnapshot(initialRevision));
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(0, snapshot.earliestChangedIndex());
+    }
+
+
+    @Test
     public void withWriteLockSupportsRunnableAndSupplier() {
         var series = new ConcurrentBarSeriesBuilder().withName("withWriteLockSupportsRunnableAndSupplierSeries")
                 .withNumFactory(numFactory)
@@ -1414,6 +1433,22 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         restored.ingestTrade(start.plusSeconds(60), 1, 110);
 
         assertEquals(series.getBarCount() + 1, restored.getBarCount());
+    }
+
+    @Test
+    public void serializeAndDeserializeReattachesRetainedMutationTracking() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeReattachesRetainedMutationTrackingSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+        long initialRevision = restored.getBarHistoryRevision();
+        restored.getBar(0).addPrice(numOf(999));
+
+        assertEquals(initialRevision + 1, restored.getBarHistoryRevision());
     }
 
     @Test

@@ -3,13 +3,8 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.bars.TimeBarBuilderFactory;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
-
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -17,6 +12,13 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link BarSeries}.
@@ -79,6 +81,13 @@ public class BaseBarSeries implements BarSeries {
     private long observedRetainedBarMutationEpoch;
     private boolean retainedBarMutationEpochInitialized;
     private transient Deque<BarHistoryChange> barHistoryChanges;
+
+    @Serial
+    private void readObject(final ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+        inputStream.defaultReadObject();
+        attachRetainedBarMutationTracking();
+        markRetainedBarMutationsObserved();
+    }
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -151,7 +160,7 @@ public class BaseBarSeries implements BarSeries {
         }
     }
 
-    private void synchronizeRetainedBarMutations() {
+    private synchronized void synchronizeRetainedBarMutations() {
         final long currentEpoch = BaseBar.retainedBarMutationEpoch();
         if (!retainedBarMutationEpochInitialized) {
             observedRetainedBarMutationEpoch = currentEpoch;
@@ -164,7 +173,7 @@ public class BaseBarSeries implements BarSeries {
         }
     }
 
-    private void markRetainedBarMutationsObserved() {
+    private synchronized void markRetainedBarMutationsObserved() {
         observedRetainedBarMutationEpoch = BaseBar.retainedBarMutationEpoch();
         retainedBarMutationEpochInitialized = true;
     }
@@ -313,7 +322,7 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.23.1
      */
     @Override
-    public long getBarHistoryRevision() {
+    public synchronized long getBarHistoryRevision() {
         synchronizeRetainedBarMutations();
         return this.barHistoryRevision;
     }
@@ -324,7 +333,7 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.24.1
      */
     @Override
-    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+    public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
         synchronizeRetainedBarMutations();
         return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
                 this.removedBarsCount - 1, this.maximumBarCount, this.seriesEndIndex);
@@ -490,7 +499,7 @@ public class BaseBarSeries implements BarSeries {
         markRetainedBarMutationsObserved();
     }
 
-    private void recordBarHistoryChange(final int changedIndex) {
+    private synchronized void recordBarHistoryChange(final int changedIndex) {
         this.barHistoryRevision++;
         if (this.barHistoryChanges == null) {
             this.barHistoryChanges = new ArrayDeque<>(BAR_HISTORY_CHANGE_CAPACITY);
@@ -500,7 +509,7 @@ public class BaseBarSeries implements BarSeries {
         this.barHistoryChanges.addLast(new BarHistoryChange(this.barHistoryRevision, changedIndex));
     }
 
-    private int earliestChangedIndexSince(final long sinceRevision) {
+    private synchronized int earliestChangedIndexSince(final long sinceRevision) {
         if (sinceRevision == this.barHistoryRevision) {
             return -1;
         }
