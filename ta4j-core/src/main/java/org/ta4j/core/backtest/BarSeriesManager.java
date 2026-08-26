@@ -5,11 +5,11 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -25,6 +25,14 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
  * {@link Strategy trading strategy} over the managed bar series.
+ *
+ * <p>
+ * The manager borrows the caller's {@link BarSeries} without copying it:
+ * strategies, indicators, execution models, and position sizing all observe the
+ * same instance, so signals and fills always see one coherent price revision.
+ * Callers that mutate the series between runs get results consistent with that
+ * mutation; the manager itself never modifies the series.
+ * </p>
  *
  * <p>
  * Default {@code run(...)} overloads create a fresh trading record through this
@@ -146,6 +154,9 @@ public class BarSeriesManager {
      * @param tradingRecordFactory factory for default run overloads
      * @since 0.22.4
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The manager borrows the caller's live series so "
+            + "strategies, indicators, execution models, and position sizing observe one coherent price revision; "
+            + "copying desynchronized signal and fill pricing.")
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory) {
         Objects.requireNonNull(barSeries, "barSeries");
@@ -153,7 +164,7 @@ public class BarSeriesManager {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
-        this.barSeries = snapshotSeries(barSeries);
+        this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -163,8 +174,10 @@ public class BarSeriesManager {
     /**
      * @return the managed bar series
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; see "
+            + "the class Javadoc ownership note.")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     /**
@@ -586,14 +599,22 @@ public class BarSeriesManager {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
             // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+            // The raw upper bound (exclusive) is computed in long to avoid int
+            // overflow when removedBarsCount + barData.size() exceeds
+            // Integer.MAX_VALUE (e.g. a trailing bar at Integer.MAX_VALUE).
+            // Clamp it to Integer.MAX_VALUE + 1: bar/strategy APIs take int
+            // indices, so no representable bar exists beyond Integer.MAX_VALUE,
+            // and scanning past it would wrap the long-to-int cast negative.
+            long seriesMaxSize = Math.min((long) Integer.MAX_VALUE + 1, Math.max((long) barSeries.getEndIndex() + 1,
+                    (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size()));
+            for (long i = runEndIndex + 1L; i < seriesMaxSize; i++) {
+                int index = (int) i;
+                lastProcessedIndex = index;
+                tradeExecutionModel.onBar(index, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                if (strategy.shouldOperate(index, tradingRecord)) {
+                    tradeExecutionModel.execute(index, tradingRecord, barSeries, amountResolver.apply(index));
                     break;
                 }
             }
@@ -656,15 +677,6 @@ public class BarSeriesManager {
             fallbackIndex = safeEnd;
         }
         return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
 }

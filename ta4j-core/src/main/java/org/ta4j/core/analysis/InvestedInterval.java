@@ -25,6 +25,13 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     private final boolean[] investedIntervals;
 
     /**
+     * The series begin index captured when the interval array was materialized.
+     * Later rolling advances of the borrowed series must not rebase the lookup, or
+     * intervals shift onto never-calculated bars.
+     */
+    private final int materializedBeginIndex;
+
+    /**
      * Creates an indicator that reports invested intervals for the trading record.
      *
      * @param series        the bar series backing the indicator
@@ -49,40 +56,48 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+        materializedBeginIndex = getBarSeries().getBeginIndex();
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 0 || index >= investedIntervals.length) {
+        int position = index - materializedBeginIndex;
+        if (position < 0 || position >= investedIntervals.length) {
             return Boolean.FALSE;
         }
-        return investedIntervals[index];
+        return investedIntervals[position];
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         BarSeries series = getBarSeries();
-        int size = Math.max(series.getEndIndex() + 1, 0);
+        int beginIndex = materializedBeginIndex;
+        int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
+        int size = series.getBarCount() == 0 ? 0 : analysisEndIndex - beginIndex + 1;
         boolean[] invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
+            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, analysisEndIndex);
             openPositions.forEach(position -> markInvestedIntervals(position, invested));
         }
         return invested;
     }
 
     private void markInvestedIntervals(Position position, boolean[] invested) {
-        BarSeries series = getBarSeries();
         if (position == null || position.getEntry() == null) {
             return;
         }
-        int entryIndex = position.getEntry().getIndex();
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        int start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
-        int end = Math.min(exitIndex, invested.length - 1);
-        for (int i = start; i <= end; i++) {
-            invested[i] = true;
+        int beginIndex = materializedBeginIndex;
+        int investedEndIndex = beginIndex + invested.length - 1;
+        long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
+        if (startLong > investedEndIndex) {
+            return;
+        }
+        int exitIndex = position.isClosed() ? position.getExit().getIndex() : investedEndIndex;
+        int start = (int) startLong;
+        int end = Math.min(exitIndex, investedEndIndex);
+        for (long i = start; i <= end; i++) {
+            invested[(int) i - beginIndex] = true;
         }
     }
 

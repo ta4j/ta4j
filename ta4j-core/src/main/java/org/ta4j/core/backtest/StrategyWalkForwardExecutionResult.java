@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -13,7 +14,6 @@ import java.util.Optional;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -67,8 +67,10 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @param foldFailures  per-fold execution failures encountered during the run
      * @since 0.22.4
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The result borrows the caller's live series so "
+            + "fold criteria evaluate the same instance execution observed; folds own all derived state.")
     public StrategyWalkForwardExecutionResult {
-        barSeries = snapshotSeries(barSeries);
+        Objects.requireNonNull(barSeries, "barSeries must not be null");
         strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
@@ -77,8 +79,9 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override
@@ -193,15 +196,6 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     private List<Num> criterionValuesFor(AnalysisCriterion criterion, List<FoldResult> selectedFolds) {
         Objects.requireNonNull(criterion, "criterion");
         return selectedFolds.stream().map(fold -> criterion.calculate(barSeries, fold.tradingRecord())).toList();
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
     /**

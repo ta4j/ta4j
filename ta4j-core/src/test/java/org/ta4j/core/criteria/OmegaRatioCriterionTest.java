@@ -12,14 +12,20 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -230,5 +236,59 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
             return upsideExcess == 0d ? 0d : Double.NaN;
         }
         return upsideExcess / downsideShortfall;
+    }
+
+    @Test
+    public void scansTerminalWindowWithoutIndexWrap() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 2, terminal),
+                Trade.sellAt(Integer.MAX_VALUE, terminal));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(terminal, record);
+
+        assertTrue(ratio.isPositive());
+    }
+
+    @Test
+    public void indexesReturnsFromRetainedWindowOffsets() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        // Retained window starting one bar later: return slots must map against
+        // getBeginIndex(), not absolute indexes.
+        BarSeries live = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(full.getBarData().subList(1, 3))
+                .withBeginIndex(1)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(1, live), Trade.sellAt(2, live));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(live, record);
+
+        // The single retained return (11 / 12 - 1) is negative, so there is
+        // no weighted upside and the ratio collapses to zero.
+        assertNumEquals(0, ratio);
+    }
+
+    @Test
+    public void omegaIncludesSeededFirstWindowReturn() {
+        // The entry predates the retained window; the seeded -50% loss is a
+        // real downside observation even though it lands in the first slot.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(rolling, record);
+
+        // Upside excess 1.4 over downside shortfall 0.5.
+        assertNumEquals(numFactory.numOf(2.8d), ratio);
     }
 }

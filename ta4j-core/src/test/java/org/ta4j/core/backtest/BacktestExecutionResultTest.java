@@ -8,6 +8,8 @@ import com.google.gson.JsonParser;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
@@ -132,20 +134,32 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
-    public void constructorCopiesBarSeriesAndAccessorReturnsSnapshots() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+    public void barSeriesAccessorReturnsBorrowedInstance() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
 
         BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
-        BarSeries firstSnapshot = result.barSeries();
-        BarSeries secondSnapshot = result.barSeries();
-        series.barBuilder().closePrice(8).add();
 
-        assertNotSame(series, firstSnapshot);
-        assertNotSame(firstSnapshot, secondSnapshot);
-        assertEquals(3, firstSnapshot.getBarCount());
-        assertEquals(3, secondSnapshot.getBarCount());
-        assertEquals(3, result.barSeries().getBarCount());
-        assertEquals(series.getName(), firstSnapshot.getName());
+        assertSame(series, result.barSeries());
+    }
+
+    @Test
+    public void barSeriesPreservesSeriesBeginIndexAndRemovedBarsOffset() {
+        BaseBarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BaseBarSeries offsetSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBeginIndex(10)
+                .withBars(source.getBarData())
+                .build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(offsetSeries, List.of(),
+                BacktestRuntimeReport.empty());
+        BarSeries borrowed = result.barSeries();
+
+        assertSame(offsetSeries, borrowed);
+        assertEquals(10, borrowed.getBeginIndex());
+        assertEquals(12, borrowed.getEndIndex());
+        assertEquals(10, borrowed.getRemovedBarsCount());
+        assertEquals(3, borrowed.getBarData().size());
+        assertEquals(offsetSeries.getBar(12).getClosePrice(), borrowed.getBar(12).getClosePrice());
     }
 
     @Test

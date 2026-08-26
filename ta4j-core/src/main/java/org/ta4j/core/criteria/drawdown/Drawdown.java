@@ -105,16 +105,17 @@ public final class Drawdown {
         var end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
 
         if (!series.isEmpty()) {
-            for (var i = begin; i <= end; i++) {
-                var value = curve.getValue(i);
+            for (long i = begin; i <= end; i++) {
+                int index = (int) i;
+                Num value = curve.getValue(index);
                 if (value.isGreaterThan(peak)) {
                     peak = value;
-                    peakIndex = i;
+                    peakIndex = index;
                 }
                 var drop = relative ? peak.minus(value).dividedBy(peak) : peak.minus(value);
                 if (drop.isGreaterThan(maxDrawdown)) {
                     maxDrawdown = drop;
-                    maxLength = i - peakIndex;
+                    maxLength = index - peakIndex;
                 }
             }
         }

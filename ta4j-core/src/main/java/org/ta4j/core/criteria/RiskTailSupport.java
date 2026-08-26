@@ -25,14 +25,18 @@ final class RiskTailSupport {
     }
 
     /**
-     * Returns the raw return rates of the given series, excluding the initial
-     * placeholder value at index 0, sorted ascending.
+     * Returns the raw return rates of the given series, sorted ascending. The
+     * leading no-prior-close placeholder is excluded unless the first slot carries
+     * a seeded real return (see {@link Returns#isFirstSlotSeeded()}), in which case
+     * every materialized return joins the distribution.
      *
      * @param returns the return series
      * @return the sorted raw return rates
      */
     static List<Num> sortedRates(Returns returns) {
-        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
+        int firstRateSlot = returns.isFirstSlotSeeded() ? 0 : 1;
+        List<Num> returnRates = new ArrayList<>(
+                returns.getRawValues().subList(firstRateSlot, firstRateSlot + returns.getSize()));
         Collections.sort(returnRates);
         return returnRates;
     }

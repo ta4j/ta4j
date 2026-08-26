@@ -4,21 +4,21 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.time.Duration;
 import java.time.Instant;
-
-import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.junit.Test;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -42,19 +42,48 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsBorrowedInstance() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
-        int originalSize = pnl.getSize();
-        BarSeries firstReturnedSeries = pnl.getBarSeries();
 
-        appendOneBar(series, 115);
-        appendOneBar(firstReturnedSeries, 120);
+        assertSame(series, pnl.getBarSeries());
+    }
 
-        assertEquals(originalSize, pnl.getSize());
-        assertEquals(originalSize, pnl.getBarSeries().getBarCount());
-        assertNotSame(series, pnl.getBarSeries());
-        assertNotSame(firstReturnedSeries, pnl.getBarSeries());
+    @Test
+    public void seedsFirstRetainedLevelWhenEntryPredatesWindow() {
+        // A rolling window capped at two bars evicts the entry bar (close 30):
+        // the first retained level must still mark the entry-to-first-close
+        // move (40 - 30), not sit at the neutral zero.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(30d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(40d).add();
+        rolling.barBuilder().closePrice(50d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(10, pnl.getValue(1));
+        assertNumEquals(20, pnl.getValue(2));
+    }
+
+    @Test
+    public void exitAtFirstRetainedIndexIsNotDoubleCounted() {
+        // endIndex == seriesBegin: the exit level (40 - 30) must be added once,
+        // not once as a seed and once as the exit delta.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(30d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(40d).add();
+        Trade exitTrade = Trade.sellAt(1, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        var record = new BaseTradingRecord(entry, exitTrade);
+
+        CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+        assertNumEquals(10, pnl.getValue(1));
     }
 
     @Test
@@ -277,16 +306,75 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         }
     }
 
-    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
-        Duration period = targetSeries.getLastBar().getTimePeriod();
-        targetSeries.barBuilder()
-                .timePeriod(period)
-                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
-                .closePrice(closePrice)
-                .volume(1)
-                .add();
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        CumulativePnL pnl = new CumulativePnL(offset, record, EquityCurveMode.REALIZED);
+
+        assertEquals(10, pnl.getBarSeries().getBeginIndex());
+        assertEquals(12, pnl.getBarSeries().getEndIndex());
+        assertEquals(10, pnl.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(20, pnl.getValue(12));
+    }
+
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        CumulativePnL pnl = new CumulativePnL(terminal, new BaseTradingRecord());
+
+        assertEquals(Integer.MAX_VALUE, pnl.getBarSeries().getEndIndex());
+        assertEquals(1, pnl.getSize());
+        assertNumEquals(0, pnl.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void openTerminalPositionDoesNotWrapLoopIndexes() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, terminal));
+
+        CumulativePnL pnl = new CumulativePnL(terminal, record);
+
+        assertNumEquals(0, pnl.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNeutralZero() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+        CumulativePnL pnl = new CumulativePnL(offset, record, EquityCurveMode.REALIZED);
+
+        assertNumEquals(0, pnl.getValue(9));
+        assertNumEquals(0, pnl.getValue(13));
+        assertNumEquals(20, pnl.getValue(12));
+    }
+
+    @Test
+    public void accumulatesTrailingExitBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+
+        CumulativePnL pnl = new CumulativePnL(series, tradingRecord);
+
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(10, pnl.getValue(2));
     }
 }

@@ -30,9 +30,8 @@ class ElliottWaveFacadeTest {
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
 
-        BarSeries seriesSnapshot = suite.series();
-        assertThat(seriesSnapshot).isNotSameAs(series);
-        assertThat(seriesSnapshot.getBarData()).containsExactlyElementsOf(series.getBarData());
+        BarSeries facadeSeries = suite.series();
+        assertThat(facadeSeries).isSameAs(series);
         assertThat(suite.swing()).isNotNull();
         assertThat(suite.phase()).isNotNull();
         assertThat(suite.ratio()).isNotNull();
