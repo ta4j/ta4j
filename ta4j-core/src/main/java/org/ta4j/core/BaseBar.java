@@ -6,6 +6,7 @@ package org.ta4j.core;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
@@ -14,8 +15,20 @@ import org.ta4j.core.num.Num;
  * Base implementation of a {@link Bar}.
  */
 public class BaseBar implements Bar {
-
     private static final long serialVersionUID = 8038383777467488147L;
+
+    /**
+     * Monotonic signal for mutations of bars currently retained by a
+     * {@link BaseBarSeries}. The series revision synchronizer uses this signal
+     * to invalidate cached consumers without scanning every retained bar.
+     */
+    private static final AtomicLong RETAINED_BAR_MUTATION_EPOCH = new AtomicLong();
+
+    /**
+     * Number of series retaining this bar. Package-private attachment methods
+     * keep construction-time builder mutations out of the retained-bar signal.
+     */
+    private int mutationTrackingUsers;
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -159,6 +172,21 @@ public class BaseBar implements Bar {
     private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
+    static long retainedBarMutationEpoch() {
+        return RETAINED_BAR_MUTATION_EPOCH.get();
+    }
+
+    void attachToBarSeries() {
+        mutationTrackingUsers++;
+    }
+
+    void detachFromBarSeries() {
+        if (mutationTrackingUsers <= 0) {
+            throw new IllegalStateException("Bar is not attached to a bar series");
+        }
+        mutationTrackingUsers--;
+    }
+
     @Override
     public Duration getTimePeriod() {
         return timePeriod;
@@ -229,6 +257,9 @@ public class BaseBar implements Bar {
         }
         if (lowPrice == null || lowPrice.isGreaterThan(price)) {
             lowPrice = price;
+        }
+        if (mutationTrackingUsers > 0) {
+            RETAINED_BAR_MUTATION_EPOCH.incrementAndGet();
         }
     }
 

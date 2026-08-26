@@ -72,6 +72,12 @@ public class BaseBarSeries implements BarSeries {
      */
     private int removedBarsCount = 0;
     private long barHistoryRevision;
+    /**
+     * Conservative global epoch observation: a mutation in another series may
+     * cause an unnecessary invalidation, but never leaves this series stale.
+     */
+    private transient long observedRetainedBarMutationEpoch;
+    private transient boolean retainedBarMutationEpochInitialized;
     private transient Deque<BarHistoryChange> barHistoryChanges;
 
     /**
@@ -120,6 +126,47 @@ public class BaseBarSeries implements BarSeries {
         this.seriesEndIndex = config.seriesEndIndex();
         this.removedBarsCount = config.removedBarsCount();
         this.constrained = config.constrained();
+        attachRetainedBarMutationTracking();
+    }
+
+    private void attachRetainedBarMutationTracking() {
+        for (Bar bar : this.bars) {
+            if (bar instanceof BaseBar baseBar) {
+                baseBar.attachToBarSeries();
+            }
+        }
+        observedRetainedBarMutationEpoch = BaseBar.retainedBarMutationEpoch();
+        retainedBarMutationEpochInitialized = true;
+    }
+
+    private static void attachBarMutationTracking(final Bar bar) {
+        if (bar instanceof BaseBar baseBar) {
+            baseBar.attachToBarSeries();
+        }
+    }
+
+    private static void detachBarMutationTracking(final Bar bar) {
+        if (bar instanceof BaseBar baseBar) {
+            baseBar.detachFromBarSeries();
+        }
+    }
+
+    private void synchronizeRetainedBarMutations() {
+        final long currentEpoch = BaseBar.retainedBarMutationEpoch();
+        if (!retainedBarMutationEpochInitialized) {
+            observedRetainedBarMutationEpoch = currentEpoch;
+            retainedBarMutationEpochInitialized = true;
+        } else if (currentEpoch != observedRetainedBarMutationEpoch) {
+            if (!this.bars.isEmpty()) {
+                recordBarHistoryChange(this.seriesBeginIndex);
+            }
+            observedRetainedBarMutationEpoch = currentEpoch;
+        }
+    }
+
+    private void markRetainedBarMutationsObserved() {
+        observedRetainedBarMutationEpoch = BaseBar.retainedBarMutationEpoch();
+        retainedBarMutationEpochInitialized = true;
     }
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
@@ -267,6 +314,7 @@ public class BaseBarSeries implements BarSeries {
      */
     @Override
     public long getBarHistoryRevision() {
+        synchronizeRetainedBarMutations();
         return this.barHistoryRevision;
     }
 
@@ -277,6 +325,7 @@ public class BaseBarSeries implements BarSeries {
      */
     @Override
     public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        synchronizeRetainedBarMutations();
         return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
                 this.removedBarsCount - 1, this.maximumBarCount, this.seriesEndIndex);
     }
@@ -288,13 +337,18 @@ public class BaseBarSeries implements BarSeries {
      */
     @Override
     public void clear() {
+        synchronizeRetainedBarMutations();
         if (!this.bars.isEmpty()) {
             recordBarHistoryChange(0);
+            for (Bar bar : this.bars) {
+                detachBarMutationTracking(bar);
+            }
         }
         this.bars.clear();
         this.seriesBeginIndex = -1;
         this.seriesEndIndex = -1;
         this.removedBarsCount = 0;
+        markRetainedBarMutationsObserved();
     }
 
     @Override
@@ -346,11 +400,15 @@ public class BaseBarSeries implements BarSeries {
                     String.format("Cannot add Bar with data type: %s to series with datatype: %s",
                             bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
+        synchronizeRetainedBarMutations();
 
         if (!this.bars.isEmpty()) {
             if (replace) {
-                this.bars.set(this.bars.size() - 1, bar);
+                final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
+                detachBarMutationTracking(previousBar);
+                attachBarMutationTracking(bar);
                 recordBarHistoryChange(this.seriesEndIndex);
+                markRetainedBarMutationsObserved();
                 return;
             }
             if (this.seriesEndIndex == Integer.MAX_VALUE) {
@@ -366,6 +424,7 @@ public class BaseBarSeries implements BarSeries {
         }
 
         this.bars.add(bar);
+        attachBarMutationTracking(bar);
         if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
@@ -402,8 +461,12 @@ public class BaseBarSeries implements BarSeries {
         if (innerIndex < 0 || innerIndex >= this.bars.size()) {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
-        this.bars.set(innerIndex, bar);
+        synchronizeRetainedBarMutations();
+        final Bar previousBar = this.bars.set(innerIndex, bar);
+        detachBarMutationTracking(previousBar);
+        attachBarMutationTracking(bar);
         recordBarHistoryChange(index);
+        markRetainedBarMutationsObserved();
     }
 
     @Override
@@ -413,14 +476,18 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
+        synchronizeRetainedBarMutations();
         getLastBar().addTrade(tradeVolume, tradePrice);
         recordBarHistoryChange(this.seriesEndIndex);
+        markRetainedBarMutationsObserved();
     }
 
     @Override
     public void addPrice(final Num price) {
+        synchronizeRetainedBarMutations();
         getLastBar().addPrice(price);
         recordBarHistoryChange(this.seriesEndIndex);
+        markRetainedBarMutationsObserved();
     }
 
     private void recordBarHistoryChange(final int changedIndex) {
@@ -462,6 +529,9 @@ public class BaseBarSeries implements BarSeries {
         if (barCount > this.maximumBarCount) {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
+            for (int index = 0; index < nbBarsToRemove; index++) {
+                detachBarMutationTracking(this.bars.get(index));
+            }
             if (nbBarsToRemove == 1) {
                 this.bars.removeFirst();
             } else {

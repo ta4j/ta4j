@@ -138,9 +138,10 @@ public interface BarSeries extends Serializable {
      * {@code -1}.
      *
      * <p>
-     * Mutations made directly through a retained {@link Bar} reference cannot be
-     * observed by the series and therefore do not change this revision.
-     *
+     * Direct mutations through a retained {@link Bar} reference are implementation
+     * dependent. Implementations that can observe those mutations may advance the
+     * revision; callers must not assume that a revision change is the only way to
+     * detect changes for a series returning {@code -1}.
      * @return the bar-data revision, or {@code -1} when change tracking is
      *         unsupported
      * @since 0.23.1

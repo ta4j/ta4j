@@ -180,23 +180,25 @@ class FractalSwingDetectorTest {
     }
 
     @Test
-    void inPlaceEarlierBarMutationInvalidatesSameIndexReplayResult() {
-        // HIGH@2 is confirmed while bar 1's high (6) stays below it. Raising
-        // that earlier retained bar in place and then restoring its original
-        // close leaves the series revision and close-only identity unchanged,
-        // but moves the fractal pivot to HIGH@1. Full OHLC fallback validation
-        // must stop the same-index query from returning stale HIGH@2.
+    void inPlaceEarlierBarMutationInvalidatesAscendingReplayResult() {
+        // HIGH@2 is confirmed while bar 1's high (6) stays below it. Replaying
+        // through bar 2, raising that earlier retained bar in place, and then
+        // restoring its original close leaves its close unchanged, but the
+        // BaseBarSeries mutation epoch advances and moves the fractal pivot to
+        // HIGH@1. O(1) revision invalidation must stop the ascending query at
+        // bar 3 from returning stale HIGH@2.
         final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
         final FractalSwingDetector shared = new FractalSwingDetector(1);
 
         assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
                 .containsExactly(tuple(2, SwingPivotType.HIGH));
+        assertThat(shared.detectPivots(series, 2)).isEqualTo(new FractalSwingDetector(1).detectPivots(series, 2));
         final long revisionBeforeMutation = series.getBarHistoryRevision();
 
         series.getBar(1).addPrice(series.numFactory().numOf(20));
         series.getBar(1).addPrice(series.numFactory().numOf(5.5));
 
-        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(series.getBarHistoryRevision()).isGreaterThan(revisionBeforeMutation);
         assertThat(series.getBar(1).getClosePrice()).isEqualTo(series.numFactory().numOf(5.5));
         assertThat(shared.detectPivots(series, series.getEndIndex()))
                 .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
@@ -204,17 +206,18 @@ class FractalSwingDetectorTest {
                 .containsExactly(tuple(1, SwingPivotType.HIGH));
         assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE))
                 .isEqualTo(new FractalSwingDetector(1).detect(series, series.getEndIndex(), ElliottDegree.MINUETTE));
+
     }
 
     @Test
     void inPlaceMutationOfObservedLastBarIsDetectedAfterAppend() {
         // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising that
         // bar's high to 11 withdraws the confirmation, and appending a further
-        // bar leaves the series revision untouched (plain appends do not bump
-        // it) while advancing the end index. Because no later scan re-evaluates
-        // an already-confirmed fractal and the appended bar confirms no new
-        // pivot, only a snapshot comparison of the previously observed last
-        // bar can stop the replay from extending over the stale HIGH@2.
+        // bar leaves the append operation itself revision-neutral while the
+        // retained-bar mutation epoch already invalidated the prior result.
+        // Because no later scan re-evaluates an already-confirmed fractal and
+        // the appended bar confirms no new pivot, the O(1) revision signal must
+        // stop the replay from extending over stale HIGH@2.
         final BarSeries series = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
         final FractalSwingDetector shared = new FractalSwingDetector(1);
 
@@ -225,7 +228,7 @@ class FractalSwingDetectorTest {
         series.getLastBar().addPrice(series.numFactory().numOf(11));
         series.barBuilder().openPrice(8.5).highPrice(12).lowPrice(5).closePrice(8.5).volume(1).add();
 
-        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(series.getBarHistoryRevision()).isGreaterThan(revisionBeforeMutation);
         final int end = series.getEndIndex();
         // Fresh detection sees highs {5, 6, 10, 11, 12} and lows
         // {4, 5, 9, 6, 5}: no fractal survives the mutation.

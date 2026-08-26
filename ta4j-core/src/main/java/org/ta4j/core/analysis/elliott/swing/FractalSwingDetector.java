@@ -474,11 +474,12 @@ public final class FractalSwingDetector implements SwingDetector {
             final long currentRevision = series.getBarHistoryRevision();
             final int currentBeginIndex = series.getBeginIndex();
             final int currentEndIndex = series.getEndIndex();
+            final boolean revisionUnavailable = currentRevision < 0L || observedRevision < 0L;
             boolean changed = currentBeginIndex != observedBeginIndex
                     || (currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision)
                     || currentEndIndex < observedEndIndex;
             final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
-            final boolean validateRetainedBars = !changed
+            final boolean validateRetainedBars = !changed && revisionUnavailable
                     && (observedWindowExtended || requestedIndex <= lastScannedIndex);
             if (!changed && validateRetainedBars) {
                 changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
@@ -519,11 +520,16 @@ public final class FractalSwingDetector implements SwingDetector {
             final int currentBeginIndex = series.getBeginIndex();
             final int previousObservedEndIndex = observedEndIndex;
             final int currentEndIndex = series.getEndIndex();
-            observedRevision = series.getBarHistoryRevision();
+            final long currentRevision = series.getBarHistoryRevision();
+            final boolean enteringLegacySnapshots = currentRevision < 0L && observedRevision >= 0L;
+            final boolean snapshotBarValues = currentRevision < 0L || observedRevision < 0L;
+            observedRevision = currentRevision;
             observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;
             observedLastBar = series.isEmpty() ? null : BarState.of(series.getLastBar());
-            if (refreshBarSnapshot || series.isEmpty()) {
+            if (!snapshotBarValues) {
+                observedBars.clear();
+            } else if (refreshBarSnapshot || enteringLegacySnapshots || series.isEmpty()) {
                 observedBarBaseIndex = currentBeginIndex;
                 observedBars.clear();
                 for (long index = currentBeginIndex; index <= (long) currentEndIndex; index++) {
