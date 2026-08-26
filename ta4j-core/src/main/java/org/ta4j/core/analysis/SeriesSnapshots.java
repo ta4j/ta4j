@@ -41,31 +41,30 @@ final class SeriesSnapshots {
      */
     static BarSeries deepCopy(BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
-        // Copy the bars once and derive the snapshot bounds from the
-        // removed-bars count captured before the copy: a live series may append
-        // while the O(N) copy runs, which merely yields a slightly stale but
-        // coherent snapshot instead of restarting the copy (an unbounded retry
-        // could starve under sustained writes). Only an expired-bar removal,
-        // which shifts every logical index, triggers a retry.
-        while (true) {
-            int removedBarsCount = barSeries.getRemovedBarsCount();
-            List<Bar> sourceBars = barSeries.getBarData();
-            List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
-            for (Bar bar : sourceBars) {
-                copiedBars.add(copyBar(bar, barSeries.numFactory()));
-            }
-            if (barSeries.getRemovedBarsCount() != removedBarsCount) {
-                continue;
-            }
-            int maximumBarCount = barSeries.getMaximumBarCount();
-            BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(barSeries.getName())
-                    .withNumFactory(barSeries.numFactory())
-                    .withMaxBarCount(maximumBarCount);
-            if (copiedBars.isEmpty()) {
-                return builder.withBeginIndex(Math.max(0, removedBarsCount)).build();
-            }
-            return builder.withBars(copiedBars).withBeginIndex(Math.max(0, removedBarsCount)).build();
+        // Copy the bars once and reconcile the snapshot with any concurrent
+        // mutation instead of retrying: an unbounded copy-retry could starve
+        // when a moving series updates at least once per pass (an at-capacity
+        // series prunes on every append, so the removed-bars count never stays
+        // still). Appends during the copy only yield a slightly stale but
+        // coherent window; expired-bar removals shift logical indexes, so the
+        // copied prefix is trimmed by the removal delta and bounds follow the
+        // retained window.
+        int removedBarsCount = barSeries.getRemovedBarsCount();
+        List<Bar> sourceBars = barSeries.getBarData();
+        List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
+        for (Bar bar : sourceBars) {
+            copiedBars.add(copyBar(bar, barSeries.numFactory()));
         }
+        int removedAfterCopy = barSeries.getRemovedBarsCount();
+        int prunedDuringCopy = Math.max(0, removedAfterCopy - removedBarsCount);
+        List<Bar> retainedBars = prunedDuringCopy >= copiedBars.size() ? List.of()
+                : copiedBars.subList(prunedDuringCopy, copiedBars.size());
+        return new BaseBarSeriesBuilder().withName(barSeries.getName())
+                .withNumFactory(barSeries.numFactory())
+                .withMaxBarCount(barSeries.getMaximumBarCount())
+                .withBeginIndex(Math.max(0, removedAfterCopy))
+                .withBars(retainedBars)
+                .build();
     }
 
     private static Bar copyBar(Bar bar, NumFactory numFactory) {
