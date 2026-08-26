@@ -278,11 +278,10 @@ public final class FractalSwingDetector implements SwingDetector {
         }
 
         /**
-         * Removes every merged pivot of {@code type} after its backing side
-         * purged to {@code -1}, then re-absorbs the surviving opposite-type
-         * pivots so consecutive survivors coalesce with the same
-         * extreme-keeping rule as ordinary merges instead of leaving stale
-         * withdrawn pivots or broken alternation behind.
+         * Removes every merged pivot of {@code type} after its backing side purged to
+         * {@code -1}, then re-absorbs the surviving opposite-type pivots so consecutive
+         * survivors coalesce with the same extreme-keeping rule as ordinary merges
+         * instead of leaving stale withdrawn pivots or broken alternation behind.
          */
         private void withdrawPivotsOfType(final PivotType type) {
             final List<Pivot> retained = new ArrayList<>(pivots.size());
@@ -570,9 +569,9 @@ public final class FractalSwingDetector implements SwingDetector {
         }
 
         /**
-         * Recaptures or extends the revision, retention window, and value
-         * snapshots from the already verified change snapshot, so the published
-         * observation can never be newer than the bounds it is stored with.
+         * Recaptures or extends the revision, retention window, and value snapshots
+         * from the already verified change snapshot, so the published observation can
+         * never be newer than the bounds it is stored with.
          */
         private void observeSeries(final boolean refreshBarSnapshot, final BarSeriesChangeSnapshot snapshot,
                 final int currentBeginIndex) {

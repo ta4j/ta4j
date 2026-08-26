@@ -820,8 +820,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
-        series.addBar(streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:00:00Z"), 100, 110, 90, 105,
-                5));
+        series.addBar(streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:00:00Z"), 100, 110, 90, 105, 5));
         long initialRevision = series.getBarHistoryRevision();
         series.getBar(0).addPrice(numOf(106));
 
@@ -856,7 +855,6 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue("Concurrently mutated retained bar must be journaled, but earliest changed index was "
                 + snapshot.earliestChangedIndex(), snapshot.earliestChangedIndex() <= 1);
     }
-
 
     @Test
     public void withWriteLockSupportsRunnableAndSupplier() {
@@ -2481,8 +2479,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     /**
      * Bar whose trade application first mutates a retained companion bar,
      * reproducing deterministically the interleaving in which another thread
-     * mutates an earlier retained bar of the same series while a series-level
-     * write operation is running.
+     * mutates an earlier retained bar of the same series while a series-level write
+     * operation is running.
      */
     private static final class CompanionMutatingTradeBar extends BaseBar {
 

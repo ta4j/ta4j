@@ -280,8 +280,7 @@ class Wave5MomentumDivergenceRuleTest {
         assertThat(evidence.state()).isNotEqualTo(EvidenceState.NOT_APPLICABLE);
 
         // An indicator bound to a genuinely different series stays rejected.
-        final Wave5MomentumDivergenceRule foreignRule = new Wave5MomentumDivergenceRule(
-                momentum(0, 0, 0, 10, 8, 0));
+        final Wave5MomentumDivergenceRule foreignRule = new Wave5MomentumDivergenceRule(momentum(0, 0, 0, 10, 8, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> foreignRule.evaluate(candidate(WaveDirection.BULLISH, 100, 110, 105, 120, 125, 130), series));
     }

@@ -169,8 +169,7 @@ public class BaseBarSeries implements BarSeries {
      * Reconciles the global retained-bar mutation epoch with this series' last
      * observation. Epoch advances observed here originate from retained bars
      * mutated through direct bar references, so their index is unknown: journal a
-     * whole-retained-window change instead of guessing the earliest affected
-     * index.
+     * whole-retained-window change instead of guessing the earliest affected index.
      *
      * @return the observed epoch after reconciliation
      */
@@ -199,21 +198,20 @@ public class BaseBarSeries implements BarSeries {
      *
      * <p>
      * {@code expectedEpochAfterOwnMutation} is the epoch returned by
-     * {@link #synchronizeRetainedBarMutations()} plus the advances this
-     * operation's own retained-bar mutation caused (one for a trade or price
-     * applied to the retained bar, zero for structural changes). Any higher
-     * current epoch originates from an earlier retained bar concurrently mutated
-     * through a direct bar reference while this operation ran; that index cannot
-     * be recovered here, so the whole retained window is journaled conservatively
-     * rather than consumed without a record.
+     * {@link #synchronizeRetainedBarMutations()} plus the advances this operation's
+     * own retained-bar mutation caused (one for a trade or price applied to the
+     * retained bar, zero for structural changes). Any higher current epoch
+     * originates from an earlier retained bar concurrently mutated through a direct
+     * bar reference while this operation ran; that index cannot be recovered here,
+     * so the whole retained window is journaled conservatively rather than consumed
+     * without a record.
      *
      * @param expectedEpochAfterOwnMutation global epoch expected once this
      *                                      operation's own mutation has settled
      * @param changedIndex                  series index this operation itself
      *                                      changed
      */
-    private synchronized void commitBarHistoryChange(final long expectedEpochAfterOwnMutation,
-            final int changedIndex) {
+    private synchronized void commitBarHistoryChange(final long expectedEpochAfterOwnMutation, final int changedIndex) {
         recordBarHistoryChange(changedIndex);
         long currentEpoch = BaseBar.retainedBarMutationEpoch();
         while (currentEpoch > expectedEpochAfterOwnMutation) {
@@ -397,8 +395,6 @@ public class BaseBarSeries implements BarSeries {
                     removedBarsCount - 1, maximumBarCount, seriesEndIndex);
         }
     }
-
-
 
     /**
      * {@inheritDoc}

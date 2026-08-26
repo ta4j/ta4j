@@ -35,8 +35,8 @@ public class BaseBar implements Bar {
      * independent locks, so the attachment count must be maintained atomically at
      * the bar level or concurrent attachments can lose increments.
      */
-    private static final AtomicIntegerFieldUpdater<BaseBar> MUTATION_TRACKING_USERS =
-            AtomicIntegerFieldUpdater.newUpdater(BaseBar.class, "mutationTrackingUsers");
+    private static final AtomicIntegerFieldUpdater<BaseBar> MUTATION_TRACKING_USERS = AtomicIntegerFieldUpdater
+            .newUpdater(BaseBar.class, "mutationTrackingUsers");
 
     /**
      * Number of series retaining this bar. Package-private attachment methods keep
