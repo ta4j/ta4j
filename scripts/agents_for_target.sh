@@ -39,15 +39,38 @@ workspace_root() {
 
 root="$(workspace_root)"
 
-# If rg isn't available, fail fast with a clear message
-if ! command -v rg >/dev/null 2>&1; then
-  echo "Error: ripgrep (rg) not found in PATH." >&2
-  exit 127
-fi
-
 # Find matches under root, including hidden and ignored files,
 # so AGENTS candidates are discovered even in filtered directories.
-rg --files --no-ignore --hidden -g "$target_glob" "$root" 2>/dev/null \
+if command -v rg >/dev/null 2>&1; then
+  file_listing() {
+    rg --files --no-ignore --hidden -g "$target_glob" "$root" 2>/dev/null
+  }
+else
+  # Portable fallback: BSD and GNU find both support -name glob matching.
+  # MSYS/Git Bash find emits backslash separators; normalize them so the
+  # upward AGENTS.md walk sees ordinary slash-separated paths.
+  # Path-shaped targets (containing "/") are matched by splitting the
+  # directory prefix from the basename, preserving the rg path-input contract.
+  file_listing() {
+    case "$target_glob" in
+      */*)
+        local dir_glob="${target_glob%/*}"
+        local base_glob="${target_glob##*/}"
+        local match
+        for match in "$root"/"$dir_glob"/"$base_glob"; do
+          if [ -f "$match" ]; then
+            printf '%s\n' "$match"
+          fi
+        done
+        ;;
+      *)
+        find "$root" -type f -name "$target_glob" 2>/dev/null | tr '\\' '/'
+        ;;
+    esac
+  }
+fi
+
+file_listing \
 | while IFS= read -r file; do
     [ -z "$file" ] && continue
     dir="$(dirname "$file")"

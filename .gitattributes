@@ -1,1 +1,5 @@
 /mvnw.cmd text eol=crlf
+# Shell scripts must keep LF endings on every platform: CRLF breaks
+# bash (`set -o pipefail\r` -> invalid option) under Git Bash/MSYS on Windows.
+*.sh text eol=lf
+mvnw text eol=lf
