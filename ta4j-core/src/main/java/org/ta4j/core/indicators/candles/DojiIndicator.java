@@ -71,7 +71,9 @@ public class DojiIndicator extends CandlePatternIndicator {
      * @param averagePeriod the number of preceding candles averaged into the range
      *                      baseline; must be at least 1
      * @param rangeFactor   the factor applied to the prior average range; must be
-     *                      finite and non-negative
+     *                      finite and non-negative; a signed zero is normalized to
+     *                      positive zero so {@code == 0} factors behave identically
+     *                      on every {@link Num} implementation
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
      *                                  {@code rangeFactor} is not finite or is
      *                                  negative
@@ -80,7 +82,9 @@ public class DojiIndicator extends CandlePatternIndicator {
         super(validateConfiguration(series, averagePeriod, rangeFactor),
                 CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
-        this.rangeFactor = rangeFactor;
+        // Normalize signed zero: DoubleNum's Double.compare orders 0.0 above -0.0,
+        // which would flip the inclusive doji threshold for a zero body.
+        this.rangeFactor = rangeFactor == 0d ? 0d : rangeFactor;
         this.body = thresholds.bodyIndicator();
     }
 

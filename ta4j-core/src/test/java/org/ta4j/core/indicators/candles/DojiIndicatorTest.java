@@ -79,6 +79,16 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void signedZeroRangeFactorBehavesLikeZero() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 6; i++) {
+            addBar(series, 0, 0, 0);
+        }
+
+        assertTrue(new DojiIndicator(series, 5, -0.0d).getValue(5));
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
