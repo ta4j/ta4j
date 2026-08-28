@@ -33,7 +33,7 @@
 - **Candle pattern indicators warm up consistently**: ten pattern indicators now propagate their trend indicator's unstable-bar count, and `ThreeBlackCrowsIndicator` and `ThreeWhiteSoldiersIndicator` guard their warm-up windows.
 - **Analysis summaries define undefined moments**: `SampleSummary.sampleVariance()`, `sampleSkewness()`, and `sampleKurtosis()` return NaN instead of a misleading zero when undefined, `WeightedValue` performs factory-safe weight/value conversion that preserves `BigDecimal` precision and throws on over/underflow, and `SwingDetectorResult` validates pivot/swing consistency on construction.
 - **Rule registration and named strategies remove atomically**: `NamedStrategy.unregisterImplementation` removes registrations by full identity, so a class sharing a simple name from another package can no longer remove the wrong registration.
-- **Candle indicator foundation: shared adaptive thresholds**: Breaking: `BaseBar` now rejects OHLC candles whose high/low contradict their open/close, and `RealBodyIndicator` is deprecated in favor of `CandleBodyIndicator` plus `Bar#isBullish()`/`Bar#isBearish()` for direction. Candle patterns now size bodies and shadows against recent history through one shared, cached model, keeping every pattern consistent and avoiding duplicate computation.
+- **Candle indicator foundation: shared adaptive thresholds**: Candle patterns now size bodies and shadows against recent history through one shared, cached model, keeping every pattern consistent and avoiding duplicate computation.
 
 ## 0.24.1 (2026-08-10)
 
