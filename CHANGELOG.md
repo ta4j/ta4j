@@ -2,8 +2,9 @@
 
 ### Breaking
 
-- `BaseBar` now rejects OHLC candles whose high/low contradict their open/close.
+- doji, marubozu, hammer, hanging man, inverted hammer, and shooting star lose their ratio/configuration constructors; migrate to `(series, averagePeriod)` forms (`(series, averagePeriod, rangeFactor)` for doji).
 - `RealBodyIndicator` is deprecated; use `CandleBodyIndicator` plus `Bar#isBullish()`/`Bar#isBearish()` for direction.
+- `BaseBar` now rejects OHLC candles whose high/low contradict their open/close.
 
 - **Unified parameter research pipeline (`CF-455`)**: Added `ParameterResearch`, a budget-exact hyperparameter search workflow: typed integer, decimal, boolean, and categorical domains feed seeded grid, genetic, and particle-swarm engines (`SearchPlan.grid` / `genetic` / `particleSwarm`) through one objective seam with per-candidate metrics and explicit invalid/failure outcomes. A run-local cache keeps duplicates, cache hits, and re-proposed elites from consuming the unique-evaluation budget; an optional holdout window rebuilds and rescores the top-K training candidates out of sample; deterministic leaderboards and a `TerminationReason`-carrying report make every run reproducible. `SimpleMovingAverageRangeBacktest` demonstrates a backtest-style objective and `RelationshipObjectiveSearchExample` tunes a synchronization-F1 event-relationship objective with a one-line grid/GA/PSO switch.
 
@@ -33,7 +34,7 @@
 - **Candle pattern indicators warm up consistently**: ten pattern indicators now propagate their trend indicator's unstable-bar count, and `ThreeBlackCrowsIndicator` and `ThreeWhiteSoldiersIndicator` guard their warm-up windows.
 - **Analysis summaries define undefined moments**: `SampleSummary.sampleVariance()`, `sampleSkewness()`, and `sampleKurtosis()` return NaN instead of a misleading zero when undefined, `WeightedValue` performs factory-safe weight/value conversion that preserves `BigDecimal` precision and throws on over/underflow, and `SwingDetectorResult` validates pivot/swing consistency on construction.
 - **Rule registration and named strategies remove atomically**: `NamedStrategy.unregisterImplementation` removes registrations by full identity, so a class sharing a simple name from another package can no longer remove the wrong registration.
-- **Candle pattern foundation: shared adaptive thresholds**: Breaking: doji, marubozu, hammer, hanging man, inverted hammer, and shooting star lose their ratio/configuration constructors — migrate to `(series, averagePeriod)` forms (`(series, averagePeriod, rangeFactor)` for doji) — and no longer apply ADX trend gates. `RealBodyIndicator` is deprecated in favor of `CandleBodyIndicator`, and `BaseBar` now rejects OHLC candles whose high/low contradict their open/close. These patterns now share one consistent, causal, cached body/shadow sizing model.
+- **Candle pattern foundation: shared adaptive thresholds**: Single-candle patterns now share one consistent, causal, cached body/shadow sizing model and no longer apply ADX trend gates.
 
 ## 0.24.1 (2026-08-10)
 
