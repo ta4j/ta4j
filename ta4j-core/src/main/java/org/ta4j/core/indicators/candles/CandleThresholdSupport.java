@@ -228,6 +228,13 @@ final class CandleThresholdSupport {
     /** Default number of preceding candles averaged into a baseline. */
     static final int DEFAULT_AVERAGE_PERIOD = 5;
 
+    /**
+     * Maximum supported average period. Two is subtracted from
+     * {@link Integer#MAX_VALUE} so that the warm-up arithmetic of every pattern
+     * indicator, which adds up to two bars, cannot overflow.
+     */
+    static final int MAX_AVERAGE_PERIOD = Integer.MAX_VALUE - 2;
+
     /** Factor against the prior average body for {@link #isLongBody(int)}. */
     static final double LONG_BODY_FACTOR = 1.0;
 
@@ -318,15 +325,15 @@ final class CandleThresholdSupport {
      *                      baseline
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or equal
-     *                                  to {@link Integer#MAX_VALUE}, whose
-     *                                  successor cannot be represented
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link #MAX_AVERAGE_PERIOD}, whose warm-up
+     *                                  additions would overflow
      */
     static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
         final var validatedSeries = Objects.requireNonNull(series, "series must not be null");
-        if (averagePeriod < 1 || averagePeriod == Integer.MAX_VALUE) {
+        if (averagePeriod < 1 || averagePeriod > MAX_AVERAGE_PERIOD) {
             throw new IllegalArgumentException(
-                    "averagePeriod must be in [1, " + (Integer.MAX_VALUE - 1) + "], but was: " + averagePeriod);
+                    "averagePeriod must be in [1, " + MAX_AVERAGE_PERIOD + "], but was: " + averagePeriod);
         }
         return validatedSeries;
     }
@@ -525,7 +532,7 @@ final class CandleThresholdSupport {
      * @param second the second measurement
      * @return {@code true} when the two measurements are near each other,
      *         {@code false} below the warm-up boundary, when they diverge, or for a
-     *         non-finite measurement
+     *         missing or non-finite measurement
      */
     boolean isNear(int index, Indicator<Num> first, Indicator<Num> second) {
         if (!isValid(index)) {
@@ -533,6 +540,9 @@ final class CandleThresholdSupport {
         }
         final Num firstValue = first.getValue(index);
         final Num secondValue = second.getValue(index);
+        if (firstValue == null || secondValue == null) {
+            return false;
+        }
         final Num difference = firstValue.minus(secondValue).abs();
         final Num baseline = priorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
         return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(difference)

@@ -14,10 +14,12 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.Bar;
+import java.util.Collections;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -258,6 +260,25 @@ public class CandleThresholdSupportTest {
         assertThrows(NullPointerException.class, () -> CandleThresholdSupport.forSeries(null, 5));
         assertThrows(IllegalArgumentException.class,
                 () -> CandleThresholdSupport.forSeries(new MockBarSeriesBuilder().build(), 0));
+    }
+
+    @Test
+    public void rejectsPeriodsWhoseWarmUpAdditionsOverflow() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        assertThrows(IllegalArgumentException.class, () -> CandleThresholdSupport.forSeries(series, Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class,
+                () -> CandleThresholdSupport.forSeries(series, Integer.MAX_VALUE - 1));
+        assertThrows(IllegalArgumentException.class, () -> new CandleThresholdSupport(series, Integer.MAX_VALUE - 1));
+    }
+
+    @Test
+    public void isNearReturnsFalseForNullOperand() {
+        BarSeries series = series(8, 10, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> missing = new MockIndicator(series, 0, Collections.nCopies(8, null));
+
+        assertFalse(support.isNear(5, missing, support.bodyIndicator()));
+        assertFalse(support.isNear(5, support.bodyIndicator(), missing));
     }
 
     /**
