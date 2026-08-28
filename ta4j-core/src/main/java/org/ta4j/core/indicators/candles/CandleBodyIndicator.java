@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  * checks should use {@link Bar#isBullish()} or {@link Bar#isBearish()} instead
  * of the sign of the real body.
  *
- * @since 0.25
+ * @since 0.24.2
  */
 public class CandleBodyIndicator extends CachedIndicator<Num> {
 

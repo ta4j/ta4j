@@ -21,7 +21,7 @@ import org.ta4j.core.num.Num;
  * close (see the ATR indicator for that quantity). This indicator depends only
  * on the current candle.
  *
- * @since 0.25
+ * @since 0.24.2
  */
 public class CandleRangeIndicator extends CachedIndicator<Num> {
 
