@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Breaking
+
+- `BaseBar` now rejects OHLC candles whose high/low contradict their open/close.
+- `RealBodyIndicator` is deprecated; use `CandleBodyIndicator` plus `Bar#isBullish()`/`Bar#isBearish()` for direction.
+
 - **Unified parameter research pipeline (`CF-455`)**: Added `ParameterResearch`, a budget-exact hyperparameter search workflow: typed integer, decimal, boolean, and categorical domains feed seeded grid, genetic, and particle-swarm engines (`SearchPlan.grid` / `genetic` / `particleSwarm`) through one objective seam with per-candidate metrics and explicit invalid/failure outcomes. A run-local cache keeps duplicates, cache hits, and re-proposed elites from consuming the unique-evaluation budget; an optional holdout window rebuilds and rescores the top-K training candidates out of sample; deterministic leaderboards and a `TerminationReason`-carrying report make every run reproducible. `SimpleMovingAverageRangeBacktest` demonstrates a backtest-style objective and `RelationshipObjectiveSearchExample` tunes a synchronization-F1 event-relationship objective with a one-line grid/GA/PSO switch.
 
 - **Advanced lead/lag, DTW, and event-dependence analysis (`CF-454`)**: Added `LeadLagCorrelationIndicator`, which scans an inclusive lag range and reports every best lag plus one deterministic selection in its full `Profile`; `DynamicTimeWarpingDistanceIndicator`, a bounded two-row-DP shape distance with z-score or raw normalization, an explicit Sakoe–Chiba band (unconstrained opt-in), and exact path-length normalization; and `EventMutualInformationEvaluator`, which measures how much a continuous predictor reduces uncertainty about a sparse Boolean event in an explicit future-bar window (raw/normalized MI in nats, target entropy, prevalence). Equal-frequency binning never splits tied predictor values, and target windows never cross the evaluation partition boundary.
@@ -28,7 +33,7 @@
 - **Candle pattern indicators warm up consistently**: ten pattern indicators now propagate their trend indicator's unstable-bar count, and `ThreeBlackCrowsIndicator` and `ThreeWhiteSoldiersIndicator` guard their warm-up windows.
 - **Analysis summaries define undefined moments**: `SampleSummary.sampleVariance()`, `sampleSkewness()`, and `sampleKurtosis()` return NaN instead of a misleading zero when undefined, `WeightedValue` performs factory-safe weight/value conversion that preserves `BigDecimal` precision and throws on over/underflow, and `SwingDetectorResult` validates pivot/swing consistency on construction.
 - **Rule registration and named strategies remove atomically**: `NamedStrategy.unregisterImplementation` removes registrations by full identity, so a class sharing a simple name from another package can no longer remove the wrong registration.
-- **Candle indicator foundation**: Breaking: `BaseBar` now rejects OHLC candles whose high/low contradict their open/close, and `RealBodyIndicator` is deprecated in favor of the new `CandleBodyIndicator` plus `Bar#isBullish()`/`Bar#isBearish()` for direction. Candle patterns now measure body and range consistently without sign-conflated values.
+- **Candle indicator foundation**: Candle patterns now measure body and range consistently without sign-conflated values.
 
 ## 0.24.1 (2026-08-10)
 
