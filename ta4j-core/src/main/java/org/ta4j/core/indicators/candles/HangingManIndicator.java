@@ -18,7 +18,7 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
     private static final double DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 2d;
     private static final double DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 1d;
 
-    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient CandleBodyIndicator bodyIndicator;
     private final transient UpTrendIndicator trendIndicator;
     private final double bodyToBottomWickRatio;
     private final double bodyToUpperWickRatio;
@@ -30,7 +30,7 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
      */
     public HangingManIndicator(final BarSeries series) {
         super(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.trendIndicator = new UpTrendIndicator(series);
         this.bodyToBottomWickRatio = DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT;
         this.bodyToUpperWickRatio = DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT;
@@ -45,7 +45,7 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
      */
     public HangingManIndicator(final BarSeries series, double bodyToBottomWickRatio, double bodyToUpperWickRatio) {
         super(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.trendIndicator = new UpTrendIndicator(series);
         this.bodyToBottomWickRatio = bodyToBottomWickRatio;
         this.bodyToUpperWickRatio = bodyToUpperWickRatio;
@@ -59,7 +59,7 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
         final var lowPrice = bar.getLowPrice();
         final var highPrice = bar.getHighPrice();
 
-        final var bodyHeight = this.realBodyIndicator.getValue(index).abs();
+        final var bodyHeight = this.bodyIndicator.getValue(index);
 
         final var upperBodyBoundary = openPrice.max(closePrice);
         final var bottomBodyBoundary = openPrice.min(closePrice);
@@ -75,6 +75,6 @@ public class HangingManIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(realBodyIndicator.getCountOfUnstableBars(), trendIndicator.getCountOfUnstableBars());
+        return Math.max(bodyIndicator.getCountOfUnstableBars(), trendIndicator.getCountOfUnstableBars());
     }
 }

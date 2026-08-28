@@ -49,6 +49,35 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testHighBelowOpenRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(9.5),
+                        numFactory.numOf(9), numFactory.numOf(9.4), numFactory.zero(), numFactory.zero(), 0));
+    }
+
+    @Test
+    public void testHighBelowCloseRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(9.4), numFactory.numOf(9.5),
+                        numFactory.numOf(9), numFactory.numOf(10), numFactory.zero(), numFactory.zero(), 0));
+    }
+
+    @Test
+    public void testLowAboveOpenRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(9), numFactory.numOf(10),
+                        numFactory.numOf(9.5), numFactory.numOf(9.5), numFactory.zero(), numFactory.zero(), 0));
+    }
+
+    @Test
+    public void testLowAboveCloseRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10.5),
+                        numFactory.numOf(10.5), numFactory.numOf(9.5), numFactory.numOf(9), numFactory.zero(),
+                        numFactory.zero(), 0));
+    }
+
+    @Test
     public void testNegativeVolumeRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), numFactory.numOf(10),

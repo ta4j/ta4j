@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
 public class BearishKickerIndicator extends CachedIndicator<Boolean> {
 
     private final transient UpTrendIndicator trendIndicator;
-    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient CandleBodyIndicator bodyIndicator;
     private final Num bigBodyThresholdPercentage;
 
     /**
@@ -41,7 +41,7 @@ public class BearishKickerIndicator extends CachedIndicator<Boolean> {
     public BearishKickerIndicator(final BarSeries series, final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new UpTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
 
@@ -52,8 +52,8 @@ public class BearishKickerIndicator extends CachedIndicator<Boolean> {
         }
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
-        Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
+        Num firstBarPercentage = this.bodyIndicator.getValue(index - 1).dividedBy(firstBar.getOpenPrice());
+        Num secondBarPercentage = this.bodyIndicator.getValue(index).dividedBy(secondBar.getOpenPrice());
 
         return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.isBearish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)

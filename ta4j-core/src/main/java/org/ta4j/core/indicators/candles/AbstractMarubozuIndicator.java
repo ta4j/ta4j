@@ -5,11 +5,10 @@ package org.ta4j.core.indicators.candles;
 
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -19,7 +18,8 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * A Marubozu candle is characterised by a long real body with very small upper
  * and lower shadows. Concrete subclasses decide whether the body must be
- * bullish (close &gt; open) or bearish (open &gt; close).
+ * bullish (close &gt; open) or bearish (open &gt; close). A candle with a zero
+ * body (open equals close) satisfies neither direction.
  *
  * @since 0.19
  */
@@ -30,8 +30,7 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     static final double DEFAULT_UPPER_SHADOW_TO_BODY_RATIO = 0.05d;
     static final double DEFAULT_LOWER_SHADOW_TO_BODY_RATIO = 0.05d;
 
-    private final transient RealBodyIndicator realBodyIndicator;
-    private final transient Indicator<Num> bodyHeightIndicator;
+    private final transient CandleBodyIndicator bodyHeightIndicator;
     private final transient SMAIndicator averageBodyHeightIndicator;
     private final transient UpperShadowIndicator upperShadowIndicator;
     private final transient LowerShadowIndicator lowerShadowIndicator;
@@ -42,7 +41,6 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
     private final transient Num bodyToAverageBodyRatioThreshold;
     private final transient Num upperShadowToBodyRatioThreshold;
     private final transient Num lowerShadowToBodyRatioThreshold;
-    private final transient Num zero;
 
     AbstractMarubozuIndicator(final BarSeries series) {
         this(validatedConfig(series, DEFAULT_BODY_AVERAGE_PERIOD, DEFAULT_BODY_TO_AVERAGE_BODY_RATIO,
@@ -61,7 +59,6 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         this.bodyToAverageBodyRatio = config.bodyToAverageBodyRatio();
         this.upperShadowToBodyRatio = config.upperShadowToBodyRatio();
         this.lowerShadowToBodyRatio = config.lowerShadowToBodyRatio();
-        this.realBodyIndicator = config.realBodyIndicator();
         this.bodyHeightIndicator = config.bodyHeightIndicator();
         this.averageBodyHeightIndicator = config.averageBodyHeightIndicator();
         this.upperShadowIndicator = config.upperShadowIndicator();
@@ -69,7 +66,6 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         this.bodyToAverageBodyRatioThreshold = config.bodyToAverageBodyRatioThreshold();
         this.upperShadowToBodyRatioThreshold = config.upperShadowToBodyRatioThreshold();
         this.lowerShadowToBodyRatioThreshold = config.lowerShadowToBodyRatioThreshold();
-        this.zero = config.zero();
     }
 
     private static Config validatedConfig(final BarSeries series, final int bodyAveragePeriod,
@@ -88,8 +84,7 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         if (lowerShadowToBodyRatio < 0d) {
             throw new IllegalArgumentException("lowerShadowToBodyRatio must be >= 0");
         }
-        RealBodyIndicator realBodyIndicator = new RealBodyIndicator(validatedSeries);
-        Indicator<Num> bodyHeightIndicator = UnaryOperationIndicator.abs(realBodyIndicator);
+        CandleBodyIndicator bodyHeightIndicator = new CandleBodyIndicator(validatedSeries);
         SMAIndicator averageBodyHeightIndicator = new SMAIndicator(bodyHeightIndicator, bodyAveragePeriod);
         UpperShadowIndicator upperShadowIndicator = new UpperShadowIndicator(validatedSeries);
         LowerShadowIndicator lowerShadowIndicator = new LowerShadowIndicator(validatedSeries);
@@ -98,11 +93,10 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         Num bodyToAverageBodyRatioThreshold = numFactory.numOf(bodyToAverageBodyRatio);
         Num upperShadowToBodyRatioThreshold = numFactory.numOf(upperShadowToBodyRatio);
         Num lowerShadowToBodyRatioThreshold = numFactory.numOf(lowerShadowToBodyRatio);
-        Num zero = numFactory.zero();
-        return new Config(validatedSeries, realBodyIndicator, bodyHeightIndicator, averageBodyHeightIndicator,
-                upperShadowIndicator, lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatio,
-                upperShadowToBodyRatio, lowerShadowToBodyRatio, bodyToAverageBodyRatioThreshold,
-                upperShadowToBodyRatioThreshold, lowerShadowToBodyRatioThreshold, zero);
+        return new Config(validatedSeries, bodyHeightIndicator, averageBodyHeightIndicator, upperShadowIndicator,
+                lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
+                lowerShadowToBodyRatio, bodyToAverageBodyRatioThreshold, upperShadowToBodyRatioThreshold,
+                lowerShadowToBodyRatioThreshold);
     }
 
     @Override
@@ -111,8 +105,7 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        final var realBody = this.realBodyIndicator.getValue(index);
-        if (!hasExpectedBodyDirection(realBody)) {
+        if (!hasExpectedBodyDirection(index)) {
             return false;
         }
 
@@ -138,11 +131,9 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
         return upperShadow.isLessThanOrEqual(maxUpperShadow) && lowerShadow.isLessThanOrEqual(maxLowerShadow);
     }
 
-    private boolean hasExpectedBodyDirection(final Num realBody) {
-        if (realBody.isZero()) {
-            return false;
-        }
-        return isBullish() ? realBody.isGreaterThan(this.zero) : realBody.isLessThan(this.zero);
+    private boolean hasExpectedBodyDirection(final int index) {
+        final Bar bar = getBarSeries().getBar(index);
+        return isBullish() ? bar.isBullish() : bar.isBearish();
     }
 
     /**
@@ -152,10 +143,10 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
      */
     protected abstract boolean isBullish();
 
-    private record Config(BarSeries series, RealBodyIndicator realBodyIndicator, Indicator<Num> bodyHeightIndicator,
+    private record Config(BarSeries series, CandleBodyIndicator bodyHeightIndicator,
             SMAIndicator averageBodyHeightIndicator, UpperShadowIndicator upperShadowIndicator,
             LowerShadowIndicator lowerShadowIndicator, int bodyAveragePeriod, double bodyToAverageBodyRatio,
             double upperShadowToBodyRatio, double lowerShadowToBodyRatio, Num bodyToAverageBodyRatioThreshold,
-            Num upperShadowToBodyRatioThreshold, Num lowerShadowToBodyRatioThreshold, Num zero) {
+            Num upperShadowToBodyRatioThreshold, Num lowerShadowToBodyRatioThreshold) {
     }
 }

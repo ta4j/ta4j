@@ -40,7 +40,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         var now = Instant.now();
         series.addBar(series.barBuilder()
                 .endTime(now.minusSeconds(5))
-                .openPrice(0)
+                .openPrice(8)
                 .closePrice(12)
                 .highPrice(15)
                 .lowPrice(8)
@@ -49,7 +49,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build());
         series.barBuilder()
                 .endTime(now.minusSeconds(4))
-                .openPrice(0)
+                .openPrice(6)
                 .closePrice(8)
                 .highPrice(11)
                 .lowPrice(6)
@@ -59,7 +59,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .add();
         series.barBuilder()
                 .endTime(now.minusSeconds(3))
-                .openPrice(0)
+                .openPrice(14)
                 .closePrice(15)
                 .highPrice(17)
                 .lowPrice(14)
@@ -69,7 +69,7 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .add();
         series.barBuilder()
                 .endTime(now.minusSeconds(2))
-                .openPrice(0)
+                .openPrice(14)
                 .closePrice(15)
                 .highPrice(17)
                 .lowPrice(14)
@@ -166,12 +166,12 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void customTrueRangeUnstableBarsAreRetained() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
-        series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(16).highPrice(18).lowPrice(15).add();
-        series.barBuilder().openPrice(0).closePrice(14).highPrice(17).lowPrice(13).add();
-        series.barBuilder().openPrice(0).closePrice(18).highPrice(19).lowPrice(16).add();
+        series.barBuilder().openPrice(8).closePrice(12).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(6).closePrice(8).highPrice(11).lowPrice(6).add();
+        series.barBuilder().openPrice(14).closePrice(15).highPrice(17).lowPrice(14).add();
+        series.barBuilder().openPrice(15).closePrice(16).highPrice(18).lowPrice(15).add();
+        series.barBuilder().openPrice(13).closePrice(14).highPrice(17).lowPrice(13).add();
+        series.barBuilder().openPrice(16).closePrice(18).highPrice(19).lowPrice(16).add();
         Indicator<Num> delayedClose = new SMAIndicator(new ClosePriceIndicator(series), 2);
         TRIndicator trueRange = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
                 delayedClose);

@@ -42,7 +42,7 @@ import org.ta4j.core.num.Num;
 public class PiercingLineIndicator extends CachedIndicator<Boolean> {
 
     private final transient DownTrendIndicator trendIndicator;
-    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient CandleBodyIndicator bodyIndicator;
     private final Num bigBodyThresholdPercentage;
     private final Num gapThresholdPercentage;
     private final Num penetrationThresholdPercentage;
@@ -71,7 +71,7 @@ public class PiercingLineIndicator extends CachedIndicator<Boolean> {
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
         super(Objects.requireNonNull(series, "series must not be null"));
         this.trendIndicator = new DownTrendIndicator(getBarSeries());
-        this.realBodyIndicator = new RealBodyIndicator(getBarSeries());
+        this.bodyIndicator = new CandleBodyIndicator(getBarSeries());
         this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
                 "bigBodyThresholdPercentage must not be null");
         this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
@@ -96,8 +96,8 @@ public class PiercingLineIndicator extends CachedIndicator<Boolean> {
             return false;
         }
 
-        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstOpenPrice);
-        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondOpenPrice);
+        final Num firstBodyRatio = bodyIndicator.getValue(index - 1).dividedBy(firstOpenPrice);
+        final Num secondBodyRatio = bodyIndicator.getValue(index).dividedBy(secondOpenPrice);
 
         final Num firstBodySize = firstOpenPrice.minus(firstClosePrice);
         final Num requiredClose = firstClosePrice.plus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
