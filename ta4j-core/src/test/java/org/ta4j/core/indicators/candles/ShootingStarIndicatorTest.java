@@ -70,6 +70,7 @@ public class ShootingStarIndicatorTest extends AbstractIndicatorTest<Indicator<B
     public void customAveragePeriodShiftsWarmUpBoundary() {
         BarSeries series = shootingStarSeries(3, 1.0, 21, 0, 10.1);
         ShootingStarIndicator indicator = new ShootingStarIndicator(series, 3);
+        assertEquals(3, indicator.getCountOfUnstableBars());
 
         assertFalse(indicator.getValue(2));
         assertTrue(indicator.getValue(3));

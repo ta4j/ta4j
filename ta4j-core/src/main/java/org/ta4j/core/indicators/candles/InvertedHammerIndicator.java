@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -33,16 +32,16 @@ import org.ta4j.core.num.Num;
  * direction context. An inverted hammer is traditionally interpreted as a
  * bullish reversal signal only after a downtrend — a context this indicator
  * does not own.
+ * 
+ * @see <a href="https://www.investopedia.com/terms/i/invertedhammer.asp">
+ *      https://www.investopedia.com/terms/i/invertedhammer.asp</a>
  */
-public class InvertedHammerIndicator extends CachedIndicator<Boolean> {
+public class InvertedHammerIndicator extends CandlePatternIndicator {
 
     /**
      * The number of preceding candles averaged into the body and range baselines.
      */
     private final int averagePeriod;
-
-    /** Shared causal threshold evaluation against the preceding window. */
-    private final transient CandleThresholdSupport thresholds;
 
     /** The current candle's upper shadow, shared from the interned support. */
     private final transient Indicator<Num> upperShadow;
@@ -66,11 +65,11 @@ public class InvertedHammerIndicator extends CachedIndicator<Boolean> {
      * @param averagePeriod the number of preceding candles averaged into each
      *                      baseline; must be at least 1
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @since 0.24.2
      */
     public InvertedHammerIndicator(final BarSeries series, final int averagePeriod) {
-        super(series);
+        super(series, CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
-        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
         this.upperShadow = thresholds.upperShadow();
         this.lowerShadow = thresholds.lowerShadow();
     }

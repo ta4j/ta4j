@@ -51,7 +51,7 @@ public class BullishMarubozuIndicator extends AbstractMarubozuIndicator {
      * @param series        the bar series
      * @param averagePeriod the number of preceding candles averaged into the body
      *                      and range baselines
-     * @since 0.19
+     * @since 0.24.2
      */
     public BullishMarubozuIndicator(final BarSeries series, final int averagePeriod) {
         super(series, averagePeriod);

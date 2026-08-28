@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -35,7 +34,7 @@ import org.ta4j.core.num.Num;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji">
  *      http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#doji</a>
  */
-public class DojiIndicator extends CachedIndicator<Boolean> {
+public class DojiIndicator extends CandlePatternIndicator {
 
     /** The number of preceding candles averaged into the range baseline. */
     private final int averagePeriod;
@@ -46,9 +45,6 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      */
     private final double rangeFactor;
 
-    /** Shared causal threshold evaluation against the preceding window. */
-    private final transient CandleThresholdSupport thresholds;
-
     /** The current candle's body magnitude, shared from the interned support. */
     private final transient Indicator<Num> body;
 
@@ -57,13 +53,14 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      * range factor of 0.1.
      *
      * @param series the bar series
+     * @since 0.24.2
      */
     public DojiIndicator(BarSeries series) {
         super(validateConfiguration(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD,
-                CandleThresholdSupport.DOJI_RANGE_FACTOR));
+                CandleThresholdSupport.DOJI_RANGE_FACTOR),
+                CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.rangeFactor = CandleThresholdSupport.DOJI_RANGE_FACTOR;
-        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
         this.body = thresholds.bodyIndicator();
     }
 
@@ -80,19 +77,26 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
      *                                  negative
      */
     public DojiIndicator(BarSeries series, int averagePeriod, double rangeFactor) {
-        super(validateConfiguration(series, averagePeriod, rangeFactor));
+        super(validateConfiguration(series, averagePeriod, rangeFactor),
+                CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
         this.rangeFactor = rangeFactor;
-        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
         this.body = thresholds.bodyIndicator();
     }
 
     @Override
     protected Boolean calculate(int index) {
-        return thresholds.isValid(index) && !body.getValue(index)
-                .isGreaterThan(thresholds.priorAverageRange()
-                        .getValue(index)
-                        .multipliedBy(getBarSeries().numFactory().numOf(rangeFactor)));
+        if (!thresholds.isValid(index)) {
+            return false;
+        }
+        final var bodyValue = body.getValue(index);
+        final var baseline = thresholds.priorAverageRange()
+                .getValue(index)
+                .multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
+        if (!Num.isFinite(bodyValue) || !Num.isFinite(baseline)) {
+            return false;
+        }
+        return !bodyValue.isGreaterThan(baseline);
     }
 
     @Override

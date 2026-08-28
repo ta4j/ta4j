@@ -6,7 +6,6 @@ package org.ta4j.core.indicators.candles;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,15 +38,12 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
+abstract class AbstractMarubozuIndicator extends CandlePatternIndicator {
 
     /**
      * The number of preceding candles averaged into the body and range baselines.
      */
     private final int averagePeriod;
-
-    /** Shared causal threshold evaluation against the preceding window. */
-    private final transient CandleThresholdSupport thresholds;
 
     /** The current candle's upper shadow, shared from the interned support. */
     private final transient Indicator<Num> upperShadow;
@@ -73,9 +69,8 @@ abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1
      */
     AbstractMarubozuIndicator(final BarSeries series, final int averagePeriod) {
-        super(series);
+        super(series, CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
-        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
         this.upperShadow = thresholds.upperShadow();
         this.lowerShadow = thresholds.lowerShadow();
     }

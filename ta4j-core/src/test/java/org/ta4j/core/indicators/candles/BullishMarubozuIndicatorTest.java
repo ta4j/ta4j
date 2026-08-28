@@ -60,6 +60,7 @@ public class BullishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     public void customAveragePeriodShiftsWarmUpBoundary() {
         BarSeries series = marubozuSeries(3, 10.1, 0, 0, true);
         BullishMarubozuIndicator indicator = new BullishMarubozuIndicator(series, 3);
+        assertEquals(3, indicator.getCountOfUnstableBars());
 
         assertFalse(indicator.getValue(2));
         assertTrue(indicator.getValue(3));

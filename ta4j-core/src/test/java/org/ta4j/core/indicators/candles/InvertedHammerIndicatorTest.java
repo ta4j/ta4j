@@ -70,6 +70,7 @@ public class InvertedHammerIndicatorTest extends AbstractIndicatorTest<Indicator
     public void customAveragePeriodShiftsWarmUpBoundary() {
         BarSeries series = invertedHammerSeries(3, 1.0, 21, 0, 9.9);
         InvertedHammerIndicator indicator = new InvertedHammerIndicator(series, 3);
+        assertEquals(3, indicator.getCountOfUnstableBars());
 
         assertFalse(indicator.getValue(2));
         assertTrue(indicator.getValue(3));
