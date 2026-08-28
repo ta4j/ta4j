@@ -5,9 +5,10 @@ package org.ta4j.core.indicators.candles;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -162,6 +163,43 @@ public class CandleThresholdSupportTest {
 
         assertFalse(support.isLongBody(5));
         assertTrue(support.isDoji(6));
+    }
+
+    @Test
+    public void forSeriesInternsBySeriesAndPeriod() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        addBars(series, 6, 10, 0, 0);
+        BarSeries otherSeries = new MockBarSeriesBuilder().build();
+        addBars(otherSeries, 6, 10, 0, 0);
+
+        assertSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(series, 5));
+        assertNotSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(series, 7));
+        assertNotSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(otherSeries, 5));
+    }
+
+    @Test
+    public void internedSupportSharesPrimitiveInstances() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        addBars(series, 5, 10, 3, 4);
+        addBar(series, 8, 2, 1);
+        CandleThresholdSupport support = CandleThresholdSupport.forSeries(series, 5);
+
+        assertSame(support.bodyIndicator(), CandleThresholdSupport.forSeries(series, 5).bodyIndicator());
+        assertSame(support.rangeIndicator(), CandleThresholdSupport.forSeries(series, 5).rangeIndicator());
+        assertSame(support.upperShadow(), CandleThresholdSupport.forSeries(series, 5).upperShadow());
+        assertSame(support.lowerShadow(), CandleThresholdSupport.forSeries(series, 5).lowerShadow());
+
+        assertEquals(8d, support.bodyIndicator().getValue(5).doubleValue(), 1e-12);
+        assertEquals(11d, support.rangeIndicator().getValue(5).doubleValue(), 1e-12);
+        assertEquals(2d, support.upperShadow().getValue(5).doubleValue(), 1e-12);
+        assertEquals(1d, support.lowerShadow().getValue(5).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void forSeriesRejectsInvalidInput() {
+        assertThrows(NullPointerException.class, () -> CandleThresholdSupport.forSeries(null, 5));
+        assertThrows(IllegalArgumentException.class,
+                () -> CandleThresholdSupport.forSeries(new MockBarSeriesBuilder().build(), 0));
     }
 
     /**

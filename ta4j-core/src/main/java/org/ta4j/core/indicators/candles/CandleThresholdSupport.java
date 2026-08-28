@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -101,12 +105,122 @@ import org.ta4j.core.num.NumFactory;
  * package constants so the whole package shares one recommended profile.
  *
  * <p>
- * Instances are derived from the series and hold indicator caches; public
- * pattern indicators should keep their instance in a {@code transient} field,
- * like any other derived indicator field.
+ * Instances are interned per {@code (series, averagePeriod)} pair through
+ * {@link #forSeries(BarSeries, int)} so that every pattern indicator composed
+ * over the same series shares the same cached primitives and baselines instead
+ * of each building a duplicate cache of identical values. The intern table
+ * compares series by identity and holds both keys and values weakly: an entry
+ * only survives while at least one pattern indicator still references it, and
+ * it is collected once the series itself becomes unreachable.
+ *
+ * <p>
+ * Public pattern indicators should keep their instance in a {@code transient}
+ * field, like any other derived indicator field.
  */
 final class CandleThresholdSupport {
 
+    /**
+     * A weak, identity-keyed intern table. Keys are compared by referent
+     * identity, not {@code equals}, so custom {@link BarSeries} implementations
+     * that override {@link Object#equals(Object)} still map to their own entry.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     */
+    private static final class WeakIdentityInternTable<K, V> {
+
+        private final ReferenceQueue<K> queue = new ReferenceQueue<>();
+        private final Map<IdentityKey<K>, V> entries = new HashMap<>();
+
+        synchronized V get(K key) {
+            purgeClearedKeys();
+            return entries.get(new IdentityKey<>(key, queue));
+        }
+
+        synchronized void put(K key, V value) {
+            purgeClearedKeys();
+            entries.put(new IdentityKey<>(key, queue), value);
+        }
+
+        private void purgeClearedKeys() {
+            IdentityKey<?> cleared;
+            while ((cleared = (IdentityKey<?>) queue.poll()) != null) {
+                final IdentityKey<?> key = cleared;
+                entries.keySet().removeIf(entry -> entry == key);
+            }
+        }
+    }
+
+    /**
+     * A weak reference whose equality and hash code are derived from the
+     * identity of its referent, captured while the referent is still alive.
+     *
+     * @param <K> the referent type
+     */
+    private static final class IdentityKey<K> extends WeakReference<K> {
+
+        private final int identityHash;
+
+        IdentityKey(K referent, ReferenceQueue<K> queue) {
+            super(referent, queue);
+            this.identityHash = System.identityHashCode(referent);
+        }
+
+        @Override
+        public int hashCode() {
+            return identityHash;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof IdentityKey<?>)) {
+                return false;
+            }
+            final K referent = get();
+            return referent != null && referent == ((IdentityKey<?>) other).get();
+        }
+    }
+
+    /** Interned supports, keyed by series identity and weak on both sides. */
+    private static final WeakIdentityInternTable<BarSeries, Map<Integer, WeakReference<CandleThresholdSupport>>> INTERNED_SUPPORTS = new WeakIdentityInternTable<>();
+
+    /**
+     * Returns the interned support for the given series and average period,
+     * creating it on first use. All callers with the same
+     * {@code (series, averagePeriod)} pair share one instance, so the cached
+     * primitives and baselines are computed only once per series.
+     *
+     * @param series        the bar series to evaluate
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline
+     * @return the shared support for the series and period
+     * @throws NullPointerException     if {@code series} is null
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     */
+    static CandleThresholdSupport forSeries(BarSeries series, int averagePeriod) {
+        Objects.requireNonNull(series, "series must not be null");
+        if (averagePeriod < 1) {
+            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
+        }
+        synchronized (INTERNED_SUPPORTS) {
+            Map<Integer, WeakReference<CandleThresholdSupport>> byPeriod = INTERNED_SUPPORTS.get(series);
+            if (byPeriod == null) {
+                byPeriod = new HashMap<>();
+                INTERNED_SUPPORTS.put(series, byPeriod);
+            }
+            final WeakReference<CandleThresholdSupport> existing = byPeriod.get(averagePeriod);
+            CandleThresholdSupport support = existing == null ? null : existing.get();
+            if (support == null) {
+                support = new CandleThresholdSupport(series, averagePeriod);
+                byPeriod.put(averagePeriod, new WeakReference<>(support));
+            }
+            return support;
+        }
+    }
+ 
     /** Default number of preceding candles averaged into a baseline. */
     static final int DEFAULT_AVERAGE_PERIOD = 5;
 
@@ -141,6 +255,8 @@ final class CandleThresholdSupport {
     private final int averagePeriod;
     private final Indicator<Num> body;
     private final Indicator<Num> range;
+    private final Indicator<Num> upperShadow;
+    private final Indicator<Num> lowerShadow;
     private final Indicator<Num> priorAverageBody;
     private final Indicator<Num> priorAverageRange;
     private final Num longBodyFactor;
@@ -178,6 +294,8 @@ final class CandleThresholdSupport {
         this.averagePeriod = averagePeriod;
         this.body = new CandleBodyIndicator(series);
         this.range = new CandleRangeIndicator(series);
+        this.upperShadow = new UpperShadowIndicator(series);
+        this.lowerShadow = new LowerShadowIndicator(series);
         this.priorAverageBody = new PreviousValueIndicator(new SMAIndicator(body, averagePeriod));
         this.priorAverageRange = new PreviousValueIndicator(new SMAIndicator(range, averagePeriod));
         final NumFactory numFactory = series.numFactory();
@@ -209,6 +327,46 @@ final class CandleThresholdSupport {
      */
     Indicator<Num> priorAverageRange() {
         return priorAverageRange;
+    }
+
+    /**
+     * The cached body magnitude primitive shared with every pattern indicator
+     * interned over the same series.
+     *
+     * @return the body magnitude indicator
+     */
+    Indicator<Num> bodyIndicator() {
+        return body;
+    }
+
+    /**
+     * The cached candle range primitive shared with every pattern indicator
+     * interned over the same series.
+     *
+     * @return the candle range indicator
+     */
+    Indicator<Num> rangeIndicator() {
+        return range;
+    }
+
+    /**
+     * The cached upper shadow primitive shared with every pattern indicator
+     * interned over the same series.
+     *
+     * @return the upper shadow indicator
+     */
+    Indicator<Num> upperShadow() {
+        return upperShadow;
+    }
+
+    /**
+     * The cached lower shadow primitive shared with every pattern indicator
+     * interned over the same series.
+     *
+     * @return the lower shadow indicator
+     */
+    Indicator<Num> lowerShadow() {
+        return lowerShadow;
     }
 
     /**
