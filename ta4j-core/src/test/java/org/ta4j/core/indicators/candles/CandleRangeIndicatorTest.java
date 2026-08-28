@@ -74,6 +74,18 @@ public class CandleRangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         assertTrue(new CandleRangeIndicator(flat).getValue(0).isZero());
     }
 
+    @Test
+    public void isUndefinedForMissingHighPrice() {
+        series.barBuilder().openPrice(10).closePrice(12).highPrice((Num) null).lowPrice(10).add();
+        assertTrue(new CandleRangeIndicator(series).getValue(series.getEndIndex()).isNaN());
+    }
+
+    @Test
+    public void isUndefinedForMissingLowPrice() {
+        series.barBuilder().openPrice(10).closePrice(12).highPrice(14).lowPrice((Num) null).add();
+        assertTrue(new CandleRangeIndicator(series).getValue(series.getEndIndex()).isNaN());
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

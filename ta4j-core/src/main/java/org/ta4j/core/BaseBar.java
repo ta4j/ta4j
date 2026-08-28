@@ -257,10 +257,20 @@ public class BaseBar implements Bar {
             openPrice = price;
         }
         closePrice = price;
-        if (highPrice == null || highPrice.isLessThan(price)) {
+        if (highPrice == null) {
+            highPrice = price;
+            if (openPrice.isGreaterThan(highPrice)) {
+                highPrice = openPrice;
+            }
+        } else if (highPrice.isLessThan(price)) {
             highPrice = price;
         }
-        if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+        if (lowPrice == null) {
+            lowPrice = price;
+            if (openPrice.isLessThan(lowPrice)) {
+                lowPrice = openPrice;
+            }
+        } else if (lowPrice.isGreaterThan(price)) {
             lowPrice = price;
         }
     }

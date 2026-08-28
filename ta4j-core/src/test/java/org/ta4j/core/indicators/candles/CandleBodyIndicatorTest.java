@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -61,7 +62,7 @@ public class CandleBodyIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         var body = new CandleBodyIndicator(series);
         BarSeries swapped = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            var bar = series.getBar(i);
+            Bar bar = series.getBar(i);
             swapped.barBuilder()
                     .openPrice(bar.getClosePrice())
                     .closePrice(bar.getOpenPrice())
@@ -90,6 +91,18 @@ public class CandleBodyIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         BarSeries doji = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d).build();
         doji.barBuilder().openPrice(5).closePrice(5).highPrice(6).lowPrice(4).add();
         assertTrue(new CandleBodyIndicator(doji).getValue(1).isZero());
+    }
+
+    @Test
+    public void isUndefinedForMissingOpenPrice() {
+        series.barBuilder().openPrice((Num) null).closePrice(12).highPrice(14).lowPrice(10).add();
+        assertTrue(new CandleBodyIndicator(series).getValue(series.getEndIndex()).isNaN());
+    }
+
+    @Test
+    public void isUndefinedForMissingClosePrice() {
+        series.barBuilder().openPrice(10).closePrice((Num) null).highPrice(14).lowPrice(10).add();
+        assertTrue(new CandleBodyIndicator(series).getValue(series.getEndIndex()).isNaN());
     }
 
     @Override

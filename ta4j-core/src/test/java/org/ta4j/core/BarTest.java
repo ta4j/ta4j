@@ -106,6 +106,23 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testAddPricePreservesOhlcInvariant() {
+        // Partial bar with only an open price: extrema must fold in the existing
+        // open instead of initializing from the added price alone.
+        final BaseBar partialBar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), null,
+                null, null, null, null, 0);
+        partialBar.addPrice(numFactory.numOf(15));
+        assertEquals(numFactory.numOf(10), partialBar.getOpenPrice());
+        assertEquals(numFactory.numOf(15), partialBar.getClosePrice());
+        assertEquals(numFactory.numOf(15), partialBar.getHighPrice());
+        assertEquals(numFactory.numOf(10), partialBar.getLowPrice());
+        partialBar.addPrice(numFactory.numOf(5));
+        assertEquals(numFactory.numOf(5), partialBar.getClosePrice());
+        assertEquals(numFactory.numOf(15), partialBar.getHighPrice());
+        assertEquals(numFactory.numOf(5), partialBar.getLowPrice());
+    }
+
+    @Test
     public void createBars() {
         var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(1))
                 .beginTime(this.beginTime)

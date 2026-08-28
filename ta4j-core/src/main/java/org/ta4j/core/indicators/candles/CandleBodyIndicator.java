@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.candles;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,6 +39,9 @@ public class CandleBodyIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Bar t = getBarSeries().getBar(index);
+        if (t.getOpenPrice() == null || t.getClosePrice() == null) {
+            return NaN.NaN;
+        }
         return t.getClosePrice().minus(t.getOpenPrice()).abs();
     }
 
