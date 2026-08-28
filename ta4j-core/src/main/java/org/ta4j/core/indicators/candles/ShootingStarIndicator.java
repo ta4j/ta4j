@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Shooting star candle indicator.
@@ -45,11 +47,11 @@ public class ShootingStarIndicator extends CachedIndicator<Boolean> {
     /** Shared causal threshold evaluation against the preceding window. */
     private final transient CandleThresholdSupport thresholds;
 
-    /** The current candle's upper shadow. */
-    private final transient UpperShadowIndicator upperShadow;
+    /** The current candle's upper shadow, shared from the interned support. */
+    private final transient Indicator<Num> upperShadow;
 
-    /** The current candle's lower shadow. */
-    private final transient LowerShadowIndicator lowerShadow;
+    /** The current candle's lower shadow, shared from the interned support. */
+    private final transient Indicator<Num> lowerShadow;
 
     /**
      * Constructor with the recommended default average period of 5 candles.
@@ -71,9 +73,9 @@ public class ShootingStarIndicator extends CachedIndicator<Boolean> {
     public ShootingStarIndicator(final BarSeries series, final int averagePeriod) {
         super(series);
         this.averagePeriod = averagePeriod;
-        this.thresholds = new CandleThresholdSupport(series, averagePeriod);
-        this.upperShadow = new UpperShadowIndicator(series);
-        this.lowerShadow = new LowerShadowIndicator(series);
+        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
+        this.upperShadow = thresholds.upperShadow();
+        this.lowerShadow = thresholds.lowerShadow();
     }
 
     @Override

@@ -6,7 +6,9 @@ package org.ta4j.core.indicators.candles;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Doji indicator.
@@ -47,8 +49,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
     /** Shared causal threshold evaluation against the preceding window. */
     private final transient CandleThresholdSupport thresholds;
 
-    /** The current candle's body magnitude. */
-    private final transient CandleBodyIndicator body;
+    /** The current candle's body magnitude, shared from the interned support. */
+    private final transient Indicator<Num> body;
 
     /**
      * Constructor with the recommended defaults: a 5-candle range baseline and a
@@ -61,8 +63,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
                 CandleThresholdSupport.DOJI_RANGE_FACTOR));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.rangeFactor = CandleThresholdSupport.DOJI_RANGE_FACTOR;
-        this.thresholds = new CandleThresholdSupport(series, averagePeriod);
-        this.body = new CandleBodyIndicator(series);
+        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
+        this.body = thresholds.bodyIndicator();
     }
 
     /**
@@ -81,8 +83,8 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
         super(validateConfiguration(series, averagePeriod, rangeFactor));
         this.averagePeriod = averagePeriod;
         this.rangeFactor = rangeFactor;
-        this.thresholds = new CandleThresholdSupport(series, averagePeriod);
-        this.body = new CandleBodyIndicator(series);
+        this.thresholds = CandleThresholdSupport.forSeries(series, averagePeriod);
+        this.body = thresholds.bodyIndicator();
     }
 
     @Override
