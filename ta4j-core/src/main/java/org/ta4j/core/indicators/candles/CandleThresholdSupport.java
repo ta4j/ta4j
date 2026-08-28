@@ -122,7 +122,10 @@ final class CandleThresholdSupport {
     /**
      * A weak, identity-keyed intern table. Keys are compared by referent identity,
      * not {@code equals}, so custom {@link BarSeries} implementations that override
-     * {@link Object#equals(Object)} still map to their own entry.
+     * {@link Object#equals(Object)} still map to their own entry. Lookup keys are
+     * built without a reference queue so they are never enqueued; only stored keys
+     * enter the queue and are removed from the map once their referent is
+     * collected.
      *
      * @param <K> the key type
      * @param <V> the value type
@@ -134,7 +137,7 @@ final class CandleThresholdSupport {
 
         synchronized V get(K key) {
             purgeClearedKeys();
-            return entries.get(new IdentityKey<>(key, queue));
+            return entries.get(new IdentityKey<>(key, null));
         }
 
         synchronized void put(K key, V value) {
@@ -145,8 +148,7 @@ final class CandleThresholdSupport {
         private void purgeClearedKeys() {
             IdentityKey<?> cleared;
             while ((cleared = (IdentityKey<?>) queue.poll()) != null) {
-                final IdentityKey<?> key = cleared;
-                entries.keySet().removeIf(entry -> entry == key);
+                entries.remove(cleared);
             }
         }
     }
@@ -198,7 +200,8 @@ final class CandleThresholdSupport {
      *                      baseline
      * @return the shared support for the series and period
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is outside the
+     *                                  supported range
      */
     static CandleThresholdSupport forSeries(BarSeries series, int averagePeriod) {
         Objects.requireNonNull(series, "series must not be null");
@@ -214,6 +217,7 @@ final class CandleThresholdSupport {
             final WeakReference<CandleThresholdSupport> existing = byPeriod.get(averagePeriod);
             CandleThresholdSupport support = existing == null ? null : existing.get();
             if (support == null) {
+                byPeriod.values().removeIf(reference -> reference.get() == null);
                 support = new CandleThresholdSupport(series, averagePeriod);
                 byPeriod.put(averagePeriod, new WeakReference<>(support));
             }
@@ -271,7 +275,8 @@ final class CandleThresholdSupport {
      *
      * @param series the bar series to evaluate
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is outside the
+     *                                  supported range
      */
     CandleThresholdSupport(BarSeries series) {
         this(series, DEFAULT_AVERAGE_PERIOD);
@@ -284,7 +289,8 @@ final class CandleThresholdSupport {
      * @param averagePeriod the number of preceding candles averaged into each
      *                      baseline
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is outside the
+     *                                  supported range
      */
     CandleThresholdSupport(BarSeries series, int averagePeriod) {
         this.series = validateSeriesAndAveragePeriod(series, averagePeriod);
@@ -312,12 +318,15 @@ final class CandleThresholdSupport {
      *                      baseline
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or equal
+     *                                  to {@link Integer#MAX_VALUE}, whose
+     *                                  successor cannot be represented
      */
     static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
-        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
-        if (averagePeriod < 1) {
-            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
+        final var validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        if (averagePeriod < 1 || averagePeriod == Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "averagePeriod must be in [1, " + (Integer.MAX_VALUE - 1) + "], but was: " + averagePeriod);
         }
         return validatedSeries;
     }
@@ -333,9 +342,9 @@ final class CandleThresholdSupport {
      *                      penetrate
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
-     *                                  {@code penetration} is not finite or is
-     *                                  outside (0, 1]
+     * @throws IllegalArgumentException if {@code averagePeriod} is outside the
+     *                                  supported range or {@code penetration} is
+     *                                  not finite or is outside (0, 1]
      */
     static BarSeries validateSeriesAndAveragePeriodAndPenetration(BarSeries series, int averagePeriod,
             double penetration) {
@@ -410,13 +419,14 @@ final class CandleThresholdSupport {
 
     /**
      * Whether a full preceding window exists at {@code index}, i.e.
-     * {@code index >= series.getBeginIndex() + averagePeriod}.
+     * {@code index >= series.getBeginIndex() + averagePeriod}, evaluated in
+     * {@code long} arithmetic so a large begin index cannot overflow.
      *
      * @param index the candle index
      * @return {@code true} if every predicate can be evaluated at {@code index}
      */
     boolean isValid(int index) {
-        return index >= series.getBeginIndex() + averagePeriod;
+        return index >= (long) series.getBeginIndex() + averagePeriod;
     }
 
     /**
@@ -425,11 +435,15 @@ final class CandleThresholdSupport {
      *
      * @param index the candle index
      * @return {@code true} for a long body, {@code false} below the warm-up
-     *         boundary or for a short body
+     *         boundary, for a short body, or for a non-finite measurement
      */
     boolean isLongBody(int index) {
-        return isValid(index)
-                && body.getValue(index).isGreaterThan(priorAverageBody.getValue(index).multipliedBy(longBodyFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num bodyValue = body.getValue(index);
+        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longBodyFactor);
+        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isGreaterThan(baseline);
     }
 
     /**
@@ -438,11 +452,15 @@ final class CandleThresholdSupport {
      *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
-     *         boundary or for a long body
+     *         boundary, for a long body, or for a non-finite measurement
      */
     boolean isShortBody(int index) {
-        return isValid(index)
-                && body.getValue(index).isLessThan(priorAverageBody.getValue(index).multipliedBy(shortBodyFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num bodyValue = body.getValue(index);
+        final Num baseline = priorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
+        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isLessThan(baseline);
     }
 
     /**
@@ -451,11 +469,15 @@ final class CandleThresholdSupport {
      *
      * @param index the candle index
      * @return {@code true} for a doji-like body, {@code false} below the warm-up
-     *         boundary or for a substantial body
+     *         boundary, for a substantial body, or for a non-finite measurement
      */
     boolean isDoji(int index) {
-        return isValid(index)
-                && !body.getValue(index).isGreaterThan(priorAverageRange.getValue(index).multipliedBy(dojiRangeFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num bodyValue = body.getValue(index);
+        final Num baseline = priorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
+        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && !bodyValue.isGreaterThan(baseline);
     }
 
     /**
@@ -465,11 +487,15 @@ final class CandleThresholdSupport {
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a long shadow, {@code false} below the warm-up
-     *         boundary or for a short shadow
+     *         boundary, for a short shadow, or for a non-finite measurement
      */
     boolean isLongShadow(int index, Indicator<Num> shadow) {
-        return isValid(index) && shadow.getValue(index)
-                .isGreaterThan(priorAverageBody.getValue(index).multipliedBy(longShadowFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num shadowValue = shadow.getValue(index);
+        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longShadowFactor);
+        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && shadowValue.isGreaterThan(baseline);
     }
 
     /**
@@ -479,11 +505,15 @@ final class CandleThresholdSupport {
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a short shadow, {@code false} below the warm-up
-     *         boundary or for a long shadow
+     *         boundary, for a long shadow, or for a non-finite measurement
      */
     boolean isShortShadow(int index, Indicator<Num> shadow) {
-        return isValid(index) && !shadow.getValue(index)
-                .isGreaterThan(priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num shadowValue = shadow.getValue(index);
+        final Num baseline = priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor);
+        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && !shadowValue.isGreaterThan(baseline);
     }
 
     /**
@@ -494,12 +524,18 @@ final class CandleThresholdSupport {
      * @param first  the first measurement
      * @param second the second measurement
      * @return {@code true} when the two measurements are near each other,
-     *         {@code false} below the warm-up boundary or when they diverge
+     *         {@code false} below the warm-up boundary, when they diverge, or for a
+     *         non-finite measurement
      */
     boolean isNear(int index, Indicator<Num> first, Indicator<Num> second) {
-        return isValid(index) && !first.getValue(index)
-                .minus(second.getValue(index))
-                .abs()
-                .isGreaterThan(priorAverageRange.getValue(index).multipliedBy(nearRangeFactor));
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num firstValue = first.getValue(index);
+        final Num secondValue = second.getValue(index);
+        final Num difference = firstValue.minus(secondValue).abs();
+        final Num baseline = priorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
+        return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(difference)
+                && Num.isFinite(baseline) && !difference.isGreaterThan(baseline);
     }
 }

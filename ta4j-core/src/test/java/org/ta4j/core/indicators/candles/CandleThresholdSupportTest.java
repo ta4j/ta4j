@@ -9,12 +9,19 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 public class CandleThresholdSupportTest {
@@ -151,6 +158,57 @@ public class CandleThresholdSupportTest {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> new CandleThresholdSupport(series, 0));
         assertTrue(e.getMessage().contains("averagePeriod"));
+    }
+
+    @Test
+    public void rejectsAveragePeriodAtIntegerMaxValue() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> new CandleThresholdSupport(series, Integer.MAX_VALUE));
+        assertTrue(e.getMessage().contains("averagePeriod"));
+        assertThrows(IllegalArgumentException.class,
+                () -> CandleThresholdSupport.forSeries(new MockBarSeriesBuilder().build(), Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void nonFiniteMeasurementsAreNeverClassified() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addBar(series, 1, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> body = new CandleBodyIndicator(series);
+        Indicator<Num> nan = new ConstantIndicator<>(series, series.numFactory().numOf(Double.NaN));
+        Indicator<Num> infinity = new ConstantIndicator<>(series, series.numFactory().numOf(Double.POSITIVE_INFINITY));
+
+        // Inclusive classifiers must not treat a NaN measurement as "not greater".
+        assertFalse(support.isShortShadow(5, nan));
+        assertFalse(support.isNear(5, nan, body));
+        assertFalse(support.isNear(5, body, nan));
+        // Strict classifiers must not classify NaN or infinity measurements.
+        assertFalse(support.isLongShadow(5, nan));
+        assertFalse(support.isLongShadow(5, infinity));
+        assertFalse(support.isShortShadow(5, infinity));
+    }
+
+    @Test
+    public void boundaryArithmeticDoesNotOverflowAtHighBeginIndex() {
+        Bar bar = new TimeBarBuilder(DecimalNumFactory.getInstance()).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.EPOCH)
+                .openPrice(1)
+                .highPrice(2)
+                .lowPrice(0.5)
+                .closePrice(1)
+                .volume(1)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(bar))
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        // beginIndex + averagePeriod overflows int arithmetic; the boundary must
+        // still sit beyond every index the series can address.
+        assertFalse(support.isValid(Integer.MAX_VALUE - 1));
+        assertFalse(support.isValid(Integer.MAX_VALUE));
     }
 
     @Test
