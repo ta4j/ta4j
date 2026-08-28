@@ -3,6 +3,9 @@
  */
 package org.ta4j.core;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -251,16 +254,25 @@ public class BaseBar implements Bar {
         trades++;
     }
 
+    /**
+     * Adds a price to the bar, folding the existing open and close prices into
+     * freshly initialized extrema so the OHLC invariant survives every mutation
+     * path.
+     */
     @Override
     public void addPrice(Num price) {
         if (openPrice == null) {
             openPrice = price;
         }
+        final Num priorClose = closePrice;
         closePrice = price;
         if (highPrice == null) {
             highPrice = price;
             if (openPrice.isGreaterThan(highPrice)) {
                 highPrice = openPrice;
+            }
+            if (priorClose != null && priorClose.isGreaterThan(highPrice)) {
+                highPrice = priorClose;
             }
         } else if (highPrice.isLessThan(price)) {
             highPrice = price;
@@ -270,8 +282,31 @@ public class BaseBar implements Bar {
             if (openPrice.isLessThan(lowPrice)) {
                 lowPrice = openPrice;
             }
+            if (priorClose != null && priorClose.isLessThan(lowPrice)) {
+                lowPrice = priorClose;
+            }
         } else if (lowPrice.isGreaterThan(price)) {
             lowPrice = price;
+        }
+    }
+
+    /**
+     * Validates the deserialized state so serialized bars written by older ta4j
+     * versions that predate the OHLC invariant are rejected instead of silently
+     * loading inconsistent prices.
+     *
+     * @param stream the object stream
+     * @throws IOException            if deserialization fails
+     * @throws ClassNotFoundException if a serialized class is unavailable
+     * @throws InvalidObjectException if the serialized prices violate the OHLC
+     *                                invariant
+     */
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        try {
+            validatePrices(openPrice, highPrice, lowPrice, closePrice);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidObjectException("Serialized bar violates the OHLC invariant: " + e.getMessage());
         }
     }
 

@@ -15,7 +15,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Provides the absolute difference between the open price and the close price
  * of a bar, i.e. {@code |close - open|}. The value is the magnitude of the real
- * body and is always non-negative for well-formed OHLC bars.
+ * body and is always non-negative for well-formed OHLC bars. Bars whose open or
+ * close price is missing or non-finite, or whose subtraction overflows, report
+ * {@link NaN#NaN}.
  *
  * <p>
  * Unlike the deprecated {@link RealBodyIndicator}, which reports the signed
@@ -39,10 +41,13 @@ public class CandleBodyIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Bar t = getBarSeries().getBar(index);
-        if (t.getOpenPrice() == null || t.getClosePrice() == null) {
+        Num open = t.getOpenPrice();
+        Num close = t.getClosePrice();
+        if (!Num.isFinite(open) || !Num.isFinite(close)) {
             return NaN.NaN;
         }
-        return t.getClosePrice().minus(t.getOpenPrice()).abs();
+        Num body = close.minus(open).abs();
+        return Num.isFinite(body) ? body : NaN.NaN;
     }
 
     @Override

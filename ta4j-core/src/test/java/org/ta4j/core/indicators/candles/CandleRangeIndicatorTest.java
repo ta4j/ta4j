@@ -17,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -84,6 +85,32 @@ public class CandleRangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void isUndefinedForMissingLowPrice() {
         series.barBuilder().openPrice(10).closePrice(12).highPrice(14).lowPrice((Num) null).add();
         assertTrue(new CandleRangeIndicator(series).getValue(series.getEndIndex()).isNaN());
+    }
+
+    @Test
+    public void isUndefinedForNonFinitePrices() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries nonFinite = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        nonFinite.barBuilder()
+                .openPrice(10)
+                .closePrice(12)
+                .highPrice(doubleFactory.numOf(Double.POSITIVE_INFINITY))
+                .lowPrice(10)
+                .add();
+        assertTrue(new CandleRangeIndicator(nonFinite).getValue(0).isNaN());
+    }
+
+    @Test
+    public void isUndefinedWhenSubtractionOverflows() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries overflow = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        overflow.barBuilder()
+                .openPrice(0)
+                .closePrice(0)
+                .highPrice(doubleFactory.numOf(Double.MAX_VALUE))
+                .lowPrice(doubleFactory.numOf(-Double.MAX_VALUE))
+                .add();
+        assertTrue(new CandleRangeIndicator(overflow).getValue(0).isNaN());
     }
 
     @Override

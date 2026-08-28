@@ -15,7 +15,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * Provides the full range of the current candle, i.e. {@code high - low}. The
  * value is the total vertical span of the candle and equals the sum of the
- * upper shadow, the body, and the lower shadow for well-formed OHLC bars.
+ * upper shadow, the body, and the lower shadow for well-formed OHLC bars. Bars
+ * whose high or low price is missing or non-finite, or whose subtraction
+ * overflows, report {@link NaN#NaN}.
  *
  * <p>
  * This is <b>not</b> the true range: the true range also considers the previous
@@ -38,10 +40,13 @@ public class CandleRangeIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Bar t = getBarSeries().getBar(index);
-        if (t.getHighPrice() == null || t.getLowPrice() == null) {
+        Num high = t.getHighPrice();
+        Num low = t.getLowPrice();
+        if (!Num.isFinite(high) || !Num.isFinite(low)) {
             return NaN.NaN;
         }
-        return t.getHighPrice().minus(t.getLowPrice());
+        Num range = high.minus(low);
+        return Num.isFinite(range) ? range : NaN.NaN;
     }
 
     @Override

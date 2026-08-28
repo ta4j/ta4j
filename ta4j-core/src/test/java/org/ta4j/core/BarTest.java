@@ -7,11 +7,19 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import org.junit.Before;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -120,6 +128,93 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numFactory.numOf(5), partialBar.getClosePrice());
         assertEquals(numFactory.numOf(15), partialBar.getHighPrice());
         assertEquals(numFactory.numOf(5), partialBar.getLowPrice());
+    }
+
+    @Test
+    public void testAddPriceFoldsPriorCloseIntoExtrema() {
+        // Partial bar with open and close but no extrema: the added price must
+        // not discard the existing close when initializing high and low.
+        final BaseBar partialBar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), null,
+                null, numFactory.numOf(20), null, null, 0);
+        partialBar.addPrice(numFactory.numOf(15));
+        assertEquals(numFactory.numOf(10), partialBar.getOpenPrice());
+        assertEquals(numFactory.numOf(15), partialBar.getClosePrice());
+        assertEquals(numFactory.numOf(20), partialBar.getHighPrice());
+        assertEquals(numFactory.numOf(10), partialBar.getLowPrice());
+
+        // Symmetric low-side fold when the prior close is below the open.
+        final BaseBar lowBar = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10), null, null,
+                numFactory.numOf(5), null, null, 0);
+        lowBar.addPrice(numFactory.numOf(12));
+        assertEquals(numFactory.numOf(10), lowBar.getOpenPrice());
+        assertEquals(numFactory.numOf(12), lowBar.getClosePrice());
+        assertEquals(numFactory.numOf(12), lowBar.getHighPrice());
+        assertEquals(numFactory.numOf(5), lowBar.getLowPrice());
+    }
+
+    @Test
+    public void testSerializedValidBarRoundTrips() throws Exception {
+        final BaseBar original = new BaseBar(Duration.ofHours(1), beginTime, endTime, numFactory.numOf(10),
+                numFactory.numOf(20), numFactory.numOf(5), numFactory.numOf(15), numFactory.zero(), numFactory.zero(),
+                0);
+        final BaseBar restored = (BaseBar) deserialize(serialize(original));
+        assertEquals(original.getOpenPrice(), restored.getOpenPrice());
+        assertEquals(original.getHighPrice(), restored.getHighPrice());
+        assertEquals(original.getLowPrice(), restored.getLowPrice());
+        assertEquals(original.getClosePrice(), restored.getClosePrice());
+        assertEquals(original.getBeginTime(), restored.getBeginTime());
+        assertEquals(original.getEndTime(), restored.getEndTime());
+    }
+
+    @Test
+    public void testSerializedBarViolatingOhlcInvariantIsRejected() throws Exception {
+        // Use a DoubleNum-backed bar so the serialized stream contains raw double
+        // fields that can be patched deterministically.
+        final DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        final BaseBar bar = new BaseBar(Duration.ofHours(1), beginTime, endTime, doubleFactory.numOf(10),
+                doubleFactory.numOf(987654.321d), doubleFactory.numOf(5), doubleFactory.numOf(15), doubleFactory.zero(),
+                doubleFactory.zero(), 0);
+        final byte[] serialized = serialize(bar);
+        final int highOffset = indexOfDouble(serialized, 987654.321d);
+        assertTrue("serialized stream must contain the high price", highOffset >= 0);
+        writeDouble(serialized, highOffset, 1.0d);
+        assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
+    }
+
+    private static byte[] serialize(Object value) throws IOException {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                ObjectOutputStream out = new ObjectOutputStream(bytes)) {
+            out.writeObject(value);
+            out.flush();
+            return bytes.toByteArray();
+        }
+    }
+
+    private static Object deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+        try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
+            return in.readObject();
+        }
+    }
+
+    private static int indexOfDouble(byte[] bytes, double value) {
+        final byte[] needle = doubleBytes(value);
+        outer: for (int i = 0; i <= bytes.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (bytes[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    private static void writeDouble(byte[] bytes, int offset, double value) {
+        System.arraycopy(doubleBytes(value), 0, bytes, offset, Double.BYTES);
+    }
+
+    private static byte[] doubleBytes(double value) {
+        return ByteBuffer.allocate(Double.BYTES).putDouble(value).array();
     }
 
     @Test
