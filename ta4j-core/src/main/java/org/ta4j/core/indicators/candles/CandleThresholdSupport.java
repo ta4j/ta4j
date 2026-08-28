@@ -120,9 +120,9 @@ import org.ta4j.core.num.NumFactory;
 final class CandleThresholdSupport {
 
     /**
-     * A weak, identity-keyed intern table. Keys are compared by referent
-     * identity, not {@code equals}, so custom {@link BarSeries} implementations
-     * that override {@link Object#equals(Object)} still map to their own entry.
+     * A weak, identity-keyed intern table. Keys are compared by referent identity,
+     * not {@code equals}, so custom {@link BarSeries} implementations that override
+     * {@link Object#equals(Object)} still map to their own entry.
      *
      * @param <K> the key type
      * @param <V> the value type
@@ -152,8 +152,8 @@ final class CandleThresholdSupport {
     }
 
     /**
-     * A weak reference whose equality and hash code are derived from the
-     * identity of its referent, captured while the referent is still alive.
+     * A weak reference whose equality and hash code are derived from the identity
+     * of its referent, captured while the referent is still alive.
      *
      * @param <K> the referent type
      */
@@ -220,7 +220,7 @@ final class CandleThresholdSupport {
             return support;
         }
     }
- 
+
     /** Default number of preceding candles averaged into a baseline. */
     static final int DEFAULT_AVERAGE_PERIOD = 5;
 
@@ -287,24 +287,63 @@ final class CandleThresholdSupport {
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1
      */
     CandleThresholdSupport(BarSeries series, int averagePeriod) {
-        this.series = Objects.requireNonNull(series, "series must not be null");
-        if (averagePeriod < 1) {
-            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
-        }
+        this.series = validateSeriesAndAveragePeriod(series, averagePeriod);
         this.averagePeriod = averagePeriod;
-        this.body = new CandleBodyIndicator(series);
-        this.range = new CandleRangeIndicator(series);
-        this.upperShadow = new UpperShadowIndicator(series);
-        this.lowerShadow = new LowerShadowIndicator(series);
+        this.body = new CandleBodyIndicator(this.series);
+        this.range = new CandleRangeIndicator(this.series);
+        this.upperShadow = new UpperShadowIndicator(this.series);
+        this.lowerShadow = new LowerShadowIndicator(this.series);
         this.priorAverageBody = new PreviousValueIndicator(new SMAIndicator(body, averagePeriod));
         this.priorAverageRange = new PreviousValueIndicator(new SMAIndicator(range, averagePeriod));
-        final NumFactory numFactory = series.numFactory();
+        final NumFactory numFactory = this.series.numFactory();
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
         this.dojiRangeFactor = numFactory.numOf(DOJI_RANGE_FACTOR);
         this.longShadowFactor = numFactory.numOf(LONG_SHADOW_FACTOR);
         this.shortShadowRangeFactor = numFactory.numOf(SHORT_SHADOW_RANGE_FACTOR);
         this.nearRangeFactor = numFactory.numOf(NEAR_RANGE_FACTOR);
+    }
+
+    /**
+     * Validates the series and average period shared by every construction path.
+     *
+     * @param series        the bar series to evaluate
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline
+     * @return the validated series
+     * @throws NullPointerException     if {@code series} is null
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     */
+    static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        if (averagePeriod < 1) {
+            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
+        }
+        return validatedSeries;
+    }
+
+    /**
+     * Validates the series, average period, and penetration fraction shared by the
+     * piercing/dark-cloud and star pattern construction paths.
+     *
+     * @param series        the bar series to evaluate
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline
+     * @param penetration   the fraction of the first body the second close must
+     *                      penetrate
+     * @return the validated series
+     * @throws NullPointerException     if {@code series} is null
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
+     *                                  {@code penetration} is not finite or is
+     *                                  outside (0, 1]
+     */
+    static BarSeries validateSeriesAndAveragePeriodAndPenetration(BarSeries series, int averagePeriod,
+            double penetration) {
+        BarSeries validatedSeries = validateSeriesAndAveragePeriod(series, averagePeriod);
+        if (!Double.isFinite(penetration) || penetration <= 0 || penetration > 1) {
+            throw new IllegalArgumentException("penetration must be finite and in (0, 1], but was: " + penetration);
+        }
+        return validatedSeries;
     }
 
     /**
