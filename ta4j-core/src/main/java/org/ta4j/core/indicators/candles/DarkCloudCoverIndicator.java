@@ -71,6 +71,8 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
      * @param series        the bar series
      * @param averagePeriod the number of preceding candles averaged into the
      *                      long-body baseline (at least 1)
+     * @param penetration   the fraction of the first body the second close must
+     *                      penetrate, exclusive 0 and at most 1
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
      *                                  {@code penetration} is not finite, is not
      *                                  positive, or exceeds 1
