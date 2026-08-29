@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
 public class MorningStarIndicator extends CachedIndicator<Boolean> {
 
     private final transient DownTrendIndicator trendIndicator;
-    private final transient RealBodyIndicator realBodyIndicator;
+    private final transient CandleBodyIndicator bodyIndicator;
     private final Num smallBodyThresholdPercentage;
     private final Num bigBodyThresholdPercentage;
 
@@ -45,7 +45,7 @@ public class MorningStarIndicator extends CachedIndicator<Boolean> {
             final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new DownTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.smallBodyThresholdPercentage = smallBodyThresholdPercentage;
         this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
@@ -58,9 +58,9 @@ public class MorningStarIndicator extends CachedIndicator<Boolean> {
         Bar firstBar = getBarSeries().getBar(index - 2);
         Bar secondBar = getBarSeries().getBar(index - 1);
         Bar thirdBar = getBarSeries().getBar(index);
-        Num firstBarPercentage = this.realBodyIndicator.getValue(index - 2).abs().dividedBy(firstBar.getOpenPrice());
-        Num secondBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(secondBar.getOpenPrice());
-        Num thirdBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(thirdBar.getOpenPrice());
+        Num firstBarPercentage = this.bodyIndicator.getValue(index - 2).dividedBy(firstBar.getOpenPrice());
+        Num secondBarPercentage = this.bodyIndicator.getValue(index - 1).dividedBy(secondBar.getOpenPrice());
+        Num thirdBarPercentage = this.bodyIndicator.getValue(index).dividedBy(thirdBar.getOpenPrice());
         Num firstBarMiddlePoint = firstBar.getOpenPrice()
                 .minus(firstBar.getClosePrice())
                 .dividedBy(getBarSeries().numFactory().numOf(2))

@@ -4,10 +4,8 @@
 package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -24,7 +22,7 @@ import org.ta4j.core.num.Num;
 public class DojiIndicator extends CachedIndicator<Boolean> {
 
     /** Body height. */
-    private final transient Indicator<Num> bodyHeightInd;
+    private final transient CandleBodyIndicator bodyHeightInd;
 
     /** Average body height. */
     private final transient SMAIndicator averageBodyHeightInd;
@@ -50,7 +48,7 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
         super(series);
         this.barCount = barCount;
         this.bodyFactor = bodyFactor;
-        this.bodyHeightInd = UnaryOperationIndicator.abs(new RealBodyIndicator(series));
+        this.bodyHeightInd = new CandleBodyIndicator(series);
         this.averageBodyHeightInd = new SMAIndicator(bodyHeightInd, barCount);
         this.factor = getBarSeries().numFactory().numOf(bodyFactor);
     }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertFalse;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -39,5 +40,13 @@ public class UpperShadowIndicatorTest extends AbstractIndicatorTest<BarSeries, N
         assertNumEquals(1, upperShadow.getValue(2));
         assertNumEquals(0, upperShadow.getValue(3));
         assertNumEquals(0, upperShadow.getValue(4));
+    }
+
+    @Test
+    public void isNeverNegative() {
+        var upperShadow = new UpperShadowIndicator(series);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertFalse(upperShadow.getValue(i).isNegative());
+        }
     }
 }

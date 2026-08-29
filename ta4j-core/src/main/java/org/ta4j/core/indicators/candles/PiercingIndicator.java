@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
 public class PiercingIndicator extends CachedIndicator<Boolean> {
 
     private final DownTrendIndicator trendIndicator;
-    private final RealBodyIndicator realBodyIndicator;
+    private final CandleBodyIndicator bodyIndicator;
     private final Num bigBodyThresholdPercentage;
 
     /**
@@ -41,7 +41,7 @@ public class PiercingIndicator extends CachedIndicator<Boolean> {
     public PiercingIndicator(final BarSeries series, final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new DownTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
 
@@ -53,8 +53,8 @@ public class PiercingIndicator extends CachedIndicator<Boolean> {
 
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
-        Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
+        Num firstBarPercentage = this.bodyIndicator.getValue(index - 1).dividedBy(firstBar.getOpenPrice());
+        Num secondBarPercentage = this.bodyIndicator.getValue(index).dividedBy(secondBar.getOpenPrice());
         Num firstBarMiddlePoint = firstBar.getOpenPrice()
                 .minus(firstBar.getClosePrice())
                 .dividedBy(getBarSeries().numFactory().numOf(2))
