@@ -211,6 +211,36 @@ public class BearishKickerIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertThat(new BearishKickerIndicator(series).getValue(8)).isFalse();
     }
 
+    @Test
+    public void nullOpenOnPreviousBarIsNotAKickerRatherThanThrowing() {
+        // A bar without an open price has no body geometry; the shadow
+        // indicators would dereference the null endpoint before the non-finite
+        // guard.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            addBar(series, 0, 10, 10, 0);
+        }
+        series.barBuilder().openPrice((Num) null).closePrice(25).highPrice(25).lowPrice(5).add();
+        series.barBuilder().openPrice(46).closePrice(30).highPrice(46.5).lowPrice(29.5).add();
+
+        assertThat(new BearishKickerIndicator(series).getValue(8)).isFalse();
+    }
+
+    @Test
+    public void nullCloseOnCurrentBarIsNotAKickerRatherThanThrowing() {
+        // A bar without a close price has no body geometry; the shadow
+        // indicators would dereference the null endpoint before the non-finite
+        // guard.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            addBar(series, 0, 10, 10, 0);
+        }
+        series.barBuilder().openPrice(5).closePrice(25).highPrice(25).lowPrice(5).add();
+        series.barBuilder().openPrice(46).closePrice((Num) null).highPrice(46.5).lowPrice(29.5).add();
+
+        assertThat(new BearishKickerIndicator(series).getValue(8)).isFalse();
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

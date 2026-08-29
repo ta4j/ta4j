@@ -87,10 +87,13 @@ public class BearishKickerIndicator extends CandlePatternIndicator {
         }
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        // Optional high/low bars carry no shadow geometry; the shadow
-        // indicators would dereference null prices before the non-finite guard.
-        if (firstBar.getHighPrice() == null || firstBar.getLowPrice() == null || secondBar.getHighPrice() == null
-                || secondBar.getLowPrice() == null) {
+        // Optional OHLC endpoints carry no body or shadow geometry; the body
+        // and shadow indicators would dereference null prices before the
+        // non-finite guard.
+        if (firstBar.getOpenPrice() == null || firstBar.getHighPrice() == null || firstBar.getLowPrice() == null
+                || firstBar.getClosePrice() == null || secondBar.getOpenPrice() == null
+                || secondBar.getHighPrice() == null || secondBar.getLowPrice() == null
+                || secondBar.getClosePrice() == null) {
             return false;
         }
         // Non-finite shadow measurements are undefined; the negated
