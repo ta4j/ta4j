@@ -48,6 +48,22 @@ public class BullishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void shouldNotDetectPatternWhenZeroEndpointsDifferOnlyInSign() {
+        // DoubleNum orders -0.0 below +0.0; numerically identical bodies whose
+        // zero endpoints differ only in sign must not register as engulfing.
+        BullishEngulfingIndicator indicator = new BullishEngulfingIndicator(engulfingSeries(10, 0.0, -0.0, 10));
+        assertThat(indicator.getValue(1)).isFalse();
+    }
+
+    @Test
+    public void shouldDetectPatternWhenOnlyOneEndpointIsZero() {
+        // The zero guard must not reject genuine engulfing where the previous
+        // body has a numerically zero endpoint.
+        BullishEngulfingIndicator indicator = new BullishEngulfingIndicator(engulfingSeries(10, 0.0, -2, 12));
+        assertThat(indicator.getValue(1)).isTrue();
+    }
+
+    @Test
     public void shouldCountUnstableBars() {
         assertThat(new BullishEngulfingIndicator(engulfingSeries(30, 20, 15, 35)).getCountOfUnstableBars())
                 .isEqualTo(1);

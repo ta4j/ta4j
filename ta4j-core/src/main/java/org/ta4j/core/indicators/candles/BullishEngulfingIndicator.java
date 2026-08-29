@@ -61,8 +61,16 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
             Num prevBodyBottom = prevBar.getOpenPrice().min(prevBar.getClosePrice());
             Num currBodyTop = currBar.getOpenPrice().max(currBar.getClosePrice());
             Num currBodyBottom = currBar.getOpenPrice().min(currBar.getClosePrice());
+            // Signed zero is normalized in the strict clause: DoubleNum orders
+            // -0.0 below +0.0, so two numerically zero endpoints must not count
+            // as a strict difference (the Javadoc excludes identical bodies).
+            boolean topDiffers = !(currBodyTop.isZero() && prevBodyTop.isZero())
+                    && currBodyTop.isGreaterThan(prevBodyTop);
+            boolean bottomDiffers = !(currBodyBottom.isZero() && prevBodyBottom.isZero())
+                    && currBodyBottom.isLessThan(prevBodyBottom);
             return currBodyTop.isGreaterThanOrEqual(prevBodyTop) && currBodyBottom.isLessThanOrEqual(prevBodyBottom)
-                    && (currBodyTop.isGreaterThan(prevBodyTop) || currBodyBottom.isLessThan(prevBodyBottom));
+                    && (topDiffers || bottomDiffers);
+
         }
         return false;
     }
