@@ -91,9 +91,10 @@ public class MorningStarIndicator extends CandlePatternIndicator {
      *                      baseline
      * @param penetration   the fraction of the first body the third close must
      *                      penetrate
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
-     *                                  {@code penetration} is not finite, is not
-     *                                  positive, or exceeds 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link CandleThresholdSupport#MAX_AVERAGE_PERIOD},
+     *                                  or if {@code penetration} is not finite, is
+     *                                  not positive, or exceeds 1
      * @since 0.24.2
      */
     public MorningStarIndicator(final BarSeries series, final int averagePeriod, final double penetration) {

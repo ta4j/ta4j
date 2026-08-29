@@ -90,7 +90,8 @@ public class ThreeWhiteSoldiersIndicator extends CandlePatternIndicator {
      * @param series        the bar series
      * @param averagePeriod the number of preceding candles averaged into the
      *                      upper-shadow baseline
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link CandleThresholdSupport#MAX_AVERAGE_PERIOD}
      * @since 0.24.2
      */
     public ThreeWhiteSoldiersIndicator(BarSeries series, int averagePeriod) {
@@ -117,6 +118,12 @@ public class ThreeWhiteSoldiersIndicator extends CandlePatternIndicator {
         if (!firstBar.isBullish() || !secondBar.isBullish() || !thirdBar.isBullish()) {
             return false;
         }
+        // Optional OHLC endpoints carry no upper-shadow geometry; the shadow
+        // indicator would dereference a null high before the non-finite guard.
+        if (firstBar.getHighPrice() == null || secondBar.getHighPrice() == null || thirdBar.getHighPrice() == null) {
+            return false;
+        }
+
         if (!Num.isFinite(upperShadow.getValue(index - 2)) || !Num.isFinite(upperShadow.getValue(index - 1))
                 || !Num.isFinite(upperShadow.getValue(index))) {
             return false;

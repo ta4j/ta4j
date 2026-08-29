@@ -67,7 +67,8 @@ public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
      * @param series        the bar series
      * @param averagePeriod the number of preceding candles averaged into each body
      *                      baseline
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link CandleThresholdSupport#MAX_AVERAGE_PERIOD}
      * @since 0.24.2
      */
     public ThreeInsideDownIndicator(final BarSeries series, final int averagePeriod) {

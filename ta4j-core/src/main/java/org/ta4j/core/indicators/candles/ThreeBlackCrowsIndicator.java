@@ -87,7 +87,8 @@ public class ThreeBlackCrowsIndicator extends CandlePatternIndicator {
      * @param series        the bar series
      * @param averagePeriod the number of preceding candles averaged into the
      *                      lower-shadow baseline
-     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link CandleThresholdSupport#MAX_AVERAGE_PERIOD}
      * @since 0.24.2
      */
     public ThreeBlackCrowsIndicator(BarSeries series, int averagePeriod) {
@@ -104,6 +105,18 @@ public class ThreeBlackCrowsIndicator extends CandlePatternIndicator {
             // We need 4 candles: 1 white, 3 black
             return false;
         }
+        Bar firstCrow = series.getBar(index - 2);
+        Bar secondCrow = series.getBar(index - 1);
+        Bar thirdCrow = series.getBar(index);
+        // Optional OHLC endpoints carry no lower-shadow geometry; the shadow
+        // indicator would dereference null prices before the non-finite guard.
+        if (firstCrow.getOpenPrice() == null || firstCrow.getClosePrice() == null || firstCrow.getLowPrice() == null
+                || secondCrow.getOpenPrice() == null || secondCrow.getClosePrice() == null
+                || secondCrow.getLowPrice() == null || thirdCrow.getOpenPrice() == null
+                || thirdCrow.getClosePrice() == null || thirdCrow.getLowPrice() == null) {
+            return false;
+        }
+
         if (!Num.isFinite(lowerShadow.getValue(index - 2)) || !Num.isFinite(lowerShadow.getValue(index - 1))
                 || !Num.isFinite(lowerShadow.getValue(index))) {
             return false;

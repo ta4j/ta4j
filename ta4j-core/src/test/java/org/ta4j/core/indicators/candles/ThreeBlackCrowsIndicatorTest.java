@@ -252,6 +252,20 @@ public class ThreeBlackCrowsIndicatorTest extends AbstractIndicatorTest<Indicato
         assertFalse(new ThreeBlackCrowsIndicator(series).getValue(PATTERN_INDEX));
     }
 
+    @Test
+    public void nullLowOnCrowIsNotCrowsRatherThanThrowing() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 9);
+        addBar(series, 19, 22, 23, 19); // index 9: white candle
+        addBar(series, 21, 18, 21, 17.9); // index 10: first crow
+        addBar(series, 20.5, 17, 20.5, 16.95); // index 11: second crow
+        // index 12: third crow without a low endpoint; the lower-shadow
+        // indicator would dereference the null low before the non-finite guard.
+        series.barBuilder().openPrice(19).closePrice(16).highPrice(19).lowPrice((Num) null).add();
+
+        assertFalse(new ThreeBlackCrowsIndicator(series).getValue(PATTERN_INDEX));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

@@ -237,6 +237,19 @@ public class ThreeWhiteSoldiersIndicatorTest extends AbstractIndicatorTest<Indic
         assertFalse(new ThreeWhiteSoldiersIndicator(series).getValue(PATTERN_INDEX));
     }
 
+    @Test
+    public void nullHighOnSoldierIsNotSoldiersRatherThanThrowing() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 15, 18, 18, 14.9); // index 10: first soldier
+        addBar(series, 16.5, 20, 20, 16); // index 11: second soldier
+        // index 12: third soldier without a high endpoint; the upper-shadow
+        // indicator would dereference the null high before the non-finite guard.
+        series.barBuilder().openPrice(18).closePrice(22).highPrice((Num) null).lowPrice(17.9).add();
+
+        assertFalse(new ThreeWhiteSoldiersIndicator(series).getValue(PATTERN_INDEX));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
