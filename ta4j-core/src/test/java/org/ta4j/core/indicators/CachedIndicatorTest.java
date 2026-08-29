@@ -380,6 +380,24 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void recursiveIndicatorKeepsCachedValuesWhenSeriesHeadAdvances() {
+        // A recursive indicator's values depend on all earlier history, so the
+        // head-advance cache floor must not evict the declared unstable band:
+        // recomputing only that band against the retained window would split
+        // the cache between window-relative and original-series values.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
+                .build();
+        ZLEMAIndicator zlema = new ZLEMAIndicator(new ClosePriceIndicator(barSeries), 2);
+        Num beforeAdvance = zlema.getValue(2);
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(beforeAdvance, zlema.getValue(2));
+    }
+
+    @Test
     public void leaveLastBarUncached() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);

@@ -98,6 +98,22 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void overflowingPriorAverageIsNotADoji() {
+        // Five baseline candles with range Double.MAX_VALUE overflow the
+        // DoubleNum SMA accumulator to positive infinity before division, so
+        // the factor-multiplication fallback must not treat the baseline as an
+        // unbounded threshold: the correct threshold (MAX_VALUE * 0.1) is
+        // finite and the body (MAX_VALUE / 2) exceeds it.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, Double.MAX_VALUE, 0, 0);
+        }
+        addBar(series, Double.MAX_VALUE / 2, 0, 0);
+
+        assertFalse(new DojiIndicator(series, 5, 0.1).getValue(5));
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 

@@ -65,6 +65,18 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         this(indicator.getBarSeries());
     }
 
+    /**
+     * Recursive values always depend on earlier values beyond the declared unstable
+     * range, so head-advance reconciliation never applies the unstable-range floor
+     * to this indicator's cache.
+     *
+     * @return always {@code true}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();

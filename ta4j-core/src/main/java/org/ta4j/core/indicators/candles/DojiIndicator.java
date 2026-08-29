@@ -94,20 +94,23 @@ public class DojiIndicator extends CandlePatternIndicator {
             return false;
         }
         final Num bodyValue = body.getValue(index);
-        final Num baseline = thresholds.priorAverageRange()
-                .getValue(index)
-                .multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
-        if (!Num.isFinite(bodyValue)) {
+        final Num priorAverage = thresholds.priorAverageRange().getValue(index);
+        if (!Num.isFinite(bodyValue) || !Num.isFinite(priorAverage)) {
+            // A non-finite body cannot qualify, and a non-finite prior average
+            // (e.g. a DoubleNum SMA accumulator that overflowed while summing
+            // the baseline window) leaves the correct threshold
+            // unrepresentable: conservatively not a doji.
             return false;
         }
-        if (!Num.isFinite(baseline)) {
-            // A finite, non-negative factor times a finite prior range can only
-            // overflow upward, so a non-finite baseline from an accepted
-            // configuration is an unbounded threshold: every finite body
-            // qualifies as a doji. NaN and negative infinity stay false.
-            return baseline.isPositive();
+        final Num threshold = priorAverage.multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
+        if (!Num.isFinite(threshold)) {
+            // The prior average was finite, so a non-finite threshold from an
+            // accepted configuration is an upward overflow of the factor
+            // multiplication: an unbounded threshold qualifies every finite
+            // body as a doji. NaN cannot occur here and stays false.
+            return threshold.isPositive();
         }
-        return !bodyValue.isGreaterThan(baseline);
+        return !bodyValue.isGreaterThan(threshold);
     }
 
     @Override

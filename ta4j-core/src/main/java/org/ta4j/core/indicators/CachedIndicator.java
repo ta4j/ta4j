@@ -214,9 +214,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // preceding window is no longer fully available were computed from
             // bars that have since been removed. Drop them so reads after the
             // advance recompute against the retained window; indicators declare
-            // that range through getCountOfUnstableBars().
-            int minimumCacheableIndex = snapshot.removedThroughIndex() == sinceSnapshot.removedThroughIndex()
-                    ? firstRetainedIndex
+            // that range through getCountOfUnstableBars(). Recursive indicators
+            // are exempt: their values depend on all earlier history, so no
+            // retained index can be recomputed against the retained window
+            // alone, and evicting only the declared band would split the cache
+            // between window-relative and original-series values. They keep
+            // their pre-advance values, as they did before head-advance
+            // reconciliation existed.
+            boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
+            int minimumCacheableIndex = !headAdvanced || hasRecursiveDependencies() ? firstRetainedIndex
                     : unstableRangeFloor(firstRetainedIndex);
             int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
@@ -257,6 +263,21 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
         final long floor = (long) firstRetainedIndex + unstableBars;
         return floor >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) floor;
+    }
+
+    /**
+     * Reports whether values of this indicator depend, directly or through
+     * recursion, on history that precedes any finite declared unstable range.
+     * Recursive indicators (for example {@link RecursiveCachedIndicator}
+     * subclasses) return {@code true}; their cached values cannot be recomputed
+     * against the retained window of a bounded series, so head-advance
+     * reconciliation keeps them instead of applying the unstable-range floor.
+     *
+     * @return {@code true} when values depend on earlier values beyond the declared
+     *         unstable range
+     */
+    protected boolean hasRecursiveDependencies() {
+        return false;
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
