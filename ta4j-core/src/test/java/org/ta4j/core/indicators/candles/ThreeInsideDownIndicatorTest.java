@@ -65,6 +65,24 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void patternDoesNotSurviveHeadAdvancePastHaramiBaseline() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(18).closePrice(26).highPrice(28).lowPrice(17).add();
+        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
+        series.barBuilder().openPrice(19).closePrice(14).highPrice(19).lowPrice(12).add();
+        series.barBuilder().openPrice(11).closePrice(10).highPrice(12).lowPrice(10).add();
+
+        ThreeInsideDownIndicator tid = new ThreeInsideDownIndicator(series);
+        assertTrue(tid.getValue(20));
+
+        // Advancing the head past index 14 removes the harami baseline for the
+        // harami evaluated at index 19; the retained match must not survive.
+        series.setMaximumBarCount(7);
+        assertEquals(15, series.getBeginIndex());
+        assertFalse(tid.getValue(20));
+    }
+
+    @Test
     public void getValueWhenIndexBelowUnstableBars() {
         var tid = new ThreeInsideDownIndicator(series);
         assertFalse(tid.getValue(0));

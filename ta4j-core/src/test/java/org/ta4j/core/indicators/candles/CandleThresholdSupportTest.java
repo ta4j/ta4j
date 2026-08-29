@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.List;
+
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import java.util.Collections;

@@ -46,9 +46,23 @@ abstract class CandlePatternIndicator extends CachedIndicator<Boolean> {
     public Boolean getValue(final int index) {
         final BarSeries series = getBarSeries();
         if (series != null && index >= series.getBeginIndex() && index <= series.getEndIndex()
-                && !thresholds.isValid(index)) {
+                && !thresholds.isValid(latestBaselineIndex(index))) {
             return false;
         }
         return super.getValue(index);
+    }
+
+    /**
+     * The most recent candle whose full preceding baseline window must be available
+     * for the pattern ending at {@code index} to be evaluable. Single-candle
+     * patterns need {@code index} itself; two-candle patterns override this to
+     * {@code index - 1} because their earlier candle must also carry a complete
+     * baseline.
+     *
+     * @param index the pattern index
+     * @return the index whose threshold validity gates the pattern at {@code index}
+     */
+    int latestBaselineIndex(final int index) {
+        return index;
     }
 }

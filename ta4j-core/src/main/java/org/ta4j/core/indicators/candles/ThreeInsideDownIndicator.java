@@ -32,6 +32,18 @@ public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
+    public Boolean getValue(final int index) {
+        // The harami evaluated at index - 1 needs its own baseline window
+        // complete; gate pre-cache so a retained result cannot outlive it.
+        final BarSeries series = getBarSeries();
+        if (series != null && index >= series.getBeginIndex() && index <= series.getEndIndex()
+                && !harami.thresholds.isValid(harami.latestBaselineIndex(index - 1))) {
+            return false;
+        }
+        return super.getValue(index);
+    }
+
+    @Override
     protected Boolean calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return false;
