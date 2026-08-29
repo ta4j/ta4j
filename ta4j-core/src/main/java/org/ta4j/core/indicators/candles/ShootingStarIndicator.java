@@ -83,9 +83,12 @@ public class ShootingStarIndicator extends CandlePatternIndicator {
         final Bar bar = getBarSeries().getBar(index);
         final Num priorClose = getBarSeries().getBar(index - 1).getClosePrice();
         final Num openPrice = bar.getOpenPrice();
-        // DoubleNum orders 0.0 above -0.0, so two zero-valued prices would
-        // register as a gap up; equal prices must not qualify.
-        final boolean opensAbove = !(openPrice.isZero() && priorClose.isZero()) && openPrice.isGreaterThan(priorClose);
+        // Guard both gap operands: a non-finite prior close or open must not
+        // qualify. DoubleNum orders 0.0 above -0.0, so two zero-valued prices
+        // would register as a gap up; equal prices must not qualify.
+        final boolean opensAbove = Num.isFinite(openPrice) && Num.isFinite(priorClose)
+                && !(openPrice.isZero() && priorClose.isZero()) && openPrice.isGreaterThan(priorClose);
+
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, upperShadow)
                 && thresholds.isShortShadow(index, lowerShadow) && opensAbove;
     }

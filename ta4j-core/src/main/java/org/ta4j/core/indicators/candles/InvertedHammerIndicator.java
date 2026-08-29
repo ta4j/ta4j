@@ -83,9 +83,12 @@ public class InvertedHammerIndicator extends CandlePatternIndicator {
         final Bar bar = getBarSeries().getBar(index);
         final Num priorClose = getBarSeries().getBar(index - 1).getClosePrice();
         final Num openPrice = bar.getOpenPrice();
-        // DoubleNum orders -0.0 below 0.0, so two zero-valued prices would
-        // register as a gap down; equal prices must not qualify.
-        final boolean opensBelow = !(openPrice.isZero() && priorClose.isZero()) && openPrice.isLessThan(priorClose);
+        // Guard both gap operands: a non-finite prior close or open must not
+        // qualify. DoubleNum orders -0.0 below 0.0, so two zero-valued prices
+        // would register as a gap down; equal prices must not qualify.
+        final boolean opensBelow = Num.isFinite(openPrice) && Num.isFinite(priorClose)
+                && !(openPrice.isZero() && priorClose.isZero()) && openPrice.isLessThan(priorClose);
+
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, upperShadow)
                 && thresholds.isShortShadow(index, lowerShadow) && opensBelow;
     }

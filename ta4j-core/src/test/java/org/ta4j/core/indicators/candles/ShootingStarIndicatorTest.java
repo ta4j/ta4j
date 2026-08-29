@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.Test;
@@ -17,6 +18,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.NonFiniteBar;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -96,6 +99,22 @@ public class ShootingStarIndicatorTest extends AbstractIndicatorTest<Indicator<B
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         assertThrows(IllegalArgumentException.class, () -> new ShootingStarIndicator(series, 0));
+    }
+
+    @Test
+    public void nonFinitePriorCloseIsNotAShootingStar() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        for (int i = 0; i < 4; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                doubleFactory.numOf(0), doubleFactory.numOf(0), doubleFactory.numOf(Double.NEGATIVE_INFINITY),
+                doubleFactory.numOf(Double.NEGATIVE_INFINITY)));
+        addShootingStarBar(series, 1.0, 21, 0, 10.1);
+
+        assertFalse(new ShootingStarIndicator(series).getValue(5));
+
     }
 
     @Test
