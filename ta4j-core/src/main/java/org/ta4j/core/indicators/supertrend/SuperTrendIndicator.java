@@ -278,6 +278,15 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
 
     private record Config(SuperTrendUpperBandIndicator superTrendUpperBandIndicator,
             SuperTrendLowerBandIndicator superTrendLowerBandIndicator, int barCount, double multiplier) {
+    /**
+     * Values depend on all earlier history rather than a fixed trailing window:
+     * head-advance reconciliation keeps pre-advance cached values.
+     *
+     * @return always {@code true}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
 }

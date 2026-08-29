@@ -651,11 +651,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * Reports whether values of this indicator depend, directly or through
-     * recursion, on history that precedes any finite declared unstable range.
-     * Recursive indicators (for example {@link RecursiveCachedIndicator}
-     * subclasses) return {@code true}; their cached values cannot be recomputed
-     * against the retained window of a bounded series, so head-advance
-     * reconciliation keeps them instead of applying the unstable-range floor.
+     * recursion, on history that precedes any finite declared unstable range. Only
+     * indicators with genuinely unbounded historical dependencies (for example
+     * {@code AbstractEMAIndicator} or Kalman-style state filters) return
+     * {@code true}; their cached values cannot be recomputed against the retained
+     * window of a bounded series, so head-advance reconciliation keeps them instead
+     * of applying the unstable-range floor. Recursive indicators over a fixed
+     * trailing window (for example {@link VolumeIndicator} or
+     * {@link PearsonCorrelationIndicator}) keep the default {@code false} and are
+     * invalidated like any windowed indicator.
      *
      * @return {@code true} when values depend on earlier values beyond the declared
      *         unstable range

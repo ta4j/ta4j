@@ -103,4 +103,16 @@ public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> 
     public int getCountOfUnstableBars() {
         return atrIndicator.getCountOfUnstableBars();
     }
+
+    /**
+     * Values depend on all earlier history rather than a fixed trailing window:
+     * head-advance reconciliation keeps pre-advance cached values.
+     *
+     * @return always {@code true}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

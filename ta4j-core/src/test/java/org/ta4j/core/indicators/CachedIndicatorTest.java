@@ -647,6 +647,46 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         public BarSeries getBarSeries() {
             return barSeries;
         }
+    public void windowedRecursiveIndicatorRecomputesStaleBandWhenSeriesHeadAdvances() {
+        // VolumeIndicator recurses only to walk its rolling accumulation; its
+        // values depend on a fixed trailing window, so after a head advance the
+        // stale band must be dropped and recomputed against the retained window
+        // like any windowed indicator. The blanket recursive exemption used to
+        // keep the pre-advance sums cached here.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            barSeries.barBuilder().closePrice(i + 1).volume(i + 4).add();
+        }
+        VolumeIndicator volume = new VolumeIndicator(barSeries, 3);
+        assertNumEquals(15, volume.getValue(2)); // mock volumes 4 + 5 + 6
+        assertNumEquals(18, volume.getValue(3)); // mock volumes 5 + 6 + 7
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // Fresh values cover only the retained window: bar 2 alone, then bars
+        // 2 and 3 - not the stale pre-advance sums over bars 0..2 and 0..3.
+        assertNumEquals(6, volume.getValue(2));
+        assertNumEquals(13, volume.getValue(3)); // mock volumes 6 + 7
+    }
+
+    @Test
+    public void windowedRecursiveCorrelationRecomputesAgainstRetainedWindowWhenSeriesHeadAdvances() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            barSeries.barBuilder().closePrice(i + 1).volume(i + 4).add();
+        }
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(new ClosePriceIndicator(barSeries),
+                new VolumeIndicator(barSeries, 1), 3);
+        // Closes (1, 2, 3) and volumes (4, 5, 6) are perfectly correlated.
+        assertNumEquals(1, correlation.getValue(2));
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // A single retained observation cannot define a correlation: the stale
+        // pre-advance coefficient must not survive the head advance.
+        assertTrue(correlation.getValue(2).isNaN());
     }
 
     @Test
