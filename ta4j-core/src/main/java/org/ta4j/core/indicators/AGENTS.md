@@ -57,10 +57,13 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   - `SMAIndicator` includes upstream unstable bars in its reported count (`input + barCount - 1`), so do not add upstream again.
 - Pattern indicators that combine fixed candle lookback with trend/confirmation indicators should use the stricter boundary, for example `Math.max(patternLookback, trendIndicator.getCountOfUnstableBars())`.
 - Keep test assertions aligned with the contract: assert unstable count directly and verify warm-up boundaries (`unstable - 1` versus `unstable`).
-- The head-advance cache floor in `CachedIndicator` applies only to
-  non-recursive indicators; recursive indicators (`RecursiveCachedIndicator`)
-  keep their pre-advance values on bounded series, so do not rely on reseeding
-  semantics for them.
+- The head-advance cache floor in `CachedIndicator` applies by default to
+  every indicator; only indicators with genuinely unbounded historical
+  dependencies (opting in via `hasRecursiveDependencies()`) keep their
+  pre-advance values on bounded series, so do not rely on reseeding
+  semantics for them. Fixed-window recursive indicators such as
+  `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
+  floor and are recomputed like any windowed indicator.
 
 ## NetMomentumIndicator specifics
 

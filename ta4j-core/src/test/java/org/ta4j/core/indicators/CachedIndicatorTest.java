@@ -399,7 +399,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
-    @Test
     public void selfRecursiveCachedIndicatorKeepsCachedValuesWhenSeriesHeadAdvances() {
         // A CachedIndicator subclass whose calculate() reads its own preceding
         // value is recursive by definition even when it does not extend

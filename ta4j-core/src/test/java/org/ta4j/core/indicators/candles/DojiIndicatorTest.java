@@ -128,6 +128,22 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void zeroBodyAgainstSumOverflowingRangeBaselineIsDoji() {
+        // Three baseline candles with range Double.MAX_VALUE overflow the
+        // divide-first fallback as well: Double.MAX_VALUE / 3 rounds up, and
+        // three such quotients sum to positive infinity. The magnitude-normalized
+        // fallback must still produce the finite MAX_VALUE average, so the zero
+        // body is at most MAX_VALUE * 0.1 and qualifies as a doji.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 3; i++) {
+            addBar(series, 0, Double.MAX_VALUE, 0);
+        }
+        addBar(series, 0, 0, 0);
+
+        assertTrue(new DojiIndicator(series, 3, 0.1).getValue(3));
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 

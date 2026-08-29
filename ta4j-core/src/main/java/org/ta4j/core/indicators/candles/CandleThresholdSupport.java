@@ -34,7 +34,7 @@ import org.ta4j.core.num.NumFactory;
  * implemented as {@code new PreviousValueIndicator(new PriorAverageIndicator(m,
  * averagePeriod))}. {@link PriorAverageIndicator} delegates to an SMA and, when
  * the SMA accumulator overflows into a non-finite value, re-averages the same
- * window by dividing each term by the window size before accumulating. The
+ * window with every term normalized by the window's largest magnitude. The
  * candle under evaluation therefore never influences its own baseline, which
  * keeps the pattern evaluation causal (look-ahead free).
  *
@@ -613,8 +613,10 @@ final class CandleThresholdSupport {
      * an intermediate summation. The primary path delegates to an
      * {@link SMAIndicator}; when its accumulator overflowed into a non-finite value
      * (for example a {@code DoubleNum} summing near-MAX candle ranges), the same
-     * window is re-averaged with each term divided by the window size before
-     * accumulating, keeping every intermediate value representable.
+     * window is re-averaged with every term divided by the largest magnitude in the
+     * window, and the final scale factor is clamped to at most 1 before scaling
+     * back, so no intermediate sum or final product can overflow. Non-finite source
+     * values propagate as non-finite results.
      */
     private static final class PriorAverageIndicator extends CachedIndicator<Num> {
 
@@ -638,11 +640,28 @@ final class CandleThresholdSupport {
             final int beginIndex = getBarSeries().getBeginIndex();
             final int start = Math.max(beginIndex, index - barCount + 1);
             final Num count = getBarSeries().numFactory().numOf(index - start + 1);
-            Num total = getBarSeries().numFactory().zero();
+            Num max = getBarSeries().numFactory().zero();
             for (int i = start; i <= index; i++) {
-                total = total.plus(source.getValue(i).dividedBy(count));
+                final Num value = source.getValue(i);
+                if (!Num.isFinite(value)) {
+                    return value;
+                }
+                if (value.abs().isGreaterThan(max)) {
+                    max = value.abs();
+                }
             }
-            return total;
+            if (max.isZero()) {
+                return getBarSeries().numFactory().zero();
+            }
+            Num scaledSum = getBarSeries().numFactory().zero();
+            for (int i = start; i <= index; i++) {
+                scaledSum = scaledSum.plus(source.getValue(i).dividedBy(max));
+            }
+            Num factor = scaledSum.dividedBy(count);
+            if (factor.isGreaterThan(getBarSeries().numFactory().one())) {
+                factor = getBarSeries().numFactory().one();
+            }
+            return max.multipliedBy(factor);
         }
 
         @Override
