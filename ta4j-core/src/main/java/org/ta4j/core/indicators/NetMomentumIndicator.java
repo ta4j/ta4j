@@ -276,6 +276,13 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index - getBarSeries().getBeginIndex() >= timeFrame) {
             int expiredIndex = index - timeFrame;
+            if (expiredIndex < getBarSeries().getBeginIndex()) {
+                // The expired contribution belongs to evicted history. The
+                // retained window has no record of it, so the partial window
+                // sum stops at the retained head instead of subtracting a
+                // contribution that was never accumulated.
+                return decayedWithCurrent;
+            }
             Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero : contribution(expiredIndex);
             if (Num.isNaNOrNull(expiredContribution)) {
                 expiredContribution = zero;

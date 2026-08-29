@@ -692,17 +692,6 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             return Double.isFinite(primitive) && (primitive != 0d || value.isZero()) ? primitive : Double.NaN;
         }
 
-        /**
-         * Values depend on all earlier history rather than a fixed trailing window:
-         * head-advance reconciliation keeps pre-advance cached values.
-         *
-         * @return always {@code true}
-         */
-        @Override
-        protected boolean hasRecursiveDependencies() {
-            return true;
-        }
-
     }
 
     private static final class PosteriorFrame {

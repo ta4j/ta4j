@@ -180,17 +180,6 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
             return indicator.getCountOfUnstableBars();
         }
 
-        /**
-         * Values depend on all earlier history rather than a fixed trailing window:
-         * head-advance reconciliation keeps pre-advance cached values.
-         *
-         * @return always {@code true}
-         */
-        @Override
-        protected boolean hasRecursiveDependencies() {
-            return true;
-        }
-
     }
 
     private static final class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
@@ -239,17 +228,6 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
 
         private Num initialVariance(int index) {
             return initialVarianceIndicator.getValue(index);
-        }
-
-        /**
-         * Values depend on all earlier history rather than a fixed trailing window:
-         * head-advance reconciliation keeps pre-advance cached values.
-         *
-         * @return always {@code true}
-         */
-        @Override
-        protected boolean hasRecursiveDependencies() {
-            return true;
         }
 
     }

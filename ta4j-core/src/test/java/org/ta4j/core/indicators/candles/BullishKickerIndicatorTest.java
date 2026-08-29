@@ -119,6 +119,34 @@ public class BullishKickerIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
+    public void shouldNotDetectPatternWhenZeroEndpointsDifferOnlyInSign() {
+        // DoubleNum orders -0.0 below +0.0; two numerically zero body
+        // endpoints must not register a strict gap.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 0, 5, 5, 0);
+        }
+        addBar(series, -0.0, -10, -0.0, -10);
+        addBar(series, 0.0, 10, 10, 0.0);
+        BullishKickerIndicator indicator = new BullishKickerIndicator(series);
+        assertThat(indicator.getValue(6)).isFalse();
+    }
+
+    @Test
+    public void shouldDetectPatternWhenOnlyOneEndpointIsZero() {
+        // The zero guard must not reject genuine gaps where only one endpoint
+        // is numerically zero.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 0, 5, 5, 0);
+        }
+        addBar(series, -0.0, -10, -0.0, -10);
+        addBar(series, 2, 10, 10, 2);
+        BullishKickerIndicator indicator = new BullishKickerIndicator(series);
+        assertThat(indicator.getValue(6)).isTrue();
+    }
+
+    @Test
     public void contextOutsidePatternAndBaselineWindowsDoesNotChangeResult() {
         BarSeries downtrend = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         BarSeries uptrend = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

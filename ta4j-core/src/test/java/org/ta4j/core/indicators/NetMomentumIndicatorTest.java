@@ -722,6 +722,43 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         assertTrue(subject.getValue(beginIndex + 1).isEqual(numOf(-24)));
         assertTrue(subject.getValue(beginIndex + 2).isEqual(numOf(-36)));
     }
+    public void recomputedBandAnchorsExpirationAtRetainedHead() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.setMaximumBarCount(5);
+
+        for (int i = 0; i < 20; i++) {
+            movingSeries.barBuilder().closePrice(55 + i).add();
+        }
+
+        // A constant oscillator keeps every contribution exactly -12
+        // (Kalman-smoothed delta 10, convex-weighted by pivot 50), so the
+        // expected partial-window sum at retained position k is -12 * (k + 1).
+        CachedIndicator<Num> constantOscillator = new CachedIndicator<>(movingSeries) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(60);
+            }
+        };
+        NetMomentumIndicator indicator = new NetMomentumIndicator(constantOscillator, 7, 50, 1.0);
+
+        int beginIndex = movingSeries.getBeginIndex();
+        Num contribution = numOf(-12);
+        for (int i = beginIndex; i <= movingSeries.getEndIndex(); i++) {
+            int windowPosition = i - beginIndex;
+            Num expected = contribution.multipliedBy(numOf(windowPosition + 1));
+            assertClose(indicator.getValue(i), expected, i);
+        }
+    }
+
+    private void assertClose(Num actual, Num expected, int index) {
+        assertTrue("Anchored-expiration mismatch at index " + index + ": expected=" + expected + " actual=" + actual,
+                actual.minus(expected).abs().isLessThan(numOf(1e-9)));
+    }
 
     private CachedIndicator<Num> buildOscillator() {
         return new CachedIndicator<>(closePrice) {

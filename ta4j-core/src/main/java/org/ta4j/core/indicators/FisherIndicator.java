@@ -176,17 +176,6 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
                 return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
             }
 
-            /**
-             * Values depend on all earlier history rather than a fixed trailing window:
-             * head-advance reconciliation keeps pre-advance cached values.
-             *
-             * @return always {@code true}
-             */
-            @Override
-            protected boolean hasRecursiveDependencies() {
-                return true;
-            }
-
         };
     }
 
@@ -215,17 +204,6 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return intermediateValue.getCountOfUnstableBars();
-    }
-
-    /**
-     * Values depend on all earlier history rather than a fixed trailing window:
-     * head-advance reconciliation keeps pre-advance cached values.
-     *
-     * @return always {@code true}
-     */
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
     }
 
 }

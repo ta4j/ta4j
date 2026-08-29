@@ -109,8 +109,11 @@ public class BearishKickerIndicator extends CandlePatternIndicator {
         if (firstMarubozu && secondMarubozu) {
             Num firstBodyBottom = firstBar.getOpenPrice().min(firstBar.getClosePrice());
             Num secondBodyTop = secondBar.getOpenPrice().max(secondBar.getClosePrice());
-            // The second body must open strictly below the first body
-            return secondBodyTop.isLessThan(firstBodyBottom);
+            // The second body must open strictly below the first body. Signed
+            // zero is normalized first: DoubleNum orders -0.0 below +0.0, so two
+            // numerically zero endpoints would otherwise register a phantom gap.
+            return !(secondBodyTop.isZero() && firstBodyBottom.isZero()) && secondBodyTop.isLessThan(firstBodyBottom);
+
         }
         return false;
     }

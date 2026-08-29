@@ -109,8 +109,11 @@ public class BullishKickerIndicator extends CandlePatternIndicator {
         if (firstMarubozu && secondMarubozu) {
             Num firstBodyTop = firstBar.getOpenPrice().max(firstBar.getClosePrice());
             Num secondBodyBottom = secondBar.getOpenPrice().min(secondBar.getClosePrice());
-            // The second body must open strictly above the first body
-            return secondBodyBottom.isGreaterThan(firstBodyTop);
+            // The second body must open strictly above the first body. Signed
+            // zero is normalized first: DoubleNum orders -0.0 below +0.0, so two
+            // numerically zero endpoints would otherwise register a phantom gap.
+            return !(secondBodyBottom.isZero() && firstBodyTop.isZero())
+                    && secondBodyBottom.isGreaterThan(firstBodyTop);
         }
         return false;
     }

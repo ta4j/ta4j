@@ -288,5 +288,4 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     protected boolean hasRecursiveDependencies() {
         return true;
     }
-
 }
