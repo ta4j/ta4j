@@ -11,6 +11,10 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -251,6 +255,37 @@ public class CandleThresholdSupportTest {
                 assertNotSame(periodFive, support);
             }
         }
+    }
+
+    @Test
+    public void collectedReferenceOfAnotherSeriesIsCleanedFromItsOwnerMap() throws Exception {
+        BarSeries first = new MockBarSeriesBuilder().build();
+        BarSeries second = new MockBarSeriesBuilder().build();
+        addBars(first, 6, 10, 0, 0);
+
+        CandleThresholdSupport expected = CandleThresholdSupport.forSeries(first, 3);
+        Map<Integer, WeakReference<CandleThresholdSupport>> firstPeriods = internedPeriods(first);
+        WeakReference<CandleThresholdSupport> stored = firstPeriods.get(3);
+        assertSame(expected, stored.get());
+
+        // Simulate collection of the interned support, then a lookup on another
+        // series: the drain must clean the entry from the owning map, not drop
+        // the queued reference while leaving the stale entry retained.
+        stored.enqueue();
+        CandleThresholdSupport.forSeries(second, 4);
+
+        assertFalse(firstPeriods.containsKey(3));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<Integer, WeakReference<CandleThresholdSupport>> internedPeriods(BarSeries series)
+            throws Exception {
+        Field field = CandleThresholdSupport.class.getDeclaredField("INTERNED_SUPPORTS");
+        field.setAccessible(true);
+        Object table = field.get(null);
+        Method get = table.getClass().getDeclaredMethod("get", Object.class);
+        get.setAccessible(true);
+        return (Map<Integer, WeakReference<CandleThresholdSupport>>) get.invoke(table, series);
     }
 
     @Test

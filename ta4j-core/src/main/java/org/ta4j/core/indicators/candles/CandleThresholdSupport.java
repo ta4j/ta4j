@@ -194,16 +194,21 @@ final class CandleThresholdSupport {
 
     /**
      * A weak reference to an interned support that remembers the average-period key
-     * it is stored under, so {@link #forSeries(BarSeries, int)} can drop an entry
-     * whose value has been collected without scanning the whole period map.
+     * it is stored under and the map that owns the entry, so
+     * {@link #forSeries(BarSeries, int)} can drop an entry whose value has been
+     * collected without scanning the whole period map. The owner is referenced
+     * weakly: it dies together with the series it belongs to.
      */
     private static final class SupportReference extends WeakReference<CandleThresholdSupport> {
 
         private final int averagePeriod;
+        private final WeakReference<Map<Integer, WeakReference<CandleThresholdSupport>>> owner;
 
-        SupportReference(CandleThresholdSupport support, int averagePeriod) {
+        SupportReference(CandleThresholdSupport support, int averagePeriod,
+                Map<Integer, WeakReference<CandleThresholdSupport>> owner) {
             super(support, SUPPORT_QUEUE);
             this.averagePeriod = averagePeriod;
+            this.owner = new WeakReference<>(owner);
         }
     }
 
@@ -232,29 +237,31 @@ final class CandleThresholdSupport {
                 byPeriod = new HashMap<>();
                 INTERNED_SUPPORTS.put(series, byPeriod);
             }
-            removeCollectedPeriods(byPeriod);
+            removeCollectedPeriods();
             final WeakReference<CandleThresholdSupport> existing = byPeriod.get(averagePeriod);
             CandleThresholdSupport support = existing == null ? null : existing.get();
             if (support == null) {
                 support = new CandleThresholdSupport(series, averagePeriod);
-                byPeriod.put(averagePeriod, new SupportReference(support, averagePeriod));
+                byPeriod.put(averagePeriod, new SupportReference(support, averagePeriod, byPeriod));
             }
             return support;
         }
     }
 
     /**
-     * Removes the period entries of this series whose support values have been
-     * collected, as reported by {@link #SUPPORT_QUEUE}. The removal is keyed by the
-     * exact collected reference, so a replacement stored since collection is never
-     * dropped. Entries of other series are left for their own lookups.
-     *
-     * @param byPeriod the period map of the series being looked up
+     * Removes the period entries whose support values have been collected, as
+     * reported by {@link #SUPPORT_QUEUE}. Each collected reference knows its own
+     * owning map, so entries of other series are cleaned from that owner rather
+     * than left behind. The removal is keyed by the exact collected reference, so a
+     * replacement stored since collection is never dropped.
      */
-    private static void removeCollectedPeriods(Map<Integer, WeakReference<CandleThresholdSupport>> byPeriod) {
+    private static void removeCollectedPeriods() {
         SupportReference collected;
         while ((collected = (SupportReference) SUPPORT_QUEUE.poll()) != null) {
-            byPeriod.remove(collected.averagePeriod, collected);
+            final Map<Integer, WeakReference<CandleThresholdSupport>> owner = collected.owner.get();
+            if (owner != null) {
+                owner.remove(collected.averagePeriod, collected);
+            }
         }
     }
 
