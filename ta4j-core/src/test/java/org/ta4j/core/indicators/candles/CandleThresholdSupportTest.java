@@ -12,8 +12,6 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.List;
 import org.junit.Test;
@@ -258,13 +256,14 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
-    public void collectedReferenceOfAnotherSeriesIsCleanedFromItsOwnerMap() throws Exception {
+    public void collectedReferenceOfAnotherSeriesIsCleanedFromItsOwnerMap() {
         BarSeries first = new MockBarSeriesBuilder().build();
         BarSeries second = new MockBarSeriesBuilder().build();
         addBars(first, 6, 10, 0, 0);
 
         CandleThresholdSupport expected = CandleThresholdSupport.forSeries(first, 3);
-        Map<Integer, WeakReference<CandleThresholdSupport>> firstPeriods = internedPeriods(first);
+        Map<Integer, WeakReference<CandleThresholdSupport>> firstPeriods = CandleThresholdSupport
+                .internedPeriods(first);
         WeakReference<CandleThresholdSupport> stored = firstPeriods.get(3);
         assertSame(expected, stored.get());
 
@@ -275,17 +274,6 @@ public class CandleThresholdSupportTest {
         CandleThresholdSupport.forSeries(second, 4);
 
         assertFalse(firstPeriods.containsKey(3));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<Integer, WeakReference<CandleThresholdSupport>> internedPeriods(BarSeries series)
-            throws Exception {
-        Field field = CandleThresholdSupport.class.getDeclaredField("INTERNED_SUPPORTS");
-        field.setAccessible(true);
-        Object table = field.get(null);
-        Method get = table.getClass().getDeclaredMethod("get", Object.class);
-        get.setAccessible(true);
-        return (Map<Integer, WeakReference<CandleThresholdSupport>>) get.invoke(table, series);
     }
 
     @Test

@@ -249,6 +249,22 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * Returns the interned period entries recorded for the given series.
+     * <p>
+     * Package-private seam: lets package-local tests verify that collected support
+     * references are removed from their owning map without reaching into private
+     * state.
+     *
+     * @param series the series whose interned periods are requested
+     * @return the interned period entries, or {@code null} when the series has none
+     */
+    static Map<Integer, WeakReference<CandleThresholdSupport>> internedPeriods(BarSeries series) {
+        synchronized (INTERNED_SUPPORTS) {
+            return INTERNED_SUPPORTS.get(series);
+        }
+    }
+
+    /**
      * Removes the period entries whose support values have been collected, as
      * reported by {@link #SUPPORT_QUEUE}. Each collected reference knows its own
      * owning map, so entries of other series are cleaned from that owner rather
