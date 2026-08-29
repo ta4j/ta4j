@@ -69,8 +69,14 @@
  * <td>{@code body < 0.5 * preceding-average body}</td>
  * </tr>
  * <tr>
- * <td>Doji, short shadow, or near value</td>
- * <td>{@code measurement <= 0.1 * preceding-average range}</td>
+ * <td>Doji</td>
+ * <td>{@code body <= rangeFactor * preceding-average range}, where
+ * {@code rangeFactor} defaults to {@code 0.1} and is configurable per
+ * {@link org.ta4j.core.indicators.candles.DojiIndicator DojiIndicator}</td>
+ * </tr>
+ * <tr>
+ * <td>Short shadow or near value</td>
+ * <td>{@code measurement <= 0.1 * preceding-average range} (fixed)</td>
  * </tr>
  * </table>
  *
