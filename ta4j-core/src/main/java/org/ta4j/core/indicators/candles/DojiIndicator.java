@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import java.util.Objects;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -232,13 +230,10 @@ public class DojiIndicator extends CandlePatternIndicator {
     }
 
     private static BarSeries validateConfiguration(BarSeries series, int averagePeriod, double rangeFactor) {
-        Objects.requireNonNull(series, "series must not be null");
-        if (averagePeriod < 1) {
-            throw new IllegalArgumentException("averagePeriod must be at least 1, but was: " + averagePeriod);
-        }
+        BarSeries validatedSeries = CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod);
         if (!Double.isFinite(rangeFactor) || rangeFactor < 0d) {
             throw new IllegalArgumentException("rangeFactor must be finite and >= 0, but was: " + rangeFactor);
         }
-        return series;
+        return validatedSeries;
     }
 }
