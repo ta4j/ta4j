@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.num.Num;
@@ -29,9 +30,11 @@ import org.ta4j.core.num.NumFactory;
  * <pre>
  * average(m[index - averagePeriod] ... m[index - 1])
  * </pre>
- *
- * implemented as
- * {@code new PreviousValueIndicator(new SMAIndicator(m, averagePeriod))}. The
+ * 
+ * implemented as {@code new PreviousValueIndicator(new PriorAverageIndicator(m,
+ * averagePeriod))}. {@link PriorAverageIndicator} delegates to an SMA and, when
+ * the SMA accumulator overflows into a non-finite value, re-averages the same
+ * window by dividing each term by the window size before accumulating. The
  * candle under evaluation therefore never influences its own baseline, which
  * keeps the pattern evaluation causal (look-ahead free).
  *
@@ -362,8 +365,8 @@ final class CandleThresholdSupport {
         this.range = new CandleRangeIndicator(this.series);
         this.upperShadow = new UpperShadowIndicator(this.series);
         this.lowerShadow = new LowerShadowIndicator(this.series);
-        this.priorAverageBody = new PreviousValueIndicator(new SMAIndicator(body, averagePeriod));
-        this.priorAverageRange = new PreviousValueIndicator(new SMAIndicator(range, averagePeriod));
+        this.priorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(body, averagePeriod));
+        this.priorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(range, averagePeriod));
         final NumFactory numFactory = this.series.numFactory();
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
@@ -382,8 +385,8 @@ final class CandleThresholdSupport {
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
-     *                                  {@link #MAX_AVERAGE_PERIOD}, whose warm-up
-     *                                  additions would overflow
+     *                                  {@link #MAX_AVERAGE_PERIOD}, which bounds
+     *                                  the warm-up window and intermediate sums
      */
     static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
         final BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
@@ -603,5 +606,48 @@ final class CandleThresholdSupport {
         final Num baseline = priorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
         return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(difference)
                 && Num.isFinite(baseline) && !difference.isGreaterThan(baseline);
+    }
+
+    /**
+     * Average of the preceding {@code barCount} source values that never overflows
+     * an intermediate summation. The primary path delegates to an
+     * {@link SMAIndicator}; when its accumulator overflowed into a non-finite value
+     * (for example a {@code DoubleNum} summing near-MAX candle ranges), the same
+     * window is re-averaged with each term divided by the window size before
+     * accumulating, keeping every intermediate value representable.
+     */
+    private static final class PriorAverageIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+        private final int barCount;
+        private final SMAIndicator primary;
+
+        private PriorAverageIndicator(Indicator<Num> source, int barCount) {
+            super(source.getBarSeries());
+            this.source = source;
+            this.barCount = barCount;
+            this.primary = new SMAIndicator(source, barCount);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Num result = primary.getValue(index);
+            if (Num.isFinite(result)) {
+                return result;
+            }
+            final int beginIndex = getBarSeries().getBeginIndex();
+            final int start = Math.max(beginIndex, index - barCount + 1);
+            final Num count = getBarSeries().numFactory().numOf(index - start + 1);
+            Num total = getBarSeries().numFactory().zero();
+            for (int i = start; i <= index; i++) {
+                total = total.plus(source.getValue(i).dividedBy(count));
+            }
+            return total;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return primary.getCountOfUnstableBars();
+        }
     }
 }

@@ -100,10 +100,9 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     @Test
     public void overflowingPriorAverageIsNotADoji() {
         // Five baseline candles with range Double.MAX_VALUE overflow the
-        // DoubleNum SMA accumulator to positive infinity before division, so
-        // the factor-multiplication fallback must not treat the baseline as an
-        // unbounded threshold: the correct threshold (MAX_VALUE * 0.1) is
-        // finite and the body (MAX_VALUE / 2) exceeds it.
+        // DoubleNum SMA accumulator before division; the divide-first baseline
+        // still yields the finite MAX_VALUE average, so the correct threshold
+        // (MAX_VALUE * 0.1) is finite and the body (MAX_VALUE / 2) exceeds it.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 5; i++) {
             addBar(series, Double.MAX_VALUE, 0, 0);
@@ -111,6 +110,21 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         addBar(series, Double.MAX_VALUE / 2, 0, 0);
 
         assertFalse(new DojiIndicator(series, 5, 0.1).getValue(5));
+    }
+
+    @Test
+    public void zeroBodyAgainstOverflowingRangeBaselineIsDoji() {
+        // Five baseline candles with range Double.MAX_VALUE overflow the
+        // DoubleNum SMA accumulator to positive infinity; the divide-first
+        // baseline must still produce the finite MAX_VALUE average, so the
+        // zero body is at most MAX_VALUE * 0.1 and qualifies as a doji.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 0, Double.MAX_VALUE, 0);
+        }
+        addBar(series, 0, 0, 0);
+
+        assertTrue(new DojiIndicator(series, 5, 0.1).getValue(5));
     }
 
     @Test
