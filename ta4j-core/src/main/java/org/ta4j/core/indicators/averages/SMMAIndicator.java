@@ -66,4 +66,9 @@ public class SMMAIndicator extends CachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
 }

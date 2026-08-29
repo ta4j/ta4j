@@ -52,4 +52,9 @@ public class PVIIndicator extends RecursiveCachedIndicator<Num> {
         return 0;
     }
 
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

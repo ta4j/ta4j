@@ -508,5 +508,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return BinaryOperationIndicator.sum(BinaryOperationIndicator.sum(highPriceIndicator, lowPriceIndicator),
                     closePriceIndicator);
         }
+
+        @Override
+        protected boolean hasRecursiveDependencies() {
+            return true;
+        }
+
     }
 }

@@ -71,4 +71,9 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " cmoPeriod: " + cmoPeriod + " vidyaPeriod: " + vidyaPeriod;
     }
 
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

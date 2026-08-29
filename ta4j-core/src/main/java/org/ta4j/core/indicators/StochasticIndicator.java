@@ -98,4 +98,10 @@ public class StochasticIndicator extends CachedIndicator<Num> {
     private record Config(Indicator<Num> indicator, HighestValueIndicator highest, LowestValueIndicator lowest,
             int lookback) {
     }
+
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

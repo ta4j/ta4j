@@ -347,4 +347,10 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         return Math.max(Math.max(reversalAmount.getCountOfUnstableBars(), confirmationPrice.getCountOfUnstableBars()),
                 Math.max(highPrice.getCountOfUnstableBars(), lowPrice.getCountOfUnstableBars()));
     }
+
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

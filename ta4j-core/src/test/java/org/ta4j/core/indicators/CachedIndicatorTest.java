@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -395,6 +396,25 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(2, barSeries.getBeginIndex());
 
         assertNumEquals(beforeAdvance, zlema.getValue(2));
+    }
+
+    @Test
+    @Test
+    public void selfRecursiveCachedIndicatorKeepsCachedValuesWhenSeriesHeadAdvances() {
+        // A CachedIndicator subclass whose calculate() reads its own preceding
+        // value is recursive by definition even when it does not extend
+        // RecursiveCachedIndicator: the head-advance cache floor must not
+        // evict the retained band and reseed it from a different history.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
+                .build();
+        SMMAIndicator smma = new SMMAIndicator(new ClosePriceIndicator(barSeries), 3);
+        Num beforeAdvance = smma.getValue(4);
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(beforeAdvance, smma.getValue(4));
     }
 
     @Test
