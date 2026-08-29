@@ -45,6 +45,22 @@ public class BearishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void overflowingBaselineAveragesStillQualify() {
+        // Two baseline candles with body 0.75 * Double.MAX_VALUE overflow the
+        // DoubleNum SMA accumulator when summed directly; the divide-first
+        // baseline keeps the average finite, so the MAX_VALUE body still
+        // qualifies as a long body with short shadows.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final double baselineBody = 0.75 * Double.MAX_VALUE;
+        addBearishBar(series, baselineBody, 0, 0);
+        addBearishBar(series, baselineBody, 0, 0);
+        addBearishBar(series, Double.MAX_VALUE, 0, 0);
+        BearishMarubozuIndicator indicator = new BearishMarubozuIndicator(series, 2);
+
+        assertTrue(indicator.getValue(2));
+    }
+
+    @Test
     public void doesNotTriggerForBullishCandle() {
         assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 0, 0, true)).getValue(5));
     }
