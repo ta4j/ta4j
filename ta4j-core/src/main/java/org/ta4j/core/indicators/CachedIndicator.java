@@ -210,7 +210,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
             int invalidateFrom = snapshot.earliestChangedIndex();
             int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
-            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
+            // When the series head advanced, entries cached at indexes whose
+            // preceding window is no longer fully available were computed from
+            // bars that have since been removed. Drop them so reads after the
+            // advance recompute against the retained window; indicators declare
+            // that range through getCountOfUnstableBars().
+            int minimumCacheableIndex = snapshot.removedThroughIndex() == sinceSnapshot.removedThroughIndex()
+                    ? firstRetainedIndex
+                    : unstableRangeFloor(firstRetainedIndex);
+            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
             // bar, i.e. series index firstRetainedIndex. Any published change at or
@@ -223,7 +231,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 clearFirstBarCache();
             }
 
-            int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
+            int cacheHighest = cache.synchronize(minimumCacheableIndex, snapshot.maximumBarCount(), invalidateFrom);
             highestResultIndex = Math.max(cacheHighest, lastBarIndex);
 
             if (observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
@@ -231,6 +239,24 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
             reconciliationRequired = true;
         }
+    }
+
+    /**
+     * Returns the lowest index whose cached value remains trustworthy after the
+     * series head advanced to {@code firstRetainedIndex}: the unstable range
+     * declared by {@link #getCountOfUnstableBars()} was computed from bars that no
+     * longer exist and must be recomputed against the retained window.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return the cache floor for the retained range
+     */
+    private int unstableRangeFloor(int firstRetainedIndex) {
+        final long unstableBars = getCountOfUnstableBars();
+        if (unstableBars <= 0L) {
+            return firstRetainedIndex;
+        }
+        final long floor = (long) firstRetainedIndex + unstableBars;
+        return floor >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) floor;
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {

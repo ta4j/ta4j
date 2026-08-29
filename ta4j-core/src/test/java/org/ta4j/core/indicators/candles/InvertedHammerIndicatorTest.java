@@ -67,6 +67,21 @@ public class InvertedHammerIndicatorTest extends AbstractIndicatorTest<Indicator
     }
 
     @Test
+    public void signedZeroOpenAgainstZeroPriorCloseIsNotAGapDown() {
+        // DoubleNum orders -0.0 below 0.0, so a pattern open of -0.0 against a
+        // prior close of +0.0 would misread as a gap down; equal zero prices
+        // must not qualify.
+        BarSeries equalZeros = zeroCloseBaseline();
+        equalZeros.barBuilder().openPrice(-0.0).closePrice(1.0).highPrice(22.0).lowPrice(-0.0).add();
+        assertFalse(new InvertedHammerIndicator(equalZeros).getValue(5));
+
+        // Control: a genuinely lower open is the required gap down.
+        BarSeries genuineGap = zeroCloseBaseline();
+        genuineGap.barBuilder().openPrice(-0.5).closePrice(1.0).highPrice(22.0).lowPrice(-0.5).add();
+        assertTrue(new InvertedHammerIndicator(genuineGap).getValue(5));
+    }
+
+    @Test
     public void customAveragePeriodShiftsWarmUpBoundary() {
         BarSeries series = invertedHammerSeries(3, 1.0, 21, 0, 9.9);
         InvertedHammerIndicator indicator = new InvertedHammerIndicator(series, 3);
@@ -174,5 +189,16 @@ public class InvertedHammerIndicatorTest extends AbstractIndicatorTest<Indicator
         final double high = close + upperShadow;
         final double low = open - lowerShadow;
         series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
+
+    /**
+     * Builds five body-10/range-10 baseline candles closing at +0.0.
+     */
+    private BarSeries zeroCloseBaseline() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().openPrice(-10).closePrice(0.0).highPrice(0.0).lowPrice(-10).add();
+        }
+        return series;
     }
 }

@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.BooleanTransformIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.NonFiniteBar;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -86,6 +87,14 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         }
 
         assertTrue(new DojiIndicator(series, 5, -0.0d).getValue(5));
+    }
+
+    @Test
+    public void oversizedRangeFactorTreatsEveryFiniteBodyAsDoji() {
+        // rangeFactor * averageRange overflows the DoubleNum threshold product to
+        // positive infinity; the threshold is then unbounded, so any finite body
+        // qualifies.
+        assertTrue(new DojiIndicator(dojiSeries(5, 2.0), 5, Double.MAX_VALUE).getValue(5));
     }
 
     @Test
@@ -161,6 +170,30 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         assertEquals(10, series.getBeginIndex());
         assertFalse(indicator.getValue(14));
         assertTrue(indicator.getValue(15));
+    }
+
+    @Test
+    public void dependentCacheInvalidatesWhenHeadAdvanceLeavesBaseline() {
+        // A cached dependent indicator must observe a pattern becoming false when
+        // the head advances past its baseline window, even when its own cached
+        // entry survives the eviction.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        addBar(series, 1.0, 0, 0); // index 5: doji at the inclusive boundary
+        DojiIndicator indicator = new DojiIndicator(series);
+        BooleanTransformIndicator<Boolean> dependent = new BooleanTransformIndicator<>(indicator, value -> value);
+
+        assertTrue(indicator.getValue(5));
+        assertTrue(dependent.getValue(5));
+
+        // Slide the head past the [0, 4] baseline window of index 5.
+        series.setMaximumBarCount(5);
+        assertEquals(1, series.getBeginIndex());
+
+        assertFalse(indicator.getValue(5));
+        assertFalse(dependent.getValue(5));
     }
 
     @Override

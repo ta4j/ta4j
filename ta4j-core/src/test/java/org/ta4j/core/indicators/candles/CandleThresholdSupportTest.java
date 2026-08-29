@@ -238,6 +238,22 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void forSeriesStaysInternedAcrossManyPeriods() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        addBars(series, 6, 10, 0, 0);
+
+        CandleThresholdSupport periodFive = CandleThresholdSupport.forSeries(series, 5);
+        for (int period = 1; period <= 32; period++) {
+            CandleThresholdSupport support = CandleThresholdSupport.forSeries(series, period);
+            if (period == 5) {
+                assertSame(periodFive, support);
+            } else {
+                assertNotSame(periodFive, support);
+            }
+        }
+    }
+
+    @Test
     public void internedSupportSharesPrimitiveInstances() {
         BarSeries series = new MockBarSeriesBuilder().build();
         addBars(series, 5, 10, 3, 4);

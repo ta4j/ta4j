@@ -93,12 +93,19 @@ public class DojiIndicator extends CandlePatternIndicator {
         if (!thresholds.isValid(index)) {
             return false;
         }
-        final var bodyValue = body.getValue(index);
-        final var baseline = thresholds.priorAverageRange()
+        final Num bodyValue = body.getValue(index);
+        final Num baseline = thresholds.priorAverageRange()
                 .getValue(index)
                 .multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
-        if (!Num.isFinite(bodyValue) || !Num.isFinite(baseline)) {
+        if (!Num.isFinite(bodyValue)) {
             return false;
+        }
+        if (!Num.isFinite(baseline)) {
+            // A finite, non-negative factor times a finite prior range can only
+            // overflow upward, so a non-finite baseline from an accepted
+            // configuration is an unbounded threshold: every finite body
+            // qualifies as a doji. NaN and negative infinity stay false.
+            return baseline.isPositive();
         }
         return !bodyValue.isGreaterThan(baseline);
     }

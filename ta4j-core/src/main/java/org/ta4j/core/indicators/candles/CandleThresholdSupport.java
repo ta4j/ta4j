@@ -189,6 +189,24 @@ final class CandleThresholdSupport {
     /** Interned supports, keyed by series identity and weak on both sides. */
     private static final WeakIdentityInternTable<BarSeries, Map<Integer, WeakReference<CandleThresholdSupport>>> INTERNED_SUPPORTS = new WeakIdentityInternTable<>();
 
+    /** Receives collected per-period support references for lazy cleanup. */
+    private static final ReferenceQueue<CandleThresholdSupport> SUPPORT_QUEUE = new ReferenceQueue<>();
+
+    /**
+     * A weak reference to an interned support that remembers the average-period key
+     * it is stored under, so {@link #forSeries(BarSeries, int)} can drop an entry
+     * whose value has been collected without scanning the whole period map.
+     */
+    private static final class SupportReference extends WeakReference<CandleThresholdSupport> {
+
+        private final int averagePeriod;
+
+        SupportReference(CandleThresholdSupport support, int averagePeriod) {
+            super(support, SUPPORT_QUEUE);
+            this.averagePeriod = averagePeriod;
+        }
+    }
+
     /**
      * Returns the interned support for the given series and average period,
      * creating it on first use. All callers with the same
@@ -214,14 +232,29 @@ final class CandleThresholdSupport {
                 byPeriod = new HashMap<>();
                 INTERNED_SUPPORTS.put(series, byPeriod);
             }
+            removeCollectedPeriods(byPeriod);
             final WeakReference<CandleThresholdSupport> existing = byPeriod.get(averagePeriod);
             CandleThresholdSupport support = existing == null ? null : existing.get();
             if (support == null) {
-                byPeriod.values().removeIf(reference -> reference.get() == null);
                 support = new CandleThresholdSupport(series, averagePeriod);
-                byPeriod.put(averagePeriod, new WeakReference<>(support));
+                byPeriod.put(averagePeriod, new SupportReference(support, averagePeriod));
             }
             return support;
+        }
+    }
+
+    /**
+     * Removes the period entries of this series whose support values have been
+     * collected, as reported by {@link #SUPPORT_QUEUE}. The removal is keyed by the
+     * exact collected reference, so a replacement stored since collection is never
+     * dropped. Entries of other series are left for their own lookups.
+     *
+     * @param byPeriod the period map of the series being looked up
+     */
+    private static void removeCollectedPeriods(Map<Integer, WeakReference<CandleThresholdSupport>> byPeriod) {
+        SupportReference collected;
+        while ((collected = (SupportReference) SUPPORT_QUEUE.poll()) != null) {
+            byPeriod.remove(collected.averagePeriod, collected);
         }
     }
 
@@ -330,7 +363,7 @@ final class CandleThresholdSupport {
      *                                  additions would overflow
      */
     static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
-        final var validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        final BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
         if (averagePeriod < 1 || averagePeriod > MAX_AVERAGE_PERIOD) {
             throw new IllegalArgumentException(
                     "averagePeriod must be in [1, " + MAX_AVERAGE_PERIOD + "], but was: " + averagePeriod);
