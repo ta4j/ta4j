@@ -91,6 +91,19 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         return NaN;
     }
 
+    /**
+     * The correlation coefficient depends only on the fixed {@code barCount}
+     * trailing window, so the recursive default is opted out: after a head advance
+     * the stale band is recomputed against the retained window like any windowed
+     * indicator.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         int baseUnstableBars = Math.max(indicator1.getCountOfUnstableBars(), indicator2.getCountOfUnstableBars());

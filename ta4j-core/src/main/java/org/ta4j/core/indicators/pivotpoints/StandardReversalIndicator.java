@@ -63,6 +63,18 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
         }
     }
 
+    /**
+     * Reversal levels reference the same-index pivot value and carry no history
+     * dependence of their own, so the recursive default is opted out: after a head
+     * advance the stale band is recomputed like any windowed indicator.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return 0;

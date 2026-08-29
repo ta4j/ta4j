@@ -78,7 +78,11 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   cumulative measurement, volume force, both EMAs, and the outer
   oscillator, because each downstream cache mixes fresh and stale inputs
   once the cumulative measurement rebaselines.
-
+- `RecursiveCachedIndicator` opts in by default because its subclasses
+  compute each value from its predecessors; recursive subclasses over a
+  fixed trailing window, such as `VolumeIndicator` and
+  `PearsonCorrelationIndicator`, must override back to `false` so their
+  stale bands are recomputed like any windowed indicator.
 ## NetMomentumIndicator specifics
 
 - Preserve battery semantics: below-pivot oscillator pressure contributes positive rebound energy,

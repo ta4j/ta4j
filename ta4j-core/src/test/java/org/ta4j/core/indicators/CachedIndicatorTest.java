@@ -647,6 +647,27 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         public BarSeries getBarSeries() {
             return barSeries;
         }
+    public void unannotatedRecursiveSubclassKeepsCachedValuesWhenSeriesHeadAdvances() {
+        // RecursiveCachedIndicator opts into the head-advance exemption by
+        // default: a subclass that computes each value from its predecessor
+        // keeps pre-advance values even without a hook override of its own,
+        // because those values encode removed history that a recomputed
+        // unstable band could not reproduce. Non-uniform closes keep the
+        // pre-advance cumulative (1+2+1+2+3 = 9) distinct from a reseeded
+        // chain restarted from the first retained close (1+1+2+3 = 7).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 1d, 2d, 3d, 4d, 5d)
+                .build();
+        CumulativeRecursiveIndicator cumulative = new CumulativeRecursiveIndicator(new ClosePriceIndicator(barSeries));
+        Num beforeAdvance = cumulative.getValue(4);
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(beforeAdvance, cumulative.getValue(4));
+    }
+
+    @Test
     public void windowedRecursiveIndicatorRecomputesStaleBandWhenSeriesHeadAdvances() {
         // VolumeIndicator recurses only to walk its rolling accumulation; its
         // values depend on a fixed trailing window, so after a head advance the
@@ -1669,6 +1690,29 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getCalculationCount() {
             return calculationCount.get();
+        }
+    }
+
+    private static final class CumulativeRecursiveIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+
+        private CumulativeRecursiveIndicator(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 0) {
+                return source.getValue(0);
+            }
+            return getValue(index - 1).plus(source.getValue(index));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 3;
         }
     }
 

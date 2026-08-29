@@ -656,10 +656,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * {@code AbstractEMAIndicator} or Kalman-style state filters) return
      * {@code true}; their cached values cannot be recomputed against the retained
      * window of a bounded series, so head-advance reconciliation keeps them instead
-     * of applying the unstable-range floor. Recursive indicators over a fixed
-     * trailing window (for example {@link VolumeIndicator} or
-     * {@link PearsonCorrelationIndicator}) keep the default {@code false} and are
-     * invalidated like any windowed indicator.
+     * of applying the unstable-range floor. The default is {@code false}: a plain
+     * indicator whose unstable range declares all of its lookback is invalidated
+     * like any windowed indicator. {@link RecursiveCachedIndicator} overrides this
+     * to {@code true}, because subclasses extend it precisely to compute each value
+     * from its predecessors. Recursive subclasses over a fixed trailing window (for
+     * example {@link VolumeIndicator} or {@link PearsonCorrelationIndicator}) must
+     * override it back to {@code false} so their stale bands are recomputed.
      *
      * @return {@code true} when values depend on earlier values beyond the declared
      *         unstable range

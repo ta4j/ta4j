@@ -93,6 +93,22 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
         super(series, dependencies);
     }
 
+    /**
+     * Recursive indicators keep their pre-advance cached values by default:
+     * subclasses compute each value from its predecessors, so their values encode
+     * history that precedes any finite declared unstable range and cannot be
+     * recomputed against the retained window of a bounded series. Subclasses whose
+     * values depend only on a fixed trailing window (for example volume or
+     * correlation indicators) must override this to {@code false} so their stale
+     * bands are recomputed after a head advance.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
     @Override
     public T getValue(int index) {
         BarSeries series = getBarSeries();

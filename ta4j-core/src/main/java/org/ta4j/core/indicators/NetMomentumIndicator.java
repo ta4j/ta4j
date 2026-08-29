@@ -298,6 +298,18 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         return rawDistance.isNegative() ? convexDistance : convexDistance.negate();
     }
 
+    /**
+     * The running total covers the fixed {@code timeFrame} trailing window, so the
+     * recursive default is opted out: after a head advance the stale band is
+     * recomputed against the retained window like any windowed indicator.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;

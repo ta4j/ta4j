@@ -164,4 +164,18 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
             return zonedEndTime.minusYears(1).getYear();
         }
     }
+
+    /**
+     * Pivot levels are computed from the bars of the previous calendar period and
+     * do not depend on earlier pivot values, so the recursive default is opted out:
+     * after a head advance the stale band is recomputed like any windowed
+     * indicator.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
 }
