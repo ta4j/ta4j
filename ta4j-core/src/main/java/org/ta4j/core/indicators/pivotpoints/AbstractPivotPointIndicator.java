@@ -167,15 +167,27 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
 
     /**
      * Pivot levels are computed from the bars of the previous calendar period and
-     * do not depend on earlier pivot values, so the recursive default is opted out:
-     * after a head advance the stale band is recomputed like any windowed
-     * indicator.
+     * do not depend on earlier pivot values, so the recursive default is opted out.
      *
      * @return {@code false}
      */
     @Override
     protected boolean hasRecursiveDependencies() {
         return false;
+    }
+
+    /**
+     * The calendar look-back spans an unbounded number of bars, so the zero stable
+     * count would retain pivot values that still depend on evicted bars: the whole
+     * cache is discarded on head advance so that every retained index is recomputed
+     * from the bars that remain available.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
     }
 
 }
