@@ -144,12 +144,17 @@ public class ThreeWhiteSoldiersIndicator extends CandlePatternIndicator {
      * @param bar   the candle whose open is checked
      * @param prior the previous candle whose real body is the containment window
      * @return true if the open of {@code bar} lies within the real body of
-     *         {@code prior}, endpoints included
+     *         {@code prior}, endpoints included; signed-zero endpoints are treated
+     *         as equal
      */
     private static boolean openWithinBody(Bar bar, Bar prior) {
         Num open = bar.getOpenPrice();
         Num priorBodyBottom = prior.getOpenPrice().min(prior.getClosePrice());
         Num priorBodyTop = prior.getOpenPrice().max(prior.getClosePrice());
-        return open.isGreaterThanOrEqual(priorBodyBottom) && open.isLessThanOrEqual(priorBodyTop);
+        // Signed zero is normalized in both inclusive bounds: DoubleNum
+        // orders -0.0 below +0.0, so two numerically equal zero endpoints
+        // must still count as containment.
+        return (open.isGreaterThanOrEqual(priorBodyBottom) || (open.isZero() && priorBodyBottom.isZero()))
+                && (open.isLessThanOrEqual(priorBodyTop) || (open.isZero() && priorBodyTop.isZero()));
     }
 }

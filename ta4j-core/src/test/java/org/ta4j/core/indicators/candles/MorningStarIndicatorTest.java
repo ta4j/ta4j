@@ -124,6 +124,36 @@ public class MorningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     }
 
     @Test
+    public void signedZeroEndpointsDoNotFormAStrictGap() {
+        // The first body bottom is +0.0 and the star body top is -0.0:
+        // numerically equal endpoints must not satisfy the strict real-body
+        // gap, which DoubleNum would otherwise accept because it orders
+        // -0.0 below +0.0.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 5, 0.0, 6, -1); // first: bearish long, body bottom +0.0
+        addBar(series, -1, -0.0, 0.5, -2); // star: short, body top -0.0
+        addBar(series, 1, 6, 7, 0); // third: bullish long close above the level
+
+        assertFalse(new MorningStarIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void signedZeroPenetrationBoundaryIsInclusive() {
+        // First body bottom -5 and body 10 meet the default 50% penetration
+        // exactly at +0.0, so a bullish third candle closing at -0.0 still
+        // satisfies the inclusive boundary, which DoubleNum would otherwise
+        // reject because it orders -0.0 below +0.0.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 5, -5, 6, -6); // first: bearish long, body bottom -5
+        addBar(series, -6.5, -6, -5.5, -7); // star: short, real body gaps down
+        addBar(series, -21, -0.0, 0.0, -22); // third: bullish long closing at -0.0
+
+        assertTrue(new MorningStarIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
     public void thirdCloseBelowPenetrationLevelFails() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBaselineBars(series, 10);

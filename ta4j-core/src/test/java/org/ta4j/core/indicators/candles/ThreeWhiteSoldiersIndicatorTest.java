@@ -134,6 +134,20 @@ public class ThreeWhiteSoldiersIndicatorTest extends AbstractIndicatorTest<Indic
     }
 
     @Test
+    public void signedZeroOpenAtBodyBottomCountsAsContainment() {
+        // The first body bottom is +0.0 and the second soldier opens at -0.0:
+        // numerically equal endpoints must count as containment, which
+        // DoubleNum would otherwise reject because it orders -0.0 below +0.0.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 0.0, 5, 5, -0.0); // index 10: first soldier, body bottom +0.0
+        addBar(series, -0.0, 6, 6, -1); // index 11: second soldier opens at -0.0
+        addBar(series, 0.5, 7, 7, 0); // index 12: third soldier inside the second body
+
+        assertTrue(new ThreeWhiteSoldiersIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
     public void openContainmentBoundaryIsInclusive() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBaselineBars(series, 10);

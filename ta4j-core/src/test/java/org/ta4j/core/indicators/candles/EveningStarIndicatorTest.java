@@ -135,6 +135,21 @@ public class EveningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     }
 
     @Test
+    public void signedZeroEndpointsDoNotFormAStrictGap() {
+        // The first body top is -0.0 and the star body bottom is +0.0:
+        // numerically equal endpoints must not satisfy the strict real-body
+        // gap, which DoubleNum would otherwise accept because it orders
+        // +0.0 above -0.0.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, -5, -0.0, 1, -6); // first: bullish long, body top -0.0
+        addBar(series, 0.0, 1, 2, -1); // star: short, body bottom +0.0
+        addBar(series, 1, -6, 2, -7); // third: bearish long close below the level
+
+        assertFalse(new EveningStarIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
     public void thirdCloseAbovePenetrationLevelFails() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBaselineBars(series, 10);

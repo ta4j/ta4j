@@ -119,11 +119,19 @@ public class EveningStarIndicator extends CandlePatternIndicator {
         Bar starBar = series.getBar(index - 1);
         Bar thirdBar = series.getBar(index);
         Num firstBody = bodyIndicator.getValue(index - 2);
+        Num firstBodyTop = bodyTop(firstBar);
+        Num penetrationLevel = firstBodyTop.minus(firstBody.multipliedBy(penetrationFactor));
+        Num thirdClose = thirdBar.getClosePrice();
+        // Signed zero is normalized at the strict gap and the inclusive
+        // penetration boundary: DoubleNum orders -0.0 below +0.0, so two
+        // numerically equal zero endpoints must never form a gap and must
+        // still satisfy the inclusive penetration level.
         return firstBar.isBullish() && thresholds.isLongBody(index - 2) && thresholds.isShortBody(index - 1)
-                && bodyBottom(starBar).isGreaterThan(bodyTop(firstBar)) && thirdBar.isBearish()
-                && Num.isFinite(thirdBar.getOpenPrice()) && Num.isFinite(thirdBar.getClosePrice())
-                && thresholds.isLongBody(index) && thirdBar.getClosePrice()
-                        .isLessThanOrEqual(bodyTop(firstBar).minus(firstBody.multipliedBy(penetrationFactor)));
+                && !(bodyBottom(starBar).isZero() && firstBodyTop.isZero())
+                && bodyBottom(starBar).isGreaterThan(firstBodyTop) && thirdBar.isBearish()
+                && Num.isFinite(thirdBar.getOpenPrice()) && Num.isFinite(thirdClose) && thresholds.isLongBody(index)
+                && (thirdClose.isLessThanOrEqual(penetrationLevel)
+                        || (thirdClose.isZero() && penetrationLevel.isZero()));
     }
 
     @Override
