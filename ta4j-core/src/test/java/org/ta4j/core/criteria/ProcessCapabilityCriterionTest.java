@@ -119,6 +119,19 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void meanOverflowDoesNotCollapseCapability() {
+        // Gross returns 1e308 and 1.4e308 with limits 0 and 1.7e308: Cpk is
+        // 5/6, but the naive mean sum overflows DoubleNum to infinity; the
+        // normalized mean recomputation must preserve the score.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e308, 1, 1.4e308).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0, 1.7e308);
+        assertNumEquals(numOf(5).dividedBy(numOf(6)), cpk.calculate(series, tradingRecord), 1e-9);
+    }
+
+    @Test
     public void rejectsInvalidSpecificationLimits() {
         assertThrows(NullPointerException.class, () -> new ProcessCapabilityCriterion(null));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(Double.NaN));

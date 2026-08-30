@@ -54,6 +54,13 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
             return NaN;
         }
 
+        // No previous value exists at the first addressable bar (unstableBars == 0);
+        // seed the recursion with the current value instead of chasing
+        // getValue(index - 1) into removed history or self-recursion.
+        if (index == beginIndex) {
+            return current;
+        }
+
         // Get previous value and check for NaN
         Num prevValue = getValue(index - 1);
         if (!Num.isFinite(prevValue)) {

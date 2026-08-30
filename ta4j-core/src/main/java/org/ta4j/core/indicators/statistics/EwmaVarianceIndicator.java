@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
@@ -32,8 +33,19 @@ import java.util.Objects;
  * {@code getCountOfUnstableBars() = indicator.getCountOfUnstableBars() +
  * barCount - 1}, and non-finite inputs or extreme regime changes whose derived
  * deviation overflows the numeric representation yield {@code NaN} until the
- * next finite bar re-seeds the variance. Smaller decay factors react faster to
- * volatility changes at the cost of a noisier estimate.
+ * next finite bar re-seeds the variance. A seed window whose own population
+ * variance is non-finite publishes {@code NaN} rather than a non-finite seed,
+ * so a composed kill switch fails open until a finite window is available.
+ * Smaller decay factors react faster to volatility changes at the cost of a
+ * noisier estimate.
+ *
+ * <p>
+ * When the backing series prunes its retained head (for example through
+ * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), cached values
+ * computed against the discarded prefix are dropped, the control mean
+ * {@link EWMAIndicator} is rebuilt so that it resets to the current value at
+ * the new head, and the recursion re-anchors there with a seed window starting
+ * at the new first addressable bar.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -48,10 +60,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final int barCount;
     private final double decayFactor;
-    private final transient EWMAIndicator meanIndicator;
+    private volatile transient EWMAIndicator meanIndicator;
     private final transient VarianceIndicator initialVarianceIndicator;
     private final transient Num decay;
     private final transient Num oneMinusDecay;
+    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
+    private volatile transient int reseedIndex = -1;
 
     /**
      * Constructor.
@@ -68,7 +82,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         this.meanIndicator = new EWMAIndicator(indicator, barCount, decayFactor);
         this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);
         this.decay = indicator.getBarSeries().numFactory().numOf(decayFactor);
-        this.oneMinusDecay = indicator.getBarSeries().numFactory().one().minus(this.decay);
+        this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(1d - decayFactor);
     }
 
     private static Indicator<Num> validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -91,8 +105,32 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     @Override
+    public Num getValue(int index) {
+        BarSeries series = getBarSeries();
+        int removedBarsCount = series.getRemovedBarsCount();
+        if (removedBarsCount != observedRemovedBarsCount) {
+            resetForRetainedHead(removedBarsCount);
+        }
+        return super.getValue(index);
+    }
+
+    private synchronized void resetForRetainedHead(int removedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount) {
+            observedRemovedBarsCount = removedBarsCount;
+            this.meanIndicator = new EWMAIndicator(indicator, 1, decayFactor);
+            reseedIndex = getBarSeries().getBeginIndex();
+            invalidateCache();
+        }
+    }
+
+    @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
+        if (index == reseedIndex) {
+            int seedIndex = (int) Math.min((long) index + barCount - 1L, getBarSeries().getEndIndex());
+            Num seedVariance = initialVarianceIndicator.getValue(seedIndex);
+            return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
+        }
         if (index - beginIndex < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
@@ -110,7 +148,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         Num previousVariance = getValue(index - 1);
         Num previousMean = meanIndicator.getValue(index - 1);
         if (!Num.isFinite(previousVariance) || !Num.isFinite(previousMean)) {
-            return initialVarianceIndicator.getValue(index);
+            Num seedVariance = initialVarianceIndicator.getValue(index);
+            return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
         }
         Num deviation = current.minus(previousMean);
         Num updatedVariance = previousVariance.multipliedBy(decay)

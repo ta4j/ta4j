@@ -125,6 +125,37 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void positiveOverflowCoercionSaturatesToEpsilonFloor() {
+        // A DecimalNum statistic of 1e400 is finite in its own factory but
+        // overflows to +Infinity when coerced into a DoubleNum context: the
+        // sizer saturates to the epsilon floor instead of failing open.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("1e400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, 10);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(numFactory.epsilon(), sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
+    public void negativeOverflowCoercionFailsOpen() {
+        // A DecimalNum statistic of -1e400 coerces to -Infinity in a DoubleNum
+        // context: max(0, -Inf) would be zero, so the sizer fails open.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("-1e400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, 10);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(100, sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5), numOf(15));

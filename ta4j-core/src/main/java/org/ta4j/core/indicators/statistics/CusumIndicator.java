@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.statistics;
 
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.NaN;
@@ -54,6 +55,13 @@ import org.ta4j.core.num.NumFactory;
  * observation.
  *
  * <p>
+ * When the backing series prunes its retained head (for example through
+ * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), the recursion is
+ * re-anchored at the new first addressable bar: cached values computed against
+ * the discarded prefix are dropped and the statistic resumes from the new head
+ * as if the series had started there.
+ *
+ * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
  * return stream: build the CUSUM over, e.g., {@code Returns}, and stop trading
  * once {@code NumericIndicator.of(cusum).isLessThan(H)} flips, where {@code H}
@@ -71,6 +79,25 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     private final Num outlierClipFactor;
     private final Num scaleDecay;
     private final transient DeviationScaleIndicator deviationScale;
+    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
+
+    @Override
+    public Num getValue(int index) {
+        BarSeries series = getBarSeries();
+        int removedBarsCount = series.getRemovedBarsCount();
+        if (removedBarsCount != observedRemovedBarsCount) {
+            resetForRetainedHead(removedBarsCount);
+        }
+        return super.getValue(index);
+    }
+
+    private synchronized void resetForRetainedHead(int removedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount) {
+            observedRemovedBarsCount = removedBarsCount;
+            invalidateCache();
+            deviationScale.invalidateForRetainedHead();
+        }
+    }
 
     /**
      * Constructor with defaults {@code outlierClipFactor = 3.0} and
@@ -219,6 +246,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             this.allowance = allowance;
             this.scaleDecay = scaleDecay;
             this.oneMinusScaleDecay = indicator.getBarSeries().numFactory().one().minus(scaleDecay);
+        }
+
+        private void invalidateForRetainedHead() {
+            invalidateCache();
         }
 
         @Override

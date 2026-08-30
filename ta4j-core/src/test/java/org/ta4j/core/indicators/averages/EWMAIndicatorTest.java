@@ -33,6 +33,18 @@ public class EWMAIndicatorTest extends AbstractIndicatorTest<MockIndicator, Num>
     }
 
     @Test
+    public void oneBarWindowSeedsAtTheFirstAddressableBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        MockIndicator indicator = new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3));
+        EWMAIndicator ewma = new EWMAIndicator(indicator, 1, 0.5);
+
+        assertEquals(0, ewma.getCountOfUnstableBars());
+        assertNumEquals(1, ewma.getValue(0));
+        assertNumEquals(1.5, ewma.getValue(1));
+        assertNumEquals(2.25, ewma.getValue(2));
+    }
+
+    @Test
     public void includesSourceUnstableBars() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         MockIndicator indicator = new MockIndicator(series, 2, numOf(1), numOf(3), numOf(5));

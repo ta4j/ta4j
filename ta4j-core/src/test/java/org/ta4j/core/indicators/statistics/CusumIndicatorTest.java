@@ -138,6 +138,45 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertTrue(extreme.getValue(1).isGreaterThanOrEqual(numOf(Double.MAX_VALUE)));
     }
 
+    @Test
+    public void reanchorsAfterRetainedHeadPrunes() {
+        // Retained-head pruning invalidates the recursion: the CUSUM must
+        // reseed at the new head instead of publishing values cached against
+        // the discarded prefix.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
+        CusumIndicator pruned = new CusumIndicator(new MockIndicator(series, 0, numOf(1), numOf(1), numOf(1), numOf(1)),
+                2, 0, 3.0, 0.94);
+
+        // S = [1, 2, 3, 4]: the recursion is fully cached across the series.
+        assertNumEquals(4, pruned.getValue(3));
+
+        series.setMaximumBarCount(1);
+
+        // index 3 is the new head: the deviation of the single retained bar is
+        // 2 - 1 - 0 = 1, so the reseeded CUSUM is 1 (not the stale cached 4).
+        assertNumEquals(1, pruned.getValue(3));
+    }
+
+    @Test
+    public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
+        // The winsorization scale must also reseed at the new retained head:
+        // a stale scale would clip the deviation against a bound derived from
+        // the discarded prefix.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 5, 1, -20).build();
+        CusumIndicator pruned = new CusumIndicator(
+                new MockIndicator(series, 0, numOf(1), numOf(5), numOf(1), numOf(-20)), 10, 0, 3.0, 0.94);
+
+        // Fill the caches across the whole series.
+        pruned.getValue(3);
+
+        series.setMaximumBarCount(2);
+
+        // beginIndex = 2. Reseeded S(2) = 10 - 1 = 9, the fresh scale at index
+        // 2 is 9, so the clip bound is 27 and S(3) = 9 + min(30, 27) = 36. A
+        // stale scale (8.7744 -> bound 26.3232) would yield 35.3232.
+        assertNumEquals(36, pruned.getValue(3));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

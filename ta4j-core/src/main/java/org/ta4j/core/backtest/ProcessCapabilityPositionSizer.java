@@ -34,11 +34,18 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * If the statistic is non-finite at the entry index (for example while the
  * indicator is warming up) the sizer fails open and returns {@code baseAmount}.
- * The capability indicator must be bound to a bar series holding the same bars
- * that are being backtested; entry indexes are evaluated against it without
- * further checks. All arithmetic runs in the backtest context's
- * {@link NumFactory}: the capability statistic and the sizing parameters are
- * coerced into it, so mixed-factory compositions do not fail at sizing time.
+ * A statistic that is finite in its own factory but overflows the backtest
+ * context's {@link NumFactory} during coercion (for example a
+ * {@code DecimalNum} statistic of 1e400 coerced into a {@code DoubleNum}
+ * context) follows the same rule by the sign of the overflow: a positive
+ * overflow saturates to the underflow floor — the lesser of the context
+ * factory's epsilon and {@code baseAmount} — while a negative overflow fails
+ * open and returns {@code baseAmount}. The capability indicator must be bound
+ * to a bar series holding the same bars that are being backtested; entry
+ * indexes are evaluated against it without further checks. All arithmetic runs
+ * in the backtest context's {@link NumFactory}: the capability statistic and
+ * the sizing parameters are coerced into it, so mixed-factory compositions do
+ * not fail at sizing time.
  *
  * @since 0.24.2
  */
@@ -78,7 +85,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         }
         Num statisticValue = factory.produces(statistic) ? statistic : factory.numOf(statistic.doubleValue());
         if (!Num.isFinite(statisticValue)) {
-            return baseAmountValue;
+            return statisticValue.isPositive() ? factory.epsilon().min(baseAmountValue) : baseAmountValue;
         }
         Num controlLimitValue = factory.produces(controlLimit) ? controlLimit
                 : factory.numOf(controlLimit.doubleValue());
