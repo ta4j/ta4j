@@ -100,6 +100,21 @@ public class HammerIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean
     }
 
     @Test
+    public void nullOpenIsNotAHammer() {
+        // A bar implementation may expose a null open price; the near-prior
+        // check must not crash on it and must not classify the candle.
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                null, doubleFactory.numOf(10), doubleFactory.numOf(0), doubleFactory.numOf(0)));
+
+        assertFalse(new HammerIndicator(series).getValue(5));
+    }
+
+    @Test
     public void contextBeforeBaselineWindowDoesNotChangeResult() {
         // Pattern candle at index 6 with period 3: the baseline window is [3, 5],
         // so bars before index 3 must not influence the result.

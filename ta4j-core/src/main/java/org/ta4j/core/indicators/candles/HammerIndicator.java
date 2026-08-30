@@ -82,7 +82,13 @@ public class HammerIndicator extends CandlePatternIndicator {
         if (!Num.isFinite(priorLow)) {
             return false;
         }
-        final var bodyBottom = bar.getOpenPrice().min(bar.getClosePrice());
+        final Num open = bar.getOpenPrice();
+        final Num close = bar.getClosePrice();
+        if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
+            return false;
+        }
+        final var bodyBottom = open.min(close);
+
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
                 && thresholds.isShortShadow(index, upperShadow)
                 && !bodyBottom.minus(priorLow)

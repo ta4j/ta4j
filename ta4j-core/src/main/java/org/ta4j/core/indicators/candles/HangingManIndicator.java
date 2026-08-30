@@ -82,7 +82,12 @@ public class HangingManIndicator extends CandlePatternIndicator {
         if (!Num.isFinite(priorHigh)) {
             return false;
         }
-        final var bodyTop = bar.getOpenPrice().max(bar.getClosePrice());
+        final Num open = bar.getOpenPrice();
+        final Num close = bar.getClosePrice();
+        if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
+            return false;
+        }
+        final var bodyTop = open.max(close);
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
                 && thresholds.isShortShadow(index, upperShadow)
                 && !bodyTop.minus(priorHigh)
