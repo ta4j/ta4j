@@ -75,12 +75,12 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         return getClass().getSimpleName() + " baseAmount: " + baseAmount + " controlLimit: " + controlLimit;
     }
 
-    private static double requirePositiveFinite(Number value, String name) {
+    private static Number requirePositiveFinite(Number value, String name) {
         Objects.requireNonNull(value, name + " must not be null");
         double doubleValue = value.doubleValue();
         if (!Double.isFinite(doubleValue) || doubleValue <= 0) {
             throw new IllegalArgumentException(name + " must be > 0");
         }
-        return doubleValue;
+        return value;
     }
 }

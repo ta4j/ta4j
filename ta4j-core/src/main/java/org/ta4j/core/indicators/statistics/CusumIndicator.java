@@ -93,10 +93,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         super(parameters.indicator());
         this.indicator = parameters.indicator();
         NumFactory factory = parameters.indicator().getBarSeries().numFactory();
-        this.targetMean = factory.numOf(parameters.targetMean().doubleValue());
-        this.allowance = factory.numOf(parameters.allowance().doubleValue());
-        this.outlierClipFactor = factory.numOf(parameters.outlierClipFactor().doubleValue());
-        this.scaleDecay = factory.numOf(parameters.scaleDecay().doubleValue());
+        this.targetMean = factory.numOf(parameters.targetMean());
+        this.allowance = factory.numOf(parameters.allowance());
+        this.outlierClipFactor = factory.numOf(parameters.outlierClipFactor());
+        this.scaleDecay = factory.numOf(parameters.scaleDecay());
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
                 this.scaleDecay);
     }
