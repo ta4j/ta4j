@@ -30,8 +30,9 @@ import java.util.Objects;
  * <p>
  * The value is {@code NaN} while warming up, with
  * {@code getCountOfUnstableBars() = indicator.getCountOfUnstableBars() +
- * barCount - 1}, and non-finite inputs propagate {@code NaN} until the next
- * finite bar re-seeds the variance. Smaller decay factors react faster to
+ * barCount - 1}, and non-finite inputs or extreme regime changes whose derived
+ * deviation overflows the numeric representation yield {@code NaN} until the
+ * next finite bar re-seeds the variance. Smaller decay factors react faster to
  * volatility changes at the cost of a noisier estimate.
  *
  * <p>
@@ -108,7 +109,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             return initialVarianceIndicator.getValue(index);
         }
         Num deviation = current.minus(previousMean);
-        return previousVariance.multipliedBy(decay).plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
+        Num updatedVariance = previousVariance.multipliedBy(decay)
+                .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
+        return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
 
     @Override

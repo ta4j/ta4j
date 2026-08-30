@@ -76,6 +76,21 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void extremeGrossReturnsScoreZero() {
+        // Both gross returns equal MAX / 1e-300: DoubleNum overflows the return
+        // and the squared-deviation sum (guarded to zero); DecimalNum stays
+        // finite with zero variance (also zero).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e-300, Double.MAX_VALUE, 1e-300, Double.MAX_VALUE)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0.9, 1.15);
+        assertNumEquals(0, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void returnsZeroWithoutClosedPositions() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
 

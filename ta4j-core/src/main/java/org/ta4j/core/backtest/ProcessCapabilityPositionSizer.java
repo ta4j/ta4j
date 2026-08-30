@@ -35,7 +35,9 @@ import org.ta4j.core.num.NumFactory;
  * indicator is warming up) the sizer fails open and returns {@code baseAmount}.
  * The capability indicator must be bound to a bar series holding the same bars
  * that are being backtested; entry indexes are evaluated against it without
- * further checks.
+ * further checks. All arithmetic runs in the backtest context's
+ * {@link NumFactory}: the capability statistic and the sizing parameters are
+ * coerced into it, so mixed-factory compositions do not fail at sizing time.
  *
  * @since 0.24.2
  */
@@ -52,27 +54,37 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      *                            not be null and must be bound to a
      *                            {@link org.ta4j.core.BarSeries}
      * @param baseAmount          the position amount when the statistic is zero;
-     *                            must be > 0
-     * @param controlLimit        the statistical control limit; must be > 0
+     *                            must be > 0 and finite in the capability
+     *                            indicator's {@link NumFactory}
+     * @param controlLimit        the statistical control limit; must be > 0 and
+     *                            finite in the capability indicator's
+     *                            {@link NumFactory}
      */
     public ProcessCapabilityPositionSizer(Indicator<Num> capabilityIndicator, Number baseAmount, Number controlLimit) {
         this.capabilityIndicator = Objects.requireNonNull(capabilityIndicator, "capabilityIndicator must not be null");
         NumFactory factory = capabilityIndicator.getBarSeries().numFactory();
-        this.baseAmount = factory.numOf(requirePositiveFinite(baseAmount, "baseAmount"));
-        this.controlLimit = factory.numOf(requirePositiveFinite(controlLimit, "controlLimit"));
+        this.baseAmount = requirePositiveFinite(baseAmount, "baseAmount", factory);
+        this.controlLimit = requirePositiveFinite(controlLimit, "controlLimit", factory);
     }
 
     @Override
     public Num amount(PositionSizer.Context context) {
+        NumFactory factory = context.numFactory();
         Num statistic = capabilityIndicator.getValue(context.entryIndex());
+        Num baseAmountValue = factory.produces(baseAmount) ? baseAmount : factory.numOf(baseAmount.doubleValue());
         if (!Num.isFinite(statistic)) {
-            return baseAmount;
+            return baseAmountValue;
         }
-        Num standardized = statistic.max(context.numFactory().zero()).dividedBy(controlLimit);
-        Num damped = baseAmount
-                .multipliedBy(context.numFactory().one().dividedBy(context.numFactory().one().plus(standardized)));
+        Num statisticValue = factory.produces(statistic) ? statistic : factory.numOf(statistic.doubleValue());
+        if (!Num.isFinite(statisticValue)) {
+            return baseAmountValue;
+        }
+        Num controlLimitValue = factory.produces(controlLimit) ? controlLimit
+                : factory.numOf(controlLimit.doubleValue());
+        Num standardized = statisticValue.max(factory.zero()).dividedBy(controlLimitValue);
+        Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
         if (!Num.isFinite(damped) || damped.isZero()) {
-            return context.numFactory().epsilon();
+            return factory.epsilon();
         }
         return damped;
     }
@@ -82,12 +94,17 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         return getClass().getSimpleName() + " baseAmount: " + baseAmount + " controlLimit: " + controlLimit;
     }
 
-    private static Number requirePositiveFinite(Number value, String name) {
+    private static Num requirePositiveFinite(Number value, String name, NumFactory factory) {
         Objects.requireNonNull(value, name + " must not be null");
-        double doubleValue = value.doubleValue();
-        if (!Double.isFinite(doubleValue) || doubleValue <= 0) {
+        if (value instanceof Double || value instanceof Float) {
+            if (!Double.isFinite(value.doubleValue())) {
+                throw new IllegalArgumentException(name + " must be finite");
+            }
+        }
+        Num num = factory.numOf(value);
+        if (!Num.isFinite(num) || !num.isPositive()) {
             throw new IllegalArgumentException(name + " must be > 0");
         }
-        return value;
+        return num;
     }
 }

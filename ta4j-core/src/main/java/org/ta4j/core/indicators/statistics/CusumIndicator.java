@@ -47,6 +47,13 @@ import org.ta4j.core.num.NumFactory;
  * triggers nor resets the statistic.
  *
  * <p>
+ * If the derived deviation or the accumulated CUSUM overflows the numeric
+ * representation (a {@code DoubleNum} series jumping between opposite
+ * extremes), the statistic saturates at the largest finite magnitude instead of
+ * publishing infinity, so a composed kill switch still reacts to the extreme
+ * observation.
+ *
+ * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
  * return stream: build the CUSUM over, e.g., {@code Returns}, and stop trading
  * once {@code NumericIndicator.of(cusum).isLessThan(H)} flips, where {@code H}
@@ -145,6 +152,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
         }
         Num deviation = targetMean.minus(current).minus(allowance);
+        if (!Num.isFinite(deviation)) {
+            deviation = getBarSeries().numFactory()
+                    .numOf(deviation.isNegative() ? -Double.MAX_VALUE : Double.MAX_VALUE);
+        }
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
             if (Num.isFinite(previousScale)) {
@@ -156,7 +167,11 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (!Num.isFinite(previous)) {
             previous = getBarSeries().numFactory().zero();
         }
-        return previous.plus(deviation).max(getBarSeries().numFactory().zero());
+        Num updated = previous.plus(deviation);
+        if (!Num.isFinite(updated)) {
+            updated = getBarSeries().numFactory().numOf(Double.MAX_VALUE);
+        }
+        return updated.max(getBarSeries().numFactory().zero());
     }
 
     @Override

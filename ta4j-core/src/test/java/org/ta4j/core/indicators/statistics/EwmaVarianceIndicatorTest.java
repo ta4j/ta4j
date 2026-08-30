@@ -114,6 +114,21 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertThrows(IllegalArgumentException.class, () -> new EwmaVarianceIndicator(source, 3, Double.NaN));
     }
 
+    @Test
+    public void extremeRegimeChangeYieldsNaNInsteadOfInfinity() {
+        // The jump to 2e154 squares a deviation of ~2e154: DoubleNum overflows
+        // the squared deviation to infinity and must yield NaN (reseeding on
+        // the next finite bar); DecimalNum carries the value exactly.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(-100, -100, -100, 2e154)
+                .build();
+        EwmaVarianceIndicator extreme = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(-100), numOf(-100), numOf(-100), numOf(2e154)), 3, 0.5);
+
+        Num variance = extreme.getValue(3);
+        assertTrue(variance.isNaN() || Num.isFinite(variance));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

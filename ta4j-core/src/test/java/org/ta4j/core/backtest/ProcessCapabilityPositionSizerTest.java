@@ -6,6 +6,7 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -80,6 +81,36 @@ public class ProcessCapabilityPositionSizerTest {
         // the damped amount to zero; the sizer floors it at the factory epsilon
         // instead of failing the backtest with a non-positive amount.
         assertNumEquals(numFactory.epsilon(), sizer.amount(context(series, 1, 1)));
+    }
+
+    @Test
+    public void acceptsControlLimitBeyondDoubleRangeForDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+            FixedIndicator<Num> statistic = new FixedIndicator<>(series, DECIMAL_NUM_FACTORY.numOf(0),
+                    DECIMAL_NUM_FACTORY.numOf(5));
+            PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 100, new BigDecimal("1e400"));
+
+            // DecimalNum carries 1e400 exactly; the denominator 1 + 5/1e400
+            // rounds back to 1, leaving the full base amount.
+            assertNumEquals(100, sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
+    public void coercesStatisticIntoContextFactory() {
+        // A DecimalNum capability statistic consumed in a DoubleNum backtest
+        // context must be coerced instead of mixing factories.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(5));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, 10);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            // 100 / (1 + 5 / 10) = 200 / 3.
+            assertNumEquals(200.0 / 3.0, sizer.amount(context(series, 1, 1)));
+        });
     }
 
     @Test

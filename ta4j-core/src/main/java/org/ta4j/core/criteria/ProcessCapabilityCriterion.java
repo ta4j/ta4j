@@ -39,7 +39,9 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * An empty record or a record whose gross returns have zero variance returns
  * {@code zero()}: with no variation there is no evidence of capability, and the
- * criterion is neutral rather than infinitely good.
+ * criterion is neutral rather than infinitely good. Extreme gross returns that
+ * overflow the variance accumulation are likewise treated as incapable and
+ * score {@code zero()}.
  *
  * @since 0.24.2
  */
@@ -120,6 +122,9 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         for (Num value : valueArray) {
             Num deviation = value.minus(mean);
             squaredDeviationSum = squaredDeviationSum.plus(deviation.multipliedBy(deviation));
+        }
+        if (!Num.isFinite(squaredDeviationSum)) {
+            return factory.zero();
         }
         Num standardDeviation = squaredDeviationSum.dividedBy(factory.numOf(valueArray.length)).sqrt();
         if (standardDeviation.isZero()) {

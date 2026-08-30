@@ -120,6 +120,24 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertThrows(NullPointerException.class, () -> new CusumIndicator(null, 0, 0.005));
     }
 
+    @Test
+    public void saturatesOverflowingDeviationAndAccumulator() {
+        // Deviations and accumulations that overflow the numeric representation
+        // (a DoubleNum series jumping between opposite extremes) must saturate
+        // at the largest finite magnitude instead of leaking infinity.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(-Double.MAX_VALUE, Double.MAX_VALUE / 2)
+                .build();
+        CusumIndicator extreme = new CusumIndicator(
+                new MockIndicator(series, 0, numOf(-Double.MAX_VALUE), numOf(Double.MAX_VALUE / 2)), Double.MAX_VALUE,
+                0, 3.0, 0.5);
+
+        assertTrue(Num.isFinite(extreme.getValue(0)));
+        assertTrue(extreme.getValue(0).isGreaterThanOrEqual(numOf(Double.MAX_VALUE)));
+        assertTrue(Num.isFinite(extreme.getValue(1)));
+        assertTrue(extreme.getValue(1).isGreaterThanOrEqual(numOf(Double.MAX_VALUE)));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
