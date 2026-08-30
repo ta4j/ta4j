@@ -29,6 +29,12 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final Num power; // Smoothing power factor (default is 2)
     private final Map<Integer, JmaData> jmaDataMap;
     private final NumFactory numFactory;
+    /**
+     * Series begin index for which {@link #jmaDataMap} currently holds a chain.
+     * Only mutated from {@link #calculate(int)}, which runs while the cache write
+     * lock is held.
+     */
+    private int chainedMapBeginIndex = Integer.MIN_VALUE;
     private final Num beta;
     private final Num phaseRatio;
     private final Num alpha;
@@ -71,12 +77,21 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-
         NumFactory numFactory = indicator.getBarSeries().numFactory();
         Num currentPrice = indicator.getValue(index);
         Num zero = numFactory.zero();
+        int beginIndex = indicator.getBarSeries().getBeginIndex();
 
-        if (index <= indicator.getBarSeries().getBeginIndex()) {
+        if (chainedMapBeginIndex != beginIndex) {
+            // A bounded-series head advance (or a first read) shifted the
+            // chain's anchor: drop every entry so the chain is rebuilt from the
+            // new first retained bar under this calculate() call's cache write
+            // lock. The policy hook stays side-effect free and races nothing.
+            jmaDataMap.clear();
+            chainedMapBeginIndex = beginIndex;
+        }
+
+        if (index <= beginIndex) {
             jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
             return currentPrice;
         }
@@ -86,7 +101,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
             // The chain was severed (for example a bounded-series head advance
             // cleared the map): rebuild every predecessor from the first
             // retained bar, which seeds the chain and terminates the loop.
-            rebuildDataMapFrom(indicator.getBarSeries().getBeginIndex(), index);
+            rebuildDataMapFrom(beginIndex, index);
             previousJMA = jmaDataMap.get(index - 1);
         }
 
@@ -116,16 +131,20 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
     /**
      * The map chains every value from its predecessor, so a bounded-series head
-     * advance invalidates the whole chain: clear the map and keep nothing of the
-     * base cache, forcing each value to be recomputed from the new first retained
-     * bar.
+     * advance invalidates the whole chain: keep nothing of the base cache, forcing
+     * each value to be recomputed from the new first retained bar.
+     *
+     * <p>
+     * This hook is a pure policy query: {@link CachedIndicator} invokes it without
+     * the cache write lock, so it must not mutate shared state. The chained map is
+     * reset inside {@link #calculate(int)} when the observed begin index changed,
+     * which runs under the write lock.
      *
      * @param firstRetainedIndex the first retained bar index after the advance
      * @return {@link Integer#MAX_VALUE}, so no cached value survives
      */
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        jmaDataMap.clear();
         return Integer.MAX_VALUE;
     }
 
