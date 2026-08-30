@@ -146,6 +146,27 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void subUnitSigmaKeepsFiniteCapability() {
+        // Gross returns 0.5 and 1.5 with a one-sided lower limit of
+        // -Double.MAX_VALUE: mean 1 and sigma 0.5 push the numerator to MAX,
+        // so dividing by sigma first overflows even though the final Cpk
+        // (MAX / 1.5) is representable; dividing by three first keeps it
+        // finite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 0.5, 1, 1.5).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(-Double.MAX_VALUE);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        Num expected = numFactory.numOf(Double.MAX_VALUE)
+                .dividedBy(numFactory.numOf(3))
+                .dividedBy(numFactory.numOf(0.5));
+        assertNumEquals(expected, capability, expected.doubleValue() * 1e-9);
+    }
+
+    @Test
     public void rejectsInvalidSpecificationLimits() {
         assertThrows(NullPointerException.class, () -> new ProcessCapabilityCriterion(null));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(Double.NaN));
