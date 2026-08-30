@@ -74,6 +74,30 @@ public class BearishHaramiIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
+    public void shouldTreatSignedZeroContainmentAsInclusive() {
+        // Baseline bodies of 9 so that the previous body 10 counts as long.
+        // Bullish previous body [0.0, 10] and bearish current body [-0.0, 2]
+        // share a numerically zero bottom: containment is inclusive, so the
+        // sign bit must not break it regardless of num factory.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 0, 9);
+        }
+        addBar(series, 0.0, 10);
+        addBar(series, 2, -0.0);
+        assertThat(new BearishHaramiIndicator(series).getValue(6)).isTrue();
+
+        // Control: containment across genuinely distinct non-zero levels.
+        BarSeries control = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(control, 0, 9);
+        }
+        addBar(control, 0.0, 10);
+        addBar(control, 2, 1);
+        assertThat(new BearishHaramiIndicator(control).getValue(6)).isTrue();
+    }
+
+    @Test
     public void shouldNotDetectPatternWhenPreviousBodyIsNotLong() {
         // previous body exactly at the prior-average body (10): strict > required
         BearishHaramiIndicator indicator = new BearishHaramiIndicator(haramiSeries(5, 15, 22, 20));

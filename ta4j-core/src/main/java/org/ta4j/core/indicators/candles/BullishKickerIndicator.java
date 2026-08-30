@@ -31,6 +31,10 @@ import org.ta4j.core.num.Num;
  * open strictly above the top of the first body.
  *
  * <p>
+ * The default {@code averagePeriod} is
+ * {@value CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} bars.
+ *
+ * <p>
  * The polarity of the pattern is owned by the second candle: for the bullish
  * kicker the second candle is bullish and the first candle is bearish, both
  * opposite and gap-separated.

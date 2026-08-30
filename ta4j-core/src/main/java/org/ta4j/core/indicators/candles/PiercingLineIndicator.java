@@ -30,6 +30,11 @@ import org.ta4j.core.num.Num;
  * piercing line.
  *
  * <p>
+ * The default {@code averagePeriod} is
+ * {@value CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} bars and the default
+ * {@code penetration} is {@value #DEFAULT_PENETRATION}.
+ *
+ * <p>
  * This indicator does not evaluate trend or direction context: it reports the
  * two-candle morphology only. The conventional bullish reversal interpretation
  * after a downtrend is context this class does not own.
@@ -94,9 +99,15 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
         }
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        if (firstBar.isBearish() && thresholds.isLongBody(index - 1) && secondBar.isBullish()
-                && Num.isFinite(firstBar.getLowPrice()) && Num.isFinite(secondBar.getOpenPrice())
-                && secondBar.getOpenPrice().isLessThan(firstBar.getLowPrice())) {
+        Num firstLow = firstBar.getLowPrice();
+        Num secondOpen = secondBar.getOpenPrice();
+        // Signed zero is normalized in the strict clause: DoubleNum orders
+        // -0.0 below +0.0, so two numerically zero endpoints must not count
+        // as a strict gap. The finite guards are evaluated first so that
+        // missing prices short-circuit before any comparison.
+        if (firstBar.isBearish() && thresholds.isLongBody(index - 1) && secondBar.isBullish() && Num.isFinite(firstLow)
+                && Num.isFinite(secondOpen) && !(secondOpen.isZero() && firstLow.isZero())
+                && secondOpen.isLessThan(firstLow)) {
             Num firstBodyBottom = firstBar.getOpenPrice().min(firstBar.getClosePrice());
             Num firstBody = firstBar.getClosePrice().minus(firstBar.getOpenPrice()).abs();
             Num requiredClose = firstBodyBottom.plus(firstBody.multipliedBy(penetrationValue));

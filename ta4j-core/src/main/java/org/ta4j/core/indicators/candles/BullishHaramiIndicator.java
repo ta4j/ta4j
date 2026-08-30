@@ -28,6 +28,10 @@ import org.ta4j.core.num.Num;
  * endpoint with the previous body and still match.
  *
  * <p>
+ * The default {@code averagePeriod} is
+ * {@value CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} bars.
+ *
+ * <p>
  * The direction of the pattern is owned by the first candle: for the bullish
  * Harami the first candle must be bearish and the second candle must be
  * bullish, the opposite color.
@@ -85,7 +89,14 @@ public class BullishHaramiIndicator extends CandlePatternIndicator {
             Num prevBodyBottom = prevBar.getOpenPrice().min(prevBar.getClosePrice());
             Num currBodyTop = currBar.getOpenPrice().max(currBar.getClosePrice());
             Num currBodyBottom = currBar.getOpenPrice().min(currBar.getClosePrice());
-            return currBodyTop.isLessThanOrEqual(prevBodyTop) && currBodyBottom.isGreaterThanOrEqual(prevBodyBottom);
+            // Signed zero is normalized in the inclusive clauses: DoubleNum
+            // orders -0.0 below +0.0, so two numerically zero endpoints must
+            // still count as equal (containment is inclusive).
+            boolean topContained = currBodyTop.isLessThanOrEqual(prevBodyTop)
+                    || (currBodyTop.isZero() && prevBodyTop.isZero());
+            boolean bottomContained = currBodyBottom.isGreaterThanOrEqual(prevBodyBottom)
+                    || (currBodyBottom.isZero() && prevBodyBottom.isZero());
+            return topContained && bottomContained;
         }
         return false;
     }

@@ -105,6 +105,18 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     }
 
     @Test
+    public void shouldNotCountSignedZeroGapBelowFirstLow() {
+        // First low and second open are +0.0 and -0.0: the sign bit must not
+        // count as a strict gap below the first low, regardless of num factory.
+        PiercingLineIndicator indicator = new PiercingLineIndicator(piercingSeries(20, +0.0, -0.0, 10));
+        assertThat(indicator.getValue(6)).isFalse();
+
+        // Control: a genuine gap below the first low still matches.
+        PiercingLineIndicator control = new PiercingLineIndicator(piercingSeries(20, +0.0, -5, 10));
+        assertThat(control.getValue(6)).isTrue();
+    }
+
+    @Test
     public void shouldNotDetectPatternWhenCloseDoesNotReachPenetration() {
         // required close is 10 + 0.5 * 20 = 20; 19 is not deep enough
         PiercingLineIndicator indicator = new PiercingLineIndicator(piercingSeries(30, 10, 8, 19));

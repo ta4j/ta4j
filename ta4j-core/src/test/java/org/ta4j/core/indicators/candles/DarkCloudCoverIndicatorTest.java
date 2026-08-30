@@ -105,6 +105,18 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
     }
 
     @Test
+    public void shouldNotCountSignedZeroGapAboveFirstHigh() {
+        // First high and second open are -0.0 and +0.0: the sign bit must not
+        // count as a strict gap above the first high, regardless of num factory.
+        DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(darkCloudSeries(-20, -0.0, +0.0, -10));
+        assertThat(indicator.getValue(6)).isFalse();
+
+        // Control: a genuine gap above the first high still matches.
+        DarkCloudCoverIndicator control = new DarkCloudCoverIndicator(darkCloudSeries(-20, -0.0, +5, -10));
+        assertThat(control.getValue(6)).isTrue();
+    }
+
+    @Test
     public void shouldNotDetectPatternWhenCloseDoesNotReachPenetration() {
         // required close is 30 - 0.5 * 20 = 20; 21 is not deep enough
         DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(darkCloudSeries(10, 30, 32, 21));

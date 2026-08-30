@@ -30,6 +30,11 @@ import org.ta4j.core.num.Num;
  * cloud cover.
  *
  * <p>
+ * The default {@code averagePeriod} is
+ * {@value CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} bars and the default
+ * {@code penetration} is {@value #DEFAULT_PENETRATION}.
+ *
+ * <p>
  * This indicator does not evaluate trend or direction context: it reports the
  * two-candle morphology only. The conventional bearish reversal interpretation
  * after an uptrend is context this class does not own.
@@ -94,9 +99,15 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
         }
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        if (firstBar.isBullish() && thresholds.isLongBody(index - 1) && secondBar.isBearish()
-                && Num.isFinite(firstBar.getHighPrice()) && Num.isFinite(secondBar.getOpenPrice())
-                && secondBar.getOpenPrice().isGreaterThan(firstBar.getHighPrice())) {
+        Num firstHigh = firstBar.getHighPrice();
+        Num secondOpen = secondBar.getOpenPrice();
+        // Signed zero is normalized in the strict clause: DoubleNum orders
+        // -0.0 below +0.0, so two numerically zero endpoints must not count
+        // as a strict gap. The finite guards are evaluated first so that
+        // missing prices short-circuit before any comparison.
+        if (firstBar.isBullish() && thresholds.isLongBody(index - 1) && secondBar.isBearish() && Num.isFinite(firstHigh)
+                && Num.isFinite(secondOpen) && !(secondOpen.isZero() && firstHigh.isZero())
+                && secondOpen.isGreaterThan(firstHigh)) {
             Num firstBodyTop = firstBar.getOpenPrice().max(firstBar.getClosePrice());
             Num firstBody = firstBar.getClosePrice().minus(firstBar.getOpenPrice()).abs();
             Num requiredClose = firstBodyTop.minus(firstBody.multipliedBy(penetrationValue));
