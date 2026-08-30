@@ -33,7 +33,11 @@ import org.ta4j.core.num.NumFactory;
  * </pre>
  *
  * so isolated outliers do not dominate the accumulated statistic; only
- * persistent deviations from the target raise {@code S}.
+ * persistent deviations from the target raise {@code S}. When the previous
+ * deviation scale is zero (all raw increments so far were exactly zero), the
+ * winsorization bound is zero: the first non-zero deviation is fully damped and
+ * its raw magnitude bootstraps {@code sigmaHat}, so a single outlier cannot
+ * trip the statistic right after a perfectly on-target run.
  *
  * <p>
  * While the source indicator is warming up ({@code index - beginIndex <
@@ -91,12 +95,12 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
     private CusumIndicator(Parameters parameters) {
         super(parameters.indicator());
+
         this.indicator = parameters.indicator();
-        NumFactory factory = parameters.indicator().getBarSeries().numFactory();
-        this.targetMean = factory.numOf(parameters.targetMean());
-        this.allowance = factory.numOf(parameters.allowance());
-        this.outlierClipFactor = factory.numOf(parameters.outlierClipFactor());
-        this.scaleDecay = factory.numOf(parameters.scaleDecay());
+        this.targetMean = parameters.targetMean();
+        this.allowance = parameters.allowance();
+        this.outlierClipFactor = parameters.outlierClipFactor();
+        this.scaleDecay = parameters.scaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
                 this.scaleDecay);
     }
@@ -107,24 +111,26 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (indicator.getBarSeries() == null) {
             throw new IllegalArgumentException("indicator must be bound to a BarSeries");
         }
-        requireFinite(targetMean, "targetMean");
-        requireFinite(allowance, "allowance");
-        requireFinite(outlierClipFactor, "outlierClipFactor");
-        requireFinite(scaleDecay, "scaleDecay");
-        if (allowance.doubleValue() < 0) {
+        NumFactory factory = indicator.getBarSeries().numFactory();
+        Num validatedTargetMean = requireFiniteNum(targetMean, "targetMean", factory);
+        Num validatedAllowance = requireFiniteNum(allowance, "allowance", factory);
+        Num validatedOutlierClipFactor = requireFiniteNum(outlierClipFactor, "outlierClipFactor", factory);
+        Num validatedScaleDecay = requireFiniteNum(scaleDecay, "scaleDecay", factory);
+        if (validatedAllowance.isNegative()) {
             throw new IllegalArgumentException("allowance must be >= 0");
         }
-        if (outlierClipFactor.doubleValue() <= 0) {
+        if (!validatedOutlierClipFactor.isPositive()) {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
-        if (scaleDecay.doubleValue() <= 0 || scaleDecay.doubleValue() >= 1) {
+        if (!validatedScaleDecay.isPositive() || validatedScaleDecay.isGreaterThanOrEqual(factory.one())) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
         }
-        return new Parameters(indicator, targetMean, allowance, outlierClipFactor, scaleDecay);
+        return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
+                validatedScaleDecay);
     }
 
-    private record Parameters(Indicator<Num> indicator, Number targetMean, Number allowance, Number outlierClipFactor,
-            Number scaleDecay) {
+    private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
+            Num scaleDecay) {
     }
 
     @Override
@@ -141,7 +147,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         Num deviation = targetMean.minus(current).minus(allowance);
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
-            if (Num.isFinite(previousScale) && !previousScale.isZero()) {
+            if (Num.isFinite(previousScale)) {
                 Num bound = previousScale.multipliedBy(outlierClipFactor);
                 deviation = deviation.max(bound.negate()).min(bound);
             }
@@ -163,13 +169,18 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         return getClass().getSimpleName() + " targetMean: " + targetMean + " allowance: " + allowance;
     }
 
-    private static double requireFinite(Number value, String name) {
+    private static Num requireFiniteNum(Number value, String name, NumFactory factory) {
         Objects.requireNonNull(value, name + " must not be null");
-        double doubleValue = value.doubleValue();
-        if (!Double.isFinite(doubleValue)) {
+        if (value instanceof Double || value instanceof Float) {
+            if (!Double.isFinite(value.doubleValue())) {
+                throw new IllegalArgumentException(name + " must be finite");
+            }
+        }
+        Num num = factory.numOf(value);
+        if (!Num.isFinite(num)) {
             throw new IllegalArgumentException(name + " must be finite");
         }
-        return doubleValue;
+        return num;
     }
 
     /**

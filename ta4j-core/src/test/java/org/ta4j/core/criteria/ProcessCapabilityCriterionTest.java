@@ -14,6 +14,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
@@ -41,6 +42,25 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion oneSided = getCriterion(0.9);
         assertNumEquals(0.15 / (3 * Math.sqrt(0.005)), oneSided.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void scoresArePinnedToMultiplicativeReturns() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 104.5, 114.95, 100, 95)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
+        AnalysisCriterion cpk = getCriterion(0.9, 1.15);
+        Num expected = cpk.calculate(series, tradingRecord);
+
+        ReturnRepresentation original = ReturnRepresentationPolicy.getDefaultRepresentation();
+        try {
+            ReturnRepresentationPolicy.setDefaultRepresentation(ReturnRepresentation.DECIMAL);
+            assertNumEquals(expected, cpk.calculate(series, tradingRecord));
+        } finally {
+            ReturnRepresentationPolicy.setDefaultRepresentation(original);
+        }
     }
 
     @Test

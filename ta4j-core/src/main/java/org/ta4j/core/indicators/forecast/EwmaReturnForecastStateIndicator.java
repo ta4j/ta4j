@@ -8,13 +8,12 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
-import org.ta4j.core.indicators.statistics.VarianceIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -79,7 +78,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         Indicator<Num> mean = new EWMAIndicator(returnIndicator, initializationBarCount, decayFactor);
         this.returnIndicator = returnIndicator;
         this.meanIndicator = mean;
-        this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, mean, initializationBarCount, decayFactor);
+        this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, initializationBarCount, decayFactor);
         this.observationCountIndicator = new ValidObservationCountIndicator(returnIndicator);
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
     }
@@ -182,52 +181,4 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         }
     }
 
-    private static final class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final Indicator<Num> meanIndicator;
-        private final Indicator<Num> initialVarianceIndicator;
-        private final int barCount;
-        private final double decayFactor;
-
-        private EwmaVarianceIndicator(Indicator<Num> indicator, Indicator<Num> meanIndicator, int barCount,
-                double decayFactor) {
-            super(IndicatorUtils.requireSameSeries(indicator, meanIndicator));
-            this.indicator = indicator;
-            this.meanIndicator = meanIndicator;
-            this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);
-            this.barCount = barCount;
-            this.decayFactor = decayFactor;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            if (index < getCountOfUnstableBars()) {
-                return NaN.NaN;
-            }
-            Num current = indicator.getValue(index);
-            if (!Num.isFinite(current)) {
-                return NaN.NaN;
-            }
-            Num previousVariance = getValue(index - 1);
-            Num previousMean = meanIndicator.getValue(index - 1);
-            if (!Num.isFinite(previousVariance) || !Num.isFinite(previousMean)) {
-                return initialVariance(index);
-            }
-            Num decay = getBarSeries().numFactory().numOf(decayFactor);
-            Num oneMinusDecay = getBarSeries().numFactory().one().minus(decay);
-            Num deviation = current.minus(previousMean);
-            return previousVariance.multipliedBy(decay)
-                    .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return Math.max(meanIndicator.getCountOfUnstableBars(), indicator.getCountOfUnstableBars() + barCount - 1);
-        }
-
-        private Num initialVariance(int index) {
-            return initialVarianceIndicator.getValue(index);
-        }
-    }
 }

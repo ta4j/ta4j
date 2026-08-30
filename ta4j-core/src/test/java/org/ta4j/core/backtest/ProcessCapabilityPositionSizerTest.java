@@ -71,6 +71,18 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void underflowReturnsEpsilonAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(Double.MAX_VALUE));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 100, Double.MIN_NORMAL);
+
+        // DoubleNum: statistic / controlLimit overflows to infinity, collapsing
+        // the damped amount to zero; the sizer floors it at the factory epsilon
+        // instead of failing the backtest with a non-positive amount.
+        assertNumEquals(numFactory.epsilon(), sizer.amount(context(series, 1, 1)));
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5), numOf(15));

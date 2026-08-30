@@ -56,6 +56,25 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void rejectsBarCountThatOverflowsUnstableCount() {
+        // getCountOfUnstableBars() adds barCount - 1 to the source's unstable-bar
+        // count in int arithmetic; reject combinations that would overflow it.
+        Indicator<Num> unstable = new MockIndicator(data, 2, numOf(1), numOf(2), numOf(3));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new EwmaVarianceIndicator(unstable, Integer.MAX_VALUE, 0.94));
+    }
+
+    @Test
+    public void rejectsDecayFactorOutsideOpenUnitInterval() {
+        ClosePriceIndicator close = new ClosePriceIndicator(data);
+
+        assertThrows(IllegalArgumentException.class, () -> new EwmaVarianceIndicator(close, 3, 0));
+        assertThrows(IllegalArgumentException.class, () -> new EwmaVarianceIndicator(close, 3, 1));
+        assertThrows(IllegalArgumentException.class, () -> new EwmaVarianceIndicator(close, 3, Double.NaN));
+    }
+
+    @Test
     public void nonFiniteBarReseedsOnceGapLeavesSeedWindow() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6, 7).build();
         EwmaVarianceIndicator gapped = new EwmaVarianceIndicator(

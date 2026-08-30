@@ -68,6 +68,19 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void firstOutlierAfterOnTargetRunIsFullyDamped() {
+        // All raw increments so far were exactly zero, so the deviation scale is
+        // zero when the first outlier arrives: the winsorization bound is zero
+        // and the outlier is fully damped while bootstrapping the scale.
+        MockIndicator bootstrap = new MockIndicator(data, 0, numOf(0), numOf(-100), numOf(-100));
+        CusumIndicator bootstrapCusum = new CusumIndicator(bootstrap, 0, 0, 3.0, 0.5);
+
+        assertNumEquals(0, bootstrapCusum.getValue(0));
+        assertNumEquals(0, bootstrapCusum.getValue(1));
+        assertNumEquals(100, bootstrapCusum.getValue(2));
+    }
+
+    @Test
     public void propagatesSourceUnstableBars() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         MockIndicator unstable = new MockIndicator(series, 2, numOf(0.010), numOf(0.010), numOf(0.010), numOf(0.010));

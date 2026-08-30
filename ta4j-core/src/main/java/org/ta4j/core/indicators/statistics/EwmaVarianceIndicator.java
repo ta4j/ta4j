@@ -81,6 +81,11 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (Double.isNaN(decayFactor) || decayFactor <= 0 || decayFactor >= 1) {
             throw new IllegalArgumentException("decayFactor must be in (0, 1)");
         }
+
+        int unstableBars = indicator.getCountOfUnstableBars();
+        if (barCount - 1 > Integer.MAX_VALUE - unstableBars) {
+            throw new IllegalArgumentException("barCount must not overflow the unstable-bar count");
+        }
         return indicator;
     }
 

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +31,10 @@ import org.ta4j.core.num.NumFactory;
  * with the missing side dropped for one-sided specifications. A centered,
  * low-variance return stream scores high (capable), while drift towards or
  * variance beyond the limits scores low. The higher the value, the better
- * ({@link #betterThan(Num, Num)} is {@code isGreaterThan}).
+ * ({@link #betterThan(Num, Num)} is {@code isGreaterThan}). The gross returns
+ * are multiplicative ({@link ReturnRepresentation#MULTIPLICATIVE}) and pinned
+ * at construction, so a later global {@link ReturnRepresentationPolicy} change
+ * cannot alter scores.
  *
  * <p>
  * An empty record or a record whose gross returns have zero variance returns
@@ -43,7 +47,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
 
     private final Number lsl;
     private final Number usl;
-    private final GrossReturnCriterion grossReturnCriterion = new GrossReturnCriterion();
+    private final GrossReturnCriterion grossReturnCriterion = new GrossReturnCriterion(
+            ReturnRepresentation.MULTIPLICATIVE);
 
     /**
      * Constructor for a one-sided, lower specification limit.
@@ -75,17 +80,20 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
 
         private Limits {
             Objects.requireNonNull(lsl, "lsl must not be null");
-            if (!Double.isFinite(lsl.doubleValue())) {
-                throw new IllegalArgumentException("lsl must be finite");
-            }
+            BigDecimal lslValue = decimalValue(lsl, "lsl");
             if (usl != null) {
-                if (!Double.isFinite(usl.doubleValue())) {
-                    throw new IllegalArgumentException("usl must be finite");
-                }
-                if (lsl.doubleValue() >= usl.doubleValue()) {
+                if (lslValue.compareTo(decimalValue(usl, "usl")) >= 0) {
                     throw new IllegalArgumentException("lsl must be less than usl");
                 }
             }
+        }
+    }
+
+    private static BigDecimal decimalValue(Number value, String name) {
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(name + " must be finite", e);
         }
     }
 
