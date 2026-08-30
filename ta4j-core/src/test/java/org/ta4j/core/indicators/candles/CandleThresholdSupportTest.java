@@ -24,9 +24,11 @@ import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.NonFiniteBar;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class CandleThresholdSupportTest {
 
@@ -272,12 +274,44 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
-    public void overflowedPriorRangeKeepsDojiDecidable() {
-        // The prior window's average range overflows from finite endpoints;
-        // the infinite baseline keeps the doji comparison decidable, so a flat
-        // candle still qualifies as a doji instead of being rejected as
-        // unavailable data.
+    public void overflowedShadowBeatsDoubledBaselineAcrossFactories() {
+        // A period-1 baseline of 0.75 * MAX doubles to infinity under the old
+        // product comparison, collapsing the 1.8 * MAX upper shadow to the same
+        // value in DoubleNum. Dividing the shadow by the factor first preserves
+        // the strict ordering, so both factories agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.75 * Double.MAX_VALUE, 0, 0); // index 0: baseline body
+            addExtremeCandle(series, -0.8 * Double.MAX_VALUE, -0.8 * Double.MAX_VALUE, Double.MAX_VALUE,
+                    -0.8 * Double.MAX_VALUE); // index 1: upper shadow 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void nonFiniteSourcePriceDisqualifiesShortShadow() {
+        // A bar whose low price is non-finite is missing data: the derived
+        // lower shadow is negative-infinite and must never qualify as short,
+        // even though it is "not greater" than the baseline.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                series.numFactory().numOf(1), series.numFactory().numOf(2),
+                series.numFactory().numOf(Double.POSITIVE_INFINITY), series.numFactory().numOf(2)));
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertFalse(support.isShortShadow(5, support.lowerShadow()));
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsDojiDecidable() {
+        // The prior window contains one overflowed range (2 * MAX); the
+        // half-scale source keeps every operand representable, so the baseline
+        // stays finite and a flat candle still qualifies as a doji.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+
         addBars(series, 4, 10, 0, 0); // indexes 0-3: body 10, range 10
         addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
         addBar(series, 0, 0, 0); // index 5: flat candle, body 0, range 0

@@ -15,6 +15,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -31,13 +32,16 @@ import org.ta4j.core.num.NumFactory;
  * <pre>
  * average(m[index - averagePeriod] ... m[index - 1])
  * </pre>
- * 
+ *
  * implemented as {@code new PreviousValueIndicator(new PriorAverageIndicator(m,
- * averagePeriod))}. {@link PriorAverageIndicator} delegates to an SMA and, when
- * the SMA accumulator overflows into a non-finite value, re-averages the same
- * window with every term normalized by the window's largest magnitude. The
- * candle under evaluation therefore never influences its own baseline, which
- * keeps the pattern evaluation causal (look-ahead free).
+ * averagePeriod))}, where {@code m} is the half-scale source (half body or half
+ * range). {@link PriorAverageIndicator} averages half-scale values, so its
+ * intermediate sums stay finite whenever the restored full-scale mean is
+ * representable, and doubles the result; when the SMA accumulator still
+ * overflows into a non-finite value, the same window is re-averaged as an
+ * incremental mean before doubling. The candle under evaluation therefore never
+ * influences its own baseline, which keeps the pattern evaluation causal
+ * (look-ahead free).
  *
  * <p>
  * Recommended threshold profile (documented defaults):
@@ -328,6 +332,8 @@ final class CandleThresholdSupport {
     private final Indicator<Num> range;
     private final Indicator<Num> upperShadow;
     private final Indicator<Num> lowerShadow;
+    private final Indicator<Num> halfBody;
+    private final Indicator<Num> halfRange;
     private final Indicator<Num> priorAverageBody;
     private final Indicator<Num> priorAverageRange;
     private final Num longBodyFactor;
@@ -366,8 +372,10 @@ final class CandleThresholdSupport {
         this.range = new CandleRangeIndicator(this.series);
         this.upperShadow = new UpperShadowIndicator(this.series);
         this.lowerShadow = new LowerShadowIndicator(this.series);
-        this.priorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(body, averagePeriod));
-        this.priorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(range, averagePeriod));
+        this.halfBody = new HalfBodyIndicator(this.series);
+        this.halfRange = new HalfRangeIndicator(this.series);
+        this.priorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(halfBody, averagePeriod));
+        this.priorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(halfRange, averagePeriod));
         final NumFactory numFactory = this.series.numFactory();
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
@@ -568,11 +576,14 @@ final class CandleThresholdSupport {
      * {@value #LONG_SHADOW_FACTOR} times the prior average body.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
-     * from finite operands stays decidable, so it still participates in the strict
-     * comparison instead of being rejected. An overflowed shadow from non-finite
-     * source prices (missing data) is rejected: a shadow derived from an
-     * unavailable price never qualifies as long.
+     * The shadow magnitude is divided by the factor before the comparison so the
+     * baseline product cannot overflow into infinity and misclassify a finite
+     * shadow. The division is exact on every {@link NumFactory} because the factor
+     * is a power of two, and an infinite shadow remains infinite, so an overflowed
+     * magnitude from finite source prices stays decidable. An unavailable (NaN)
+     * measurement is never classified; an overflowed shadow from non-finite source
+     * prices (missing data) is rejected: a shadow derived from an unavailable price
+     * never qualifies as long.
      *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
@@ -584,7 +595,7 @@ final class CandleThresholdSupport {
             return false;
         }
         final Num shadowValue = shadow.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longShadowFactor);
+        final Num baseline = priorAverageBody.getValue(index);
         if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
             return false;
         }
@@ -593,7 +604,7 @@ final class CandleThresholdSupport {
             // missing data, not an overflowed finite magnitude.
             return false;
         }
-        return shadowValue.isGreaterThan(baseline);
+        return shadowValue.dividedBy(longShadowFactor).isGreaterThan(baseline);
     }
 
     /**
@@ -614,8 +625,10 @@ final class CandleThresholdSupport {
      * {@value #SHORT_SHADOW_RANGE_FACTOR} of the prior average range.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
-     * from finite operands stays decidable, so it can never qualify as a short
+     * An unavailable (NaN) measurement is never classified; an overflowed shadow
+     * from non-finite source prices (missing data) is rejected: a shadow derived
+     * from an unavailable price never qualifies as short. An overflowed magnitude
+     * from finite source prices stays decidable, so it can never qualify as a short
      * shadow.
      *
      * @param index  the candle index
@@ -629,7 +642,15 @@ final class CandleThresholdSupport {
         }
         final Num shadowValue = shadow.getValue(index);
         final Num baseline = priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor);
-        return !Num.isNaNOrNull(shadowValue) && !Num.isNaNOrNull(baseline) && !shadowValue.isGreaterThan(baseline);
+        if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        if (!Num.isFinite(shadowValue) && !hasFiniteSourcePrices(index)) {
+            // An infinite shadow from an unavailable or non-finite price is
+            // missing data, not an overflowed finite magnitude.
+            return false;
+        }
+        return !shadowValue.isGreaterThan(baseline);
     }
 
     /**
@@ -659,14 +680,76 @@ final class CandleThresholdSupport {
     }
 
     /**
-     * Average of the preceding {@code barCount} source values that never overflows
-     * an intermediate summation. The primary path delegates to an
-     * {@link SMAIndicator}; when its accumulator overflowed into a non-finite value
-     * (for example a {@code DoubleNum} summing near-MAX candle ranges), the same
-     * window is re-averaged with every term divided by the largest magnitude in the
-     * window, and the final scale factor is clamped to at most 1 before scaling
-     * back, so no intermediate sum or final product can overflow. Non-finite source
-     * values propagate as non-finite results.
+     * Half of the candle body, i.e. {@code |open - close| / 2} computed by dividing
+     * each operand before differencing, so the result stays finite whenever the raw
+     * body magnitude would overflow the {@link Num} type. A non-finite endpoint
+     * yields {@link NaN#NaN}, mirroring {@link CandleBodyIndicator}.
+     */
+    private static final class HalfBodyIndicator extends CachedIndicator<Num> {
+        private HalfBodyIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num open = bar.getOpenPrice();
+            final Num close = bar.getClosePrice();
+            if (!Num.isFinite(open) || !Num.isFinite(close)) {
+                return NaN.NaN;
+            }
+            final Num two = getBarSeries().numFactory().numOf(2);
+            return open.dividedBy(two).minus(close.dividedBy(two)).abs();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Half of the candle range, i.e. {@code (high - low) / 2} computed by dividing
+     * each operand before differencing, so the result stays finite whenever the raw
+     * range magnitude would overflow the {@link Num} type. A non-finite endpoint
+     * yields {@link NaN#NaN}, mirroring {@link CandleRangeIndicator}.
+     */
+    private static final class HalfRangeIndicator extends CachedIndicator<Num> {
+        private HalfRangeIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num high = bar.getHighPrice();
+            final Num low = bar.getLowPrice();
+            if (!Num.isFinite(high) || !Num.isFinite(low)) {
+                return NaN.NaN;
+            }
+            final Num two = getBarSeries().numFactory().numOf(2);
+            return high.dividedBy(two).minus(low.dividedBy(two));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Average of the preceding {@code barCount} half-scale source values, restored
+     * to full scale by doubling, that never overflows an intermediate summation.
+     * The primary path delegates to an {@link SMAIndicator} and doubles its result;
+     * when the accumulator overflowed into a non-finite value (for example a
+     * {@code DoubleNum} summing several near-MAX halves), the same window is
+     * re-averaged as an incremental mean, which never accumulates a running sum
+     * beyond the window maximum, then doubled. Because every term is at most half
+     * the largest representable magnitude, the exact doubled mean is at most the
+     * largest representable magnitude, so the restore step stays finite whenever
+     * the mean itself is representable; a baseline that still overflows remains
+     * non-finite yet decidable in every comparison below. Non-finite source values
+     * propagate as non-finite results.
      */
     private static final class PriorAverageIndicator extends CachedIndicator<Num> {
 
@@ -686,33 +769,23 @@ final class CandleThresholdSupport {
         protected Num calculate(int index) {
             final Num result = primary.getValue(index);
             if (Num.isFinite(result)) {
-                return result;
+                return result.multipliedBy(two());
             }
             final int beginIndex = getBarSeries().getBeginIndex();
             final int start = Math.max(beginIndex, index - barCount + 1);
-            final Num count = getBarSeries().numFactory().numOf(index - start + 1);
-            Num max = getBarSeries().numFactory().zero();
+            Num mean = getBarSeries().numFactory().zero();
             for (int i = start; i <= index; i++) {
                 final Num value = source.getValue(i);
                 if (!Num.isFinite(value)) {
                     return value;
                 }
-                if (value.abs().isGreaterThan(max)) {
-                    max = value.abs();
-                }
+                mean = mean.plus(value.minus(mean).dividedBy(getBarSeries().numFactory().numOf(i - start + 1)));
             }
-            if (max.isZero()) {
-                return getBarSeries().numFactory().zero();
-            }
-            Num scaledSum = getBarSeries().numFactory().zero();
-            for (int i = start; i <= index; i++) {
-                scaledSum = scaledSum.plus(source.getValue(i).dividedBy(max));
-            }
-            Num factor = scaledSum.dividedBy(count);
-            if (factor.isGreaterThan(getBarSeries().numFactory().one())) {
-                factor = getBarSeries().numFactory().one();
-            }
-            return max.multipliedBy(factor);
+            return mean.multipliedBy(two());
+        }
+
+        private Num two() {
+            return getBarSeries().numFactory().numOf(2);
         }
 
         @Override

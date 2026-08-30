@@ -189,10 +189,9 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     @Test
     public void zeroBodyAgainstSumOverflowingRangeBaselineIsDoji() {
         // Three baseline candles with range Double.MAX_VALUE overflow the
-        // divide-first fallback as well: Double.MAX_VALUE / 3 rounds up, and
-        // three such quotients sum to positive infinity. The magnitude-normalized
-        // fallback must still produce the finite MAX_VALUE average, so the zero
-        // body is at most MAX_VALUE * 0.1 and qualifies as a doji.
+        // half-scale sum as well (3 * MAX / 2 > MAX); the incremental Welford
+        // rebuild keeps the mean at exactly MAX / 2, so the doubled average is
+        // the finite MAX_VALUE and the zero body qualifies as a doji.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 3; i++) {
             addBar(series, 0, Double.MAX_VALUE, 0);
@@ -200,6 +199,44 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         addBar(series, 0, 0, 0);
 
         assertTrue(new DojiIndicator(series, 3, 0.1).getValue(3));
+    }
+
+    @Test
+    public void zeroBodyAfterOverflowedRangeDilutedByWindowIsDoji() {
+        // A three-bar baseline whose ranges are [0, 0, 2 * MAX] has the finite
+        // mean 2/3 * MAX even though the extreme range overflows the raw range
+        // indicator; the half-scale source keeps every operand representable,
+        // so a following zero-body candle qualifies instead of being rejected.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(series, 0, 0, 0); // index 0: zero range
+        addBar(series, 0, 0, 0); // index 1: zero range
+        series.barBuilder()
+                .openPrice(-Double.MAX_VALUE)
+                .closePrice(Double.MAX_VALUE)
+                .highPrice(Double.MAX_VALUE)
+                .lowPrice(-Double.MAX_VALUE)
+                .add(); // index 2: range 2 * MAX
+        addBar(series, 0, 0, 0); // index 3: flat doji candidate
+
+        assertTrue(new DojiIndicator(series, 3, 0.1).getValue(3));
+    }
+
+    @Test
+    public void zeroBodyAgainstTinyRangeBaselineIsDoji() {
+        // A one-bar baseline whose range is barely representable puts both
+        // finite endpoints at positive infinity under per-endpoint division,
+        // and their subtraction becomes NaN in DoubleNum. The shared finite
+        // scale keeps a zero body at zero, so it qualifies for any factor.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(series, 1e-308, 0, 0); // index 0: range 1e-308
+        series.barBuilder()
+                .openPrice(Double.MAX_VALUE)
+                .closePrice(Double.MAX_VALUE)
+                .highPrice(Double.MAX_VALUE)
+                .lowPrice(Double.MAX_VALUE)
+                .add(); // index 1: zero body with non-finite-scaled endpoints
+
+        assertTrue(new DojiIndicator(series, 1, 0.1).getValue(1));
     }
 
     @Test

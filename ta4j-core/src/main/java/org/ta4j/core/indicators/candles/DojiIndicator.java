@@ -23,18 +23,18 @@ import org.ta4j.core.num.Num;
  *
  * The comparison is <em>inclusive</em>: a body exactly equal to the threshold
  * (including a zero body against a zero range baseline) is still a doji.
- * 
- * <p>
- * The body is compared in scaled form,
- * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
- * which is equivalent to the product form above. Scaling each operand before
- * differencing keeps the comparison decidable when the raw body magnitude
- * overflows the {@link Num} type: a finite scaled ratio preserves the exact
- * ordering, while a scaled difference that overflows to positive infinity can
- * only exceed a finite range factor, mirroring DecimalNum's exact arithmetic
- * under DoubleNum.
  *
- * 
+ * <p>
+ * A finite body difference is compared against the prior average on one shared
+ * scale, {@code |open_i - close_i| / priorAverage <= rangeFactor}, so a zero
+ * body (open equals close) stays zero and qualifies as a doji no matter how
+ * small the baseline is. Only when the raw difference overflows the {@link Num}
+ * type (finite endpoints farther apart than a representable magnitude) is each
+ * operand divided by the baseline before differencing,
+ * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
+ * which preserves the exact ordering under overflow, mirroring DecimalNum's
+ * exact arithmetic under DoubleNum.
+ *
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
  * direction context. A doji is traditionally interpreted as a sign of market
@@ -119,10 +119,18 @@ public class DojiIndicator extends CandlePatternIndicator {
             // with no body at all can qualify.
             return !open.minus(close).abs().isPositive();
         }
-        // Compare the body against the threshold in scaled form, dividing each
-        // operand by the baseline before differencing (see class Javadoc). The
-        // raw body magnitude can overflow the numeric type even when the ratio
-        // is representable; a scaled difference that overflows to positive
+        final Num difference = open.minus(close);
+        if (Num.isFinite(difference)) {
+            // One shared finite scale for both endpoints: a zero body (open
+            // equals close) stays zero, so it qualifies as a doji no matter
+            // how small the baseline is.
+            return !difference.dividedBy(priorAverage)
+                    .abs()
+                    .isGreaterThan(getBarSeries().numFactory().numOf(rangeFactor));
+        }
+        // The raw difference overflows the numeric type although the endpoints
+        // are finite. Dividing each operand by the baseline before differencing
+        // preserves the exact ordering; a scaled difference that overflows to
         // infinity can only exceed a finite range factor, matching DecimalNum's
         // exact arithmetic.
         final Num scaledBody = open.dividedBy(priorAverage).minus(close.dividedBy(priorAverage)).abs();
