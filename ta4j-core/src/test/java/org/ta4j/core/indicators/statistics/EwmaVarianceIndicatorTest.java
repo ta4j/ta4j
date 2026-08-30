@@ -196,11 +196,66 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(pruned.getValue(2).isNaN());
         // index 3 re-seeds from the rolling variance of [2, 3] = 0.25.
         assertNumEquals(0.25, pruned.getValue(3));
-        // index 4: the rebuilt control mean at 3 is 3.5 (EMA with window 1
-        // and decay 0.5), so sigma^2_4 = 0.5 * 0.25 + 0.5 * (5 - 3.5)^2 =
+        // index 4: the rebuilt control mean at 3 is the configured seed
+        // SMA(3, 4) = 3.5, so sigma^2_4 = 0.5 * 0.25 + 0.5 * (5 - 3.5)^2 =
         // 1.25. A stale cached value (2.8359375 from the discarded prefix)
         // would surface otherwise.
         assertNumEquals(1.25, pruned.getValue(4));
+    }
+
+    @Test
+    public void reanchoredMeanUsesConfiguredSeedWindow() {
+        // After pruning, the rebuilt control mean keeps the configured
+        // barCount so its seed at the re-anchoring index is the SMA of the
+        // retained seed window, not a single-window EWMA decayed across it.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8)
+                .build();
+        EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(1), numOf(2),
+                numOf(3), numOf(4), numOf(5), numOf(6), numOf(7), numOf(8)), 3, 0.5);
+
+        pruned.getValue(7);
+
+        series.setMaximumBarCount(4);
+
+        // beginIndex = 4; the combined warm-up (2 bars) covers 4 and 5.
+        assertTrue(pruned.getValue(4).isNaN());
+        assertTrue(pruned.getValue(5).isNaN());
+        // index 6 re-seeds from the rolling variance of [4, 6] = [5, 6, 7] =
+        // 2/3.
+        assertNumEquals(2.0 / 3.0, pruned.getValue(6));
+        // index 7: the rebuilt control mean at 6 is the configured SMA seed
+        // SMA(5, 6, 7) = 6, so sigma^2_7 = 0.5 * 2/3 + 0.5 * (8 - 6)^2 =
+        // 7/3. A window-1 rebuild would decay the mean to 6.25 and yield
+        // 1.8645833333... instead.
+        assertNumEquals(7.0 / 3.0, pruned.getValue(7));
+    }
+
+    @Test
+    public void reseedWaitsForSourceWarmUpAfterPrunes() {
+        // A source with its own unstable bars must not have unstable values
+        // pulled into the re-anchoring window: indices inside the combined
+        // warm-up stay NaN, and the first source-stable index re-seeds from
+        // the first full window of source-stable values.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .build();
+        EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(new MockIndicator(series, 2, numOf(1), numOf(2),
+                numOf(3), numOf(4), numOf(5), numOf(6), numOf(7), numOf(8), numOf(9), numOf(10)), 3, 0.5);
+
+        pruned.getValue(9);
+
+        series.setMaximumBarCount(5);
+
+        // beginIndex = 5; combined warm-up = 2 + 2 = 4 bars, so 5, 6, 7 and 8
+        // publish NaN even though reseedIndex = 7 holds a full window.
+        assertTrue(pruned.getValue(5).isNaN());
+        assertTrue(pruned.getValue(6).isNaN());
+        assertTrue(pruned.getValue(7).isNaN());
+        assertTrue(pruned.getValue(8).isNaN());
+        // index 9 is the first source-stable index: the full window [7, 9] of
+        // stable values [8, 9, 10] seeds 2/3.
+        assertNumEquals(2.0 / 3.0, pruned.getValue(9));
     }
 
     @Override

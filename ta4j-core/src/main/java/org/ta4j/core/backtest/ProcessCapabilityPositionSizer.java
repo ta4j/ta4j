@@ -40,12 +40,15 @@ import org.ta4j.core.num.NumFactory;
  * context) follows the same rule by the sign of the overflow: a positive
  * overflow saturates to the underflow floor — the lesser of the context
  * factory's epsilon and {@code baseAmount} — while a negative overflow fails
- * open and returns {@code baseAmount}. The capability indicator must be bound
- * to a bar series holding the same bars that are being backtested; entry
- * indexes are evaluated against it without further checks. All arithmetic runs
- * in the backtest context's {@link NumFactory}: the capability statistic and
- * the sizing parameters are coerced into it, so mixed-factory compositions do
- * not fail at sizing time.
+ * open and returns {@code baseAmount}. A non-positive statistic returns the
+ * full {@code baseAmount} before the division, so a control limit that
+ * underflows to zero during coercion cannot turn an exactly safe statistic into
+ * the epsilon fallback. The capability indicator must be bound to a bar series
+ * holding the same bars that are being backtested; entry indexes are evaluated
+ * against it without further checks. All arithmetic runs in the backtest
+ * context's {@link NumFactory}: the capability statistic and the sizing
+ * parameters are coerced into it, so mixed-factory compositions do not fail at
+ * sizing time.
  *
  * @since 0.24.2
  */
@@ -95,7 +98,14 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         }
         Num controlLimitValue = factory.produces(controlLimit) ? controlLimit
                 : factory.numOf(controlLimit.doubleValue());
-        Num standardized = statisticValue.max(factory.zero()).dividedBy(controlLimitValue);
+        if (!statisticValue.isPositive()) {
+            // A non-positive statistic means an exactly safe process: size at
+            // the full base amount even when the control limit underflows to
+            // zero during coercion (dividing zero by that zero would produce
+            // a NaN ratio and the epsilon fallback instead).
+            return baseAmountValue;
+        }
+        Num standardized = statisticValue.dividedBy(controlLimitValue);
         Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
         if (!Num.isFinite(damped) || damped.isZero()) {
             return factory.epsilon().min(baseAmountValue);

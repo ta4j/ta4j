@@ -47,12 +47,12 @@ import org.ta4j.core.num.NumFactory;
  * bar) and leave the deviation scale unchanged, so a gap in the data neither
  * triggers nor resets the statistic.
  *
- * <p>
- * If the derived deviation or the accumulated CUSUM overflows the numeric
- * representation (a {@code DoubleNum} series jumping between opposite
- * extremes), the statistic saturates at the largest finite magnitude instead of
- * publishing infinity, so a composed kill switch still reacts to the extreme
- * observation.
+ * If the derived deviation, the deviation scale, or the accumulated CUSUM
+ * overflows the numeric representation (a {@code DoubleNum} series jumping
+ * between opposite extremes), the overflowing term saturates at the largest
+ * finite magnitude instead of publishing infinity, so a composed kill switch
+ * still reacts to the extreme observation and the winsorization bound is never
+ * silently disabled by a non-finite scale.
  *
  * <p>
  * When the backing series prunes its retained head (for example through
@@ -272,6 +272,13 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
                 return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
             }
             Num increment = targetMean.minus(current).minus(allowance).abs();
+            if (!Num.isFinite(increment)) {
+                // Opposite extremes overflow the subtraction: saturate so the
+                // scale stays finite and the parent keeps winsorizing against
+                // its bound instead of skipping the clip for a non-finite
+                // previous scale.
+                increment = getBarSeries().numFactory().numOf(Double.MAX_VALUE);
+            }
             if (index == beginIndex) {
                 return increment;
             }

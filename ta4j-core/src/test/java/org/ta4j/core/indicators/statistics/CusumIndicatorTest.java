@@ -177,6 +177,29 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertNumEquals(36, pruned.getValue(3));
     }
 
+    @Test
+    public void deviationScaleOverflowKeepsWinsorizationBound() {
+        // Opposite extremes overflow the scale increment (DoubleNum): the
+        // scale must saturate instead of going non-finite, or the parent
+        // skips winsorization and a subsequent deviation accumulates far
+        // beyond its intended clip bound.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, 0, -Double.MAX_VALUE, -Double.MAX_VALUE)
+                .build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(0), numOf(-Double.MAX_VALUE), numOf(-Double.MAX_VALUE)),
+                Double.MAX_VALUE / 2d, 0, 0.1, 0.5);
+
+        Num value = cusum.getValue(3);
+
+        // With the saturated finite scale the clip bound at index 3 is
+        // 0.1 * 0.75 * MAX and the CUSUM stays far below MAX; with a
+        // non-finite scale the unwinsorized MAX deviation pushes the
+        // accumulator into the MAX saturation.
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isLessThan(numFactory.numOf(Double.MAX_VALUE)));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

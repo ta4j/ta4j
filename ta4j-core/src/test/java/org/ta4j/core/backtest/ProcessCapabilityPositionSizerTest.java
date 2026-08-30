@@ -161,6 +161,23 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void zeroStatisticReturnsFullBaseAmountDespiteUnderflowedControlLimit() {
+        // A DecimalNum control limit of 1e-400 underflows to zero in a
+        // DoubleNum context; a zero statistic is exactly safe and must size
+        // at the full base amount rather than falling through a NaN ratio to
+        // the epsilon fallback.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(0));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, new BigDecimal("1e-400"));
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(100, sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void negativeOverflowCoercionFailsOpen() {
         // A DecimalNum statistic of -1e400 coerces to -Infinity in a DoubleNum
         // context: max(0, -Inf) would be zero, so the sizer fails open.
