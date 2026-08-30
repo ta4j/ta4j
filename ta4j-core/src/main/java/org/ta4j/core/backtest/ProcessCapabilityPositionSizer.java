@@ -27,8 +27,9 @@ import org.ta4j.core.num.NumFactory;
  * approaches zero, so position size degrades gracefully instead of acting as a
  * hard cutoff. When the standardized statistic overflows the numeric
  * representation, the damped amount underflows to zero and the sizer returns
- * the series factory's epsilon instead, keeping the amount positive and finite
- * so the backtest does not abort on an invalid size.
+ * the lesser of the context factory's epsilon and {@code baseAmount}, keeping
+ * the amount positive and never exceeding the configured amount, so the
+ * backtest does not abort on an invalid size.
  *
  * <p>
  * If the statistic is non-finite at the entry index (for example while the
@@ -84,7 +85,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         Num standardized = statisticValue.max(factory.zero()).dividedBy(controlLimitValue);
         Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
         if (!Num.isFinite(damped) || damped.isZero()) {
-            return factory.epsilon();
+            return factory.epsilon().min(baseAmountValue);
         }
         return damped;
     }

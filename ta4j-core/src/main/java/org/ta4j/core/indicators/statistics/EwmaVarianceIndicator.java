@@ -97,6 +97,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             return NaN.NaN;
         }
         if (index == beginIndex) {
+            Num current = indicator.getValue(index);
+            if (!Num.isFinite(current)) {
+                return NaN.NaN;
+            }
             return initialVarianceIndicator.getValue(index);
         }
         Num current = indicator.getValue(index);

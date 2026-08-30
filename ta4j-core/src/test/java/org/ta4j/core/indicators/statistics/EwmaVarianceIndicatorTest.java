@@ -129,6 +129,16 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(variance.isNaN() || Num.isFinite(variance));
     }
 
+    @Test
+    public void nonFiniteFirstBarDoesNotSeedZeroVariance() {
+        // With barCount = 1 the seed window is the first bar alone: a
+        // non-finite anchor must not publish a stable zero variance.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        EwmaVarianceIndicator singleBar = new EwmaVarianceIndicator(new MockIndicator(series, 0, NaN.NaN), 1, 0.5);
+
+        assertTrue(singleBar.getValue(0).isNaN());
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

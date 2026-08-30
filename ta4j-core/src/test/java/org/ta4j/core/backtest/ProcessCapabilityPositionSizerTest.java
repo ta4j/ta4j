@@ -84,6 +84,17 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void underflowFloorDoesNotExceedBaseAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(Double.MAX_VALUE));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, Double.MIN_NORMAL, Double.MIN_NORMAL);
+
+        // The damped amount underflows to zero, but the epsilon floor must
+        // never exceed the configured base amount.
+        assertNumEquals(Double.MIN_NORMAL, sizer.amount(context(series, 1, 1)));
+    }
+
+    @Test
     public void acceptsControlLimitBeyondDoubleRangeForDecimalNum() {
         runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
             BarSeries series = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
