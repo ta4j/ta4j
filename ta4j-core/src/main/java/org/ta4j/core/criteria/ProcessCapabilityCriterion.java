@@ -39,9 +39,12 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * An empty record or a record whose gross returns have zero variance returns
  * {@code zero()}: with no variation there is no evidence of capability, and the
- * criterion is neutral rather than infinitely good. Extreme gross returns that
- * overflow the variance accumulation are likewise treated as incapable and
- * score {@code zero()}.
+ * criterion is neutral rather than infinitely good. The population standard
+ * deviation is computed with each deviation normalized by the largest absolute
+ * deviation, so wide but finite dispersions (such as gross returns of 1e200 and
+ * 2e200) do not overflow the squared-deviation sum; gross returns extreme
+ * enough that their mean itself overflows the numeric representation are
+ * treated as incapable and score {@code zero()}.
  *
  * @since 0.24.2
  */
@@ -118,18 +121,20 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         }
         Num[] valueArray = values.toArray(new Num[0]);
         Num mean = Statistics.MEAN.calculate(factory, valueArray);
-        Num squaredDeviationSum = factory.zero();
+        Num maxAbsDeviation = factory.zero();
         for (Num value : valueArray) {
-            Num deviation = value.minus(mean);
-            squaredDeviationSum = squaredDeviationSum.plus(deviation.multipliedBy(deviation));
+            maxAbsDeviation = maxAbsDeviation.max(value.minus(mean).abs());
         }
-        if (!Num.isFinite(squaredDeviationSum)) {
+        if (!Num.isFinite(maxAbsDeviation) || maxAbsDeviation.isZero()) {
             return factory.zero();
         }
-        Num standardDeviation = squaredDeviationSum.dividedBy(factory.numOf(valueArray.length)).sqrt();
-        if (standardDeviation.isZero()) {
-            return factory.zero();
+        Num scaledSquaredSum = factory.zero();
+        for (Num value : valueArray) {
+            Num scaledDeviation = value.minus(mean).dividedBy(maxAbsDeviation);
+            scaledSquaredSum = scaledSquaredSum.plus(scaledDeviation.multipliedBy(scaledDeviation));
         }
+        Num standardDeviation = maxAbsDeviation
+                .multipliedBy(scaledSquaredSum.dividedBy(factory.numOf(valueArray.length)).sqrt());
         Num threeSigma = standardDeviation.multipliedBy(factory.numOf(3));
         Num lowerCapability = mean.minus(factory.numOf(lsl)).dividedBy(threeSigma);
         if (usl == null) {

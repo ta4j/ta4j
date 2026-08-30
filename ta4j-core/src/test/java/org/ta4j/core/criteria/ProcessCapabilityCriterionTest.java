@@ -77,9 +77,9 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void extremeGrossReturnsScoreZero() {
-        // Both gross returns equal MAX / 1e-300: DoubleNum overflows the return
-        // and the squared-deviation sum (guarded to zero); DecimalNum stays
-        // finite with zero variance (also zero).
+        // Both gross returns equal MAX / 1e-300: DoubleNum overflows the
+        // return, the mean becomes non-finite and the criterion scores zero;
+        // DecimalNum stays finite with zero variance (also zero).
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1e-300, Double.MAX_VALUE, 1e-300, Double.MAX_VALUE)
                 .build();
@@ -88,6 +88,19 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion cpk = getCriterion(0.9, 1.15);
         assertNumEquals(0, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void wideFiniteDispersionDoesNotOverflowSquaring() {
+        // Gross returns 1e200 and 2e200 with limits 0 and 3e200: population
+        // sigma is 5e199 and Cpk is 1, but each naive squared deviation
+        // overflows DoubleNum; the normalized computation must not collapse.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e200, 2, 4e200).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0, 3e200);
+        assertNumEquals(1, cpk.calculate(series, tradingRecord));
     }
 
     @Test
