@@ -68,8 +68,14 @@ public class BullishEngulfingIndicator extends CachedIndicator<Boolean> {
                     && currBodyTop.isGreaterThan(prevBodyTop);
             boolean bottomDiffers = !(currBodyBottom.isZero() && prevBodyBottom.isZero())
                     && currBodyBottom.isLessThan(prevBodyBottom);
-            return currBodyTop.isGreaterThanOrEqual(prevBodyTop) && currBodyBottom.isLessThanOrEqual(prevBodyBottom)
-                    && (topDiffers || bottomDiffers);
+            // Signed zero is normalized in the inclusive clauses too: DoubleNum
+            // orders -0.0 below +0.0, so two numerically zero endpoints must
+            // still count as containment (the Javadoc allows shared endpoints).
+            boolean topContains = currBodyTop.isGreaterThanOrEqual(prevBodyTop)
+                    || (currBodyTop.isZero() && prevBodyTop.isZero());
+            boolean bottomContains = currBodyBottom.isLessThanOrEqual(prevBodyBottom)
+                    || (currBodyBottom.isZero() && prevBodyBottom.isZero());
+            return topContains && bottomContains && (topDiffers || bottomDiffers);
 
         }
         return false;

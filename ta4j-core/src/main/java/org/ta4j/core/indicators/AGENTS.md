@@ -94,7 +94,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `CachedIndicator` subclasses that recurse into earlier `getValue`
   results must override the hook back to `true`;
   `RecursiveCachedIndicator` subclasses inherit `true` and must not
-  redeclare the override.## NetMomentumIndicator specifics
+  redeclare the override.
+
+## NetMomentumIndicator specifics
 
 - Preserve battery semantics: below-pivot oscillator pressure contributes positive rebound energy,
   above-pivot pressure contributes negative depletion, and distance from the pivot is convex-weighted.

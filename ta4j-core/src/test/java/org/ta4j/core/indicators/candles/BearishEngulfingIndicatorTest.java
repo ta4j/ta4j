@@ -64,6 +64,15 @@ public class BearishEngulfingIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void shouldDetectPatternWhenZeroBottomEndpointsDifferOnlyInSign() {
+        // Previous bullish body [−0.0, 10] and current bearish body [+0.0, 11]:
+        // the bottoms are numerically equal, so the sign bit must not break the
+        // inclusive containment regardless of num factory.
+        BearishEngulfingIndicator indicator = new BearishEngulfingIndicator(engulfingSeries(-0.0, 10, 11, 0.0));
+        assertThat(indicator.getValue(1)).isTrue();
+    }
+
+    @Test
     public void shouldCountUnstableBars() {
         assertThat(new BearishEngulfingIndicator(engulfingSeries(20, 30, 35, 15)).getCountOfUnstableBars())
                 .isEqualTo(1);
