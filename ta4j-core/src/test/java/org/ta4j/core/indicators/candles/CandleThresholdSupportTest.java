@@ -175,23 +175,90 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
-    public void nonFiniteMeasurementsAreNeverClassified() {
+    public void nanMeasurementsAreNeverClassified() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
         addBars(series, 5, 10, 0, 0);
         addBar(series, 1, 0, 0);
         CandleThresholdSupport support = new CandleThresholdSupport(series);
         Indicator<Num> body = new CandleBodyIndicator(series);
         Indicator<Num> nan = new ConstantIndicator<>(series, series.numFactory().numOf(Double.NaN));
-        Indicator<Num> infinity = new ConstantIndicator<>(series, series.numFactory().numOf(Double.POSITIVE_INFINITY));
 
         // Inclusive classifiers must not treat a NaN measurement as "not greater".
         assertFalse(support.isShortShadow(5, nan));
         assertFalse(support.isNear(5, nan, body));
         assertFalse(support.isNear(5, body, nan));
-        // Strict classifiers must not classify NaN or infinity measurements.
+        // Strict classifiers must not classify a NaN measurement.
         assertFalse(support.isLongShadow(5, nan));
-        assertFalse(support.isLongShadow(5, infinity));
+    }
+
+    @Test
+    public void overflowedMagnitudesRemainDecidable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addBar(series, 1, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> infinity = new ConstantIndicator<>(series, series.numFactory().numOf(Double.POSITIVE_INFINITY));
+
+        // A non-finite magnitude from finite operands stays decidable: it is
+        // longer than any finite baseline, but never at most one.
+        assertTrue(support.isLongShadow(5, infinity));
         assertFalse(support.isShortShadow(5, infinity));
+    }
+
+    @Test
+    public void overflowedBodyFromFiniteEndpointsQualifiesAsLongBodyWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addExtremeCandle(series, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        // |close - open| = 2 * Double.MAX_VALUE overflows to infinity; the
+        // strict comparison against the finite baseline stays decidable.
+        assertTrue(support.isLongBody(5));
+        assertFalse(support.isShortBody(5));
+        assertFalse(support.isDoji(5));
+    }
+
+    @Test
+    public void overflowedUpperShadowFromFiniteEndpointsQualifiesAsLongShadowWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        // high - max(open, close) overflows to infinity from finite endpoints;
+        // it is longer than the finite baseline and never a short shadow.
+        assertTrue(support.isLongShadow(5, support.upperShadow()));
+        assertFalse(support.isShortShadow(5, support.upperShadow()));
+    }
+
+    @Test
+    public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
+        BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(bodySeries, 5, 10, 0, 0);
+        addExtremeCandle(bodySeries, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport bodySupport = new CandleThresholdSupport(bodySeries);
+
+        // DecimalNum computes the magnitudes exactly; both factories must agree.
+        assertTrue(bodySupport.isLongBody(5));
+        assertFalse(bodySupport.isShortBody(5));
+        assertFalse(bodySupport.isDoji(5));
+
+        BarSeries shadowSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(shadowSeries, 5, 10, 0, 0);
+        addExtremeCandle(shadowSeries, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport shadowSupport = new CandleThresholdSupport(shadowSeries);
+
+        assertTrue(shadowSupport.isLongShadow(5, shadowSupport.upperShadow()));
+        assertFalse(shadowSupport.isShortShadow(5, shadowSupport.upperShadow()));
+    }
+
+    /**
+     * Adds a candle with the given exact prices, bypassing the shadow-based
+     * {@link #addBar(BarSeries, double, double, double)} helper.
+     */
+    private static void addExtremeCandle(BarSeries series, double open, double close, double high, double low) {
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
     }
 
     @Test

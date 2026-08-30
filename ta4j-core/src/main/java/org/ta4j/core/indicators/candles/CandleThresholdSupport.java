@@ -499,9 +499,15 @@ final class CandleThresholdSupport {
      * Whether the candle body is greater than {@value #LONG_BODY_FACTOR} times the
      * prior average body.
      *
+     * <p>
+     * An unavailable (NaN) measurement is never classified. A magnitude that
+     * overflows finite operands stays non-finite yet decidable, so it still
+     * participates in the strict comparison instead of being rejected, mirroring
+     * the operand-finiteness contract of {@link CandleBodyIndicator}.
+     *
      * @param index the candle index
      * @return {@code true} for a long body, {@code false} below the warm-up
-     *         boundary, for a short body, or for a non-finite measurement
+     *         boundary, for a short body, or for an unavailable measurement
      */
     boolean isLongBody(int index) {
         if (!isValid(index)) {
@@ -509,16 +515,21 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = body.getValue(index);
         final Num baseline = priorAverageBody.getValue(index).multipliedBy(longBodyFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isGreaterThan(baseline);
+        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isGreaterThan(baseline);
     }
 
     /**
      * Whether the candle body is less than {@value #SHORT_BODY_FACTOR} times the
      * prior average body.
      *
+     * <p>
+     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
+     * from finite operands stays decidable, so a finite body still qualifies as
+     * short against an overflowed baseline.
+     *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
-     *         boundary, for a long body, or for a non-finite measurement
+     *         boundary, for a long body, or for an unavailable measurement
      */
     boolean isShortBody(int index) {
         if (!isValid(index)) {
@@ -526,16 +537,21 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = body.getValue(index);
         final Num baseline = priorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isLessThan(baseline);
+        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isLessThan(baseline);
     }
 
     /**
      * Whether the candle body is at most {@value #DOJI_RANGE_FACTOR} of the prior
      * average range, the classic doji neighborhood.
      *
+     * <p>
+     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
+     * from finite operands stays decidable, so it can never qualify as a doji-sized
+     * body.
+     *
      * @param index the candle index
      * @return {@code true} for a doji-like body, {@code false} below the warm-up
-     *         boundary, for a substantial body, or for a non-finite measurement
+     *         boundary, for a substantial body, or for an unavailable measurement
      */
     boolean isDoji(int index) {
         if (!isValid(index)) {
@@ -543,17 +559,22 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = body.getValue(index);
         final Num baseline = priorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && !bodyValue.isGreaterThan(baseline);
+        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && !bodyValue.isGreaterThan(baseline);
     }
 
     /**
      * Whether the given shadow measurement is greater than
      * {@value #LONG_SHADOW_FACTOR} times the prior average body.
      *
+     * <p>
+     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
+     * from finite operands stays decidable, so it still participates in the strict
+     * comparison instead of being rejected.
+     *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a long shadow, {@code false} below the warm-up
-     *         boundary, for a short shadow, or for a non-finite measurement
+     *         boundary, for a short shadow, or for an unavailable measurement
      */
     boolean isLongShadow(int index, Indicator<Num> shadow) {
         if (!isValid(index)) {
@@ -561,17 +582,22 @@ final class CandleThresholdSupport {
         }
         final Num shadowValue = shadow.getValue(index);
         final Num baseline = priorAverageBody.getValue(index).multipliedBy(longShadowFactor);
-        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && shadowValue.isGreaterThan(baseline);
+        return !Num.isNaNOrNull(shadowValue) && !Num.isNaNOrNull(baseline) && shadowValue.isGreaterThan(baseline);
     }
 
     /**
      * Whether the given shadow measurement is at most
      * {@value #SHORT_SHADOW_RANGE_FACTOR} of the prior average range.
      *
+     * <p>
+     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
+     * from finite operands stays decidable, so it can never qualify as a short
+     * shadow.
+     *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a short shadow, {@code false} below the warm-up
-     *         boundary, for a long shadow, or for a non-finite measurement
+     *         boundary, for a long shadow, or for an unavailable measurement
      */
     boolean isShortShadow(int index, Indicator<Num> shadow) {
         if (!isValid(index)) {
@@ -579,7 +605,7 @@ final class CandleThresholdSupport {
         }
         final Num shadowValue = shadow.getValue(index);
         final Num baseline = priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor);
-        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && !shadowValue.isGreaterThan(baseline);
+        return !Num.isNaNOrNull(shadowValue) && !Num.isNaNOrNull(baseline) && !shadowValue.isGreaterThan(baseline);
     }
 
     /**
