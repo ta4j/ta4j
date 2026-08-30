@@ -69,9 +69,15 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   override `minimumCacheableIndexAfterHeadAdvance(int)` to return
   `Integer.MAX_VALUE`: every value is recomputable from the retained
   window, so the whole cache is discarded on head advance instead of
-  preserving stale pre-advance results. `StochasticIndicator` and the
-  Klinger trend-direction/cumulative-measurement components follow this
-  policy.
+  preserving stale pre-advance results. `StochasticIndicator` follows
+  this policy and extends `RecursiveCachedIndicator` so the inherited
+  prefill rebuilds long flat stretches iteratively after the eviction.
+- Head-advance invalidation must cover every downstream component of a
+  rebaselining chain, not only the recursive core. The Klinger volume
+  oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,
+  cumulative measurement, volume force, both EMAs, and the outer
+  oscillator, because each downstream cache mixes fresh and stale inputs
+  once the cumulative measurement rebaselines.
 
 ## NetMomentumIndicator specifics
 

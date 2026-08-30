@@ -145,6 +145,46 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void rebaselinesDownstreamCachesWhenSeriesHeadAdvances() {
+        // Warm caches computed before the advance must not survive it anywhere
+        // in the downstream chain. Bars 0..2 decrease (basis 34, 31, 30) and
+        // bars 3..70 repeat basis 30 with non-zero volume, so pre-advance reads
+        // cache a negative-direction volume force, both EMAs, and the outer
+        // oscillator across the plateau. Bars 71..72 lift the basis to 34.
+        // After the head advances to index 61 the trend base case flips to +1
+        // and the cumulative measurement rebaselines, so every cached tail
+        // value - volume force, EMAs, and outer oscillator - is stale. A
+        // post-advance read must equal what a cold indicator over the same
+        // retained window computes, not the warm pre-advance value.
+        final BarSeries series = klingerPlateauSeries();
+        final KlingerVolumeOscillatorIndicator oscillator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        final Num preAdvanceValue = oscillator.getValue(72);
+        assertThat(Num.isNaNOrNull(preAdvanceValue)).isFalse();
+
+        series.setMaximumBarCount(12);
+        assertThat(series.getBeginIndex()).isEqualTo(61);
+
+        final BarSeries advancedSeries = klingerPlateauSeries();
+        advancedSeries.setMaximumBarCount(12);
+        final KlingerVolumeOscillatorIndicator cold = new KlingerVolumeOscillatorIndicator(advancedSeries, 3, 5);
+
+        final Num postAdvanceValue = oscillator.getValue(72);
+        assertThat(postAdvanceValue).isEqualByComparingTo(cold.getValue(72));
+        assertThat(postAdvanceValue.isEqual(preAdvanceValue)).isFalse();
+    }
+
+    private BarSeries klingerPlateauSeries() {
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(14).lowPrice(10).volume(1000).add(); // basis 34
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(13).lowPrice(9).volume(1000).add(); // basis 31
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // basis 30
+        for (int i = 0; i < 70; i++) {
+            series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // basis 30
+        }
+        return series;
+    }
+
+    @Test
     public void throwsForInvalidPeriods() {
         final BarSeries series = bullish(numFactory);
 

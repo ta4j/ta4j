@@ -223,8 +223,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         VolumeForceIndicator volumeForceIndicator = new VolumeForceIndicator(volumeIndicator, dailyMeasurementIndicator,
                 trendDirectionIndicator, cumulativeMeasurementIndicator, resolvedScaleMultiplier);
 
-        EMAIndicator shortEmaIndicator = new EMAIndicator(volumeForceIndicator, shortPeriod);
-        EMAIndicator longEmaIndicator = new EMAIndicator(volumeForceIndicator, longPeriod);
+        EMAIndicator shortEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, shortPeriod);
+        EMAIndicator longEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, longPeriod);
         return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator,
                 shortPeriod, longPeriod, resolvedScaleMultiplier, dailyMeasurementIndicator, trendDirectionIndicator,
                 cumulativeMeasurementIndicator, volumeForceIndicator, shortEmaIndicator, longEmaIndicator);
@@ -243,6 +243,21 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         return shortValue.minus(longValue);
+    }
+
+    /**
+     * Discards the whole oscillator cache when the series head advances. The EMA
+     * inputs rebaseline against the retained window after a head advance, so any
+     * surviving oscillator value was computed from a stale EMA tail; discarding the
+     * cache makes post-advance reads recompute from the freshly rebuilt downstream
+     * chain.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
     }
 
     /**
@@ -420,6 +435,21 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return volume.multipliedBy(trend).multipliedBy(magnitude).multipliedBy(scaleMultiplier);
         }
 
+        /**
+         * Discards the whole cache when the series head advances. The cumulative
+         * measurement rebaselines against the retained window after a head advance, so
+         * any surviving volume-force value mixes the rebaselined measurement with a
+         * stale magnitude; discarding the cache makes post-advance reads recompute from
+         * the freshly rebuilt chain.
+         *
+         * @param firstRetainedIndex the first series index that remains available
+         * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+         */
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
+        }
+
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;
@@ -428,6 +458,28 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         @Override
         public String toString() {
             return getClass().getSimpleName() + " scaleMultiplier: " + scaleMultiplier;
+        }
+    }
+
+    private static final class EvictingEmaIndicator extends EMAIndicator {
+
+        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
+            super(indicator, barCount);
+        }
+
+        /**
+         * Discards the whole cache when the series head advances. EMA values depend on
+         * the entire retained history of the volume-force input, and the volume force
+         * rebaselines after a head advance, so any surviving EMA value mixes fresh and
+         * stale volume-force inputs; discarding the cache makes post-advance reads
+         * recurse through freshly recomputed volume-force values.
+         *
+         * @param firstRetainedIndex the first series index that remains available
+         * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+         */
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
         }
     }
 
@@ -520,11 +572,6 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
                 final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator) {
             return BinaryOperationIndicator.sum(BinaryOperationIndicator.sum(highPriceIndicator, lowPriceIndicator),
                     closePriceIndicator);
-        }
-
-        @Override
-        protected boolean hasRecursiveDependencies() {
-            return true;
         }
 
         /**
