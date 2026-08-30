@@ -114,7 +114,7 @@ public class CandleBodyIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     }
 
     @Test
-    public void isUndefinedWhenSubtractionOverflows() {
+    public void reportsNonFiniteMagnitudeWhenSubtractionOverflows() {
         DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
         BarSeries overflow = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
         overflow.barBuilder()
@@ -123,7 +123,9 @@ public class CandleBodyIndicatorTest extends AbstractIndicatorTest<Indicator<Num
                 .highPrice(doubleFactory.numOf(Double.MAX_VALUE))
                 .lowPrice(doubleFactory.numOf(-Double.MAX_VALUE))
                 .add();
-        assertTrue(new CandleBodyIndicator(overflow).getValue(0).isNaN());
+        Num body = new CandleBodyIndicator(overflow).getValue(0);
+        assertFalse(body.isNaN());
+        assertFalse(Num.isFinite(body));
     }
 
     @Test

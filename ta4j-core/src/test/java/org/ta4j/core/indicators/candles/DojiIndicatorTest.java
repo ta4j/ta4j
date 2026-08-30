@@ -98,6 +98,44 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void overflowedBodyQualifiesAgainstOverflowedThreshold() {
+        // Five range-3 baseline candles give a prior average range of 3. The
+        // final candle spans -Double.MAX_VALUE to Double.MAX_VALUE, so its body
+        // (2 * MAX) overflows DoubleNum while the threshold product (3 * MAX)
+        // overflows upward: mathematically the body sits below the threshold,
+        // so the doji must qualify instead of being rejected as non-finite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 3, 0, 0);
+        }
+        series.barBuilder()
+                .openPrice(-Double.MAX_VALUE)
+                .closePrice(Double.MAX_VALUE)
+                .highPrice(Double.MAX_VALUE)
+                .lowPrice(-Double.MAX_VALUE)
+                .add();
+
+        assertTrue(new DojiIndicator(series, 5, Double.MAX_VALUE).getValue(5));
+    }
+
+    @Test
+    public void unavailableBodyIsNotADojiEvenAgainstOverflowedThreshold() {
+        // The overflowed threshold qualifies a body that overflowed from finite
+        // operands, but a body missing because its inputs are genuinely
+        // unavailable (a NaN close) stays conservatively not a doji.
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 3, 0, 0);
+        }
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                doubleFactory.numOf(Double.NaN), doubleFactory.numOf(10), doubleFactory.numOf(0),
+                doubleFactory.numOf(Double.NaN)));
+
+        assertFalse(new DojiIndicator(series, 5, Double.MAX_VALUE).getValue(5));
+    }
+
+    @Test
     public void overflowingPriorAverageIsNotADoji() {
         // Five baseline candles with range Double.MAX_VALUE overflow the
         // DoubleNum SMA accumulator before division; the divide-first baseline

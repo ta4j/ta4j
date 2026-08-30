@@ -65,11 +65,13 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
   floor and are recomputed like any windowed indicator.
 - Conditionally recursive indicators (recursion only along special
-  stretches, e.g. flat windows) override
-  `minimumCacheableIndexAfterHeadAdvance(int)` to return
-  `Integer.MAX_VALUE`: every value is recomputable from the retained window,
-  so the whole cache is discarded on head advance instead of preserving
-  stale pre-advance results.
+  stretches, e.g. flat windows or equal-basis Klinger trend stretches)
+  override `minimumCacheableIndexAfterHeadAdvance(int)` to return
+  `Integer.MAX_VALUE`: every value is recomputable from the retained
+  window, so the whole cache is discarded on head advance instead of
+  preserving stale pre-advance results. `StochasticIndicator` and the
+  Klinger trend-direction/cumulative-measurement components follow this
+  policy.
 
 ## NetMomentumIndicator specifics
 

@@ -343,6 +343,19 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return previousMeasurement.plus(measurement);
         }
 
+        /**
+         * Equal-trend stretches recurse to the previous cumulative value and the
+         * begin-index base case returns the raw measurement, so every value is
+         * reconstructable from the retained window; the whole cache is discarded on
+         * head advance so that the post-advance cumulative measurement follows the
+         * freshly recomputed trend direction instead of values accumulated under a
+         * stale one.
+         */
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
+        }
+
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;
@@ -514,5 +527,18 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return true;
         }
 
+        /**
+         * An equal-basis stretch recurses to the previous direction and the begin-index
+         * base case returns {@code +1}, so every direction is reconstructable from the
+         * retained window; the whole cache is discarded on head advance so that a
+         * direction computed from evicted bars cannot carry into the cumulative
+         * measurement and volume-force calculations.
+         */
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
+        }
+
     }
+
 }

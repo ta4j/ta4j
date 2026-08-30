@@ -95,20 +95,30 @@ public class DojiIndicator extends CandlePatternIndicator {
         }
         final Num bodyValue = body.getValue(index);
         final Num priorAverage = thresholds.priorAverageRange().getValue(index);
-        if (!Num.isFinite(bodyValue) || !Num.isFinite(priorAverage)) {
-            // A non-finite body cannot qualify, and a non-finite prior average
-            // (e.g. a DoubleNum SMA accumulator that overflowed while summing
-            // the baseline window) leaves the correct threshold
-            // unrepresentable: conservatively not a doji.
+        if (!Num.isFinite(priorAverage)) {
+            // A non-finite prior average (e.g. a DoubleNum SMA accumulator that
+            // overflowed while summing the baseline window) leaves the correct
+            // threshold unrepresentable: conservatively not a doji.
             return false;
         }
         final Num threshold = priorAverage.multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
         if (!Num.isFinite(threshold)) {
             // The prior average was finite, so a non-finite threshold from an
             // accepted configuration is an upward overflow of the factor
-            // multiplication: an unbounded threshold qualifies every finite
-            // body as a doji. NaN cannot occur here and stays false.
-            return threshold.isPositive();
+            // multiplication: an unbounded threshold qualifies every body as a
+            // doji, including a body whose finite operands overflowed past the
+            // numeric type's range (for example |close - open| beyond
+            // Double.MAX_VALUE), which CandleBodyIndicator reports as a
+            // non-finite overflow magnitude. A body that is non-finite because
+            // its inputs are genuinely unavailable stays conservatively not a
+            // doji.
+            return threshold.isPositive() && !bodyValue.isNaN();
+        }
+        if (!Num.isFinite(bodyValue)) {
+            // The threshold is finite, so a non-finite body can only overflow
+            // finite operands (huge, so no doji) or unavailable inputs
+            // (conservatively no doji): false either way.
+            return false;
         }
         return !bodyValue.isGreaterThan(threshold);
     }
