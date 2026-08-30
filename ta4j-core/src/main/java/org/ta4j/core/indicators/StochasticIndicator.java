@@ -104,4 +104,19 @@ public class StochasticIndicator extends CachedIndicator<Num> {
         return true;
     }
 
+    /**
+     * Discards the whole cache when the series head advances. The zero-range branch
+     * recurses into earlier results only while the retained window is flat, so any
+     * cached value - recursive or not - is recomputable from the retained window
+     * and the begin-index base case. Keeping only the recursively derived band
+     * would preserve stale results that were computed from evicted bars.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
+    }
+
 }

@@ -64,6 +64,12 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   semantics for them. Fixed-window recursive indicators such as
   `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
   floor and are recomputed like any windowed indicator.
+- Conditionally recursive indicators (recursion only along special
+  stretches, e.g. flat windows) override
+  `minimumCacheableIndexAfterHeadAdvance(int)` to return
+  `Integer.MAX_VALUE`: every value is recomputable from the retained window,
+  so the whole cache is discarded on head advance instead of preserving
+  stale pre-advance results.
 
 ## NetMomentumIndicator specifics
 

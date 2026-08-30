@@ -213,17 +213,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // When the series head advanced, entries cached at indexes whose
             // preceding window is no longer fully available were computed from
             // bars that have since been removed. Drop them so reads after the
-            // advance recompute against the retained window; indicators declare
-            // that range through getCountOfUnstableBars(). Recursive indicators
-            // are exempt: their values depend on all earlier history, so no
-            // retained index can be recomputed against the retained window
-            // alone, and evicting only the declared band would split the cache
-            // between window-relative and original-series values. They keep
-            // their pre-advance values, as they did before head-advance
-            // reconciliation existed.
+            // advance recompute against the retained window; the eviction floor
+            // is chosen by minimumCacheableIndexAfterHeadAdvance(int).
             boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
-            int minimumCacheableIndex = !headAdvanced || hasRecursiveDependencies() ? firstRetainedIndex
-                    : unstableRangeFloor(firstRetainedIndex);
+            int minimumCacheableIndex = !headAdvanced ? firstRetainedIndex
+                    : minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
             int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
@@ -278,6 +272,35 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected boolean hasRecursiveDependencies() {
         return false;
+    }
+
+    /**
+     * Selects the cache floor applied after the series head advanced, i.e. the
+     * lowest cached index that stays valid once {@code removedThroughIndex} grew.
+     * Entries below the floor are evicted and recomputed against the retained
+     * window on the next read; entries at or above it are kept.
+     *
+     * <p>
+     * The default resolves one of two policies: indicators with unbounded
+     * historical dependencies ({@link #hasRecursiveDependencies()} returns
+     * {@code true}) keep every cached value, because their results cannot be
+     * recomputed from the retained window alone; all other indicators evict the
+     * declared unstable range ({@code firstRetainedIndex} plus
+     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
+     * calculation against the retained window. A subclass whose values are always
+     * recomputable from the retained window, including any portion that only
+     * conditionally recurses (for example {@link StochasticIndicator}), overrides
+     * this method and returns {@link Integer#MAX_VALUE} to discard the whole cache:
+     * keeping only the recursively derived band would preserve stale results
+     * computed from evicted bars.
+     * </p>
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return the lowest cached index that stays valid after the head advance;
+     *         {@link Integer#MAX_VALUE} discards every cached entry
+     */
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {

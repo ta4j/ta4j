@@ -385,4 +385,48 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
             }
         }
     }
+
+    @Test
+    public void recomputesNonFlatWindowAfterSeriesHeadAdvances() {
+        // With lookback 3 and closes [0, 100, 50, 50, 50], index 2 caches 50
+        // ((50-0)/(100-0)*100). Once the begin index advances to 2 the retained
+        // window is flat, so a fresh calculation resolves to the begin-index
+        // base case (0); the cached 50 must not survive the advance.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 100d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+
+        assertThat(stochastic.getValue(2)).isEqualByComparingTo(numFactory.numOf(50));
+
+        series.setMaximumBarCount(3);
+        assertThat(series.getBeginIndex()).isEqualTo(2);
+
+        assertThat(stochastic.getValue(2)).isEqualByComparingTo(numFactory.numOf(0));
+    }
+
+    @Test
+    public void recomputesFlatStretchAfterSeriesHeadAdvances() {
+        // With closes [0, 50, 50, 50, 50] and lookback 3, indexes 2-4 cache the
+        // carried value 100 before the advance (index 2 = (50-0)/(50-0)*100).
+        // After the begin index advances to 2 the retained window is flat, so
+        // fresh calculations resolve to the begin-index base case 0 and no
+        // carried value may survive.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+
+        assertThat(stochastic.getValue(2)).isEqualByComparingTo(numFactory.numOf(100));
+        assertThat(stochastic.getValue(3)).isEqualByComparingTo(numFactory.numOf(100));
+        assertThat(stochastic.getValue(4)).isEqualByComparingTo(numFactory.numOf(100));
+
+        series.setMaximumBarCount(3);
+        assertThat(series.getBeginIndex()).isEqualTo(2);
+
+        assertThat(stochastic.getValue(2)).isEqualByComparingTo(numFactory.numOf(0));
+        assertThat(stochastic.getValue(3)).isEqualByComparingTo(numFactory.numOf(0));
+        assertThat(stochastic.getValue(4)).isEqualByComparingTo(numFactory.numOf(0));
+    }
+
 }

@@ -35,6 +35,7 @@
 - **Analysis summaries define undefined moments**: `SampleSummary.sampleVariance()`, `sampleSkewness()`, and `sampleKurtosis()` return NaN instead of a misleading zero when undefined, `WeightedValue` performs factory-safe weight/value conversion that preserves `BigDecimal` precision and throws on over/underflow, and `SwingDetectorResult` validates pivot/swing consistency on construction.
 - **Rule registration and named strategies remove atomically**: `NamedStrategy.unregisterImplementation` removes registrations by full identity, so a class sharing a simple name from another package can no longer remove the wrong registration.
 - **Candle pattern foundation: shared adaptive thresholds**: Single-candle patterns now share one consistent, causal, cached body/shadow sizing model and no longer apply ADX trend gates.
+- **Stochastic indicator discards its cache when the series head advances**: the conditional flat-window carry no longer keeps pre-advance values on bounded series, so reads after the begin index moves recompute from the retained window instead of serving results computed from evicted bars. `CachedIndicator` exposes `minimumCacheableIndexAfterHeadAdvance(int)` so conditionally recursive indicators can opt into full-cache eviction.
 
 ## 0.24.1 (2026-08-10)
 

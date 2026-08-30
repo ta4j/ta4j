@@ -417,6 +417,26 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void discardingIndicatorDropsWholeCacheWhenSeriesHeadAdvances() {
+        // A subclass whose values are always recomputable from the retained
+        // window can opt into full-cache eviction on head advance. Before the
+        // advance index 4 caches 4; after the advance to begin index 2 the
+        // same read must return the retained-window value 2, and the begin
+        // index itself must resolve to the base case 0.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
+                .build();
+        HeadAdvanceDiscardingIndicator indicator = new HeadAdvanceDiscardingIndicator(barSeries);
+        assertNumEquals(4, indicator.getValue(4));
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(2, indicator.getValue(4));
+        assertNumEquals(0, indicator.getValue(2));
+    }
+
+    @Test
     public void leaveLastBarUncached() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
@@ -1185,6 +1205,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Each mutation should trigger a recomputation
         assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
+    }
+
+    private final static class HeadAdvanceDiscardingIndicator extends CachedIndicator<Num> {
+
+        private HeadAdvanceDiscardingIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            // Values depend only on the retained window: zero at the begin
+            // index, then one more per step.
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (index <= beginIndex) {
+                return getBarSeries().numFactory().zero();
+            }
+            return getValue(index - 1).plus(getBarSeries().numFactory().one());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
+        }
     }
 
     private final static class FailingIndicator extends CachedIndicator<Num> {
