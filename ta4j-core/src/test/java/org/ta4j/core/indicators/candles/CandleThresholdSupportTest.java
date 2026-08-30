@@ -253,6 +253,56 @@ public class CandleThresholdSupportTest {
         assertFalse(shadowSupport.isShortShadow(5, shadowSupport.upperShadow()));
     }
 
+    @Test
+    public void nonFiniteSourcePriceDisqualifiesLongShadow() {
+        // A bar whose high price is non-finite is missing data: the derived
+        // shadow is unavailable and must never qualify as long, even though
+        // the measurement itself is infinite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        series.barBuilder()
+                .openPrice(1)
+                .closePrice(2)
+                .highPrice(series.numFactory().numOf(Double.POSITIVE_INFINITY))
+                .lowPrice(0)
+                .add();
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertFalse(support.isLongShadow(5, support.upperShadow()));
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsDojiDecidable() {
+        // The prior window's average range overflows from finite endpoints;
+        // the infinite baseline keeps the doji comparison decidable, so a flat
+        // candle still qualifies as a doji instead of being rejected as
+        // unavailable data.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 4, 10, 0, 0); // indexes 0-3: body 10, range 10
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        addBar(series, 0, 0, 0); // index 5: flat candle, body 0, range 0
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertTrue(support.isDoji(5));
+        assertTrue(support.isShortBody(5));
+        assertFalse(support.isLongBody(5));
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsDojiDecidableWithDecimalNum() {
+        // DecimalNum computes the magnitudes exactly; the doji classification
+        // must agree with the overflowed DoubleNum variant.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(series, 4, 10, 0, 0); // indexes 0-3: body 10, range 10
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        addBar(series, 0, 0, 0); // index 5: flat candle, body 0, range 0
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertTrue(support.isDoji(5));
+        assertTrue(support.isShortBody(5));
+        assertFalse(support.isLongBody(5));
+    }
+
     /**
      * Adds a candle with the given exact prices, bypassing the shadow-based
      * {@link #addBar(BarSeries, double, double, double)} helper.

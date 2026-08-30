@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -569,7 +570,9 @@ final class CandleThresholdSupport {
      * <p>
      * An unavailable (NaN) measurement is never classified; an overflowed magnitude
      * from finite operands stays decidable, so it still participates in the strict
-     * comparison instead of being rejected.
+     * comparison instead of being rejected. An overflowed shadow from non-finite
+     * source prices (missing data) is rejected: a shadow derived from an
+     * unavailable price never qualifies as long.
      *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
@@ -582,7 +585,28 @@ final class CandleThresholdSupport {
         }
         final Num shadowValue = shadow.getValue(index);
         final Num baseline = priorAverageBody.getValue(index).multipliedBy(longShadowFactor);
-        return !Num.isNaNOrNull(shadowValue) && !Num.isNaNOrNull(baseline) && shadowValue.isGreaterThan(baseline);
+        if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        if (!Num.isFinite(shadowValue) && !hasFiniteSourcePrices(index)) {
+            // An infinite shadow from an unavailable or non-finite price is
+            // missing data, not an overflowed finite magnitude.
+            return false;
+        }
+        return shadowValue.isGreaterThan(baseline);
+    }
+
+    /**
+     * Whether all four source prices of the candle at {@code index} are finite,
+     * i.e. the bar carries no missing or non-finite OHLC value.
+     *
+     * @param index the candle index
+     * @return {@code true} when open, close, high, and low are all finite
+     */
+    private boolean hasFiniteSourcePrices(int index) {
+        final Bar bar = this.series.getBar(index);
+        return Num.isFinite(bar.getOpenPrice()) && Num.isFinite(bar.getClosePrice()) && Num.isFinite(bar.getHighPrice())
+                && Num.isFinite(bar.getLowPrice());
     }
 
     /**

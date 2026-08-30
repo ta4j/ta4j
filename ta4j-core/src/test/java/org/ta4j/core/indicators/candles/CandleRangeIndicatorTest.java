@@ -101,7 +101,11 @@ public class CandleRangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void isUndefinedWhenSubtractionOverflows() {
+    public void preservesOverflowedRangeAsInfiniteMagnitude() {
+        // |Double.MAX_VALUE - (-Double.MAX_VALUE)| overflows while both
+        // operands are finite; the range stays an infinite magnitude so that
+        // strict comparisons against thresholds derived from it remain
+        // decidable instead of collapsing to unavailable data.
         DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
         BarSeries overflow = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
         overflow.barBuilder()
@@ -110,7 +114,9 @@ public class CandleRangeIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 .highPrice(doubleFactory.numOf(Double.MAX_VALUE))
                 .lowPrice(doubleFactory.numOf(-Double.MAX_VALUE))
                 .add();
-        assertTrue(new CandleRangeIndicator(overflow).getValue(0).isNaN());
+        Num range = new CandleRangeIndicator(overflow).getValue(0);
+        assertFalse(range.isNaN());
+        assertFalse(Num.isFinite(range));
     }
 
     @Override
