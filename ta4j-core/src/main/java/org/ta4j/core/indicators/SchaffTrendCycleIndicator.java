@@ -78,9 +78,9 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
         MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
         StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
-        EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
+        EMAIndicator macdStochasticSmoothed = new EvictingEmaIndicator(macdStochastic, smoothingPeriod);
         StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        EMAIndicator stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        EMAIndicator stcSmoothed = new EvictingEmaIndicator(cycleStochastic, smoothingPeriod);
         return new Config(indicator, fastPeriod, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
@@ -101,7 +101,47 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
     }
 
+    /**
+     * Discards every cached value after the series head advanced.
+     *
+     * <p>
+     * STC values are always recomputable from the retained window, and both the
+     * stochastic stages and the smoothing {@link EvictingEmaIndicator}s discard
+     * their caches on a head advance: keeping any band here would preserve results
+     * derived from bars that no longer exist.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE} to evict the whole cache
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
+    }
+
     private record Config(Indicator<Num> indicator, int fastPeriod, EMAIndicator stcSmoothed, int slowPeriod,
             int cycleLength, int smoothingPeriod) {
+    }
+
+    /**
+     * An {@link EMAIndicator} that discards its whole cache when the series head
+     * advances.
+     *
+     * <p>
+     * EMA values depend on the entire retained history of their input. The
+     * stochastic stage of this indicator rebaselines after a head advance, so any
+     * surviving EMA value would mix fresh and stale stochastic inputs; discarding
+     * the cache makes post-advance reads recurse through freshly recomputed
+     * stochastic values.
+     */
+    private static final class EvictingEmaIndicator extends EMAIndicator {
+
+        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
+            super(indicator, barCount);
+        }
+
+        @Override
+        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
+            return Integer.MAX_VALUE;
+        }
     }
 }
