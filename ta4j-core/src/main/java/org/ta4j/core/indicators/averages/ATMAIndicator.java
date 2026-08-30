@@ -36,7 +36,8 @@ public class ATMAIndicator extends CachedIndicator<Num> {
      *                  the rounded-up half as the fast smoothing length.
      */
     public ATMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.barCount = barCount;
         this.indicator = indicator;
         this.fast = Math.ceilDiv(barCount, 2);

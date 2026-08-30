@@ -58,6 +58,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final CachedBuffer<T> cache;
     private final long lastBarWaitTimeoutMs;
     private final AtomicReference<BarSeriesChangeSnapshot> observedSeriesSnapshot;
+    /**
+     * Shared empty source array for indicators constructed directly from a
+     * {@link BarSeries}.
+     */
+    private static final Indicator<?>[] NO_SOURCES = new Indicator<?>[0];
+
+    /**
+     * The source indicators whose full-tail invalidations propagate to this
+     * indicator on head advance (see
+     * {@link #minimumCacheableIndexAfterHeadAdvance(int)}). Empty when constructed
+     * directly from a {@link BarSeries}.
+     */
+    private final Indicator<?>[] sourceIndicators;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -100,19 +113,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS), NO_SOURCES);
     }
 
     CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
-        this(validatedConfig(series, lastBarWaitTimeoutMs));
+        this(validatedConfig(series, lastBarWaitTimeoutMs), NO_SOURCES);
     }
 
-    private CachedIndicator(Config config) {
+    private CachedIndicator(Config config, Indicator<?>[] sourceIndicators) {
         super(config.series());
         BarSeriesChangeSnapshot snapshot = config.snapshot();
         this.cache = CachedBuffer.of(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
         this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
+        this.sourceIndicators = sourceIndicators;
     }
 
     private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
@@ -129,10 +143,31 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator a related indicator (with a bar series)
+     * @param indicator a related indicator (with a bar series); retained so
+     *                  full-tail invalidations propagate to this indicator
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS), new Indicator<?>[] { indicator });
+    }
+
+    /**
+     * Constructor for indicators that read from several related indicators.
+     *
+     * @param firstSource       a related indicator (with a bar series); retained so
+     *                          full-tail invalidations propagate to this indicator
+     * @param additionalSources further related indicators retained for the same
+     *                          propagation
+     * @since 0.24.2
+     */
+    protected CachedIndicator(Indicator<?> firstSource, Indicator<?>... additionalSources) {
+        this(validatedConfig(firstSource, LAST_BAR_WAIT_TIMEOUT_MS), flattened(firstSource, additionalSources));
+    }
+
+    private static Indicator<?>[] flattened(Indicator<?> firstSource, Indicator<?>[] additionalSources) {
+        Indicator<?>[] sources = new Indicator<?>[additionalSources.length + 1];
+        sources[0] = firstSource;
+        System.arraycopy(additionalSources, 0, sources, 1, additionalSources.length);
+        return sources;
     }
 
     private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {
@@ -281,18 +316,26 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * window on the next read; entries at or above it are kept.
      *
      * <p>
-     * The default resolves one of two policies: indicators with unbounded
-     * historical dependencies ({@link #hasRecursiveDependencies()} returns
-     * {@code true}) keep every cached value, because their results cannot be
-     * recomputed from the retained window alone; all other indicators evict the
-     * declared unstable range ({@code firstRetainedIndex} plus
-     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
-     * calculation against the retained window. A subclass whose values are always
-     * recomputable from the retained window, including any portion that only
-     * conditionally recurses (for example {@link StochasticIndicator}), overrides
-     * this method and returns {@link Integer#MAX_VALUE} to discard the whole cache:
-     * keeping only the recursively derived band would preserve stale results
-     * computed from evicted bars.
+     * The default resolves one of two policies, after propagating source
+     * invalidations: when a registered source {@link CachedIndicator} applies a
+     * floor above its own default unstable-range floor (for example a rebaselining
+     * source such as {@link StochasticIndicator} discarding its whole cache), this
+     * indicator discards its whole cache too, because its cached values were
+     * derived from source values that no longer exist. A source whose floor merely
+     * covers its own declared unstable band does not trigger propagation, because
+     * that floor is the band's default eviction and dependents already tolerate it.
+     * Indicators with unbounded historical dependencies
+     * ({@link #hasRecursiveDependencies()} returns {@code true}) and no such source
+     * keep every cached value, because their results cannot be recomputed from the
+     * retained window alone; all other indicators evict the declared unstable range
+     * ({@code firstRetainedIndex} plus {@link #getCountOfUnstableBars()}) so that
+     * re-seeded values match a fresh calculation against the retained window. A
+     * subclass whose values are always recomputable from the retained window,
+     * including any portion that only conditionally recurses (for example
+     * {@link StochasticIndicator}), overrides this method and returns
+     * {@link Integer#MAX_VALUE} to discard the whole cache: keeping only the
+     * recursively derived band would preserve stale results computed from evicted
+     * bars.
      * </p>
      *
      * @param firstRetainedIndex the first series index that remains available
@@ -300,7 +343,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *         {@link Integer#MAX_VALUE} discards every cached entry
      */
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        for (Indicator<?> sourceIndicator : sourceIndicators) {
+            if (sourceIndicator instanceof CachedIndicator<?> cachedSource
+                    && rebaselinesBeyondDefaultBand(cachedSource, firstRetainedIndex)) {
+                return Integer.MAX_VALUE;
+            }
+        }
         return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
+    }
+
+    private static boolean rebaselinesBeyondDefaultBand(CachedIndicator<?> source, int firstRetainedIndex) {
+        long defaultBandFloor = (long) firstRetainedIndex + source.getCountOfUnstableBars();
+        return source.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor;
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {

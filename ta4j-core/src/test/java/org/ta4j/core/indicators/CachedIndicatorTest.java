@@ -19,6 +19,7 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 
 import java.time.Duration;
 import java.time.Instant;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -434,6 +435,94 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         assertNumEquals(2, indicator.getValue(4));
         assertNumEquals(0, indicator.getValue(2));
+    }
+
+    @Test
+    public void cachedDependentFollowsRebaseliningSourceWhenSeriesHeadAdvances() {
+        // Stochastic rebaselines its whole cache on head advance; a dependent
+        // caching the pre-advance source values would keep serving stale
+        // results, so the source's full-tail invalidation must propagate.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator source = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        EMAIndicator dependent = new EMAIndicator(source, 1);
+        assertNumEquals(100, dependent.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // The retained [50, 50, 50] window has a zero range: the rebaselined
+        // source returns 0, and the dependent must follow instead of serving
+        // its stale cached 100.
+        assertNumEquals(0, dependent.getValue(3));
+        assertNumEquals(0, dependent.getValue(4));
+    }
+
+    @Test
+    public void transitiveCachedDependentsFollowRebaseliningSourceWhenSeriesHeadAdvances() {
+        // Propagation must travel through a chain of cached dependents, not
+        // only one level below the rebaselining source.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator source = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        EMAIndicator inner = new EMAIndicator(source, 1);
+        EMAIndicator outer = new EMAIndicator(inner, 1);
+        assertNumEquals(100, outer.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(0, outer.getValue(3));
+        assertNumEquals(0, outer.getValue(4));
+    }
+
+    @Test
+    public void nonRecursiveCachedDependentFollowsRebaseliningSourceWhenSeriesHeadAdvances() {
+        // Propagation must not be limited to recursive dependents: a
+        // non-recursive dependent whose own unstable band does not cover the
+        // rebaselined source band would otherwise keep serving stale entries
+        // at or above its default cache floor.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator source = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        PassingIndicator dependent = new PassingIndicator(source);
+        assertNumEquals(100, dependent.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(0, dependent.getValue(3));
+        assertNumEquals(0, dependent.getValue(4));
+    }
+
+    /**
+     * Non-recursive cached passthrough with no unstable band of its own, used to
+     * verify that a source's full-tail invalidation propagates to dependents whose
+     * default cache floor would otherwise keep stale entries.
+     */
+    private static final class PassingIndicator extends CachedIndicator<Num> {
+
+        private static final long serialVersionUID = 1L;
+
+        private final Indicator<Num> source;
+
+        PassingIndicator(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return source.getValue(index);
+        }
     }
 
     @Test

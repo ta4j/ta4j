@@ -34,7 +34,8 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
      * @param vidyaPeriod Lookback period for VIDYA.
      */
     public VIDYAIndicator(Indicator<Num> indicator, int cmoPeriod, int vidyaPeriod) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.indicator = indicator;
         this.cmoPeriod = cmoPeriod;
         this.vidyaPeriod = vidyaPeriod;

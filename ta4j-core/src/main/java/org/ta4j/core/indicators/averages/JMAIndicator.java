@@ -43,7 +43,8 @@ public class JMAIndicator extends CachedIndicator<Num> {
      * @param power     The smoothing power factor (default is 2).
      */
     public JMAIndicator(Indicator<Num> indicator, int barCount, double phase, double power) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.numFactory = indicator.getBarSeries().numFactory();
         this.indicator = indicator;
         this.barCount = barCount;

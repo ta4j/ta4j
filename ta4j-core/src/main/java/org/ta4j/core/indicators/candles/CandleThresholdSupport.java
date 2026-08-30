@@ -675,7 +675,8 @@ final class CandleThresholdSupport {
         private final SMAIndicator primary;
 
         private PriorAverageIndicator(Indicator<Num> source, int barCount) {
-            super(source.getBarSeries());
+            super(source);
+
             this.source = source;
             this.barCount = barCount;
             this.primary = new SMAIndicator(source, barCount);

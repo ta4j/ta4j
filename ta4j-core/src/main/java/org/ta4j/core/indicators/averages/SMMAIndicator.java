@@ -30,7 +30,8 @@ public class SMMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the Simple Moving Average time frame
      */
     public SMMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.barCount = barCount;
         this.indicator = indicator;
     }

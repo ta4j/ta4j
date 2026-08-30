@@ -42,7 +42,8 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
      * @param ratio  the {@link #ratio}
      */
     public KeltnerChannelLowerIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {
-        super(middle.getBarSeries());
+        super(middle, atr);
+
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
         this.atrBarCount = atr.getBarCount();

@@ -59,10 +59,11 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator (with its bar series)
+     * @param indicator the indicator (with its bar series); retained so full-tail
+     *                  invalidations propagate to this indicator
      */
     protected RecursiveCachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
+        super(indicator);
     }
 
     /**
