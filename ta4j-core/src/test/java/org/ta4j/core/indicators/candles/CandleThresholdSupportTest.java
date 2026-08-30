@@ -291,6 +291,58 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void overflowedPriorAndCurrentBodiesStayStrictlyDecidableAcrossFactories() {
+        // The prior baseline body and the evaluated body both overflow the raw
+        // magnitude (1.5 * MAX and 1.8 * MAX collapse to infinity in DoubleNum);
+        // the half-scale comparison keeps the strict ordering decidable so both
+        // factories agree that the larger body is long.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0.75 * Double.MAX_VALUE, -0.75 * Double.MAX_VALUE, 0.75 * Double.MAX_VALUE,
+                    -0.75 * Double.MAX_VALUE); // index 0: prior body 1.5 * MAX
+            addExtremeCandle(series, 0.9 * Double.MAX_VALUE, -0.9 * Double.MAX_VALUE, 0.9 * Double.MAX_VALUE,
+                    -0.9 * Double.MAX_VALUE); // index 1: body 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongBody(1));
+        }
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsShortShadowThresholdDecidableAcrossFactories() {
+        // The period-1 prior range doubles to 2 * MAX and overflows in
+        // DoubleNum; applying the short-shadow factor before restoring the
+        // full-scale baseline keeps the threshold finite (0.2 * MAX), so the
+        // 0.5 * MAX shadow is rejected as not short instead of qualifying
+        // against an infinite threshold.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, Double.MAX_VALUE, -Double.MAX_VALUE); // index 0: range 2 * MAX
+            addExtremeCandle(series, 0, 0, 0.5 * Double.MAX_VALUE, 0); // index 1: upper shadow 0.5 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isShortShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void subnormalBodyIsNotErasedByHalfScalingAcrossFactories() {
+        // Both the prior baseline body and the evaluated body are the smallest
+        // positive magnitude; halving each endpoint underflows to zero in
+        // DoubleNum, which would erase the baseline and let the subnormal body
+        // qualify as long. The raw subnormal magnitude is retained instead, so
+        // the strict comparison fails in both factories.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 0: body MIN_VALUE
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 1: body MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isLongBody(1));
+        }
+    }
+
+    @Test
     public void nonFiniteSourcePriceDisqualifiesShortShadow() {
         // A bar whose low price is non-finite is missing data: the derived
         // lower shadow is negative-infinite and must never qualify as short,

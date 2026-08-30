@@ -36,12 +36,13 @@ import org.ta4j.core.num.NumFactory;
  * implemented as {@code new PreviousValueIndicator(new PriorAverageIndicator(m,
  * averagePeriod))}, where {@code m} is the half-scale source (half body or half
  * range). {@link PriorAverageIndicator} averages half-scale values, so its
- * intermediate sums stay finite whenever the restored full-scale mean is
- * representable, and doubles the result; when the SMA accumulator still
- * overflows into a non-finite value, the same window is re-averaged as an
- * incremental mean before doubling. The candle under evaluation therefore never
- * influences its own baseline, which keeps the pattern evaluation causal
- * (look-ahead free).
+ * intermediate sums stay finite whenever the full-scale mean is representable,
+ * and returns the half-scale mean; when the SMA accumulator still overflows
+ * into a non-finite value, the same window is re-averaged as an incremental
+ * mean. Full-scale views are derived only where a consumer still expects raw
+ * magnitudes (shadow comparisons and the baseline accessors) by doubling the
+ * half-scale mean. The candle under evaluation therefore never influences its
+ * own baseline, which keeps the pattern evaluation causal (look-ahead free).
  *
  * <p>
  * Recommended threshold profile (documented defaults):
@@ -334,6 +335,8 @@ final class CandleThresholdSupport {
     private final Indicator<Num> lowerShadow;
     private final Indicator<Num> halfBody;
     private final Indicator<Num> halfRange;
+    private final Indicator<Num> halfPriorAverageBody;
+    private final Indicator<Num> halfPriorAverageRange;
     private final Indicator<Num> priorAverageBody;
     private final Indicator<Num> priorAverageRange;
     private final Num longBodyFactor;
@@ -342,6 +345,7 @@ final class CandleThresholdSupport {
     private final Num longShadowFactor;
     private final Num shortShadowRangeFactor;
     private final Num nearRangeFactor;
+    private final Num restoreFactor;
 
     /**
      * Constructor with the {@link #DEFAULT_AVERAGE_PERIOD default average period}.
@@ -374,8 +378,10 @@ final class CandleThresholdSupport {
         this.lowerShadow = new LowerShadowIndicator(this.series);
         this.halfBody = new HalfBodyIndicator(this.series);
         this.halfRange = new HalfRangeIndicator(this.series);
-        this.priorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(halfBody, averagePeriod));
-        this.priorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(halfRange, averagePeriod));
+        this.halfPriorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(halfBody, averagePeriod));
+        this.halfPriorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(halfRange, averagePeriod));
+        this.priorAverageBody = new DoubledIndicator(halfPriorAverageBody);
+        this.priorAverageRange = new DoubledIndicator(halfPriorAverageRange);
         final NumFactory numFactory = this.series.numFactory();
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
@@ -383,6 +389,7 @@ final class CandleThresholdSupport {
         this.longShadowFactor = numFactory.numOf(LONG_SHADOW_FACTOR);
         this.shortShadowRangeFactor = numFactory.numOf(SHORT_SHADOW_RANGE_FACTOR);
         this.nearRangeFactor = numFactory.numOf(NEAR_RANGE_FACTOR);
+        this.restoreFactor = numFactory.numOf(2);
     }
 
     /**
@@ -509,10 +516,10 @@ final class CandleThresholdSupport {
      * prior average body.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified. A magnitude that
-     * overflows finite operands stays non-finite yet decidable, so it still
-     * participates in the strict comparison instead of being rejected, mirroring
-     * the operand-finiteness contract of {@link CandleBodyIndicator}.
+     * The comparison is performed at half scale: the half body is measured against
+     * the half-scale prior average body, so two magnitudes whose raw values would
+     * both overflow still keep a decidable strict ordering across
+     * {@link NumFactory}s. An unavailable (NaN) measurement is never classified.
      *
      * @param index the candle index
      * @return {@code true} for a long body, {@code false} below the warm-up
@@ -522,8 +529,8 @@ final class CandleThresholdSupport {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longBodyFactor);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(longBodyFactor);
         return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isGreaterThan(baseline);
     }
 
@@ -532,9 +539,10 @@ final class CandleThresholdSupport {
      * prior average body.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
-     * from finite operands stays decidable, so a finite body still qualifies as
-     * short against an overflowed baseline.
+     * The comparison is performed at half scale: the half body is measured against
+     * the half-scale prior average body, so a finite half body stays decidable
+     * against a baseline whose raw mean would overflow. An unavailable (NaN)
+     * measurement is never classified.
      *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
@@ -544,8 +552,8 @@ final class CandleThresholdSupport {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
         return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isLessThan(baseline);
     }
 
@@ -554,9 +562,10 @@ final class CandleThresholdSupport {
      * average range, the classic doji neighborhood.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified; an overflowed magnitude
-     * from finite operands stays decidable, so it can never qualify as a doji-sized
-     * body.
+     * The comparison is performed at half scale: the half body is measured against
+     * the half-scale prior average range, so an overflowed body or baseline stays
+     * decidable across {@link NumFactory}s. An unavailable (NaN) measurement is
+     * never classified.
      *
      * @param index the candle index
      * @return {@code true} for a doji-like body, {@code false} below the warm-up
@@ -566,8 +575,8 @@ final class CandleThresholdSupport {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
         return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && !bodyValue.isGreaterThan(baseline);
     }
 
@@ -625,11 +634,14 @@ final class CandleThresholdSupport {
      * {@value #SHORT_SHADOW_RANGE_FACTOR} of the prior average range.
      *
      * <p>
-     * An unavailable (NaN) measurement is never classified; an overflowed shadow
-     * from non-finite source prices (missing data) is rejected: a shadow derived
-     * from an unavailable price never qualifies as short. An overflowed magnitude
-     * from finite source prices stays decidable, so it can never qualify as a short
-     * shadow.
+     * The factor is applied to the half-scale prior average range before the
+     * baseline is restored to full scale, so the threshold stays finite when the
+     * raw mean would overflow and a finite shadow stays decidable across
+     * {@link NumFactory}s. An unavailable (NaN) measurement is never classified; an
+     * overflowed shadow from non-finite source prices (missing data) is rejected: a
+     * shadow derived from an unavailable price never qualifies as short. An
+     * overflowed magnitude from finite source prices stays decidable, so it can
+     * never qualify as a short shadow.
      *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
@@ -641,7 +653,9 @@ final class CandleThresholdSupport {
             return false;
         }
         final Num shadowValue = shadow.getValue(index);
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor);
+        final Num baseline = halfPriorAverageRange.getValue(index)
+                .multipliedBy(shortShadowRangeFactor)
+                .multipliedBy(restoreFactor);
         if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
             return false;
         }
@@ -656,6 +670,11 @@ final class CandleThresholdSupport {
     /**
      * Whether the absolute difference between the two measurements is at most
      * {@value #NEAR_RANGE_FACTOR} of the prior average range.
+     *
+     * <p>
+     * Both the difference and the baseline are computed at half scale, so a raw
+     * difference or mean that would overflow stays decidable across
+     * {@link NumFactory}s, and a subnormal difference is not erased by the halving.
      *
      * @param index  the candle index
      * @param first  the first measurement
@@ -673,17 +692,40 @@ final class CandleThresholdSupport {
         if (firstValue == null || secondValue == null) {
             return false;
         }
-        final Num difference = firstValue.minus(secondValue).abs();
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
-        return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(difference)
-                && Num.isFinite(baseline) && !difference.isGreaterThan(baseline);
+        final Num halfDifference = halfDifference(firstValue, secondValue, series.numFactory());
+        final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
+        return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(halfDifference)
+                && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
+    }
+
+    /**
+     * The absolute difference of two magnitudes, each divided by two before
+     * differencing, so the result stays finite when the raw difference would
+     * overflow. When both halves underflow to zero while the operands differ, the
+     * raw difference is returned instead: it is subnormal, cannot overflow, and
+     * would otherwise be erased by the halving. Non-finite operands propagate.
+     *
+     * @param first  the first operand
+     * @param second the second operand
+     * @return the half-scale difference, or the raw difference when halving
+     *         underflows
+     * @since 0.24.2
+     */
+    private static Num halfDifference(Num first, Num second, NumFactory numFactory) {
+        final Num two = numFactory.numOf(2);
+        final Num half = first.dividedBy(two).minus(second.dividedBy(two)).abs();
+        if (!half.isZero() || first.equals(second)) {
+            return half;
+        }
+        return first.minus(second).abs();
     }
 
     /**
      * Half of the candle body, i.e. {@code |open - close| / 2} computed by dividing
      * each operand before differencing, so the result stays finite whenever the raw
-     * body magnitude would overflow the {@link Num} type. A non-finite endpoint
-     * yields {@link NaN#NaN}, mirroring {@link CandleBodyIndicator}.
+     * body magnitude would overflow the {@link Num} type; a subnormal raw body is
+     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link CandleBodyIndicator}.
      */
     private static final class HalfBodyIndicator extends CachedIndicator<Num> {
         private HalfBodyIndicator(BarSeries series) {
@@ -698,8 +740,7 @@ final class CandleThresholdSupport {
             if (!Num.isFinite(open) || !Num.isFinite(close)) {
                 return NaN.NaN;
             }
-            final Num two = getBarSeries().numFactory().numOf(2);
-            return open.dividedBy(two).minus(close.dividedBy(two)).abs();
+            return halfDifference(open, close, getBarSeries().numFactory());
         }
 
         @Override
@@ -711,8 +752,9 @@ final class CandleThresholdSupport {
     /**
      * Half of the candle range, i.e. {@code (high - low) / 2} computed by dividing
      * each operand before differencing, so the result stays finite whenever the raw
-     * range magnitude would overflow the {@link Num} type. A non-finite endpoint
-     * yields {@link NaN#NaN}, mirroring {@link CandleRangeIndicator}.
+     * range magnitude would overflow the {@link Num} type; a subnormal raw range is
+     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link CandleRangeIndicator}.
      */
     private static final class HalfRangeIndicator extends CachedIndicator<Num> {
         private HalfRangeIndicator(BarSeries series) {
@@ -727,8 +769,7 @@ final class CandleThresholdSupport {
             if (!Num.isFinite(high) || !Num.isFinite(low)) {
                 return NaN.NaN;
             }
-            final Num two = getBarSeries().numFactory().numOf(2);
-            return high.dividedBy(two).minus(low.dividedBy(two));
+            return halfDifference(high, low, getBarSeries().numFactory());
         }
 
         @Override
@@ -738,18 +779,49 @@ final class CandleThresholdSupport {
     }
 
     /**
-     * Average of the preceding {@code barCount} half-scale source values, restored
-     * to full scale by doubling, that never overflows an intermediate summation.
-     * The primary path delegates to an {@link SMAIndicator} and doubles its result;
-     * when the accumulator overflowed into a non-finite value (for example a
-     * {@code DoubleNum} summing several near-MAX halves), the same window is
-     * re-averaged as an incremental mean, which never accumulates a running sum
-     * beyond the window maximum, then doubled. Because every term is at most half
-     * the largest representable magnitude, the exact doubled mean is at most the
-     * largest representable magnitude, so the restore step stays finite whenever
-     * the mean itself is representable; a baseline that still overflows remains
-     * non-finite yet decidable in every comparison below. Non-finite source values
-     * propagate as non-finite results.
+     * Full-scale view of a half-scale source: the source value doubled. Doubling
+     * restores the magnitude that consumers comparing raw measurements (shadows,
+     * the baseline accessors) expect, and preserves the overflow behavior those
+     * comparisons documented before the half-scale migration: a doubled magnitude
+     * that overflows stays non-finite, exactly as the raw mean did.
+     *
+     * @since 0.24.2
+     */
+    private static final class DoubledIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+        private final Num two;
+
+        private DoubledIndicator(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+            this.two = source.getBarSeries().numFactory().numOf(2);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return source.getValue(index).multipliedBy(two);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return source.getCountOfUnstableBars();
+        }
+    }
+
+    /**
+     * Average of the preceding {@code barCount} half-scale source values, kept at
+     * half scale, that never overflows an intermediate summation. The primary path
+     * delegates to an {@link SMAIndicator}; when the accumulator overflowed into a
+     * non-finite value (for example a {@code DoubleNum} summing several near-MAX
+     * halves), the same window is re-averaged as an incremental mean, which never
+     * accumulates a running sum beyond the window maximum. Because every term is at
+     * most half the largest representable magnitude, the exact mean is at most the
+     * largest representable magnitude, so the half-scale mean stays finite whenever
+     * it is representable; a baseline that still overflows remains non-finite yet
+     * decidable in every comparison below. Full-scale views are derived by the
+     * owning support only where a consumer still expects raw magnitudes. Non-finite
+     * source values propagate as non-finite results.
      */
     private static final class PriorAverageIndicator extends CachedIndicator<Num> {
 
@@ -769,7 +841,7 @@ final class CandleThresholdSupport {
         protected Num calculate(int index) {
             final Num result = primary.getValue(index);
             if (Num.isFinite(result)) {
-                return result.multipliedBy(two());
+                return result;
             }
             final int beginIndex = getBarSeries().getBeginIndex();
             final int start = Math.max(beginIndex, index - barCount + 1);
@@ -781,11 +853,7 @@ final class CandleThresholdSupport {
                 }
                 mean = mean.plus(value.minus(mean).dividedBy(getBarSeries().numFactory().numOf(i - start + 1)));
             }
-            return mean.multipliedBy(two());
-        }
-
-        private Num two() {
-            return getBarSeries().numFactory().numOf(2);
+            return mean;
         }
 
         @Override
