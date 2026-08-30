@@ -167,6 +167,23 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void limitDistanceOverflowKeepsFiniteCapability() {
+        // Gross returns 5e307 and 1.5e308 with a one-sided lower limit of
+        // -1e308: mean 1e308 and sigma 5e307 make mean - lsl overflow to
+        // +Infinity even though the true Cpk is 4/3; the scale-aware
+        // per-ratio form must keep the capability finite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 5e307, 1, 1.5e308).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(-1e308);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertNumEquals(numFactory.numOf(4).dividedBy(numFactory.numOf(3)), capability, 1e-9);
+    }
+
+    @Test
     public void rejectsInvalidSpecificationLimits() {
         assertThrows(NullPointerException.class, () -> new ProcessCapabilityCriterion(null));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(Double.NaN));

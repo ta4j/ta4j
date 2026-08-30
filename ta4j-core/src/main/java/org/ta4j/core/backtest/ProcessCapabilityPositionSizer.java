@@ -88,25 +88,31 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // zero can only be a positive underflow: saturate to the context
             // epsilon instead of returning zero and aborting validation.
             baseAmountValue = factory.epsilon();
+        } else if (!Num.isFinite(baseAmountValue)) {
+            // Likewise a non-finite coerced value can only be a positive
+            // overflow: saturate to the largest finite context value instead
+            // of returning infinity and aborting validation.
+            baseAmountValue = factory.numOf(Double.MAX_VALUE);
         }
-        if (!Num.isFinite(statistic)) {
-            return baseAmountValue;
-        }
-        Num statisticValue = factory.produces(statistic) ? statistic : factory.numOf(statistic.doubleValue());
-        if (!Num.isFinite(statisticValue)) {
-            return statisticValue.isPositive() ? factory.epsilon().min(baseAmountValue) : baseAmountValue;
-        }
-        Num controlLimitValue = factory.produces(controlLimit) ? controlLimit
-                : factory.numOf(controlLimit.doubleValue());
-        if (!statisticValue.isPositive()) {
+        if (!Num.isFinite(statistic) || !statistic.isPositive()) {
             // A non-positive statistic means an exactly safe process: size at
-            // the full base amount even when the control limit underflows to
-            // zero during coercion (dividing zero by that zero would produce
-            // a NaN ratio and the epsilon fallback instead).
+            // the full base amount. The sign is read in the indicator's own
+            // factory, where a tiny positive statistic cannot underflow.
             return baseAmountValue;
         }
-        Num standardized = statisticValue.dividedBy(controlLimitValue);
-        Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
+        // Standardize in the indicator's factory before coercing: both
+        // operands can underflow to zero in the context factory while their
+        // ratio remains exact (statistic == controlLimit == 1e-400 must size
+        // at half the base amount, not the full amount).
+        Num standardized = statistic.dividedBy(controlLimit);
+        if (!Num.isFinite(standardized)) {
+            // The true ratio overflows the indicator's factory: the process
+            // is far outside control, so size at the context epsilon.
+            return factory.epsilon().min(baseAmountValue);
+        }
+        Num standardizedValue = factory.produces(standardized) ? standardized
+                : factory.numOf(standardized.doubleValue());
+        Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
         if (!Num.isFinite(damped) || damped.isZero()) {
             return factory.epsilon().min(baseAmountValue);
         }

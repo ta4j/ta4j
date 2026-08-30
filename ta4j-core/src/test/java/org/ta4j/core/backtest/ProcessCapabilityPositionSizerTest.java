@@ -178,6 +178,43 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void positiveOverflowingBaseAmountSaturatesToMaxFiniteValue() {
+        // A DecimalNum base amount of 1e400 is positive in its own factory
+        // but overflows to +Infinity when coerced into a DoubleNum context:
+        // the sizer saturates it to the largest finite context value instead
+        // of returning infinity and aborting BarSeriesManager validation.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(1));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, new BigDecimal("1e400"), 10);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Num amount = sizer.amount(context(series, 1, 1));
+            assertTrue(Num.isFinite(amount));
+            assertTrue(amount.isGreaterThan(numOf(Double.MAX_VALUE / 2)));
+        });
+    }
+
+    @Test
+    public void underflowedPositiveStatisticKeepsExactRatio() {
+        // A positive DecimalNum statistic of 1e-400 underflows to zero in a
+        // DoubleNum context; with the control limit also 1e-400 the true
+        // standardized ratio is exactly 1, so the sizer must size at half
+        // the base amount instead of mistaking the coerced zero for an
+        // exactly safe process and returning the full amount.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("1e-400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, new BigDecimal("1e-400"));
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(50, sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void negativeOverflowCoercionFailsOpen() {
         // A DecimalNum statistic of -1e400 coerces to -Infinity in a DoubleNum
         // context: max(0, -Inf) would be zero, so the sizer fails open.
