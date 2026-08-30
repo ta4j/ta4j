@@ -119,6 +119,27 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void overflowedBodyExceedingOverflowedThresholdIsNotADoji() {
+        // One range-1.1 baseline candle gives a prior average range of 1.1. The
+        // final candle spans -Double.MAX_VALUE to Double.MAX_VALUE, so its body
+        // (2 * MAX) exceeds the overflowed threshold product (1.1 * MAX):
+        // comparing the raw overflowed magnitudes directly would misclassify
+        // the body as qualifying. The scaled comparison preserves the ordering,
+        // rejecting the body under DoubleNum and matching DecimalNum's exact
+        // arithmetic.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(series, 1.1, 0, 0);
+        series.barBuilder()
+                .openPrice(-Double.MAX_VALUE)
+                .closePrice(Double.MAX_VALUE)
+                .highPrice(Double.MAX_VALUE)
+                .lowPrice(-Double.MAX_VALUE)
+                .add();
+
+        assertFalse(new DojiIndicator(series, 1, Double.MAX_VALUE).getValue(1));
+    }
+
+    @Test
     public void unavailableBodyIsNotADojiEvenAgainstOverflowedThreshold() {
         // The overflowed threshold qualifies a body that overflowed from finite
         // operands, but a body missing because its inputs are genuinely

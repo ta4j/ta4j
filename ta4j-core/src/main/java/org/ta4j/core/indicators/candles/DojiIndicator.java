@@ -23,7 +23,18 @@ import org.ta4j.core.num.Num;
  *
  * The comparison is <em>inclusive</em>: a body exactly equal to the threshold
  * (including a zero body against a zero range baseline) is still a doji.
+ * 
+ * <p>
+ * The body is compared in scaled form,
+ * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
+ * which is equivalent to the product form above. Scaling each operand before
+ * differencing keeps the comparison decidable when the raw body magnitude
+ * overflows the {@link Num} type: a finite scaled ratio preserves the exact
+ * ordering, while a scaled difference that overflows to positive infinity can
+ * only exceed a finite range factor, mirroring DecimalNum's exact arithmetic
+ * under DoubleNum.
  *
+ * 
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
  * direction context. A doji is traditionally interpreted as a sign of market
@@ -45,9 +56,6 @@ public class DojiIndicator extends CandlePatternIndicator {
      */
     private final double rangeFactor;
 
-    /** The current candle's body magnitude, shared from the interned support. */
-    private final transient Indicator<Num> body;
-
     /**
      * Constructor with the recommended defaults: a 5-candle range baseline and a
      * range factor of 0.1.
@@ -61,7 +69,6 @@ public class DojiIndicator extends CandlePatternIndicator {
                 CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.rangeFactor = CandleThresholdSupport.DOJI_RANGE_FACTOR;
-        this.body = thresholds.bodyIndicator();
     }
 
     /**
@@ -85,7 +92,6 @@ public class DojiIndicator extends CandlePatternIndicator {
         // Normalize signed zero: DoubleNum's Double.compare orders 0.0 above -0.0,
         // which would flip the inclusive doji threshold for a zero body.
         this.rangeFactor = rangeFactor == 0d ? 0d : rangeFactor;
-        this.body = thresholds.bodyIndicator();
     }
 
     @Override
@@ -93,7 +99,14 @@ public class DojiIndicator extends CandlePatternIndicator {
         if (!thresholds.isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
+        final var bar = getBarSeries().getBar(index);
+        final Num open = bar.getOpenPrice();
+        final Num close = bar.getClosePrice();
+        if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
+            // Unavailable candle endpoints (for example a NaN open or close)
+            // leave the body magnitude undefined: conservatively not a doji.
+            return false;
+        }
         final Num priorAverage = thresholds.priorAverageRange().getValue(index);
         if (!Num.isFinite(priorAverage)) {
             // A non-finite prior average (e.g. a DoubleNum SMA accumulator that
@@ -101,26 +114,19 @@ public class DojiIndicator extends CandlePatternIndicator {
             // threshold unrepresentable: conservatively not a doji.
             return false;
         }
-        final Num threshold = priorAverage.multipliedBy(getBarSeries().numFactory().numOf(rangeFactor));
-        if (!Num.isFinite(threshold)) {
-            // The prior average was finite, so a non-finite threshold from an
-            // accepted configuration is an upward overflow of the factor
-            // multiplication: an unbounded threshold qualifies every body as a
-            // doji, including a body whose finite operands overflowed past the
-            // numeric type's range (for example |close - open| beyond
-            // Double.MAX_VALUE), which CandleBodyIndicator reports as a
-            // non-finite overflow magnitude. A body that is non-finite because
-            // its inputs are genuinely unavailable stays conservatively not a
-            // doji.
-            return threshold.isPositive() && !bodyValue.isNaN();
+        if (priorAverage.isZero()) {
+            // A zero range baseline leaves no scaling reference: only a candle
+            // with no body at all can qualify.
+            return !open.minus(close).abs().isPositive();
         }
-        if (!Num.isFinite(bodyValue)) {
-            // The threshold is finite, so a non-finite body can only overflow
-            // finite operands (huge, so no doji) or unavailable inputs
-            // (conservatively no doji): false either way.
-            return false;
-        }
-        return !bodyValue.isGreaterThan(threshold);
+        // Compare the body against the threshold in scaled form, dividing each
+        // operand by the baseline before differencing (see class Javadoc). The
+        // raw body magnitude can overflow the numeric type even when the ratio
+        // is representable; a scaled difference that overflows to positive
+        // infinity can only exceed a finite range factor, matching DecimalNum's
+        // exact arithmetic.
+        final Num scaledBody = open.dividedBy(priorAverage).minus(close.dividedBy(priorAverage)).abs();
+        return !scaledBody.isGreaterThan(getBarSeries().numFactory().numOf(rangeFactor));
     }
 
     @Override
