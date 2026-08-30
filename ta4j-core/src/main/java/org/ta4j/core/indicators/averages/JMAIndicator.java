@@ -76,12 +76,19 @@ public class JMAIndicator extends CachedIndicator<Num> {
         Num currentPrice = indicator.getValue(index);
         Num zero = numFactory.zero();
 
-        if (index <= 0) {
+        if (index <= indicator.getBarSeries().getBeginIndex()) {
             jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
             return currentPrice;
         }
 
         JmaData previousJMA = jmaDataMap.get(index - 1);
+        if (previousJMA == null) {
+            // The chain was severed (for example a bounded-series head advance
+            // cleared the map): rebuild every predecessor from the first
+            // retained bar, which seeds the chain and terminates the loop.
+            rebuildDataMapFrom(indicator.getBarSeries().getBeginIndex(), index);
+            previousJMA = jmaDataMap.get(index - 1);
+        }
 
         Num e0 = calculateE0(numFactory, currentPrice, previousJMA);
         Num e1 = calculateE1(numFactory, currentPrice, previousJMA, e0);
@@ -94,6 +101,32 @@ public class JMAIndicator extends CachedIndicator<Num> {
         }
 
         return jma;
+    }
+
+    /**
+     * Recomputes the map chain for every index from {@code beginIndex} (inclusive,
+     * seeded there) to {@code index} (exclusive), so the calculation of
+     * {@code index} can chain from a fresh predecessor.
+     */
+    private void rebuildDataMapFrom(int beginIndex, int index) {
+        for (int i = beginIndex; i < index; i++) {
+            calculate(i);
+        }
+    }
+
+    /**
+     * The map chains every value from its predecessor, so a bounded-series head
+     * advance invalidates the whole chain: clear the map and keep nothing of the
+     * base cache, forcing each value to be recomputed from the new first retained
+     * bar.
+     *
+     * @param firstRetainedIndex the first retained bar index after the advance
+     * @return {@link Integer#MAX_VALUE}, so no cached value survives
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        jmaDataMap.clear();
+        return Integer.MAX_VALUE;
     }
 
     private Num calculateE0(NumFactory numFactory, Num currentPrice, JmaData previousJMA) {
