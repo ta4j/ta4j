@@ -98,7 +98,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
             Indicator<Num> reversalAmount) {
-        super(requireHighPrice(highPrice));
+        super(requireHighPrice(highPrice), lowPrice, confirmationPrice, reversalAmount);
         this.highPrice = highPrice;
         this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
         IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);

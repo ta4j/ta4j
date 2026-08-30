@@ -54,7 +54,7 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
      */
     public GatorOscillatorIndicator(Indicator<Num> jaw, Indicator<Num> teeth, Indicator<Num> lips,
             boolean upperHistogram) {
-        super(IndicatorUtils.requireIndicator(jaw, "jaw indicator"));
+        super(IndicatorUtils.requireIndicator(jaw, "jaw indicator"), teeth, lips);
         IndicatorUtils.requireIndicator(teeth, "teeth indicator");
         IndicatorUtils.requireIndicator(lips, "lips indicator");
         IndicatorUtils.requireSameSeries(jaw, teeth, lips);

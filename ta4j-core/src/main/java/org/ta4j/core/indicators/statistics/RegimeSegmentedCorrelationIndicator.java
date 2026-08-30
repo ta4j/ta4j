@@ -46,7 +46,7 @@ public class RegimeSegmentedCorrelationIndicator extends CachedIndicator<Num> {
      */
     public RegimeSegmentedCorrelationIndicator(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
             int barCount) {
-        super(first);
+        super(first, second, regime);
         IndicatorUtils.requireSameSeries(first, second, regime);
         this.first = first;
         this.second = second;

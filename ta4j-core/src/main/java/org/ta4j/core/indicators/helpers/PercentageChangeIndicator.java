@@ -146,7 +146,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     public PercentageChangeIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
             Num percentageThreshold) {
-        super(indicator);
+        super(indicator, previousIndicator);
         this.indicator = indicator;
         this.previousIndicator = previousIndicator;
         this.percentageThreshold = percentageThreshold;

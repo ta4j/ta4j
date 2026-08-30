@@ -48,7 +48,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount,
             SampleType sampleType) {
-        super(indicator1);
+        super(indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = Math.max(barCount, 1);

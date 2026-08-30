@@ -9,6 +9,7 @@ import org.ta4j.core.*;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
+import org.ta4j.core.indicators.helpers.AverageIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -457,6 +458,31 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // its stale cached 100.
         assertNumEquals(0, dependent.getValue(3));
         assertNumEquals(0, dependent.getValue(4));
+    }
+
+    @Test
+    public void multiSourceIndicatorRegistersEveryInputForRebaselinePropagation() {
+        // AverageIndicator consumes every supplied input but only tracked the
+        // first one; a rebaselining second input could keep serving its stale
+        // cached average after the head advance. Registering every source must
+        // make the cached value match the fresh computation.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        StochasticIndicator stochastic = new StochasticIndicator(closePrice, 3);
+        AverageIndicator average = new AverageIndicator(closePrice, stochastic);
+        // (50 + 100) / 2 = 75 on the unbounded series.
+        assertNumEquals(75, average.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // The retained [50, 50, 50] window has a zero range: the rebaselined
+        // stochastic returns 0, and the average must follow to (50 + 0) / 2 = 25
+        // instead of serving its stale cached 75.
+        assertNumEquals(25, average.getValue(3));
+        assertNumEquals(25, average.getValue(4));
     }
 
     @Test
