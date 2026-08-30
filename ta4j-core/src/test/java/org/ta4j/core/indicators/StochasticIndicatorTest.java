@@ -429,4 +429,35 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertThat(stochastic.getValue(4)).isEqualByComparingTo(numFactory.numOf(0));
     }
 
+    @Test
+    public void rebuildsDeepFlatStretchIterativelyAfterSeriesHeadAdvances() {
+        // A bounded series retaining a flat window makes the zero-range branch
+        // carry the begin-index base case across the whole stretch: with closes
+        // [0, 100, 100, ...] and lookback 3, index 2 resolves to 100 and every
+        // later flat window carries the previous value. After the head
+        // advances, the whole cache is evicted, and a read deep inside the
+        // retained window must rebuild the carried zero values iteratively
+        // through the inherited RecursiveCachedIndicator prefill instead of
+        // recursing one CachedIndicator frame pair per carried index - a depth
+        // that overflows the stack far below this window size.
+        final int barCount = 200000;
+        double[] closes = new double[barCount + 2000];
+        Arrays.fill(closes, 100d);
+        closes[0] = 0d;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+
+        // Warm a shallow read before the advance so only the retained window is
+        // cold afterwards.
+        assertThat(stochastic.getValue(100)).isEqualByComparingTo(numFactory.numOf(100));
+
+        series.setMaximumBarCount(barCount + 2);
+        assertThat(series.getBeginIndex()).isEqualTo(1998);
+
+        // 201000 - 1998 = 199002 carried values must be rebuilt iteratively; a
+        // recursive rebuild stacks ~400000 frames and dies with a
+        // StackOverflowError.
+        assertThat(stochastic.getValue(201000)).isEqualByComparingTo(numFactory.numOf(0));
+    }
+
 }

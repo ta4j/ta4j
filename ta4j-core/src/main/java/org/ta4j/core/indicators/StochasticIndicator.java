@@ -32,7 +32,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Stochastic Oscillator</a>
  * @since 0.20
  */
-public class StochasticIndicator extends CachedIndicator<Num> {
+public class StochasticIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final transient HighestValueIndicator highest;
@@ -99,17 +99,14 @@ public class StochasticIndicator extends CachedIndicator<Num> {
             int lookback) {
     }
 
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
-    }
-
     /**
      * Discards the whole cache when the series head advances. The zero-range branch
      * recurses into earlier results only while the retained window is flat, so any
      * cached value - recursive or not - is recomputable from the retained window
      * and the begin-index base case. Keeping only the recursively derived band
-     * would preserve stale results that were computed from evicted bars.
+     * would preserve stale results that were computed from evicted bars. After the
+     * eviction the inherited {@link RecursiveCachedIndicator} prefill rebuilds long
+     * flat stretches iteratively instead of recursing.
      *
      * @param firstRetainedIndex the first series index that remains available
      * @return {@link Integer#MAX_VALUE}, evicting every cached entry
