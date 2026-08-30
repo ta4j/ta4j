@@ -111,6 +111,36 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertEquals(barCount + barCount - 1, subject.getCountOfUnstableBars());
     }
 
+    @Test
+    public void recomputesAfterSeriesHeadAdvances() {
+        // Alternating closes put the RSI into a short exact-equality run once
+        // the flat stretch begins: the zero-range carry chain seeds the band
+        // with a value computed before the advance. After the head advance,
+        // the substituted below-begin RSI reads make the rebaseline window
+        // exactly flat, so the base case returns zero and the whole carry
+        // chain must be rebuilt. A surviving band would keep returning the
+        // pre-advance carried value.
+        final var closes = new double[30];
+        for (int i = 0; i < 8; i++) {
+            closes[i] = 10 + (i % 2);
+        }
+        for (int i = 8; i < closes.length; i++) {
+            closes[i] = 11;
+        }
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        final var indicator = new StochasticRSIIndicator(new ClosePriceIndicator(series), 3);
+
+        Num before = indicator.getValue(12);
+        assertThat(Num.isNaNOrNull(before)).isFalse();
+
+        series.setMaximumBarCount(23);
+        assertThat(series.getBeginIndex()).isEqualTo(7);
+
+        Num after = indicator.getValue(12);
+        assertThat(Num.isNaNOrNull(after)).isFalse();
+        assertThat(after).isNotEqualByComparingTo(before);
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
