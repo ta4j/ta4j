@@ -93,9 +93,12 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
         if (removedBarsCount != observedRemovedBarsCount) {
-            observedRemovedBarsCount = removedBarsCount;
+            // Invalidate first, publish last: a concurrent reader that
+            // observes the new count must never see caches still computed
+            // from the discarded prefix.
             invalidateCache();
             deviationScale.invalidateForRetainedHead();
+            observedRemovedBarsCount = removedBarsCount;
         }
     }
 

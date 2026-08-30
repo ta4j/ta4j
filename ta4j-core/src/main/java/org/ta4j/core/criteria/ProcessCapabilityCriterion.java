@@ -152,12 +152,14 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         }
         Num standardDeviation = maxAbsDeviation
                 .multipliedBy(scaledSquaredSum.dividedBy(factory.numOf(valueArray.length)).sqrt());
-        Num threeSigma = standardDeviation.multipliedBy(factory.numOf(3));
-        Num lowerCapability = mean.minus(factory.numOf(lsl)).dividedBy(threeSigma);
+        // Divide by the standard deviation before dividing by three: the
+        // intermediate ratio stays finite for sigma > MAX / 3 where the
+        // naive 3 * sigma multiplication overflows.
+        Num lowerCapability = mean.minus(factory.numOf(lsl)).dividedBy(standardDeviation).dividedBy(factory.numOf(3));
         if (usl == null) {
             return lowerCapability;
         }
-        Num upperCapability = factory.numOf(usl).minus(mean).dividedBy(threeSigma);
+        Num upperCapability = factory.numOf(usl).minus(mean).dividedBy(standardDeviation).dividedBy(factory.numOf(3));
         return lowerCapability.min(upperCapability);
     }
 

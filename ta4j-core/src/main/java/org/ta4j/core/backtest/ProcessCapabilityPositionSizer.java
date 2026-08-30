@@ -80,6 +80,12 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         NumFactory factory = context.numFactory();
         Num statistic = capabilityIndicator.getValue(context.entryIndex());
         Num baseAmountValue = factory.produces(baseAmount) ? baseAmount : factory.numOf(baseAmount.doubleValue());
+        if (baseAmountValue.isZero()) {
+            // The constructor guarantees baseAmount is positive, so a coerced
+            // zero can only be a positive underflow: saturate to the context
+            // epsilon instead of returning zero and aborting validation.
+            baseAmountValue = factory.epsilon();
+        }
         if (!Num.isFinite(statistic)) {
             return baseAmountValue;
         }

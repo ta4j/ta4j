@@ -132,6 +132,20 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void threeSigmaOverflowKeepsFiniteCapability() {
+        // Gross returns 1e307 and 1.7e308 with limits 0 and 1.79e308: mean
+        // 9e307 and sigma 8e307 are finite, but 3 * sigma overflows DoubleNum;
+        // the overflow-safe per-ratio scaling must keep Cpk at 89/240 instead
+        // of collapsing both ratios to zero.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e307, 1, 1.7e308).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0, 1.79e308);
+        assertNumEquals(numOf(89).dividedBy(numOf(240)), cpk.calculate(series, tradingRecord), 1e-6);
+    }
+
+    @Test
     public void rejectsInvalidSpecificationLimits() {
         assertThrows(NullPointerException.class, () -> new ProcessCapabilityCriterion(null));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(Double.NaN));

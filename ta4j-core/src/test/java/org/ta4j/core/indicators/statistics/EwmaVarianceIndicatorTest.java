@@ -179,7 +179,9 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not
-        // survive.
+        // survive. The recursion re-anchors only once the full seed window is
+        // available at the retained head: earlier indices stay NaN so no
+        // future bar leaks into a historical value.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(
                 new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5)), 2, 0.5);
@@ -187,16 +189,18 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // Fill the caches across the whole series.
         pruned.getValue(4);
 
-        series.setMaximumBarCount(2);
+        series.setMaximumBarCount(3);
 
-        // beginIndex = 2. The new head is inside the warm-up window: NaN.
+        // beginIndex = 2. The full seed window [2, 3] is not available at the
+        // new head: NaN.
         assertTrue(pruned.getValue(2).isNaN());
-        // index 3 reseeds from the rolling variance of [3, 4] = 0.25.
+        // index 3 re-seeds from the rolling variance of [2, 3] = 0.25.
         assertNumEquals(0.25, pruned.getValue(3));
-        // index 4: rebuilt control mean is 4 (EMA resets to the current value
-        // after a NaN), so sigma^2_4 = 0.5 * 0.25 + 0.5 * (5 - 4)^2 = 0.625.
-        // A stale cached mean (3.125) would yield 1.8828125 instead.
-        assertNumEquals(0.625, pruned.getValue(4));
+        // index 4: the rebuilt control mean at 3 is 3.5 (EMA with window 1
+        // and decay 0.5), so sigma^2_4 = 0.5 * 0.25 + 0.5 * (5 - 3.5)^2 =
+        // 1.25. A stale cached value (2.8359375 from the discarded prefix)
+        // would surface otherwise.
+        assertNumEquals(1.25, pruned.getValue(4));
     }
 
     @Override

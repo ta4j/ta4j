@@ -44,8 +44,9 @@ import java.util.Objects;
  * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), cached values
  * computed against the discarded prefix are dropped, the control mean
  * {@link EWMAIndicator} is rebuilt so that it resets to the current value at
- * the new head, and the recursion re-anchors there with a seed window starting
- * at the new first addressable bar.
+ * the new head, and the recursion re-anchors with the first full seed window
+ * available at the retained head; indices before that window publish
+ * {@code NaN} so no future bar leaks into a historical value.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -116,10 +117,13 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
         if (removedBarsCount != observedRemovedBarsCount) {
-            observedRemovedBarsCount = removedBarsCount;
+            // Invalidate first, publish last: a concurrent reader that
+            // observes the new count must never see caches still computed
+            // from the discarded prefix.
             this.meanIndicator = new EWMAIndicator(indicator, 1, decayFactor);
-            reseedIndex = getBarSeries().getBeginIndex();
+            reseedIndex = (int) Math.min((long) getBarSeries().getBeginIndex() + barCount - 1L, Integer.MAX_VALUE);
             invalidateCache();
+            observedRemovedBarsCount = removedBarsCount;
         }
     }
 
@@ -127,8 +131,11 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
         if (index == reseedIndex) {
-            int seedIndex = (int) Math.min((long) index + barCount - 1L, getBarSeries().getEndIndex());
-            Num seedVariance = initialVarianceIndicator.getValue(seedIndex);
+            // The full seed window [index - barCount + 1, index] now lies
+            // within the retained bars: re-anchor with its population
+            // variance instead of seeding from a window that reaches into
+            // future bars.
+            Num seedVariance = initialVarianceIndicator.getValue(index);
             return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
         }
         if (index - beginIndex < getCountOfUnstableBars()) {

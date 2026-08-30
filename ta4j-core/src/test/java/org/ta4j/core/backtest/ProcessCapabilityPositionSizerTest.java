@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
@@ -137,6 +138,25 @@ public class ProcessCapabilityPositionSizerTest {
         runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
             BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
             assertNumEquals(numFactory.epsilon(), sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
+    public void positiveUnderflowingBaseAmountSaturatesToEpsilonFloor() {
+        // A DecimalNum base amount of 1e-400 is positive in its own factory
+        // but underflows to zero when coerced into a DoubleNum context: the
+        // sizer saturates it to the context epsilon instead of returning zero
+        // and aborting BarSeriesManager validation.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(5));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, new BigDecimal("1e-400"), 10);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Num amount = sizer.amount(context(series, 1, 1));
+            assertTrue(amount.isPositive());
+            assertTrue(amount.isLessThanOrEqual(numFactory.epsilon()));
         });
     }
 
