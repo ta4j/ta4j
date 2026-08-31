@@ -5,6 +5,7 @@ package org.ta4j.core.indicators;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.List;
 import java.util.Objects;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -171,6 +172,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         sources[0] = firstSource;
         System.arraycopy(additionalSources, 0, sources, 1, additionalSources.length);
         return sources;
+    }
+
+    /**
+     * Returns the source indicators this indicator reads, in registration order.
+     * Full-tail invalidations propagate through these sources on series head
+     * advance, so reporting them keeps dependency traversal truthful.
+     *
+     * @return the registered source indicators; empty when constructed directly
+     *         from a {@link BarSeries}
+     * @since 0.24.2
+     */
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.<Indicator<?>>of(sourceIndicators);
     }
 
     private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {

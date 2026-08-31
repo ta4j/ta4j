@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
@@ -15,10 +16,12 @@ import org.ta4j.core.indicators.helpers.AverageIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
-
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NaN;
@@ -1898,6 +1901,122 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             assertEquals(fresh.getLastExtremeIndex(), cached.getLastExtremeIndex());
             assertEquals(fresh.getLastExtremePrice(), cached.getLastExtremePrice());
         });
+    }
+
+    @Test
+    public void klingerRebuildsDailyMeasurementsAfterSeriesHeadAdvance() {
+        final int totalBars = 5101;
+        final int retainedBars = 3000;
+        BarSeries barSeries = flatTailSeries(totalBars, 500);
+        StochasticIndicator stochasticLow = new StochasticIndicator(new ClosePriceIndicator(barSeries), 14);
+        KlingerVolumeOscillatorIndicator klinger = new KlingerVolumeOscillatorIndicator(
+                new HighPriceIndicator(barSeries), stochasticLow, new ClosePriceIndicator(barSeries),
+                new VolumeIndicator(barSeries), 2, 3, 1);
+
+        // Warm the whole chain over the unbounded series. The flat plateau pins the
+        // stochastic at 100 through its zero-range recursion, so every far-tail
+        // daily measurement caches `high - 100`.
+        klinger.getValue(barSeries.getEndIndex());
+
+        // Head advance: the plateau extends below the retained head, so the
+        // stochastic's zero-range recursion bottoms out at the retained head and
+        // rebases the whole flat tail to zero. Cached daily measurements beyond
+        // the unstable band were computed from the pre-advance stochastic and
+        // must not survive.
+        barSeries.setMaximumBarCount(retainedBars);
+        assertEquals(totalBars - retainedBars, barSeries.getBeginIndex());
+        barSeries.barBuilder()
+                .openPrice(flatPlateauClose(500))
+                .closePrice(flatPlateauClose(500))
+                .highPrice(flatPlateauClose(500) + 1d)
+                .lowPrice(flatPlateauClose(500) - 1d)
+                .volume(1000d + totalBars - 1)
+                .add();
+        assertEquals(totalBars - retainedBars + 1, barSeries.getBeginIndex());
+
+        StochasticIndicator freshStochastic = new StochasticIndicator(new ClosePriceIndicator(barSeries), 14);
+        KlingerVolumeOscillatorIndicator freshKlinger = new KlingerVolumeOscillatorIndicator(
+                new HighPriceIndicator(barSeries), freshStochastic, new ClosePriceIndicator(barSeries),
+                new VolumeIndicator(barSeries), 2, 3, 1);
+        Num freshValue = freshKlinger.getValue(barSeries.getEndIndex());
+        assertTrue(Num.isFinite(freshValue));
+        assertNumEquals(freshValue, klinger.getValue(barSeries.getEndIndex()));
+    }
+
+    @Test
+    public void edmaReadsRebasedSourceLiveAfterSeriesHeadAdvance() {
+        final int totalBars = 5101;
+        final int retainedBars = 3000;
+        BarSeries barSeries = flatTailSeries(totalBars, 500);
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(barSeries), 14);
+        EDMAIndicator edma = new EDMAIndicator(stochastic, 9, 2);
+
+        // Warm the cache over the unbounded series.
+        edma.getValue(barSeries.getEndIndex());
+
+        // Head advance: the stochastic rebases the whole flat tail to zero, so the
+        // pre-advance displaced EMA snapshot is stale everywhere. The displaced
+        // cache must be rebuilt live instead of serving the materialized results.
+        barSeries.setMaximumBarCount(retainedBars);
+        assertEquals(totalBars - retainedBars, barSeries.getBeginIndex());
+        barSeries.barBuilder()
+                .openPrice(flatPlateauClose(500))
+                .closePrice(flatPlateauClose(500))
+                .highPrice(flatPlateauClose(500) + 1d)
+                .lowPrice(flatPlateauClose(500) - 1d)
+                .add();
+        assertEquals(totalBars - retainedBars + 1, barSeries.getBeginIndex());
+
+        StochasticIndicator freshStochastic = new StochasticIndicator(new ClosePriceIndicator(barSeries), 14);
+        EDMAIndicator freshEdma = new EDMAIndicator(freshStochastic, 9, 2);
+        Num freshValue = freshEdma.getValue(barSeries.getEndIndex());
+        assertTrue(Num.isFinite(freshValue));
+        assertNumEquals(freshValue, edma.getValue(barSeries.getEndIndex()));
+    }
+
+    @Test
+    public void cachedIndicatorExposesRegisteredSourcesViaDependencyApi() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(barSeries);
+        assertEquals(List.of(close), new EMAIndicator(close, 3).getDependencies());
+
+        HighPriceIndicator high = new HighPriceIndicator(barSeries);
+        LowPriceIndicator low = new LowPriceIndicator(barSeries);
+        assertEquals(List.of(high, low, close), new TRIndicator(high, low, close).getDependencies());
+
+        CachedIndicator<Num> seriesOnly = new CachedIndicator<Num>(barSeries) {
+            @Override
+            protected Num calculate(int index) {
+                return barSeries.getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        assertEquals(List.of(), seriesOnly.getDependencies());
+    }
+
+    private BarSeries flatTailSeries(final int totalBars, final int plateauStart) {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < totalBars; i++) {
+            final double close = i < plateauStart ? 100d + i * 0.1d : flatPlateauClose(plateauStart);
+            barSeries.barBuilder()
+                    .openPrice(close)
+                    .closePrice(close)
+                    .highPrice(close + 1d)
+                    .lowPrice(close - 1d)
+                    .volume(1000d + i)
+                    .add();
+        }
+        return barSeries;
+    }
+
+    private static double flatPlateauClose(final int plateauStart) {
+        return 100d + (plateauStart - 1) * 0.1d;
     }
 
     private <T> void assertFarRetainedTailRecomputesWithoutRecursing(
