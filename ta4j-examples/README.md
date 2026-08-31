@@ -90,6 +90,7 @@ raw machine hostname.
 
 - `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
 - `ta4jexamples.analysis.forecast.KinematicKalmanForecastExample`
+- `ta4jexamples.analysis.forecast.CorrentropyKalmanExample`
 
 Run the ossified BTC daily analog and rolling-conformal walkthrough:
 
@@ -112,6 +113,21 @@ measurement-variance regime, shares one cached state across one-, four-, and
 thirteen-week forecasts, and applies rolling conformal calibration to the
 four-week interval. The bundled Yahoo Finance snapshot is fixed through July
 30, 2026; its final July 27 weekly aggregate is an as-of partial week.
+
+Run the robust correntropy Kalman walkthrough over the same ossified S&P 500
+weekly series:
+
+```bash
+./mvnw -pl ta4j-examples -am install \
+  && ./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.analysis.forecast.CorrentropyKalmanExample
+```
+
+This example derives illustrative squared-price Q/R variances from ATR,
+smooths the close with the correntropy Kalman filter (dimensionless kernel
+bandwidth), and logs the robust estimate, residual, and measurement weight at
+an isolated wick, across a sustained move, and as rejection-weighted residual
+evidence without activating a trading strategy.
 
 ## Suggested progression
 
