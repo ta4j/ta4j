@@ -132,7 +132,7 @@ public final class CorrentropyKalmanExample {
     }
 
     static BarSeries loadSeries() {
-                BarSeries full = Objects.requireNonNull(JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(SP500_RESOURCE),
+        BarSeries full = Objects.requireNonNull(JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(SP500_RESOURCE),
                 "S&P 500 resource was not available");
         int start = Math.max(0, full.getBarCount() - WALK_BARS);
         return full.getSubSeries(start, full.getEndIndex());
