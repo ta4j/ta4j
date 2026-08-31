@@ -36,11 +36,13 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     /**
      * Constructor.
      *
-     * @param priceIndicator the price indicator used to fetch swing values
-     * @param unstableBars   number of unstable bars
+     * @param priceIndicator   the price indicator used to fetch swing values
+     * @param unstableBars     number of unstable bars
+     * @param sourceIndicators additional direct sources used to identify swings
      */
-    protected AbstractRecentSwingIndicator(Indicator<Num> priceIndicator, int unstableBars) {
-        super(priceIndicator);
+    protected AbstractRecentSwingIndicator(Indicator<Num> priceIndicator, int unstableBars,
+            Indicator<?>... sourceIndicators) {
+        super(priceIndicator, sourceIndicators);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.unstableBars = Math.max(0, unstableBars);
         final BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
@@ -128,6 +130,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         private int lastScannedIndex = Integer.MIN_VALUE;
         private long observedRevision;
         private int observedEndIndex;
+        private int observedBeginIndex;
         private Bar observedLastBar;
 
         private SwingPointTracker(IntFunction<Integer> swingIndexDetector, BarSeries series) {
@@ -135,6 +138,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             this.series = Objects.requireNonNull(series, "series cannot be null");
             this.observedRevision = series.getBarHistoryRevision();
             this.observedEndIndex = series.getEndIndex();
+            this.observedBeginIndex = series.getBeginIndex();
             this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
         }
 
@@ -210,20 +214,24 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             }
             lastScannedIndex = targetIndex;
             observedEndIndex = endIndex;
+            observedBeginIndex = series.getBeginIndex();
             observedRevision = series.getBarHistoryRevision();
             observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
         }
 
         private void resetIfHistoryChanged() {
             final long currentRevision = series.getBarHistoryRevision();
+            final int currentBeginIndex = series.getBeginIndex();
             final int currentEndIndex = series.getEndIndex();
             final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
             final boolean trackedRevisionChanged = currentRevision >= 0L && observedRevision >= 0L
                     && currentRevision != observedRevision;
             final boolean fallbackHistoryChanged = currentRevision < 0L && (currentEndIndex < observedEndIndex
                     || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
-            if (!trackedRevisionChanged && !fallbackHistoryChanged) {
+            final boolean retainedRangeChanged = currentBeginIndex != observedBeginIndex;
+            if (!trackedRevisionChanged && !fallbackHistoryChanged && !retainedRangeChanged) {
                 observedRevision = currentRevision;
+                observedBeginIndex = currentBeginIndex;
                 observedEndIndex = currentEndIndex;
                 observedLastBar = currentLastBar;
                 return;
@@ -231,6 +239,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             confirmedSwings.clear();
             lastScannedIndex = Integer.MIN_VALUE;
             observedRevision = currentRevision;
+            observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;
             observedLastBar = currentLastBar;
             AbstractRecentSwingIndicator.this.invalidateCache();

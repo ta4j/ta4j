@@ -74,7 +74,7 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
     }
 
     private RecentZigZagSwingLowIndicator(Config config) {
-        super(config.price(), config.stateIndicator().getCountOfUnstableBars());
+        super(config.price(), config.stateIndicator().getCountOfUnstableBars(), config.stateIndicator());
         this.stateIndicator = config.stateIndicator();
         this.price = config.price();
     }

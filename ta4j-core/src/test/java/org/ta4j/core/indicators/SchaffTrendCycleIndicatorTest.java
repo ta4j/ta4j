@@ -117,7 +117,7 @@ public class SchaffTrendCycleIndicatorTest extends AbstractIndicatorTest<Indicat
         for (int i = 0; i < closes.length; i++) {
             closes[i] = 100 + 10 * Math.sin(i * 0.5) + 0.3 * i;
         }
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
         final var closePrice = new ClosePriceIndicator(series);
         final var indicator = new SchaffTrendCycleIndicator(closePrice, 3, 5, 3, 8);
 

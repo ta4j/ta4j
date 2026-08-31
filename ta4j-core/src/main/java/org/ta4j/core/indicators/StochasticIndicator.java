@@ -84,8 +84,12 @@ public class StochasticIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num range = highestValue.minus(lowestValue);
         if (range.isZero()) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            return index <= beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+            final Num zero = getBarSeries().numFactory().zero();
+            if (index <= getBarSeries().getBeginIndex()) {
+                return zero;
+            }
+            final Num previous = getValue(index - 1);
+            return Num.isFinite(previous) ? previous : zero;
         }
         return value.minus(lowestValue).dividedBy(range).multipliedBy(getBarSeries().numFactory().hundred());
     }
