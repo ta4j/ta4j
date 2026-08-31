@@ -151,6 +151,32 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void customTrueRangeSerializationRoundTripPreservesSource() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(8).closePrice(12).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(6).closePrice(8).highPrice(11).lowPrice(6).add();
+        series.barBuilder().openPrice(14).closePrice(15).highPrice(17).lowPrice(14).add();
+        series.barBuilder().openPrice(15).closePrice(16).highPrice(18).lowPrice(15).add();
+        series.barBuilder().openPrice(13).closePrice(14).highPrice(17).lowPrice(13).add();
+        series.barBuilder().openPrice(16).closePrice(18).highPrice(19).lowPrice(16).add();
+        Indicator<Num> delayedClose = new SMAIndicator(new ClosePriceIndicator(series), 2);
+        TRIndicator trueRange = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                delayedClose);
+        ATRIndicator indicator = new ATRIndicator(trueRange, 3);
+        ATRIndicator defaultIndicator = new ATRIndicator(series, 3);
+
+        String json = indicator.toJson();
+        Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, json);
+
+        assertFalse(indicator.getValue(5).isEqual(defaultIndicator.getValue(5)));
+        assertEquals(indicator.toDescriptor(), restored.toDescriptor());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(indicator.getValue(i), restored.getValue(i));
+        }
+    }
+
+    @Test
     public void getTRIndicatorReturnsIndependentHelper() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         ATRIndicator indicator = new ATRIndicator(series, 3);

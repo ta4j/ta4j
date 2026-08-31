@@ -17,6 +17,11 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class ATRIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Logical source retained so descriptor serialization preserves custom price
+     * inputs.
+     */
+    private final TRIndicator tr;
     private final transient int trueRangeUnstableBars;
     private final transient MMAIndicator averageTrueRangeIndicator;
     private final int barCount;
@@ -43,6 +48,7 @@ public class ATRIndicator extends CachedIndicator<Num> {
 
     private ATRIndicator(Config config) {
         super(config.trueRangeIndicator());
+        this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();
         this.averageTrueRangeIndicator = new MMAIndicator(config.trueRangeIndicator(), config.barCount());

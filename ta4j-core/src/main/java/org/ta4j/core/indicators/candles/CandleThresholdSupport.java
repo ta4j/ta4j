@@ -1089,14 +1089,15 @@ final class CandleThresholdSupport {
      * half scale, that never overflows an intermediate summation. The primary path
      * delegates to an {@link SMAIndicator}; when the accumulator overflowed into a
      * non-finite value (for example a {@code DoubleNum} summing several near-MAX
-     * halves), the same window is re-averaged as an incremental mean, which never
-     * accumulates a running sum beyond the window maximum. Because every term is at
-     * most half the largest representable magnitude, the exact mean is at most the
-     * largest representable magnitude, so the half-scale mean stays finite whenever
-     * it is representable; a baseline that still overflows remains non-finite yet
-     * decidable in every comparison below. Full-scale views are derived by the
-     * owning support only where a consumer still expects raw magnitudes. Non-finite
-     * source values propagate as non-finite results.
+     * halves), the same window is re-averaged as a scaled incremental mean. Each
+     * weighted term is divided before it is summed, so the fallback never forms an
+     * overflowing difference between opposite-sign extremes. Because every term is
+     * at most half the largest representable magnitude, the exact mean is at most
+     * the largest representable magnitude, so the half-scale mean stays finite
+     * whenever it is representable; a baseline that still overflows remains
+     * non-finite yet decidable in every comparison below. Full-scale views are
+     * derived by the owning support only where a consumer still expects raw
+     * magnitudes. Non-finite source values propagate as non-finite results.
      */
     private static final class PriorAverageIndicator extends CachedIndicator<Num> {
 
@@ -1118,15 +1119,18 @@ final class CandleThresholdSupport {
             if (Num.isFinite(result)) {
                 return result;
             }
+            final NumFactory numFactory = getBarSeries().numFactory();
             final int beginIndex = getBarSeries().getBeginIndex();
             final int start = Math.max(beginIndex, index - barCount + 1);
-            Num mean = getBarSeries().numFactory().zero();
+            Num mean = numFactory.zero();
             for (int i = start; i <= index; i++) {
                 final Num value = source.getValue(i);
                 if (!Num.isFinite(value)) {
                     return value;
                 }
-                mean = mean.plus(value.minus(mean).dividedBy(getBarSeries().numFactory().numOf(i - start + 1)));
+                final Num count = numFactory.numOf(i - start + 1);
+                final Num previousCount = numFactory.numOf(i - start);
+                mean = mean.dividedBy(count).multipliedBy(previousCount).plus(value.dividedBy(count));
                 if (i == index) {
                     // Terminate before the increment could wrap past Integer.MAX_VALUE.
                     break;

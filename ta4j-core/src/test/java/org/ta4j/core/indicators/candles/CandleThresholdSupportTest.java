@@ -308,6 +308,27 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void rangeFallbackAvoidsOppositeSignOverflowWithDoubleNum() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        Num zero = factory.zero();
+        Num maximum = factory.numOf(Double.MAX_VALUE);
+        Num minimum = factory.numOf(-Double.MAX_VALUE);
+        series.addBar(new NonFiniteBar(Instant.EPOCH, zero, maximum, minimum, zero));
+        series.addBar(new NonFiniteBar(Instant.EPOCH.plusSeconds(1), zero, maximum, minimum, zero));
+        series.addBar(new NonFiniteBar(Instant.EPOCH.plusSeconds(2), zero, minimum, maximum, zero));
+        addBar(series, 0, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series, 3);
+
+        Num averageRange = support.priorAverageRange().getValue(3);
+        Num expectedRange = maximum.dividedBy(factory.numOf(3)).multipliedBy(factory.numOf(2));
+
+        assertTrue(Num.isFinite(averageRange));
+        assertTrue(averageRange.isEqual(expectedRange));
+        assertTrue(support.isDoji(3));
+    }
+
+    @Test
     public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
         BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         addBars(bodySeries, 5, 10, 0, 0);
