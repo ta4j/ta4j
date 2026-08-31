@@ -152,44 +152,24 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             standardized = statistic.dividedBy(controlLimit);
         }
         if (!Num.isFinite(standardized)) {
-            // The true ratio overflows the factory used for the division, but
-            // the damped quotient can still be representable when the raw base
-            // is large: with statistic == Double.MAX_VALUE over controlLimit
-            // == Double.MIN_VALUE the ratio is about 3.67e631, yet a base of
-            // 1e400 damps to about 2.73e-232. Divide the lossless decimal
-            // forms of all three operands before narrowing; a quotient that
-            // still underflows sizes at the context epsilon floor, one that
-            // overflows saturates at the factory ceiling.
+            // The true ratio overflows the division factory; damp the lossless
+            // decimal forms before narrowing.
             BigDecimal dampedQuotient = rawBaseAmount.divide(
                     BigDecimal.ONE.add(
                             statistic.bigDecimalValue().divide(controlLimit.bigDecimalValue(), MathContext.DECIMAL128)),
                     MathContext.DECIMAL128);
-            double quotient = dampedQuotient.doubleValue();
-            if (Double.isFinite(quotient) && quotient > 0) {
-                return capToDoubleRange(factory, factory.numOf(quotient));
-            }
-            return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue) : saturationMagnitude(factory);
+            return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         }
         Num standardizedValue;
         if (standardized.getNumFactory() == factory) {
             standardizedValue = standardized;
         } else if (!(factory.one().getDelegate() instanceof BigDecimal)
                 && !Double.isFinite(standardized.doubleValue())) {
-            // The true ratio exceeds the primitive double range, but its
-            // damped quotient can still be representable: divide the lossless
-            // decimal forms of the base and the ratio before narrowing the
-            // result to the double-backed context (base 1e400 over ratio 1e400
-            // damps to about 1).
+            // The true ratio exceeds double range in a double-backed context;
+            // damp the lossless decimal forms before narrowing.
             BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
                     MathContext.DECIMAL128);
-            double quotient = dampedQuotient.doubleValue();
-            if (Double.isFinite(quotient) && quotient > 0) {
-                return capToDoubleRange(factory, factory.numOf(quotient));
-            }
-            // Outside the primitive double range entirely: a quotient that
-            // underflows sizes at the context epsilon floor, one that
-            // overflows saturates at the factory ceiling.
-            return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue) : saturationMagnitude(factory);
+            return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         } else {
             standardizedValue = coerceToContextFactory(factory, standardized);
         }
@@ -197,26 +177,15 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         if (!Num.isFinite(baseAmountValue) && Double.isFinite(rawBaseAmount.doubleValue())
                 && Double.isFinite(standardized.doubleValue())) {
             // A finite configured base that overflows the narrower context
-            // factory (for example a 1e39 base in a float-backed context): the
-            // damped quotient is still representable, so compute it in double
-            // space and coerce the result instead of propagating a non-finite
-            // base into the Num arithmetic.
+            // factory still has a representable damped quotient in double space.
             damped = factory.numOf(rawBaseAmount.doubleValue() / (1.0 + standardized.doubleValue()));
         } else if (!(factory.one().getDelegate() instanceof BigDecimal) && !Double.isFinite(rawBaseAmount.doubleValue())
                 && Double.isFinite(standardized.doubleValue())) {
-            // A configured base beyond the primitive double range in a
-            // double-backed context: the coerced base saturated at the largest
-            // double-representable magnitude, which would damp to a value far
-            // below the true quotient (a 1e400 base over a 1e100 ratio must
-            // size at about 1e300, not MAX_VALUE / 1e100). Divide the lossless
-            // decimal forms first and narrow only the damped result.
+            // A base beyond double range in a double-backed context must damp
+            // from its lossless decimal form, not the saturated coercion.
             BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
                     MathContext.DECIMAL128);
-            double quotient = dampedQuotient.doubleValue();
-            if (Double.isFinite(quotient) && quotient > 0) {
-                return capToDoubleRange(factory, factory.numOf(quotient));
-            }
-            return saturationMagnitude(factory);
+            return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         } else if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
             // The true ratio is finite as a primitive double but overflows the
             // narrower context factory (for example a 1e39 ratio in a
@@ -336,6 +305,18 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             ceiling = factory.numOf(Float.MAX_VALUE);
         }
         return ceiling;
+    }
+
+    /**
+     * A positive decimal quotient can still underflow the context factory to zero;
+     * floor those at the context epsilon instead of returning zero.
+     */
+    private static Num floorOrCapRecoveredQuotient(NumFactory factory, Num baseAmountValue, BigDecimal dampedQuotient) {
+        Num recovered = factory.numOf(dampedQuotient);
+        if (recovered.isZero()) {
+            return epsilonFloor(factory, baseAmountValue);
+        }
+        return capToDoubleRange(factory, recovered);
     }
 
     private static Num capToDoubleRange(NumFactory factory, Num amount) {

@@ -175,6 +175,24 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void recoveredQuotientUnderflowingTheContextFactoryFloorsAtEpsilon() {
+        // 1e160 / 1e-160 overflows double; the decimal-damped quotient (~1e-50)
+        // underflows a float-backed context to zero and floors at epsilon.
+        NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(doubleNumFactory).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(indicatorSeries, doubleNumFactory.numOf(0),
+                doubleNumFactory.numOf(new BigDecimal("1e160")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e270"),
+                new BigDecimal("1e-160"));
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatBackedFactory()).withData(1, 2).build();
+        Num amount = sizer.amount(context(series, 1, 1));
+
+        assertTrue(amount.isPositive());
+        assertNumEquals(1e-12, amount);
+    }
+
+    @Test
     public void positiveOverflowCoercionSaturatesToEpsilonFloor() {
         // A DecimalNum statistic of 1e400 is finite in its own factory but
         // overflows to +Infinity when coerced into a DoubleNum context: the
@@ -586,9 +604,9 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     /**
-     * A float-range factory: any magnitude above the float ceiling coerces to a
-     * non-finite value, mimicking a float-backed context in an otherwise
-     * double-based test suite.
+     * A float-range factory: magnitudes above the float ceiling coerce to a
+     * non-finite value and subnormal magnitudes to zero, mimicking a float-backed
+     * context in an otherwise double-based test suite.
      */
     private NumFactory floatBackedFactory() {
         return new NumFactory() {
@@ -631,7 +649,14 @@ public class ProcessCapabilityPositionSizerTest {
 
             @Override
             public Num numOf(Number number) {
-                return Math.abs(number.doubleValue()) > Float.MAX_VALUE ? NaN.NaN : delegate.numOf(number);
+                double value = number.doubleValue();
+                if (Math.abs(value) > Float.MAX_VALUE) {
+                    return NaN.NaN;
+                }
+                if (value != 0 && Math.abs(value) < Float.MIN_VALUE) {
+                    return delegate.zero();
+                }
+                return delegate.numOf(number);
             }
 
             @Override
