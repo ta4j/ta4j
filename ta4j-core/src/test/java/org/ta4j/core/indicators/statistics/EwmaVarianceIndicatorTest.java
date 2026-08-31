@@ -253,6 +253,27 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void seedWindowOfLargeCenteredBarsPublishesFiniteVarianceInsteadOfOverflowing() {
+        // The seed window [0, 2.8e154, 0] has population variance 2d^2/3 with
+        // d = 2.8e154/3 (about 1.74e308), but squaring the largest centered
+        // deviation (2d/3, about 1.87e154) overflows DoubleNum before the
+        // window average can shrink it back. Multiplying the normalized sum
+        // between the two scale factors keeps every intermediate finite and
+        // publishes the representable variance.
+        double largeBar = 2.8e154;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, largeBar, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(largeBar), numOf(0)), 3, 0.5);
+
+        Num value = variance.getValue(2);
+
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isPositive());
+        double expected = 1.7422222222222222e308;
+        assertTrue(Math.abs(value.doubleValue() - expected) / expected < 1e-9);
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not

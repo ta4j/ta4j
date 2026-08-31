@@ -241,12 +241,14 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // is scale^2 * sumOfSquares / barCount. The scale keeps each quotient
         // within the representable range while the running sum re-scales by the
         // old-to-new scale ratio whenever a larger deviation arrives. Dividing
-        // the summed quotients by the window size before multiplying the square
-        // of the scale back keeps the intermediate product inside the
-        // representation range (a window of 2e154 bars averages to 8e308/9 even
-        // though each square is 4e308), and the shared scale keeps the summed
-        // terms from underflowing (deviations of 2^-537 average to the
-        // subnormal 2^-1074 even though each per-term quotient rounds to zero).
+        // the summed quotients by the window size keeps every factor inside the
+        // representation range: the shared scale keeps the summed terms from
+        // underflowing (deviations of 2^-537 average to the subnormal 2^-1074
+        // even though each per-term quotient rounds to zero), and multiplying
+        // the normalized sum between the two scale factors avoids squaring the
+        // scale as an intermediate, which can overflow even when the averaged
+        // variance is finite (a scale of 1.9e154 squares to 3.5e308 for
+        // DoubleNum while the variance 1.7e308 is representable).
         Num scale = factory.zero();
         Num sumOfSquares = factory.zero();
         for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
@@ -267,7 +269,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 sumOfSquares = sumOfSquares.plus(ratio.multipliedBy(ratio));
             }
         }
-        return scale.multipliedBy(scale).multipliedBy(sumOfSquares.dividedBy(barCountNum));
+        Num normalizedSum = sumOfSquares.dividedBy(barCountNum);
+        return scale.multipliedBy(normalizedSum).multipliedBy(scale);
     }
 
     /**
@@ -281,7 +284,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * averaged variance is representable (deviations of {@code 2^-537} average to
      * the subnormal {@code 2^-1074}), so the mean is accumulated with compensated
      * summation and the squared deviations are accumulated against a shared scale
-     * before the window size divides their sum.
+     * before the window size divides their sum; the normalized sum multiplies
+     * between the two scale factors so no intermediate squares an already
+     * overflowing scale.
      */
     private Num rollingWindowVariance(int index) {
         Num scaledMean = windowMean(indicator, barCount, index);
