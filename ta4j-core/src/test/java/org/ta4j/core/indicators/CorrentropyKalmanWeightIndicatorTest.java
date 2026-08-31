@@ -163,8 +163,9 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
     @Test
     public void descriptorAndJsonRoundTrip() {
         BarSeries series = seriesOf(10, 10.2, 50, 10.4);
+        // Non-default kernel bandwidth: the descriptor must carry it through the round trip.
         CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
-                constant(series, 1e-3), constant(series, 0.2), numOf(2));
+                constant(series, 1e-3), constant(series, 0.2), numOf(3.5));
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
 
         ComponentDescriptor descriptor = weight.toDescriptor();

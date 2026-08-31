@@ -40,16 +40,20 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  *
  * <p>
  * The kernel bandwidth is dimensionless because the correntropy error is
- * whitened by the measurement-noise standard deviation. The default
- * {@code sigma = 2.0} rejects single measurements roughly three standard
- * deviations or more away from the predicted state while leaving ordinary noise
- * largely untouched.
+ * whitened by the measurement-noise standard deviation. The whitened
+ * measurement error {@code e_y = (y_t - x) / sqrt(R_t)} enters the kernel as
+ * {@code exp(-e_y^2 / (2 * sigma^2))}: with {@code sigma = 2.0} a single
+ * measurement near the predicted state contributes at full weight, weights
+ * fall off once the deviation reaches the measurement-noise scale, and the
+ * kernel saturates to outright rejection (zero weight) only beyond about
+ * eleven standard deviations, while ordinary noise stays largely untouched.
  *
  * <p>
  * Only the trailing {@value #WALK_BARS} weekly bars are walked: the filter
- * initializes at the first bar of that window, so ATR-derived Q/R keep its
- * state at the modern price scale instead of freezing at the 1950s
- * initialization level under saturated rejection.
+ * initializes at the first bar of that window that yields valid ATR-derived
+ * Q/R (after the ATR warm-up), so its state starts at the modern price scale
+ * instead of freezing at the 1950s initialization level under saturated
+ * rejection.
  *
  *
  * @since 0.24.2

@@ -22,6 +22,15 @@ import org.ta4j.core.serialization.IndicatorSerialization;
 
 import java.util.Arrays;
 import java.util.List;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Tests for the {@link CorrentropyKalmanFilterIndicator} and its shared
@@ -190,7 +199,9 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
-    public void smoothSignalTracksWithoutLagBias() {
+    public void smoothSignalMatchesOracleReference() {
+        // Reference semantics, not a quality claim: the filtered trajectory (with
+        // its small lag at the sine peak) is pinned to the frozen oracle vectors.
         double[] data = new double[21];
         for (int i = 0; i < 21; i++) {
             data[i] = 10 + 0.1 * Math.sin(2 * Math.PI * i / 20);
@@ -370,8 +381,9 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     @Test
     public void descriptorAndJsonRoundTrip() {
         BarSeries series = closePrice.getBarSeries();
+        // Non-default kernel bandwidth: the descriptor must carry it through the round trip.
         CorrentropyKalmanFilterIndicator original = new CorrentropyKalmanFilterIndicator(closePrice,
-                constant(series, 1e-3), constant(series, 1e-2), numOf(2));
+                constant(series, 1e-3), constant(series, 1e-2), numOf(3.5));
         ComponentDescriptor descriptor = original.toDescriptor();
 
         Assert.assertEquals(3, descriptor.getComponents().size());
@@ -388,5 +400,98 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
             Assert.assertEquals(original.getValue(i), descriptorCopy.getValue(i));
             Assert.assertEquals(original.getValue(i), jsonCopy.getValue(i));
         }
+    }
+
+    @Test
+    public void oracleDiagnosticsPinConvergenceSemantics() throws Exception {
+        JsonObject root;
+        try (InputStream in = getClass().getResourceAsStream("/oracles/cf-558-mckf-reference-vectors.json")) {
+            Assert.assertNotNull("oracle vectors resource must be on the test classpath", in);
+            root = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+        }
+        JsonArray fixtures = root.getAsJsonArray("fixtures");
+        Assert.assertEquals(12, fixtures.size());
+        Map<String, JsonObject> byName = new HashMap<>();
+        for (JsonElement element : fixtures) {
+            JsonObject fixture = element.getAsJsonObject();
+            byName.put(fixture.get("name").getAsString(), fixture);
+        }
+
+        // step_response baseline: every index converges to the unique maximal fixed point.
+        assertDiagnostics(byName.get("step_response"), booleans(true, true, true, true),
+                booleans(false, false, false, false), booleans(true, true, true, true),
+                ints(0, 1, 1, 1));
+        // isolated_outlier: index 2 is a saturated rejection (zero weight) and
+        // its fixed point is not a maximum of the correntropy objective.
+        assertDiagnostics(byName.get("isolated_outlier"), booleans(true, true, true, true),
+                booleans(false, false, true, false), booleans(true, true, false, true),
+                ints(0, 1, 0, 1));
+        // tight_measurement_noise: R << P^- makes the objective bimodal; indices 1-3
+        // settle at the predict-side stationary point while only index 0 is maximal.
+        assertDiagnostics(byName.get("tight_measurement_noise"), booleans(true, true, true, true),
+                booleans(false, true, false, true), booleans(true, false, false, false),
+                ints(0, 1, 2, 1));
+        // long_outlier_run: the final accumulated deviation saturates the kernel.
+        assertDiagnostics(byName.get("long_outlier_run"), booleans(true, true, true, true),
+                booleans(false, false, false, true), booleans(true, true, true, false),
+                ints(0, 1, 1, 0));
+        // increasing_impulse: growing deviations reject progressively until the
+        // source returns to the trusted level.
+        assertDiagnostics(byName.get("increasing_impulse"), booleans(true, true, true, true, true, true),
+                booleans(false, false, false, true, true, false), booleans(true, true, false, false, false, true),
+                ints(0, 1, 2, 0, 0, 1));
+        // nan_warmup: the three leading invalid observations carry no diagnostics,
+        // the following indices converge, and the saturated tail ends at weight zero.
+        assertDiagnostics(byName.get("nan_warmup"), booleans(null, null, null, true, true, true, true, true, true, true),
+                booleans(null, null, null, false, false, false, false, true, true, true),
+                booleans(null, null, null, true, false, false, false, false, false, false),
+                ints(null, null, null, 0, 1, 1, 0, 0, 0, 0));
+        // large_bandwidth: the objective is flat; converged acceptances are mostly
+        // non-maximal with large local-maxima counts.
+        assertDiagnostics(byName.get("large_bandwidth"), booleans(true, true, true, true),
+                booleans(false, false, false, false), booleans(true, false, false, false),
+                ints(0, 1810, 5, 1043));
+        // invalid_q_at_1: index 1 is skipped entirely (no diagnostics) because the
+        // process noise is zero there.
+        assertDiagnostics(byName.get("invalid_q_at_1"), booleans(true, null, true, true),
+                booleans(false, null, false, false), booleans(true, null, true, true),
+                ints(0, null, 1, 1));
+        // overflow_double: only the first index converges; the overflow makes the
+        // remaining indices unavailable and they carry no diagnostics.
+        assertDiagnostics(byName.get("overflow_double"), booleans(true, null, null, null),
+                booleans(false, null, null, null), booleans(true, null, null, null),
+                ints(0, null, null, null));
+    }
+
+    private static void assertDiagnostics(JsonObject fixture, Boolean[] converged, Boolean[] saturated,
+            Boolean[] maximal, Integer[] localMaxima) {
+        Assert.assertArrayEquals(converged, boolArray(fixture.getAsJsonArray("converged")));
+        Assert.assertArrayEquals(saturated, boolArray(fixture.getAsJsonArray("saturated_any")));
+        Assert.assertArrayEquals(maximal, boolArray(fixture.getAsJsonArray("maximal")));
+        Assert.assertArrayEquals(localMaxima, intArray(fixture.getAsJsonArray("local_maxima")));
+    }
+
+    private static Boolean[] booleans(Boolean... values) {
+        return values;
+    }
+
+    private static Integer[] ints(Integer... values) {
+        return values;
+    }
+
+    private static Boolean[] boolArray(JsonArray array) {
+        Boolean[] out = new Boolean[array.size()];
+        for (int i = 0; i < array.size(); i++) {
+            out[i] = array.get(i).isJsonNull() ? null : array.get(i).getAsBoolean();
+        }
+        return out;
+    }
+
+    private static Integer[] intArray(JsonArray array) {
+        Integer[] out = new Integer[array.size()];
+        for (int i = 0; i < array.size(); i++) {
+            out[i] = array.get(i).isJsonNull() ? null : array.get(i).getAsInt();
+        }
+        return out;
     }
 }

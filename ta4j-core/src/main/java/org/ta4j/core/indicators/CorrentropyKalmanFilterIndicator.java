@@ -51,6 +51,14 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  * dimensionless errors and {@code kernelBandwidth} is a dimensionless kernel
  * scale, not a raw-price distance.
  * <p>
+ * When the measurement noise is far smaller than the predicted covariance the
+ * correntropy objective can be bimodal, and the bounded fixed-point iteration
+ * may settle at the predict-side stationary point instead of the
+ * measurement-side maximum. The oracle-backed test fixtures record this
+ * behavior in their per-index diagnostics (maximal/local maxima counts), so
+ * downstream consumers can distinguish converged acceptances from predict-side
+ * saturations.
+ * <p>
  * Kernel exponents beyond a fixed bound saturate to zero weight instead of
  * being evaluated with {@link Num#exp()}. This keeps every {@code Num.exp()}
  * call inside the numerically reliable range of every active {@code NumFactory}
@@ -96,6 +104,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     private transient volatile StateIndicator stateIndicator;
     private transient volatile CorrentropyKalmanWeightIndicator measurementWeightIndicator;
+    private transient volatile Indicator<Num> residualIndicator;
     private final transient int maxIterations;
     private final transient Num twoSigmaSquared;
     private final transient Num kernelExponentBound;
@@ -192,7 +201,17 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * @return the residual indicator
      */
     public Indicator<Num> residual() {
-        return BinaryOperationIndicator.difference(indicator, this);
+        Indicator<Num> current = residualIndicator;
+        if (current == null) {
+            synchronized (this) {
+                current = residualIndicator;
+                if (current == null) {
+                    current = BinaryOperationIndicator.difference(indicator, this);
+                    residualIndicator = current;
+                }
+            }
+        }
+        return current;
     }
 
     /**
@@ -319,14 +338,13 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Covariance-whitened correntropy kernel weight for a standardized error:
-     * {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where {@code scaleVariance}
-     * is the variance used for whitening (predicted covariance for the prior error,
-     * measurement noise for the measurement error). Squared exponents above
-     * {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
+     * Covariance-whitened correntropy kernel weight: {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where the raw
+     * error {@code e} is whitened by {@code scaleVariance} (predicted covariance for the prior error, measurement
+     * noise for the measurement error). Squared exponents above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero
+     * weight.
      */
-    private Num kernelWeight(Num standardizedError, Num scaleVariance) {
-        Num exponent = standardizedError.multipliedBy(standardizedError)
+    private Num kernelWeight(Num error, Num scaleVariance) {
+        Num exponent = error.multipliedBy(error)
                 .dividedBy(scaleVariance)
                 .dividedBy(twoSigmaSquared);
         if (exponent.isGreaterThan(kernelExponentBound)) {

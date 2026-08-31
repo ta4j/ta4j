@@ -1,7 +1,7 @@
 {
   "provenance": {
-    "script": "/Users/david/.codex/worktrees/deliver-prd-cf-558-correntropy-kalman-20260831-1926/ta4j-core/src/test/resources/oracles/cf-558-mckf-reference-oracle.py",
-    "command": "python3 /Users/david/.codex/worktrees/deliver-prd-cf-558-correntropy-kalman-20260831-1926/ta4j-core/src/test/resources/oracles/cf-558-mckf-reference-oracle.py",
+    "script": "oracles/cf-558-mckf-reference-oracle.py",
+    "command": "python3 oracles/cf-558-mckf-reference-oracle.py",
     "date": "2026-08-31",
     "algorithm": "Chen et al. 2017 arXiv:1509.04580, scalar MCKF",
     "prd_sections": [

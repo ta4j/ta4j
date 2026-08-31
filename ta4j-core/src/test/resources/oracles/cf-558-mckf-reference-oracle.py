@@ -387,10 +387,11 @@ def run_all() -> list:
 def main() -> int:
     out = Path(__file__).resolve().parent / "cf-558-mckf-reference-vectors.json"
     fixtures = run_all()
+    script = Path(__file__).resolve()
     payload = {
         "provenance": {
-            "script": __file__,
-            "command": "python3 " + __file__,
+            "script": "oracles/" + script.name,
+            "command": "python3 oracles/" + script.name,
             "date": "2026-08-31",
             "algorithm": "Chen et al. 2017 arXiv:1509.04580, scalar MCKF",
             "prd_sections": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7", "6.8"],
