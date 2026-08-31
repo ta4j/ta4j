@@ -15,6 +15,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -45,12 +46,12 @@ import org.ta4j.core.num.NumFactory;
  * full-scale baselines whenever both operands are finite: halving two adjacent
  * subnormal magnitudes can collapse them onto the same half-scale value, so the
  * raw comparison preserves the strict ordering that
- * {@link org.ta4j.core.num.DecimalNum} observes. For the one-tenth factors the
- * comparison is cross-multiplied ({@code body * 10 <= range}) because the
- * factor itself is not exactly representable in binary floating point;
- * non-finite raw operands fall back to the half-scale path. The candle under
- * evaluation therefore never influences its own baseline, which keeps the
- * pattern evaluation causal (look-ahead free).
+ * {@link org.ta4j.core.num.DecimalNum} observes. For the one-tenth factors, a
+ * raw tenfold comparison preserves subnormal ordering and a fused tenfold
+ * difference resolves any finite {@link DoubleNum} rounding tie at the
+ * inclusive boundary; non-finite raw operands fall back to the half-scale path.
+ * The candle under evaluation therefore never influences its own baseline,
+ * which keeps the pattern evaluation causal (look-ahead free).
  *
  * <p>
  * Recommended threshold profile (documented defaults):
@@ -659,7 +660,7 @@ final class CandleThresholdSupport {
         if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
             final Num scaledBody = rawBody.multipliedBy(rangeScale);
             if (Num.isFinite(scaledBody)) {
-                return !scaledBody.isGreaterThan(rawBaseline);
+                return isAtMostScaledRawBaseline(rawBody, scaledBody, rawBaseline);
             }
         }
         return !bodyValue.isGreaterThan(baseline);
@@ -789,7 +790,7 @@ final class CandleThresholdSupport {
         if (Num.isFinite(rawBaseline)) {
             final Num scaledShadow = shadowValue.multipliedBy(rangeScale);
             if (Num.isFinite(scaledShadow)) {
-                return !scaledShadow.isGreaterThan(rawBaseline);
+                return isAtMostScaledRawBaseline(shadowValue, scaledShadow, rawBaseline);
             }
         }
         return !shadowValue.isGreaterThan(baseline);
@@ -856,13 +857,33 @@ final class CandleThresholdSupport {
             if (Num.isFinite(rawDifference) && Num.isFinite(rawBaseline)) {
                 final Num scaledDifference = rawDifference.multipliedBy(rangeScale);
                 if (Num.isFinite(scaledDifference)) {
-                    return !scaledDifference.isGreaterThan(rawBaseline);
+                    return isAtMostScaledRawBaseline(rawDifference, scaledDifference, rawBaseline);
                 }
             }
         }
         final Num halfDifference = halfDifference(first, second, series.numFactory());
         final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
         return Num.isFinite(halfDifference) && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
+    }
+
+    /**
+     * Resolves an inclusive raw range comparison after reciprocal scaling. The
+     * tenfold product preserves subnormal ordering; a fused tenfold difference
+     * prevents a finite {@link DoubleNum} measurement just above the boundary from
+     * rounding onto it.
+     *
+     * @param measurement       the finite raw measurement
+     * @param scaledMeasurement the finite reciprocal-scaled measurement
+     * @param rawBaseline       the finite raw baseline
+     * @return whether the measurement is at most one tenth of the baseline
+     */
+    private static boolean isAtMostScaledRawBaseline(Num measurement, Num scaledMeasurement, Num rawBaseline) {
+        if (measurement instanceof DoubleNum doubleMeasurement && rawBaseline instanceof DoubleNum doubleBaseline) {
+            final double difference = Math.fma(doubleMeasurement.getDelegate(), RANGE_SCALE,
+                    -doubleBaseline.getDelegate());
+            return difference <= 0d;
+        }
+        return !scaledMeasurement.isGreaterThan(rawBaseline);
     }
 
     /**

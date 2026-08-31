@@ -120,6 +120,24 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void tenfoldRoundingDoesNotQualifyRangePredicatesAcrossFactories() {
+        final double measurement = Math.nextDown(1d);
+        final double priorRange = measurement * 10d;
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            final BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, priorRange, 0, 0);
+            addBar(series, measurement, 0, 0);
+            final CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+            final Indicator<Num> measured = new ConstantIndicator<>(series, factory.numOf(measurement));
+            final Indicator<Num> zero = new ConstantIndicator<>(series, factory.zero());
+
+            assertFalse(support.isDoji(1));
+            assertFalse(support.isShortShadow(1, measured));
+            assertFalse(support.isNear(1, measured, zero));
+        }
+    }
+
+    @Test
     public void nearIsInclusiveAndSymmetric() {
         BarSeries series = new MockBarSeriesBuilder().build();
         addBars(series, 5, 10, 0, 0);
