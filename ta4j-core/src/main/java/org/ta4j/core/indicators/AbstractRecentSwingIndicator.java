@@ -83,6 +83,18 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         return swingPoints.getSwingPointIndexes(series.getEndIndex());
     }
 
+    /**
+     * Whether the current thread holds the swing-point tracker monitor.
+     *
+     * <p>
+     * Package-private for lock-order regression verification.
+     *
+     * @return {@code true} when the tracker monitor is held by the current thread
+     */
+    final boolean holdsSwingPointTrackerMonitor() {
+        return Thread.holdsLock(swingPoints);
+    }
+
     @Override
     public Indicator<Num> getPriceIndicator() {
         return priceIndicator;

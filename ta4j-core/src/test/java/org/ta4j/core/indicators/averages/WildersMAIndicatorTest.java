@@ -393,4 +393,15 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
 
     }
 
+    @Test
+    public void initializesFromRetainedHead() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        series.setMaximumBarCount(3);
+
+        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+
+        assertNumEquals(4, indicator.getValue(3));
+        assertNumEquals(5, indicator.getValue(5));
+    }
+
 }

@@ -18,9 +18,11 @@ import org.ta4j.core.num.NumFactory;
  *
  * The WMA inherently "remembers" past values due to its recursive formula, but
  * the initialization WMA can significantly bias early values. This bias
- * diminishes over time as more data contributes to the calculation. See the
- * test cases for this indicator as it skips the initial data until the
- * calculation stabilizes.
+ * diminishes over time as more data contributes to the calculation. For a
+ * bounded series that has discarded early bars, initialization is relative to
+ * the retained head and uses its first retained value as the missing-history
+ * proxy. See the test cases for this indicator as it skips the initial data
+ * until the calculation stabilizes.
  *
  * @see <a href=
  *      "https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.">
@@ -47,7 +49,8 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index <= getBarSeries().getBeginIndex()) {
+        final int beginIndex = getBarSeries().getBeginIndex();
+        if (index <= beginIndex) {
             // Re-anchor the recursion at the first retained bar
             return indicator.getValue(index);
         }
@@ -58,15 +61,16 @@ public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
         Num k = one.dividedBy(numBars);
 
         // Simulate extended historical data for initialization
-        if (index < barCount) {
+        final long retainedIndex = (long) index - beginIndex;
+        if (retainedIndex < barCount) {
             // Use the first retained value as a proxy for the "missing" earlier data
-            Num simulatedValue = indicator.getValue(getBarSeries().getBeginIndex());
+            Num simulatedValue = indicator.getValue(beginIndex);
 
             // Initialize with a simulated Simple Moving Average (SMA)
             Num sum = sumPriceIndicator.getValue(index);
 
             // Return average of available points for initialization
-            Num preResult = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - index - 1)))
+            Num preResult = sum.plus(simulatedValue.multipliedBy(numFactory.numOf(barCount - retainedIndex - 1)))
                     .dividedBy(numBars);
 
             return preResult;

@@ -6,8 +6,6 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.lang.reflect.Field;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,13 +34,11 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
-    public void shouldInvalidateCacheAfterReleasingSwingTrackerOnHistoryReset()
-            throws NoSuchFieldException, IllegalAccessException {
+    public void shouldInvalidateCacheAfterReleasingSwingTrackerOnHistoryReset() {
         final BarSeries series = seriesFromCloses(1, 2, 3, 4, 5);
         final int[] latestSwingIndexes = { -1, -1, 2, 2, 2 };
         final LockCheckingSwingIndicator indicator = new LockCheckingSwingIndicator(new ClosePriceIndicator(series),
                 latestSwingIndexes);
-        indicator.captureSwingPointTracker();
         indicator.getSwingPointIndexesUpTo(series.getEndIndex());
 
         series.setMaximumBarCount(3);
@@ -320,22 +316,15 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
 
     private static final class LockCheckingSwingIndicator extends FixedSwingIndicator {
 
-        private Object swingPointTrackerMonitor;
         private boolean invalidatedOutsideTrackerMonitor;
 
         private LockCheckingSwingIndicator(Indicator<Num> priceIndicator, int[] latestSwingIndexes) {
             super(priceIndicator, latestSwingIndexes);
         }
 
-        private void captureSwingPointTracker() throws NoSuchFieldException, IllegalAccessException {
-            final Field swingPointsField = AbstractRecentSwingIndicator.class.getDeclaredField("swingPoints");
-            swingPointsField.setAccessible(true);
-            swingPointTrackerMonitor = swingPointsField.get(this);
-        }
-
         @Override
         protected void invalidateCache() {
-            invalidatedOutsideTrackerMonitor = !Thread.holdsLock(swingPointTrackerMonitor);
+            invalidatedOutsideTrackerMonitor = !holdsSwingPointTrackerMonitor();
             super.invalidateCache();
         }
 

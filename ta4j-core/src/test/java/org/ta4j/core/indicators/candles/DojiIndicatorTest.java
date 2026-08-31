@@ -359,6 +359,25 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void rejectsFiniteBodyAboveRangeRatioBoundaryAcrossFactories() {
+        // The body is one representable double above 10% of the baseline. Its
+        // body-to-range quotient rounds down to 0.1 under DoubleNum, while
+        // DecimalNum correctly retains the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance(32))) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            series.barBuilder().openPrice(0).closePrice(0).highPrice(1.3734820289392433E48).lowPrice(0).add();
+            series.barBuilder()
+                    .openPrice(1.3734820289392434E47)
+                    .closePrice(0)
+                    .highPrice(1.3734820289392434E47)
+                    .lowPrice(0)
+                    .add();
+
+            assertFalse(new DojiIndicator(series, 1, 0.1).getValue(1));
+        }
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 

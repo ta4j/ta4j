@@ -31,11 +31,13 @@ import org.ta4j.core.num.NumFactory;
  * data never qualifies. The explicit zero-factor branch remains an exact
  * zero-body check.
  * <p>
- * A finite body difference is compared against the prior average on one shared
- * scale, {@code |open_i - close_i| / priorAverage <= rangeFactor}, so a zero
- * body (open equals close) stays zero and qualifies as a doji no matter how
- * small the baseline is. A ratio that would land below the subnormal floor is
- * evaluated with its dividend scaled into the normal range first, so the
+ * A finite body difference outside the subnormal-ratio region is compared by
+ * rescaling the body with the positive range factor,
+ * {@code |open_i - close_i| / rangeFactor <= priorAverage}. This avoids
+ * rounding a body above its inclusive threshold down onto the ratio boundary. A
+ * zero body (open equals close) stays zero and qualifies as a doji no matter
+ * how small the baseline is. A ratio that would land below the subnormal floor
+ * is evaluated with its dividend scaled into the normal range first, so the
  * comparison keeps normal-range relative precision instead of collapsing onto
  * the inclusive boundary. Only when the raw difference overflows the
  * {@link Num} type (finite endpoints farther apart than a representable
@@ -189,7 +191,8 @@ public class DojiIndicator extends CandlePatternIndicator {
                 final Num scaledRatio = bodyMagnitude.multipliedBy(ratioScale).dividedBy(priorAverage);
                 return !scaledRatio.isGreaterThan(factor.multipliedBy(ratioScale));
             }
-            return !difference.dividedBy(priorAverage).abs().isGreaterThan(factor);
+            final Num scaledBodyMagnitude = bodyMagnitude.dividedBy(factor);
+            return !scaledBodyMagnitude.isGreaterThan(priorAverage);
         }
         // The raw difference overflows the numeric type although the endpoints
         // are finite. Dividing each operand by the baseline before differencing
