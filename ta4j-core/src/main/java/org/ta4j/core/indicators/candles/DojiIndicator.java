@@ -41,12 +41,11 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * When the restored full-scale prior average itself overflows (an overflowed
- * baseline window), the factor is applied to the half-scale prior average
- * before restoring full scale, so the threshold stays finite for representable
- * data and a zero body still qualifies as a doji. When the restored threshold
- * itself overflows upward, it bounds every finite body from above, so a finite
- * body still qualifies, matching DecimalNum's exact arithmetic; an
- * indeterminate threshold conservatively rejects.
+ * baseline window), the comparison stays on the preserved half scale:
+ * {@code |open_i / 2 - close_i / 2| <= rangeFactor * halfPriorAverage}. This
+ * preserves exact ordering even when both restored full-scale body and
+ * threshold overflow. An indeterminate half-scale operand conservatively
+ * rejects.
  *
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
@@ -144,22 +143,19 @@ public class DojiIndicator extends CandlePatternIndicator {
         }
         final Num priorAverage = thresholds.priorAverageRange().getValue(index);
         if (!Num.isFinite(priorAverage)) {
-            // The restored full-scale average overflowed, but the factor applied
-            // to the half-scale average before restoring still produces a finite
-            // threshold for representable data, so a zero body stays a doji no
-            // matter how large the overflowed baseline was. When the restored
-            // threshold itself overflows upward, it bounds every finite body
-            // from above, so a finite body still qualifies, matching
-            // DecimalNum's exact arithmetic; an indeterminate (NaN) threshold
-            // conservatively rejects.
-            final Num threshold = thresholds.halfPriorAverageRange()
+            // Keep both sides on the preserved half scale. Restoring the
+            // threshold before comparing makes a body and threshold that both
+            // overflow compare equal under DoubleNum even when their exact
+            // magnitudes differ.
+            final Num two = numFactory.numOf(2);
+            final Num halfBodyMagnitude = open.dividedBy(two).minus(close.dividedBy(two)).abs();
+            final Num halfThreshold = thresholds.halfPriorAverageRange()
                     .getValue(index)
-                    .multipliedBy(numFactory.numOf(rangeFactor))
-                    .multipliedBy(numFactory.numOf(2));
-            if (Num.isNaNOrNull(threshold)) {
+                    .multipliedBy(numFactory.numOf(rangeFactor));
+            if (Num.isNaNOrNull(halfBodyMagnitude) || Num.isNaNOrNull(halfThreshold)) {
                 return false;
             }
-            return !bodyMagnitude.isGreaterThan(threshold);
+            return !halfBodyMagnitude.isGreaterThan(halfThreshold);
         }
         if (priorAverage.isZero()) {
             // A zero range baseline leaves no scaling reference: only a candle

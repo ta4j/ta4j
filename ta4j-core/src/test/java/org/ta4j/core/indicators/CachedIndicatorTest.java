@@ -1902,6 +1902,48 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void cachedDependencyPathsShareOneVisitedSet() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CountingDependencyIndicator shared = new CountingDependencyIndicator(barSeries, List.of());
+        SMAIndicator sharedCached = new SMAIndicator(shared, 1);
+        SMAIndicator firstSource = new SMAIndicator(sharedCached, 1);
+        SMAIndicator secondSource = new SMAIndicator(sharedCached, 1);
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(firstSource, secondSource) {
+            @Override
+            protected Num calculate(int index) {
+                return NaN.NaN;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        assertEquals(0, dependent.minimumCacheableIndexAfterHeadAdvance(0));
+        assertEquals(1, shared.getDependenciesInvocations());
+    }
+
+    @Test
+    public void multipleSourceConstructorRejectsDifferentSeries() {
+        BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d).build();
+        ClosePriceIndicator source = new ClosePriceIndicator(series);
+        ClosePriceIndicator otherSource = new ClosePriceIndicator(otherSeries);
+
+        assertThrows(IllegalArgumentException.class, () -> new CachedIndicator<Num>(source, otherSource) {
+            @Override
+            protected Num calculate(int index) {
+                return NaN.NaN;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        });
+    }
+
+    @Test
     public void trueRangeIndicatorRegistersEveryInputForRebaselinePropagation() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(60).lowPrice(-1).add();

@@ -700,6 +700,10 @@ final class CandleThresholdSupport {
             return false;
         }
         if (Num.isFinite(shadowValue)) {
+            final Num rawBaseline = rawPriorAverageBody.getValue(index).multipliedBy(longShadowFactor);
+            if (Num.isFinite(rawBaseline)) {
+                return shadowValue.isGreaterThan(rawBaseline);
+            }
             final Num doubledBaseline = baseline.multipliedBy(longShadowFactor);
             if (!Num.isFinite(doubledBaseline)) {
                 // Two times an overflowed baseline exceeds any finite shadow.
@@ -755,9 +759,9 @@ final class CandleThresholdSupport {
      * {@link NumFactory}s. An unavailable (NaN) measurement is never classified; an
      * overflowed shadow from non-finite source prices (missing data) is rejected: a
      * shadow derived from an unavailable price never qualifies as short. A
-     * non-finite shadow from finite source prices, an overflowed magnitude or an
-     * inverted candle range from malformed OHLC ordering, can never qualify as a
-     * short shadow.
+     * non-finite shadow from finite source prices, including an overflowed
+     * magnitude, can never qualify as a short shadow. A finite negative shadow
+     * caused by malformed OHLC ordering is likewise rejected.
      *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
@@ -775,11 +779,10 @@ final class CandleThresholdSupport {
         if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
             return false;
         }
-        if (!Num.isFinite(shadowValue)) {
-            // An infinite shadow is never a short shadow: from non-finite
-            // source prices it is missing data, and from finite source prices
-            // it is either an overflowed magnitude or an inverted candle range
-            // from malformed OHLC ordering (a negative shadow).
+        if (!Num.isFinite(shadowValue) || shadowValue.isNegative()) {
+            // A non-finite shadow is either missing data or an overflowed
+            // magnitude; a finite negative shadow cannot represent a candle
+            // length and indicates malformed OHLC ordering.
             return false;
         }
         final Num rawBaseline = rawPriorAverageRange.getValue(index);

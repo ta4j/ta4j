@@ -47,7 +47,7 @@ public class ZigZagPivotHighIndicator extends CachedIndicator<Boolean> {
     }
 
     private ZigZagPivotHighIndicator(Config config) {
-        super(config.stateIndicator().getBarSeries());
+        super(config.stateIndicator());
         this.stateIndicator = config.stateIndicator();
     }
 

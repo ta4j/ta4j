@@ -250,6 +250,19 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void negativeFiniteShadowNeverQualifiesAsShortShadowAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 1, 0, 0);
+            addBar(series, 1, 0, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+            Indicator<Num> negativeShadow = new ConstantIndicator<>(series, series.numFactory().numOf(-1));
+
+            assertFalse(support.isShortShadow(1, negativeShadow));
+        }
+    }
+
+    @Test
     public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
         BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         addBars(bodySeries, 5, 10, 0, 0);
@@ -324,6 +337,18 @@ public class CandleThresholdSupportTest {
             // like the interned one: the overflowed magnitude is rebuilt at
             // half scale by type, not by reference identity.
             assertFalse(support.isLongShadow(1, new UpperShadowIndicator(series)));
+        }
+    }
+
+    @Test
+    public void subnormalLongShadowUsesRawPriorBodyAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 3 * Double.MIN_VALUE, 3 * Double.MIN_VALUE, 0);
+            addExtremeCandle(series, 0, 0, 7 * Double.MIN_VALUE, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongShadow(1, support.upperShadow()));
         }
     }
 

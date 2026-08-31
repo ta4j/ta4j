@@ -8,7 +8,6 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
@@ -192,7 +191,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
 
         private EwmaVarianceIndicator(Indicator<Num> indicator, Indicator<Num> meanIndicator, int barCount,
                 double decayFactor) {
-            super(IndicatorUtils.requireSameSeries(indicator, meanIndicator));
+            super(indicator, meanIndicator);
             this.indicator = indicator;
             this.meanIndicator = meanIndicator;
             this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);

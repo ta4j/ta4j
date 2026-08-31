@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -35,7 +34,7 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public VWAPZScoreIndicator(Indicator<Num> deviationIndicator, Indicator<Num> standardDeviationIndicator) {
-        super(IndicatorUtils.requireSameSeries(deviationIndicator, standardDeviationIndicator));
+        super(deviationIndicator, standardDeviationIndicator);
         this.deviationIndicator = Objects.requireNonNull(deviationIndicator, "deviationIndicator must not be null");
         this.standardDeviationIndicator = Objects.requireNonNull(standardDeviationIndicator,
                 "standardDeviationIndicator must not be null");

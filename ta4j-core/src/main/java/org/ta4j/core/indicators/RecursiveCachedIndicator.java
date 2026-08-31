@@ -101,7 +101,13 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
                 final int removedBarsCount = snapshot.removedThroughIndex() + 1;
-                int startIndex = Math.max(removedBarsCount, highestResultIndex);
+                final int firstCachedIndex = getCache().getFirstCachedIndex();
+                // A head advance can retain a later cache tail while evicting its
+                // lower recursive base range. That tail is not a usable predecessor
+                // for a read below it; rebuild the missing prefix from the first
+                // retained bar instead of recursively walking back to it.
+                int startIndex = firstCachedIndex > index ? removedBarsCount
+                        : Math.max(removedBarsCount, highestResultIndex);
                 if (startIndex < 0) {
                     startIndex = Math.max(0, removedBarsCount);
                 }

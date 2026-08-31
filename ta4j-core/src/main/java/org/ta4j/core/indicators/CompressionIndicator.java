@@ -82,7 +82,7 @@ public class CompressionIndicator extends CachedIndicator<Num> {
     }
 
     private CompressionIndicator(Config config) {
-        super(config.series());
+        super(config.atrPercentIndicator());
         this.barCount = config.barCount();
         this.percentileBarCount = config.percentileBarCount();
         this.atrPercentIndicator = config.atrPercentIndicator();

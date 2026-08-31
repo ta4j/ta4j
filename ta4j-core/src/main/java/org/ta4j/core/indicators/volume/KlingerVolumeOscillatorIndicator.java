@@ -182,7 +182,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     private KlingerVolumeOscillatorIndicator(Config config) {
-        super(config.series());
+        super(config.shortEmaIndicator(), config.longEmaIndicator());
         this.shortPeriod = config.shortPeriod();
         this.longPeriod = config.longPeriod();
         this.scaleMultiplier = config.scaleMultiplier();
@@ -324,7 +324,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         private CumulativeMeasurementIndicator(final Indicator<Num> measurementIndicator,
                 final Indicator<Num> trendIndicator) {
-            super(IndicatorUtils.requireSameSeries(measurementIndicator, trendIndicator));
+            super(measurementIndicator, trendIndicator);
             this.measurementIndicator = measurementIndicator;
             this.trendIndicator = trendIndicator;
             this.unstableBars = Math.max(measurementIndicator.getCountOfUnstableBars(),
@@ -391,8 +391,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         private VolumeForceIndicator(final Indicator<Num> volumeIndicator, final Indicator<Num> measurementIndicator,
                 final Indicator<Num> trendIndicator, final Indicator<Num> cumulativeMeasurementIndicator,
                 final Num scaleMultiplier) {
-            super(IndicatorUtils.requireSameSeries(volumeIndicator, measurementIndicator, trendIndicator,
-                    cumulativeMeasurementIndicator));
+            super(volumeIndicator, measurementIndicator, trendIndicator, cumulativeMeasurementIndicator);
 
             this.volumeIndicator = volumeIndicator;
             this.measurementIndicator = measurementIndicator;
@@ -541,7 +540,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         private TrendDirectionIndicator(final Indicator<Num> basisIndicator) {
-            super(IndicatorUtils.requireSameSeries(basisIndicator, basisIndicator));
+            super(basisIndicator);
             this.basisIndicator = basisIndicator;
             this.one = getBarSeries().numFactory().one();
             this.minusOne = getBarSeries().numFactory().minusOne();

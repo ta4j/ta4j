@@ -224,6 +224,27 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void overflowedBodyAndThresholdKeepTheirExactOrderingAcrossFactories() {
+        // The baseline range is 2 * MAX and the factor is 0.75, making the
+        // exact threshold 1.5 * MAX. The candidate body is 1.8 * MAX. Both
+        // magnitudes overflow DoubleNum after restoring full scale, so the
+        // half-scale comparison must preserve their strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            series.barBuilder()
+                    .openPrice(0)
+                    .closePrice(0)
+                    .highPrice(Double.MAX_VALUE)
+                    .lowPrice(-Double.MAX_VALUE)
+                    .add();
+            double endpoint = Double.MAX_VALUE * 0.9d;
+            series.barBuilder().openPrice(-endpoint).closePrice(endpoint).highPrice(endpoint).lowPrice(-endpoint).add();
+
+            assertFalse(new DojiIndicator(series, 1, 0.75d).getValue(1));
+        }
+    }
+
+    @Test
     public void zeroBodyAfterOverflowedRangeDilutedByWindowIsDoji() {
         // A three-bar baseline whose ranges are [0, 0, 2 * MAX] has the finite
         // mean 2/3 * MAX even though the extreme range overflows the raw range

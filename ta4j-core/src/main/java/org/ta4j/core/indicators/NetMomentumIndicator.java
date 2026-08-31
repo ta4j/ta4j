@@ -263,7 +263,8 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         }
 
-        if (index == 0) {
+        if (index <= getBarSeries().getBeginIndex()) {
+            // A bounded series can discard the preceding recursive value.
             return delta;
         }
 

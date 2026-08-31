@@ -284,10 +284,10 @@ class CachedBuffer<T> {
      * Prefills missing values up to (but not including) the target index.
      *
      * <p>
-     * This method is designed for recursive indicators to avoid stack overflow by
-     * iteratively computing values from the current highest index up to the target.
-     * The caller provides a calculator that computes values without re-entering the
-     * public getValue method.
+     * Ordinary forward prefill starts after the current highest cached index. When
+     * a head advance has retained a later cache tail while evicting a lower prefix,
+     * a caller can instead start before {@code firstCachedIndex}; the missing
+     * prefix is then filled in order without recomputing existing values.
      *
      * @param startIndex  the index to start filling from
      * @param targetIndex the target index (exclusive)
@@ -298,10 +298,16 @@ class CachedBuffer<T> {
         try {
             onWriteLockAcquired();
             try {
-                int fillStart = Math.max(startIndex, highestResultIndex + 1);
+                int fillStart = startIndex;
+                if (firstCachedIndex < 0 || startIndex >= firstCachedIndex) {
+                    fillStart = highestResultIndex == Integer.MAX_VALUE ? Integer.MAX_VALUE
+                            : Math.max(startIndex, highestResultIndex + 1);
+                }
                 for (int i = fillStart; i < targetIndex; i++) {
-                    T value = calculator.apply(i);
-                    store(i, value);
+                    if (readAtUnlocked(i) == NOT_COMPUTED) {
+                        T value = calculator.apply(i);
+                        store(i, value);
+                    }
                 }
             } finally {
                 onBeforeWriteLockReleased();

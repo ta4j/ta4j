@@ -69,6 +69,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private static final Indicator<?>[] NO_SOURCES = new Indicator<?>[0];
 
     /**
+     * Per-thread source traversal context. It preserves virtual cache-floor
+     * overrides while nested base cached indicators share their visited set.
+     */
+    private static final ThreadLocal<Set<Indicator<?>>> HEAD_ADVANCE_VISITED = new ThreadLocal<>();
+
+    /**
      * The source indicators whose full-tail invalidations propagate to this
      * indicator on head advance (see
      * {@link #minimumCacheableIndexAfterHeadAdvance(int)}). Empty when constructed
@@ -164,7 +170,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @since 0.24.2
      */
     protected CachedIndicator(Indicator<?> firstSource, Indicator<?>... additionalSources) {
-        this(validatedConfig(firstSource, LAST_BAR_WAIT_TIMEOUT_MS), flattened(firstSource, additionalSources));
+        this(validatedConfig(firstSource, additionalSources, LAST_BAR_WAIT_TIMEOUT_MS),
+                flattened(firstSource, additionalSources));
     }
 
     private static Indicator<?>[] flattened(Indicator<?> firstSource, Indicator<?>[] additionalSources) {
@@ -193,6 +200,14 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
         return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
+    }
+
+    private static Config validatedConfig(Indicator<?> firstSource, Indicator<?>[] additionalSources,
+            long lastBarWaitTimeoutMs) {
+        // The existing validator requires a second source. Reusing the first
+        // source validates every registered source without copying the varargs.
+        return validatedConfig(IndicatorUtils.requireSameSeries(firstSource, firstSource, additionalSources),
+                lastBarWaitTimeoutMs);
     }
 
     /**
@@ -362,9 +377,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *         {@link Integer#MAX_VALUE} discards every cached entry
      */
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        // One identity-visited set across every source: subgraphs shared by
-        // several sources are inspected once instead of once per source.
-        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Indicator<?>> visited = HEAD_ADVANCE_VISITED.get();
+        if (visited != null) {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, visited);
+        }
+        Set<Indicator<?>> rootVisited = Collections.newSetFromMap(new IdentityHashMap<>());
+        HEAD_ADVANCE_VISITED.set(rootVisited);
+        try {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, rootVisited);
+        } finally {
+            HEAD_ADVANCE_VISITED.remove();
+        }
+    }
+
+    private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Set<Indicator<?>> visited) {
         for (Indicator<?> sourceIndicator : sourceIndicators) {
             if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
                 return Integer.MAX_VALUE;
@@ -397,7 +423,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             return false;
         }
         if (source instanceof CachedIndicator<?> cachedSource) {
-            return rebaselinesBeyondDefaultBand(cachedSource, firstRetainedIndex);
+            long defaultBandFloor = (long) firstRetainedIndex + cachedSource.getCountOfUnstableBars();
+            return cachedSource.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor;
         }
         for (Indicator<?> dependency : source.getDependencies()) {
             if (sourceGraphRebaselinesBeyondDefaultBand(dependency, firstRetainedIndex, visited)) {
@@ -405,11 +432,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             }
         }
         return false;
-    }
-
-    private static boolean rebaselinesBeyondDefaultBand(CachedIndicator<?> source, int firstRetainedIndex) {
-        long defaultBandFloor = (long) firstRetainedIndex + source.getCountOfUnstableBars();
-        return source.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor;
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {

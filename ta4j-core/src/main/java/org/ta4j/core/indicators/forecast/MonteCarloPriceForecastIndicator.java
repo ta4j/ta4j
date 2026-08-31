@@ -9,7 +9,6 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod;
@@ -87,7 +86,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     }
 
     private MonteCarloPriceForecastIndicator(Builder builder) {
-        super(IndicatorUtils.requireSameSeries(builder.priceIndicator, builder.stateIndicator));
+        super(builder.priceIndicator, builder.stateIndicator);
         this.priceIndicator = builder.priceIndicator;
         this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
                 builder.methodOrDefault());

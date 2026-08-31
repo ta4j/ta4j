@@ -687,6 +687,22 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 expected.minus(actual).abs().isLessThan(tolerance));
     }
 
+    @Test
+    public void reanchorsAtFirstRetainedBarAfterStochasticInvalidation() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 8; index++) {
+            movingSeries.barBuilder().closePrice(40).add();
+        }
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(movingSeries), 1);
+        NetMomentumIndicator subject = new NetMomentumIndicator(stochastic, 2, 50, 0.5);
+        subject.getValue(7);
+
+        movingSeries.setMaximumBarCount(5);
+
+        assertEquals(3, movingSeries.getBeginIndex());
+        assertTrue(subject.getValue(3).isEqual(numOf(100)));
+    }
+
     private CachedIndicator<Num> buildOscillator() {
         return new CachedIndicator<>(closePrice) {
             @Override

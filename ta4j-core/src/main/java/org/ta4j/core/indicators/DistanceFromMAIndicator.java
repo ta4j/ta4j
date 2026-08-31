@@ -72,7 +72,7 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     }
 
     private DistanceFromMAIndicator(Config config) {
-        super(config.series());
+        super(config.movingAverage());
         this.movingAverage = config.movingAverage();
     }
 
