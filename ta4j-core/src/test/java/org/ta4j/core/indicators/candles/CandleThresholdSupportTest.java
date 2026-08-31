@@ -291,6 +291,41 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void overflowedShadowDoesNotBeatDoubledBaselineAcrossFactories() {
+        // A period-1 baseline of 0.95 * MAX doubles to infinity in DoubleNum,
+        // collapsing the overflowed 1.8 * MAX upper shadow onto the same
+        // value in the raw comparison; the shadow must still be rejected as
+        // not long. Rebuilding the overflowed shadow exactly at half scale
+        // keeps the strict ordering, so both factories agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.95 * Double.MAX_VALUE, 0, 0); // index 0: baseline body
+            addExtremeCandle(series, -0.8 * Double.MAX_VALUE, -0.8 * Double.MAX_VALUE, Double.MAX_VALUE,
+                    -0.8 * Double.MAX_VALUE); // index 1: upper shadow 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isLongShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void subnormalShadowIsNotErasedByHalfScalingAcrossFactories() {
+        // The period-1 prior range is 19 * MIN_VALUE, so the true short-shadow
+        // threshold is 1.9 * MIN_VALUE and the 2 * MIN_VALUE upper shadow is
+        // not short. Halving the shadow underflows in DoubleNum; scaling the
+        // shadow up instead keeps the strict ordering, so both factories
+        // agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN
+            addExtremeCandle(series, 0, 0, 2 * Double.MIN_VALUE, 0); // index 1: upper shadow 2 * MIN
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isShortShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
     public void overflowedPriorAndCurrentBodiesStayStrictlyDecidableAcrossFactories() {
         // The prior baseline body and the evaluated body both overflow the raw
         // magnitude (1.5 * MAX and 1.8 * MAX collapse to infinity in DoubleNum);
