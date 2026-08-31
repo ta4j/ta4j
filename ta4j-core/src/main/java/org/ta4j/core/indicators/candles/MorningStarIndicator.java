@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
@@ -60,8 +59,8 @@ public class MorningStarIndicator extends CandlePatternIndicator {
     private final int averagePeriod;
     private final double penetration;
 
-    private final transient Indicator<Num> bodyIndicator;
     private final transient Num penetrationFactor;
+    private final transient Num oneMinusPenetrationFactor;
 
     /**
      * Constructor with the default average period and penetration.
@@ -74,8 +73,8 @@ public class MorningStarIndicator extends CandlePatternIndicator {
                 CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.penetration = DEFAULT_PENETRATION;
-        this.bodyIndicator = thresholds.bodyIndicator();
         this.penetrationFactor = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationFactor = getBarSeries().numFactory().numOf(1d - penetration);
     }
 
     @Override
@@ -102,8 +101,8 @@ public class MorningStarIndicator extends CandlePatternIndicator {
                 CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
         this.penetration = penetration;
-        this.bodyIndicator = thresholds.bodyIndicator();
         this.penetrationFactor = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationFactor = getBarSeries().numFactory().numOf(1d - penetration);
     }
 
     @Override
@@ -115,9 +114,14 @@ public class MorningStarIndicator extends CandlePatternIndicator {
         Bar firstBar = series.getBar(index - 2);
         Bar starBar = series.getBar(index - 1);
         Bar thirdBar = series.getBar(index);
-        Num firstBody = bodyIndicator.getValue(index - 2);
         Num firstBodyBottom = bodyBottom(firstBar);
-        Num penetrationLevel = firstBodyBottom.plus(firstBody.multipliedBy(penetrationFactor));
+        Num firstBodyTop = bodyTop(firstBar);
+        // The level is a convex combination of the two finite endpoints, so it
+        // stays within the first body's hull and remains finite even when the
+        // raw |open - close| body magnitude overflows the Num type (for example
+        // a DoubleNum bearish first candle from MAX to -MAX/2).
+        Num penetrationLevel = firstBodyTop.multipliedBy(penetrationFactor)
+                .plus(firstBodyBottom.multipliedBy(oneMinusPenetrationFactor));
         Num thirdClose = thirdBar.getClosePrice();
         // Signed zero is normalized at the strict gap and the inclusive
         // penetration boundary: DoubleNum orders -0.0 below +0.0, so two

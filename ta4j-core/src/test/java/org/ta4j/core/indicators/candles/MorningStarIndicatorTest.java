@@ -58,6 +58,23 @@ public class MorningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     }
 
     @Test
+    public void penetrationLevelStaysFiniteWhenFirstBodyOverflows() {
+        // A DoubleNum bearish first candle from MAX to -MAX/2 has a body
+        // magnitude of 1.5 * MAX, which overflows to positive infinity. The
+        // penetration level must still come out as the finite midpoint MAX/4.
+        // DecimalNum does not overflow, so this test is DoubleNum-only.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        addBaselineBars(series, 5);
+        addBar(series, Double.MAX_VALUE, -Double.MAX_VALUE / 2, Double.MAX_VALUE, -Double.MAX_VALUE / 2);
+        addBar(series, -0.75 * Double.MAX_VALUE, -0.75 * Double.MAX_VALUE + 1, -0.75 * Double.MAX_VALUE + 1,
+                -0.75 * Double.MAX_VALUE);
+        addBar(series, Double.MAX_VALUE / 8, Double.MAX_VALUE / 2, Double.MAX_VALUE / 2, Double.MAX_VALUE / 8);
+
+        assertTrue(new MorningStarIndicator(series, 1, 0.5).getValue(7));
+    }
+
+    @Test
     public void firstBarMustBeBearish() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBaselineBars(series, 10);
