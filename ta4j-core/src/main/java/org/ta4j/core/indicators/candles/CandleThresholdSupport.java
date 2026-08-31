@@ -919,8 +919,8 @@ final class CandleThresholdSupport {
     /**
      * Half of the candle range, i.e. {@code (high - low) / 2} computed by dividing
      * each operand before differencing, so the result stays finite whenever the raw
-     * range magnitude would overflow the {@link Num} type; a subnormal raw range is
-     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * range magnitude would overflow the {@link Num} type; a negative measurement
+     * (malformed bar) keeps its ordering. A non-finite endpoint yields
      * {@link NaN#NaN}, mirroring {@link CandleRangeIndicator}.
      */
     private static final class HalfRangeIndicator extends CachedIndicator<Num> {
@@ -936,7 +936,7 @@ final class CandleThresholdSupport {
             if (!Num.isFinite(high) || !Num.isFinite(low)) {
                 return NaN.NaN;
             }
-            return halfDifference(high, low, getBarSeries().numFactory());
+            return halfSignedDifference(high, low, getBarSeries().numFactory());
         }
 
         @Override

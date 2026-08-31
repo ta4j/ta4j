@@ -263,6 +263,33 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void malformedPriorRangePreservesNegativePolarityAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            Num zero = factory.zero();
+            series.addBar(new NonFiniteBar(Instant.EPOCH, zero, factory.numOf(-Double.MAX_VALUE),
+                    factory.numOf(Double.MAX_VALUE), zero));
+            addBar(series, 0, 0, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.priorAverageRange().getValue(1).isNegative());
+        }
+    }
+
+    @Test
+    public void overflowedMalformedPriorRangeNeverMakesValuesNearWithDoubleNum() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        Num zero = factory.zero();
+        series.addBar(new NonFiniteBar(Instant.EPOCH, zero, factory.numOf(-Double.MAX_VALUE),
+                factory.numOf(Double.MAX_VALUE), zero));
+        addBar(series, 0, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+        assertFalse(support.isNear(1, zero, factory.numOf(0.05 * Double.MAX_VALUE)));
+    }
+
+    @Test
     public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
         BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         addBars(bodySeries, 5, 10, 0, 0);
