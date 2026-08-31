@@ -43,10 +43,20 @@ public class TRIndicator extends CachedIndicator<Num> {
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
+        // Every source is registered: a rebaselining low or close source must
+        // invalidate the whole cache after a series head advance, not just the
+        // high-source unstable band.
+        super(validatedHigh(highPriceIndicator, lowPriceIndicator, closePriceIndicator), lowPriceIndicator,
+                closePriceIndicator);
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
         this.closePriceIndicator = closePriceIndicator;
+    }
+
+    private static Indicator<Num> validatedHigh(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator) {
+        IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
+        return highPriceIndicator;
     }
 
     @Override

@@ -8,13 +8,20 @@ import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
+import org.ta4j.core.indicators.averages.VIDYAIndicator;
+import org.ta4j.core.indicators.averages.WildersMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.AverageIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -1800,4 +1807,128 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
+    @Test(timeout = 5000)
+    public void sharedDependencySubgraphReconciliationStaysBounded() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        // A diamond of non-cached wrappers: every node feeds both inputs of the
+        // next, so the reconciliation graph has 2^30 paths, all reaching the
+        // same non-rebaselining close price. Reconciling the dependent after a
+        // head advance must visit each node once instead of once per path.
+        Indicator<Num> level = BinaryOperationIndicator.difference(new ClosePriceIndicator(barSeries),
+                new ClosePriceIndicator(barSeries));
+        for (int i = 1; i < 30; i++) {
+            level = BinaryOperationIndicator.difference(level, level);
+        }
+        // The dependent registers the diamond as its source but never evaluates
+        // it, so the reconciliation walk is the only cost of the read.
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(level) {
+            @Override
+            protected Num calculate(int index) {
+                return NaN.NaN;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        assertTrue(dependent.getValue(3).isNaN());
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // Reconciliation must visit every wrapper once instead of once per path.
+        assertTrue(dependent.getValue(3).isNaN());
+    }
+
+    @Test
+    public void trueRangeIndicatorRegistersEveryInputForRebaselinePropagation() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(60).lowPrice(-1).add();
+        for (int i = 0; i < 4; i++) {
+            barSeries.barBuilder().openPrice(50).closePrice(50).highPrice(60).lowPrice(49).add();
+        }
+        HighPriceIndicator high = new HighPriceIndicator(barSeries);
+        StochasticIndicator low = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        ClosePriceIndicator close = new ClosePriceIndicator(barSeries);
+        TRIndicator trueRange = new TRIndicator(high, low, close);
+
+        // Warm the cache: the stochastic low is 100 throughout the flat tail.
+        assertNumEquals(50, trueRange.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // The flat retained tail rebases the stochastic to zero. The cached
+        // true range at the far end must follow instead of serving the stale
+        // high-source band value.
+        assertNumEquals(60, trueRange.getValue(4));
+    }
+
+    @Test
+    public void vidyaReadsFarRetainedTailIterativelyWhenSeriesHeadAdvances() {
+        assertFarRetainedTailRecomputesWithoutRecursing(series -> {
+            StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 14);
+            return new VIDYAIndicator(stochastic, 20, 10);
+        }, TestUtils::assertNumEquals);
+    }
+
+    @Test
+    public void wildersMaReadsFarRetainedTailIterativelyWhenSeriesHeadAdvances() {
+        assertFarRetainedTailRecomputesWithoutRecursing(series -> {
+            StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 14);
+            return new WildersMAIndicator(stochastic, 14);
+        }, TestUtils::assertNumEquals);
+    }
+
+    @Test
+    public void zigZagStateReadsFarRetainedTailIterativelyWhenSeriesHeadAdvances() {
+        assertFarRetainedTailRecomputesWithoutRecursing(series -> {
+            Indicator<Num> price = new ClosePriceIndicator(series);
+            StochasticIndicator reversalAmount = new StochasticIndicator(price, 14);
+            return new ZigZagStateIndicator(price, price, price, reversalAmount);
+        }, (fresh, cached) -> {
+            assertEquals(fresh.getTrend(), cached.getTrend());
+            assertEquals(fresh.getLastHighIndex(), cached.getLastHighIndex());
+            assertEquals(fresh.getLastHighPrice(), cached.getLastHighPrice());
+            assertEquals(fresh.getLastLowIndex(), cached.getLastLowIndex());
+            assertEquals(fresh.getLastLowPrice(), cached.getLastLowPrice());
+            assertEquals(fresh.getLastExtremeIndex(), cached.getLastExtremeIndex());
+            assertEquals(fresh.getLastExtremePrice(), cached.getLastExtremePrice());
+        });
+    }
+
+    private <T> void assertFarRetainedTailRecomputesWithoutRecursing(
+            java.util.function.Function<BarSeries, Indicator<T>> indicatorFactory,
+            java.util.function.BiConsumer<T, T> verifier) {
+        final int retainedBars = 20_000;
+        final int totalBars = 2 * retainedBars + 1;
+        double[] closes = new double[totalBars];
+        for (int i = 0; i < totalBars; i++) {
+            closes[i] = 100d + i * 0.1d;
+        }
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(Arrays.copyOf(closes, totalBars - 1))
+                .build();
+
+        Indicator<T> indicator = indicatorFactory.apply(barSeries);
+        indicator.getValue(barSeries.getEndIndex()); // warm the cache over the full series
+
+        // Head advance: the retained window keeps only the last 20k bars, so the
+        // far tail must be recomputed through a cache whose sources rebased.
+        barSeries.setMaximumBarCount(retainedBars);
+        assertEquals(retainedBars, barSeries.getBeginIndex());
+        barSeries.barBuilder()
+                .openPrice(closes[totalBars - 1])
+                .closePrice(closes[totalBars - 1])
+                .highPrice(closes[totalBars - 1])
+                .lowPrice(closes[totalBars - 1])
+                .add();
+        assertEquals(retainedBars + 1, barSeries.getBeginIndex());
+
+        Indicator<T> freshIndicator = indicatorFactory.apply(barSeries);
+        verifier.accept(freshIndicator.getValue(barSeries.getEndIndex()), indicator.getValue(barSeries.getEndIndex()));
+    }
 }

@@ -6,6 +6,9 @@ package org.ta4j.core.indicators;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.Objects;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
@@ -360,17 +363,30 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * {@link Indicator#getDependencies()}, so a rebaselining source hidden behind
      * non-cached wrappers (for example a stochastic inside a
      * {@code BinaryOperationIndicator}) still invalidates the whole cache.
+     * <p>
+     * The traversal tracks visited nodes by identity, so subgraphs shared by
+     * several dependency paths are inspected once instead of once per incoming
+     * path, and dependency cycles terminate.
      *
      * @param source             the source indicator to inspect
      * @param firstRetainedIndex the first series index that remains available
      * @return {@code true} when a rebaselining source lies in the graph
      */
     private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex) {
+        return sourceGraphRebaselinesBeyondDefaultBand(source, firstRetainedIndex,
+                Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex,
+            Set<Indicator<?>> visited) {
+        if (!visited.add(source)) {
+            return false;
+        }
         if (source instanceof CachedIndicator<?> cachedSource) {
             return rebaselinesBeyondDefaultBand(cachedSource, firstRetainedIndex);
         }
         for (Indicator<?> dependency : source.getDependencies()) {
-            if (sourceGraphRebaselinesBeyondDefaultBand(dependency, firstRetainedIndex)) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(dependency, firstRetainedIndex, visited)) {
                 return true;
             }
         }

@@ -67,6 +67,20 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     /**
+     * Constructor for recursive indicators that read from several related
+     * indicators.
+     *
+     * @param firstSource       a related indicator (with a bar series); retained so
+     *                          full-tail invalidations propagate to this indicator
+     * @param additionalSources further related indicators retained for the same
+     *                          propagation
+     * @since 0.24.2
+     */
+    protected RecursiveCachedIndicator(Indicator<?> firstSource, Indicator<?>... additionalSources) {
+        super(firstSource, additionalSources);
+    }
+
+    /**
      * Recursive values always depend on earlier values beyond the declared unstable
      * range, so head-advance reconciliation never applies the unstable-range floor
      * to this indicator's cache.

@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -26,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
  *      "https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.">
  *      https://www.tradingview.com/script/wXtQeoOg/#:~:text=Wilder%20did%20not%20use%20the,where%20K%20%3D1%2FN.</a>
  */
-public class WildersMAIndicator extends CachedIndicator<Num> {
+public class WildersMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -47,6 +47,10 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index <= getBarSeries().getBeginIndex()) {
+            // Re-anchor the recursion at the first retained bar
+            return indicator.getValue(index);
+        }
         NumFactory numFactory = getBarSeries().numFactory();
         Num one = numFactory.one();
 
@@ -55,9 +59,8 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
         // Simulate extended historical data for initialization
         if (index < barCount) {
-            // Pretend there are extra `barCount` points before the first real point
-            // Use the first actual value as a proxy for the "missing" earlier data
-            Num simulatedValue = indicator.getValue(0);
+            // Use the first retained value as a proxy for the "missing" earlier data
+            Num simulatedValue = indicator.getValue(getBarSeries().getBeginIndex());
 
             // Initialize with a simulated Simple Moving Average (SMA)
             Num sum = sumPriceIndicator.getValue(index);
@@ -69,7 +72,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
             return preResult;
         }
 
-        Num previousWildersAverage = index == 0 ? indicator.getValue(0) : getValue(index - 1);
+        Num previousWildersAverage = getValue(index - 1);
         Num currentPrice = indicator.getValue(index);
         return currentPrice.multipliedBy(k).plus(previousWildersAverage.multipliedBy(one.minus(k)));
     }
@@ -82,11 +85,6 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
-    }
-
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
     }
 
 }
