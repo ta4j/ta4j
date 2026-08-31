@@ -41,8 +41,16 @@ import org.ta4j.core.num.NumFactory;
  * into a non-finite value, the same window is re-averaged as an incremental
  * mean. Full-scale views are derived only where a consumer still expects raw
  * magnitudes (shadow comparisons and the baseline accessors) by doubling the
- * half-scale mean. The candle under evaluation therefore never influences its
- * own baseline, which keeps the pattern evaluation causal (look-ahead free).
+ * half-scale mean. Body, doji, and near comparisons additionally consult raw
+ * full-scale baselines whenever both operands are finite: halving two adjacent
+ * subnormal magnitudes can collapse them onto the same half-scale value, so the
+ * raw comparison preserves the strict ordering that
+ * {@link org.ta4j.core.num.DecimalNum} observes. For the one-tenth factors the
+ * comparison is cross-multiplied ({@code body * 10 <= range}) because the
+ * factor itself is not exactly representable in binary floating point;
+ * non-finite raw operands fall back to the half-scale path. The candle under
+ * evaluation therefore never influences its own baseline, which keeps the
+ * pattern evaluation causal (look-ahead free).
  *
  * <p>
  * Recommended threshold profile (documented defaults):
@@ -327,6 +335,16 @@ final class CandleThresholdSupport {
      */
     static final double NEAR_RANGE_FACTOR = 0.1;
 
+    /**
+     * Multiplicative scale applied to the measured magnitude instead of multiplying
+     * the baseline by {@link #DOJI_RANGE_FACTOR} or {@link #NEAR_RANGE_FACTOR}.
+     * Both factors are one tenth, which is not exactly representable in binary
+     * floating point, whereas scaling by ten is exact for every subnormal
+     * magnitude, so the scaled comparison preserves the ordering between adjacent
+     * subnormal magnitudes.
+     */
+    static final double RANGE_SCALE = 10.0;
+
     private final BarSeries series;
     private final int averagePeriod;
     private final Indicator<Num> body;
@@ -338,6 +356,8 @@ final class CandleThresholdSupport {
     private final Indicator<Num> halfPriorAverageRange;
     private final Indicator<Num> priorAverageBody;
     private final Indicator<Num> priorAverageRange;
+    private final Indicator<Num> rawPriorAverageBody;
+    private final Indicator<Num> rawPriorAverageRange;
     private final Num longBodyFactor;
     private final Num shortBodyFactor;
     private final Num dojiRangeFactor;
@@ -345,6 +365,7 @@ final class CandleThresholdSupport {
     private final Num shortShadowRangeFactor;
     private final Num nearRangeFactor;
     private final Num restoreFactor;
+    private final Num rangeScale;
 
     /**
      * Constructor with the {@link #DEFAULT_AVERAGE_PERIOD default average period}.
@@ -382,6 +403,13 @@ final class CandleThresholdSupport {
         this.priorAverageBody = new DoubledIndicator(halfPriorAverageBody);
         this.priorAverageRange = new DoubledIndicator(halfPriorAverageRange);
         final NumFactory numFactory = this.series.numFactory();
+        // Raw full-scale rolling baselines: used only to preserve strict ordering
+        // between adjacent subnormal magnitudes that the half-scale path below
+        // collapses. Their windows can overflow, which is fine because every
+        // comparison falls back to the half-scale path when a raw operand is
+        // non-finite.
+        this.rawPriorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(body, averagePeriod));
+        this.rawPriorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(range, averagePeriod));
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
         this.dojiRangeFactor = numFactory.numOf(DOJI_RANGE_FACTOR);
@@ -389,6 +417,7 @@ final class CandleThresholdSupport {
         this.shortShadowRangeFactor = numFactory.numOf(SHORT_SHADOW_RANGE_FACTOR);
         this.nearRangeFactor = numFactory.numOf(NEAR_RANGE_FACTOR);
         this.restoreFactor = numFactory.numOf(2);
+        this.rangeScale = numFactory.numOf(RANGE_SCALE);
     }
 
     /**
@@ -515,10 +544,13 @@ final class CandleThresholdSupport {
      * prior average body.
      *
      * <p>
-     * The comparison is performed at half scale: the half body is measured against
-     * the half-scale prior average body, so two magnitudes whose raw values would
-     * both overflow still keep a decidable strict ordering across
-     * {@link NumFactory}s. An unavailable (NaN) measurement is never classified.
+     * The raw body is compared against the raw-scale prior average body whenever
+     * both are finite, so two adjacent subnormal magnitudes stay strictly ordered
+     * instead of collapsing onto the same half-scale value. Otherwise the
+     * comparison is performed at half scale: the half body is measured against the
+     * half-scale prior average body, so two magnitudes whose raw values would both
+     * overflow still keep a decidable strict ordering across {@link NumFactory}s.
+     * An unavailable (NaN) measurement is never classified.
      *
      * @param index the candle index
      * @return {@code true} for a long body, {@code false} below the warm-up
@@ -530,7 +562,15 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = halfBody.getValue(index);
         final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(longBodyFactor);
-        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isGreaterThan(baseline);
+        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageBody.getValue(index).multipliedBy(longBodyFactor);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            return rawBody.isGreaterThan(rawBaseline);
+        }
+        return bodyValue.isGreaterThan(baseline);
     }
 
     /**
@@ -538,10 +578,15 @@ final class CandleThresholdSupport {
      * prior average body.
      *
      * <p>
-     * The comparison is performed at half scale: the half body is measured against
-     * the half-scale prior average body, so a finite half body stays decidable
-     * against a baseline whose raw mean would overflow. An unavailable (NaN)
-     * measurement is never classified.
+     * The comparison {@code body < factor * priorBody} is evaluated as
+     * {@code body / factor < priorBody} on the raw-scale operands whenever both are
+     * finite: dividing by the power-of-two factor doubles the body exactly, whereas
+     * multiplying an odd subnormal baseline by the factor can round it onto the
+     * measured body and lose the strict ordering. Otherwise the comparison is
+     * performed at half scale: the half body is measured against the half-scale
+     * prior average body, so a finite half body stays decidable against a baseline
+     * whose raw mean would overflow. An unavailable (NaN) measurement is never
+     * classified.
      *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
@@ -553,7 +598,15 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = halfBody.getValue(index);
         final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
-        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isLessThan(baseline);
+        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageBody.getValue(index);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            return rawBody.dividedBy(shortBodyFactor).isLessThan(rawBaseline);
+        }
+        return bodyValue.isLessThan(baseline);
     }
 
     /**
@@ -561,10 +614,15 @@ final class CandleThresholdSupport {
      * average range, the classic doji neighborhood.
      *
      * <p>
-     * The comparison is performed at half scale: the half body is measured against
-     * the half-scale prior average range, so an overflowed body or baseline stays
-     * decidable across {@link NumFactory}s. An unavailable (NaN) measurement is
-     * never classified.
+     * The comparison {@code body <= factor * range} is evaluated as
+     * {@code body * 10 <= range} on the raw-scale operands whenever both are
+     * finite: the factor is one tenth, which is not exactly representable in binary
+     * floating point, so scaling the measured body keeps two adjacent subnormal
+     * magnitudes strictly ordered instead of collapsing onto the same half-scale
+     * value. Otherwise the comparison is performed at half scale: the half body is
+     * measured against the half-scale prior average range, so an overflowed body or
+     * baseline stays decidable across {@link NumFactory}s. An unavailable (NaN)
+     * measurement is never classified.
      *
      * @param index the candle index
      * @return {@code true} for a doji-like body, {@code false} below the warm-up
@@ -576,7 +634,18 @@ final class CandleThresholdSupport {
         }
         final Num bodyValue = halfBody.getValue(index);
         final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
-        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && !bodyValue.isGreaterThan(baseline);
+        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageRange.getValue(index);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            final Num scaledBody = rawBody.multipliedBy(rangeScale);
+            if (Num.isFinite(scaledBody)) {
+                return !scaledBody.isGreaterThan(rawBaseline);
+            }
+        }
+        return !bodyValue.isGreaterThan(baseline);
     }
 
     /**
@@ -699,9 +768,15 @@ final class CandleThresholdSupport {
      * {@value #NEAR_RANGE_FACTOR} of the prior average range.
      *
      * <p>
-     * Both the difference and the baseline are computed at half scale, so a raw
-     * difference or mean that would overflow stays decidable across
-     * {@link NumFactory}s, and a subnormal difference is not erased by the halving.
+     * The comparison {@code |first - second| <= factor * range} is evaluated as
+     * {@code |first - second| * 10 <= range} on the raw-scale operands whenever
+     * both are finite: the factor is one tenth, which is not exactly representable
+     * in binary floating point, so scaling the measured difference keeps two
+     * adjacent subnormal magnitudes strictly ordered instead of collapsing onto the
+     * same half-scale value. Otherwise both the difference and the baseline are
+     * computed at half scale, so a raw difference or mean that would overflow stays
+     * decidable across {@link NumFactory}s, and a subnormal difference is not
+     * erased by the halving.
      *
      * @param index  the candle index
      * @param first  the first measurement
@@ -715,10 +790,19 @@ final class CandleThresholdSupport {
         if (!isValid(index)) {
             return false;
         }
+        if (Num.isFinite(first) && Num.isFinite(second)) {
+            final Num rawDifference = first.minus(second).abs();
+            final Num rawBaseline = rawPriorAverageRange.getValue(index);
+            if (Num.isFinite(rawDifference) && Num.isFinite(rawBaseline)) {
+                final Num scaledDifference = rawDifference.multipliedBy(rangeScale);
+                if (Num.isFinite(scaledDifference)) {
+                    return !scaledDifference.isGreaterThan(rawBaseline);
+                }
+            }
+        }
         final Num halfDifference = halfDifference(first, second, series.numFactory());
         final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
-        return Num.isFinite(first) && Num.isFinite(second) && Num.isFinite(halfDifference) && Num.isFinite(baseline)
-                && !halfDifference.isGreaterThan(baseline);
+        return Num.isFinite(halfDifference) && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
     }
 
     /**

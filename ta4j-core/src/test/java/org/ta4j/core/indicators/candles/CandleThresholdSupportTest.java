@@ -343,6 +343,85 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void adjacentSubnormalBodiesStayStrictlyOrderedAcrossFactories() {
+        // The evaluated body is twice the prior baseline body, both subnormal.
+        // Halving the prior baseline underflows to zero in DoubleNum, whose
+        // half-scale comparison then collapses the doubled body onto the same
+        // smallest positive half magnitude and wrongly rejects it as long. The
+        // raw-scale comparison keeps the strict ordering in both factories.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 0: body MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongBody(1));
+
+            BarSeries reversed = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(reversed, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0);
+            addExtremeCandle(reversed, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0);
+            CandleThresholdSupport reversedSupport = new CandleThresholdSupport(reversed, 1);
+
+            assertFalse(reversedSupport.isLongBody(1));
+        }
+    }
+
+    @Test
+    public void subnormalNearDifferenceStaysStrictlyOrderedAcrossFactories() {
+        // The prior window range is 19 * MIN_VALUE, so the true near threshold is
+        // 1.9 * MIN_VALUE and a 2 * MIN_VALUE difference is not near. Halving the
+        // baseline rounds to 10 * MIN_VALUE and the one-tenth factor product
+        // rounds back to MIN_VALUE in DoubleNum, collapsing the difference onto
+        // the half-scale baseline and wrongly accepting it as near. The
+        // cross-multiplied raw comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN_VALUE
+            addExtremeCandle(series, 0, 0, 0, 0); // index 1: flat candle
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            Num first = series.numFactory().numOf(2 * Double.MIN_VALUE);
+            Num second = series.numFactory().zero();
+
+            assertFalse(support.isNear(1, first, second));
+        }
+    }
+
+    @Test
+    public void subnormalDojiBodyStaysStrictlyOrderedAcrossFactories() {
+        // The prior window range is 19 * MIN_VALUE, so the doji threshold is
+        // 1.9 * MIN_VALUE and a 2 * MIN_VALUE body is not a doji. The half-scale
+        // path collapses both the halved body and the factor product onto
+        // MIN_VALUE in DoubleNum and wrongly accepts the body as a doji. The
+        // cross-multiplied raw comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isDoji(1));
+        }
+    }
+
+    @Test
+    public void subnormalShortBodyStaysStrictlyOrderedAcrossFactories() {
+        // The prior average body is 5 * MIN_VALUE, so the short-body threshold is
+        // 2.5 * MIN_VALUE and a 2 * MIN_VALUE body qualifies as short. Halving
+        // the 5 * MIN_VALUE baseline rounds to 2 * MIN_VALUE in DoubleNum, whose
+        // half-scale threshold collapses onto the halved body and wrongly rejects
+        // it as short. The raw-scale comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 5 * Double.MIN_VALUE, 5 * Double.MIN_VALUE, 0); // index 0: body 5 * MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isShortBody(1));
+        }
+    }
+
+    @Test
     public void nonFiniteSourcePriceDisqualifiesShortShadow() {
         // A bar whose low price is non-finite is missing data: the derived
         // lower shadow is negative-infinite and must never qualify as short,
