@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -211,6 +212,44 @@ public class ProcessCapabilityPositionSizerTest {
             // coercion.
             assertNumEquals(numFactory.numOf(new BigDecimal("1.2345")), sizer.amount(context(series, 1, 1)), 0);
         });
+    }
+
+    @Test
+    public void integralBaseAmountsConvertWithoutDoubleRounding() {
+        // Long.MAX_VALUE and a large BigInteger convert directly to
+        // BigDecimal, so no precision is lost through a doubleValue() round
+        // trip (which would round Long.MAX_VALUE up by one ulp).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(0));
+        PositionSizer longSizer = new ProcessCapabilityPositionSizer(statistic, Long.MAX_VALUE, 10);
+        PositionSizer bigIntegerSizer = new ProcessCapabilityPositionSizer(statistic,
+                new BigInteger("10000000000000000000000001"), 10);
+
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            // Zero statistics are exactly safe and return the full base amount
+            // unchanged, isolating the conversion.
+            assertNumEquals(numFactory.numOf(BigDecimal.valueOf(Long.MAX_VALUE)),
+                    longSizer.amount(context(series, 1, 1)), 0);
+            assertNumEquals(numFactory.numOf(new BigDecimal("10000000000000000000000001")),
+                    bigIntegerSizer.amount(context(series, 1, 1)), 0);
+        });
+    }
+
+    @Test
+    public void overflowingBaseAmountSaturatesInsteadOfEpsilonFallback() {
+        // DoubleNumFactory converts an oversized BigDecimal base amount to
+        // positive infinity; the same-factory fast path must not publish
+        // that non-finite value, and the saturated damped amount must win
+        // over the epsilon fallback for a positive statistic.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 10);
+
+        Num amount = sizer.amount(context(series, 1, 1));
+        Num dampening = numFactory.one().dividedBy(numFactory.one().plus(numOf(5).dividedBy(numOf(10))));
+        Num expected = numOf(Double.MAX_VALUE).multipliedBy(dampening);
+        assertNumEquals(expected, amount, 0);
     }
 
     @Test

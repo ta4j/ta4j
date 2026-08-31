@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -177,7 +178,12 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      * configured value itself, not an already-capability-rounded copy of it.
      */
     private Num coerceBaseAmountToContextFactory(NumFactory factory) {
-        if (factory == baseAmount.getNumFactory()) {
+        // The constructor keeps the configured amount positive and finite in
+        // decimal terms, but a primitive-backed capability factory can still
+        // overflow it (for example DoubleNumFactory.numOf(new BigDecimal("1e400")));
+        // the fast path therefore also requires a finite value and falls
+        // through to the saturation path otherwise.
+        if (factory == baseAmount.getNumFactory() && Num.isFinite(baseAmount)) {
             return baseAmount;
         }
         if (factory.one().getDelegate() instanceof BigDecimal) {
@@ -201,7 +207,20 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
                 throw new IllegalArgumentException(name + " must be finite");
             }
         }
-        BigDecimal raw = value instanceof BigDecimal ? (BigDecimal) value : BigDecimal.valueOf(value.doubleValue());
+        BigDecimal raw;
+        if (value instanceof BigDecimal) {
+            raw = (BigDecimal) value;
+        } else if (value instanceof BigInteger) {
+            raw = new BigDecimal((BigInteger) value);
+        } else if (value instanceof Byte || value instanceof Short || value instanceof Integer
+                || value instanceof Long) {
+            // Integral types convert directly so no precision is lost through
+            // the doubleValue() round trip (Long.MAX_VALUE would round up by
+            // one ulp).
+            raw = BigDecimal.valueOf(value.longValue());
+        } else {
+            raw = BigDecimal.valueOf(value.doubleValue());
+        }
         if (raw.signum() <= 0) {
             throw new IllegalArgumentException(name + " must be > 0");
         }
