@@ -17,7 +17,6 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
@@ -47,11 +46,11 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * largely untouched.
  *
  * <p>
- * The walkthrough logs the robust estimate, residual, and measurement weight at
- * the latest bar, then scans history for one isolated wick and one sustained
- * move to show how the weight drops and the estimate stays level. Finally it
- * composes rejection-weighted residual evidence — without activating any
- * trading strategy.
+ * Only the trailing {@value #WALK_BARS} weekly bars are walked: the filter
+ * initializes at the first bar of that window, so ATR-derived Q/R keep its
+ * state at the modern price scale instead of freezing at the 1950s
+ * initialization level under saturated rejection.
+ *
  *
  * @since 0.24.2
  */
@@ -60,6 +59,7 @@ public final class CorrentropyKalmanExample {
     static final String SP500_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260730.json";
     static final int ATR_BAR_COUNT = 14;
     static final int SUSTAINED_WINDOW = 20;
+    static final int WALK_BARS = 520;
     static final double MINIMUM_VARIANCE = 1e-8;
     static final double PROCESS_ATR_VARIANCE_SCALE = 0.0625;
     static final double MEASUREMENT_ATR_VARIANCE_SCALE = 0.25;
@@ -87,7 +87,7 @@ public final class CorrentropyKalmanExample {
                 atrVariance.multipliedBy(MEASUREMENT_ATR_VARIANCE_SCALE).max(MINIMUM_VARIANCE));
 
         CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(close, processNoise,
-                measurementNoise, DoubleNum.valueOf(KERNEL_BANDWIDTH));
+                measurementNoise, series.numFactory().numOf(KERNEL_BANDWIDTH));
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
         Indicator<Num> residual = filter.residual();
         Indicator<Num> rejectionWeightedResidual = BinaryOperationIndicator.product(residual, weight);
@@ -132,8 +132,10 @@ public final class CorrentropyKalmanExample {
     }
 
     static BarSeries loadSeries() {
-        return Objects.requireNonNull(JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(SP500_RESOURCE),
+                BarSeries full = Objects.requireNonNull(JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(SP500_RESOURCE),
                 "S&P 500 resource was not available");
+        int start = Math.max(0, full.getBarCount() - WALK_BARS);
+        return full.getSubSeries(start, full.getEndIndex());
     }
 
     private static int largestSingleBarMoveIndex(ClosePriceIndicator close, int fromIndex, int toIndex) {
