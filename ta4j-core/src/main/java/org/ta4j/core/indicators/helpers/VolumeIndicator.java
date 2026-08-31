@@ -79,17 +79,6 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
         return newSum;
     }
 
-    /**
-     * The rolling volume sum depends only on the fixed {@code barCount} trailing
-     * window, so the recursive default is opted out: after a head advance the stale
-     * band is recomputed against the retained window like any windowed indicator.
-     *
-     * @return {@code false}
-     */
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return false;
-    }
 
     /**
      * The declared unstable range covers the full {@code barCount} look-back, so

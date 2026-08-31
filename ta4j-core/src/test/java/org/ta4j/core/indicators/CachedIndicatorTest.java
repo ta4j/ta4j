@@ -647,6 +647,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         public BarSeries getBarSeries() {
             return barSeries;
         }
+    }
+
+    @Test
     public void unannotatedRecursiveSubclassKeepsCachedValuesWhenSeriesHeadAdvances() {
         // RecursiveCachedIndicator opts into the head-advance exemption by
         // default: a subclass that computes each value from its predecessor
