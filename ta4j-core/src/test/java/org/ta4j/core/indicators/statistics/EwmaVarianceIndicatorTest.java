@@ -291,6 +291,22 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void sharedMeanKeepsConstantSubnormalSource() {
+        // A constant Double.MIN_VALUE source must keep the shared mean at
+        // MIN_VALUE: at decay 0.5 both convex operands (previousMean * decay
+        // and current * (1 - decay)) round to zero although their exact sum is
+        // the representable MIN_VALUE.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(Double.MIN_VALUE, Double.MIN_VALUE, Double.MIN_VALUE)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(Double.MIN_VALUE), numOf(Double.MIN_VALUE), numOf(Double.MIN_VALUE)),
+                1, 0.5);
+
+        assertNumEquals(numOf(Double.MIN_VALUE), variance.getMeanIndicator().getValue(2));
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not

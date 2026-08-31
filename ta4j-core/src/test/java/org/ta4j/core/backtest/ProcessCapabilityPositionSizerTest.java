@@ -197,6 +197,31 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void lossyContextCoercionFallsBackToRawControlLimit() {
+        // A precision-1 capability factory rounds the configured limit 3.14159
+        // to 3; when the context coercion of the statistic saturates (1e400 in
+        // a DoubleNum context), the fallback ratio must divide the lossless raw
+        // forms so the damped amount reflects 3.14159, not the rounded 3.
+        NumFactory precisionOneFactory = DecimalNumFactory.getInstance(1);
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(precisionOneFactory)
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(indicatorSeries, precisionOneFactory.numOf(0),
+                precisionOneFactory.numOf(new BigDecimal("1e400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"),
+                new BigDecimal("3.14159"));
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            BigDecimal expected = new BigDecimal("1e400").divide(
+                    BigDecimal.ONE
+                            .add(new BigDecimal("1e400").divide(new BigDecimal("3.14159"), MathContext.DECIMAL128)),
+                    MathContext.DECIMAL128);
+            assertNumEquals(numFactory.numOf(expected), sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void recoveredQuotientUnderflowingTheContextFactoryFloorsAtEpsilon() {
         // 1e160 / 1e-160 overflows double; the decimal-damped quotient (~1e-50)
         // underflows a float-backed context to zero and floors at epsilon.

@@ -282,6 +282,19 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void subnormalScaleKeepsConstantSubnormalIncrement() {
+        // A constant Double.MIN_VALUE increment at scaleDecay 0.5 must keep the
+        // winsorization scale at MIN_VALUE: both convex operands round to zero
+        // and the collapsed scale zeroes the clip bound, stalling the CUSUM at
+        // 2 * MIN_VALUE instead of growing by MIN_VALUE per bar.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 0, 0).build();
+        CusumIndicator cusum = new CusumIndicator(new MockIndicator(series, 0, numOf(0), numOf(0), numOf(0), numOf(0)),
+                Double.MIN_VALUE, 0, 3.0, 0.5);
+
+        assertNumEquals(numOf(Double.MIN_VALUE).multipliedBy(numOf(4)), cusum.getValue(3));
+    }
+
+    @Test
     public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
         // The winsorization scale must also reseed at the new retained head:
         // a stale scale would clip the deviation against a bound derived from

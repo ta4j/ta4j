@@ -141,7 +141,8 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // underflow to zero or saturate in a narrower context while their
         // source ratio remains exact (statistic == controlLimit == 1e-400
         // must size at half the base amount, not the full amount), so those
-        // cases fall back to the indicator factory's exact ratio.
+        // cases recompute the ratio from the lossless raw forms instead of
+        // dividing the capability factory's rounded operands.
         Num statisticValue = coerceToContextFactory(factory, statistic);
         Num controlLimitValue = coerceControlLimitToContextFactory(factory);
         boolean bigDecimalContext = factory.one().getDelegate() instanceof BigDecimal;
@@ -152,28 +153,18 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         if (operandsCoercedLosslessly) {
             standardized = statisticValue.dividedBy(controlLimitValue);
         } else {
-            standardized = statistic.dividedBy(controlLimit);
+            // The context coercion of the operands was lossy (a saturated or
+            // underflowed operand would corrupt the ratio): divide the lossless
+            // raw forms at DECIMAL128, then narrow through the context factory.
+            standardized = factory.numOf(statistic.bigDecimalValue().divide(rawControlLimit, MathContext.DECIMAL128));
         }
         if (!Num.isFinite(standardized)) {
-            // The true ratio overflows the division factory; damp the lossless
+            // The true ratio overflows the context factory; damp the lossless
             // decimal forms before narrowing.
             BigDecimal dampedQuotient = rawBaseAmount.divide(
                     BigDecimal.ONE.add(statistic.bigDecimalValue().divide(rawControlLimit, MathContext.DECIMAL128)),
                     MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
-        }
-        Num standardizedValue;
-        if (standardized.getNumFactory() == factory) {
-            standardizedValue = standardized;
-        } else if (!(factory.one().getDelegate() instanceof BigDecimal)
-                && !Double.isFinite(standardized.doubleValue())) {
-            // The true ratio exceeds double range in a double-backed context;
-            // damp the lossless decimal forms before narrowing.
-            BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
-                    MathContext.DECIMAL128);
-            return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
-        } else {
-            standardizedValue = coerceToContextFactory(factory, standardized);
         }
         Num damped;
         if (!Num.isFinite(baseAmountValue) && Double.isFinite(rawBaseAmount.doubleValue())
@@ -188,15 +179,8 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
                     MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
-        } else if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
-            // The true ratio is finite as a primitive double but overflows the
-            // narrower context factory (for example a 1e39 ratio in a
-            // float-backed context). The damped quotient is still representable,
-            // so compute it in double space and coerce the result instead of
-            // collapsing to the context epsilon.
-            damped = factory.numOf(baseAmountValue.doubleValue() / (1.0 + standardized.doubleValue()));
         } else {
-            damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
+            damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
         }
         if (!Num.isFinite(damped)) {
             // The true damped quotient exceeds the context factory's range:

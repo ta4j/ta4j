@@ -384,7 +384,13 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             if (!Num.isFinite(previous)) {
                 return increment;
             }
-            return previous.multipliedBy(scaleDecay).plus(increment.multipliedBy(oneMinusScaleDecay));
+            // Weight the difference before combining: the two non-negative
+            // finite operands keep their raw difference finite, and a same-sign
+            // subnormal pair (a constant Double.MIN_VALUE increment at decay
+            // 0.5) would otherwise round both convex operands to zero although
+            // their exact sum is representable. A collapsed scale zeroes the
+            // parent's winsorization bound and clips every later deviation.
+            return previous.plus(increment.minus(previous).multipliedBy(oneMinusScaleDecay));
         }
     }
 }

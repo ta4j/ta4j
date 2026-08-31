@@ -452,16 +452,22 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 return windowMean(indicator, barCount, index);
             }
             // The update is the convex combination decay * previousMean +
-            // (1 - decay) * current: algebraically identical to
-            // previousMean + (1 - decay) * (current - previousMean), but
-            // weighting each operand before combining keeps every
-            // intermediate finite. Consecutive finite bars of opposite
-            // extreme signs (-1e308 then 1e308) overflow their raw
-            // difference under DoubleNum even though the weighted mean
-            // (-8e307 at decay 0.9) is representable, and a convex
-            // combination of finite values with weights summing to one
-            // never overflows.
-            return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+            // (1 - decay) * current, evaluated as previousMean + (1 - decay) *
+            // (current - previousMean) whenever the raw difference is finite:
+            // weighting the difference before combining keeps a same-sign
+            // subnormal pair (a constant Double.MIN_VALUE source at decay 0.5)
+            // from rounding both convex operands to zero although their exact
+            // sum is representable. Consecutive finite bars of opposite
+            // extreme signs (-1e308 then 1e308) overflow the raw difference
+            // under DoubleNum even though the weighted mean (-8e307 at decay
+            // 0.9) is representable; for those, the convex combination of
+            // finite values with weights summing to one never overflows, so it
+            // is the fallback.
+            Num delta = current.minus(previousMean);
+            if (!Num.isFinite(delta)) {
+                return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+            }
+            return previousMean.plus(delta.multipliedBy(oneMinusDecay));
         }
 
         @Override
