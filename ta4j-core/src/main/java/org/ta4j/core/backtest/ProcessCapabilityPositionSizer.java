@@ -175,6 +175,21 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // space and coerce the result instead of propagating a non-finite
             // base into the Num arithmetic.
             damped = factory.numOf(rawBaseAmount.doubleValue() / (1.0 + standardized.doubleValue()));
+        } else if (!(factory.one().getDelegate() instanceof BigDecimal) && !Double.isFinite(rawBaseAmount.doubleValue())
+                && Double.isFinite(standardized.doubleValue())) {
+            // A configured base beyond the primitive double range in a
+            // double-backed context: the coerced base saturated at the largest
+            // double-representable magnitude, which would damp to a value far
+            // below the true quotient (a 1e400 base over a 1e100 ratio must
+            // size at about 1e300, not MAX_VALUE / 1e100). Divide the lossless
+            // decimal forms first and narrow only the damped result.
+            BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
+                    MathContext.DECIMAL128);
+            double quotient = dampedQuotient.doubleValue();
+            if (Double.isFinite(quotient) && quotient > 0) {
+                return capToDoubleRange(factory, factory.numOf(quotient));
+            }
+            return saturationMagnitude(factory);
         } else if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
             // The true ratio is finite as a primitive double but overflows the
             // narrower context factory (for example a 1e39 ratio in a

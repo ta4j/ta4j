@@ -240,16 +240,16 @@ public class ProcessCapabilityPositionSizerTest {
     public void overflowingBaseAmountSaturatesInsteadOfEpsilonFallback() {
         // DoubleNumFactory converts an oversized BigDecimal base amount to
         // positive infinity; the same-factory fast path must not publish
-        // that non-finite value, and the saturated damped amount must win
-        // over the epsilon fallback for a positive statistic.
+        // that non-finite value. The true damped amount (1e400 / 1.5) lies
+        // beyond the primitive double range, so the sizer saturates at the
+        // factory ceiling instead of damping the lossy capped base or
+        // falling back to the epsilon floor.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
         FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5));
         PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 10);
 
         Num amount = sizer.amount(context(series, 1, 1));
-        Num dampening = numFactory.one().dividedBy(numFactory.one().plus(numOf(5).dividedBy(numOf(10))));
-        Num expected = numOf(Double.MAX_VALUE).multipliedBy(dampening);
-        assertNumEquals(expected, amount, 0);
+        assertNumEquals(numOf(Double.MAX_VALUE), amount, 0);
     }
 
     @Test
@@ -454,6 +454,28 @@ public class ProcessCapabilityPositionSizerTest {
 
             assertTrue(Num.isFinite(amount));
             assertNumEquals(numFactory.numOf(1), amount, 0);
+        });
+    }
+
+    @Test
+    public void oversizedBaseWithFiniteRatioDampsInDecimalSpaceBeforeNarrowing() {
+        // A DecimalNum base of 1e400 with a finite standardized ratio of 1e100
+        // in a DoubleNum context: the coerced base saturates at
+        // Double.MAX_VALUE, whose damping (MAX_VALUE / (1 + 1e100), about
+        // 1.8e208) is far below the true quotient 1e400 / (1 + 1e100), about
+        // 1e300. The sizer must divide the lossless decimal forms before
+        // narrowing the result.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("1e100")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 1);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Num.isFinite(amount));
+            assertNumEquals(numFactory.numOf(1e300), amount, 0);
         });
     }
 
