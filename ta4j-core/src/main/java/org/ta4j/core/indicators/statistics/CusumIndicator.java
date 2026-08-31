@@ -40,6 +40,13 @@ import org.ta4j.core.num.NumFactory;
  * winsorization bound is zero: the first non-zero deviation is fully damped and
  * its raw magnitude bootstraps {@code sigmaHat}, so a single outlier cannot
  * trip the statistic right after a perfectly on-target run.
+ * 
+ * <p>
+ * The raw {@code scaleDecay} parameter is retained separately from its
+ * factory-rounded arithmetic value: a coarse factory may round an in-range
+ * decay such as {@code 0.9999} to its boundary {@code 1}, and the descriptor /
+ * JSON round trip must reconstruct the logical indicator from the raw value
+ * instead of the rounded one.
  *
  * <p>
  * While the source indicator is warming up ({@code index - beginIndex <
@@ -51,9 +58,11 @@ import org.ta4j.core.num.NumFactory;
  * If the derived deviation, the deviation scale, or the accumulated CUSUM
  * overflows the numeric representation (a {@code DoubleNum} series jumping
  * between opposite extremes), the overflowing term saturates at the largest
- * finite magnitude instead of publishing infinity, so a composed kill switch
- * still reacts to the extreme observation and the winsorization bound is never
- * silently disabled by a non-finite scale.
+ * finite magnitude the active factory can represent (the double ceiling for
+ * double- and decimal-backed factories, the float ceiling for float-backed
+ * ones) instead of publishing infinity, so a composed kill switch still reacts
+ * to the extreme observation and the winsorization bound is never silently
+ * disabled by a non-finite scale.
  *
  * <p>
  * When the backing series prunes its retained head (for example through
@@ -78,7 +87,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     private final Num targetMean;
     private final Num allowance;
     private final Num outlierClipFactor;
-    private final Num scaleDecay;
+    private final BigDecimal scaleDecay;
     private final transient DeviationScaleIndicator deviationScale;
     private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
 
@@ -138,9 +147,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         this.targetMean = parameters.targetMean();
         this.allowance = parameters.allowance();
         this.outlierClipFactor = parameters.outlierClipFactor();
-        this.scaleDecay = parameters.scaleDecay();
+        this.scaleDecay = parameters.rawScaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
-                this.scaleDecay, parameters.oneMinusScaleDecay());
+                parameters.scaleDecay(), parameters.oneMinusScaleDecay());
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, Number targetMean, Number allowance,
@@ -161,7 +170,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
-                validatedScaleDecay.scaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
+                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.scaleDecay(),
+                validatedScaleDecay.oneMinusScaleDecay());
     }
 
     private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
@@ -176,7 +186,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         // the EWMA weight meaningful under coarse precision, and decay plus
         // complement sums to exactly one. Both numbers are carried into the
         // deviation-scale recursion, so the complement is never recomputed
-        // from the already rounded decay.
+        // from the already rounded decay, and the raw value is retained on
+        // the indicator so the descriptor / JSON round trip serializes the
+        // in-range parameter instead of its rounded boundary.
         double narrowed = scaleDecay.doubleValue();
         if (!Double.isFinite(narrowed)) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
@@ -189,14 +201,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         BigDecimal complement = narrowed > 0d && narrowed < 1d ? BigDecimal.valueOf(1d - narrowed)
                 : BigDecimal.ONE.subtract(rawScaleDecay);
         Num oneMinusScaleDecay = factory.numOf(complement);
-        return new ValidatedScaleDecay(factory.one().minus(oneMinusScaleDecay), oneMinusScaleDecay);
+        return new ValidatedScaleDecay(rawScaleDecay, factory.one().minus(oneMinusScaleDecay), oneMinusScaleDecay);
     }
 
-    private record ValidatedScaleDecay(Num scaleDecay, Num oneMinusScaleDecay) {
+    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, Num scaleDecay, Num oneMinusScaleDecay) {
     }
 
     private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
-            Num scaleDecay, Num oneMinusScaleDecay) {
+            BigDecimal rawScaleDecay, Num scaleDecay, Num oneMinusScaleDecay) {
     }
 
     @Override
@@ -212,8 +224,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num deviation = targetMean.minus(current).minus(allowance);
         if (!Num.isFinite(deviation)) {
-            deviation = getBarSeries().numFactory()
-                    .numOf(deviation.isNegative() ? -Double.MAX_VALUE : Double.MAX_VALUE);
+            Num magnitude = saturationMagnitude(getBarSeries().numFactory());
+            deviation = deviation.isNegative() ? magnitude.negate() : magnitude;
         }
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
@@ -228,7 +240,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num updated = previous.plus(deviation);
         if (!Num.isFinite(updated)) {
-            updated = getBarSeries().numFactory().numOf(Double.MAX_VALUE);
+            updated = saturationMagnitude(getBarSeries().numFactory());
         }
         return updated.max(getBarSeries().numFactory().zero());
     }
@@ -255,6 +267,17 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException(name + " must be finite");
         }
         return num;
+    }
+
+    /**
+     * The largest finite magnitude the active factory can represent: the double
+     * ceiling for double- and decimal-backed factories, and the float ceiling when
+     * the factory's backing primitive overflows {@code Double.MAX_VALUE} to
+     * infinity, so the documented finite saturation holds for every delegate type.
+     */
+    static Num saturationMagnitude(NumFactory factory) {
+        Num doubleCeiling = factory.numOf(Double.MAX_VALUE);
+        return Num.isFinite(doubleCeiling) ? doubleCeiling : factory.numOf(Float.MAX_VALUE);
     }
 
     /**
@@ -308,7 +331,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
                 // scale stays finite and the parent keeps winsorizing against
                 // its bound instead of skipping the clip for a non-finite
                 // previous scale.
-                increment = getBarSeries().numFactory().numOf(Double.MAX_VALUE);
+                increment = saturationMagnitude(getBarSeries().numFactory());
             }
             if (index == beginIndex) {
                 return increment;

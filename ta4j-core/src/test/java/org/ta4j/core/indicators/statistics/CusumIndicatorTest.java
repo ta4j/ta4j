@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
@@ -28,6 +29,7 @@ import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -268,6 +270,80 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // accumulator into the MAX saturation.
         assertTrue(Num.isFinite(value));
         assertTrue(value.isLessThan(numFactory.numOf(Double.MAX_VALUE)));
+    }
+
+    @Test
+    public void descriptorRoundTripPreservesRawDecayUnderCoarsePrecision() {
+        // A precision-1 factory rounds the valid decay 0.9999 to its boundary
+        // 1: the descriptor must carry the raw decay, otherwise reconstruction
+        // rejects the serialized scaleDecay = 1 as outside (0, 1).
+        NumFactory coarseFactory = DecimalNumFactory.getInstance(1);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(coarseFactory).withData(10, 9, 8, 7).build();
+        CusumIndicator coarse = new CusumIndicator(new ClosePriceIndicator(series), 0, 0.005, 3.0, 0.9999);
+
+        assertEquals("0.9999", coarse.toDescriptor().getParameters().get("scaleDecay").toString());
+
+        assertIndicatorRoundTrips(series, coarse, stableIndexes(series));
+    }
+
+    @Test
+    public void saturationMagnitudeFallsBackForFloatBackedFactory() {
+        // Double- and decimal-backed factories saturate at the double ceiling;
+        // a factory whose backing primitive overflows that ceiling (a
+        // float-backed delegate converts it to infinity) must fall back to the
+        // float range so the documented finite saturation holds for every
+        // delegate type.
+        NumFactory floatBackedFactory = new NumFactory() {
+            private final NumFactory delegate = DoubleNumFactory.getInstance();
+
+            @Override
+            public Num minusOne() {
+                return delegate.minusOne();
+            }
+
+            @Override
+            public Num zero() {
+                return delegate.zero();
+            }
+
+            @Override
+            public Num one() {
+                return delegate.one();
+            }
+
+            @Override
+            public Num two() {
+                return delegate.two();
+            }
+
+            @Override
+            public Num three() {
+                return delegate.three();
+            }
+
+            @Override
+            public Num hundred() {
+                return delegate.hundred();
+            }
+
+            @Override
+            public Num thousand() {
+                return delegate.thousand();
+            }
+
+            @Override
+            public Num numOf(Number number) {
+                return Math.abs(number.doubleValue()) > Float.MAX_VALUE ? NaN.NaN : delegate.numOf(number);
+            }
+
+            @Override
+            public Num numOf(String number) {
+                return numOf(Double.valueOf(number));
+            }
+        };
+
+        assertTrue(CusumIndicator.saturationMagnitude(numFactory).isGreaterThan(numOf(Float.MAX_VALUE)));
+        assertNumEquals(Float.MAX_VALUE, CusumIndicator.saturationMagnitude(floatBackedFactory));
     }
 
     @Override
