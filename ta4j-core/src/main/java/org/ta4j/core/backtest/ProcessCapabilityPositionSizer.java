@@ -57,6 +57,16 @@ import org.ta4j.core.num.NumFactory;
  * sizes at the exact damped amount {@code baseAmount / (1 + 1e400)}); the
  * double-overflow epsilon floor applies only when the context itself cannot
  * represent the ratio.
+ * <p>
+ * Backtest managers validate the returned amount through
+ * {@link Num#doubleValue()}, so any amount that cannot round-trip through a
+ * primitive double — a float-backed context overflowing to infinity, or a
+ * {@code BigDecimal}-backed amount beyond the double range such as
+ * {@code 1e400} — saturates at the largest finite magnitude the context factory
+ * can represent within the double range: {@code Double.MAX_VALUE} where it
+ * round-trips, a just-below-ceiling value for decimal-backed factories that
+ * round it past the double range, or the float ceiling for narrower factories —
+ * instead of aborting validation.
  *
  * @since 0.24.2
  */
@@ -101,7 +111,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // A non-positive statistic means an exactly safe process: size at
             // the full base amount. The sign is read in the indicator's own
             // factory, where a tiny positive statistic cannot underflow.
-            return baseAmountValue;
+            return capToDoubleRange(factory, baseAmountValue);
         }
         // Standardize in the indicator's factory before coercing: both
         // operands can underflow to zero in the context factory while their
@@ -129,7 +139,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         if (!Num.isFinite(damped) || damped.isZero()) {
             return factory.epsilon().min(baseAmountValue);
         }
-        return damped;
+        return capToDoubleRange(factory, damped);
     }
 
     private static Num coerceToContextFactory(NumFactory factory, Num value) {
@@ -148,6 +158,33 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // saturated to the largest double-representable magnitude, keeping the
         // coerced value finite for double-backed destinations.
         return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
+    }
+
+    /**
+     * The largest magnitude the context factory can represent within the primitive
+     * double range, which backtest managers validate through
+     * {@link Num#doubleValue()}: the double ceiling for double-backed factories; a
+     * just-below-ceiling value for decimal-backed factories, whose significant
+     * digits round {@code Double.MAX_VALUE} itself past the double range; and the
+     * float ceiling when the factory's backing primitive overflows to infinity or
+     * NaN.
+     */
+    private static Num saturationMagnitude(NumFactory factory) {
+        Num ceiling = factory.numOf(Double.MAX_VALUE);
+        if (!Double.isFinite(ceiling.doubleValue())) {
+            // Retry below the rounding margin: a decimal-backed factory with
+            // fewer significant digits than Double.MAX_VALUE's shortest
+            // representation rounds it up beyond the double range.
+            ceiling = factory.numOf(Double.MAX_VALUE / 2);
+        }
+        if (!Double.isFinite(ceiling.doubleValue())) {
+            ceiling = factory.numOf(Float.MAX_VALUE);
+        }
+        return ceiling;
+    }
+
+    private static Num capToDoubleRange(NumFactory factory, Num amount) {
+        return Double.isFinite(amount.doubleValue()) ? amount : saturationMagnitude(factory);
     }
 
     @Override

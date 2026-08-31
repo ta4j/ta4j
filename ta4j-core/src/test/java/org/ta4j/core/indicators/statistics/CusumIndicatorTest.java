@@ -193,6 +193,26 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void scaleDecayComplementAvoidsDoubleRoundingArtifact() {
+        // The complement must be the exact BigDecimal difference 1 - decay: a
+        // double-computed complement carries the binary rounding artifact
+        // (1d - 0.94 = 0.060000000000000005) into the winsorization bound and
+        // shifts the CUSUM by ~6e-17 in DecimalNum arithmetic. Exact
+        // arithmetic yields S = [1, 4, 7.72]: the increment 5 clips to 3 at
+        // index 1, and the increment 4.5 clips to the exact bound 3.72 at
+        // index 2.
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3).build();
+        MockIndicator decimalSource = new MockIndicator(series, 0, decimalFactory.numOf(-1), decimalFactory.numOf(-5),
+                decimalFactory.numOf(-4.5));
+        CusumIndicator decimalCusum = new CusumIndicator(decimalSource, 0, 0, 3.0, 0.94);
+
+        assertNumEquals(1, decimalCusum.getValue(0));
+        assertNumEquals(4, decimalCusum.getValue(1));
+        assertNumEquals("7.72", decimalCusum.getValue(2));
+    }
+
+    @Test
     public void saturatesOverflowingDeviationAndAccumulator() {
         // Deviations and accumulations that overflow the numeric representation
         // (a DoubleNum series jumping between opposite extremes) must saturate

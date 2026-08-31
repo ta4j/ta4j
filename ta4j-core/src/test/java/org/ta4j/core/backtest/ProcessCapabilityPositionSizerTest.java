@@ -279,6 +279,108 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void floatBackedContextSaturatesOverflowingSafePathAmount() {
+        // A float-backed context factory overflows a coerced 1e39 base amount
+        // to a non-finite value; the safe path returns it unchanged, so the
+        // final double-range cap must saturate at the float ceiling instead
+        // of handing BarSeriesManager a non-finite amount.
+        NumFactory floatBackedFactory = new NumFactory() {
+            private final NumFactory delegate = DoubleNumFactory.getInstance();
+
+            @Override
+            public Num minusOne() {
+                return delegate.minusOne();
+            }
+
+            @Override
+            public Num zero() {
+                return delegate.zero();
+            }
+
+            @Override
+            public Num one() {
+                return delegate.one();
+            }
+
+            @Override
+            public Num two() {
+                return delegate.two();
+            }
+
+            @Override
+            public Num three() {
+                return delegate.three();
+            }
+
+            @Override
+            public Num hundred() {
+                return delegate.hundred();
+            }
+
+            @Override
+            public Num thousand() {
+                return delegate.thousand();
+            }
+
+            @Override
+            public Num numOf(Number number) {
+                return Math.abs(number.doubleValue()) > Float.MAX_VALUE ? NaN.NaN : delegate.numOf(number);
+            }
+
+            @Override
+            public Num numOf(String number) {
+                return numOf(Double.valueOf(number));
+            }
+        };
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0), NaN.NaN);
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 1e39, 10);
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatBackedFactory).withData(1, 2).build();
+        Num amount = sizer.amount(context(series, 1, 1));
+
+        assertTrue(Num.isFinite(amount));
+        assertNumEquals(Float.MAX_VALUE, amount);
+    }
+
+    @Test
+    public void decimalSafePathSaturatesBaseAmountBeyondDoubleRange() {
+        // A DecimalNum base amount of 1e400 is positive in its own factory and
+        // the safe path returns it unchanged, but its doubleValue() is
+        // infinity: the final cap must saturate at the double ceiling for
+        // BarSeriesManager's double-based validation.
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            FixedIndicator<Num> statistic = new FixedIndicator<>(series, numFactory.numOf(0), NaN.NaN);
+            PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 10);
+
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Double.isFinite(amount.doubleValue()));
+            assertTrue(amount.isGreaterThanOrEqual(numFactory.numOf(Double.MAX_VALUE / 2)));
+        });
+    }
+
+    @Test
+    public void decimalDampedPathSaturatesAmountBeyondDoubleRange() {
+        // With baseAmount and controlLimit both 1e400 in a BigDecimal-backed
+        // context the damped amount stays at 1e400: Num-finite, but its
+        // doubleValue() is infinity, so the final cap must saturate at the
+        // double ceiling for BarSeriesManager's double-based validation.
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            FixedIndicator<Num> statistic = new FixedIndicator<>(series, numFactory.numOf(0), numFactory.numOf(5));
+            PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"),
+                    new BigDecimal("1e400"));
+
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Double.isFinite(amount.doubleValue()));
+            assertTrue(amount.isGreaterThanOrEqual(numFactory.numOf(Double.MAX_VALUE / 2)));
+        });
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5), numOf(15));

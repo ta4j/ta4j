@@ -98,7 +98,15 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (removedBarsCount != observedRemovedBarsCount) {
             resetForRetainedHead(removedBarsCount);
         }
-        return super.getValue(index);
+        Num value = super.getValue(index);
+        // A prune between the check above and the cached read can deliver a
+        // value computed against the discarded prefix: re-check the count and
+        // retry once so the published value always matches the retained head.
+        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
+            resetForRetainedHead(series.getRemovedBarsCount());
+            return super.getValue(index);
+        }
+        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
@@ -181,14 +189,17 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         // its boundary 1, and narrowing an arbitrary-precision BigDecimal
         // such as 1e-400 through doubleValue() collapses it to zero.
         // BigDecimal comparison keeps the (0, 1) interval check exact. The
-        // complement is converted from the raw value first because 1 - decay
-        // stays representable where the decay itself rounds to one, keeping
-        // the EWMA weight meaningful under coarse precision, and decay plus
-        // complement sums to exactly one. Both numbers are carried into the
-        // deviation-scale recursion, so the complement is never recomputed
-        // from the already rounded decay, and the raw value is retained on
-        // the indicator so the descriptor / JSON round trip serializes the
-        // in-range parameter instead of its rounded boundary.
+        // complement is the exact BigDecimal difference 1 - rawDecay:
+        // computing it in primitive double first injects the binary rounding
+        // artifact (1d - 0.94 = 0.060000000000000005), and deriving it from
+        // the already rounded decay collapses to zero where the decay rounds
+        // to one, so the exact subtraction keeps the EWMA weight meaningful
+        // under coarse precision and decay plus complement sums to exactly
+        // one. Both numbers are carried into the deviation-scale recursion,
+        // so the complement is never recomputed from the already rounded
+        // decay, and the raw value is retained on the indicator so the
+        // descriptor / JSON round trip serializes the in-range parameter
+        // instead of its rounded boundary.
         double narrowed = scaleDecay.doubleValue();
         if (!Double.isFinite(narrowed)) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
@@ -198,8 +209,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (rawScaleDecay.compareTo(BigDecimal.ZERO) <= 0 || rawScaleDecay.compareTo(BigDecimal.ONE) >= 0) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
         }
-        BigDecimal complement = narrowed > 0d && narrowed < 1d ? BigDecimal.valueOf(1d - narrowed)
-                : BigDecimal.ONE.subtract(rawScaleDecay);
+        BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay);
         Num oneMinusScaleDecay = factory.numOf(complement);
         return new ValidatedScaleDecay(rawScaleDecay, factory.one().minus(oneMinusScaleDecay), oneMinusScaleDecay);
     }

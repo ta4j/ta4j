@@ -115,7 +115,15 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (removedBarsCount != observedRemovedBarsCount) {
             resetForRetainedHead(removedBarsCount);
         }
-        return super.getValue(index);
+        Num value = super.getValue(index);
+        // A prune between the check above and the cached read can deliver a
+        // value computed against the discarded prefix: re-check the count and
+        // retry once so the published value always matches the retained head.
+        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
+            resetForRetainedHead(series.getRemovedBarsCount());
+            return super.getValue(index);
+        }
+        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
@@ -184,6 +192,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * the retained head; consumers must re-read the estimator for each use rather
      * than cache the reference.
      *
+     * <p>
+     * The accessor is public rather than package-private because the forecast state
+     * indicator in {@code org.ta4j.core.indicators.forecast} consumes it across
+     * packages: publishing the mean and the variance from this single shared
+     * estimator is what keeps both moments consistent for one state.
+     *
      * @return the shared EWMA mean indicator
      * @since 0.24.2
      */
@@ -196,7 +210,15 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (removedBarsCount != observedRemovedBarsCount) {
             resetForRetainedHead(removedBarsCount);
         }
-        return meanIndicator;
+        Indicator<Num> current = meanIndicator;
+        // Same bounded re-check as getValue: a prune between the check and
+        // the reference read would hand out an estimator anchored to the
+        // discarded prefix, so re-check and retry once.
+        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
+            resetForRetainedHead(series.getRemovedBarsCount());
+            return meanIndicator;
+        }
+        return current;
     }
 
     @Override

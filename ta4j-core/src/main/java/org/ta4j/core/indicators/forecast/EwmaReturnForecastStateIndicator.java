@@ -99,7 +99,15 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (removedBarsCount != observedRemovedBarsCount) {
             resetForRetainedHead(removedBarsCount);
         }
-        return super.getValue(index);
+        ReturnForecastState value = super.getValue(index);
+        // A prune between the check above and the cached read can deliver a
+        // state computed against the discarded prefix: re-check the count and
+        // retry once so the published state always matches the retained head.
+        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
+            resetForRetainedHead(series.getRemovedBarsCount());
+            return super.getValue(index);
+        }
+        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
