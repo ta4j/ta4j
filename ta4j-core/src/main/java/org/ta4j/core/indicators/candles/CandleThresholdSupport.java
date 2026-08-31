@@ -714,8 +714,8 @@ final class CandleThresholdSupport {
         }
         // Overflowed raw magnitude from finite source prices: rebuild the exact
         // half-scale shadow and compare it against the full-scale baseline.
-        final Indicator<Num> halfShadow = shadow == upperShadow ? halfUpperShadow
-                : shadow == lowerShadow ? halfLowerShadow : null;
+        final Indicator<Num> halfShadow = shadow instanceof UpperShadowIndicator ? halfUpperShadow
+                : shadow instanceof LowerShadowIndicator ? halfLowerShadow : null;
         if (halfShadow == null) {
             // A non-finite measurement from an arbitrary shadow indicator: a
             // magnitude that overflowed from finite operands stays longer than

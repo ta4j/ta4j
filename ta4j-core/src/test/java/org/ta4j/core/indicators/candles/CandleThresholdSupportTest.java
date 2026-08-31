@@ -305,6 +305,10 @@ public class CandleThresholdSupportTest {
             CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
 
             assertFalse(support.isLongShadow(1, support.upperShadow()));
+            // A separately constructed equivalent shadow must classify exactly
+            // like the interned one: the overflowed magnitude is rebuilt at
+            // half scale by type, not by reference identity.
+            assertFalse(support.isLongShadow(1, new UpperShadowIndicator(series)));
         }
     }
 

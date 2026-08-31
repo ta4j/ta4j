@@ -45,7 +45,7 @@ public class KRIIndicator extends AbstractIndicator<Num> {
 
     @Override
     public List<Indicator<?>> getDependencies() {
-        return List.of(indicator);
+        return List.of(kriIndicator);
     }
 
     @Override

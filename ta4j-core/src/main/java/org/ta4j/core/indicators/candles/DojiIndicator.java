@@ -43,8 +43,7 @@ import org.ta4j.core.num.NumFactory;
  * When the restored full-scale prior average itself overflows (an overflowed
  * baseline window), the factor is applied to the half-scale prior average
  * before restoring full scale, so the threshold stays finite for representable
- * data and a zero body still qualifies as a doji. exact arithmetic under
- * DoubleNum.
+ * data and a zero body still qualifies as a doji.
  *
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
