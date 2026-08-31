@@ -185,6 +185,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * than cache the reference.
      *
      * @return the shared EWMA mean indicator
+     * @since 0.24.2
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "the mean estimator is the shared recursion this "
             + "variance deviates from; exposing the instance is the accessor's contract and it is only replaced "

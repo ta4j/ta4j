@@ -47,8 +47,9 @@ import org.ta4j.core.num.NumFactory;
  * holding the same bars that are being backtested; entry indexes are evaluated
  * against it without further checks. All arithmetic runs in the backtest
  * context's {@link NumFactory}: the capability statistic and the sizing
- * parameters are coerced into it, so mixed-factory compositions do not fail at
- * sizing time.
+ * parameters are coerced into the context factory's exact configuration rather
+ * than matched by implementation class, so mixed-factory and mixed-precision
+ * {@code DecimalNum} compositions round consistently at sizing time.
  *
  * @since 0.24.2
  */
@@ -82,17 +83,12 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
     public Num amount(PositionSizer.Context context) {
         NumFactory factory = context.numFactory();
         Num statistic = capabilityIndicator.getValue(context.entryIndex());
-        Num baseAmountValue = factory.produces(baseAmount) ? baseAmount : factory.numOf(baseAmount.doubleValue());
+        Num baseAmountValue = coerceToContextFactory(factory, baseAmount);
         if (baseAmountValue.isZero()) {
             // The constructor guarantees baseAmount is positive, so a coerced
             // zero can only be a positive underflow: saturate to the context
             // epsilon instead of returning zero and aborting validation.
             baseAmountValue = factory.epsilon();
-        } else if (!Num.isFinite(baseAmountValue)) {
-            // Likewise a non-finite coerced value can only be a positive
-            // overflow: saturate to the largest finite context value instead
-            // of returning infinity and aborting validation.
-            baseAmountValue = factory.numOf(Double.MAX_VALUE);
         }
         if (!Num.isFinite(statistic) || !statistic.isPositive()) {
             // A non-positive statistic means an exactly safe process: size at
@@ -110,13 +106,35 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // is far outside control, so size at the context epsilon.
             return factory.epsilon().min(baseAmountValue);
         }
-        Num standardizedValue = factory.produces(standardized) ? standardized
-                : factory.numOf(standardized.doubleValue());
+        Num standardizedValue;
+        if (standardized.getNumFactory() == factory) {
+            standardizedValue = standardized;
+        } else {
+            double standardizedDouble = standardized.doubleValue();
+            if (!Double.isFinite(standardizedDouble)) {
+                // The true ratio overflows the context's double range: the
+                // process is far outside control, so size at the context
+                // epsilon floor.
+                return factory.epsilon().min(baseAmountValue);
+            }
+            standardizedValue = factory.numOf(standardizedDouble);
+        }
         Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
         if (!Num.isFinite(damped) || damped.isZero()) {
             return factory.epsilon().min(baseAmountValue);
         }
         return damped;
+    }
+
+    private static Num coerceToContextFactory(NumFactory factory, Num value) {
+        if (value.getNumFactory() == factory) {
+            return value;
+        }
+        double doubleValue = value.doubleValue();
+        // A finite source value whose double representation overflows is
+        // saturated to the largest double-representable magnitude, keeping the
+        // coerced value finite (DecimalNumFactory rejects non-finite doubles).
+        return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
     }
 
     @Override

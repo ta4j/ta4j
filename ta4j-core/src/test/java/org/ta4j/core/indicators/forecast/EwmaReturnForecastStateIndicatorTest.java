@@ -171,22 +171,21 @@ public class EwmaReturnForecastStateIndicatorTest
                 .lowPrice(44.70118357203251)
                 .closePrice(44.70118357203251)
                 .build());
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofDays(1))
-                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
-                .openPrice(46.99306319730219)
-                .highPrice(46.99306319730219)
-                .lowPrice(46.99306319730219)
-                .closePrice(46.99306319730219)
-                .build());
-
-        ReturnForecastState state = stateIndicator.getValue(13);
+        ReturnForecastState state = stateIndicator.getValue(12);
         assertTrue(state.isStable());
 
         // Fresh estimators built after the prune re-anchor from the retained
         // head; the stale full-history mean (~0.26) would fail this check.
-        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(13), state.mean(), 1e-9);
-        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(13), state.variance(), 1e-9);
+        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(12), state.mean(), 1e-9);
+        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(12), state.variance(), 1e-9);
+
+        // A retained index whose state was cached before the prune must be
+        // recomputed from the re-anchored estimators: the indicator's own
+        // cache must not serve the pre-prune stable state.
+        ReturnForecastState retainedState = stateIndicator.getValue(10);
+        assertTrue(retainedState.isStable());
+        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(10), retainedState.mean(), 1e-9);
+        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(10), retainedState.variance(), 1e-9);
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {

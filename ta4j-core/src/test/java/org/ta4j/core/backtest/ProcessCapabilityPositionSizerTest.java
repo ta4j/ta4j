@@ -126,6 +126,31 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void coercesValuesIntoExactContextFactoryConfiguration() {
+        // NumFactory.produces() matches on the implementation class, so a
+        // DecimalNum statistic and base amount pass the guard even when the
+        // backtest context uses a DecimalNumFactory with a different
+        // precision. Both values must round through the context factory's
+        // exact configuration instead of leaking the indicator's precision
+        // into the sizing arithmetic.
+        NumFactory precisionTenFactory = DecimalNumFactory.getInstance(10);
+        NumFactory precisionOneFactory = DecimalNumFactory.getInstance(1);
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(precisionTenFactory).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, precisionTenFactory.numOf(0),
+                precisionTenFactory.numOf(new BigDecimal("0.3333333333")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, new BigDecimal("0.16"), 1);
+
+        runWithNumFactory(precisionOneFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            // Precision 1 rounds the statistic ratio 1/3 to 0.3, the base
+            // amount 0.16 to 0.2, and the denominator 1 + 0.3 back to 1:
+            // amount = 0.2 * 1 / 1 = 0.2. The indicator's precision-10
+            // arithmetic would instead give 0.16 * 1 / 1.333333333 = 0.12.
+            assertNumEquals(0.2, sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void positiveOverflowCoercionSaturatesToEpsilonFloor() {
         // A DecimalNum statistic of 1e400 is finite in its own factory but
         // overflows to +Infinity when coerced into a DoubleNum context: the

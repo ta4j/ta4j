@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.forecast;
 
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -24,8 +25,9 @@ import org.ta4j.core.num.Num;
  * The published mean and the variance are computed around one shared EWMA mean
  * estimator owned by the {@link EwmaVarianceIndicator}: when the backing series
  * prunes its retained head the estimator is re-anchored together with the
- * variance, so the returned moments never pair a stale mean with a re-anchored
- * variance.
+ * variance, and the enclosing state cache is invalidated, so retained-index
+ * reads recompute from the re-anchored estimators and never return moments
+ * still computed from the discarded prefix.
  *
  * @since 0.22.9
  */
@@ -35,6 +37,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     private final EwmaVarianceIndicator varianceIndicator;
     private final Indicator<Integer> observationCountIndicator;
     private final DriftMode driftMode;
+    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
 
     /**
      * Constructor using default EWMA settings and zero drift.
@@ -85,6 +88,26 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         this.varianceIndicator = variance;
         this.observationCountIndicator = new ValidObservationCountIndicator(returnIndicator);
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
+    }
+
+    @Override
+    public ReturnForecastState getValue(int index) {
+        BarSeries series = getBarSeries();
+        int removedBarsCount = series.getRemovedBarsCount();
+        if (removedBarsCount != observedRemovedBarsCount) {
+            resetForRetainedHead(removedBarsCount);
+        }
+        return super.getValue(index);
+    }
+
+    private synchronized void resetForRetainedHead(int removedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount) {
+            // Invalidate first, publish last: a concurrent reader that
+            // observes the new count must never see a state still computed
+            // from the discarded prefix.
+            invalidateCache();
+            observedRemovedBarsCount = removedBarsCount;
+        }
     }
 
     /**
