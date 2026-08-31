@@ -21,6 +21,7 @@ import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
+import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -1810,6 +1811,37 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
+    private static final class CountingDependencyIndicator extends AbstractIndicator<Num> {
+
+        private final List<Indicator<?>> dependencies;
+        private int dependenciesInvocations;
+
+        private CountingDependencyIndicator(BarSeries series, List<Indicator<?>> dependencies) {
+            super(series);
+            this.dependencies = dependencies;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return NaN.NaN;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public List<Indicator<?>> getDependencies() {
+            dependenciesInvocations++;
+            return dependencies;
+        }
+
+        private int getDependenciesInvocations() {
+            return dependenciesInvocations;
+        }
+    }
+
     @Test(timeout = 5000)
     public void sharedDependencySubgraphReconciliationStaysBounded() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -1844,6 +1876,29 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Reconciliation must visit every wrapper once instead of once per path.
         assertTrue(dependent.getValue(3).isNaN());
+    }
+
+    @Test
+    public void reconciliationSharesOneVisitedSetAcrossAllSources() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CountingDependencyIndicator shared = new CountingDependencyIndicator(barSeries, List.of());
+        CountingDependencyIndicator firstSource = new CountingDependencyIndicator(barSeries, List.of(shared));
+        CountingDependencyIndicator secondSource = new CountingDependencyIndicator(barSeries, List.of(shared));
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(firstSource, secondSource) {
+            @Override
+            protected Num calculate(int index) {
+                return NaN.NaN;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        assertEquals(0, dependent.minimumCacheableIndexAfterHeadAdvance(0));
+        // The shared node is inspected once across both sources instead of once
+        // per source.
+        assertEquals(1, shared.getDependenciesInvocations());
     }
 
     @Test
@@ -1972,6 +2027,89 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         Num freshValue = freshEdma.getValue(barSeries.getEndIndex());
         assertTrue(Num.isFinite(freshValue));
         assertNumEquals(freshValue, edma.getValue(barSeries.getEndIndex()));
+    }
+
+    @Test
+    public void vortexReadsRebasedSourceLiveAfterSeriesHeadAdvance() {
+        // Nine bars: the close rises once and then plateaus, so the stochastic
+        // low pins at 100 before the head advance and rebases the whole
+        // retained tail to zero after it. The highs keep rising, so the stale
+        // and fresh vortex windows differ: the cached vortex must follow the
+        // rebased source instead of serving the pre-advance materialization.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 9; i++) {
+            barSeries.barBuilder()
+                    .openPrice(i == 0 ? 0d : 50d)
+                    .closePrice(i == 0 ? 0d : 50d)
+                    .highPrice(51d + i)
+                    .lowPrice(i == 0 ? 0d : 49d)
+                    .add();
+        }
+        StochasticIndicator stochasticLow = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        VortexIndicator vortex = new VortexIndicator(new HighPriceIndicator(barSeries), stochasticLow,
+                new ClosePriceIndicator(barSeries), 2);
+
+        // Warm the cache over the unbounded series.
+        vortex.getValue(8);
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(4, barSeries.getBeginIndex());
+
+        StochasticIndicator freshStochastic = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        VortexIndicator freshVortex = new VortexIndicator(new HighPriceIndicator(barSeries), freshStochastic,
+                new ClosePriceIndicator(barSeries), 2);
+        Num freshValue = freshVortex.getValue(8);
+        assertTrue(Num.isFinite(freshValue));
+        assertNumEquals(freshValue, vortex.getValue(8));
+    }
+
+    @Test
+    public void volumeIndicatorRecomputesRetainedWindowAfterSeriesHeadAdvance() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(3);
+        for (int i = 0; i < 3; i++) {
+            barSeries.barBuilder().openPrice(1d).closePrice(1d).highPrice(2d).lowPrice(0.5d).volume(i + 1).add();
+        }
+        VolumeIndicator volume = new VolumeIndicator(barSeries, 3);
+        assertNumEquals(3, volume.getValue(1));
+        assertNumEquals(6, volume.getValue(2));
+
+        // Appending a fourth bar advances the head past index 0. The cached
+        // window sums include the evicted volume, so the retained window must
+        // recompute them from the remaining bars.
+        barSeries.barBuilder().openPrice(1d).closePrice(1d).highPrice(2d).lowPrice(0.5d).volume(4d).add();
+        assertEquals(1, barSeries.getBeginIndex());
+        assertNumEquals(2, volume.getValue(1));
+        assertNumEquals(5, volume.getValue(2));
+    }
+
+    @Test
+    public void pearsonCorrelationRecomputesRetainedWindowAfterSeriesHeadAdvance() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        barSeries.setMaximumBarCount(3);
+        double[] closes = { 100d, 101d, 105d };
+        double[] volumes = { 1d, 2d, 3d };
+        for (int i = 0; i < 3; i++) {
+            barSeries.barBuilder()
+                    .openPrice(closes[i])
+                    .closePrice(closes[i])
+                    .highPrice(closes[i] + 1d)
+                    .lowPrice(closes[i] - 1d)
+                    .volume(volumes[i])
+                    .add();
+        }
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(new ClosePriceIndicator(barSeries),
+                new VolumeIndicator(barSeries, 3), 3);
+        // The closes [100, 101, 105] against volumes [1, 2, 3] are not linear.
+        Num before = correlation.getValue(2);
+        assertTrue(before.isLessThan(numFactory.one()));
+
+        // Appending a fourth bar advances the head past index 0. Index 2's
+        // window shrinks to the perfectly linear pair [101, 105] vs [2, 3], so
+        // the cached pre-advance correlation must not survive.
+        barSeries.barBuilder().openPrice(109d).closePrice(109d).highPrice(110d).lowPrice(108d).volume(4d).add();
+        assertEquals(1, barSeries.getBeginIndex());
+        assertNumEquals(1, correlation.getValue(2));
     }
 
     @Test

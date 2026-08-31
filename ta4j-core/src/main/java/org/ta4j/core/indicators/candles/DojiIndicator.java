@@ -43,7 +43,10 @@ import org.ta4j.core.num.NumFactory;
  * When the restored full-scale prior average itself overflows (an overflowed
  * baseline window), the factor is applied to the half-scale prior average
  * before restoring full scale, so the threshold stays finite for representable
- * data and a zero body still qualifies as a doji.
+ * data and a zero body still qualifies as a doji. When the restored threshold
+ * itself overflows upward, it bounds every finite body from above, so a finite
+ * body still qualifies, matching DecimalNum's exact arithmetic; an
+ * indeterminate threshold conservatively rejects.
  *
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
@@ -144,13 +147,16 @@ public class DojiIndicator extends CandlePatternIndicator {
             // The restored full-scale average overflowed, but the factor applied
             // to the half-scale average before restoring still produces a finite
             // threshold for representable data, so a zero body stays a doji no
-            // matter how large the overflowed baseline was. An unrepresentable
-            // threshold conservatively rejects.
+            // matter how large the overflowed baseline was. When the restored
+            // threshold itself overflows upward, it bounds every finite body
+            // from above, so a finite body still qualifies, matching
+            // DecimalNum's exact arithmetic; an indeterminate (NaN) threshold
+            // conservatively rejects.
             final Num threshold = thresholds.halfPriorAverageRange()
                     .getValue(index)
                     .multipliedBy(numFactory.numOf(rangeFactor))
                     .multipliedBy(numFactory.numOf(2));
-            if (!Num.isFinite(threshold)) {
+            if (Num.isNaNOrNull(threshold)) {
                 return false;
             }
             return !bodyMagnitude.isGreaterThan(threshold);

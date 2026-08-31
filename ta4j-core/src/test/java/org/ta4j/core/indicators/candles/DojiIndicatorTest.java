@@ -203,6 +203,27 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void overflowedRestoredThresholdQualifiesZeroBodyAsDoji() {
+        // One baseline candle spanning -MAX to MAX makes the prior average
+        // range itself overflow DoubleNum, and its restored full-scale
+        // threshold overflows upward too. Every finite body sits below an
+        // overflowed positive threshold, so the zero body must qualify,
+        // matching DecimalNum's exact arithmetic.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            series.barBuilder()
+                    .openPrice(-Double.MAX_VALUE)
+                    .closePrice(Double.MAX_VALUE)
+                    .highPrice(Double.MAX_VALUE)
+                    .lowPrice(-Double.MAX_VALUE)
+                    .add();
+            addBar(series, 0, 0, 0);
+
+            assertTrue(new DojiIndicator(series, 1, 1d).getValue(1));
+        }
+    }
+
+    @Test
     public void zeroBodyAfterOverflowedRangeDilutedByWindowIsDoji() {
         // A three-bar baseline whose ranges are [0, 0, 2 * MAX] has the finite
         // mean 2/3 * MAX even though the extreme range overflows the raw range

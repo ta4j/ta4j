@@ -362,8 +362,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *         {@link Integer#MAX_VALUE} discards every cached entry
      */
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        // One identity-visited set across every source: subgraphs shared by
+        // several sources are inspected once instead of once per source.
+        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Indicator<?> sourceIndicator : sourceIndicators) {
-            if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex)) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
                 return Integer.MAX_VALUE;
             }
         }
@@ -380,17 +383,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * {@code BinaryOperationIndicator}) still invalidates the whole cache.
      * <p>
      * The traversal tracks visited nodes by identity, so subgraphs shared by
-     * several dependency paths are inspected once instead of once per incoming
-     * path, and dependency cycles terminate.
+     * several dependency paths or sources are inspected once instead of once per
+     * incoming path, and dependency cycles terminate.
      *
      * @param source             the source indicator to inspect
      * @param firstRetainedIndex the first series index that remains available
      * @return {@code true} when a rebaselining source lies in the graph
      */
-    private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex) {
-        return sourceGraphRebaselinesBeyondDefaultBand(source, firstRetainedIndex,
-                Collections.newSetFromMap(new IdentityHashMap<>()));
-    }
 
     private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex,
             Set<Indicator<?>> visited) {

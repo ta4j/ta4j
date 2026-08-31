@@ -98,7 +98,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
     }
 
     private VortexIndicator(Config config) {
-        super(config.series());
+        super(config.highPriceIndicator(), config.lowPriceIndicator(), config.closePriceIndicator());
         this.highPriceIndicator = config.highPriceIndicator();
         this.lowPriceIndicator = config.lowPriceIndicator();
         this.closePriceIndicator = config.closePriceIndicator();
@@ -212,7 +212,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
         private final int unstableBars;
 
         private VortexMovementIndicator(Indicator<Num> currentIndicator, Indicator<Num> previousIndicator) {
-            super(currentIndicator);
+            super(currentIndicator, previousIndicator);
             this.currentIndicator = currentIndicator;
             this.previousIndicator = previousIndicator;
             this.unstableBars = Math.max(currentIndicator.getCountOfUnstableBars(),

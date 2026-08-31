@@ -30,10 +30,20 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount   the time frame
      */
     public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1);
+        super(indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;
+    }
+
+    /**
+     * The correlation over a fixed window reads only retained bars, so every cached
+     * value stays recomputable from the retained window after a head advance: the
+     * unstable-range floor applies instead of keeping every cached value.
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
     }
 
     @Override
