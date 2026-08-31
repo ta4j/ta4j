@@ -412,6 +412,52 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void overflowingIndicatorRatioRecomputesInWiderContextFactory() {
+        // DoubleNum cannot represent Double.MAX_VALUE / Double.MIN_VALUE (the
+        // true ratio is about 3.6e631), so the standardized statistic
+        // overflows the indicator's factory. A DecimalNum context can hold the
+        // ratio: the sizer must re-derive it in the context factory and return
+        // the representable damped amount instead of the epsilon floor.
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(indicatorSeries, DoubleNumFactory.getInstance().numOf(0),
+                DoubleNumFactory.getInstance().numOf(Double.MAX_VALUE));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 1, Double.MIN_VALUE);
+
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Num.isFinite(amount));
+            assertTrue(amount.isPositive());
+            assertTrue(amount.isLessThan(numFactory.one()));
+            assertTrue(amount.doubleValue() == 0.0);
+        });
+    }
+
+    @Test
+    public void dampedQuotientRecoversFromExactDecimalsWhenRatioExceedsDoubleRange() {
+        // A DecimalNum base of 1e400 and a statistic of 1e400 with a control
+        // limit of 1 standardize to a ratio beyond the primitive double range,
+        // but the damped quotient 1e400 / (1 + 1e400) is about 1: the sizer
+        // must divide the exact decimal forms before narrowing to the
+        // double-backed context instead of collapsing to the epsilon floor.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("1e400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 1);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Num.isFinite(amount));
+            assertNumEquals(numFactory.numOf(1), amount, 0);
+        });
+    }
+
+    @Test
     public void decimalSafePathSaturatesBaseAmountBeyondDoubleRange() {
         // A DecimalNum base amount of 1e400 is positive in its own factory and
         // the safe path returns it unchanged, but its doubleValue() is

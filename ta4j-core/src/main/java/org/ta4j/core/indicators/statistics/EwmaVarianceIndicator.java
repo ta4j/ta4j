@@ -235,28 +235,53 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
         NumFactory factory = getBarSeries().numFactory();
         Num barCountNum = factory.numOf(barCount);
-        Num scaledSquareSum = factory.zero();
+        // Accumulate squared deviations under one shared scale so no individual
+        // term can overflow or underflow: every bar contributes
+        // (deviation / scale)^2, each at most one, and the population variance
+        // is scale^2 * sumOfSquares / barCount. The scale keeps each quotient
+        // within the representable range while the running sum re-scales by the
+        // old-to-new scale ratio whenever a larger deviation arrives. Dividing
+        // the summed quotients by the window size before multiplying the square
+        // of the scale back keeps the intermediate product inside the
+        // representation range (a window of 2e154 bars averages to 8e308/9 even
+        // though each square is 4e308), and the shared scale keeps the summed
+        // terms from underflowing (deviations of 2^-537 average to the
+        // subnormal 2^-1074 even though each per-term quotient rounds to zero).
+        Num scale = factory.zero();
+        Num sumOfSquares = factory.zero();
         for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
             Num deviation = indicator.getValue(windowIndex).minus(center);
-            // Scale one deviation factor by the window size before completing
-            // the product: each squared deviation can overflow even when the
-            // averaged recovery variance deviation^2 / barCount is
-            // representable, so per-term scaling keeps the re-anchor finite.
-            scaledSquareSum = scaledSquareSum.plus(deviation.multipliedBy(deviation.dividedBy(barCountNum)));
+            Num magnitude = deviation.abs();
+            if (magnitude.isZero()) {
+                continue;
+            }
+            if (scale.isLessThan(magnitude)) {
+                // Largest deviation so far: fold the running sum into the new
+                // scale before adopting it. The old-to-new ratio is at most
+                // one, so the re-scaled sum cannot overflow.
+                Num ratio = scale.dividedBy(magnitude);
+                sumOfSquares = factory.one().plus(sumOfSquares.multipliedBy(ratio.multipliedBy(ratio)));
+                scale = magnitude;
+            } else {
+                Num ratio = magnitude.dividedBy(scale);
+                sumOfSquares = sumOfSquares.plus(ratio.multipliedBy(ratio));
+            }
         }
-        return scaledSquareSum;
+        return scale.multipliedBy(scale).multipliedBy(sumOfSquares.dividedBy(barCountNum));
     }
 
     /**
      * Population variance of the seed window {@code [index - barCount + 1,
-     * index]}, measured around the compensated window mean and accumulated with
-     * per-term scaled squared deviations. The naive sum-of-squares form first
-     * squares each bar and can overflow the numeric representation even when the
-     * averaged variance is representable (a window containing {@code 2e154} squares
-     * to {@code 4e308} for {@code DoubleNum}, while its population variance
-     * {@code 8e308/9} is finite), so the mean is accumulated with compensated
-     * summation and the squared deviations are scaled by the window size before
-     * their products complete.
+     * index]}, measured around the compensated window mean and accumulated under
+     * one shared scale. The naive sum-of-squares form first squares each bar and
+     * can overflow the numeric representation even when the averaged variance is
+     * representable (a window containing {@code 2e154} squares to {@code 4e308} for
+     * {@code DoubleNum}, while its population variance {@code 8e308/9} is finite),
+     * and dividing each term first can underflow every contribution even when the
+     * averaged variance is representable (deviations of {@code 2^-537} average to
+     * the subnormal {@code 2^-1074}), so the mean is accumulated with compensated
+     * summation and the squared deviations are accumulated against a shared scale
+     * before the window size divides their sum.
      */
     private Num rollingWindowVariance(int index) {
         Num scaledMean = windowMean(indicator, barCount, index);

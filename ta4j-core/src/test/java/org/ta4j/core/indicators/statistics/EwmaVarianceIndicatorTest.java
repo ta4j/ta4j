@@ -234,6 +234,25 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void seedWindowOfSubnormalBarsPublishesPopulationVarianceInsteadOfZero() {
+        // The seed window [0, 2^-536] has population variance 2^-1074
+        // (Double.MIN_VALUE), but per-term division halves each deviation to
+        // 2^-538 and the product rounds to zero, collapsing the seed. The
+        // shared-scale accumulation keeps every contribution representable and
+        // publishes the subnormal population variance instead.
+        double subnormalBar = Math.scalb(1.0, -536);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, subnormalBar).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(subnormalBar)), 2, 0.5);
+
+        Num value = variance.getValue(1);
+
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isPositive());
+        assertNumEquals(numOf(Double.MIN_VALUE), value, 0);
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not

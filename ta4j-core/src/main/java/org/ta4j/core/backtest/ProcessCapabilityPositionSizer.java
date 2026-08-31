@@ -6,6 +6,7 @@ package org.ta4j.core.backtest;
 import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -28,10 +29,11 @@ import org.ta4j.core.num.NumFactory;
  * {@code controlLimit} half of it, and far above the limit the amount
  * approaches zero, so position size degrades gracefully instead of acting as a
  * hard cutoff. When the standardized statistic overflows the numeric
- * representation, the damped amount underflows to zero and the sizer returns
- * the lesser of the context factory's epsilon and {@code baseAmount}, keeping
- * the amount positive and never exceeding the configured amount, so the
- * backtest does not abort on an invalid size.
+ * representation, the sizer re-derives the ratio in the context factory when it
+ * can represent the magnitude, and only then falls back to the lesser of the
+ * context factory's epsilon and {@code baseAmount}, keeping the amount positive
+ * and never exceeding the configured amount, so the backtest does not abort on
+ * an invalid size.
  *
  * <p>
  * If the statistic is non-finite at the entry index (for example while the
@@ -129,19 +131,38 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // at half the base amount, not the full amount).
         Num standardized = statistic.dividedBy(controlLimit);
         if (!Num.isFinite(standardized)) {
-            // The true ratio overflows the indicator's factory: the process
-            // is far outside control, so size at the context epsilon.
-            return epsilonFloor(factory, baseAmountValue);
+            // The true ratio overflows the indicator's factory. Re-derive it in
+            // the context factory, which can represent magnitudes the indicator
+            // factory cannot (a DoubleNum Double.MAX_VALUE / Double.MIN_VALUE
+            // ratio overflows to infinity but stays finite as a DecimalNum):
+            // only a ratio that overflows the context factory too means the
+            // process is far outside control.
+            standardized = coerceToContextFactory(factory, statistic)
+                    .dividedBy(coerceToContextFactory(factory, controlLimit));
+            if (!Num.isFinite(standardized)) {
+                return epsilonFloor(factory, baseAmountValue);
+            }
         }
         Num standardizedValue;
         if (standardized.getNumFactory() == factory) {
             standardizedValue = standardized;
         } else if (!(factory.one().getDelegate() instanceof BigDecimal)
                 && !Double.isFinite(standardized.doubleValue())) {
-            // The true ratio overflows a double-backed context: the process is
-            // far outside control, so size at the context epsilon floor. A
-            // BigDecimal-backed context keeps the ratio exact instead.
-            return epsilonFloor(factory, baseAmountValue);
+            // The true ratio exceeds the primitive double range, but its
+            // damped quotient can still be representable: divide the lossless
+            // decimal forms of the base and the ratio before narrowing the
+            // result to the double-backed context (base 1e400 over ratio 1e400
+            // damps to about 1).
+            BigDecimal dampedQuotient = rawBaseAmount.divide(BigDecimal.ONE.add(standardized.bigDecimalValue()),
+                    MathContext.DECIMAL128);
+            double quotient = dampedQuotient.doubleValue();
+            if (Double.isFinite(quotient) && quotient > 0) {
+                return capToDoubleRange(factory, factory.numOf(quotient));
+            }
+            // Outside the primitive double range entirely: a quotient that
+            // underflows sizes at the context epsilon floor, one that
+            // overflows saturates at the factory ceiling.
+            return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue) : saturationMagnitude(factory);
         } else {
             standardizedValue = coerceToContextFactory(factory, standardized);
         }
