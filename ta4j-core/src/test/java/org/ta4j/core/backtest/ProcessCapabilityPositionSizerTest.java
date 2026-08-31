@@ -376,6 +376,42 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void overflowingBaseDampsInDoubleSpaceInsteadOfPublishingNonFiniteAmount() {
+        // A DecimalNum base amount of 1e39 overflows a float-backed context
+        // factory to a non-finite value, but the damped quotient (1e39 / 6) is
+        // representable: the sizer must compute it in double space and coerce
+        // the result instead of publishing a non-finite amount.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(5));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e39"), 1);
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatBackedFactory()).withData(1, 2).build();
+        Num amount = sizer.amount(context(series, 1, 1));
+
+        assertTrue(Num.isFinite(amount));
+        assertNumEquals(numOf(1e39 / 6.0), amount);
+    }
+
+    @Test
+    public void overflowingBaseBeyondDoubleRangeSaturatesAtContextCeiling() {
+        // A DecimalNum base of 1e400 overflows both the float-backed context
+        // factory and the primitive double range, so the true damped quotient
+        // is beyond the factory ceiling: the sizer must saturate at the float
+        // ceiling instead of publishing a non-finite amount.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(5));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 1);
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatBackedFactory()).withData(1, 2).build();
+        Num amount = sizer.amount(context(series, 1, 1));
+
+        assertTrue(Num.isFinite(amount));
+        assertNumEquals(numOf(Float.MAX_VALUE), amount);
+    }
+
+    @Test
     public void decimalSafePathSaturatesBaseAmountBeyondDoubleRange() {
         // A DecimalNum base amount of 1e400 is positive in its own factory and
         // the safe path returns it unchanged, but its doubleValue() is

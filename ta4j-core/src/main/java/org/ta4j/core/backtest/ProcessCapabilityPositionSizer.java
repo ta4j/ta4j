@@ -131,7 +131,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         if (!Num.isFinite(standardized)) {
             // The true ratio overflows the indicator's factory: the process
             // is far outside control, so size at the context epsilon.
-            return factory.epsilon().min(baseAmountValue);
+            return epsilonFloor(factory, baseAmountValue);
         }
         Num standardizedValue;
         if (standardized.getNumFactory() == factory) {
@@ -141,12 +141,20 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // The true ratio overflows a double-backed context: the process is
             // far outside control, so size at the context epsilon floor. A
             // BigDecimal-backed context keeps the ratio exact instead.
-            return factory.epsilon().min(baseAmountValue);
+            return epsilonFloor(factory, baseAmountValue);
         } else {
             standardizedValue = coerceToContextFactory(factory, standardized);
         }
         Num damped;
-        if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
+        if (!Num.isFinite(baseAmountValue) && Double.isFinite(rawBaseAmount.doubleValue())
+                && Double.isFinite(standardized.doubleValue())) {
+            // A finite configured base that overflows the narrower context
+            // factory (for example a 1e39 base in a float-backed context): the
+            // damped quotient is still representable, so compute it in double
+            // space and coerce the result instead of propagating a non-finite
+            // base into the Num arithmetic.
+            damped = factory.numOf(rawBaseAmount.doubleValue() / (1.0 + standardized.doubleValue()));
+        } else if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
             // The true ratio is finite as a primitive double but overflows the
             // narrower context factory (for example a 1e39 ratio in a
             // float-backed context). The damped quotient is still representable,
@@ -156,8 +164,15 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         } else {
             damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
         }
-        if (!Num.isFinite(damped) || damped.isZero()) {
-            return factory.epsilon().min(baseAmountValue);
+        if (!Num.isFinite(damped)) {
+            // The true damped quotient exceeds the context factory's range:
+            // when the coerced base itself overflowed, saturate at the factory
+            // ceiling; otherwise size at the context epsilon floor.
+            return Num.isFinite(baseAmountValue) ? epsilonFloor(factory, baseAmountValue)
+                    : saturationMagnitude(factory);
+        }
+        if (damped.isZero()) {
+            return epsilonFloor(factory, baseAmountValue);
         }
         return capToDoubleRange(factory, damped);
     }
@@ -262,6 +277,16 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
 
     private static Num capToDoubleRange(NumFactory factory, Num amount) {
         return Double.isFinite(amount.doubleValue()) ? amount : saturationMagnitude(factory);
+    }
+
+    /**
+     * The context epsilon bounded by the coerced base amount. When the base amount
+     * overflows the context factory to a non-finite value, the factory ceiling
+     * stands in so the floor itself stays finite and the {@link PositionSizer}
+     * contract is preserved.
+     */
+    private static Num epsilonFloor(NumFactory factory, Num baseAmountValue) {
+        return factory.epsilon().min(Num.isFinite(baseAmountValue) ? baseAmountValue : saturationMagnitude(factory));
     }
 
     @Override
