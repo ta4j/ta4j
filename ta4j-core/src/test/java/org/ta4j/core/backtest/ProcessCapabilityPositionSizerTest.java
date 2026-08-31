@@ -153,6 +153,28 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void coarseIndicatorFactoryStandardizesAtDestinationPrecision() {
+        // A precision-1 capability factory computes 1 / 3 as 0.3 before the
+        // precision-10 context ever sees the ratio, damping a base of 100 to
+        // about 76.923. Coercing the operands into the context first keeps
+        // the ratio at the destination precision: precision-10 arithmetic
+        // evaluates 100 / (1 + 1/3) as 75.00000002.
+        NumFactory precisionOneFactory = DecimalNumFactory.getInstance(1);
+        NumFactory precisionTenFactory = DecimalNumFactory.getInstance(10);
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(precisionOneFactory)
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(indicatorSeries, precisionOneFactory.numOf(0),
+                precisionOneFactory.numOf(1));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 100, 3);
+
+        runWithNumFactory(precisionTenFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(numFactory.numOf(new BigDecimal("75.00000002")), sizer.amount(context(series, 1, 1)), 0);
+        });
+    }
+
+    @Test
     public void positiveOverflowCoercionSaturatesToEpsilonFloor() {
         // A DecimalNum statistic of 1e400 is finite in its own factory but
         // overflows to +Infinity when coerced into a DoubleNum context: the

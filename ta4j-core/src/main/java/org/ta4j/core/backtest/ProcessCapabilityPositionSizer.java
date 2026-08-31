@@ -54,8 +54,12 @@ import org.ta4j.core.num.NumFactory;
  * parameters are coerced into the context factory's exact configuration rather
  * than matched by implementation class, so mixed-factory and mixed-precision
  * {@code DecimalNum} compositions round consistently at sizing time. The
- * configured base amount is retained losslessly (as its exact value, not the
- * capability factory's rounded copy of it) and coerced through the context
+ * standardized ratio divides the coerced operands in the context factory so the
+ * destination precision governs the quotient; when coercing an operand would
+ * corrupt the ratio (underflow to zero or saturation in a narrower context),
+ * the division falls back to the indicator factory, whose ratio stays exact.
+ * The configured base amount is retained losslessly (as its exact value, not
+ * the capability factory's rounded copy of it) and coerced through the context
  * factory at sizing time, so a coarse capability factory never irreversibly
  * rounds the configured amount. A {@code BigDecimal}-backed context receives
  * the statistic and the base amount through their {@code BigDecimal} delegate,
@@ -125,39 +129,46 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // factory, where a tiny positive statistic cannot underflow.
             return capToDoubleRange(factory, baseAmountValue);
         }
-        // Standardize in the indicator's factory before coercing: both
-        // operands can underflow to zero in the context factory while their
-        // ratio remains exact (statistic == controlLimit == 1e-400 must size
-        // at half the base amount, not the full amount).
-        Num standardized = statistic.dividedBy(controlLimit);
+        // Standardize in the context factory so the division carries the
+        // destination precision: a coarser indicator factory would
+        // irreversibly round the ratio before the context ever sees it (a
+        // precision-1 statistic of 1 over a control limit of 3 sized in a
+        // precision-10 context must damp a base of 100 to 75, not 76.923).
+        // Coercing the operands first can still corrupt the ratio: both can
+        // underflow to zero or saturate in a narrower context while their
+        // source ratio remains exact (statistic == controlLimit == 1e-400
+        // must size at half the base amount, not the full amount), so those
+        // cases fall back to the indicator factory's exact ratio.
+        Num statisticValue = coerceToContextFactory(factory, statistic);
+        Num controlLimitValue = coerceToContextFactory(factory, controlLimit);
+        boolean bigDecimalContext = factory.one().getDelegate() instanceof BigDecimal;
+        boolean operandsCoercedLosslessly = bigDecimalContext || (Num.isFinite(statisticValue)
+                && !statisticValue.isZero() && Num.isFinite(controlLimitValue) && !controlLimitValue.isZero()
+                && Double.isFinite(statistic.doubleValue()) && Double.isFinite(controlLimit.doubleValue()));
+        Num standardized;
+        if (operandsCoercedLosslessly) {
+            standardized = statisticValue.dividedBy(controlLimitValue);
+        } else {
+            standardized = statistic.dividedBy(controlLimit);
+        }
         if (!Num.isFinite(standardized)) {
-            // The true ratio overflows the indicator's factory. Re-derive it
-            // in the context factory, which can represent magnitudes the
-            // indicator factory cannot (a DoubleNum Double.MAX_VALUE /
-            // Double.MIN_VALUE ratio overflows to infinity but stays finite
-            // as a DecimalNum).
-            standardized = coerceToContextFactory(factory, statistic)
-                    .dividedBy(coerceToContextFactory(factory, controlLimit));
-            if (!Num.isFinite(standardized)) {
-                // The ratio overflows both factories, but the damped quotient
-                // can still be representable when the raw base is large: with
-                // statistic == Double.MAX_VALUE over controlLimit ==
-                // Double.MIN_VALUE the ratio is about 3.67e631, yet a base of
-                // 1e400 damps to about 2.73e-232. Divide the lossless decimal
-                // forms of all three operands before narrowing; a quotient
-                // that still underflows sizes at the context epsilon floor,
-                // one that overflows saturates at the factory ceiling.
-                BigDecimal dampedQuotient = rawBaseAmount.divide(
-                        BigDecimal.ONE.add(statistic.bigDecimalValue()
-                                .divide(controlLimit.bigDecimalValue(), MathContext.DECIMAL128)),
-                        MathContext.DECIMAL128);
-                double quotient = dampedQuotient.doubleValue();
-                if (Double.isFinite(quotient) && quotient > 0) {
-                    return capToDoubleRange(factory, factory.numOf(quotient));
-                }
-                return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue)
-                        : saturationMagnitude(factory);
+            // The true ratio overflows the factory used for the division, but
+            // the damped quotient can still be representable when the raw base
+            // is large: with statistic == Double.MAX_VALUE over controlLimit
+            // == Double.MIN_VALUE the ratio is about 3.67e631, yet a base of
+            // 1e400 damps to about 2.73e-232. Divide the lossless decimal
+            // forms of all three operands before narrowing; a quotient that
+            // still underflows sizes at the context epsilon floor, one that
+            // overflows saturates at the factory ceiling.
+            BigDecimal dampedQuotient = rawBaseAmount.divide(
+                    BigDecimal.ONE.add(
+                            statistic.bigDecimalValue().divide(controlLimit.bigDecimalValue(), MathContext.DECIMAL128)),
+                    MathContext.DECIMAL128);
+            double quotient = dampedQuotient.doubleValue();
+            if (Double.isFinite(quotient) && quotient > 0) {
+                return capToDoubleRange(factory, factory.numOf(quotient));
             }
+            return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue) : saturationMagnitude(factory);
         }
         Num standardizedValue;
         if (standardized.getNumFactory() == factory) {
