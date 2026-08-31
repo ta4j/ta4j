@@ -147,8 +147,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * 
-     * /** The map chains every value from its predecessor, so a bounded-series head
+     * The map chains every value from its predecessor, so a bounded-series head
      * advance invalidates the whole chain: keep nothing of the base cache, forcing
      * each value to be recomputed from the new first retained bar.
      *
