@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -77,8 +78,8 @@ public class HangingManIndicator extends CandlePatternIndicator {
         if (index - 1 < getBarSeries().getBeginIndex()) {
             return false;
         }
-        final var bar = getBarSeries().getBar(index);
-        final var priorHigh = getBarSeries().getBar(index - 1).getHighPrice();
+        final Bar bar = getBarSeries().getBar(index);
+        final Num priorHigh = getBarSeries().getBar(index - 1).getHighPrice();
         if (!Num.isFinite(priorHigh)) {
             return false;
         }
@@ -87,7 +88,7 @@ public class HangingManIndicator extends CandlePatternIndicator {
         if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
             return false;
         }
-        final var bodyTop = open.max(close);
+        final Num bodyTop = open.max(close);
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
                 && thresholds.isShortShadow(index, upperShadow) && thresholds.isNear(index, bodyTop, priorHigh);
     }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -77,8 +78,8 @@ public class HammerIndicator extends CandlePatternIndicator {
         if (index - 1 < getBarSeries().getBeginIndex()) {
             return false;
         }
-        final var bar = getBarSeries().getBar(index);
-        final var priorLow = getBarSeries().getBar(index - 1).getLowPrice();
+        final Bar bar = getBarSeries().getBar(index);
+        final Num priorLow = getBarSeries().getBar(index - 1).getLowPrice();
         if (!Num.isFinite(priorLow)) {
             return false;
         }
@@ -87,7 +88,7 @@ public class HammerIndicator extends CandlePatternIndicator {
         if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
             return false;
         }
-        final var bodyBottom = open.min(close);
+        final Num bodyBottom = open.min(close);
 
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
                 && thresholds.isShortShadow(index, upperShadow) && thresholds.isNear(index, bodyBottom, priorLow);

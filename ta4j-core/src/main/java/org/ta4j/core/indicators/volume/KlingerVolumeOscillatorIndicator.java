@@ -491,17 +491,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             // Both sources are registered: a rebaselining low (e.g., a stochastic)
             // must invalidate the whole cache after a series head advance, not just
             // the high-source unstable band.
-            super(sameSeriesHigh(highPriceIndicator, lowPriceIndicator), lowPriceIndicator);
+            super(highPriceIndicator, lowPriceIndicator);
             this.highPriceIndicator = highPriceIndicator;
             this.lowPriceIndicator = lowPriceIndicator;
             this.unstableBars = Math.max(highPriceIndicator.getCountOfUnstableBars(),
                     lowPriceIndicator.getCountOfUnstableBars());
-        }
-
-        private static Indicator<Num> sameSeriesHigh(final Indicator<Num> highPriceIndicator,
-                final Indicator<Num> lowPriceIndicator) {
-            IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator);
-            return highPriceIndicator;
         }
 
         @Override
