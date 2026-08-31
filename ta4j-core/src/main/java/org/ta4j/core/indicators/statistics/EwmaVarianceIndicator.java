@@ -108,7 +108,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         BigDecimal rawDecay = BigDecimal.valueOf(decayFactor);
         this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(BigDecimal.ONE.subtract(rawDecay));
         this.decay = indicator.getBarSeries().numFactory().one().minus(this.oneMinusDecay);
-        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, oneMinusDecay);
+        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
     }
 
     private static Indicator<Num> validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -159,7 +159,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // Invalidate first, publish last: a concurrent reader that
             // observes the new count must never see caches still computed
             // from the discarded prefix.
-            this.meanIndicator = new SharedMeanIndicator(indicator, barCount, oneMinusDecay);
+            this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
             reseedIndex = (int) Math.min((long) getBarSeries().getBeginIndex() + barCount - 1L, Integer.MAX_VALUE);
             invalidateCache();
             observedRemovedBarsCount = removedBarsCount;
@@ -417,12 +417,14 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
         private final Indicator<Num> indicator;
         private final int barCount;
+        private final Num decay;
         private final Num oneMinusDecay;
 
-        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num oneMinusDecay) {
+        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num decay, Num oneMinusDecay) {
             super(indicator);
             this.indicator = indicator;
             this.barCount = barCount;
+            this.decay = decay;
             this.oneMinusDecay = oneMinusDecay;
         }
 
@@ -449,7 +451,17 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 // never contaminates the mean recursion.
                 return windowMean(indicator, barCount, index);
             }
-            return previousMean.plus(oneMinusDecay.multipliedBy(current.minus(previousMean)));
+            // The update is the convex combination decay * previousMean +
+            // (1 - decay) * current: algebraically identical to
+            // previousMean + (1 - decay) * (current - previousMean), but
+            // weighting each operand before combining keeps every
+            // intermediate finite. Consecutive finite bars of opposite
+            // extreme signs (-1e308 then 1e308) overflow their raw
+            // difference under DoubleNum even though the weighted mean
+            // (-8e307 at decay 0.9) is representable, and a convex
+            // combination of finite values with weights summing to one
+            // never overflows.
+            return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
         }
 
         @Override

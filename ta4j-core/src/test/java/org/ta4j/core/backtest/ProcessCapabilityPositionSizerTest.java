@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -476,6 +477,40 @@ public class ProcessCapabilityPositionSizerTest {
 
             assertTrue(Num.isFinite(amount));
             assertNumEquals(numFactory.numOf(1e300), amount, 0);
+        });
+    }
+
+    @Test
+    public void overflowingRatioWithOversizedBaseDampsBeforeFlooring() {
+        // statistic == Double.MAX_VALUE over controlLimit ==
+        // Double.MIN_VALUE overflows both factories (the ratio is about
+        // 3.67e631), but the damped quotient base / (1 + ratio) is about
+        // 2.73e-232: representable. The sizer must divide the lossless
+        // decimal forms of all three operands instead of flooring at the
+        // context epsilon; with a still-larger base the quotient overflows
+        // and the honest result saturates at the factory ceiling.
+        BarSeries doubleSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(doubleSeries, numOf(0), numOf(Double.MAX_VALUE));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), Double.MIN_VALUE);
+        PositionSizer overflowing = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e1000"),
+                Double.MIN_VALUE);
+
+        runWithNumFactory(DoubleNumFactory.getInstance(), () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+
+            Num amount = sizer.amount(context(series, 1, 1));
+
+            assertTrue(Num.isFinite(amount));
+            assertTrue(amount.isPositive());
+            BigDecimal ratio = BigDecimal.valueOf(Double.MAX_VALUE)
+                    .divide(BigDecimal.valueOf(Double.MIN_VALUE), MathContext.DECIMAL128);
+            BigDecimal expected = new BigDecimal("1e400").divide(BigDecimal.ONE.add(ratio, MathContext.DECIMAL128),
+                    MathContext.DECIMAL128);
+            assertNumEquals(numFactory.numOf(expected), amount, 0);
+
+            Num saturated = overflowing.amount(context(series, 1, 1));
+            assertTrue(Double.isFinite(saturated.doubleValue()));
+            assertTrue(saturated.isGreaterThanOrEqual(numFactory.numOf(Double.MAX_VALUE / 2)));
         });
     }
 

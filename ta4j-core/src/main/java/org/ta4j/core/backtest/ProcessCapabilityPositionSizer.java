@@ -131,16 +131,32 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // at half the base amount, not the full amount).
         Num standardized = statistic.dividedBy(controlLimit);
         if (!Num.isFinite(standardized)) {
-            // The true ratio overflows the indicator's factory. Re-derive it in
-            // the context factory, which can represent magnitudes the indicator
-            // factory cannot (a DoubleNum Double.MAX_VALUE / Double.MIN_VALUE
-            // ratio overflows to infinity but stays finite as a DecimalNum):
-            // only a ratio that overflows the context factory too means the
-            // process is far outside control.
+            // The true ratio overflows the indicator's factory. Re-derive it
+            // in the context factory, which can represent magnitudes the
+            // indicator factory cannot (a DoubleNum Double.MAX_VALUE /
+            // Double.MIN_VALUE ratio overflows to infinity but stays finite
+            // as a DecimalNum).
             standardized = coerceToContextFactory(factory, statistic)
                     .dividedBy(coerceToContextFactory(factory, controlLimit));
             if (!Num.isFinite(standardized)) {
-                return epsilonFloor(factory, baseAmountValue);
+                // The ratio overflows both factories, but the damped quotient
+                // can still be representable when the raw base is large: with
+                // statistic == Double.MAX_VALUE over controlLimit ==
+                // Double.MIN_VALUE the ratio is about 3.67e631, yet a base of
+                // 1e400 damps to about 2.73e-232. Divide the lossless decimal
+                // forms of all three operands before narrowing; a quotient
+                // that still underflows sizes at the context epsilon floor,
+                // one that overflows saturates at the factory ceiling.
+                BigDecimal dampedQuotient = rawBaseAmount.divide(
+                        BigDecimal.ONE.add(statistic.bigDecimalValue()
+                                .divide(controlLimit.bigDecimalValue(), MathContext.DECIMAL128)),
+                        MathContext.DECIMAL128);
+                double quotient = dampedQuotient.doubleValue();
+                if (Double.isFinite(quotient) && quotient > 0) {
+                    return capToDoubleRange(factory, factory.numOf(quotient));
+                }
+                return Double.isFinite(quotient) ? epsilonFloor(factory, baseAmountValue)
+                        : saturationMagnitude(factory);
             }
         }
         Num standardizedValue;

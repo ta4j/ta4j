@@ -274,6 +274,23 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void oppositeSignExtremesKeepPublishedMeanFinite() {
+        // Consecutive finite bars of opposite extreme signs overflow their
+        // raw difference under DoubleNum (1e308 - (-1e308) = infinity), but
+        // the EWMA update is a convex combination of the two finite values:
+        // weighting each operand before combining keeps the second mean at
+        // 0.9 * (-1e308) + 0.1 * 1e308 = -8e307 instead of infinity.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(-1e308, 1e308).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(-1e308), numOf(1e308)), 1, 0.9);
+
+        Num mean = variance.getMeanIndicator().getValue(1);
+
+        assertTrue(Num.isFinite(mean));
+        assertTrue(Math.abs(mean.doubleValue() - -8e307) / 8e307 < 1e-9);
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not

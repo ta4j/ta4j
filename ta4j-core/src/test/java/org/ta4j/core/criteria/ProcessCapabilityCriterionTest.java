@@ -16,6 +16,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -405,5 +406,30 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
         assertTrue(ascendingCapability.isPositive());
         assertNumEquals(ascendingCapability, descendingCapability);
+    }
+
+    @Test
+    public void coarseFactoryRoundingKeepsPositiveSpecificationGap() {
+        // A precision-2 DecimalNum factory rounds the retained LSL 0.999
+        // onto the mean 1.0, collapsing the positive capability (about
+        // 0.0033) to zero: the raw limit must feed the distance before the
+        // factory narrows it. The two-sided case exercises the USL mirror.
+        NumFactory precisionTwo = DecimalNumFactory.getInstance(2);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionTwo).withData(1, 0.9, 1, 1.1).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion lowerOnly = getCriterion(new BigDecimal("0.999"));
+        Num lowerCapability = lowerOnly.calculate(series, tradingRecord);
+        assertTrue(Num.isFinite(lowerCapability));
+        assertTrue(lowerCapability.isPositive());
+        assertTrue(lowerCapability.isLessThan(precisionTwo.numOf(0.1)));
+        assertTrue(lowerCapability.isGreaterThan(precisionTwo.numOf(0.001)));
+
+        AnalysisCriterion twoSided = getCriterion(0.9, new BigDecimal("1.001"));
+        Num twoSidedCapability = twoSided.calculate(series, tradingRecord);
+        assertTrue(Num.isFinite(twoSidedCapability));
+        assertTrue(twoSidedCapability.isPositive());
+        assertTrue(twoSidedCapability.isLessThan(precisionTwo.numOf(0.1)));
     }
 }

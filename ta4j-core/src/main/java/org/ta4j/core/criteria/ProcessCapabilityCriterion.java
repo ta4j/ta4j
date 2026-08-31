@@ -196,7 +196,15 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num lowerDistance = mean.minus(lslNum);
-            if (Num.isFinite(lowerDistance)) {
+            if (lowerDistance.isZero()) {
+                // Narrowing the retained limit can round it onto the mean
+                // and erase a representable capability gap (a precision-2
+                // limit of 0.999 against a mean of 1.0 collapses the
+                // distance to zero). Recompute the distance from the
+                // lossless retained limit before the factory narrows it.
+                BigDecimal rawDistance = BigDecimal.valueOf(mean.doubleValue()).subtract(lsl, MathContext.DECIMAL128);
+                lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+            } else if (Num.isFinite(lowerDistance)) {
                 Num lowerRatio = lowerDistance.dividedBy(deviationScale);
                 if (Num.isFinite(lowerRatio)) {
                     lowerCapability = lowerRatio.dividedBy(threeScaledSigma);
@@ -228,7 +236,13 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num upperDistance = uslNum.minus(mean);
-            if (Num.isFinite(upperDistance)) {
+            if (upperDistance.isZero()) {
+                // Mirror of the lower-limit recovery: a limit the factory
+                // rounded onto the mean must not erase a representable
+                // capability gap.
+                BigDecimal rawDistance = usl.subtract(BigDecimal.valueOf(mean.doubleValue()), MathContext.DECIMAL128);
+                upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+            } else if (Num.isFinite(upperDistance)) {
                 Num upperRatio = upperDistance.dividedBy(deviationScale);
                 if (Num.isFinite(upperRatio)) {
                     upperCapability = upperRatio.dividedBy(threeScaledSigma);
@@ -246,12 +260,12 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
 
     private static Num scaledDistance(BigDecimal rawDistance, Num deviationScale, Num threeScaledSigma,
             NumFactory factory) {
-        // The limit overflowed the factory's representation, so the mean and
-        // both scale terms are double-backed and their double values are
-        // exact; the raw decimal distance is exact, and a single division by
-        // the complete 3 * sigma denominator narrows once instead of rounding
-        // separate limit/scale and mean/scale quotients. The deviation scale
-        // is finite and nonzero here.
+        // The raw decimal distance is narrowed once against the complete
+        // 3 * sigma denominator instead of rounding separate limit/scale and
+        // mean/scale quotients. Both call sites retain the limit losslessly
+        // (out-of-range limits and limits the factory rounded onto the
+        // mean); the mean and scale terms are finite, and the deviation
+        // scale is finite and nonzero here.
         BigDecimal rawDenominator = BigDecimal.valueOf(deviationScale.doubleValue())
                 .multiply(BigDecimal.valueOf(threeScaledSigma.doubleValue()), MathContext.DECIMAL128);
         return factory.numOf(rawDistance.divide(rawDenominator, MathContext.DECIMAL128));
