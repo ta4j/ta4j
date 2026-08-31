@@ -235,6 +235,21 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void negativeInfinityShadowNeverQualifiesAsShortShadowWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addBar(series, 1, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> negativeInfinity = new ConstantIndicator<>(series,
+                series.numFactory().numOf(Double.NEGATIVE_INFINITY));
+
+        // A negatively infinite shadow (an inverted candle range or malformed
+        // measurement) is never at most the finite baseline.
+        assertFalse(support.isShortShadow(5, negativeInfinity));
+        assertFalse(support.isLongShadow(5, negativeInfinity));
+    }
+
+    @Test
     public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
         BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
         addBars(bodySeries, 5, 10, 0, 0);

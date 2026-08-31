@@ -754,9 +754,10 @@ final class CandleThresholdSupport {
      * when the raw mean would overflow and a finite shadow stays decidable across
      * {@link NumFactory}s. An unavailable (NaN) measurement is never classified; an
      * overflowed shadow from non-finite source prices (missing data) is rejected: a
-     * shadow derived from an unavailable price never qualifies as short. An
-     * overflowed magnitude from finite source prices stays decidable, so it can
-     * never qualify as a short shadow.
+     * shadow derived from an unavailable price never qualifies as short. A
+     * non-finite shadow from finite source prices, an overflowed magnitude or an
+     * inverted candle range from malformed OHLC ordering, can never qualify as a
+     * short shadow.
      *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
@@ -774,18 +775,18 @@ final class CandleThresholdSupport {
         if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
             return false;
         }
-        if (!Num.isFinite(shadowValue) && !hasFiniteSourcePrices(index)) {
-            // An infinite shadow from an unavailable or non-finite price is
-            // missing data, not an overflowed finite magnitude.
+        if (!Num.isFinite(shadowValue)) {
+            // An infinite shadow is never a short shadow: from non-finite
+            // source prices it is missing data, and from finite source prices
+            // it is either an overflowed magnitude or an inverted candle range
+            // from malformed OHLC ordering (a negative shadow).
             return false;
         }
-        if (Num.isFinite(shadowValue)) {
-            final Num rawBaseline = rawPriorAverageRange.getValue(index);
-            if (Num.isFinite(rawBaseline)) {
-                final Num scaledShadow = shadowValue.multipliedBy(rangeScale);
-                if (Num.isFinite(scaledShadow)) {
-                    return !scaledShadow.isGreaterThan(rawBaseline);
-                }
+        final Num rawBaseline = rawPriorAverageRange.getValue(index);
+        if (Num.isFinite(rawBaseline)) {
+            final Num scaledShadow = shadowValue.multipliedBy(rangeScale);
+            if (Num.isFinite(scaledShadow)) {
+                return !scaledShadow.isGreaterThan(rawBaseline);
             }
         }
         return !shadowValue.isGreaterThan(baseline);
@@ -1102,6 +1103,10 @@ final class CandleThresholdSupport {
                     return value;
                 }
                 mean = mean.plus(value.minus(mean).dividedBy(getBarSeries().numFactory().numOf(i - start + 1)));
+                if (i == index) {
+                    // Terminate before the increment could wrap past Integer.MAX_VALUE.
+                    break;
+                }
             }
             return mean;
         }
