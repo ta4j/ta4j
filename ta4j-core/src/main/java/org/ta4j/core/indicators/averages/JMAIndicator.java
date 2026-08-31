@@ -28,11 +28,19 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final Num phase; // Phase adjustment (usually between -100 and +100)
     private final Num power; // Smoothing power factor (default is 2)
     private final Map<Integer, JmaData> jmaDataMap;
+    /**
+     * Guards every {@link #jmaDataMap} read, write, and clear together with the
+     * {@link #chainedMapBeginIndex} anchor: the base class computes last-bar values
+     * concurrently without holding its cache write lock, so these mutations race
+     * without their own lock. Reentrant so {@link #rebuildDataMapFrom} can recurse
+     * while the same thread holds it. Deliberately non-transient: a lock that
+     * deserializes as {@code null} would fail on the first synchronized entry.
+     */
+    private final Object jmaMapLock = new Object();
     private final NumFactory numFactory;
     /**
      * Series begin index for which {@link #jmaDataMap} currently holds a chain.
-     * Only mutated from {@link #calculate(int)}, which runs while the cache write
-     * lock is held.
+     * Only mutated from {@link #calculate(int)} while {@link #jmaMapLock} is held.
      */
     private int chainedMapBeginIndex = Integer.MIN_VALUE;
     private final Num beta;
@@ -78,50 +86,59 @@ public class JMAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         NumFactory numFactory = indicator.getBarSeries().numFactory();
+        // Read the source before taking the map lock: the source carries its
+        // own synchronization, and holding our lock during the read would widen
+        // the critical section without guarding any shared state.
         Num currentPrice = indicator.getValue(index);
         Num zero = numFactory.zero();
         int beginIndex = indicator.getBarSeries().getBeginIndex();
 
-        if (chainedMapBeginIndex != beginIndex) {
-            // A bounded-series head advance (or a first read) shifted the
-            // chain's anchor: drop every entry so the chain is rebuilt from the
-            // new first retained bar under this calculate() call's cache write
-            // lock. The policy hook stays side-effect free and races nothing.
-            jmaDataMap.clear();
-            chainedMapBeginIndex = beginIndex;
+        synchronized (jmaMapLock) {
+            if (chainedMapBeginIndex != beginIndex) {
+                // A bounded-series head advance (or a first read) shifted the
+                // chain's anchor: drop every entry so the chain is rebuilt from
+                // the new first retained bar. The base class can invoke
+                // calculate() concurrently for last-bar reads, so the reset,
+                // the lookups, and the writes below all run under jmaMapLock.
+                jmaDataMap.clear();
+                chainedMapBeginIndex = beginIndex;
+            }
+
+            if (index <= beginIndex) {
+                jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
+                return currentPrice;
+            }
+
+            JmaData previousJMA = jmaDataMap.get(index - 1);
+            if (previousJMA == null) {
+                // The chain was severed (for example a bounded-series head
+                // advance cleared the map): rebuild every predecessor from the
+                // first retained bar, which seeds the chain and terminates the
+                // loop.
+                rebuildDataMapFrom(beginIndex, index);
+                previousJMA = jmaDataMap.get(index - 1);
+            }
+
+            Num e0 = calculateE0(numFactory, currentPrice, previousJMA);
+            Num e1 = calculateE1(numFactory, currentPrice, previousJMA, e0);
+            Num e2 = calculateE2(numFactory, previousJMA, e0, e1);
+
+            Num jma = previousJMA.jma.plus(e2);
+
+            if (!jmaDataMap.containsKey(index)) {
+                jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
+            }
+
+            return jma;
         }
-
-        if (index <= beginIndex) {
-            jmaDataMap.put(index, new JmaData(currentPrice, zero, zero, currentPrice));
-            return currentPrice;
-        }
-
-        JmaData previousJMA = jmaDataMap.get(index - 1);
-        if (previousJMA == null) {
-            // The chain was severed (for example a bounded-series head advance
-            // cleared the map): rebuild every predecessor from the first
-            // retained bar, which seeds the chain and terminates the loop.
-            rebuildDataMapFrom(beginIndex, index);
-            previousJMA = jmaDataMap.get(index - 1);
-        }
-
-        Num e0 = calculateE0(numFactory, currentPrice, previousJMA);
-        Num e1 = calculateE1(numFactory, currentPrice, previousJMA, e0);
-        Num e2 = calculateE2(numFactory, previousJMA, e0, e1);
-
-        Num jma = previousJMA.jma.plus(e2);
-
-        if (!jmaDataMap.containsKey(index)) {
-            jmaDataMap.put(index, new JmaData(e0, e1, e2, jma));
-        }
-
-        return jma;
     }
 
     /**
      * Recomputes the map chain for every index from {@code beginIndex} (inclusive,
      * seeded there) to {@code index} (exclusive), so the calculation of
-     * {@code index} can chain from a fresh predecessor.
+     * {@code index} can chain from a fresh predecessor. Recurses through
+     * {@link #calculate(int)} while the caller already holds {@link #jmaMapLock},
+     * which is reentrant.
      */
     private void rebuildDataMapFrom(int beginIndex, int index) {
         for (int i = beginIndex; i < index; i++) {
@@ -130,7 +147,8 @@ public class JMAIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * The map chains every value from its predecessor, so a bounded-series head
+     * 
+     * /** The map chains every value from its predecessor, so a bounded-series head
      * advance invalidates the whole chain: keep nothing of the base cache, forcing
      * each value to be recomputed from the new first retained bar.
      *
@@ -138,7 +156,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
      * This hook is a pure policy query: {@link CachedIndicator} invokes it without
      * the cache write lock, so it must not mutate shared state. The chained map is
      * reset inside {@link #calculate(int)} when the observed begin index changed,
-     * which runs under the write lock.
+     * which runs under {@link #jmaMapLock}.
      *
      * @param firstRetainedIndex the first retained bar index after the advance
      * @return {@link Integer#MAX_VALUE}, so no cached value survives
