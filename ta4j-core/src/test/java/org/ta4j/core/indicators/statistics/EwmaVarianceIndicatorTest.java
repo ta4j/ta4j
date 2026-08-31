@@ -178,9 +178,8 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // The seed window [0, 2e154, 0] has population variance 8e308/9,
         // which is representable, but the naive sum-of-squares seeding first
         // squares 2e154 to 4e308 and overflows DoubleNum to a non-finite
-        // seed. The scaled seeding (window mean scaled by the window size,
-        // squared deviations accumulated per-term scaled) must publish the
-        // finite population variance instead.
+        // seed. The compensated window mean with per-term scaled squared
+        // deviations must publish the finite population variance instead.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 2e154, 0).build();
         EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
                 new MockIndicator(series, 0, numOf(0), numOf(2e154), numOf(0)), 3, 0.5);
@@ -190,6 +189,48 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(Num.isFinite(value));
         assertTrue(value.isPositive());
         assertNumEquals(numOf(8.888888888888889e307), value, 8.888888888888889e307 * 1e-9);
+    }
+
+    @Test
+    public void meanAndVarianceShareTheExactDecimalComplement() {
+        // EWMAIndicator derives its complement in primitive double, so at a
+        // decay of Math.nextDown(1d) its mean weight (~1.110223e-16) differs
+        // from the exact decimal complement 1e-16 the variance leg applies;
+        // the shared mean recursion must apply the identical weight so both
+        // legs of the estimator stay consistent under a near-one decay.
+        NumFactory decimal = DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimal).withData(1, 2).build();
+        EwmaVarianceIndicator shared = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, decimal.numOf(1), decimal.numOf(2)), 1, Math.nextDown(1d));
+
+        // mean_1 = 1 + 1e-16 * (2 - 1); sigma^2_1 = 1e-16 * (2 - 1)^2.
+        assertNumEquals("1.0000000000000001", shared.getMeanIndicator().getValue(1));
+        assertNumEquals("1E-16", shared.getValue(1));
+    }
+
+    @Test
+    public void seedWindowOfMaximumBarsPublishesFiniteZeroVariance() {
+        // Three Double.MAX_VALUE bars: each scaled quotient is finite, but
+        // the naive window sum rounds the mean off MAX and the resulting
+        // deviations square to a non-finite seed even though the true
+        // population variance is zero. The compensated mean with its
+        // max-absolute re-scaling recovers the exact mean, so the seed
+        // publishes the finite zero variance and the shared mean reproduces
+        // the bar value exactly (asserted as Num equality, since the
+        // DecimalNum representation of Double.MAX_VALUE exceeds the double
+        // range and its doubleValue() would overflow).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(Double.MAX_VALUE),
+                numOf(Double.MAX_VALUE), numOf(Double.MAX_VALUE), numOf(Double.MAX_VALUE)), 3, 0.5);
+
+        Num seed = variance.getValue(2);
+        assertTrue(Num.isFinite(seed));
+        assertNumEquals(numOf(0), seed, 0);
+        assertTrue(Num.isFinite(variance.getValue(3)));
+        assertNumEquals(numOf(0), variance.getValue(3), 0);
+        assertNumEquals(numOf(Double.MAX_VALUE), variance.getMeanIndicator().getValue(2));
     }
 
     @Test
