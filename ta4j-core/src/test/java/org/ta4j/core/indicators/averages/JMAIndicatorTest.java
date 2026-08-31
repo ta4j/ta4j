@@ -276,6 +276,10 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         JMAIndicator jma = new JMAIndicator(closePrice, 2, 0, 2);
 
+        // Populate the chained map against the original begin index so the
+        // advance below must sever and rebuild a populated chain.
+        jma.getValue(5);
+
         barSeries.setMaximumBarCount(3);
         assertEquals(3, barSeries.getBeginIndex());
 
