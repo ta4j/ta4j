@@ -5,9 +5,11 @@ package org.ta4j.core.indicators.candles;
 
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Doji indicator.
@@ -23,17 +25,26 @@ import org.ta4j.core.num.Num;
  *
  * The comparison is <em>inclusive</em>: a body exactly equal to the threshold
  * (including a zero body against a zero range baseline) is still a doji.
- *
  * <p>
  * A finite body difference is compared against the prior average on one shared
  * scale, {@code |open_i - close_i| / priorAverage <= rangeFactor}, so a zero
  * body (open equals close) stays zero and qualifies as a doji no matter how
- * small the baseline is. Only when the raw difference overflows the {@link Num}
- * type (finite endpoints farther apart than a representable magnitude) is each
- * operand divided by the baseline before differencing,
+ * small the baseline is. A ratio that would land below the subnormal floor is
+ * evaluated with its dividend scaled into the normal range first, so the
+ * comparison keeps normal-range relative precision instead of collapsing onto
+ * the inclusive boundary. Only when the raw difference overflows the
+ * {@link Num} type (finite endpoints farther apart than a representable
+ * magnitude) is each operand divided by the baseline before differencing,
  * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
  * which preserves the exact ordering under overflow, mirroring DecimalNum's
  * exact arithmetic under DoubleNum.
+ *
+ * <p>
+ * When the restored full-scale prior average itself overflows (an overflowed
+ * baseline window), the factor is applied to the half-scale prior average
+ * before restoring full scale, so the threshold stays finite for representable
+ * data and a zero body still qualifies as a doji. exact arithmetic under
+ * DoubleNum.
  *
  * <p>
  * This indicator evaluates only candle geometry; it does not evaluate trend or
@@ -55,6 +66,18 @@ public class DojiIndicator extends CandlePatternIndicator {
      * threshold.
      */
     private final double rangeFactor;
+
+    /**
+     * {@code 2^53}: scales a ratio that would land below the subnormal floor into
+     * the normal range, so the division keeps its full relative precision.
+     */
+    private static final double RATIO_SCALE = 0x1p53;
+
+    /**
+     * {@code 2^-1022}: the smallest positive normal magnitude; ratios below it are
+     * subnormal and round with the coarse subnormal spacing.
+     */
+    private static final double MIN_NORMAL_MAGNITUDE = 0x1p-1022;
 
     /**
      * Constructor with the recommended defaults: a 5-candle range baseline and a
@@ -99,7 +122,7 @@ public class DojiIndicator extends CandlePatternIndicator {
         if (!thresholds.isValid(index)) {
             return false;
         }
-        final var bar = getBarSeries().getBar(index);
+        final Bar bar = getBarSeries().getBar(index);
         final Num open = bar.getOpenPrice();
         final Num close = bar.getClosePrice();
         if (open == null || close == null || !Num.isFinite(open) || !Num.isFinite(close)) {
@@ -107,34 +130,56 @@ public class DojiIndicator extends CandlePatternIndicator {
             // leave the body magnitude undefined: conservatively not a doji.
             return false;
         }
+        final NumFactory numFactory = getBarSeries().numFactory();
+        final Num bodyMagnitude = open.minus(close).abs();
         if (rangeFactor == 0d) {
             // A zero range factor admits only a body with no magnitude at all.
             // The ratio comparison below would underflow a nonzero subnormal
             // body to zero under DoubleNum and misclassify it as a doji, so
             // compare the raw body magnitude directly; it is zero on every
             // Num implementation exactly when open equals close.
-            return !open.minus(close).abs().isPositive();
+            return !bodyMagnitude.isPositive();
         }
         final Num priorAverage = thresholds.priorAverageRange().getValue(index);
         if (!Num.isFinite(priorAverage)) {
-            // A non-finite prior average (e.g. a DoubleNum SMA accumulator that
-            // overflowed while summing the baseline window) leaves the correct
-            // threshold unrepresentable: conservatively not a doji.
-            return false;
+            // The restored full-scale average overflowed, but the factor applied
+            // to the half-scale average before restoring still produces a finite
+            // threshold for representable data, so a zero body stays a doji no
+            // matter how large the overflowed baseline was. An unrepresentable
+            // threshold conservatively rejects.
+            final Num threshold = thresholds.halfPriorAverageRange()
+                    .getValue(index)
+                    .multipliedBy(numFactory.numOf(rangeFactor))
+                    .multipliedBy(numFactory.numOf(2));
+            if (!Num.isFinite(threshold)) {
+                return false;
+            }
+            return !bodyMagnitude.isGreaterThan(threshold);
         }
         if (priorAverage.isZero()) {
             // A zero range baseline leaves no scaling reference: only a candle
             // with no body at all can qualify.
-            return !open.minus(close).abs().isPositive();
+            return !bodyMagnitude.isPositive();
         }
         final Num difference = open.minus(close);
         if (Num.isFinite(difference)) {
             // One shared finite scale for both endpoints: a zero body (open
             // equals close) stays zero, so it qualifies as a doji no matter
             // how small the baseline is.
-            return !difference.dividedBy(priorAverage)
-                    .abs()
-                    .isGreaterThan(getBarSeries().numFactory().numOf(rangeFactor));
+            final Num factor = numFactory.numOf(rangeFactor);
+            if (bodyMagnitude.isLessThan(priorAverage.multipliedBy(numFactory.numOf(MIN_NORMAL_MAGNITUDE)))) {
+                // The ratio would land below the subnormal floor, where one
+                // rounded-down quotient could collapse onto the inclusive
+                // boundary below the factor: scale the dividend into the normal
+                // range first, so the comparison keeps normal-range relative
+                // precision. An overflowed scaled factor (a factor beyond
+                // MAX / 2^53) can only exceed the subnormal ratio, so the
+                // scaled comparison still yields the doji verdict.
+                final Num ratioScale = numFactory.numOf(RATIO_SCALE);
+                final Num scaledRatio = bodyMagnitude.multipliedBy(ratioScale).dividedBy(priorAverage);
+                return !scaledRatio.isGreaterThan(factor.multipliedBy(ratioScale));
+            }
+            return !difference.dividedBy(priorAverage).abs().isGreaterThan(factor);
         }
         // The raw difference overflows the numeric type although the endpoints
         // are finite. Dividing each operand by the baseline before differencing
@@ -142,7 +187,7 @@ public class DojiIndicator extends CandlePatternIndicator {
         // infinity can only exceed a finite range factor, matching DecimalNum's
         // exact arithmetic.
         final Num scaledBody = open.dividedBy(priorAverage).minus(close.dividedBy(priorAverage)).abs();
-        return !scaledBody.isGreaterThan(getBarSeries().numFactory().numOf(rangeFactor));
+        return !scaledBody.isGreaterThan(numFactory.numOf(rangeFactor));
     }
 
     @Override

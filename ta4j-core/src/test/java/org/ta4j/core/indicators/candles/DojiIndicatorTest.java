@@ -19,6 +19,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.BooleanTransformIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.NonFiniteBar;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -262,6 +263,44 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
 
         assertFalse(doji.getValue(1));
         assertTrue(doji.getValue(2));
+    }
+
+    @Test
+    public void zeroBodyAgainstOverflowedPriorRangeQualifiesAcrossFactories() {
+        // A period-1 baseline whose range spans -MAX to MAX doubles to 2 * MAX
+        // and overflows the restored full-scale average in DoubleNum; the old
+        // full-scale check rejected the doji outright. Applying the factor to
+        // the half-scale average before restoring keeps the threshold finite,
+        // so the zero body qualifies in both factories.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            series.barBuilder()
+                    .openPrice(-Double.MAX_VALUE)
+                    .closePrice(Double.MAX_VALUE)
+                    .highPrice(Double.MAX_VALUE)
+                    .lowPrice(-Double.MAX_VALUE)
+                    .add(); // index 0: range 2 * MAX
+            addBar(series, 0, 0, 0); // index 1: zero body
+
+            assertTrue(new DojiIndicator(series, 1, 0.1).getValue(1));
+        }
+    }
+
+    @Test
+    public void subnormalFactorKeepsBodyRatioStrictlyOrderedAcrossFactories() {
+        // The period-1 prior range is 0.75 and the factor is the smallest
+        // positive double, so the true threshold is 0.75 * MIN_VALUE and a
+        // MIN_VALUE body is not a doji. Dividing the body by the baseline
+        // rounds the subnormal ratio down onto the factor in DoubleNum;
+        // scaling the dividend into the normal range first preserves the
+        // strict ordering, so both factories agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0, 0.75, 0); // index 0: range 0.75
+            addBar(series, Double.MIN_VALUE, 0, 0); // index 1: body MIN_VALUE
+
+            assertFalse(new DojiIndicator(series, 1, Double.MIN_VALUE).getValue(1));
+        }
     }
 
     @Test
