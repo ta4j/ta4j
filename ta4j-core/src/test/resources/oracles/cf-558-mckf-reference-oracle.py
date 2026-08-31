@@ -308,10 +308,14 @@ def run_fixture(name: str, data: Sequence[float], q: Sequence[float], r: Sequenc
             else:
                 results.append(None)
             continue
-        res = mckf_index(prev, y, q[i], r[i], sigma_sq)
-        results.append(res)
-        if res is not None:
-            prev = res
+        if valid_joint_observation(y, q[i], r[i]):
+            res = mckf_index(prev, y, q[i], r[i], sigma_sq)
+            results.append(res)
+            if res is not None:
+                prev = res
+        else:
+            results.append(None)
+            prev = prev  # keep the last initialized valid state (Java semantics)
     return {
         "name": name,
         "sigma": sigma,
@@ -361,11 +365,16 @@ def run_all() -> list:
         "smooth_signal_21", [10.0 + 0.1 * math.sin(2 * math.pi * i / 20) for i in range(21)],
         [1e-3] * 21, [1e-2] * 21, S))
     fixtures.append(run_fixture(
+        "nan_warmup", [float("nan"), float("nan"), float("nan"), 50.0, 60.0, 70.0, 80.0, 90.0, 90.0, 90.0],
+        [1e-3] * 10, [10.0] * 10, S))
+    fixtures.append(run_fixture(
         "large_bandwidth", [10.0, 10.2, 10.1, 10.3],
         [1e-3] * 4, [1e-2] * 4, 1e6))
     fixtures.append(run_fixture(
-        "nan_warmup", [float("nan"), float("nan"), 50.0, 60.0, 70.0, 80.0, 90.0, 90.0, 90.0],
-        [1e-3] * 9, [10.0] * 9, S))
+        "outlier_impulses_21",
+        [10.0, 10.05, 10.05, 10.05, 10.5, 10.5, 10.5, 10.05, 12.0, 10.05, 10.05, 10.05, 15.0, 15.0, 15.0,
+         10.05, 12.0, 10.05, 10.05, 10.05, 10.4],
+        [1e-4] * 21, [0.2] * 21, S))
     fixtures.append(run_fixture(
         "invalid_q_at_1", [10.0, 10.2, 10.1, 10.3],
         [1e-3, 0.0, 1e-3, 1e-3], [1e-2] * 4, S))
@@ -385,7 +394,7 @@ def main() -> int:
             "date": "2026-08-31",
             "algorithm": "Chen et al. 2017 arXiv:1509.04580, scalar MCKF",
             "prd_sections": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7", "6.8"],
-            "extensions": ["EXT-1 KERNEL_EXPONENT_BOUND=15 (never fires on nominal fixtures)",
+            "extensions": ["EXT-1 KERNEL_EXPONENT_BOUND=15 (saturating kernel; fires on negative_impulse, marked per index via saturated_any)",
                            "EXT-2 MAX_ITERATIONS=20 (bounded fixed-point control)"],
         },
         "fixtures": fixtures,
