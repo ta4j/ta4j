@@ -274,7 +274,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num decayedWithCurrent = previousValue.multipliedBy(decayFactor).plus(delta);
 
-        if (index >= timeFrame) {
+        if (index - getBarSeries().getBeginIndex() >= timeFrame) {
             int expiredIndex = index - timeFrame;
             Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero : contribution(expiredIndex);
             if (Num.isNaNOrNull(expiredContribution)) {

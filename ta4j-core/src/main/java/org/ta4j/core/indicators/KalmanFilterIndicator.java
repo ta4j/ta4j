@@ -142,7 +142,8 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
 
         private StateIndicator() {
-            super(KalmanFilterIndicator.this.indicator);
+            super(KalmanFilterIndicator.this.indicator, KalmanFilterIndicator.this.processNoiseIndicator,
+                    KalmanFilterIndicator.this.measurementNoiseIndicator);
         }
 
         @Override

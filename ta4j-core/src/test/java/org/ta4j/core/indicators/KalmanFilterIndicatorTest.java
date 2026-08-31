@@ -10,6 +10,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
@@ -115,6 +116,31 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         Assert.assertEquals(baseline.getValue(0).doubleValue(), dynamic.getValue(0).doubleValue(), 1e-12);
         Assert.assertTrue(
                 dynamic.getValue(1).minus(numOf(15)).abs().isLessThan(baseline.getValue(1).minus(numOf(15)).abs()));
+    }
+
+    @Test
+    public void rebaselinesRecursiveStateWhenDynamicNoiseRebases() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 20, 30, 50, 50, 50, 50, 50)
+                .build();
+        Indicator<Num> source = new ClosePriceIndicator(series);
+        KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(
+                NumericIndicator.of(new StochasticIndicator(source, 3)).plus(1));
+        KalmanFilterIndicator subject = new KalmanFilterIndicator(source, processNoise,
+                KalmanNoiseIndicator.constant(series, 1));
+        subject.getValue(series.getEndIndex());
+
+        series.setMaximumBarCount(5);
+        int beginIndex = series.getBeginIndex();
+        KalmanNoiseIndicator freshProcessNoise = new KalmanNoiseIndicator(
+                NumericIndicator.of(new StochasticIndicator(source, 3)).plus(1));
+        KalmanFilterIndicator fresh = new KalmanFilterIndicator(source, freshProcessNoise,
+                KalmanNoiseIndicator.constant(series, 1));
+
+        Num expected = fresh.getValue(beginIndex);
+        Num actual = subject.getValue(beginIndex);
+
+        Assert.assertTrue("Cached state must follow rebaselined dynamic noise", actual.isEqual(expected));
     }
 
     @Test

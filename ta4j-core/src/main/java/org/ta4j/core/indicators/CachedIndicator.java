@@ -161,6 +161,17 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Constructor for indicators that read from an array of related indicators.
+     *
+     * @param sourceIndicators related indicators retained so full-tail
+     *                         invalidations propagate to this indicator
+     * @since 0.24.2
+     */
+    protected CachedIndicator(Indicator<?>[] sourceIndicators) {
+        this(validatedConfig(sourceIndicators, LAST_BAR_WAIT_TIMEOUT_MS), sourceIndicators);
+    }
+
+    /**
      * Constructor for indicators that read from several related indicators.
      *
      * @param firstSource       a related indicator (with a bar series); retained so
@@ -200,6 +211,11 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
         return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
+    }
+
+    private static Config validatedConfig(Indicator<?>[] sourceIndicators, long lastBarWaitTimeoutMs) {
+        Indicator<?>[] nonNullSourceIndicators = Objects.requireNonNull(sourceIndicators, "sourceIndicators");
+        return validatedConfig(nonNullSourceIndicators[0], nonNullSourceIndicators, lastBarWaitTimeoutMs);
     }
 
     private static Config validatedConfig(Indicator<?> firstSource, Indicator<?>[] additionalSources,

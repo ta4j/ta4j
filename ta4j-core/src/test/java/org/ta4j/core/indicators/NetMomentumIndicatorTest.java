@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -701,6 +702,25 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         assertEquals(3, movingSeries.getBeginIndex());
         assertTrue(subject.getValue(3).isEqual(numOf(100)));
+    }
+
+    @Test
+    public void retainsAllContributionsUntilTheFirstRetainedWindowExpires() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 10; index++) {
+            movingSeries.barBuilder().closePrice(60).add();
+        }
+        movingSeries.setMaximumBarCount(5);
+
+        int timeFrame = 3;
+        NetMomentumIndicator subject = new NetMomentumIndicator(new ConstantIndicator<>(movingSeries, numOf(60)),
+                timeFrame, 50);
+        int beginIndex = movingSeries.getBeginIndex();
+
+        assertTrue(beginIndex > timeFrame);
+        assertTrue(subject.getValue(beginIndex).isEqual(numOf(-12)));
+        assertTrue(subject.getValue(beginIndex + 1).isEqual(numOf(-24)));
+        assertTrue(subject.getValue(beginIndex + 2).isEqual(numOf(-36)));
     }
 
     private CachedIndicator<Num> buildOscillator() {

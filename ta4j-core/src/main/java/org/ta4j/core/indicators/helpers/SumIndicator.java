@@ -25,8 +25,7 @@ public class SumIndicator extends CachedIndicator<Num> {
      */
     @SafeVarargs
     public SumIndicator(Indicator<Num>... summands) {
-        // TODO: check if first series is equal to the other ones
-        super(summands[0]);
+        super(summands);
         this.summands = summands;
     }
 
