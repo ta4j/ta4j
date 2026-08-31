@@ -182,49 +182,75 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // can exceed MAX even though the final ratio is representable (no
         // cancellation is possible between opposite signs).
         Num lslNum = factory.numOf(lsl);
-        Num lowerRatio;
+        Num lowerCapability;
         if (!Num.isFinite(lslNum)) {
             // The limit itself overflows the factory's representation (for
-            // example a DoubleNum series with an LSL of -1e400): scale the raw
-            // decimal limit against the deviation scale before narrowing, so a
-            // representable capability stays finite.
-            lowerRatio = scaledMean.minus(scaledLimit(lsl, deviationScale, factory));
+            // example a DoubleNum series with an LSL of -1e400): divide the
+            // raw decimal limit by the complete 3 * sigma denominator before
+            // narrowing, so the intermediate limit/deviationScale division
+            // cannot overflow while the full capability ratio is
+            // representable.
+            lowerCapability = scaledMean.dividedBy(threeScaledSigma)
+                    .minus(scaledLimit(lsl, deviationScale, threeScaledSigma, factory));
         } else {
             Num lowerDistance = mean.minus(lslNum);
             if (Num.isFinite(lowerDistance)) {
-                lowerRatio = lowerDistance.dividedBy(deviationScale);
+                Num lowerRatio = lowerDistance.dividedBy(deviationScale);
+                if (Num.isFinite(lowerRatio)) {
+                    lowerCapability = lowerRatio.dividedBy(threeScaledSigma);
+                } else {
+                    // The intermediate distance/scale division overflowed
+                    // even though the full ratio is representable. This
+                    // requires a deviation scale below one, so dividing once
+                    // by the scale * 3 * scaledSigma product (at most 3)
+                    // cannot overflow.
+                    lowerCapability = lowerDistance.dividedBy(deviationScale.multipliedBy(threeScaledSigma));
+                }
             } else {
-                lowerRatio = scaledMean.minus(lslNum.dividedBy(deviationScale));
+                // The raw distance overflows, so the operands are scaled
+                // before subtracting (opposite signs cannot cancel). A
+                // non-finite distance implies the mean exceeds the double
+                // overflow rounding margin of about 1e292, so the deviation
+                // scale is huge and both scale divisions stay finite.
+                lowerCapability = scaledMean.dividedBy(threeScaledSigma)
+                        .minus(lslNum.dividedBy(deviationScale).dividedBy(threeScaledSigma));
             }
         }
-        Num lowerCapability = lowerRatio.dividedBy(threeScaledSigma);
         if (usl == null) {
             return lowerCapability;
         }
         Num uslNum = factory.numOf(usl);
-        Num upperRatio;
+        Num upperCapability;
         if (!Num.isFinite(uslNum)) {
-            upperRatio = scaledLimit(usl, deviationScale, factory).minus(scaledMean);
+            upperCapability = scaledLimit(usl, deviationScale, threeScaledSigma, factory)
+                    .minus(scaledMean.dividedBy(threeScaledSigma));
         } else {
             Num upperDistance = uslNum.minus(mean);
             if (Num.isFinite(upperDistance)) {
-                upperRatio = upperDistance.dividedBy(deviationScale);
+                Num upperRatio = upperDistance.dividedBy(deviationScale);
+                if (Num.isFinite(upperRatio)) {
+                    upperCapability = upperRatio.dividedBy(threeScaledSigma);
+                } else {
+                    upperCapability = upperDistance.dividedBy(deviationScale.multipliedBy(threeScaledSigma));
+                }
             } else {
-                upperRatio = uslNum.dividedBy(deviationScale).minus(scaledMean);
+                upperCapability = uslNum.dividedBy(deviationScale)
+                        .dividedBy(threeScaledSigma)
+                        .minus(scaledMean.dividedBy(threeScaledSigma));
             }
         }
-        Num upperCapability = upperRatio.dividedBy(threeScaledSigma);
         return lowerCapability.min(upperCapability);
     }
 
-    private static Num scaledLimit(BigDecimal limit, Num deviationScale, NumFactory factory) {
+    private static Num scaledLimit(BigDecimal limit, Num deviationScale, Num threeScaledSigma, NumFactory factory) {
         // The limit itself overflows the factory's representation; divide it
-        // by the deviation scale in raw decimal space before narrowing. The
-        // deviation scale is finite and nonzero here, and because the limit
-        // overflowed the factory, both are double-backed, so the scale's
-        // double value is exact.
-        BigDecimal rawScale = BigDecimal.valueOf(deviationScale.doubleValue());
-        return factory.numOf(limit.divide(rawScale, MathContext.DECIMAL128));
+        // by the complete 3 * sigma denominator in raw decimal space before
+        // narrowing. The deviation scale is finite and nonzero here, and
+        // because the limit overflowed the factory, both scale terms are
+        // double-backed, so their double values are exact.
+        BigDecimal rawDenominator = BigDecimal.valueOf(deviationScale.doubleValue())
+                .multiply(BigDecimal.valueOf(threeScaledSigma.doubleValue()), MathContext.DECIMAL128);
+        return factory.numOf(limit.divide(rawDenominator, MathContext.DECIMAL128));
     }
 
     @Override

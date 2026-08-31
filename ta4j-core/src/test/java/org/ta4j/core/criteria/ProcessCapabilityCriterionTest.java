@@ -223,6 +223,44 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void unrepresentableLimitScalesThroughFullDenominator() {
+        // Gross returns 1 and -1 with a lower limit of -2e308: the limit
+        // overflows DoubleNum, and scaling it by the deviation scale alone
+        // still overflows even though the true Cpk (2e308 / 3, about
+        // 6.67e307) is representable; the raw limit must be divided by the
+        // complete 3 * sigma denominator before narrowing.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 1, 2).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(new BigDecimal("-2e308"));
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isGreaterThan(numOf(6.6e307)));
+        assertTrue(capability.isLessThan(numOf(6.7e307)));
+    }
+
+    @Test
+    public void subUnitScaleDistanceOverflowFallsBackToProductDenominator() {
+        // Gross returns 0.4 and -0.4 with a lower limit of 1.7e308: the
+        // finite distance divides to -4.25e308 through the sub-unit deviation
+        // scale alone (overflow) even though the full Cpk (-1.7e308 / 1.2)
+        // is representable; the fallback must divide once by the scale * 3 *
+        // scaledSigma product.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1.4, 0.5, 0.7).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(1.7e308);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isLessThan(numOf(-1.4e308)));
+        assertTrue(capability.isGreaterThan(numOf(-1.5e308)));
+    }
+
+    @Test
     public void hugeOpposingReturnsKeepFiniteCapability() {
         // Three long positions earning MAX and one short position losing
         // (2 - MAX) give a mean near MAX / 2 and a population sigma of

@@ -26,9 +26,10 @@ import org.ta4j.core.num.Num;
  * estimator owned by the {@link EwmaVarianceIndicator}: when the backing series
  * prunes its retained head the estimator is re-anchored together with the
  * variance, the enclosing state cache and the observation-count recursion are
- * invalidated, and the count restarts at the new head, so retained-index reads
- * recompute from the re-anchored estimators and never return moments or
- * observation counts still computed from the discarded prefix.
+ * invalidated, and the count restarts at the first source value computed
+ * entirely within the retained window, so retained-index reads recompute from
+ * the re-anchored estimators and never return moments or observation counts
+ * still computed from the discarded prefix.
  *
  * @since 0.22.9
  */
@@ -204,11 +205,18 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         @Override
         protected Integer calculate(int index) {
             int beginIndex = getBarSeries().getBeginIndex();
-            if (index < beginIndex || index < indicator.getCountOfUnstableBars()
-                    || !Num.isFinite(indicator.getValue(index))) {
+            // The count restarts past the retained head at the first index
+            // where the source is computed entirely within the retained
+            // window: the moments seed their windows at beginIndex plus the
+            // source's unstable bars, so the count anchors there too. For a
+            // lookback source such as LogReturnIndicator, the pruned head
+            // publishes an artificial zero against the removed predecessor
+            // and must not be counted.
+            long firstValidIndex = (long) beginIndex + indicator.getCountOfUnstableBars();
+            if (index < beginIndex || index < firstValidIndex || !Num.isFinite(indicator.getValue(index))) {
                 return 0;
             }
-            return index == beginIndex ? 1 : getValue(index - 1) + 1;
+            return index == firstValidIndex ? 1 : getValue(index - 1) + 1;
         }
 
         @Override

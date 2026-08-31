@@ -173,9 +173,12 @@ public class EwmaReturnForecastStateIndicatorTest
                 .build());
         ReturnForecastState state = stateIndicator.getValue(12);
         assertTrue(state.isStable());
-        // The observation count re-anchors at the retained head: seven bars
-        // were pruned, so the sixth retained bar reports six observations.
-        assertEquals(6, state.observationCount());
+        // The observation count re-anchors past the retained head: the head's
+        // log return is an artificial zero computed against the pruned
+        // predecessor, so seven pruned bars plus the one-bar lookback make
+        // the sixth retained bar report the five returns its mean and
+        // variance actually fold.
+        assertEquals(5, state.observationCount());
 
         // Fresh estimators built after the prune re-anchor from the retained
         // head; the stale full-history mean (~0.26) would fail this check.
@@ -189,7 +192,47 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(retainedState.isStable());
         assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(10), retainedState.mean(), 1e-9);
         assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(10), retainedState.variance(), 1e-9);
-        assertEquals(4, retainedState.observationCount());
+        assertEquals(3, retainedState.observationCount());
+    }
+
+    @Test
+    public void prunedHeadArtificialReturnIsNotCounted() {
+        // The retained head's log return is computed against the pruned
+        // predecessor, so it is an artificial zero: the observation count
+        // must restart past it instead of folding it into the moments.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        // Warm the pre-prune caches so the prune exercises the invalidation.
+        assertTrue(stateIndicator.getValue(3).isStable());
+
+        series.setMaximumBarCount(2);
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(146.41)
+                .highPrice(146.41)
+                .lowPrice(146.41)
+                .closePrice(146.41)
+                .build());
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(161.051)
+                .highPrice(161.051)
+                .lowPrice(161.051)
+                .closePrice(161.051)
+                .build());
+
+        // Four bars were pruned in total, so the retained head is index 4
+        // and the count restarts at index 5 (head + one log-return bar);
+        // only two bars are retained, so index 5 is the last readable one.
+        ReturnForecastState headState = stateIndicator.getValue(4);
+        assertTrue(!headState.isStable());
+        assertEquals(0, headState.observationCount());
+        assertEquals(1, stateIndicator.getValue(5).observationCount());
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
