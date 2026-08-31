@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.supertrend;
 
 import org.ta4j.core.Bar;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
@@ -48,7 +49,7 @@ import org.ta4j.core.num.Num;
  */
 public class SuperTrendUpperBandIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final ATRIndicator atrIndicator;
+    private final Indicator<Num> atrIndicator;
     private final Num multiplier;
     private final transient MedianPriceIndicator medianPriceIndicator;
 

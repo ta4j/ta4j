@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.macd;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -247,6 +248,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return short-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
+            + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getShortAtrIndicator() {
         ensureSubIndicatorsInitialized();
         return shortAtrIndicator;
@@ -256,6 +259,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return long-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
+            + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getLongAtrIndicator() {
         ensureSubIndicatorsInitialized();
         return longAtrIndicator;
