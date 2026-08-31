@@ -14,6 +14,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -204,6 +205,63 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(Num.isFinite(capability));
         assertNumEquals(numFactory.numOf(1).dividedBy(numFactory.numOf(3).multipliedBy(numFactory.numOf(Math.sqrt(3)))),
                 capability, 1e-9);
+    }
+
+    @Test
+    public void closeSpecificationDistanceKeepsPositiveCapability() {
+        // Three gross returns at 3.0452032506296296e261 and one at the USL
+        // 3.04520325062963e261: the two differ by only one double ulp
+        // (4.37e245), so dividing each operand by three before subtracting
+        // rounds both to the same value and collapses the upper capability to
+        // zero even though the distance is positive and representable.
+        // Same-sign operands must be subtracted before scaling. DoubleNum
+        // keeps the one-ulp distance and must score a positive capability;
+        // DecimalNum's default 16-digit precision rounds both prices to the
+        // same value, so its honest score is the zero-dispersion zero.
+        double mean = 3.0452032506296296e261;
+        double usl = 3.04520325062963e261;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, mean, 1, mean, 1, mean, 1, usl)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.buyAt(6, series), Trade.sellAt(7, series));
+
+        AnalysisCriterion cpk = getCriterion(0, usl);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(capability.isPositive());
+        } else {
+            assertTrue(capability.isZero());
+        }
+    }
+
+    @Test
+    public void subnormalDispersionKeepsFinitePositiveCapability() {
+        // Four MIN_VALUE gross returns and one 2 * MIN_VALUE return: the mean
+        // (1.2 * MIN_VALUE) and deviation scale are subnormal, so the raw
+        // population sigma underflows to zero under DoubleNum when
+        // materialized and any ratio through it becomes NaN. The normalized
+        // domain must keep the capability finite and positive; the exact
+        // value differs by factory (DoubleNum rounds the mean down to
+        // MIN_VALUE, DecimalNum keeps 1.2 * MIN_VALUE), so only finiteness
+        // and a sensible positive bound are asserted.
+        double min = Double.MIN_VALUE;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, min, 1, min, 1, min, 1, min, 1, 2 * min)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.buyAt(6, series), Trade.sellAt(7, series), Trade.buyAt(8, series), Trade.sellAt(9, series));
+
+        AnalysisCriterion cpk = getCriterion(0);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isPositive());
+        assertTrue(capability.isLessThanOrEqual(numFactory.numOf(10)));
     }
 
     @Test

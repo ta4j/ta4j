@@ -26,6 +26,7 @@ import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -118,6 +119,28 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertThrows(IllegalArgumentException.class, () -> new CusumIndicator(source, Double.NaN, 0.005));
         assertThrows(IllegalArgumentException.class, () -> new CusumIndicator(source, Double.POSITIVE_INFINITY, 0.005));
         assertThrows(NullPointerException.class, () -> new CusumIndicator(null, 0, 0.005));
+    }
+
+    @Test
+    public void scaleDecaySurvivesCoarsePrecisionRounding() {
+        // DecimalNumFactory at precision 1 rounds 0.9999 to 1.0, so the range
+        // check must validate the raw value before conversion instead of
+        // rejecting the rounded boundary; the complement 1 - decay must also
+        // be converted in raw space, or the EWMA scale weight degenerates to
+        // zero and the winsorization scale freezes.
+        BarSeries coarseSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(1))
+                .withData(1, 2, 3)
+                .build();
+        MockIndicator coarseSource = new MockIndicator(coarseSeries, 0, coarseSeries.numFactory().numOf(0.010),
+                coarseSeries.numFactory().numOf(0.010), coarseSeries.numFactory().numOf(-0.100));
+
+        CusumIndicator coarseCusum = new CusumIndicator(coarseSource, 0, 0.005, 3.0, 0.9999);
+
+        // Ideal arithmetic: S(2) = 0.045 (same clip bound as the 0.5-decay
+        // recursion); precision-1 rounding of the seed scale shifts the bound
+        // to 0.06, so tolerate the rounding drift.
+        assertTrue(Num.isFinite(coarseCusum.getValue(2)));
+        assertNumEquals(coarseSeries.numFactory().numOf(0.045), coarseCusum.getValue(2), 0.02);
     }
 
     @Test

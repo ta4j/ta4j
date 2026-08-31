@@ -162,24 +162,41 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             // Identical gross returns leave no dispersion to measure.
             return factory.zero();
         }
-        Num standardDeviation = deviationScale
-                .multipliedBy(scaledSquaredSum.dividedBy(factory.numOf(valueArray.length)).sqrt());
-        // Scale-aware per-ratio form: dividing each operand by three before
-        // subtracting keeps the intermediate difference finite whether
-        // 3 * sigma overflows (sigma > MAX / 3), the raw mean-to-limit
-        // distance exceeds MAX even though the final Cpk is representable,
-        // or sigma < 1 with a numerator near MAX; dividing by sigma last
-        // preserves the ratio.
-        Num meanThird = mean.dividedBy(factory.numOf(3));
-        Num lowerCapability = meanThird.minus(factory.numOf(lsl).dividedBy(factory.numOf(3)))
-                .dividedBy(standardDeviation);
+        Num scaledSigma = scaledSquaredSum.dividedBy(factory.numOf(valueArray.length)).sqrt();
+        Num threeScaledSigma = scaledSigma.multipliedBy(factory.numOf(3));
+        // Capability ratios are computed in the deviation-normalized domain,
+        // Cpk = (mean - limit) / (3 * sigma)
+        // = ((mean - limit) / deviationScale) / (3 * scaledSigma),
+        // so neither the mean-to-limit distance nor 3 * sigma is ever
+        // materialized: the normalized operands cannot overflow and the ratio
+        // stays finite whenever the true Cpk is representable. Same-sign
+        // operands are subtracted before scaling, which cannot overflow and
+        // is exact when they are close, so a limit only a few ulps away from
+        // the mean still scores its positive capability; opposite-sign
+        // operands are scaled before subtracting because their raw distance
+        // can exceed MAX even though the final ratio is representable (no
+        // cancellation is possible between opposite signs).
+        Num lslNum = factory.numOf(lsl);
+        Num lowerDistance = mean.minus(lslNum);
+        Num lowerRatio;
+        if (Num.isFinite(lowerDistance)) {
+            lowerRatio = lowerDistance.dividedBy(deviationScale);
+        } else {
+            lowerRatio = scaledMean.minus(lslNum.dividedBy(deviationScale));
+        }
+        Num lowerCapability = lowerRatio.dividedBy(threeScaledSigma);
         if (usl == null) {
             return lowerCapability;
         }
-        Num upperCapability = factory.numOf(usl)
-                .dividedBy(factory.numOf(3))
-                .minus(meanThird)
-                .dividedBy(standardDeviation);
+        Num uslNum = factory.numOf(usl);
+        Num upperDistance = uslNum.minus(mean);
+        Num upperRatio;
+        if (Num.isFinite(upperDistance)) {
+            upperRatio = upperDistance.dividedBy(deviationScale);
+        } else {
+            upperRatio = uslNum.dividedBy(deviationScale).minus(scaledMean);
+        }
+        Num upperCapability = upperRatio.dividedBy(threeScaledSigma);
         return lowerCapability.min(upperCapability);
     }
 

@@ -152,18 +152,31 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         Num validatedTargetMean = requireFiniteNum(targetMean, "targetMean", factory);
         Num validatedAllowance = requireFiniteNum(allowance, "allowance", factory);
         Num validatedOutlierClipFactor = requireFiniteNum(outlierClipFactor, "outlierClipFactor", factory);
-        Num validatedScaleDecay = requireFiniteNum(scaleDecay, "scaleDecay", factory);
+        Num validatedScaleDecay = validateScaleDecay(scaleDecay, factory);
         if (validatedAllowance.isNegative()) {
             throw new IllegalArgumentException("allowance must be >= 0");
         }
         if (!validatedOutlierClipFactor.isPositive()) {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
-        if (!validatedScaleDecay.isPositive() || validatedScaleDecay.isGreaterThanOrEqual(factory.one())) {
-            throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
-        }
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
                 validatedScaleDecay);
+    }
+
+    private static Num validateScaleDecay(Number scaleDecay, NumFactory factory) {
+        Objects.requireNonNull(scaleDecay, "scaleDecay must not be null");
+        // Validate the raw value before it passes through the factory: a
+        // low-precision factory can round an in-range value such as 0.9999 to
+        // its boundary 1. The complement is converted first because 1 - decay
+        // stays representable where the decay itself rounds to one, keeping
+        // the EWMA weight meaningful under coarse precision, and decay plus
+        // complement sums to exactly one.
+        double rawScaleDecay = scaleDecay.doubleValue();
+        if (!Double.isFinite(rawScaleDecay) || rawScaleDecay <= 0d || rawScaleDecay >= 1d) {
+            throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+        }
+        Num oneMinusScaleDecay = factory.numOf(1d - rawScaleDecay);
+        return factory.one().minus(oneMinusScaleDecay);
     }
 
     private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
