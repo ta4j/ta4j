@@ -334,7 +334,6 @@ final class CandleThresholdSupport {
     private final Indicator<Num> upperShadow;
     private final Indicator<Num> lowerShadow;
     private final Indicator<Num> halfBody;
-    private final Indicator<Num> halfRange;
     private final Indicator<Num> halfPriorAverageBody;
     private final Indicator<Num> halfPriorAverageRange;
     private final Indicator<Num> priorAverageBody;
@@ -377,7 +376,7 @@ final class CandleThresholdSupport {
         this.upperShadow = new UpperShadowIndicator(this.series);
         this.lowerShadow = new LowerShadowIndicator(this.series);
         this.halfBody = new HalfBodyIndicator(this.series);
-        this.halfRange = new HalfRangeIndicator(this.series);
+        Indicator<Num> halfRange = new HalfRangeIndicator(this.series);
         this.halfPriorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(halfBody, averagePeriod));
         this.halfPriorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(halfRange, averagePeriod));
         this.priorAverageBody = new DoubledIndicator(halfPriorAverageBody);
