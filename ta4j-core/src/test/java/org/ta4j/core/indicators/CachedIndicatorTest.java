@@ -561,6 +561,24 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(0, dependent.getValue(4));
     }
 
+    @Test
+    public void traversesDeepDependencyGraphsIterativelyWhenSeriesHeadAdvances() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        Indicator<Num> source = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        for (int index = 0; index < 32_768; index++) {
+            source = new DependencyWrapper(barSeries, source);
+        }
+        PassingIndicator dependent = new PassingIndicator(source);
+
+        assertNumEquals(100, dependent.getValue(3));
+
+        barSeries.setMaximumBarCount(3);
+
+        assertNumEquals(0, dependent.getValue(3));
+    }
+
     /**
      * Non-recursive cached passthrough with no unstable band of its own, used to
      * verify that a source's full-tail invalidation propagates to dependents whose
@@ -585,6 +603,44 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         @Override
         protected Num calculate(int index) {
             return source.getValue(index);
+        }
+    }
+
+    /**
+     * Identity wrapper with iterative-safe series and value accessors.
+     */
+    private static final class DependencyWrapper implements Indicator<Num> {
+
+        private final BarSeries barSeries;
+        private final Indicator<Num> source;
+
+        private DependencyWrapper(BarSeries barSeries, Indicator<Num> source) {
+            this.barSeries = barSeries;
+            this.source = source;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            Indicator<Num> currentSource = source;
+            while (currentSource instanceof DependencyWrapper wrapper) {
+                currentSource = wrapper.source;
+            }
+            return currentSource.getValue(index);
+        }
+
+        @Override
+        public List<Indicator<?>> getDependencies() {
+            return List.of(source);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return barSeries;
         }
     }
 

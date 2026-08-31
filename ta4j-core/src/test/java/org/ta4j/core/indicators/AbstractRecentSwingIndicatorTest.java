@@ -29,6 +29,11 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void shouldRetainLegacyTwoArgumentConstructor() throws NoSuchMethodException {
+        assertThat(AbstractRecentSwingIndicator.class.getDeclaredConstructor(Indicator.class, int.class)).isNotNull();
+    }
+
+    @Test
     public void shouldExposeSwingIndexesAndValuesMonotonically() {
         final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
         final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };

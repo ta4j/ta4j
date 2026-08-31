@@ -29,9 +29,21 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
 
+    private static final Indicator<?>[] NO_ADDITIONAL_SOURCES = new Indicator<?>[0];
+
     private final Indicator<Num> priceIndicator;
     private final transient SwingPointTracker swingPoints;
     private final transient int unstableBars;
+
+    /**
+     * Creates a swing indicator that uses only its price source.
+     *
+     * @param priceIndicator the price indicator used to fetch swing values
+     * @param unstableBars   number of unstable bars
+     */
+    protected AbstractRecentSwingIndicator(Indicator<Num> priceIndicator, int unstableBars) {
+        this(priceIndicator, unstableBars, NO_ADDITIONAL_SOURCES);
+    }
 
     /**
      * Constructor.

@@ -51,6 +51,19 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
     }
 
     /**
+     * Pivot values aggregate a preceding period, which can be truncated by a
+     * retained-head advance. Rebuild every cached value against the retained range
+     * rather than retaining a mixture of pre- and post-advance periods.
+     *
+     * @return {@code true} because no cached pivot remains valid after a head
+     *         advance
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    /**
      * Calculates the pivot point value from the bars of the previous period.
      *
      * @param barsOfPreviousPeriod list of bar indices from the previous period
