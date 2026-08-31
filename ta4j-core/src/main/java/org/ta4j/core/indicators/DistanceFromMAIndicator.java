@@ -72,17 +72,18 @@ public class DistanceFromMAIndicator extends CachedIndicator<Num> {
     }
 
     private DistanceFromMAIndicator(Config config) {
-        super(config.movingAverage());
+        super(config.series(), config.movingAverage());
         this.movingAverage = config.movingAverage();
     }
 
     private static Config validatedConfig(BarSeries series, Indicator<Num> movingAverage) {
+        BarSeries validatedSeries = Objects.requireNonNull(series, "series");
         Indicator<Num> validatedMovingAverage = Objects.requireNonNull(movingAverage, "movingAverage");
         if (!(supportedMovingAverages.contains(validatedMovingAverage.getClass()))) {
             throw new IllegalArgumentException(
                     "Passed indicator must be a moving average based indicator. " + validatedMovingAverage);
         }
-        return new Config(series, validatedMovingAverage);
+        return new Config(validatedSeries, validatedMovingAverage);
     }
 
     @Override

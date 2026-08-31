@@ -4,13 +4,19 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -55,6 +61,74 @@ public class AnalogReturnProjectionIndicatorTest
         assertEquals(ForecastSupport.empirical(30), forecast.support());
         assertNumEquals(0, forecast.mean());
         assertNumEquals(0, forecast.standardDeviation());
+    }
+
+    @Test
+    public void restartingStateDiscardsCachedForecastsAfterHeadAdvance() {
+        double[] prices = new double[600];
+        java.util.Arrays.fill(prices, 100d);
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        EwmaReturnForecastStateIndicator states = new EwmaReturnForecastStateIndicator(
+                new org.ta4j.core.indicators.helpers.LogReturnIndicator(series));
+        CountingRestartStateIndicator countingState = new CountingRestartStateIndicator(states);
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = new AnalogReturnProjectionIndicator<>(
+                countingState);
+
+        Forecast initial = projection.getValue(series.getEndIndex());
+        assertTrue(initial.isStable());
+        long readsBeforeAdvance = countingState.reads();
+
+        series.setMaximumBarCount(300);
+        Forecast afterAdvance = projection.getValue(series.getEndIndex());
+
+        assertNotSame(initial, afterAdvance);
+        assertTrue(countingState.reads() > readsBeforeAdvance);
+    }
+
+    private static final class CountingRestartStateIndicator
+            implements ReturnForecastStateIndicator<ReturnForecastState> {
+
+        private final ReturnForecastStateIndicator<ReturnForecastState> delegate;
+        private final AtomicInteger reads = new AtomicInteger();
+
+        private CountingRestartStateIndicator(ReturnForecastStateIndicator<ReturnForecastState> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ReturnForecastState getValue(int index) {
+            reads.incrementAndGet();
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return delegate.getBarSeries();
+        }
+
+        @Override
+        public ReturnIndicator getReturnIndicator() {
+            return delegate.getReturnIndicator();
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return delegate.getReturnRepresentation();
+        }
+
+        @Override
+        public boolean restartsAfterHeadAdvance() {
+            return true;
+        }
+
+        long reads() {
+            return reads.get();
+        }
     }
 
     @Test

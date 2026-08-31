@@ -175,6 +175,34 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Constructor for indicators bound to an explicit bar series that also read
+     * related indicators.
+     *
+     * <p>
+     * The series becomes this indicator's backing series, so calculations read its
+     * bars directly while the dependencies may be backed by a different series.
+     * Dependencies are retained so full-tail invalidations propagate to this
+     * indicator on head advance.
+     *
+     * @param series       the backing bar series
+     * @param dependencies related indicators retained so full-tail invalidations
+     *                     propagate to this indicator
+     * @since 0.24.2
+     */
+    protected CachedIndicator(BarSeries series, Indicator<?>... dependencies) {
+        this(validatedConfig(Objects.requireNonNull(series, "series"), LAST_BAR_WAIT_TIMEOUT_MS),
+                validatedDependencies(dependencies));
+    }
+
+    private static Indicator<?>[] validatedDependencies(Indicator<?>... dependencies) {
+        Indicator<?>[] validated = Objects.requireNonNull(dependencies, "dependencies");
+        for (Indicator<?> dependency : validated) {
+            Objects.requireNonNull(dependency, "dependency");
+        }
+        return validated;
+    }
+
+    /**
      * Constructor for indicators that read from several related indicators.
      *
      * @param firstSource       a related indicator (with a bar series); retained so
@@ -305,6 +333,12 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
             int minimumCacheableIndex = !headAdvanced ? firstRetainedIndex
                     : minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+            // The floor contract uses Integer.MAX_VALUE as a sentinel meaning
+            // "discard every cached entry". It must never be consumed as an
+            // inclusive eviction floor: when the retained window legitimately
+            // reaches Integer.MAX_VALUE, a cached entry at that index would
+            // otherwise survive both the ring trim and the last-bar cache.
+            boolean discardWholeCache = headAdvanced && minimumCacheableIndex == Integer.MAX_VALUE;
             int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
@@ -318,6 +352,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 clearFirstBarCache();
             }
 
+            if (discardWholeCache) {
+                cache.clear();
+            }
             int cacheHighest = cache.synchronize(minimumCacheableIndex, snapshot.maximumBarCount(), invalidateFrom);
             highestResultIndex = Math.max(cacheHighest, lastBarIndex);
 
@@ -491,12 +528,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
         synchronized (lastBarLock) {
+            // Integer.MAX_VALUE is the head-advance sentinel meaning "discard
+            // everything", never an inclusive retention floor.
+            boolean discardAll = firstRetainedIndex == Integer.MAX_VALUE;
             boolean cachedIndexChangedRole = lastBarCachedIndex >= 0 && lastBarCachedIndex != snapshot.endIndex();
-            boolean cachedIndexInvalid = lastBarCachedIndex >= 0 && (lastBarCachedIndex < firstRetainedIndex
-                    || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
-            boolean computationInvalid = lastBarComputationInProgress
-                    && (lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
-                            || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
+            boolean cachedIndexInvalid = lastBarCachedIndex >= 0
+                    && (discardAll || lastBarCachedIndex < firstRetainedIndex
+                            || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
+            boolean computationInvalid = lastBarComputationInProgress && (discardAll
+                    || lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
+                    || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
             if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
                 clearLastBarCacheLocked();
             }

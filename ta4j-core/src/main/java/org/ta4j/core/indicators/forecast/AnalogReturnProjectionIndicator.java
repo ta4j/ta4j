@@ -214,6 +214,21 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     /**
      * {@inheritDoc}
      *
+     * <p>
+     * Restarting states (such as online change-point models) rebuild their
+     * estimation after a head advance, so cached analog forecasts must be discarded
+     * and recomputed from the restarted state.
+     *
+     * @since 0.24.2
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return stateIndicator.restartsAfterHeadAdvance();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.23.1
      */
     @Override

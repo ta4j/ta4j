@@ -96,6 +96,21 @@ public final class MonteCarloReturnProjectionIndicator extends CachedIndicator<F
     /**
      * {@inheritDoc}
      *
+     * <p>
+     * Online change-point states restart their estimation after a head advance, so
+     * every cached forecast must be discarded and recomputed from the restarted
+     * posterior.
+     *
+     * @since 0.24.2
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return simulation.stateRestartsAfterHeadAdvance();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
      * @since 0.23.1
      */
     @Override

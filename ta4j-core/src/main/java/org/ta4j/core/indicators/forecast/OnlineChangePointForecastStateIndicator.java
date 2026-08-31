@@ -197,6 +197,21 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
         return unstableBarCount;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * The posterior is rebuilt from the retained window whenever the series head
+     * advances, so previously published states change and dependent forecasts must
+     * be recomputed.
+     *
+     * @since 0.24.2
+     */
+    @Override
+    public boolean restartsAfterHeadAdvance() {
+        return true;
+    }
+
     private OnlineChangePointForecastState toState(int index, PosteriorFrame frame) {
         if (!frame.isAvailable() || frame.observationCount < minimumObservationCount) {
             return OnlineChangePointForecastState.unstable(index, frame.observationCount, recentChangeWindow);
