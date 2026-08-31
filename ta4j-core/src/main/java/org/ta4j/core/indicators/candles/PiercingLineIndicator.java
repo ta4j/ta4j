@@ -57,7 +57,7 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
      * @param series the bar series
      */
     public PiercingLineIndicator(final BarSeries series) {
-        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPenetration(series,
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPartialPenetration(series,
                 CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD, DEFAULT_PENETRATION),
                 CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
@@ -77,15 +77,15 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
      * @param averagePeriod the number of preceding candles averaged into the
      *                      long-body baseline (at least 1)
      * @param penetration   the fraction of the first body the second close must
-     *                      penetrate, exclusive 0 and at most 1
+     *                      penetrate, exclusive 0 and below 1
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
      *                                  {@code penetration} is not finite, is not
-     *                                  positive, or exceeds 1
+     *                                  positive, or is not below 1
      * @since 0.24.2
      */
     public PiercingLineIndicator(final BarSeries series, final int averagePeriod, final double penetration) {
-        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPenetration(series, averagePeriod, penetration),
-                CandleThresholdSupport.forSeries(series, averagePeriod));
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPartialPenetration(series, averagePeriod,
+                penetration), CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
         this.penetration = penetration;
         this.penetrationValue = getBarSeries().numFactory().numOf(penetration);

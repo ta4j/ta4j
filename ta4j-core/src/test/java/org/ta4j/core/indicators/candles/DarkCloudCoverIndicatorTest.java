@@ -250,8 +250,9 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
         assertThrows(IllegalArgumentException.class, () -> new DarkCloudCoverIndicator(series, 5, Double.NaN));
         assertThrows(IllegalArgumentException.class,
                 () -> new DarkCloudCoverIndicator(series, 5, Double.POSITIVE_INFINITY));
-        // a penetration of exactly 1.0 is the inclusive upper bound
-        assertThat(new DarkCloudCoverIndicator(series, 5, 1.0).getValue(0)).isFalse();
+        // a full-body penetration engulfs the first body, so no close can
+        // satisfy the anti-engulfing clause and 1.0 is rejected outright
+        assertThrows(IllegalArgumentException.class, () -> new DarkCloudCoverIndicator(series, 5, 1.0));
     }
 
     @Override
