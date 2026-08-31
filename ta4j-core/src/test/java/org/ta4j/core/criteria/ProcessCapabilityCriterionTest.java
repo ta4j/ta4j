@@ -10,12 +10,14 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -431,5 +433,31 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(Num.isFinite(twoSidedCapability));
         assertTrue(twoSidedCapability.isPositive());
         assertTrue(twoSidedCapability.isLessThan(precisionTwo.numOf(0.1)));
+    }
+
+    @Test
+    public void oversizedDecimalMeanWithRoundedLimitKeepsPositiveCapability() {
+        // A DecimalNum factory preserves means beyond the double range:
+        // gross returns 1e400 and 1.2e400 have mean 1.1e400, and a retained
+        // LSL written just below that mean rounds onto it at the factory
+        // precision. The zero-gap recovery must stay in decimal space; the
+        // former doubleValue() conversion produced Infinity and
+        // BigDecimal.valueOf(Infinity) threw instead of returning Cpk.
+        NumFactory large = DecimalNumFactory.getInstance();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(large).build();
+        series.addBar(new MockBarBuilder(large).closePrice(large.one()).build());
+        series.addBar(new MockBarBuilder(large).closePrice(large.numOf(new BigDecimal("1e400"))).build());
+        series.addBar(new MockBarBuilder(large).closePrice(large.one()).build());
+        series.addBar(new MockBarBuilder(large).closePrice(large.numOf(new BigDecimal("1.2e400"))).build());
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(new BigDecimal("1.09999999999999999e400"));
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isPositive());
+        assertTrue(capability.isLessThan(large.numOf(1e-10)));
+        assertTrue(capability.isGreaterThan(large.numOf(1e-30)));
     }
 }

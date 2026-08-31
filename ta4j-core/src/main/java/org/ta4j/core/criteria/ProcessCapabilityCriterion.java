@@ -192,7 +192,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             // mean by the same scale separately rounds both quotients for a
             // limit only marginally beyond the double range, which can
             // collapse a positive capability to zero.
-            BigDecimal rawDistance = BigDecimal.valueOf(mean.doubleValue()).subtract(lsl, MathContext.DECIMAL128);
+            BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, MathContext.DECIMAL128);
             lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num lowerDistance = mean.minus(lslNum);
@@ -202,7 +202,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 // limit of 0.999 against a mean of 1.0 collapses the
                 // distance to zero). Recompute the distance from the
                 // lossless retained limit before the factory narrows it.
-                BigDecimal rawDistance = BigDecimal.valueOf(mean.doubleValue()).subtract(lsl, MathContext.DECIMAL128);
+                BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, MathContext.DECIMAL128);
                 lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
             } else if (Num.isFinite(lowerDistance)) {
                 Num lowerRatio = lowerDistance.dividedBy(deviationScale);
@@ -232,7 +232,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num uslNum = factory.numOf(usl);
         Num upperCapability;
         if (!Num.isFinite(uslNum)) {
-            BigDecimal rawDistance = usl.subtract(BigDecimal.valueOf(mean.doubleValue()), MathContext.DECIMAL128);
+            BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), MathContext.DECIMAL128);
             upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num upperDistance = uslNum.minus(mean);
@@ -240,7 +240,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 // Mirror of the lower-limit recovery: a limit the factory
                 // rounded onto the mean must not erase a representable
                 // capability gap.
-                BigDecimal rawDistance = usl.subtract(BigDecimal.valueOf(mean.doubleValue()), MathContext.DECIMAL128);
+                BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), MathContext.DECIMAL128);
                 upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
             } else if (Num.isFinite(upperDistance)) {
                 Num upperRatio = upperDistance.dividedBy(deviationScale);
@@ -266,8 +266,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // (out-of-range limits and limits the factory rounded onto the
         // mean); the mean and scale terms are finite, and the deviation
         // scale is finite and nonzero here.
-        BigDecimal rawDenominator = BigDecimal.valueOf(deviationScale.doubleValue())
-                .multiply(BigDecimal.valueOf(threeScaledSigma.doubleValue()), MathContext.DECIMAL128);
+        // The operands stay in decimal space end to end: DecimalNum means can
+        // exceed the double range (1.1e400), and their doubleValue() would be
+        // infinite, making BigDecimal.valueOf throw NumberFormatException.
+        BigDecimal rawDenominator = deviationScale.bigDecimalValue()
+                .multiply(threeScaledSigma.bigDecimalValue(), MathContext.DECIMAL128);
         return factory.numOf(rawDistance.divide(rawDenominator, MathContext.DECIMAL128));
     }
 
