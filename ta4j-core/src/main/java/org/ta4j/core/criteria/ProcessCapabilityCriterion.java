@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -43,9 +44,13 @@ import org.ta4j.core.num.NumFactory;
  * deviation is computed with each deviation normalized by the largest absolute
  * deviation, and a mean whose naive accumulation overflows is recomputed with
  * each value normalized by the largest absolute value, so wide but finite
- * dispersions do not overflow even when the naive sums would (for example gross
  * returns of 1e308 and 1.4e308 still yield their exact Cpk); gross returns with
  * non-finite magnitude are treated as incapable and score {@code zero()}.
+ * Specification limits are kept as raw decimals and are normalized against the
+ * deviation scale before factory conversion when a limit itself overflows the
+ * active representation (for example an LSL of -1e400 on a {@code DoubleNum}
+ * series), so representable capabilities stay finite instead of collapsing to
+ * infinity.
  *
  * @since 0.24.2
  */
@@ -177,27 +182,49 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // can exceed MAX even though the final ratio is representable (no
         // cancellation is possible between opposite signs).
         Num lslNum = factory.numOf(lsl);
-        Num lowerDistance = mean.minus(lslNum);
         Num lowerRatio;
-        if (Num.isFinite(lowerDistance)) {
-            lowerRatio = lowerDistance.dividedBy(deviationScale);
+        if (!Num.isFinite(lslNum)) {
+            // The limit itself overflows the factory's representation (for
+            // example a DoubleNum series with an LSL of -1e400): scale the raw
+            // decimal limit against the deviation scale before narrowing, so a
+            // representable capability stays finite.
+            lowerRatio = scaledMean.minus(scaledLimit(lsl, deviationScale, factory));
         } else {
-            lowerRatio = scaledMean.minus(lslNum.dividedBy(deviationScale));
+            Num lowerDistance = mean.minus(lslNum);
+            if (Num.isFinite(lowerDistance)) {
+                lowerRatio = lowerDistance.dividedBy(deviationScale);
+            } else {
+                lowerRatio = scaledMean.minus(lslNum.dividedBy(deviationScale));
+            }
         }
         Num lowerCapability = lowerRatio.dividedBy(threeScaledSigma);
         if (usl == null) {
             return lowerCapability;
         }
         Num uslNum = factory.numOf(usl);
-        Num upperDistance = uslNum.minus(mean);
         Num upperRatio;
-        if (Num.isFinite(upperDistance)) {
-            upperRatio = upperDistance.dividedBy(deviationScale);
+        if (!Num.isFinite(uslNum)) {
+            upperRatio = scaledLimit(usl, deviationScale, factory).minus(scaledMean);
         } else {
-            upperRatio = uslNum.dividedBy(deviationScale).minus(scaledMean);
+            Num upperDistance = uslNum.minus(mean);
+            if (Num.isFinite(upperDistance)) {
+                upperRatio = upperDistance.dividedBy(deviationScale);
+            } else {
+                upperRatio = uslNum.dividedBy(deviationScale).minus(scaledMean);
+            }
         }
         Num upperCapability = upperRatio.dividedBy(threeScaledSigma);
         return lowerCapability.min(upperCapability);
+    }
+
+    private static Num scaledLimit(BigDecimal limit, Num deviationScale, NumFactory factory) {
+        // The limit itself overflows the factory's representation; divide it
+        // by the deviation scale in raw decimal space before narrowing. The
+        // deviation scale is finite and nonzero here, and because the limit
+        // overflowed the factory, both are double-backed, so the scale's
+        // double value is exact.
+        BigDecimal rawScale = BigDecimal.valueOf(deviationScale.doubleValue());
+        return factory.numOf(limit.divide(rawScale, MathContext.DECIMAL128));
     }
 
     @Override

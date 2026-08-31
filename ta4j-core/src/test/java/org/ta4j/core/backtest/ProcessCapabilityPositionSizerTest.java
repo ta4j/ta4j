@@ -167,6 +167,30 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void exactDecimalCoercionPreservesRatioOutsideDoubleRange() {
+        // A finite DecimalNum statistic of 1e400 coerced into a distinct
+        // DecimalNumFactory context keeps its magnitude: the representable
+        // damped amount 100 / (1 + 1e400) = 1e-398 must be returned instead
+        // of the double-overflow epsilon floor, which only applies to
+        // double-backed contexts.
+        NumFactory precisionFiftyFactory = DecimalNumFactory.getInstance(50);
+        NumFactory precisionThirtyFactory = DecimalNumFactory.getInstance(30);
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(precisionFiftyFactory)
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, precisionFiftyFactory.numOf(0),
+                precisionFiftyFactory.numOf(new BigDecimal("1e400")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, 100, 1);
+
+        runWithNumFactory(precisionThirtyFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            // Both operands underflow the double representation, so the exact
+            // BigDecimal value is what discriminates from the epsilon floor.
+            assertNumEquals(numFactory.numOf(new BigDecimal("1e-398")), sizer.amount(context(series, 1, 1)), 0);
+        });
+    }
+
+    @Test
     public void positiveUnderflowingBaseAmountSaturatesToEpsilonFloor() {
         // A DecimalNum base amount of 1e-400 is positive in its own factory
         // but underflows to zero when coerced into a DoubleNum context: the

@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import java.util.Objects;
+import java.math.BigDecimal;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -49,7 +50,13 @@ import org.ta4j.core.num.NumFactory;
  * context's {@link NumFactory}: the capability statistic and the sizing
  * parameters are coerced into the context factory's exact configuration rather
  * than matched by implementation class, so mixed-factory and mixed-precision
- * {@code DecimalNum} compositions round consistently at sizing time.
+ * {@code DecimalNum} compositions round consistently at sizing time. A
+ * {@code BigDecimal}-backed context receives the statistic and the base amount
+ * through their {@code BigDecimal} delegate, preserving mantissa digits and
+ * magnitude beyond the double range (for example a {@code 1e400} statistic
+ * sizes at the exact damped amount {@code baseAmount / (1 + 1e400)}); the
+ * double-overflow epsilon floor applies only when the context itself cannot
+ * represent the ratio.
  *
  * @since 0.24.2
  */
@@ -109,15 +116,14 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         Num standardizedValue;
         if (standardized.getNumFactory() == factory) {
             standardizedValue = standardized;
+        } else if (!(factory.one().getDelegate() instanceof BigDecimal)
+                && !Double.isFinite(standardized.doubleValue())) {
+            // The true ratio overflows a double-backed context: the process is
+            // far outside control, so size at the context epsilon floor. A
+            // BigDecimal-backed context keeps the ratio exact instead.
+            return factory.epsilon().min(baseAmountValue);
         } else {
-            double standardizedDouble = standardized.doubleValue();
-            if (!Double.isFinite(standardizedDouble)) {
-                // The true ratio overflows the context's double range: the
-                // process is far outside control, so size at the context
-                // epsilon floor.
-                return factory.epsilon().min(baseAmountValue);
-            }
-            standardizedValue = factory.numOf(standardizedDouble);
+            standardizedValue = coerceToContextFactory(factory, standardized);
         }
         Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
         if (!Num.isFinite(damped) || damped.isZero()) {
@@ -130,10 +136,17 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         if (value.getNumFactory() == factory) {
             return value;
         }
+        if (factory.one().getDelegate() instanceof BigDecimal) {
+            // BigDecimal-backed destination: convert via BigDecimal so mantissa
+            // digits and magnitude are preserved; a finite value outside the
+            // double range (for example 1e400) never round-trips through a
+            // primitive double.
+            return factory.numOf(value.bigDecimalValue());
+        }
         double doubleValue = value.doubleValue();
         // A finite source value whose double representation overflows is
         // saturated to the largest double-representable magnitude, keeping the
-        // coerced value finite (DecimalNumFactory rejects non-finite doubles).
+        // coerced value finite for double-backed destinations.
         return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
     }
 

@@ -7,6 +7,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
@@ -182,6 +183,43 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
         assertTrue(Num.isFinite(capability));
         assertNumEquals(numFactory.numOf(4).dividedBy(numFactory.numOf(3)), capability, 1e-9);
+    }
+
+    @Test
+    public void limitOverflowKeepsFiniteCapability() {
+        // Gross returns 1e307 and 1.7e308 with a one-sided lower limit of
+        // -1e400: DoubleNum converts the limit itself to -Infinity before any
+        // subtraction, collapsing the finite Cpk (about 4.17e91) to
+        // +Infinity; the raw limit must be scaled against the deviation scale
+        // before narrowing.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e307, 1, 1.7e308).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(new BigDecimal("-1e400"));
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isGreaterThan(numOf(4e91)));
+        assertTrue(capability.isLessThan(numOf(4.2e91)));
+    }
+
+    @Test
+    public void twoSidedLimitOverflowKeepsFiniteCapability() {
+        // With both limits outside the double range, the upper side is the
+        // binding one and both must be normalized against the deviation scale
+        // before narrowing: Cpk = (1e400 - 9e307) / (1.7e308 * 3 * sigma)
+        // is about 4.17e91, not infinity.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e307, 1, 1.7e308).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(new BigDecimal("-1e400"), new BigDecimal("1e400"));
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isGreaterThan(numOf(4e91)));
+        assertTrue(capability.isLessThan(numOf(4.2e91)));
     }
 
     @Test
