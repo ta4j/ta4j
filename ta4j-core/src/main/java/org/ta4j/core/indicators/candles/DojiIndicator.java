@@ -25,6 +25,11 @@ import org.ta4j.core.num.NumFactory;
  *
  * The comparison is <em>inclusive</em>: a body exactly equal to the threshold
  * (including a zero body against a zero range baseline) is still a doji.
+ *
+ * <p>
+ * For a positive range factor, a negative prior range from malformed high-low
+ * data never qualifies. The explicit zero-factor branch remains an exact
+ * zero-body check.
  * <p>
  * A finite body difference is compared against the prior average on one shared
  * scale, {@code |open_i - close_i| / priorAverage <= rangeFactor}, so a zero
@@ -156,6 +161,10 @@ public class DojiIndicator extends CandlePatternIndicator {
                 return false;
             }
             return !halfBodyMagnitude.isGreaterThan(halfThreshold);
+        }
+        if (priorAverage.isNegative()) {
+            // A malformed negative range is not a distance threshold.
+            return false;
         }
         if (priorAverage.isZero()) {
             // A zero range baseline leaves no scaling reference: only a candle

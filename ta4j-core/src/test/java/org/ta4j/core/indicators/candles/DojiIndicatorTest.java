@@ -11,6 +11,7 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -78,6 +79,18 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
         }
 
         assertTrue(new DojiIndicator(series).getValue(5));
+    }
+
+    @Test
+    public void negativePriorRangeDoesNotQualifyADojiAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            Num zero = factory.zero();
+            series.addBar(new NonFiniteBar(Instant.EPOCH, zero, zero, factory.numOf(2), zero));
+            addBar(series, 0, 0, 0);
+
+            assertFalse(new DojiIndicator(series, 1, 0.1).getValue(1));
+        }
     }
 
     @Test
