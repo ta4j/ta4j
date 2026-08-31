@@ -87,4 +87,26 @@ public class TRIndicator extends CachedIndicator<Num> {
         int previousCloseUnstable = closeUnstable == 0 ? 0 : closeUnstable + 1;
         return Math.max(highUnstable, Math.max(lowUnstable, previousCloseUnstable));
     }
+
+    /**
+     * When this indicator declares no unstable bars, the value at the first
+     * retained index was computed with the previous close, which the head advance
+     * removed. That single entry is evicted (values above it depend only on
+     * retained bars), and the floor bump propagates to dependents that would
+     * otherwise treat the stale entry as a valid baseline.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@code firstRetainedIndex + 1} when no unstable bars are declared and
+     *         no source rebaselines beyond its default band, otherwise the default
+     *         floor
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        int propagatedFloor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+        if (propagatedFloor != Integer.MAX_VALUE && getCountOfUnstableBars() == 0) {
+            long floor = (long) firstRetainedIndex + 1L;
+            return floor >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) floor;
+        }
+        return propagatedFloor;
+    }
 }

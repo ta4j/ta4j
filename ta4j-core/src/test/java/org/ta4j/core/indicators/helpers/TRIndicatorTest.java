@@ -109,4 +109,33 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
         assertTrue(Num.isNaNOrNull(tr.getValue(1)));
         assertNumEquals(7, tr.getValue(2));
     }
+
+    @Test
+    public void firstRetainedValueRecomputedAfterHeadAdvance() {
+        // The true range at the first retained index was computed using the
+        // previous close before the head advanced; that close is gone after
+        // the advance, so the value must be recomputed as high - low only
+        // and match a fresh indicator.
+        // Flat open/close candles with a three-unit lower wick: each true
+        // range is the 10-unit close jump rather than the 3-unit high-low, so
+        // after the head advance the first retained true range must become
+        // high-low = 3 instead of the stale 10.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(-3).add();
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(7).add();
+        series.barBuilder().openPrice(20).closePrice(20).highPrice(20).lowPrice(17).add();
+        series.barBuilder().openPrice(30).closePrice(30).highPrice(30).lowPrice(27).add();
+        series.barBuilder().openPrice(40).closePrice(40).highPrice(40).lowPrice(37).add();
+        series.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(47).add();
+        TRIndicator tr = new TRIndicator(series);
+        assertNumEquals(10, tr.getValue(3));
+
+        series.setMaximumBarCount(3);
+        assertEquals(3, series.getBeginIndex());
+
+        TRIndicator fresh = new TRIndicator(series);
+        for (int i = 3; i <= 5; i++) {
+            assertNumEquals(fresh.getValue(i), tr.getValue(i));
+        }
+    }
 }
