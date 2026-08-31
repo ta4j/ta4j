@@ -58,17 +58,16 @@ import org.ta4j.core.num.NumFactory;
  * destination precision governs the quotient; when coercing an operand would
  * corrupt the ratio (underflow to zero or saturation in a narrower context),
  * the division falls back to the indicator factory, whose ratio stays exact.
- * The configured base amount is retained losslessly (as its exact value, not
- * the capability factory's rounded copy of it) and coerced through the context
- * factory at sizing time, so a coarse capability factory never irreversibly
- * rounds the configured amount. A {@code BigDecimal}-backed context receives
- * the statistic and the base amount through their {@code BigDecimal} delegate,
- * preserving mantissa digits and magnitude beyond the double range (for example
- * a {@code 1e400} statistic sizes at the exact damped amount
- * {@code baseAmount / (1 + 1e400)}); the double-overflow epsilon floor applies
- * only when the context itself cannot represent the ratio.
- * <p>
- * Backtest managers validate the returned amount through
+ * The configured base amount and control limit are retained losslessly (as
+ * their exact values, not the capability factory's rounded copies) and coerced
+ * through the context factory at sizing time, so a coarse capability factory
+ * never irreversibly rounds the configured amount or limit. A
+ * {@code BigDecimal}-backed context receives the statistic and the base amount
+ * through their {@code BigDecimal} delegate, preserving mantissa digits and
+ * magnitude beyond the double range (for example a {@code 1e400} statistic
+ * sizes at the exact damped amount {@code baseAmount / (1 + 1e400)}); the
+ * double-overflow epsilon floor applies only when the context itself cannot
+ * represent the ratio. Backtest managers validate the returned amount through
  * {@link Num#doubleValue()}, so any amount that cannot round-trip through a
  * primitive double — a float-backed context overflowing to infinity, or a
  * {@code BigDecimal}-backed amount beyond the double range such as
@@ -85,6 +84,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
     private final Indicator<Num> capabilityIndicator;
     private final Num baseAmount;
     private final BigDecimal rawBaseAmount;
+    private final BigDecimal rawControlLimit;
     private final Num controlLimit;
 
     /**
@@ -101,13 +101,16 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      *                            rounds it irreversibly (a precision-1 capability
      *                            factory would collapse 1.2345 to 1)
      * @param controlLimit        the statistical control limit; must be > 0 and
-     *                            finite in the capability indicator's
-     *                            {@link NumFactory}
+     *                            finite. The configured value is retained
+     *                            losslessly like {@code baseAmount}, so the
+     *                            capability factory's precision never rounds it
+     *                            before the context factory sees it
      */
     public ProcessCapabilityPositionSizer(Indicator<Num> capabilityIndicator, Number baseAmount, Number controlLimit) {
         this.capabilityIndicator = Objects.requireNonNull(capabilityIndicator, "capabilityIndicator must not be null");
         this.rawBaseAmount = requirePositiveFiniteRaw(baseAmount, "baseAmount");
         this.baseAmount = capabilityIndicator.getBarSeries().numFactory().numOf(this.rawBaseAmount);
+        this.rawControlLimit = requirePositiveFiniteRaw(controlLimit, "controlLimit");
         this.controlLimit = requirePositiveFinite(controlLimit, "controlLimit",
                 capabilityIndicator.getBarSeries().numFactory());
     }
@@ -140,11 +143,11 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // must size at half the base amount, not the full amount), so those
         // cases fall back to the indicator factory's exact ratio.
         Num statisticValue = coerceToContextFactory(factory, statistic);
-        Num controlLimitValue = coerceToContextFactory(factory, controlLimit);
+        Num controlLimitValue = coerceControlLimitToContextFactory(factory);
         boolean bigDecimalContext = factory.one().getDelegate() instanceof BigDecimal;
         boolean operandsCoercedLosslessly = bigDecimalContext || (Num.isFinite(statisticValue)
                 && !statisticValue.isZero() && Num.isFinite(controlLimitValue) && !controlLimitValue.isZero()
-                && Double.isFinite(statistic.doubleValue()) && Double.isFinite(controlLimit.doubleValue()));
+                && Double.isFinite(statistic.doubleValue()) && Double.isFinite(rawControlLimit.doubleValue()));
         Num standardized;
         if (operandsCoercedLosslessly) {
             standardized = statisticValue.dividedBy(controlLimitValue);
@@ -155,8 +158,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // The true ratio overflows the division factory; damp the lossless
             // decimal forms before narrowing.
             BigDecimal dampedQuotient = rawBaseAmount.divide(
-                    BigDecimal.ONE.add(
-                            statistic.bigDecimalValue().divide(controlLimit.bigDecimalValue(), MathContext.DECIMAL128)),
+                    BigDecimal.ONE.add(statistic.bigDecimalValue().divide(rawControlLimit, MathContext.DECIMAL128)),
                     MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         }
@@ -254,6 +256,22 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // A finite configured value whose double representation overflows is
         // saturated to the largest double-representable magnitude, keeping the
         // coerced value finite for double-backed destinations.
+        return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
+    }
+
+    /**
+     * Coerces the configured control limit into the context's {@link NumFactory}
+     * from its lossless raw snapshot, mirroring
+     * {@link #coerceBaseAmountToContextFactory(NumFactory)}.
+     */
+    private Num coerceControlLimitToContextFactory(NumFactory factory) {
+        if (factory == controlLimit.getNumFactory()) {
+            return controlLimit;
+        }
+        if (factory.one().getDelegate() instanceof BigDecimal) {
+            return factory.numOf(rawControlLimit);
+        }
+        double doubleValue = rawControlLimit.doubleValue();
         return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
     }
 

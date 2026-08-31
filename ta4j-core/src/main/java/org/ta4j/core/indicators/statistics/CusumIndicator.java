@@ -232,6 +232,11 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
+        if (index == 0 && beginIndex > 0) {
+            // Removed-index reads map to the synthetic zero; anchor at the
+            // retained head so the recursion never backtracks into pruned bars.
+            index = beginIndex;
+        }
         if (index - beginIndex < getCountOfUnstableBars()) {
             return NaN.NaN;
         }

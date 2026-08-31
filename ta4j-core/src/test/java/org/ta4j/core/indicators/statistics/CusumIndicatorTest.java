@@ -268,6 +268,20 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void removedIndexReadAnchorsAtRetainedHead() {
+        // Reading a pruned index maps to the synthetic zero evaluation; it must
+        // anchor at the retained head instead of recursing into removed bars
+        // (StackOverflowError before the fix).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
+        CusumIndicator pruned = new CusumIndicator(new MockIndicator(series, 0, numOf(1), numOf(1), numOf(1), numOf(1)),
+                2, 0, 3.0, 0.94);
+        pruned.getValue(3);
+        series.setMaximumBarCount(1);
+
+        assertNumEquals(1, pruned.getValue(0));
+    }
+
+    @Test
     public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
         // The winsorization scale must also reseed at the new retained head:
         // a stale scale would clip the deviation against a bound derived from

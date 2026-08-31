@@ -175,6 +175,28 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void controlLimitSurvivesCoarseCapabilityFactoryRounding() {
+        // A precision-1 capability factory collapses the configured limit
+        // 3.14159 to 3; sizing must coerce the lossless raw limit through the
+        // context factory, matching a precision-10 indicator's result exactly.
+        NumFactory precisionOneFactory = DecimalNumFactory.getInstance(1);
+        NumFactory precisionTenFactory = DecimalNumFactory.getInstance(10);
+        BarSeries coarseSeries = new MockBarSeriesBuilder().withNumFactory(precisionOneFactory).withData(1, 2).build();
+        FixedIndicator<Num> coarseStatistic = new FixedIndicator<>(coarseSeries, precisionOneFactory.numOf(0),
+                precisionOneFactory.numOf(1));
+        PositionSizer coarseSizer = new ProcessCapabilityPositionSizer(coarseStatistic, 100, new BigDecimal("3.14159"));
+        BarSeries fineSeries = new MockBarSeriesBuilder().withNumFactory(precisionTenFactory).withData(1, 2).build();
+        FixedIndicator<Num> fineStatistic = new FixedIndicator<>(fineSeries, precisionTenFactory.numOf(0),
+                precisionTenFactory.numOf(1));
+        PositionSizer fineSizer = new ProcessCapabilityPositionSizer(fineStatistic, 100, new BigDecimal("3.14159"));
+
+        runWithNumFactory(precisionTenFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(fineSizer.amount(context(series, 1, 1)), coarseSizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void recoveredQuotientUnderflowingTheContextFactoryFloorsAtEpsilon() {
         // 1e160 / 1e-160 overflows double; the decimal-damped quotient (~1e-50)
         // underflows a float-backed context to zero and floors at epsilon.
