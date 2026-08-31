@@ -7,6 +7,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
@@ -27,7 +28,10 @@ import java.util.List;
  * {@link CorrentropyKalmanWeightIndicator} view. Expected values are reference
  * oracles produced by the covariance-whitened bounded fixed-point MCKF
  * algorithm of Chen et al. (2017) and agree across {@code DoubleNumFactory}
- * and {@code DecimalNumFactory} to the printed precision.
+ * and {@code DecimalNumFactory} to the printed precision. The reference values
+ * and the fixture inputs live in
+ * {@code src/test/resources/oracles/cf-558-mckf-reference-oracle.py} and the
+ * regenerated {@code cf-558-mckf-reference-vectors.json}.
  */
 public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -39,7 +43,8 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
 
     @Before
     public void setUp() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 22, 30, 50).build();
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 15, 20, 22, 30, 50)
+                .build();
         closePrice = new ClosePriceIndicator(series);
     }
 
@@ -104,10 +109,10 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1e-2, 2);
 
-        assertValues(new double[] { 10.0, 10.104986789380, 10.103075318788, 10.160640081483 }, filter, 1e-9);
-        assertValues(new double[] { 1.0, 0.893290112001, 0.999881787167, 0.784455967796 }, filter.measurementWeight(),
+        assertValues(new double[] { 10.0, 10.104985931110, 10.103074789595, 10.160638902480 }, filter, 1e-9);
+        assertValues(new double[] { 1.0, 0.893288290866, 0.999881827845, 0.784452745524 }, filter.measurementWeight(),
                 1e-9);
-        assertValues(new double[] { 0.0, 0.095013, -0.003075, 0.139360 }, filter.residual(), 1e-5);
+        assertValues(new double[] { 0.0, 0.095014, -0.003075, 0.139361 }, filter.residual(), 1e-5);
     }
 
     @Test
@@ -115,9 +120,21 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.2, 50, 10.4);
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 0.2, 2);
 
-        assertValues(new double[] { 10.0, 10.091153928197, 10.091153928197, 10.188312447274 }, filter, 1e-9);
+        assertValues(new double[] { 10.0, 10.091153928197, 10.091153928197, 10.188312327114 }, filter, 1e-9);
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
-        assertValues(new double[] { 1.0, 0.992622679915, 0.0, 0.972381304869 }, weight, 1e-9);
+        assertValues(new double[] { 1.0, 0.992622679915, 0.0, 0.972381273952 }, weight, 1e-9);
+    }
+
+    @Test
+    public void negativeImpulseIsRejectedSymmetrically() {
+        BarSeries series = seriesOf(10, 10.2, -50, 10.4);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 0.2, 2);
+
+        // Gaussian kernel symmetry: a negative impulse of the same magnitude
+        // produces the same estimates and zero weight as the positive one.
+        assertValues(new double[] { 10.0, 10.091153928197, 10.091153928197, 10.188312327114 }, filter, 1e-9);
+        CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
+        assertValues(new double[] { 1.0, 0.992622679915, 0.0, 0.972381273952 }, weight, 1e-9);
     }
 
     @Test
@@ -125,8 +142,8 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1e-4, 2);
 
-        assertValues(new double[] { 10.0, 10.0, 10.000007840644, 10.000007840644 }, filter, 1e-9);
-        assertValues(new double[] { 1.0, 0.0, 0.000003733965, 0.0 }, filter.measurementWeight(), 1e-9);
+        assertValues(new double[] { 10.0, 10.0, 10.000007825322, 10.000007825322 }, filter, 1e-9);
+        assertValues(new double[] { 1.0, 0.0, 0.000003733951, 0.0 }, filter.measurementWeight(), 1e-9);
     }
 
     @Test
@@ -134,9 +151,9 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.05, 10.05, 50);
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-4, 0.2, 2);
 
-        assertValues(new double[] { 10.0, 10.022733957334, 10.031262304655, 10.031262304655 }, filter, 1e-9);
+        assertValues(new double[] { 10.0, 10.022733957334, 10.031262304100, 10.031262304100 }, filter, 1e-9);
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
-        assertValues(new double[] { 1.0, 0.999535459756, 0.999780585808, 0.0 }, weight, 1e-9);
+        assertValues(new double[] { 1.0, 0.999535459756, 0.999780585795, 0.0 }, weight, 1e-9);
         assertValues(new double[] { 0.0, 0.027266, 0.018738, 39.968738 }, filter.residual(), 1e-5);
     }
 
@@ -148,13 +165,30 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-4, 0.2, 2);
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
 
-        assertValues(new double[] { 10.0, 10.022733957334, 10.031262304655, 10.035732151355, 10.120255253383,
-                10.179152423959, 10.222504176577, 10.201483141862, 10.232670340607, 10.213319965382, 10.197596546190,
-                10.184564743779, 10.184564963020, 10.184565183484, 10.184565405171, 10.173416575413, 10.193205276834,
-                10.182353600699, 10.172969142603, 10.164770622618, 10.179282410702 }, filter, 1e-9);
-        Assert.assertEquals(0.141967257620, weight.getValue(8).doubleValue(), 1e-9);
-        Assert.assertEquals(5.080128359294481E-7, weight.getValue(12).doubleValue(), 1e-9);
-        Assert.assertEquals(0.970011202201, weight.getValue(20).doubleValue(), 1e-9);
+        assertValues(new double[] { 10.0, 10.022733957334, 10.031262304100, 10.035732150932, 10.120255189011,
+                10.179152267647, 10.222504041541, 10.201483022211, 10.232670215528, 10.213319852499,
+                10.197596443423, 10.184564649533, 10.184564868773, 10.184565089237, 10.184565310925,
+                10.173416488557, 10.193205079389, 10.182353416605, 10.172968970288, 10.164770460770,
+                10.179282259719 }, filter, 1e-9);
+        Assert.assertEquals(0.141967218392, weight.getValue(8).doubleValue(), 1e-9);
+        Assert.assertEquals(5.080125477351625E-7, weight.getValue(12).doubleValue(), 1e-9);
+        Assert.assertEquals(0.970011161794, weight.getValue(20).doubleValue(), 1e-9);
+    }
+
+    @Test
+    public void increasingImpulsePinsEstimateThenRecovers() {
+        BarSeries series = seriesOf(10, 10.1, 12, 20, 50, 10.2);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 0.2, 2);
+        CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
+
+        assertValues(new double[] { 10.0, 10.045599571087, 10.146897779664, 10.146897779664, 10.146897779664,
+                10.162917154826 }, filter, 1e-9);
+        // Growing impulses are progressively rejected: the weight saturates to
+        // zero and the estimate is pinned at the last trusted level until the
+        // source returns to values consistent with the predicted state.
+        assertValues(new double[] { 1.0, 0.998152080344, 0.116922682100, 0.0, 0.0, 0.999140908352 }, weight, 1e-9);
+        assertValues(new double[] { 0.0, 0.054400, 1.853102, 9.853102, 39.853102, 0.037083 }, filter.residual(),
+                1e-5);
     }
 
     @Test
@@ -166,11 +200,28 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(data);
         CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1e-2, 2);
 
-        assertValues(new double[] { 10.0, 10.016118873347, 10.032437229180, 10.048153886507, 10.062098678015,
-                10.072858660818, 10.079034330424, 10.079546559587, 10.073897525347, 10.062297739374, 10.045633049368,
-                10.025314752042, 10.003093347412, 9.980902324269, 9.960737198500, 9.944513959880, 9.933860635005,
-                9.929874793452, 9.932939112274, 9.942668579162, 9.957998226290 }, filter, 1e-9);
-        Assert.assertEquals(0.974306162094, filter.measurementWeight().getValue(10).doubleValue(), 1e-9);
+        assertValues(new double[] { 10.0, 10.016118873347, 10.032437195387, 10.048153794017, 10.062098563949,
+                10.072858579041, 10.079034271334, 10.079546516708, 10.073897494087, 10.062297738754,
+                10.045633048826, 10.025314799169, 10.003093489736, 9.980902535928, 9.960737399431, 9.944514346191,
+                9.933860930004, 9.929875016925, 9.932939273320, 9.942668697381, 9.957998153004 }, filter, 1e-9);
+        Assert.assertEquals(0.974306162697, filter.measurementWeight().getValue(10).doubleValue(), 1e-9);
+    }
+
+    @Test
+    public void largeBandwidthConvergesToKalmanFilter() {
+        BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1e-2, 1e6);
+
+        // A huge kernel bandwidth makes the correntropy weight one and the MCKF
+        // update collapse to the ordinary Kalman update. The reference values
+        // agree with the KalmanFilterIndicator state recursion to ~1e-10 here.
+        assertValues(new double[] { 10.0, 10.104311201552, 10.102658681866, 10.166958671113 }, filter, 1e-9);
+        assertValues(new double[] { 1.0, 1.0, 1.0, 1.0 }, filter.measurementWeight(), 1e-9);
+
+        KalmanFilterIndicator kalman = new KalmanFilterIndicator(new ClosePriceIndicator(series), 1e-3, 1e-2);
+        for (int i = 0; i < series.getBarCount(); i++) {
+            Assert.assertEquals("index " + i, kalman.getValue(i).doubleValue(), filter.getValue(i).doubleValue(), 1e-8);
+        }
     }
 
     @Test
@@ -201,12 +252,12 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         assertNaNAt(filter, 0, 1, 2);
         assertNaNAt(weight, 0, 1, 2);
         Assert.assertEquals(50.0, filter.getValue(3).doubleValue(), 0.0);
-        Assert.assertEquals(50.274409493107, filter.getValue(4).doubleValue(), 1e-9);
-        Assert.assertEquals(50.287741547731, filter.getValue(5).doubleValue(), 1e-9);
-        Assert.assertEquals(50.287783226356, filter.getValue(9).doubleValue(), 1e-9);
+        Assert.assertEquals(50.274408546555, filter.getValue(4).doubleValue(), 1e-9);
+        Assert.assertEquals(50.287740597351, filter.getValue(5).doubleValue(), 1e-9);
+        Assert.assertEquals(50.287782274663, filter.getValue(9).doubleValue(), 1e-9);
         Assert.assertEquals(1.0, weight.getValue(3).doubleValue(), 0.0);
-        Assert.assertEquals(0.306560889133, weight.getValue(4).doubleValue(), 1e-9);
-        Assert.assertEquals(0.000016124063, weight.getValue(6).doubleValue(), 1e-9);
+        Assert.assertEquals(0.306560818580, weight.getValue(4).doubleValue(), 1e-9);
+        Assert.assertEquals(0.000016124051, weight.getValue(6).doubleValue(), 1e-9);
         Assert.assertEquals(0.0, weight.getValue(7).doubleValue(), 0.0);
     }
 
@@ -220,7 +271,7 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Assert.assertEquals(10.0, filter.getValue(0).doubleValue(), 0.0);
         Assert.assertTrue(filter.getValue(1).isNaN());
         Assert.assertEquals(10.052223978787, filter.getValue(2).doubleValue(), 1e-9);
-        Assert.assertEquals(10.136107118932, filter.getValue(3).doubleValue(), 1e-9);
+        Assert.assertEquals(10.136103952807, filter.getValue(3).doubleValue(), 1e-9);
     }
 
     @Test
@@ -253,6 +304,21 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void rejectsNullOrNonFiniteBandwidth() {
+        BarSeries series = closePrice.getBarSeries();
+        Indicator<Num> q = constant(series, 1e-3);
+        Indicator<Num> r = constant(series, 1e-2);
+        Assert.assertThrows(NullPointerException.class,
+                () -> new CorrentropyKalmanFilterIndicator(closePrice, q, r, null));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CorrentropyKalmanFilterIndicator(closePrice, q, r, numOf(0.0)));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CorrentropyKalmanFilterIndicator(closePrice, q, r, numOf(-2.0)));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CorrentropyKalmanFilterIndicator(closePrice, q, r, NaN.NaN));
+    }
+
+    @Test
     public void unstableBarsAreTheMaximumOfTheConsumedIndicators() {
         BarSeries series = seriesOf(1, 2, 3);
         MockIndicator unstableSource = new MockIndicator(series, 3, Arrays.asList(numOf(1), numOf(2), numOf(3)));
@@ -274,6 +340,35 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Assert.assertEquals(filter.getBarSeries(), first.getBarSeries());
         Assert.assertEquals(0.992622679915, first.getValue(1).doubleValue(), 1e-9);
         Assert.assertEquals(0.0, first.getValue(2).doubleValue(), 0.0);
+    }
+
+    @Test
+    public void sourceReadsStayBoundedAndCached() {
+        BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
+        CountingIndicator source = CountingIndicator.delegate(new ClosePriceIndicator(series));
+        CorrentropyKalmanFilterIndicator filter = filter(source, 1e-3, 1e-2, 2);
+        int barCount = series.getBarCount();
+
+        for (int i = 0; i < barCount; i++) {
+            filter.getValue(i);
+            filter.measurementWeight().getValue(i);
+        }
+        Assert.assertTrue("filter + shared weight view should recompute the source at most once per bar: "
+                + source.getCalculationCount(), source.getCalculationCount() <= barCount + 2);
+
+        for (int i = 0; i < barCount; i++) {
+            filter.residual().getValue(i);
+        }
+        Assert.assertTrue("residual adds at most one source recomputation per bar: "
+                + source.getCalculationCount(), source.getCalculationCount() <= 2 * barCount + 4);
+
+        for (int i = 0; i < barCount; i++) {
+            filter.getValue(i);
+        }
+        Assert.assertTrue("residual re-reads each cached source value once: " + source.readCount(),
+                source.readCount() <= 2 * barCount + 4);
+        Assert.assertTrue("cached re-reads never recompute the source: " + source.getCalculationCount(),
+                source.getCalculationCount() <= barCount + 2);
     }
 
     @Test
