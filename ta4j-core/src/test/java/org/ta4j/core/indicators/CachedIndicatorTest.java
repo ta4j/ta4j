@@ -12,6 +12,7 @@ import org.ta4j.core.indicators.averages.ZLEMAIndicator;
 import org.ta4j.core.indicators.helpers.AverageIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -456,6 +457,31 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // The retained [50, 50, 50] window has a zero range: the rebaselined
         // source returns 0, and the dependent must follow instead of serving
         // its stale cached 100.
+        assertNumEquals(0, dependent.getValue(3));
+        assertNumEquals(0, dependent.getValue(4));
+    }
+
+    @Test
+    public void cachedDependentFollowsRebaseliningSourceBehindOperationWrapperWhenSeriesHeadAdvances() {
+        // A stochastic wrapped in a non-cached BinaryOperationIndicator hides
+        // the rebaselining source from the direct source walk; the propagation
+        // must traverse the dependency graph through non-cached wrappers, or
+        // the EMA keeps serving the stale pre-advance product after the head
+        // advance.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator source = new StochasticIndicator(new ClosePriceIndicator(barSeries), 3);
+        BinaryOperationIndicator product = BinaryOperationIndicator.product(source, 1);
+        EMAIndicator dependent = new EMAIndicator(product, 1);
+        assertNumEquals(100, dependent.getValue(4));
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // The retained [50, 50, 50] window has a zero range: the rebaselined
+        // stochastic returns 0, so the wrapped product returns 0 and the
+        // dependent must follow instead of serving its stale cached 100.
         assertNumEquals(0, dependent.getValue(3));
         assertNumEquals(0, dependent.getValue(4));
     }

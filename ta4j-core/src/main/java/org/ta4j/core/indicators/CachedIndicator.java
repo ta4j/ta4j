@@ -317,25 +317,26 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      *
      * <p>
      * The default resolves one of two policies, after propagating source
-     * invalidations: when a registered source {@link CachedIndicator} applies a
-     * floor above its own default unstable-range floor (for example a rebaselining
-     * source such as {@link StochasticIndicator} discarding its whole cache), this
-     * indicator discards its whole cache too, because its cached values were
-     * derived from source values that no longer exist. A source whose floor merely
-     * covers its own declared unstable band does not trigger propagation, because
-     * that floor is the band's default eviction and dependents already tolerate it.
-     * Indicators with unbounded historical dependencies
-     * ({@link #hasRecursiveDependencies()} returns {@code true}) and no such source
-     * keep every cached value, because their results cannot be recomputed from the
-     * retained window alone; all other indicators evict the declared unstable range
-     * ({@code firstRetainedIndex} plus {@link #getCountOfUnstableBars()}) so that
-     * re-seeded values match a fresh calculation against the retained window. A
-     * subclass whose values are always recomputable from the retained window,
-     * including any portion that only conditionally recurses (for example
-     * {@link StochasticIndicator}), overrides this method and returns
-     * {@link Integer#MAX_VALUE} to discard the whole cache: keeping only the
-     * recursively derived band would preserve stale results computed from evicted
-     * bars.
+     * invalidations: when the source graph - traversed through
+     * {@link Indicator#getDependencies()} so non-cached wrappers are not a barrier
+     * - contains a {@link CachedIndicator} that applies a floor above its own
+     * default unstable-range floor (for example a rebaselining source such as
+     * {@link StochasticIndicator} discarding its whole cache), this indicator
+     * discards its whole cache too, because its cached values were derived from
+     * source values that no longer exist. A source whose floor merely covers its
+     * own declared unstable band does not trigger propagation, because that floor
+     * is the band's default eviction and dependents already tolerate it. Indicators
+     * with unbounded historical dependencies ({@link #hasRecursiveDependencies()}
+     * returns {@code true}) and no such source keep every cached value, because
+     * their results cannot be recomputed from the retained window alone; all other
+     * indicators evict the declared unstable range ({@code firstRetainedIndex} plus
+     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
+     * calculation against the retained window. A subclass whose values are always
+     * recomputable from the retained window, including any portion that only
+     * conditionally recurses (for example {@link StochasticIndicator}), overrides
+     * this method and returns {@link Integer#MAX_VALUE} to discard the whole cache:
+     * keeping only the recursively derived band would preserve stale results
+     * computed from evicted bars.
      * </p>
      *
      * @param firstRetainedIndex the first series index that remains available
@@ -344,12 +345,36 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
         for (Indicator<?> sourceIndicator : sourceIndicators) {
-            if (sourceIndicator instanceof CachedIndicator<?> cachedSource
-                    && rebaselinesBeyondDefaultBand(cachedSource, firstRetainedIndex)) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex)) {
                 return Integer.MAX_VALUE;
             }
         }
         return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
+    }
+
+    /**
+     * Whether any indicator in the source graph rooted at {@code source} applies a
+     * cache floor above its own default unstable-range band after the series head
+     * advanced to {@code firstRetainedIndex}. A direct {@link CachedIndicator}
+     * source is checked like before; any other source is traversed through
+     * {@link Indicator#getDependencies()}, so a rebaselining source hidden behind
+     * non-cached wrappers (for example a stochastic inside a
+     * {@code BinaryOperationIndicator}) still invalidates the whole cache.
+     *
+     * @param source             the source indicator to inspect
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@code true} when a rebaselining source lies in the graph
+     */
+    private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex) {
+        if (source instanceof CachedIndicator<?> cachedSource) {
+            return rebaselinesBeyondDefaultBand(cachedSource, firstRetainedIndex);
+        }
+        for (Indicator<?> dependency : source.getDependencies()) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(dependency, firstRetainedIndex)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean rebaselinesBeyondDefaultBand(CachedIndicator<?> source, int firstRetainedIndex) {

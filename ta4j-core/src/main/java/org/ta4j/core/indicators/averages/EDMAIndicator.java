@@ -82,4 +82,9 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
         return calculate(index);
     }
 
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(indicator);
+    }
+
 }
