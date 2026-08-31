@@ -83,6 +83,17 @@ public class BearishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void customThresholdsUseBodyRelativeShadowRatios() {
+        BarSeries series = marubozuSeries(5, 10.1, 0.75, 0.75, false);
+
+        BearishMarubozuIndicator relaxed = new BearishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1);
+        BearishMarubozuIndicator strict = new BearishMarubozuIndicator(series, 5, 1.0, 0.05, 0.05);
+
+        assertTrue(relaxed.getValue(5));
+        assertFalse(strict.getValue(5));
+    }
+
+    @Test
     public void rejectsAveragePeriodBelowOne() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
@@ -144,7 +155,9 @@ public class BearishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
         return List.of(serializationFixture(series, new BearishMarubozuIndicator(series), stableIndexes(series)),
-                serializationFixture(series, new BearishMarubozuIndicator(series, 5), stableIndexes(series)));
+                serializationFixture(series, new BearishMarubozuIndicator(series, 5), stableIndexes(series)),
+                serializationFixture(series, new BearishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1),
+                        stableIndexes(series)));
     }
 
     /**

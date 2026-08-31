@@ -494,6 +494,18 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * The raw full-scale shifted average of the preceding {@code averagePeriod}
+     * candle ranges. Consumers use this baseline when it is finite to retain
+     * subnormal ordering; they must fall back to the restored
+     * {@link #priorAverageRange()} when it overflows.
+     *
+     * @return the raw prior average range baseline
+     */
+    Indicator<Num> rawPriorAverageRange() {
+        return rawPriorAverageRange;
+    }
+
+    /**
      * The cached body magnitude primitive shared with every pattern indicator
      * interned over the same series.
      *
@@ -575,20 +587,37 @@ final class CandleThresholdSupport {
      *         boundary, for a short body, or for an unavailable measurement
      */
     boolean isLongBody(int index) {
+        return isLongBody(index, longBodyFactor);
+    }
+
+    /**
+     * Whether the candle body is strictly greater than {@code factor} times the
+     * prior average body.
+     *
+     * <p>
+     * Raw operands retain their ordering whenever they are finite. Otherwise the
+     * comparison falls back to the shared half-scale primitives so overflowed
+     * finite source prices remain decidable.
+     *
+     * @param index  the candle index
+     * @param factor the positive body-to-average-body ratio
+     * @return {@code true} when the body is longer than the scaled baseline
+     */
+    boolean isLongBody(int index, Num factor) {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = halfBody.getValue(index);
-        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(longBodyFactor);
-        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
-            return false;
-        }
         final Num rawBody = body.getValue(index);
-        final Num rawBaseline = rawPriorAverageBody.getValue(index).multipliedBy(longBodyFactor);
+        final Num rawBaseline = rawPriorAverageBody.getValue(index);
         if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
-            return rawBody.isGreaterThan(rawBaseline);
+            final Num rawThreshold = rawBaseline.multipliedBy(factor);
+            if (!Num.isNaNOrNull(rawThreshold)) {
+                return rawBody.isGreaterThan(rawThreshold);
+            }
         }
-        return bodyValue.isGreaterThan(baseline);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(factor);
+        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isGreaterThan(baseline);
     }
 
     /**
@@ -794,6 +823,52 @@ final class CandleThresholdSupport {
             }
         }
         return !shadowValue.isGreaterThan(baseline);
+    }
+
+    /**
+     * Whether the given shadow is at most {@code factor} times the current body.
+     *
+     * <p>
+     * The raw shared primitives preserve ordinary and subnormal comparisons. When
+     * the body overflows from finite source prices, the matching shared half-scale
+     * shadow and body primitives preserve the ratio. A malformed, unavailable, or
+     * non-finite shadow never qualifies.
+     *
+     * @param index  the candle index
+     * @param shadow the upper or lower shared shadow primitive
+     * @param factor the non-negative shadow-to-body ratio
+     * @return {@code true} when the shadow is at most the scaled body
+     */
+    boolean isShortShadowRelativeToBody(int index, Indicator<Num> shadow, Num factor) {
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num shadowValue = shadow.getValue(index);
+        if (!Num.isFinite(shadowValue) || shadowValue.isNegative()) {
+            return false;
+        }
+        if (factor.isZero()) {
+            return shadowValue.isZero();
+        }
+        final Num rawBody = body.getValue(index);
+        if (Num.isFinite(rawBody)) {
+            final Num rawThreshold = rawBody.multipliedBy(factor);
+            if (!Num.isNaNOrNull(rawThreshold)) {
+                return !shadowValue.isGreaterThan(rawThreshold);
+            }
+        }
+        final Indicator<Num> halfShadow = shadow == upperShadow ? halfUpperShadow
+                : shadow == lowerShadow ? halfLowerShadow : null;
+        if (halfShadow == null) {
+            return false;
+        }
+        final Num halfShadowValue = halfShadow.getValue(index);
+        final Num halfBodyValue = halfBody.getValue(index);
+        if (!Num.isFinite(halfShadowValue) || halfShadowValue.isNegative() || !Num.isFinite(halfBodyValue)) {
+            return false;
+        }
+        final Num halfThreshold = halfBodyValue.multipliedBy(factor);
+        return !Num.isNaNOrNull(halfThreshold) && !halfShadowValue.isGreaterThan(halfThreshold);
     }
 
     /**

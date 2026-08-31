@@ -83,6 +83,29 @@ public class BullishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void customThresholdsUseBodyRelativeShadowRatios() {
+        BarSeries series = marubozuSeries(5, 10.1, 0.75, 0.75, true);
+
+        BullishMarubozuIndicator relaxed = new BullishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1);
+        BullishMarubozuIndicator strict = new BullishMarubozuIndicator(series, 5, 1.0, 0.05, 0.05);
+
+        assertTrue(relaxed.getValue(5));
+        assertFalse(strict.getValue(5));
+    }
+
+    @Test
+    public void rejectsInvalidCustomThresholds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertThrows(IllegalArgumentException.class, () -> new BullishMarubozuIndicator(series, 5, 0, 0.1, 0.1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BullishMarubozuIndicator(series, 5, Double.NaN, 0.1, 0.1));
+        assertThrows(IllegalArgumentException.class, () -> new BullishMarubozuIndicator(series, 5, 1, -0.1, 0.1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BullishMarubozuIndicator(series, 5, 1, 0.1, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
     public void rejectsAveragePeriodBelowOne() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
@@ -144,7 +167,9 @@ public class BullishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicato
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
         return List.of(serializationFixture(series, new BullishMarubozuIndicator(series), stableIndexes(series)),
-                serializationFixture(series, new BullishMarubozuIndicator(series, 5), stableIndexes(series)));
+                serializationFixture(series, new BullishMarubozuIndicator(series, 5), stableIndexes(series)),
+                serializationFixture(series, new BullishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1),
+                        stableIndexes(series)));
     }
 
     /**

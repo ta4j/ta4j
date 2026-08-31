@@ -378,6 +378,17 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void rawSubnormalRangeBaselinePreservesInclusiveOrderingAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0, 3 * Double.MIN_VALUE, 0); // index 0: range 3 * MIN_VALUE
+            addBar(series, 4 * Double.MIN_VALUE, 0, 0); // index 1: body 4 * MIN_VALUE
+
+            assertFalse(new DojiIndicator(series, 1, 1).getValue(1));
+        }
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 

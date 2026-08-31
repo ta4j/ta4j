@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -45,6 +44,10 @@ import org.ta4j.core.num.NumFactory;
  * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
  * which preserves the exact ordering under overflow, mirroring DecimalNum's
  * exact arithmetic under DoubleNum.
+ *
+ * A finite raw full-scale prior average is used directly instead of being
+ * reconstructed from its half-scale representation, so representable subnormal
+ * range boundaries remain ordered.
  *
  * <p>
  * When the restored full-scale prior average itself overflows (an overflowed
@@ -148,7 +151,9 @@ public class DojiIndicator extends CandlePatternIndicator {
             // Num implementation exactly when open equals close.
             return !bodyMagnitude.isPositive();
         }
-        final Num priorAverage = thresholds.priorAverageRange().getValue(index);
+        final Num rawPriorAverage = thresholds.rawPriorAverageRange().getValue(index);
+        final Num priorAverage = Num.isFinite(rawPriorAverage) ? rawPriorAverage
+                : thresholds.priorAverageRange().getValue(index);
         if (!Num.isFinite(priorAverage)) {
             // Keep both sides on the preserved half scale. Restoring the
             // threshold before comparing makes a body and threshold that both

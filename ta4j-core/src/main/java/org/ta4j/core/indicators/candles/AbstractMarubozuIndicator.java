@@ -7,6 +7,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Shared logic for Marubozu-style candlestick pattern indicators.
@@ -45,6 +46,18 @@ abstract class AbstractMarubozuIndicator extends CandlePatternIndicator {
      */
     private final int averagePeriod;
 
+    /**
+     * The custom body threshold, or {@code null} when this indicator uses the
+     * canonical shared thresholds.
+     */
+    private final Num bodyToAverageBodyRatio;
+
+    /** The custom upper-shadow-to-body threshold. */
+    private final Num upperShadowToBodyRatio;
+
+    /** The custom lower-shadow-to-body threshold. */
+    private final Num lowerShadowToBodyRatio;
+
     /** The current candle's upper shadow, shared from the interned support. */
     private final transient Indicator<Num> upperShadow;
 
@@ -73,12 +86,53 @@ abstract class AbstractMarubozuIndicator extends CandlePatternIndicator {
         this.averagePeriod = averagePeriod;
         this.upperShadow = thresholds.upperShadow();
         this.lowerShadow = thresholds.lowerShadow();
+        this.bodyToAverageBodyRatio = null;
+        this.upperShadowToBodyRatio = null;
+        this.lowerShadowToBodyRatio = null;
+    }
+
+    /**
+     * Compatibility constructor with custom body and body-relative shadow
+     * thresholds.
+     *
+     * @param series                 the bar series
+     * @param averagePeriod          the number of preceding candles averaged into
+     *                               the body baseline; must be at least 1
+     * @param bodyToAverageBodyRatio the strictly exceeded body-to-average-body
+     *                               ratio; must be finite and positive
+     * @param upperShadowToBodyRatio the inclusive upper-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @param lowerShadowToBodyRatio the inclusive lower-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @throws IllegalArgumentException if a threshold is outside its valid range
+     */
+    AbstractMarubozuIndicator(final BarSeries series, final int averagePeriod, final double bodyToAverageBodyRatio,
+            final double upperShadowToBodyRatio, final double lowerShadowToBodyRatio) {
+        this(validatedConfiguration(series, averagePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
+                lowerShadowToBodyRatio));
+    }
+
+    private AbstractMarubozuIndicator(final Configuration configuration) {
+        super(configuration.series(),
+                CandleThresholdSupport.forSeries(configuration.series(), configuration.averagePeriod()));
+        this.averagePeriod = configuration.averagePeriod();
+        this.bodyToAverageBodyRatio = configuration.bodyToAverageBodyRatio();
+        this.upperShadowToBodyRatio = configuration.upperShadowToBodyRatio();
+        this.lowerShadowToBodyRatio = configuration.lowerShadowToBodyRatio();
+        this.upperShadow = thresholds.upperShadow();
+        this.lowerShadow = thresholds.lowerShadow();
     }
 
     @Override
     protected Boolean calculate(final int index) {
-        return thresholds.isLongBody(index) && thresholds.isShortShadow(index, upperShadow)
-                && thresholds.isShortShadow(index, lowerShadow) && hasExpectedDirection(index);
+        if (bodyToAverageBodyRatio == null) {
+            return thresholds.isLongBody(index) && thresholds.isShortShadow(index, upperShadow)
+                    && thresholds.isShortShadow(index, lowerShadow) && hasExpectedDirection(index);
+        }
+        return thresholds.isLongBody(index, bodyToAverageBodyRatio)
+                && thresholds.isShortShadowRelativeToBody(index, upperShadow, upperShadowToBodyRatio)
+                && thresholds.isShortShadowRelativeToBody(index, lowerShadow, lowerShadowToBodyRatio)
+                && hasExpectedDirection(index);
     }
 
     @Override
@@ -91,11 +145,42 @@ abstract class AbstractMarubozuIndicator extends CandlePatternIndicator {
         return isBullish() ? bar.isBullish() : bar.isBearish();
     }
 
+    private static Configuration validatedConfiguration(final BarSeries series, final int averagePeriod,
+            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
+            final double lowerShadowToBodyRatio) {
+        final BarSeries validatedSeries = CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod);
+        validatePositiveFactor(bodyToAverageBodyRatio, "bodyToAverageBodyRatio");
+        validateNonNegativeFactor(upperShadowToBodyRatio, "upperShadowToBodyRatio");
+        validateNonNegativeFactor(lowerShadowToBodyRatio, "lowerShadowToBodyRatio");
+
+        final NumFactory numFactory = validatedSeries.numFactory();
+        return new Configuration(validatedSeries, averagePeriod, numFactory.numOf(bodyToAverageBodyRatio),
+                numFactory.numOf(upperShadowToBodyRatio == 0d ? 0d : upperShadowToBodyRatio),
+                numFactory.numOf(lowerShadowToBodyRatio == 0d ? 0d : lowerShadowToBodyRatio));
+    }
+
+    private static void validatePositiveFactor(final double factor, final String name) {
+        if (!Double.isFinite(factor) || factor <= 0d) {
+            throw new IllegalArgumentException(name + " must be finite and > 0, but was: " + factor);
+        }
+    }
+
+    private static void validateNonNegativeFactor(final double factor, final String name) {
+        if (!Double.isFinite(factor) || factor < 0d) {
+            throw new IllegalArgumentException(name + " must be finite and >= 0, but was: " + factor);
+        }
+    }
+
+    private record Configuration(BarSeries series, int averagePeriod, Num bodyToAverageBodyRatio,
+            Num upperShadowToBodyRatio, Num lowerShadowToBodyRatio) {
+    }
+
     /**
      * @return {@code true} if the Marubozu requires a bullish candle (close &gt;
      *         open), {@code false} if it requires a bearish candle (open &gt;
      *         close).
      * @since 0.19
      */
+
     protected abstract boolean isBullish();
 }

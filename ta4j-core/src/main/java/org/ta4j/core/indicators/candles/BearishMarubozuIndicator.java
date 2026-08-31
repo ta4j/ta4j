@@ -57,6 +57,32 @@ public class BearishMarubozuIndicator extends AbstractMarubozuIndicator {
         super(series, averagePeriod);
     }
 
+    /**
+     * Creates a bearish Marubozu indicator with custom body and body-relative
+     * shadow thresholds. This compatibility overload requires the body to strictly
+     * exceed {@code bodyToAverageBodyRatio} times the prior average body and each
+     * shadow to be at most its respective shadow-to-body ratio times the current
+     * body.
+     *
+     * @param series                 the bar series
+     * @param averagePeriod          the number of preceding candles averaged into
+     *                               the body baseline
+     * @param bodyToAverageBodyRatio the strictly exceeded body-to-average-body
+     *                               ratio; must be finite and positive
+     * @param upperShadowToBodyRatio the inclusive upper-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @param lowerShadowToBodyRatio the inclusive lower-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @throws IllegalArgumentException if the average period or a threshold is
+     *                                  outside its valid range
+     * @since 0.19
+     */
+    public BearishMarubozuIndicator(final BarSeries series, final int averagePeriod,
+            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
+            final double lowerShadowToBodyRatio) {
+        super(series, averagePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio, lowerShadowToBodyRatio);
+    }
+
     @Override
     protected boolean isBullish() {
         return false;
